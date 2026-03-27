@@ -131,13 +131,14 @@ function doPost(e) {
     var action = data.action || "photo";
 
     switch (action) {
-      case "sheet":    return handleSheetWrite(data.data);
-      case "read":     return handleSheetRead();
-      case "update":   return handleSheetUpdate(data.defect_id, data.field, data.value);
-      case "analyze":  return handleAnalyzePhoto(data);
-      case "next_id":  return handleNextDefectId();
-      case "photo":    return handlePhotoUpload(data);
-      default:         return handlePhotoUpload(data);
+      case "configure": return handleConfigure(data);
+      case "sheet":     return handleSheetWrite(data.data);
+      case "read":      return handleSheetRead();
+      case "update":    return handleSheetUpdate(data.defect_id, data.field, data.value);
+      case "analyze":   return handleAnalyzePhoto(data);
+      case "next_id":   return handleNextDefectId();
+      case "photo":     return handlePhotoUpload(data);
+      default:          return handlePhotoUpload(data);
     }
   } catch (err) {
     return jsonResponse({ success: false, error: err.toString() });
@@ -175,6 +176,42 @@ function getGeminiKey(data) {
   var key = PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY");
   if (!key && data && data.geminiKey) key = data.geminiKey;
   return key || "";
+}
+
+// ====== REMOTE CONFIGURE (called from PWA setup) ======
+
+function handleConfigure(data) {
+  var changes = [];
+
+  // Set Sheet ID from URL or raw ID
+  if (data.sheetUrl) {
+    var sheetId = extractSheetId_(data.sheetUrl);
+    setConfig("SHEET_ID", sheetId);
+    changes.push("SHEET_ID=" + sheetId);
+
+    // Verify sheet access
+    try {
+      var sheet = SpreadsheetApp.openById(sheetId).getSheets()[0];
+      changes.push("sheet_ok:" + sheet.getParent().getName());
+    } catch (e) {
+      return jsonResponse({ success: false, error: "Cannot access that spreadsheet. Make sure it's shared with the Apps Script owner." });
+    }
+  }
+
+  // Set Gemini key
+  if (data.geminiKey) {
+    setConfig("GEMINI_API_KEY", data.geminiKey);
+    changes.push("gemini_key=set");
+  }
+
+  // Auto-create Drive folder if not set
+  if (!getConfig("DRIVE_FOLDER_ID")) {
+    var folder = DriveApp.createFolder("SiteSnag Photos");
+    setConfig("DRIVE_FOLDER_ID", folder.getId());
+    changes.push("drive_folder=" + folder.getId());
+  }
+
+  return jsonResponse({ success: true, configured: changes });
 }
 
 // ====== ATOMIC DEFECT ID COUNTER ======

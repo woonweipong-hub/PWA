@@ -195,12 +195,30 @@ function initSetup() {
   }
 }
 
-$('#form-setup').addEventListener('submit', (e) => {
+$('#form-setup').addEventListener('submit', async (e) => {
   e.preventDefault();
   Config.name = $('#setup-name').value.trim();
   Config.project = $('#setup-project').value.trim();
   Config.apiUrl = $('#setup-api').value.trim();
   Config.geminiKey = $('#setup-gemini').value.trim();
+
+  // Send Sheet URL + Gemini key to Apps Script for auto-configuration
+  const sheetUrl = $('#setup-sheet').value.trim();
+  if (sheetUrl || Config.geminiKey) {
+    showLoading('Connecting to your Google Sheet...');
+    try {
+      await API.post('configure', {
+        sheetUrl: sheetUrl,
+        geminiKey: Config.geminiKey,
+      });
+      hideLoading();
+    } catch (err) {
+      hideLoading();
+      console.warn('Configure call failed:', err);
+      // Continue anyway — user can fix in settings
+    }
+  }
+
   showToast('Setup complete!', 'success');
   navigate('home');
 });
@@ -777,15 +795,35 @@ function initSettings() {
   $('#settings-name').value = Config.name;
   $('#settings-project').value = Config.project;
   $('#settings-api').value = Config.apiUrl;
+  $('#settings-sheet').value = localStorage.getItem('ss_sheet') || '';
   $('#settings-gemini').value = Config.geminiKey;
 }
 
-$('#form-settings').addEventListener('submit', (e) => {
+$('#form-settings').addEventListener('submit', async (e) => {
   e.preventDefault();
   Config.name = $('#settings-name').value.trim();
   Config.project = $('#settings-project').value.trim();
   Config.apiUrl = $('#settings-api').value.trim();
   Config.geminiKey = $('#settings-gemini').value.trim();
+
+  const sheetUrl = $('#settings-sheet').value.trim();
+  localStorage.setItem('ss_sheet', sheetUrl);
+
+  // Send updated config to Apps Script
+  if (sheetUrl || Config.geminiKey) {
+    showLoading('Updating configuration...');
+    try {
+      await API.post('configure', {
+        sheetUrl: sheetUrl,
+        geminiKey: Config.geminiKey,
+      });
+      hideLoading();
+    } catch (err) {
+      hideLoading();
+      console.warn('Configure call failed:', err);
+    }
+  }
+
   showToast('Settings saved!', 'success');
   navigate('home');
 });

@@ -46,10 +46,15 @@
           <input type="url" id="setup-api" placeholder="https://script.google.com/macros/s/.../exec" required>
         </label>
         <label>
-          Gemini API Key <span class="optional">(optional — or set in Apps Script)</span>
+          Google Sheet URL <span class="optional">(where defects are stored)</span>
+          <input type="url" id="setup-sheet" placeholder="https://docs.google.com/spreadsheets/d/.../edit">
+        </label>
+        <label>
+          Gemini API Key <span class="optional">(optional — enables AI photo analysis)</span>
           <input type="password" id="setup-gemini" placeholder="AIza...">
         </label>
         <button type="submit" class="btn btn-primary btn-block">Get Started</button>
+        <p class="setup-help">Photos are stored in Google Drive automatically.</p>
       </form>
     </div>
   </section>
@@ -343,6 +348,10 @@
         <label>
           Apps Script URL
           <input type="url" id="settings-api" required>
+        </label>
+        <label>
+          Google Sheet URL
+          <input type="url" id="settings-sheet" placeholder="https://docs.google.com/spreadsheets/d/.../edit">
         </label>
         <label>
           Gemini API Key

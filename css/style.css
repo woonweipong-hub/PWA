@@ -124,6 +124,7 @@ body {
 }
 .setup-logo h1 { font-size: 1.75rem; color: var(--primary); margin-top: 8px; }
 .setup-logo .subtitle { color: var(--text-secondary); font-size: 0.9375rem; }
+.setup-help { text-align: center; color: var(--text-secondary); font-size: 0.75rem; margin-top: 12px; }
 
 /* ===== FORMS ===== */
 label {
