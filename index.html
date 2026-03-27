@@ -76,8 +76,8 @@
           <span class="stat-label">Outstanding</span>
         </div>
         <div class="stat-card">
-          <span class="stat-num" id="stat-today">—</span>
-          <span class="stat-label">Today</span>
+          <span class="stat-num" id="stat-resolved">—</span>
+          <span class="stat-label">Resolved</span>
         </div>
         <div class="stat-card">
           <span class="stat-num" id="stat-total">—</span>
@@ -375,6 +375,37 @@
       </div>
     </div>
   </section>
+
+  <!-- ===== DEFECT DETAIL MODAL ===== -->
+  <div id="defect-modal" class="modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-defect-id">DEF-0001</h3>
+        <button class="btn-icon" id="btn-modal-close" aria-label="Close">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="modal-photo" class="modal-photo" hidden>
+        <img id="modal-photo-img" alt="Defect photo">
+      </div>
+      <div class="modal-fields">
+        <div class="modal-field"><b>Status:</b> <span id="modal-status"></span></div>
+        <div class="modal-field"><b>Project:</b> <span id="modal-project"></span></div>
+        <div class="modal-field"><b>Unit:</b> <span id="modal-unit"></span></div>
+        <div class="modal-field"><b>Location:</b> <span id="modal-location"></span></div>
+        <div class="modal-field"><b>Category:</b> <span id="modal-category"></span></div>
+        <div class="modal-field"><b>Severity:</b> <span id="modal-severity"></span></div>
+        <div class="modal-field"><b>Description:</b> <span id="modal-description"></span></div>
+        <div class="modal-field"><b>Trade:</b> <span id="modal-trade"></span></div>
+        <div class="modal-field"><b>Submitted:</b> <span id="modal-timestamp"></span></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary btn-block" id="btn-resolve" hidden>Mark as Resolved</button>
+        <p id="modal-resolved-info" class="modal-resolved-info" hidden></p>
+      </div>
+    </div>
+  </div>
 
   <!-- ===== BOTTOM NAV ===== -->
   <nav id="bottom-nav" class="bottom-nav" hidden>

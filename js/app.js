@@ -230,12 +230,9 @@ async function refreshHome() {
     if (result.success && result.rows) {
       allDefects = result.rows;
       const outstanding = allDefects.filter((d) => (d.status || '').toLowerCase() !== 'completed').length;
-      const today = allDefects.filter((d) => {
-        const ts = d.timestamp_utc || '';
-        return ts.startsWith(new Date().toISOString().split('T')[0]);
-      }).length;
+      const resolved = allDefects.filter((d) => (d.status || '').toLowerCase() === 'completed').length;
       $('#stat-outstanding').textContent = outstanding;
-      $('#stat-today').textContent = today;
+      $('#stat-resolved').textContent = resolved;
       $('#stat-total').textContent = allDefects.length;
 
       // Recent 5
@@ -270,6 +267,14 @@ function renderDefectList(selector, defects) {
         </div>
       </div>`;
   }).join('');
+
+  // Make cards tappable — open detail modal
+  container.querySelectorAll('.defect-card').forEach((card) => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.id;
+      if (id) openDefectModal(id);
+    });
+  });
 }
 
 // ─── Report ──────────────────────────────────────────────────────────
@@ -888,6 +893,59 @@ $$('.btn-back').forEach((btn) => {
 $('#btn-report').addEventListener('click', () => navigate('report'));
 $('#btn-walk').addEventListener('click', () => navigate('walk'));
 $('#btn-view-all').addEventListener('click', () => navigate('history'));
+
+// ─── Defect Detail Modal ─────────────────────────────────────────────
+function openDefectModal(defectId) {
+  const d = allDefects.find((r) => r.defect_id === defectId);
+  if (!d) return;
+
+  $('#modal-defect-id').textContent = d.defect_id || 'Unknown';
+  $('#modal-status').textContent = d.status || 'Outstanding';
+  $('#modal-project').textContent = d.project || '';
+  $('#modal-unit').textContent = d.unit || '';
+  $('#modal-location').textContent = d.location || '';
+  $('#modal-category').textContent = d.category || '';
+  $('#modal-severity').textContent = d.severity || '';
+  $('#modal-description').textContent = d.description || '';
+  $('#modal-trade').textContent = d.trade || '';
+  $('#modal-timestamp').textContent = d.timestamp_utc || '';
+
+  // Photo
+  if (d.photo_url) {
+    $('#modal-photo-img').src = d.photo_url;
+    $('#modal-photo').hidden = false;
+  } else {
+    $('#modal-photo').hidden = true;
+  }
+
+  // Resolve button — show only for Outstanding defects
+  const isResolved = (d.status || '').toLowerCase() === 'completed';
+  $('#btn-resolve').hidden = isResolved;
+  $('#modal-resolved-info').hidden = !isResolved;
+  if (isResolved) {
+    $('#modal-resolved-info').textContent = 'Resolved on ' + (d.resolved_date || 'unknown date');
+  }
+
+  $('#btn-resolve').onclick = async () => {
+    showLoading('Resolving...');
+    try {
+      await API.resolveDefect(defectId);
+      hideLoading();
+      showToast(defectId + ' resolved!', 'success');
+      $('#defect-modal').hidden = true;
+      refreshHome();
+      if (currentView === 'history') refreshHistory();
+    } catch (err) {
+      hideLoading();
+      showToast('Failed to resolve: ' + err.message, 'error');
+    }
+  };
+
+  $('#defect-modal').hidden = false;
+}
+
+$('#btn-modal-close').addEventListener('click', () => { $('#defect-modal').hidden = true; });
+$('.modal-backdrop').addEventListener('click', () => { $('#defect-modal').hidden = true; });
 
 // ─── Utils ───────────────────────────────────────────────────────────
 function escapeHtml(s) {
