@@ -923,15 +923,15 @@ function openDefectModal(defectId) {
   $('#btn-resolve').hidden = isResolved;
   $('#modal-resolved-info').hidden = !isResolved;
   if (isResolved) {
-    $('#modal-resolved-info').textContent = 'Resolved on ' + (d.resolved_date || 'unknown date');
+    $('#modal-resolved-info').textContent = 'Completed on ' + (d.resolved_date || 'unknown date');
   }
 
   $('#btn-resolve').onclick = async () => {
-    showLoading('Resolving...');
+    showLoading('Updating...');
     try {
       await API.resolveDefect(defectId);
       hideLoading();
-      showToast(defectId + ' resolved!', 'success');
+      showToast(defectId + ' completed!', 'success');
       $('#defect-modal').hidden = true;
       refreshHome();
       if (currentView === 'history') refreshHistory();
