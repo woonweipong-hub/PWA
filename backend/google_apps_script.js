@@ -1,22 +1,129 @@
 // Enhanced Google Apps Script for SiteSnag PWA
 // Deploy: Extensions > Apps Script > Deploy > Web app > Anyone > Deploy
 //
-// SETUP:
-//   1. Update SHEET_ID and DRIVE_FOLDER_ID below
-//   2. Set GEMINI_API_KEY in Script Properties:
-//      Project Settings > Script Properties > Add > GEMINI_API_KEY = AIza...
-//   3. Deploy as web app (Execute as: Me, Access: Anyone)
+// QUICK SETUP (run once in Apps Script editor):
+//   1. Paste this code into Code.gs
+//   2. Select "setup" from the function dropdown, click Run
+//   3. Follow the prompts — it will ask for your Sheet URL and Gemini key
+//   4. Deploy > New deployment > Web app > Execute as: Me > Access: Anyone
+//   5. Copy the URL and share it with your team
 //
-// This file extends the original google_apps_script.js with:
-//   - Gemini photo analysis (action: "analyze")
-//   - Atomic defect ID counter (action: "next_id")
-//   - CORS-friendly responses
+// All config is stored in Script Properties (not in code).
+// To reconfigure, run setup() again or edit Project Settings > Script Properties.
 
-// ====== CONFIGURE THESE ======
-var SHEET_ID = "1I0FmGgflVwMYywsNcIu14DaCogw6dVA80H3LKcJpgLA";
-var DRIVE_FOLDER_ID = "12jyX_reOM5sOGFceCVm0_NcrL1HyxVm7";
+// ====== CONFIG (loaded from Script Properties at runtime) ======
 var GEMINI_MODEL = "gemini-2.5-flash";
-// =============================
+
+function getConfig(key) {
+  return PropertiesService.getScriptProperties().getProperty(key) || "";
+}
+
+function setConfig(key, value) {
+  PropertiesService.getScriptProperties().setProperty(key, value);
+}
+
+// ====== ONE-TIME SETUP — run this first ======
+
+function setup() {
+  var ui = SpreadsheetApp.getUi ? SpreadsheetApp.getUi() : null;
+
+  // 1. Get Sheet URL or ID
+  var sheetId = getConfig("SHEET_ID");
+  var input = prompt_("Paste your Google Sheet URL (or press Enter to keep current):",
+    sheetId ? "Current: " + sheetId : "e.g. https://docs.google.com/spreadsheets/d/abc123/edit");
+
+  if (input && input.trim()) {
+    sheetId = extractSheetId_(input.trim());
+    setConfig("SHEET_ID", sheetId);
+    Logger.log("Sheet ID set: " + sheetId);
+  }
+
+  // 2. Auto-create Drive folder or use existing
+  var folderId = getConfig("DRIVE_FOLDER_ID");
+  if (!folderId) {
+    Logger.log("Creating 'SiteSnag Photos' folder in Drive...");
+    var folder = DriveApp.createFolder("SiteSnag Photos");
+    folderId = folder.getId();
+    setConfig("DRIVE_FOLDER_ID", folderId);
+    Logger.log("Drive folder created: " + folderId);
+  } else {
+    var overwrite = prompt_("Drive folder already set (" + folderId + "). Keep it? (yes/no):", "yes");
+    if (overwrite && overwrite.toLowerCase() === "no") {
+      var folderInput = prompt_("Paste Drive folder URL or ID:", "");
+      if (folderInput && folderInput.trim()) {
+        folderId = extractFolderId_(folderInput.trim());
+        setConfig("DRIVE_FOLDER_ID", folderId);
+        Logger.log("Drive folder updated: " + folderId);
+      }
+    }
+  }
+
+  // 3. Gemini API key
+  var geminiKey = getConfig("GEMINI_API_KEY");
+  var keyInput = prompt_("Paste your Gemini API key (or press Enter to skip):",
+    geminiKey ? "Current: " + geminiKey.substring(0, 8) + "..." : "Get one free at aistudio.google.com/apikey");
+  if (keyInput && keyInput.trim() && keyInput.indexOf("Current:") !== 0 && keyInput.indexOf("Get one") !== 0) {
+    setConfig("GEMINI_API_KEY", keyInput.trim());
+    Logger.log("Gemini key set.");
+  }
+
+  // 4. Verify everything
+  Logger.log("\n=== SETUP COMPLETE ===");
+  testSetup();
+  Logger.log("\nNext: Deploy > New deployment > Web app > Execute as: Me > Access: Anyone");
+}
+
+// Quick setup — just pass the Sheet URL directly
+// Usage: Run setupWithUrl() then check the logs, or call from the editor
+function setupWithUrl(sheetUrl, geminiKey) {
+  if (sheetUrl) {
+    setConfig("SHEET_ID", extractSheetId_(sheetUrl));
+    Logger.log("Sheet ID: " + getConfig("SHEET_ID"));
+  }
+
+  // Auto-create Drive folder if not set
+  if (!getConfig("DRIVE_FOLDER_ID")) {
+    var folder = DriveApp.createFolder("SiteSnag Photos");
+    setConfig("DRIVE_FOLDER_ID", folder.getId());
+    Logger.log("Drive folder created: " + folder.getId());
+  }
+
+  if (geminiKey) {
+    setConfig("GEMINI_API_KEY", geminiKey);
+    Logger.log("Gemini key set.");
+  }
+
+  testSetup();
+}
+
+function prompt_(message, defaultVal) {
+  // Try UI prompt first (works when run from Sheet), fall back to Logger
+  try {
+    var ui = SpreadsheetApp.getUi();
+    var result = ui.prompt("SiteSnag Setup", message, ui.ButtonSet.OK_CANCEL);
+    if (result.getSelectedButton() === ui.Button.OK) {
+      return result.getResponseText();
+    }
+    return defaultVal || "";
+  } catch (e) {
+    // Running from script editor without a Sheet open — use Logger
+    Logger.log("PROMPT: " + message);
+    Logger.log("(Set values via Script Properties or use setupWithUrl())");
+    return defaultVal || "";
+  }
+}
+
+function extractSheetId_(input) {
+  // Accept full URL or just the ID
+  var match = input.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : input;
+}
+
+function extractFolderId_(input) {
+  // Accept full URL or just the ID
+  var match = input.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : input;
+}
 
 function doPost(e) {
   try {
@@ -58,7 +165,9 @@ function jsonResponse(obj) {
 }
 
 function getSheet() {
-  return SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
+  var id = getConfig("SHEET_ID");
+  if (!id) throw new Error("SHEET_ID not configured. Run setup() first.");
+  return SpreadsheetApp.openById(id).getSheets()[0];
 }
 
 function getGeminiKey(data) {
@@ -243,7 +352,8 @@ function handleSheetUpdate(defectId, field, value) {
 // ====== PHOTO UPLOAD TO DRIVE ======
 
 function handlePhotoUpload(data) {
-  var folderId = DRIVE_FOLDER_ID;
+  var folderId = getConfig("DRIVE_FOLDER_ID");
+  if (!folderId) throw new Error("DRIVE_FOLDER_ID not configured. Run setup() first.");
   var fileName = data.fileName || "photo.jpg";
   var base64Data = data.base64;
   var mimeType = data.mimeType || "image/jpeg";
@@ -299,30 +409,39 @@ function testSetup() {
   // Run this manually to verify configuration
   Logger.log("=== SiteSnag Setup Test ===");
 
+  var sheetId = getConfig("SHEET_ID");
+  Logger.log("SHEET_ID: " + (sheetId || "NOT SET"));
+
+  var folderId = getConfig("DRIVE_FOLDER_ID");
+  Logger.log("DRIVE_FOLDER_ID: " + (folderId || "NOT SET"));
+
   // Test sheet access
-  try {
-    var sheet = getSheet();
-    Logger.log("Sheet: " + sheet.getParent().getName() + " / " + sheet.getName());
-    Logger.log("Rows: " + sheet.getLastRow());
-  } catch (e) {
-    Logger.log("Sheet ERROR: " + e);
+  if (sheetId) {
+    try {
+      var sheet = SpreadsheetApp.openById(sheetId).getSheets()[0];
+      Logger.log("Sheet OK: " + sheet.getParent().getName() + " / " + sheet.getName() + " (" + sheet.getLastRow() + " rows)");
+    } catch (e) {
+      Logger.log("Sheet ERROR: " + e);
+    }
   }
 
   // Test Drive access
-  try {
-    var folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-    Logger.log("Drive folder: " + folder.getName());
-  } catch (e) {
-    Logger.log("Drive ERROR: " + e);
+  if (folderId) {
+    try {
+      var folder = DriveApp.getFolderById(folderId);
+      Logger.log("Drive OK: " + folder.getName());
+    } catch (e) {
+      Logger.log("Drive ERROR: " + e);
+    }
   }
 
   // Test Gemini key
-  var geminiKey = PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY");
-  Logger.log("Gemini key: " + (geminiKey ? "SET (" + geminiKey.substring(0, 8) + "...)" : "NOT SET"));
+  var geminiKey = getConfig("GEMINI_API_KEY");
+  Logger.log("Gemini key: " + (geminiKey ? "SET (" + geminiKey.substring(0, 8) + "...)" : "NOT SET (AI analysis disabled)"));
 
   // Test counter
-  var counter = PropertiesService.getScriptProperties().getProperty("defect_counter");
-  Logger.log("Defect counter: " + (counter || "0"));
+  var counter = getConfig("defect_counter");
+  Logger.log("Defect counter: " + (counter || "0") + " (next: DEF-" + ("0000" + (parseInt(counter || "0") + 1)).slice(-4) + ")");
 
   Logger.log("=== Test Complete ===");
 }
