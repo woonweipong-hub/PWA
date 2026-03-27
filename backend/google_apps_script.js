@@ -1,60 +1,48 @@
-// Google Apps Script — Backend for SiteSnag PWA
-// Deploy: Extensions > Apps Script > Deploy > New deployment > Web app > Anyone > Deploy
+// Enhanced Google Apps Script for SiteSnag PWA
+// Deploy: Extensions > Apps Script > Deploy > Web app > Anyone > Deploy
 //
-// This script handles:
-//   1. Photo upload to Google Drive
-//   2. Defect write/read/update on Google Sheets
-//   3. AI photo analysis via Gemini Vision
-//   4. Sequential defect ID generation
-//   5. CORS for PWA cross-origin requests
+// SETUP:
+//   1. Update SHEET_ID and DRIVE_FOLDER_ID below
+//   2. Set GEMINI_API_KEY in Script Properties:
+//      Project Settings > Script Properties > Add > GEMINI_API_KEY = AIza...
+//   3. Deploy as web app (Execute as: Me, Access: Anyone)
 //
-// SETUP: Update these values before deploying:
-var SHEET_ID = "YOUR_GOOGLE_SHEET_ID_HERE";
-var DRIVE_FOLDER_ID = "YOUR_GOOGLE_DRIVE_FOLDER_ID_HERE";
-var GEMINI_API_KEY = ""; // Optional: set here or pass from PWA per-request
+// This file extends the original google_apps_script.js with:
+//   - Gemini photo analysis (action: "analyze")
+//   - Atomic defect ID counter (action: "next_id")
+//   - CORS-friendly responses
 
-// ====== HEADERS (column order in Sheet) ======
-var HEADERS = [
-  "defect_id","status","timestamp_utc","telegram_user",
-  "project","unit","location","category","defect_type","severity",
-  "description","trade","assigned_to","target_fix_date","resolved_date",
-  "input_source","photo_url",
-  "initiated_by","responsible_party","follow_up_by","remarks","cost","quality"
-];
-
-// ====== ROUTER ======
+// ====== CONFIGURE THESE ======
+var SHEET_ID = "1I0FmGgflVwMYywsNcIu14DaCogw6dVA80H3LKcJpgLA";
+var DRIVE_FOLDER_ID = "12jyX_reOM5sOGFceCVm0_NcrL1HyxVm7";
+var GEMINI_MODEL = "gemini-2.5-flash";
+// =============================
 
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
     var action = data.action || "photo";
 
-    var result;
-    if (action === "sheet")    result = handleSheetWrite(data.data);
-    else if (action === "read")     result = handleSheetRead();
-    else if (action === "update")   result = handleSheetUpdate(data.defect_id, data.field, data.value);
-    else if (action === "analyze")  result = handleAnalyze(data);
-    else if (action === "next_id")  result = handleNextId();
-    else if (action === "photo")    result = handlePhotoUpload(data);
-    else result = { success: false, error: "Unknown action: " + action };
-
-    return ContentService.createTextOutput(JSON.stringify(result))
-      .setMimeType(ContentService.MimeType.JSON);
+    switch (action) {
+      case "sheet":    return handleSheetWrite(data.data);
+      case "read":     return handleSheetRead();
+      case "update":   return handleSheetUpdate(data.defect_id, data.field, data.value);
+      case "analyze":  return handleAnalyzePhoto(data);
+      case "next_id":  return handleNextDefectId();
+      case "photo":    return handlePhotoUpload(data);
+      default:         return handlePhotoUpload(data);
+    }
   } catch (err) {
-    return ContentService.createTextOutput(
-      JSON.stringify({ success: false, error: err.toString() })
-    ).setMimeType(ContentService.MimeType.JSON);
+    return jsonResponse({ success: false, error: err.toString() });
   }
 }
 
 function doGet(e) {
-  // If ?action=read, return JSON (for PWA fetch)
-  if (e && e.parameter && e.parameter.action === "read") {
-    var result = handleSheetRead();
-    return ContentService.createTextOutput(JSON.stringify(result))
-      .setMimeType(ContentService.MimeType.JSON);
+  // Dashboard or health check
+  var action = (e && e.parameter && e.parameter.action) || "dashboard";
+  if (action === "health") {
+    return jsonResponse({ success: true, status: "ok", version: "2.0-pwa" });
   }
-  // Otherwise serve dashboard HTML
   var template = HtmlService.createTemplateFromFile('Dashboard');
   template.scriptUrl = ScriptApp.getService().getUrl();
   return template.evaluate()
@@ -62,28 +50,142 @@ function doGet(e) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-// ====== SHEET OPERATIONS ======
+// ====== HELPERS ======
+
+function jsonResponse(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
 
 function getSheet() {
-  var ss = SpreadsheetApp.openById(SHEET_ID);
-  return ss.getSheets()[0];
+  return SpreadsheetApp.openById(SHEET_ID).getSheets()[0];
 }
+
+function getGeminiKey(data) {
+  // Prefer Script Property (secure), fallback to client-provided key
+  var key = PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY");
+  if (!key && data && data.geminiKey) key = data.geminiKey;
+  return key || "";
+}
+
+// ====== ATOMIC DEFECT ID COUNTER ======
+
+function handleNextDefectId() {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000); // wait up to 10s
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var count = parseInt(props.getProperty("defect_counter") || "0", 10) + 1;
+    props.setProperty("defect_counter", count.toString());
+    lock.releaseLock();
+    var id = "DEF-" + ("0000" + count).slice(-4);
+    return jsonResponse({ success: true, defect_id: id, count: count });
+  } catch (err) {
+    lock.releaseLock();
+    return jsonResponse({ success: false, error: err.toString() });
+  }
+}
+
+// ====== GEMINI PHOTO ANALYSIS ======
+
+function handleAnalyzePhoto(data) {
+  var apiKey = getGeminiKey(data);
+  if (!apiKey) {
+    return jsonResponse({ success: false, error: "GEMINI_API_KEY not configured. Set it in Script Properties." });
+  }
+
+  var b64 = data.base64 || "";
+  var context = data.context || "";
+
+  if (!b64) {
+    return jsonResponse({ success: false, error: "No photo data provided" });
+  }
+
+  var prompt =
+    "You are a construction site defect inspector. Analyze this photo and " +
+    "any accompanying text to extract a defect report. " +
+    "Return ONLY a JSON object (no markdown, no backticks) with these string fields: " +
+    "location, category, defect_type, severity, description, trade, target_fix_date. " +
+    "For category, pick the closest match from: Column, Beam, Slab, Foundation, Retaining Wall, " +
+    "Door, Window, Wall, Floor, Ceiling, Roof, Staircase, Fence/Railing, Balcony, Corridor, " +
+    "Cabinet, Wardrobe, Countertop, Skirting, Shelf, " +
+    "Plumbing, Electrical, Aircon, Lighting, Sanitary, Fire Safety, " +
+    "Painting, Tiling, Waterproofing, Plastering, " +
+    "Driveway, Walkway, Garden/Planting, Drain/Gutter, Car Park, Swimming Pool, Playground, General. " +
+    "defect_type is the specific type (e.g. Crack, Leak, Peeling). " +
+    "For severity use: Critical, High, Medium, or Low. " +
+    "target_fix_date must be YYYY-MM-DD or empty string. " +
+    "If a field cannot be determined, use empty string. " +
+    "description should detail what defect is visible.";
+
+  if (context) {
+    prompt += "\n\nUser context: " + context;
+  }
+
+  var url = "https://generativelanguage.googleapis.com/v1beta/models/" +
+    GEMINI_MODEL + ":generateContent?key=" + apiKey;
+
+  var payload = {
+    contents: [{
+      parts: [
+        { text: prompt },
+        { inline_data: { mime_type: "image/jpeg", data: b64 } }
+      ]
+    }]
+  };
+
+  try {
+    var response = UrlFetchApp.fetch(url, {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+
+    var result = JSON.parse(response.getContentText());
+    var content = "";
+    try {
+      content = result.candidates[0].content.parts[0].text.trim();
+    } catch (e) {
+      return jsonResponse({ success: false, error: "Gemini returned unexpected structure" });
+    }
+
+    // Strip markdown code fences
+    if (content.indexOf("```") === 0) {
+      content = content.split("\n").slice(1).join("\n");
+      content = content.replace(/```\s*$/, "").trim();
+    }
+
+    var parsed = JSON.parse(content);
+    return jsonResponse({ success: true, fields: parsed });
+  } catch (err) {
+    return jsonResponse({ success: false, error: "Gemini analysis failed: " + err.toString() });
+  }
+}
+
+// ====== SHEET OPERATIONS ======
 
 function handleSheetWrite(row) {
   var sheet = getSheet();
+  var headers = [
+    "defect_id","status","timestamp_utc","telegram_user",
+    "project","unit","location","category","defect_type","severity",
+    "description","trade","assigned_to","target_fix_date","resolved_date",
+    "input_source","photo_url",
+    "initiated_by","responsible_party","follow_up_by","remarks","cost","quality"
+  ];
 
-  // Create headers if sheet is empty
   if (sheet.getLastRow() === 0) {
-    sheet.appendRow(HEADERS);
+    sheet.appendRow(headers);
     sheet.setFrozenRows(1);
   }
 
-  var values = HEADERS.map(function(h) { return row[h] || ""; });
+  var values = headers.map(function(h) { return row[h] || ""; });
   sheet.appendRow(values);
 
   // Make photo_url clickable
   var lastRow = sheet.getLastRow();
-  var photoUrlCol = HEADERS.indexOf("photo_url") + 1;
+  var photoUrlCol = headers.indexOf("photo_url") + 1;
   if (photoUrlCol > 0) {
     var photoUrlValue = row["photo_url"] || "";
     if (photoUrlValue) {
@@ -92,31 +194,30 @@ function handleSheetWrite(row) {
       if (urls.length === 1) {
         cell.setFormula('=HYPERLINK("' + urls[0] + '","View Photo")');
       } else {
-        cell.setFormula('=HYPERLINK("' + urls[0] + '","' + urls.length + ' photos")');
+        cell.setFormula('=HYPERLINK("' + urls[0] + '",' + urls.length + ' + " photos")');
         cell.setNote(urls.join("\n"));
       }
     }
   }
 
-  return { success: true };
+  return jsonResponse({ success: true });
 }
 
 function handleSheetRead() {
   var sheet = getSheet();
   var data = sheet.getDataRange().getValues();
-  if (data.length < 2) return { success: true, rows: [] };
+  if (data.length === 0) return jsonResponse({ success: true, rows: [] });
 
   var headers = data[0];
   var rows = [];
   for (var i = 1; i < data.length; i++) {
     var obj = {};
     for (var j = 0; j < headers.length; j++) {
-      var val = data[i][j];
-      obj[headers[j]] = (val !== undefined && val !== null) ? String(val) : "";
+      obj[headers[j]] = data[i][j] !== undefined && data[i][j] !== null ? String(data[i][j]) : "";
     }
     rows.push(obj);
   }
-  return { success: true, rows: rows };
+  return jsonResponse({ success: true, rows: rows });
 }
 
 function handleSheetUpdate(defectId, field, value) {
@@ -127,49 +228,27 @@ function handleSheetUpdate(defectId, field, value) {
   var idIdx = headers.indexOf("defect_id");
 
   if (colIdx === -1 || idIdx === -1) {
-    return { success: false, error: "Field not found: " + field };
+    return jsonResponse({ success: false, error: "Field not found" });
   }
 
   for (var i = 1; i < data.length; i++) {
     if (String(data[i][idIdx]).toUpperCase() === String(defectId).toUpperCase()) {
       sheet.getRange(i + 1, colIdx + 1).setValue(value);
-      return { success: true };
+      return jsonResponse({ success: true });
     }
   }
-  return { success: false, error: "Defect not found: " + defectId };
+  return jsonResponse({ success: false, error: "Defect not found" });
 }
 
-// ====== DEFECT ID GENERATION ======
-
-function handleNextId() {
-  var sheet = getSheet();
-  var data = sheet.getDataRange().getValues();
-
-  // Find highest existing DEF-XXXX
-  var maxNum = 0;
-  var idIdx = 0; // defect_id is first column
-  for (var i = 1; i < data.length; i++) {
-    var id = String(data[i][idIdx]);
-    var match = id.match(/DEF-(\d+)/i);
-    if (match) {
-      var num = parseInt(match[1], 10);
-      if (num > maxNum) maxNum = num;
-    }
-  }
-
-  var nextNum = maxNum + 1;
-  var defectId = "DEF-" + ("0000" + nextNum).slice(-4);
-  return { success: true, defect_id: defectId };
-}
-
-// ====== PHOTO UPLOAD ======
+// ====== PHOTO UPLOAD TO DRIVE ======
 
 function handlePhotoUpload(data) {
+  var folderId = DRIVE_FOLDER_ID;
   var fileName = data.fileName || "photo.jpg";
   var base64Data = data.base64;
   var mimeType = data.mimeType || "image/jpeg";
 
-  var metadata = { name: fileName, parents: [DRIVE_FOLDER_ID] };
+  var metadata = { name: fileName, parents: [folderId] };
   var boundary = "-------boundary123";
   var requestBody =
     "--" + boundary + "\r\n" +
@@ -195,7 +274,7 @@ function handlePhotoUpload(data) {
   var fileData = JSON.parse(response.getContentText());
   var fileId = fileData.id;
 
-  // Make publicly readable
+  // Make file publicly readable
   UrlFetchApp.fetch(
     "https://www.googleapis.com/drive/v3/files/" + fileId + "/permissions",
     {
@@ -207,118 +286,51 @@ function handlePhotoUpload(data) {
     }
   );
 
-  return {
+  return jsonResponse({
     success: true,
     fileId: fileId,
     url: "https://drive.google.com/file/d/" + fileId + "/view"
-  };
-}
-
-// ====== GEMINI VISION ANALYSIS ======
-
-function handleAnalyze(data) {
-  var base64 = data.base64 || "";
-  var context = data.context || "";
-  var apiKey = data.geminiKey || GEMINI_API_KEY;
-
-  if (!apiKey) {
-    return { success: false, error: "No Gemini API key configured" };
-  }
-
-  var prompt = buildAnalysisPrompt(context);
-  var parts = [];
-
-  // Add text prompt
-  parts.push({ text: prompt });
-
-  // Add image if present
-  if (base64) {
-    parts.push({
-      inline_data: {
-        mime_type: "image/jpeg",
-        data: base64
-      }
-    });
-  }
-
-  var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey;
-
-  try {
-    var response = UrlFetchApp.fetch(url, {
-      method: "post",
-      contentType: "application/json",
-      payload: JSON.stringify({
-        contents: [{ parts: parts }],
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 1024,
-        }
-      }),
-      muteHttpExceptions: true
-    });
-
-    var result = JSON.parse(response.getContentText());
-    var text = result.candidates[0].content.parts[0].text;
-
-    // Extract JSON from response
-    var jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      var fields = JSON.parse(jsonMatch[0]);
-      return { success: true, fields: fields };
-    } else {
-      return { success: false, error: "Could not parse AI response", raw: text };
-    }
-  } catch (err) {
-    return { success: false, error: "Gemini API error: " + err.toString() };
-  }
-}
-
-function buildAnalysisPrompt(context) {
-  return [
-    "You are a construction defect inspector analyzing a site photo and/or description.",
-    "Extract structured defect information and return ONLY a JSON object (no markdown, no explanation).",
-    "",
-    "Categories (pick one): Structural, Door, Window, Wall, Floor, Ceiling, Plumbing, Electrical,",
-    "Aircon, Painting, Tiling, Waterproofing, Cabinet, Roof, Staircase, Lighting, Sanitary, General",
-    "",
-    "Severity: Critical (safety hazard), High (major function failure), Medium (visible quality defect), Low (minor cosmetic)",
-    "",
-    "Return this exact JSON structure:",
-    '{',
-    '  "category": "...",',
-    '  "defect_type": "...",',
-    '  "severity": "High|Medium|Low|Critical",',
-    '  "location": "room/area name",',
-    '  "description": "1-2 sentence description of the defect",',
-    '  "trade": "responsible trade"',
-    '}',
-    "",
-    context ? "Context from user: " + context : "",
-    "",
-    "Analyze the image/text and respond with ONLY the JSON object."
-  ].join("\n");
-}
-
-// ====== TEST FUNCTIONS ======
-
-function testDriveAccess() {
-  var folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-  Logger.log("Folder: " + folder.getName());
-  var ss = SpreadsheetApp.openById(SHEET_ID);
-  Logger.log("Sheet: " + ss.getName());
-}
-
-function testGeminiAccess() {
-  if (!GEMINI_API_KEY) { Logger.log("No Gemini API key set"); return; }
-  var result = handleAnalyze({
-    base64: "",
-    context: "ceiling crack near aircon unit, bedroom, unit 12-05",
-    geminiKey: GEMINI_API_KEY
   });
-  Logger.log(JSON.stringify(result));
 }
 
-function testNextId() {
-  var result = handleNextId();
-  Logger.log(JSON.stringify(result));
+// ====== TEST / SETUP HELPERS ======
+
+function testSetup() {
+  // Run this manually to verify configuration
+  Logger.log("=== SiteSnag Setup Test ===");
+
+  // Test sheet access
+  try {
+    var sheet = getSheet();
+    Logger.log("Sheet: " + sheet.getParent().getName() + " / " + sheet.getName());
+    Logger.log("Rows: " + sheet.getLastRow());
+  } catch (e) {
+    Logger.log("Sheet ERROR: " + e);
+  }
+
+  // Test Drive access
+  try {
+    var folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+    Logger.log("Drive folder: " + folder.getName());
+  } catch (e) {
+    Logger.log("Drive ERROR: " + e);
+  }
+
+  // Test Gemini key
+  var geminiKey = PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY");
+  Logger.log("Gemini key: " + (geminiKey ? "SET (" + geminiKey.substring(0, 8) + "...)" : "NOT SET"));
+
+  // Test counter
+  var counter = PropertiesService.getScriptProperties().getProperty("defect_counter");
+  Logger.log("Defect counter: " + (counter || "0"));
+
+  Logger.log("=== Test Complete ===");
+}
+
+function resetDefectCounter(newValue) {
+  // Run manually to reset or sync the counter.
+  // Usage: resetDefectCounter(42) — sets next ID to DEF-0043
+  var val = newValue !== undefined ? newValue : 0;
+  PropertiesService.getScriptProperties().setProperty("defect_counter", val.toString());
+  Logger.log("Counter reset to " + val + ". Next ID will be DEF-" + ("0000" + (val + 1)).slice(-4));
 }
