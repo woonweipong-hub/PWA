@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="40" fill="#E65100"/>
+  <g transform="translate(32,28)" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Camera body -->
+    <rect x="8" y="36" width="112" height="80" rx="12" fill="none"/>
+    <path d="M40 36 L48 20 H80 L88 36"/>
+    <!-- Lens -->
+    <circle cx="64" cy="76" r="24"/>
+    <circle cx="64" cy="76" r="12"/>
+    <!-- Flash / warning -->
+    <path d="M100 52 L104 52" stroke-width="4"/>
+    <!-- Checkmark badge -->
+    <circle cx="104" cy="100" r="20" fill="#4CAF50" stroke="#fff" stroke-width="4"/>
+    <path d="M94 100 L101 107 L114 93" stroke="#fff" stroke-width="5"/>
+  </g>
+</svg>
