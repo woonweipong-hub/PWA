@@ -627,27 +627,77 @@ $('#btn-walk-process').addEventListener('click', async () => {
 
 function renderWalkReview() {
   const container = $('#walk-review-list');
+  const catOptions = Object.entries(CATEGORIES).map(([group, items]) =>
+    `<optgroup label="${group}">${items.map(c => `<option value="${c}">${c}</option>`).join('')}</optgroup>`
+  ).join('');
+  const sevOptions = ['Critical','High','Medium','Low'].map(s => `<option value="${s}">${s}</option>`).join('');
+
   container.innerHTML = walkResults.map((r, i) => {
     const photoHtml = r._base64 ? `<img src="data:image/jpeg;base64,${r._base64}" alt="">` : '';
     return `
-      <div class="walk-review-item">
+      <div class="walk-review-item" data-idx="${i}">
         ${photoHtml}
-        <div style="font-weight:700;color:var(--primary);margin-bottom:6px">#${i + 1}</div>
-        <div style="font-size:0.8125rem;margin-bottom:4px"><b>Category:</b> ${escapeHtml(r.category || 'General')} &middot; <b>Severity:</b> ${escapeHtml(r.severity || 'Medium')}</div>
-        <div style="font-size:0.8125rem;margin-bottom:4px"><b>Location:</b> ${escapeHtml(r.location || 'TBD')}</div>
-        <div style="font-size:0.8125rem"><b>Description:</b> ${escapeHtml(r.description || '')}</div>
+        <div style="font-weight:700;color:var(--primary);margin-bottom:8px">#${i + 1}</div>
+        <div class="field-row">
+          <label class="field-label">Category
+            <select class="wr-category" data-idx="${i}">${catOptions}</select>
+          </label>
+          <label class="field-label">Severity
+            <select class="wr-severity" data-idx="${i}">${sevOptions}</select>
+          </label>
+        </div>
+        <label class="field-label">Location
+          <input type="text" class="wr-location" data-idx="${i}" value="${escapeHtml(r.location || '')}">
+        </label>
+        <label class="field-label">Defect Type
+          <input type="text" class="wr-defect-type" data-idx="${i}" value="${escapeHtml(r.defect_type || '')}">
+        </label>
+        <label class="field-label">Description
+          <textarea class="wr-description" data-idx="${i}" rows="3">${escapeHtml(r.description || '')}</textarea>
+        </label>
+        <label class="field-label">Trade
+          <input type="text" class="wr-trade" data-idx="${i}" value="${escapeHtml(r.trade || AUTO_TRADE[r.category] || '')}">
+        </label>
       </div>`;
   }).join('');
+
+  // Set selected values for dropdowns after rendering
+  walkResults.forEach((r, i) => {
+    const catSelect = container.querySelector(`.wr-category[data-idx="${i}"]`);
+    if (catSelect && r.category) catSelect.value = r.category;
+    const sevSelect = container.querySelector(`.wr-severity[data-idx="${i}"]`);
+    if (sevSelect && r.severity) sevSelect.value = r.severity;
+  });
+
+  // Auto-fill trade when category changes
+  container.querySelectorAll('.wr-category').forEach(sel => {
+    sel.addEventListener('change', (e) => {
+      const idx = e.target.dataset.idx;
+      const trade = container.querySelector(`.wr-trade[data-idx="${idx}"]`);
+      if (trade) trade.value = AUTO_TRADE[e.target.value] || 'TBD';
+    });
+  });
 }
 
-// Submit all walk defects
+// Submit all walk defects — reads from editable form fields
 $('#btn-walk-submit').addEventListener('click', async () => {
-  showLoading(`Submitting ${walkResults.length} defects...`);
+  const items = $$('#walk-review-list .walk-review-item');
+  showLoading(`Submitting ${items.length} defects...`);
 
   let submitted = 0;
-  for (let i = 0; i < walkResults.length; i++) {
-    $('#loading-text').textContent = `Submitting ${i + 1} of ${walkResults.length}...`;
-    const r = walkResults[i];
+  for (let i = 0; i < items.length; i++) {
+    $('#loading-text').textContent = `Submitting ${i + 1} of ${items.length}...`;
+    const item = items[i];
+    const idx = parseInt(item.dataset.idx);
+    const r = walkResults[idx] || {};
+
+    // Read user-edited values from form fields
+    const category = item.querySelector('.wr-category')?.value || r.category || 'General';
+    const severity = item.querySelector('.wr-severity')?.value || r.severity || 'Medium';
+    const location = item.querySelector('.wr-location')?.value?.trim() || r.location || 'TBD';
+    const defectType = item.querySelector('.wr-defect-type')?.value?.trim() || r.defect_type || '';
+    const description = item.querySelector('.wr-description')?.value?.trim() || r.description || '';
+    const trade = item.querySelector('.wr-trade')?.value?.trim() || AUTO_TRADE[category] || 'TBD';
 
     try {
       const defectId = await API.nextDefectId();
@@ -664,12 +714,12 @@ $('#btn-walk-submit').addEventListener('click', async () => {
         telegram_user: Config.name,
         project: r._project || Config.project || 'TBD',
         unit: r._unit || 'TBD',
-        location: r.location || 'TBD',
-        category: r.category || 'General',
-        defect_type: r.defect_type || '',
-        severity: r.severity || 'Medium',
-        description: r.description || '',
-        trade: AUTO_TRADE[r.category] || r.trade || 'TBD',
+        location: location,
+        category: category,
+        defect_type: defectType,
+        severity: severity,
+        description: description,
+        trade: trade,
         assigned_to: '',
         target_fix_date: r.target_fix_date || '',
         resolved_date: '',
