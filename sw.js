@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sitesnag-v1';
+const CACHE_NAME = 'sitesnag-v2';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -31,15 +31,30 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
 
-  // API calls (Apps Script) — always network
-  if (url.hostname.includes('script.google.com') || url.hostname.includes('googleapis.com')) {
+  // API calls (Apps Script, Google APIs, Gemini) — network only, don't cache
+  if (
+    url.hostname.includes('script.google.com') ||
+    url.hostname.includes('googleapis.com') ||
+    url.hostname.includes('generativelanguage.googleapis.com')
+  ) {
     return;
   }
 
-  // Static assets — cache first, fallback to network
+  // Static assets — cache first, then network, then update cache
   if (e.request.method === 'GET') {
     e.respondWith(
-      caches.match(e.request).then((cached) => cached || fetch(e.request))
+      caches.match(e.request).then((cached) => {
+        // Return cached immediately, but also fetch fresh copy to update cache
+        const fetchPromise = fetch(e.request).then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+          }
+          return response;
+        }).catch(() => cached); // If network fails, fall back to cache
+
+        return cached || fetchPromise;
+      })
     );
   }
 });
