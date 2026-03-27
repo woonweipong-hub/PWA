@@ -276,6 +276,7 @@ function renderDefectList(selector, defects) {
 function initReport() {
   $('#report-project').value = Config.project;
   $('#report-unit').value = '';
+  $('#report-location').value = '';
   $('#report-notes').value = '';
   clearPhoto();
   clearVoice();
@@ -394,6 +395,7 @@ $('#btn-analyze').addEventListener('click', async () => {
     $('#report-notes').value.trim(),
     `Project: ${$('#report-project').value.trim()}`,
     `Unit: ${$('#report-unit').value.trim()}`,
+    `Location: ${$('#report-location').value.trim()}`,
   ].filter(Boolean).join('. ');
 
   showLoading('AI is analyzing...');
@@ -454,7 +456,7 @@ function populateReview(fields) {
 
   updateDefectTypeDropdown(catSelect.value);
 
-  $('#review-location').value = fields.location || '';
+  $('#review-location').value = fields.location || ($('#report-location') ? $('#report-location').value.trim() : '') || '';
   $('#review-severity').value = fields.severity || 'Medium';
   $('#review-description').value = fields.description || voiceTranscript || '';
   $('#review-trade').value = fields.trade || AUTO_TRADE[catSelect.value] || 'TBD';
@@ -540,6 +542,7 @@ $('#btn-submit').addEventListener('click', async () => {
 function initWalk() {
   $('#walk-project').value = Config.project;
   $('#walk-unit').value = '';
+  $('#walk-location').value = '';
   walkItems = [];
   walkResults = [];
   renderWalkItems();
@@ -618,11 +621,12 @@ $('#btn-walk-process').addEventListener('click', async () => {
 
   const project = $('#walk-project').value.trim() || Config.project || 'TBD';
   const unit = $('#walk-unit').value.trim() || 'TBD';
+  const walkLocation = $('#walk-location').value.trim() || '';
 
   for (let i = 0; i < walkItems.length; i++) {
     $('#loading-text').textContent = `Analyzing item ${i + 1} of ${walkItems.length}...`;
     const item = walkItems[i];
-    const context = [item.transcript, `Project: ${project}`, `Unit: ${unit}`].filter(Boolean).join('. ');
+    const context = [item.transcript, `Project: ${project}`, `Unit: ${unit}`, walkLocation ? `Location: ${walkLocation}` : ''].filter(Boolean).join('. ');
 
     try {
       let fields = {};
@@ -632,6 +636,7 @@ $('#btn-walk-process').addEventListener('click', async () => {
       } else {
         fields = extractFromText(item.transcript + `. Project: ${project}. Unit: ${unit}`);
       }
+      if (!fields.location && walkLocation) fields.location = walkLocation;
       walkResults.push({ ...fields, _base64: item.base64, _project: project, _unit: unit });
     } catch {
       walkResults.push({ description: item.transcript || 'Photo item', _base64: item.base64, _project: project, _unit: unit });

@@ -156,7 +156,7 @@
         <textarea id="report-notes" rows="2" placeholder="e.g. ceiling crack near aircon, unit 12-05"></textarea>
       </label>
 
-      <!-- Project / Unit -->
+      <!-- Project / Unit / Location -->
       <div class="field-row">
         <label class="field-label">
           Project
@@ -167,6 +167,10 @@
           <input type="text" id="report-unit" placeholder="e.g. 12-05">
         </label>
       </div>
+      <label class="field-label">
+        Location
+        <input type="text" id="report-location" placeholder="e.g. Kitchen, Bedroom, Toilet">
+      </label>
 
       <!-- Analyze Button -->
       <button class="btn btn-primary btn-block" id="btn-analyze">
@@ -257,7 +261,13 @@
           </label>
           <label class="field-label">
             Unit / Floor
-            <input type="text" id="walk-unit" placeholder="e.g. Floor 3">
+            <input type="text" id="walk-unit" placeholder="e.g. Unit 12-05">
+          </label>
+        </div>
+        <div class="field-row">
+          <label class="field-label">
+            Location
+            <input type="text" id="walk-location" placeholder="e.g. Kitchen, Bedroom, Toilet">
           </label>
         </div>
       </div>
