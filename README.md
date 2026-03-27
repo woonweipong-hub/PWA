@@ -2,189 +2,151 @@
 
 **Snap. Speak. Done.**
 
-A zero-cost Progressive Web App (PWA) for construction site defect tracking. Workers snap photos, speak descriptions, and AI classifies everything automatically. Defects sync to Google Sheets with photos stored in Google Drive.
+A zero-cost mobile app for construction defect tracking. Snap photos, speak descriptions, and AI classifies everything. Defects sync to your Google Sheet with photos in Google Drive.
 
-No app store. No account. No Telegram. Just open the link and start reporting.
-
----
-
-## Quick Start (2 minutes)
-
-### 1. Install on your phone
-
-Open this link on your mobile browser:
-
-**https://woonweipong-hub.github.io/PWA/**
-
-Then:
-- **Android (Chrome)**: Tap the menu (3 dots) > "Add to Home Screen"
-- **iPhone (Safari)**: Tap Share > "Add to Home Screen"
-
-The app icon appears on your home screen. It works offline.
-
-### 2. First-time setup
-
-When you open the app for the first time:
-
-| Field | What to enter |
-|-------|---------------|
-| **Your Name** | Your name (shown in defect reports) |
-| **Default Project** | Your project name (e.g. "Riviera Bay Phase 2") |
-| **Apps Script URL** | The backend URL (your PM will give you this) |
-| **Gemini API Key** | Optional - enables AI photo analysis |
-
-### 3. Report a defect
-
-1. Tap **Report Defect**
-2. Take a photo (tap the camera area)
-3. Hold the mic button and describe the defect
-4. Tap **Analyze with AI** - AI fills in category, severity, trade
-5. Review and tap **Submit Defect**
-
-### 4. Site Walk mode
-
-For batch inspections:
-1. Tap **Site Walk**
-2. Set project and unit
-3. Snap photos and speak as you walk
-4. Tap **Process All Items** - AI analyzes everything at once
-5. Review all defects and tap **Submit All**
+No app store. No account. No cost. Open the link on your phone, add to home screen, done.
 
 ---
 
-## Viral Sharing
+## How to Get the App (for site workers)
 
-Share a pre-configured link so workers skip setup:
-
-```
-https://woonweipong-hub.github.io/PWA/?api=YOUR_APPS_SCRIPT_URL
-```
-
-Workers open the link, enter their name, and they're ready. No config needed.
-
-Generate a QR code from this URL and print it on your site notice board.
+1. Open **https://woonweipong-hub.github.io/PWA/** on your phone
+2. **Android**: Tap menu (3 dots) > **"Add to Home Screen"**
+3. **iPhone**: Tap Share icon > **"Add to Home Screen"**
+4. Open the app from your home screen
+5. Enter your name and the **Apps Script URL** (your PM will give you this)
+6. Start reporting defects
 
 ---
 
-## Architecture
+## How to Set Up the Backend (for PMs / admins)
+
+Everything runs on free Google services. Follow these 5 steps once, then share the link with your whole team.
+
+### Step 1: Create a Google Spreadsheet
+
+1. Go to **https://sheets.google.com**
+2. Click **+ Blank** to create a new spreadsheet
+3. Name it anything (e.g. "SiteSnag Defects")
+4. Keep this tab open — you'll need it next
+
+### Step 2: Open Apps Script
+
+1. In your new spreadsheet, click **Extensions** (top menu)
+2. Click **Apps Script**
+3. A new tab opens with a code editor
+
+### Step 3: Paste the backend code
+
+1. In the Apps Script editor, **select all** the existing code and **delete it**
+2. Open this file: **[backend/google_apps_script.js](backend/google_apps_script.js)**
+3. Click the **Raw** button (or select all the code)
+4. **Copy** all the code
+5. **Paste** it into the Apps Script editor
+6. Click the **Save** icon (floppy disk) or press Ctrl+S
+
+### Step 4: Run setup
+
+1. In the Apps Script editor, find the **function dropdown** (it says "setup" or "myFunction")
+2. Select **`setup`** from the dropdown
+3. Click the **Run** button (play icon)
+4. Google will ask you to **authorize** — click "Review Permissions" > choose your account > "Allow"
+5. The setup wizard will prompt you:
+   - **Sheet URL**: Just press OK (it auto-detects the current sheet)
+   - **Drive folder**: It auto-creates a "SiteSnag Photos" folder for you
+   - **Gemini API key**: Paste your key (see below), or press Cancel to skip
+
+> **To get a free Gemini API key** (enables AI photo analysis):
+> 1. Go to **https://aistudio.google.com/apikey**
+> 2. Click **"Create API Key"**
+> 3. Copy the key and paste it when setup asks
+
+6. Check the **Execution Log** at the bottom — you should see:
+```
+=== SiteSnag Setup Test ===
+Sheet OK: SiteSnag Defects / Sheet1 (0 rows)
+Drive OK: SiteSnag Photos
+Gemini key: SET (AIza...)
+=== Test Complete ===
+```
+
+### Step 5: Deploy and get your URL
+
+1. Click **Deploy** (top right) > **New deployment**
+2. Click the gear icon next to "Select type" > choose **Web app**
+3. Set:
+   - Description: `SiteSnag v1` (or anything)
+   - Execute as: **Me**
+   - Who has access: **Anyone**
+4. Click **Deploy**
+5. Click **Copy** next to the Web App URL
+
+Your URL looks like:
+```
+https://script.google.com/macros/s/AKfycbx.../exec
+```
+
+**This is your Apps Script URL. Save it — you'll share it with your team.**
+
+### Step 6: Share with your team
+
+Send your team this link (replace with your actual Apps Script URL):
 
 ```
-Phone (PWA)                    Google Cloud (free)
-+-----------+                  +---------------------------+
-| Camera    |----> Photo ----->| Google Apps Script         |
-| Mic       |----> Voice ----->|   +-> Gemini 2.0 Flash AI |
-| Touch     |----> Text ------>|   +-> Google Sheets (log)  |
-+-----------+                  |   +-> Google Drive (photos) |
-      |                        +---------------------------+
-      v
-  IndexedDB
-  (offline queue)
+https://woonweipong-hub.github.io/PWA/?api=https://script.google.com/macros/s/AKfycbx.../exec
 ```
 
-### How it works
+Workers open the link, enter their name, tap "Add to Home Screen" — and they're ready to report defects. No setup, no config.
 
-| Step | What happens | Technology |
-|------|-------------|------------|
-| Photo capture | Native camera via browser | `<input capture="environment">` |
-| Voice input | Real-time speech-to-text | Web Speech API (free, in-browser) |
-| AI analysis | Photo + text analyzed | Gemini 2.0 Flash (free tier: 1M tokens/day) |
-| Data storage | Defect log (spreadsheet) | Google Sheets via Apps Script |
-| Photo storage | Permanent shareable links | Google Drive via Apps Script |
-| Offline mode | Cached app shell + local queue | Service Worker + localStorage |
-| Installation | "Add to Home Screen" | PWA manifest + Service Worker |
+You can also **print a QR code** from this URL and stick it on the site notice board.
 
-### Connected Tools & Services
+---
 
-| Service | What it does | Cost |
-|---------|-------------|------|
-| **Google Sheets** | Defect log (single source of truth) | Free |
-| **Google Drive** | Photo storage with shareable URLs | Free (15 GB) |
-| **Gemini 2.0 Flash** | AI vision - classifies defects from photos | Free (15 req/min) |
-| **Web Speech API** | Voice-to-text in the browser | Free (built into Chrome/Safari) |
-| **GitHub Pages** | Hosts the PWA | Free |
-| **Google Apps Script** | Serverless backend (no VM needed) | Free |
+## How It Works
+
+```
+Your Phone                         Google (free)
++------------------+               +-----------------------------+
+|                  |               |                             |
+|  Tap camera      |----photo---->|  Google Apps Script          |
+|  Hold mic button |----voice---->|    |                         |
+|  Type notes      |----text----->|    +--> Gemini AI (analyze)  |
+|                  |               |    +--> Google Sheets (log)  |
+|  "DEF-0042       |<---result----|    +--> Google Drive (photo)  |
+|   Crack, Bedroom |               |                             |
+|   Severity: High"|               +-----------------------------+
+|                  |
+|  Tap Confirm     |
++------------------+
+```
+
+| What you do | What happens behind the scenes | Cost |
+|---|---|---|
+| Take photo | Saved to Google Drive, permanent link | Free (15 GB) |
+| Hold mic & speak | Web Speech API transcribes to text | Free (browser built-in) |
+| Tap "Analyze with AI" | Gemini 2.5 Flash classifies the defect | Free (15 req/min) |
+| Tap "Submit" | Row added to your Google Sheet | Free |
+| Open app offline | Cached locally, syncs when online | Free |
 
 **Total cost: $0/month** for unlimited users.
 
 ---
 
-## Backend Setup (for PMs / admins)
-
-### Step 1: Create Google Sheet
-
-1. Go to [sheets.google.com](https://sheets.google.com) and create a new spreadsheet
-2. Name it "SiteSnag Defects" (or anything)
-3. Copy the Sheet ID from the URL: `docs.google.com/spreadsheets/d/<SHEET_ID>/edit`
-
-### Step 2: Create Drive folder
-
-1. Go to [drive.google.com](https://drive.google.com) and create a new folder
-2. Name it "SiteSnag Photos"
-3. Copy the Folder ID from the URL: `drive.google.com/drive/folders/<FOLDER_ID>`
-
-### Step 3: Deploy Apps Script
-
-1. Open your Google Sheet
-2. Go to **Extensions > Apps Script**
-3. Delete any existing code in `Code.gs`
-4. Copy the contents of [`backend/google_apps_script.js`](backend/google_apps_script.js) and paste it
-5. Update line 11: `var SHEET_ID = "your_sheet_id";`
-6. Update line 12: `var DRIVE_FOLDER_ID = "your_folder_id";`
-7. (Optional) Update line 13: `var GEMINI_API_KEY = "your_key";`
-8. Click **Deploy > New deployment**
-9. Type: **Web app**
-10. Execute as: **Me**
-11. Who has access: **Anyone**
-12. Click **Deploy**
-13. Copy the Web App URL
-
-### Step 4: Get Gemini API Key (optional but recommended)
-
-1. Go to [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
-2. Click "Create API Key"
-3. Copy the key
-4. Either paste it in the Apps Script (line 13) or enter it in the PWA Settings
-
-### Step 5: Share with your team
-
-Send this link to workers:
-```
-https://woonweipong-hub.github.io/PWA/?api=YOUR_APPS_SCRIPT_URL
-```
-
-Or print a QR code pointing to it.
-
----
-
 ## Features
 
-### Defect Reporting
-- Take photos with phone camera
-- Voice input with real-time transcription
-- AI auto-classifies: category, severity, defect type, trade
-- Manual text input as fallback
-- 35 categories, 200+ defect types
+| Feature | Description |
+|---------|-------------|
+| **Report Defect** | Photo + voice + AI analysis in one flow |
+| **Site Walk** | Batch capture: walk through site snapping photos and speaking, process all at once |
+| **History** | View all defects, filter by status/severity, search |
+| **Dashboard** | Total, outstanding, resolved, today's count |
+| **Offline** | Works without internet, syncs when back online |
+| **AI Classification** | 35 categories, 200+ defect types, auto-assigns trade |
+| **Voice Input** | Hold button to speak, real-time transcription |
+| **Installable** | Add to home screen, works like a native app |
+| **Viral Sharing** | Share a link or QR code, no account needed |
 
-### Site Walk Mode
-- Batch capture: photos + voice notes as you walk
-- AI processes all items at once
-- Review and submit all defects in one go
-
-### Defect History
-- View all reported defects
-- Filter by status (Outstanding / Completed)
-- Search by keyword
-
-### Dashboard
-- Total / Outstanding / Resolved counts
-- Today's submissions
-
-### Offline Support
-- App loads without internet (cached shell)
-- Defects saved locally when offline
-- Auto-syncs when connectivity returns
-
-### Category System
+### Defect Categories
 
 | Group | Categories |
 |-------|-----------|
@@ -204,48 +166,31 @@ Each category auto-assigns a responsible trade (Plumber, Electrician, Carpenter,
 
 ```
 PWA/
-  index.html              # App shell - all 8 views
-  manifest.json           # PWA manifest (installable)
-  sw.js                   # Service Worker (offline + caching)
-  css/
-    style.css             # Mobile-first responsive CSS
-  js/
-    app.js                # Main app (824 lines) - camera, voice, AI, sync
-  icons/
-    icon-192.svg          # App icon 192x192
-    icon-512.svg          # App icon 512x512
+  index.html                # App (all screens in one file)
+  manifest.json             # Makes it installable on phones
+  sw.js                     # Offline support
+  css/style.css             # Mobile-first styling
+  js/app.js                 # All app logic (camera, voice, AI, sync)
+  icons/icon-192.svg        # App icon
+  icons/icon-512.svg        # App icon (large)
   backend/
-    google_apps_script.js # Apps Script backend (paste into Google Sheet)
-  .github/
-    workflows/
-      deploy.yml          # Auto-deploy to GitHub Pages on push
+    google_apps_script.js   # Backend code (paste into Google Sheet)
 ```
 
 ---
 
 ## Tech Stack
 
-| Component | Technology | Why |
-|-----------|-----------|-----|
-| Frontend | Vanilla JS (no framework) | Zero build step, <50KB total, instant load |
-| Styling | CSS (custom) | Mobile-first, safe-area aware, dark-mode ready |
-| Voice | Web Speech API | Free, zero-download, works in Chrome/Safari |
-| Camera | HTML5 MediaCapture | Native camera access, no plugin |
-| AI Vision | Gemini 2.0 Flash | Best free vision AI (1M tokens/day) |
-| Backend | Google Apps Script | Serverless, free, handles Sheets + Drive + Gemini |
-| Database | Google Sheets | Free, shareable, live dashboard |
-| Storage | Google Drive | Free 15GB, shareable photo URLs |
-| Hosting | GitHub Pages | Free, global CDN, auto-HTTPS |
-| Offline | Service Worker + localStorage | Cache-first, works without internet |
-
----
-
-## Contributing
-
-1. Fork this repo
-2. Make changes
-3. Push to your fork - GitHub Actions auto-deploys to Pages
-4. Test at `https://YOUR_USERNAME.github.io/PWA/`
+| Layer | Technology | Why this one |
+|-------|-----------|-------------|
+| App | Vanilla JS PWA | No build step, <50KB, instant load on 3G |
+| Voice | Web Speech API | Free, runs in browser, no server needed |
+| Camera | HTML5 capture | Native phone camera, no plugin |
+| AI | Gemini 2.5 Flash | Best free vision AI (1M tokens/day) |
+| Backend | Google Apps Script | Free serverless, no server to manage |
+| Database | Google Sheets | Free, shareable, live data |
+| Photos | Google Drive | Free 15GB, shareable links |
+| Hosting | GitHub Pages | Free, global CDN, HTTPS |
 
 ---
 
