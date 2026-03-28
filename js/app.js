@@ -178,7 +178,7 @@ const API = {
 
   async readDefects() {
     if (isPocketBase()) {
-      const result = await this.pbFetch('/api/collections/defects/records?perPage=500&sort=-created');
+      const result = await this.pbFetch('/api/collections/defects/records?perPage=500');
       const rows = (result.items || []).map((item) => {
         // Build photo URL from PocketBase file path
         let photoUrl = '';
