@@ -1,0 +1,61 @@
+[
+  {
+    "name": "defects",
+    "type": "base",
+    "schema": [
+      { "name": "defect_id", "type": "text", "required": true, "options": { "min": 1, "max": 20 } },
+      { "name": "status", "type": "text", "required": true, "options": { "min": 1, "max": 20 } },
+      { "name": "timestamp_utc", "type": "text" },
+      { "name": "user_name", "type": "text" },
+      { "name": "project", "type": "text" },
+      { "name": "unit", "type": "text" },
+      { "name": "location", "type": "text" },
+      { "name": "category", "type": "text" },
+      { "name": "defect_type", "type": "text" },
+      { "name": "severity", "type": "text" },
+      { "name": "description", "type": "text", "options": { "max": 5000 } },
+      { "name": "trade", "type": "text" },
+      { "name": "assigned_to", "type": "text" },
+      { "name": "target_fix_date", "type": "text" },
+      { "name": "resolved_date", "type": "text" },
+      { "name": "input_source", "type": "text" },
+      { "name": "photo", "type": "file", "options": { "maxSelect": 5, "maxSize": 10485760, "mimeTypes": ["image/jpeg", "image/png", "image/webp"] } },
+      { "name": "initiated_by", "type": "text" },
+      { "name": "responsible_party", "type": "text" },
+      { "name": "follow_up_by", "type": "text" },
+      { "name": "remarks", "type": "text" },
+      { "name": "cost", "type": "text" },
+      { "name": "quality", "type": "text" }
+    ],
+    "listRule": "",
+    "viewRule": "",
+    "createRule": "",
+    "updateRule": "",
+    "deleteRule": "@request.auth.id != ''"
+  },
+  {
+    "name": "projects",
+    "type": "base",
+    "schema": [
+      { "name": "name", "type": "text", "required": true },
+      { "name": "code", "type": "text", "required": true },
+      { "name": "created_by", "type": "text" }
+    ],
+    "listRule": "",
+    "viewRule": "",
+    "createRule": "",
+    "updateRule": ""
+  },
+  {
+    "name": "counters",
+    "type": "base",
+    "schema": [
+      { "name": "key", "type": "text", "required": true },
+      { "name": "value", "type": "number", "required": true }
+    ],
+    "listRule": "",
+    "viewRule": "",
+    "createRule": "",
+    "updateRule": ""
+  }
+]

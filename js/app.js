@@ -95,11 +95,16 @@ let walkItems = [];       // [{base64, transcript, file}]
 let walkResults = [];     // AI-analyzed walk defects
 let allDefects = [];      // cached from Sheet
 
-// ─── API ─────────────────────────────────────────────────────────────
+// ─── API (auto-detects backend: PocketBase or Google Apps Script) ────
+function isPocketBase() {
+  return Config.apiUrl && !Config.apiUrl.includes('script.google.com');
+}
+
 const API = {
+  // ── Google Apps Script backend ──
   async post(action, data = {}) {
     const url = Config.apiUrl;
-    if (!url) throw new Error('Apps Script URL not configured');
+    if (!url) throw new Error('Backend URL not configured');
     const payload = { action, ...data };
     const resp = await fetch(url, {
       method: 'POST',
@@ -112,33 +117,107 @@ const API = {
     catch { return { success: false, raw: text }; }
   },
 
-  async analyzePhoto(base64, context) {
-    return this.post('analyze', {
-      base64,
-      context: context || '',
-      geminiKey: Config.geminiKey,
+  // ── PocketBase helpers ──
+  async pbFetch(path, options = {}) {
+    const base = Config.apiUrl.replace(/\/+$/, '');
+    const resp = await fetch(`${base}${path}`, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', ...options.headers },
     });
+    return resp.json();
+  },
+
+  // ── Unified API methods (work with both backends) ──
+
+  async analyzePhoto(base64, context) {
+    if (isPocketBase()) {
+      // PocketBase: call Gemini directly from client (or server hook handles it)
+      return this.pbFetch('/api/sitesnag/analyze', {
+        method: 'POST',
+        body: JSON.stringify({ base64, context }),
+      }).catch(() => ({ success: false }));
+    }
+    return this.post('analyze', { base64, context: context || '', geminiKey: Config.geminiKey });
   },
 
   async uploadPhoto(base64, filename) {
+    if (isPocketBase()) {
+      // PocketBase handles photos as part of the defect record
+      return { success: true, url: '' };
+    }
     return this.post('photo', { base64, fileName: filename, mimeType: 'image/jpeg' });
   },
 
   async submitDefect(defect) {
+    if (isPocketBase()) {
+      // Convert base64 photo to file upload via FormData
+      const formData = new FormData();
+      for (const [key, val] of Object.entries(defect)) {
+        if (key === 'photo_base64' || key === 'photo_dataUrl') continue;
+        formData.append(key, val || '');
+      }
+      // Attach photo as file if present
+      if (defect.photo_base64) {
+        const byteString = atob(defect.photo_base64);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+        const blob = new Blob([ab], { type: 'image/jpeg' });
+        formData.append('photo', blob, `${defect.defect_id || 'photo'}.jpg`);
+      }
+      const base = Config.apiUrl.replace(/\/+$/, '');
+      const resp = await fetch(`${base}/api/collections/defects/records`, {
+        method: 'POST',
+        body: formData,
+      });
+      const result = await resp.json();
+      return { success: !result.code, defect_id: result.defect_id || result.id };
+    }
     return this.post('sheet', { data: defect });
   },
 
   async readDefects() {
+    if (isPocketBase()) {
+      const result = await this.pbFetch('/api/collections/defects/records?perPage=500&sort=-created');
+      const rows = (result.items || []).map((item) => {
+        // Build photo URL from PocketBase file path
+        let photoUrl = '';
+        if (item.photo) {
+          const base = Config.apiUrl.replace(/\/+$/, '');
+          photoUrl = `${base}/api/files/defects/${item.id}/${item.photo}`;
+        }
+        return { ...item, photo_url: photoUrl };
+      });
+      return { success: true, rows };
+    }
     return this.post('read');
   },
 
   async resolveDefect(defectId) {
+    if (isPocketBase()) {
+      // Find record by defect_id
+      const result = await this.pbFetch(`/api/collections/defects/records?filter=(defect_id='${defectId}')`);
+      if (result.items && result.items.length > 0) {
+        const record = result.items[0];
+        const now = new Date().toISOString().split('T')[0];
+        await this.pbFetch(`/api/collections/defects/records/${record.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'Completed', resolved_date: now }),
+        });
+        return { success: true };
+      }
+      return { success: false, error: 'Defect not found' };
+    }
     const now = new Date().toISOString().split('T')[0];
     return this.post('update', { defect_id: defectId, field: 'status', value: 'Completed' })
       .then(() => this.post('update', { defect_id: defectId, field: 'resolved_date', value: now }));
   },
 
   async nextDefectId() {
+    if (isPocketBase()) {
+      // PocketBase hook auto-generates IDs — return placeholder
+      return 'AUTO';
+    }
     const result = await this.post('next_id');
     return result.defect_id || 'DEF-????';
   },
@@ -199,24 +278,27 @@ $('#form-setup').addEventListener('submit', async (e) => {
   e.preventDefault();
   Config.name = $('#setup-name').value.trim();
   Config.project = $('#setup-project').value.trim();
-  Config.apiUrl = $('#setup-api').value.trim();
-  Config.geminiKey = $('#setup-gemini').value.trim();
 
-  // Send Sheet URL + Gemini key to Apps Script for auto-configuration
-  const sheetUrl = $('#setup-sheet').value.trim();
-  if (sheetUrl || Config.geminiKey) {
-    showLoading('Connecting to your Google Sheet...');
-    try {
-      await API.post('configure', {
-        sheetUrl: sheetUrl,
-        geminiKey: Config.geminiKey,
-      });
-      hideLoading();
-    } catch (err) {
-      hideLoading();
-      console.warn('Configure call failed:', err);
-      // Continue anyway — user can fix in settings
+  const mode = localStorage.getItem('ss_mode') || 'hosted';
+
+  if (mode === 'selfhost') {
+    // Google Apps Script mode
+    Config.apiUrl = ($('#setup-api-gs') && $('#setup-api-gs').value.trim()) || '';
+    Config.geminiKey = ($('#setup-gemini') && $('#setup-gemini').value.trim()) || '';
+    const sheetUrl = ($('#setup-sheet') && $('#setup-sheet').value.trim()) || '';
+    if (sheetUrl || Config.geminiKey) {
+      showLoading('Connecting to your Google Sheet...');
+      try {
+        await API.post('configure', { sheetUrl, geminiKey: Config.geminiKey });
+        hideLoading();
+      } catch (err) {
+        hideLoading();
+        console.warn('Configure call failed:', err);
+      }
     }
+  } else {
+    // PocketBase hosted mode
+    Config.apiUrl = $('#setup-api').value.trim();
   }
 
   showToast('Setup complete!', 'success');
@@ -497,20 +579,21 @@ $('#review-category').addEventListener('change', (e) => {
 $('#btn-submit').addEventListener('click', async () => {
   showLoading('Submitting...');
   try {
-    // Get defect ID
+    // Get defect ID (PocketBase auto-generates, Apps Script needs explicit call)
     const defectId = await API.nextDefectId();
 
-    // Upload photo
+    // Upload photo (for Apps Script — PocketBase handles it in submitDefect)
     let photoUrl = '';
-    if (photoBase64) {
+    if (photoBase64 && !isPocketBase()) {
       const uploadResult = await API.uploadPhoto(photoBase64, `${defectId}.jpg`);
       photoUrl = uploadResult.url || '';
     }
 
     const defect = {
-      defect_id: defectId,
+      defect_id: defectId === 'AUTO' ? '' : defectId,
       status: 'Outstanding',
       timestamp_utc: new Date().toISOString().replace('T', ' ').split('.')[0] + 'Z',
+      user_name: Config.name,
       telegram_user: Config.name,
       project: $('#report-project').value.trim() || Config.project || 'TBD',
       unit: $('#report-unit').value.trim() || 'TBD',
@@ -525,6 +608,7 @@ $('#btn-submit').addEventListener('click', async () => {
       resolved_date: '',
       input_source: 'pwa',
       photo_url: photoUrl,
+      photo_base64: isPocketBase() ? photoBase64 : '',
       initiated_by: Config.name,
       responsible_party: '',
       follow_up_by: '',

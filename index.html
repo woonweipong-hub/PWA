@@ -41,21 +41,55 @@
           Default Project
           <input type="text" id="setup-project" placeholder="e.g. Riviera Bay Phase 2">
         </label>
-        <label>
-          Apps Script URL
-          <input type="url" id="setup-api" placeholder="https://script.google.com/macros/s/.../exec" required>
-        </label>
-        <label>
-          Google Sheet URL <span class="optional">(where defects are stored)</span>
-          <input type="url" id="setup-sheet" placeholder="https://docs.google.com/spreadsheets/d/.../edit">
-        </label>
-        <label>
-          Gemini API Key <span class="optional">(optional — enables AI photo analysis)</span>
-          <input type="password" id="setup-gemini" placeholder="AIza...">
-        </label>
+
+        <!-- Backend mode selector -->
+        <div class="setup-mode">
+          <label class="setup-mode-label">Backend</label>
+          <div class="setup-mode-btns">
+            <button type="button" class="mode-btn active" id="mode-hosted" onclick="setSetupMode('hosted')">Hosted (easy)</button>
+            <button type="button" class="mode-btn" id="mode-selfhost" onclick="setSetupMode('selfhost')">Google Sheets</button>
+          </div>
+        </div>
+
+        <!-- Hosted mode: just API URL (pre-filled if configured) -->
+        <div id="setup-hosted-fields">
+          <label>
+            Server URL <span class="optional">(ask your admin)</span>
+            <input type="url" id="setup-api" placeholder="https://your-server:8090" required>
+          </label>
+        </div>
+
+        <!-- Self-hosted mode: Google Apps Script + Sheet -->
+        <div id="setup-selfhost-fields" hidden>
+          <label>
+            Apps Script URL
+            <input type="url" id="setup-api-gs" placeholder="https://script.google.com/macros/s/.../exec">
+          </label>
+          <label>
+            Google Sheet URL <span class="optional">(where defects are stored)</span>
+            <input type="url" id="setup-sheet" placeholder="https://docs.google.com/spreadsheets/d/.../edit">
+          </label>
+          <label>
+            Gemini API Key <span class="optional">(optional — enables AI photo analysis)</span>
+            <input type="password" id="setup-gemini" placeholder="AIza...">
+          </label>
+        </div>
+
         <button type="submit" class="btn btn-primary btn-block">Get Started</button>
-        <p class="setup-help">Photos are stored in Google Drive automatically.</p>
+        <p class="setup-help">Free and open source. Your data stays on your server.</p>
       </form>
+      <script>
+        function setSetupMode(mode) {
+          document.getElementById('mode-hosted').classList.toggle('active', mode === 'hosted');
+          document.getElementById('mode-selfhost').classList.toggle('active', mode === 'selfhost');
+          document.getElementById('setup-hosted-fields').hidden = (mode !== 'hosted');
+          document.getElementById('setup-selfhost-fields').hidden = (mode !== 'selfhost');
+          // Swap the required API field
+          document.getElementById('setup-api').required = (mode === 'hosted');
+          if (document.getElementById('setup-api-gs')) document.getElementById('setup-api-gs').required = (mode === 'selfhost');
+          localStorage.setItem('ss_mode', mode);
+        }
+      </script>
     </div>
   </section>
 

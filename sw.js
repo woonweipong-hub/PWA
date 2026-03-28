@@ -31,11 +31,12 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
 
-  // API calls (Apps Script, Google APIs, Gemini) — network only, don't cache
+  // API calls — network only, don't cache
   if (
     url.hostname.includes('script.google.com') ||
     url.hostname.includes('googleapis.com') ||
-    url.hostname.includes('generativelanguage.googleapis.com')
+    url.hostname.includes('generativelanguage.googleapis.com') ||
+    url.pathname.includes('/api/') // PocketBase API
   ) {
     return;
   }

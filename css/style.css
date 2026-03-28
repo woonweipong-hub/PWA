@@ -125,6 +125,14 @@ body {
 .setup-logo h1 { font-size: 1.75rem; color: var(--primary); margin-top: 8px; }
 .setup-logo .subtitle { color: var(--text-secondary); font-size: 0.9375rem; }
 .setup-help { text-align: center; color: var(--text-secondary); font-size: 0.75rem; margin-top: 12px; }
+.setup-mode { margin-bottom: 16px; }
+.setup-mode-label { margin-bottom: 6px; }
+.setup-mode-btns { display: flex; gap: 0; border-radius: var(--radius-sm); overflow: hidden; border: 1.5px solid var(--border); }
+.mode-btn {
+  flex: 1; padding: 10px; border: none; background: var(--surface); color: var(--text-secondary);
+  font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.15s;
+}
+.mode-btn.active { background: var(--primary); color: #fff; }
 
 /* ===== FORMS ===== */
 label {
