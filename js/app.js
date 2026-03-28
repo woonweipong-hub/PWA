@@ -262,6 +262,9 @@ function navigate(view) {
 }
 
 // ─── Setup ───────────────────────────────────────────────────────────
+// Default hosted backend URL (pre-filled so users don't need to type it)
+const DEFAULT_API_URL = 'https://sitesnag.duckdns.org';
+
 function initSetup() {
   // Check for ?api= query param (viral link)
   const params = new URLSearchParams(window.location.search);
@@ -271,6 +274,9 @@ function initSetup() {
     $('#setup-api').value = apiFromUrl;
     // Clean URL
     window.history.replaceState({}, '', window.location.pathname);
+  } else if (!Config.apiUrl) {
+    // Pre-fill with default hosted backend
+    $('#setup-api').value = DEFAULT_API_URL;
   }
 }
 
