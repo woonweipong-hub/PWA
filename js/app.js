@@ -827,7 +827,7 @@ function LogDefect({member,company,currentProject,members,onSave}){
   };
 
   const AI_LIMIT_KEY="sdt-ai-usage";
-  const AI_DAILY_LIMIT=10;
+  const AI_DAILY_LIMIT=50;
 
   const analyze=async()=>{
     if(!form.photo||!geminiKey)return;
