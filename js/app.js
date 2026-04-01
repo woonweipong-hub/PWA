@@ -548,12 +548,30 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
   );
 }
 
+// ── Settings Sync (save to Firestore + localStorage) ─────────────
+function saveSettingToFirestore(companyId,key,value){
+  if(!companyId)return;
+  try{db.collection("companies").doc(companyId).collection("settings").doc(key).set({value,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});}catch(e){console.warn("Settings save failed:",e);}
+}
+async function loadSettingsFromFirestore(companyId){
+  if(!companyId)return;
+  try{
+    const snap=await db.collection("companies").doc(companyId).collection("settings").get();
+    snap.docs.forEach(doc=>{
+      const key=doc.id;const val=doc.data().value;
+      if(key==="telegram")local.set(TG_KEY,val);
+      if(key==="gemini")local.set(GEMINI_KEY,val);
+      if(key==="email")local.set(EMAIL_KEY,val);
+    });
+  }catch(e){console.warn("Settings load failed:",e);}
+}
+
 // ── Telegram Settings ─────────────────────────────────────────────
-function TelegramSettings({onClose}){
+function TelegramSettings({onClose,companyId}){
   const[token,setToken]=useState(()=>local.get(TG_KEY)?.token||"");
   const[chatId,setChatId]=useState(()=>local.get(TG_KEY)?.chatId||"");
   const[saved,setSaved]=useState(false);const[testRes,setTestRes]=useState(null);const[testing,setTesting]=useState(false);
-  const save=()=>{local.set(TG_KEY,{token:token.trim(),chatId:chatId.trim()});setSaved(true);setTimeout(()=>setSaved(false),2000);};
+  const save=()=>{const cfg={token:token.trim(),chatId:chatId.trim()};local.set(TG_KEY,cfg);saveSettingToFirestore(companyId,"telegram",cfg);setSaved(true);setTimeout(()=>setSaved(false),2000);};
   const test=async()=>{setTesting(true);setTestRes(null);const ok=await sendTelegram(token.trim(),chatId.trim(),"✅ <b>SiteSnag</b>\nTelegram connected successfully!");setTestRes(ok?"success":"fail");setTesting(false);};
   return(
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
@@ -580,10 +598,10 @@ function TelegramSettings({onClose}){
 }
 
 // ── Gemini AI Settings ────────────────────────────────────────────
-function GeminiSettings({onClose}){
+function GeminiSettings({onClose,companyId}){
   const[key,setKey]=useState(()=>local.get(GEMINI_KEY)||"");
   const[saved,setSaved]=useState(false);const[testing,setTesting]=useState(false);const[testRes,setTestRes]=useState(null);
-  const save=()=>{local.set(GEMINI_KEY,key.trim());setSaved(true);setTimeout(()=>setSaved(false),2000);};
+  const save=()=>{local.set(GEMINI_KEY,key.trim());saveSettingToFirestore(companyId,"gemini",key.trim());setSaved(true);setTimeout(()=>setSaved(false),2000);};
   const test=async()=>{
     setTesting(true);setTestRes(null);
     try{
@@ -619,12 +637,12 @@ function GeminiSettings({onClose}){
 }
 
 // ── Email Settings ────────────────────────────────────────────────
-function EmailSettings({onClose}){
+function EmailSettings({onClose,companyId}){
   const s=local.get(EMAIL_KEY)||{publicKey:"",serviceId:"",templateId:"",recipients:[""]};
   const[pk,setPk]=useState(s.publicKey);const[sid,setSid]=useState(s.serviceId);
   const[tid,setTid]=useState(s.templateId);const[rec,setRec]=useState(s.recipients.length?s.recipients:[""]);
   const[saved,setSaved]=useState(false);
-  const save=()=>{local.set(EMAIL_KEY,{publicKey:pk.trim(),serviceId:sid.trim(),templateId:tid.trim(),recipients:rec.filter(r=>r.trim())});setSaved(true);setTimeout(()=>setSaved(false),2000);};
+  const save=()=>{const cfg={publicKey:pk.trim(),serviceId:sid.trim(),templateId:tid.trim(),recipients:rec.filter(r=>r.trim())};local.set(EMAIL_KEY,cfg);saveSettingToFirestore(companyId,"email",cfg);setSaved(true);setTimeout(()=>setSaved(false),2000);};
   return(
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
       <SettingsBack onClose={onClose} title="📧 EMAIL REPORTS"/>
@@ -1312,6 +1330,8 @@ function App(){
                 local.set(PROJECT_KEY,proj);
                 setCurrentProject(proj);
               }
+              // Recover settings (Telegram, Gemini, Email)
+              await loadSettingsFromFirestore(compDoc.id);
               break;
             }
           }
@@ -1503,9 +1523,9 @@ function App(){
 
       {/* Overlays */}
       {viewing&&<DefectDetail defect={viewing} onClose={()=>setViewing(null)} onUpdate={updateDefect} member={member} company={company}/>}
-      {showTg&&<TelegramSettings onClose={()=>setShowTg(false)}/>}
-      {showEmail&&<EmailSettings onClose={()=>setShowEmail(false)}/>}
-      {showGemini&&<GeminiSettings onClose={()=>setShowGemini(false)}/>}
+      {showTg&&<TelegramSettings onClose={()=>setShowTg(false)} companyId={company?.companyId}/>}
+      {showEmail&&<EmailSettings onClose={()=>setShowEmail(false)} companyId={company?.companyId}/>}
+      {showGemini&&<GeminiSettings onClose={()=>setShowGemini(false)} companyId={company?.companyId}/>}
       {showUsers&&<UserManagement onClose={()=>setShowUsers(false)} company={company} member={member} members={members}/>}
       {showProjects&&<ProjectManagement onClose={()=>setShowProjects(false)} company={company} member={member} projects={projects} currentProject={currentProject} onSelect={p=>{selectProject(p);setShowProjects(false);}}/>}
     </div>
