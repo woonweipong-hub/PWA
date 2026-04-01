@@ -6,7 +6,8 @@ const {useState,useEffect,useRef,useCallback}=React;
 const COMPANY_KEY="sdt-co-v1",TG_KEY="sdt-tg-v2",EMAIL_KEY="sdt-email-v1";
 const GEMINI_KEY="sdt-gemini-v1",PROJECT_KEY="sdt-proj-v1";
 const USAGE_KEY="sdt-usage-v1";
-const FREE_TRIAL_LIMIT=20; // defects on shared Firebase before prompting own setup
+const FREE_TRIAL_LIMIT=50; // defects per user on shared Firebase
+const FREE_TRIAL_USERS=20; // max users per company on shared Firebase
 const SEVERITY=["Critical","Major","Minor","Observation"];
 const SEV_COLOR={Critical:"#ff3b30",Major:"#ff9500",Minor:"#e6b800",Observation:"#34aadc"};
 const SEV_BG={Critical:"rgba(255,59,48,0.12)",Major:"rgba(255,149,0,0.12)",Minor:"rgba(230,184,0,0.12)",Observation:"rgba(52,170,220,0.12)"};
@@ -315,6 +316,11 @@ function CompanySetupScreen({user,inviteCode,onDone}){
       const invite=invDoc.data();
       if(invite.usedBy)throw new Error("This invite has already been used.");
       if(invite.expiresAt?.toDate&&invite.expiresAt.toDate()<new Date())throw new Error("Invite has expired.");
+      // Check member limit on shared Firebase
+      if(!isCustomFirebase){
+        const memSnap=await db.collection("companies").doc(companyId).collection("members").get();
+        if(memSnap.size>=FREE_TRIAL_USERS)throw new Error(`Free trial limited to ${FREE_TRIAL_USERS} members per company. Set up your own Firebase for unlimited users.`);
+      }
       await db.collection("companies").doc(companyId).collection("members").doc(user.uid).set({
         name:user.displayName||user.email,email:user.email,
         role:invite.role,jobTitle:invite.jobTitle||JOB_TITLES[0],
@@ -1217,7 +1223,7 @@ function FirebaseSetupScreen({onDone}){
       <button onClick={useDefault} style={{...S.btn,background:"#ff6b00",color:"#fff"}}>
         FREE TRIAL — START NOW
       </button>
-      <div style={{textAlign:"center",fontSize:11,color:"rgba(0,0,0,0.35)",marginBottom:8}}>{FREE_TRIAL_LIMIT} defects free. No setup needed. Try it instantly.</div>
+      <div style={{textAlign:"center",fontSize:11,color:"rgba(0,0,0,0.35)",marginBottom:8}}>{FREE_TRIAL_LIMIT} defects · {FREE_TRIAL_USERS} team members · No setup needed.</div>
       <button onClick={()=>setMode("custom")} style={{...S.btn,background:"rgba(0,0,0,0.06)",color:"#1a1a1a"}}>
         OWN FIREBASE (unlimited + private)
       </button>
