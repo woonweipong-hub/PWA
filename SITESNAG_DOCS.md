@@ -420,10 +420,40 @@ See Section 4 Step 5 for the complete rules.
 
 ### Telegram
 
-1. Telegram → search `@BotFather` → `/newbot` → follow steps → copy **Bot Token**
-2. Create group → add bot → promote to Admin
-3. Forward any group message to `@userinfobot` → copy **Chat ID** (negative number)
-4. In SiteSnag: Telegram icon → paste both → TEST → SAVE
+#### Step 1: Create a Bot (get Bot Token)
+1. Open Telegram, search for **@BotFather**
+2. Send `/newbot`
+3. Give it a name (e.g. "SiteSnag Alerts")
+4. Give it a username (e.g. `sitesnag_alerts_bot`)
+5. BotFather replies with your **Bot Token** — looks like `7123456789:AAH...` — copy it
+
+#### Step 2: Create a Group and Add the Bot
+1. Create a new Telegram group (e.g. "SiteSnag - Yarwood Project")
+2. Add your bot to the group (search its username)
+3. Go to group settings > **Administrators** > add the bot as admin (needed to send messages)
+
+#### Step 3: Get the Chat ID
+**Method A — easiest:**
+1. Add **@RawDataBot** to your group
+2. It instantly sends a message showing the group info
+3. Look for `"chat": { "id": -100xxxxxxxxxx }` — that negative number is your **Chat ID**
+4. Copy it (including the minus sign, e.g. `-1001234567890`)
+5. Remove @RawDataBot from the group (no longer needed)
+
+**Method B — alternative:**
+1. Send any message in the group
+2. Open this URL in your browser (replace YOUR_BOT_TOKEN):
+   `https://api.telegram.org/botYOUR_BOT_TOKEN/getUpdates`
+3. Find `"chat": { "id": -100xxxxxxxxxx }` in the JSON
+4. That negative number is your **Chat ID**
+
+#### Step 4: Configure in SiteSnag
+1. Open SiteSnag app
+2. Tap the Telegram icon (settings)
+3. Paste your **Bot Token**
+4. Paste your **Chat ID** (with the minus sign)
+5. Tap **TEST** — you should receive a test message in your group
+6. Tap **SAVE**
 
 **What's sent:**
 - New defect: photo (if any) + title, location, severity, assignee, logged by, company, project
