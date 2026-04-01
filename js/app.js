@@ -758,11 +758,24 @@ function LogDefect({member,company,currentProject,members,onSave}){
     setAiResult(null);
   };
 
+  const AI_LIMIT_KEY="sdt-ai-usage";
+  const AI_DAILY_LIMIT=10;
+
   const analyze=async()=>{
     if(!form.photo||!geminiKey)return;
+    // Check daily AI limit
+    const today=new Date().toISOString().slice(0,10);
+    const aiUsage=local.get(AI_LIMIT_KEY)||{date:"",count:0};
+    const todayCount=aiUsage.date===today?aiUsage.count:0;
+    if(todayCount>=AI_DAILY_LIMIT){
+      alert(`AI analysis limit reached (${AI_DAILY_LIMIT}/day).\n\nYou can still log defects manually.`);
+      return;
+    }
     setAnalyzing(true);
     const compressed=await compressPhoto(form.photo,600,0.7);
     const result=await analyzeWithGemini(geminiKey,compressed||form.photo);
+    // Increment AI usage
+    local.set(AI_LIMIT_KEY,{date:today,count:todayCount+1});
     if(result){
       setAiResult(result);
       if(result.title)set("title",result.title);
