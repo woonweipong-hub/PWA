@@ -497,6 +497,7 @@ function UserManagement({onClose,company,member,members}){
 // ── Project Management ────────────────────────────────────────────
 function ProjectManagement({onClose,company,member,projects,currentProject,onSelect}){
   const[newName,setNewName]=useState("");const[adding,setAdding]=useState(false);
+  const[editingId,setEditingId]=useState(null);const[editName,setEditName]=useState("");
   const canManage=["Admin","Manager"].includes(member?.role);
 
   const addProject=async()=>{
@@ -507,6 +508,13 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
       setNewName("");
     }catch(e){alert(e.message);}
     setAdding(false);
+  };
+
+  const renameProject=async(id)=>{
+    if(!editName.trim())return;
+    await db.collection("companies").doc(company.companyId).collection("projects").doc(id).update({name:editName.trim()});
+    if(currentProject?.id===id)onSelect({id,name:editName.trim()});
+    setEditingId(null);setEditName("");
   };
 
   const archiveProject=async id=>{
@@ -522,13 +530,24 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
       <div style={{padding:20}}>
         <div style={lbl()}>SELECT ACTIVE PROJECT</div>
         {projects.map(p=>(
-          <div key={p.id} onClick={()=>{onSelect(p);onClose();}} style={{background:currentProject?.id===p.id?"#ff6b00":"#fff",borderRadius:12,padding:"14px 16px",marginBottom:8,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div>
-              <div style={{fontWeight:700,fontSize:14,color:currentProject?.id===p.id?"#fff":"#1a1a1a"}}>{p.name}</div>
-              {currentProject?.id===p.id&&<div style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginTop:2}}>Currently active</div>}
-            </div>
-            {canManage&&currentProject?.id!==p.id&&(
-              <button onClick={e=>{e.stopPropagation();archiveProject(p.id);}} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:8,padding:"5px 10px",color:"#ff3b30",fontSize:12,cursor:"pointer"}}>Archive</button>
+          <div key={p.id} style={{background:currentProject?.id===p.id?"#ff6b00":"#fff",borderRadius:12,padding:"14px 16px",marginBottom:8}}>
+            {editingId===p.id?(
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <input value={editName} onChange={e=>setEditName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&renameProject(p.id)} style={{...inp,flex:1,marginBottom:0}} autoFocus/>
+                <button onClick={()=>renameProject(p.id)} style={{background:"#30d158",border:"none",borderRadius:8,padding:"8px 12px",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>Save</button>
+                <button onClick={()=>setEditingId(null)} style={{background:"rgba(0,0,0,0.1)",border:"none",borderRadius:8,padding:"8px 12px",fontSize:12,cursor:"pointer"}}>✕</button>
+              </div>
+            ):(
+              <div onClick={()=>{onSelect(p);onClose();}} style={{cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{fontWeight:700,fontSize:14,color:currentProject?.id===p.id?"#fff":"#1a1a1a"}}>{p.name}</div>
+                  {currentProject?.id===p.id&&<div style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginTop:2}}>Currently active</div>}
+                </div>
+                <div style={{display:"flex",gap:6}}>
+                  {canManage&&<button onClick={e=>{e.stopPropagation();setEditingId(p.id);setEditName(p.name);}} style={{background:currentProject?.id===p.id?"rgba(255,255,255,0.2)":"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"5px 10px",color:currentProject?.id===p.id?"#fff":"#666",fontSize:12,cursor:"pointer"}}>Rename</button>}
+                  {canManage&&currentProject?.id!==p.id&&<button onClick={e=>{e.stopPropagation();archiveProject(p.id);}} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:8,padding:"5px 10px",color:"#ff3b30",fontSize:12,cursor:"pointer"}}>Archive</button>}
+                </div>
+              </div>
             )}
           </div>
         ))}
