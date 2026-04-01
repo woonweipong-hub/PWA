@@ -1154,7 +1154,99 @@ function Report({defects,onEmailSetup,currentProject,company}){
 // ── App Root ──────────────────────────────────────────────────────
 const NAV=[{id:"dashboard",icon:"⊞",label:"Dashboard"},{id:"log",icon:"+",label:"Log"},{id:"defects",icon:"≡",label:"Defects"},{id:"report",icon:"◎",label:"Report"}];
 
+// ── Firebase Config Setup (Bring Your Own Firebase) ──────────────
+function FirebaseSetupScreen({onDone}){
+  const[mode,setMode]=useState("choose");
+  const[config,setConfig]=useState("");
+  const[err,setErr]=useState("");
+  const[loading,setLoading]=useState(false);
+
+  const useDefault=()=>{
+    localStorage.removeItem(FIREBASE_CFG_KEY);
+    onDone();
+  };
+
+  const useCustom=()=>{
+    setErr("");
+    setLoading(true);
+    try{
+      // Try parsing JSON directly or extract from code snippet
+      let parsed;
+      const jsonMatch=config.match(/\{[\s\S]*apiKey[\s\S]*\}/);
+      if(jsonMatch){
+        // Replace single quotes with double quotes, handle unquoted keys
+        let clean=jsonMatch[0].replace(/'/g,'"').replace(/(\w+)\s*:/g,'"$1":').replace(/,\s*}/g,'}');
+        parsed=JSON.parse(clean);
+      }else{
+        parsed=JSON.parse(config);
+      }
+      if(!parsed.apiKey||!parsed.projectId||!parsed.authDomain){
+        setErr("Missing required fields: apiKey, projectId, authDomain");
+        setLoading(false);
+        return;
+      }
+      localStorage.setItem(FIREBASE_CFG_KEY,JSON.stringify(parsed));
+      // Reload to reinitialize Firebase with new config
+      window.location.reload();
+    }catch(e){
+      setErr("Invalid config. Paste the firebaseConfig object from Firebase Console.");
+      setLoading(false);
+    }
+  };
+
+  const S={
+    wrap:{minHeight:"100vh",background:"linear-gradient(135deg,#1a1a1a 0%,#2d2d2d 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:20},
+    card:{background:"#fff",borderRadius:20,padding:"32px 24px",width:"100%",maxWidth:420},
+    title:{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:24,color:"#1a1a1a",marginBottom:4},
+    sub:{fontSize:13,color:"rgba(0,0,0,0.5)",marginBottom:24},
+    btn:{width:"100%",padding:16,border:"none",borderRadius:12,fontSize:15,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:10},
+    textarea:{width:"100%",minHeight:120,padding:12,border:"1.5px solid #ddd",borderRadius:10,fontSize:12,fontFamily:"monospace",marginBottom:12,resize:"vertical"},
+    err:{color:"#ff3b30",fontSize:12,marginBottom:10},
+    info:{fontSize:12,color:"rgba(0,0,0,0.4)",lineHeight:1.6,marginBottom:16},
+  };
+
+  if(mode==="choose")return(
+    <div style={S.wrap}><div style={S.card}>
+      <div style={{textAlign:"center",marginBottom:20}}>
+        <div style={{fontSize:36,marginBottom:8}}>🔥</div>
+        <div style={S.title}>DATA PRIVACY SETUP</div>
+        <div style={S.sub}>Where should your defect data be stored?</div>
+      </div>
+      <button onClick={useDefault} style={{...S.btn,background:"#ff6b00",color:"#fff"}}>
+        QUICK START (shared server)
+      </button>
+      <div style={{textAlign:"center",fontSize:11,color:"rgba(0,0,0,0.35)",marginBottom:8}}>For testing & small teams. Data on SiteSnag server.</div>
+      <button onClick={()=>setMode("custom")} style={{...S.btn,background:"rgba(0,0,0,0.06)",color:"#1a1a1a"}}>
+        OWN FIREBASE (full privacy)
+      </button>
+      <div style={{textAlign:"center",fontSize:11,color:"rgba(0,0,0,0.35)"}}>Your data stays in YOUR Firebase. Free to set up.</div>
+    </div></div>
+  );
+
+  return(
+    <div style={S.wrap}><div style={S.card}>
+      <div style={S.title}>YOUR FIREBASE CONFIG</div>
+      <div style={S.info}>
+        1. Go to <b>console.firebase.google.com</b><br/>
+        2. Create a project (free)<br/>
+        3. Enable <b>Authentication</b> → Email/Password<br/>
+        4. Create <b>Firestore Database</b> (production mode)<br/>
+        5. Go to Project Settings → General → scroll to "Your apps" → Web app<br/>
+        6. Copy the <b>firebaseConfig</b> object and paste below:
+      </div>
+      <textarea style={S.textarea} placeholder={'{\n  apiKey: "AIza...",\n  authDomain: "your-project.firebaseapp.com",\n  projectId: "your-project-id",\n  storageBucket: "...",\n  messagingSenderId: "...",\n  appId: "..."\n}'} value={config} onChange={e=>setConfig(e.target.value)}/>
+      {err&&<div style={S.err}>{err}</div>}
+      <button onClick={useCustom} disabled={loading||!config.trim()} style={{...S.btn,background:config.trim()?"#ff6b00":"#ccc",color:"#fff"}}>{loading?"CONNECTING...":"CONNECT MY FIREBASE"}</button>
+      <button onClick={()=>setMode("choose")} style={{...S.btn,background:"none",color:"rgba(0,0,0,0.4)",fontSize:13}}>← Back</button>
+    </div></div>
+  );
+}
+
 function App(){
+  const[firebaseReady,setFirebaseReady]=useState(()=>{
+    // Skip setup screen if user already has a saved config or has used the app before
+    return !!localStorage.getItem(FIREBASE_CFG_KEY)||!!localStorage.getItem(COMPANY_KEY);
+  });
   const[authUser,setAuthUser]=useState(null);
   const[authLoading,setAuthLoading]=useState(true);
   const[memberLoading,setMemberLoading]=useState(false);
@@ -1276,6 +1368,7 @@ function App(){
     </div>
   );
 
+  if(!firebaseReady)return <FirebaseSetupScreen onDone={()=>setFirebaseReady(true)}/>;
   if(!authUser)return <AuthScreen onAuth={handleAuth}/>;
   if(!company||!member)return <CompanySetupScreen user={authUser} inviteCode={inviteCode} onDone={handleCompanyDone}/>;
 

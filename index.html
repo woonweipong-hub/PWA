@@ -40,15 +40,25 @@ input,textarea,select{outline:none;font-family:'Barlow',sans-serif;}
 <body>
 <div id="root"></div>
 <script>
-// Firebase init
-const firebaseConfig={
-  apiKey:"AIzaSyBpVbLffabCPCxt_Jkd8j1goaUhjfdSX0o",
-  authDomain:"sitesnag-e70ad.firebaseapp.com",
-  projectId:"sitesnag-e70ad",
-  storageBucket:"sitesnag-e70ad.firebasestorage.app",
-  messagingSenderId:"452570764409",
-  appId:"1:452570764409:web:b9deb4e0c29179565bb0a8"
-};
+// Firebase init — use user's own config if provided, otherwise default
+const FIREBASE_CFG_KEY="sdt-firebase-cfg";
+let firebaseConfig;
+try{
+  const saved=localStorage.getItem(FIREBASE_CFG_KEY);
+  if(saved)firebaseConfig=JSON.parse(saved);
+}catch{}
+if(!firebaseConfig){
+  // Default config (SiteSnag demo — for testing only)
+  firebaseConfig={
+    apiKey:"AIzaSyBpVbLffabCPCxt_Jkd8j1goaUhjfdSX0o",
+    authDomain:"sitesnag-e70ad.firebaseapp.com",
+    projectId:"sitesnag-e70ad",
+    storageBucket:"sitesnag-e70ad.firebasestorage.app",
+    messagingSenderId:"452570764409",
+    appId:"1:452570764409:web:b9deb4e0c29179565bb0a8"
+  };
+}
+const isCustomFirebase=!!localStorage.getItem(FIREBASE_CFG_KEY);
 firebase.initializeApp(firebaseConfig);
 const db=firebase.firestore();
 const auth=firebase.auth();
