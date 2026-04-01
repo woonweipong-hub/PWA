@@ -1265,8 +1265,8 @@ function FirebaseSetupScreen({onDone}){
 
 function App(){
   const[firebaseReady,setFirebaseReady]=useState(()=>{
-    // Skip setup screen if user already has a saved config or has used the app before
-    return !!localStorage.getItem(FIREBASE_CFG_KEY)||!!localStorage.getItem(COMPANY_KEY);
+    // Skip setup screen if user already has a saved config, used the app before, or is logged in
+    return !!localStorage.getItem(FIREBASE_CFG_KEY)||!!localStorage.getItem(COMPANY_KEY)||!!auth.currentUser;
   });
   const[authUser,setAuthUser]=useState(null);
   const[authLoading,setAuthLoading]=useState(true);
@@ -1288,11 +1288,37 @@ function App(){
   const[showProjects,setShowProjects]=useState(false);
   const[showProfile,setShowProfile]=useState(false);
 
-  // Auth listener
+  // Auth listener — also auto-recover company if localStorage was cleared
   useEffect(()=>{
     const inv=new URLSearchParams(window.location.search).get("invite")||"";
     setInviteCode(inv);
-    return auth.onAuthStateChanged(u=>{setAuthUser(u);setAuthLoading(false);});
+    return auth.onAuthStateChanged(async u=>{
+      setAuthUser(u);
+      setFirebaseReady(true); // skip setup screen if user is logged in
+      // Auto-recover company if user is logged in but company is missing from localStorage
+      if(u&&!local.get(COMPANY_KEY)){
+        try{
+          const companiesSnap=await db.collection("companies").get();
+          for(const compDoc of companiesSnap.docs){
+            const memDoc=await compDoc.ref.collection("members").doc(u.uid).get();
+            if(memDoc.exists){
+              const cd={companyId:compDoc.id,companyName:compDoc.data().name};
+              local.set(COMPANY_KEY,cd);
+              setCompany(cd);
+              // Also recover project
+              const projSnap=await compDoc.ref.collection("projects").limit(1).get();
+              if(!projSnap.empty){
+                const proj={id:projSnap.docs[0].id,...projSnap.docs[0].data()};
+                local.set(PROJECT_KEY,proj);
+                setCurrentProject(proj);
+              }
+              break;
+            }
+          }
+        }catch(e){console.warn("Auto-recover failed:",e);}
+      }
+      setAuthLoading(false);
+    });
   },[]);
 
   // Member + all members listener
