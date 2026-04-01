@@ -15,7 +15,7 @@ const STATUS=["Open","In Progress","Closed"];
 const STATUS_COLOR={Open:"#ff3b30","In Progress":"#ff9500",Closed:"#30d158"};
 const ROLES=["Admin","Manager","Inspector","Viewer"];
 const ROLE_COLOR={Admin:"#ff3b30",Manager:"#ff9500",Inspector:"#34aadc",Viewer:"#8e8e93"};
-const JOB_TITLES=["Site Manager","Project Manager","Engineer","Contractor","QC Inspector","Safety Officer","Supervisor","Architect","Foreman","Other"];
+const JOB_TITLES=["Site Manager","Project Manager","Engineer","Contractor","QC Inspector","Safety Officer","Supervisor","Architect","Foreman","Resident","Homeowner","Other"];
 
 // ── Local Storage ─────────────────────────────────────────────────
 const local={
@@ -351,7 +351,7 @@ function CompanySetupScreen({user,inviteCode,onDone}){
         </div>
         {mode==="create"&&<>
           <div style={{marginBottom:12}}><label style={lbl("#fff")}>COMPANY / ORGANISATION NAME</label><input value={cName} onChange={e=>setCName(e.target.value)} placeholder="e.g. ABC Construction Sdn Bhd" style={darkInp}/></div>
-          <div style={{marginBottom:jobTitle==="Other"?8:20}}><label style={lbl("#fff")}>YOUR JOB TITLE</label><select value={jobTitle} onChange={e=>setJobTitle(e.target.value)} style={{...darkInp,appearance:"none"}}>{JOB_TITLES.map(t=><option key={t} style={{background:"#222"}}>{t}</option>)}</select></div>
+          <div style={{marginBottom:jobTitle==="Other"?8:20}}><label style={lbl("#fff")}>YOUR ROLE</label><select value={jobTitle} onChange={e=>setJobTitle(e.target.value)} style={{...darkInp,appearance:"none"}}>{JOB_TITLES.map(t=><option key={t} style={{background:"#222"}}>{t}</option>)}</select></div>
           {jobTitle==="Other"&&<div style={{marginBottom:20}}><input value={customTitle} onChange={e=>setCustomTitle(e.target.value)} placeholder="Enter your role / job title" style={darkInp}/></div>}
           <div style={{background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:"rgba(255,255,255,0.6)"}}>You will be the <b style={{color:"#ff6b00"}}>Admin</b>. Invite your team after setup.</div>
           <button onClick={create} disabled={loading||!cName.trim()} style={{width:"100%",background:cName.trim()?"#ff6b00":"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"15px",color:"#fff",fontSize:15,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",opacity:loading?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
@@ -463,7 +463,7 @@ function UserManagement({onClose,company,member,members}){
             </div>
           </div>
           <div style={{marginBottom:invJob==="Other"?8:14}}>
-            <div style={lbl()}>JOB TITLE</div>
+            <div style={lbl()}>ROLE</div>
             <select value={invJob} onChange={e=>setInvJob(e.target.value)} style={{...inp,width:"100%",flex:"unset",appearance:"none"}}>
               {JOB_TITLES.map(t=><option key={t}>{t}</option>)}
             </select>
@@ -502,7 +502,20 @@ function UserManagement({onClose,company,member,members}){
 function ProjectManagement({onClose,company,member,projects,currentProject,onSelect}){
   const[newName,setNewName]=useState("");const[adding,setAdding]=useState(false);
   const[editingId,setEditingId]=useState(null);const[editName,setEditName]=useState("");
+  const[archived,setArchived]=useState([]);const[showArchived,setShowArchived]=useState(false);
   const canManage=["Admin","Manager"].includes(member?.role);
+
+  useEffect(()=>{
+    if(!showArchived||!company?.companyId)return;
+    db.collection("companies").doc(company.companyId).collection("projects").where("archived","==",true).get().then(snap=>{
+      setArchived(snap.docs.map(d=>({id:d.id,...d.data()})));
+    });
+  },[showArchived]);
+
+  const restoreProject=async id=>{
+    await db.collection("companies").doc(company.companyId).collection("projects").doc(id).update({archived:false});
+    setArchived(prev=>prev.filter(p=>p.id!==id));
+  };
 
   const addProject=async()=>{
     if(!newName.trim())return;setAdding(true);
@@ -564,6 +577,22 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
                 {adding?<Spin size={12}/>:"ADD"}
               </button>
             </div>
+          </div>
+        )}
+        {canManage&&(
+          <div style={{marginTop:20}}>
+            <button onClick={()=>setShowArchived(!showArchived)} style={{background:"none",border:"none",color:"rgba(0,0,0,0.4)",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,cursor:"pointer",letterSpacing:"0.08em"}}>{showArchived?"▼ HIDE":"▶ SHOW"} ARCHIVED PROJECTS</button>
+            {showArchived&&(
+              <div style={{marginTop:10}}>
+                {archived.length===0?<div style={{fontSize:12,color:"rgba(0,0,0,0.3)",padding:8}}>No archived projects</div>:
+                archived.map(p=>(
+                  <div key={p.id} style={{background:"rgba(0,0,0,0.04)",borderRadius:10,padding:"10px 14px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div style={{fontSize:13,color:"rgba(0,0,0,0.5)"}}>{p.name}</div>
+                    <button onClick={()=>restoreProject(p.id)} style={{background:"rgba(48,209,88,0.12)",border:"none",borderRadius:8,padding:"5px 10px",color:"#30d158",fontSize:12,fontWeight:700,cursor:"pointer"}}>Restore</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
