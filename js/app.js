@@ -5,6 +5,8 @@ const {useState,useEffect,useRef,useCallback}=React;
 // ── Constants ─────────────────────────────────────────────────────
 const COMPANY_KEY="sdt-co-v1",TG_KEY="sdt-tg-v2",EMAIL_KEY="sdt-email-v1";
 const GEMINI_KEY="sdt-gemini-v1",PROJECT_KEY="sdt-proj-v1";
+const USAGE_KEY="sdt-usage-v1";
+const FREE_TRIAL_LIMIT=20; // defects on shared Firebase before prompting own setup
 const SEVERITY=["Critical","Major","Minor","Observation"];
 const SEV_COLOR={Critical:"#ff3b30",Major:"#ff9500",Minor:"#e6b800",Observation:"#34aadc"};
 const SEV_BG={Critical:"rgba(255,59,48,0.12)",Major:"rgba(255,149,0,0.12)",Minor:"rgba(230,184,0,0.12)",Observation:"rgba(52,170,220,0.12)"};
@@ -1213,13 +1215,13 @@ function FirebaseSetupScreen({onDone}){
         <div style={S.sub}>Where should your defect data be stored?</div>
       </div>
       <button onClick={useDefault} style={{...S.btn,background:"#ff6b00",color:"#fff"}}>
-        QUICK START (shared server)
+        FREE TRIAL — START NOW
       </button>
-      <div style={{textAlign:"center",fontSize:11,color:"rgba(0,0,0,0.35)",marginBottom:8}}>For testing & small teams. Data on SiteSnag server.</div>
+      <div style={{textAlign:"center",fontSize:11,color:"rgba(0,0,0,0.35)",marginBottom:8}}>{FREE_TRIAL_LIMIT} defects free. No setup needed. Try it instantly.</div>
       <button onClick={()=>setMode("custom")} style={{...S.btn,background:"rgba(0,0,0,0.06)",color:"#1a1a1a"}}>
-        OWN FIREBASE (full privacy)
+        OWN FIREBASE (unlimited + private)
       </button>
-      <div style={{textAlign:"center",fontSize:11,color:"rgba(0,0,0,0.35)"}}>Your data stays in YOUR Firebase. Free to set up.</div>
+      <div style={{textAlign:"center",fontSize:11,color:"rgba(0,0,0,0.35)"}}>Your data stays in YOUR Firebase project. Free forever.</div>
     </div></div>
   );
 
@@ -1331,7 +1333,29 @@ function App(){
 
   const addDefect=async data=>{
     if(!company?.companyId||!currentProject)return;
+
+    // Check usage limit on shared Firebase
+    if(!isCustomFirebase){
+      const usage=local.get(USAGE_KEY)||0;
+      if(usage>=FREE_TRIAL_LIMIT){
+        const msg=`You've reached ${FREE_TRIAL_LIMIT} free defects on the shared server.\n\nTo continue, set up your own Firebase (free, 5 minutes).\n\nGo to Settings → Sign Out, then choose "Own Firebase" on restart.`;
+        alert(msg);
+        return;
+      }
+    }
+
     await db.collection("companies").doc(company.companyId).collection("defects").add(data);
+
+    // Increment usage counter on shared Firebase
+    if(!isCustomFirebase){
+      const usage=local.get(USAGE_KEY)||0;
+      local.set(USAGE_KEY,usage+1);
+      const remaining=FREE_TRIAL_LIMIT-(usage+1);
+      if(remaining===5||remaining===2){
+        setTimeout(()=>alert(`${remaining} free defects remaining on shared server.\n\nSet up your own Firebase for unlimited use (free).`),1000);
+      }
+    }
+
     const cfg=local.get(TG_KEY);
     if(cfg?.token&&cfg?.chatId){
       const e={Critical:"🔴",Major:"🟠",Minor:"🟡",Observation:"🔵"}[data.severity]||"⚪";
