@@ -1,466 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-  <meta name="theme-color" content="#E65100">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="Snap a photo, speak the defect, AI does the rest.">
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="icons/icon-192.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icons/icon-192.svg">
-  <link rel="stylesheet" href="css/style.css">
-  <title>SiteSnag</title>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="theme-color" content="#ff6b00"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="description" content="Construction defect tracking with AI, Telegram and real-time sync"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="icon" href="icons/icon-192.svg" type="image/svg+xml"/>
+<link rel="apple-touch-icon" href="icons/icon-192.svg"/>
+<title>SiteSnag – Defect Tracker</title>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<!-- React -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body,#root{height:100%;background:#f0ede8;}
+body{font-family:'Barlow',sans-serif;}
+input,textarea,select{outline:none;font-family:'Barlow',sans-serif;}
+::-webkit-scrollbar{width:2px;}
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.15);}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+.anim{animation:slideUp 0.3s ease forwards;}
+</style>
 </head>
 <body>
-
-  <!-- ===== TOAST ===== -->
-  <div id="toast" class="toast" hidden></div>
-
-  <!-- ===== LOADING OVERLAY ===== -->
-  <div id="loading" class="loading-overlay" hidden>
-    <div class="spinner"></div>
-    <p id="loading-text">Analyzing...</p>
-  </div>
-
-  <!-- ===== VIEW: SETUP (first-time) ===== -->
-  <section id="view-setup" class="view">
-    <div class="setup-card">
-      <div class="setup-logo">
-        <img src="icons/icon-192.svg" alt="SiteSnag" width="80" height="80">
-        <h1>SiteSnag</h1>
-        <p class="subtitle">Snap. Speak. Done.</p>
-      </div>
-      <form id="form-setup" autocomplete="off">
-        <label>
-          Your Name
-          <input type="text" id="setup-name" placeholder="e.g. John Tan" required>
-        </label>
-        <label>
-          Default Project
-          <input type="text" id="setup-project" placeholder="e.g. Riviera Bay Phase 2">
-        </label>
-
-        <!-- Backend mode selector -->
-        <div class="setup-mode">
-          <label class="setup-mode-label">Backend</label>
-          <div class="setup-mode-btns">
-            <button type="button" class="mode-btn active" id="mode-hosted" onclick="setSetupMode('hosted')">Hosted (easy)</button>
-            <button type="button" class="mode-btn" id="mode-selfhost" onclick="setSetupMode('selfhost')">Google Sheets</button>
-          </div>
-        </div>
-
-        <!-- Hosted mode: just API URL (pre-filled if configured) -->
-        <div id="setup-hosted-fields">
-          <label>
-            Server URL <span class="optional">(ask your admin)</span>
-            <input type="url" id="setup-api" placeholder="https://your-server:8090" required>
-          </label>
-        </div>
-
-        <!-- Self-hosted mode: Google Apps Script + Sheet -->
-        <div id="setup-selfhost-fields" hidden>
-          <label>
-            Apps Script URL
-            <input type="url" id="setup-api-gs" placeholder="https://script.google.com/macros/s/.../exec">
-          </label>
-          <label>
-            Google Sheet URL <span class="optional">(where defects are stored)</span>
-            <input type="url" id="setup-sheet" placeholder="https://docs.google.com/spreadsheets/d/.../edit">
-          </label>
-          <label>
-            Gemini API Key <span class="optional">(optional — enables AI photo analysis)</span>
-            <input type="password" id="setup-gemini" placeholder="AIza...">
-          </label>
-        </div>
-
-        <button type="submit" class="btn btn-primary btn-block">Get Started</button>
-        <p class="setup-help">Free and open source. Your data stays on your server.</p>
-      </form>
-      <script>
-        function setSetupMode(mode) {
-          document.getElementById('mode-hosted').classList.toggle('active', mode === 'hosted');
-          document.getElementById('mode-selfhost').classList.toggle('active', mode === 'selfhost');
-          document.getElementById('setup-hosted-fields').hidden = (mode !== 'hosted');
-          document.getElementById('setup-selfhost-fields').hidden = (mode !== 'selfhost');
-          // Swap the required API field
-          document.getElementById('setup-api').required = (mode === 'hosted');
-          if (document.getElementById('setup-api-gs')) document.getElementById('setup-api-gs').required = (mode === 'selfhost');
-          localStorage.setItem('ss_mode', mode);
-        }
-      </script>
-    </div>
-  </section>
-
-  <!-- ===== VIEW: HOME ===== -->
-  <section id="view-home" class="view" hidden>
-    <header class="app-header">
-      <h1>SiteSnag</h1>
-      <button id="btn-settings" class="btn-icon" aria-label="Settings">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-      </button>
-    </header>
-
-    <div class="home-content">
-      <!-- Stats -->
-      <div class="stats-row">
-        <div class="stat-card">
-          <span class="stat-num" id="stat-outstanding">—</span>
-          <span class="stat-label">Outstanding</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-num" id="stat-resolved">—</span>
-          <span class="stat-label">Completed</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-num" id="stat-total">—</span>
-          <span class="stat-label">Total</span>
-        </div>
-      </div>
-
-      <!-- Quick Actions -->
-      <div class="action-grid">
-        <button class="action-card" id="btn-report">
-          <div class="action-icon">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-          </div>
-          <span class="action-title">Report Defect</span>
-          <span class="action-desc">Photo + voice + AI</span>
-        </button>
-        <button class="action-card" id="btn-walk">
-          <div class="action-icon">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 4v16"/><path d="M17 4v16"/><path d="M19 4H9.5a4.5 4.5 0 000 9H17"/></svg>
-          </div>
-          <span class="action-title">Site Walk</span>
-          <span class="action-desc">Batch multiple defects</span>
-        </button>
-      </div>
-
-      <!-- Recent -->
-      <div class="section-header">
-        <h2>Recent Defects</h2>
-        <button class="btn-link" id="btn-view-all">View All</button>
-      </div>
-      <div id="recent-list" class="defect-list">
-        <p class="empty-state">No defects yet. Tap "Report Defect" to start.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== VIEW: REPORT (single defect) ===== -->
-  <section id="view-report" class="view" hidden>
-    <header class="app-header">
-      <button class="btn-icon btn-back" data-back="home" aria-label="Back">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      </button>
-      <h1>Report Defect</h1>
-      <div style="width:40px"></div>
-    </header>
-
-    <div class="report-content">
-      <!-- Photo Capture -->
-      <div class="capture-section">
-        <label class="capture-btn" id="label-photo">
-          <input type="file" accept="image/*" capture="environment" id="input-photo" hidden>
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M8 6l1.5-3h5L16 6"/><circle cx="12" cy="13" r="3.5"/></svg>
-          <span>Take Photo</span>
-        </label>
-        <div id="photo-preview" class="photo-preview" hidden>
-          <img id="photo-img" alt="Defect photo">
-          <button class="btn-remove-photo" id="btn-remove-photo" aria-label="Remove photo">&times;</button>
-        </div>
-      </div>
-
-      <!-- Voice Input -->
-      <div class="voice-section">
-        <button class="btn btn-voice" id="btn-voice">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-          <span>Hold to Speak</span>
-        </button>
-        <div id="voice-result" class="voice-result" hidden>
-          <p id="voice-text"></p>
-          <button class="btn-clear-voice" id="btn-clear-voice">&times;</button>
-        </div>
-      </div>
-
-      <!-- Context / Description -->
-      <label class="field-label">
-        Additional Notes
-        <textarea id="report-notes" rows="2" placeholder="e.g. ceiling crack near aircon, unit 12-05"></textarea>
-      </label>
-
-      <!-- Project / Unit / Location -->
-      <div class="field-row">
-        <label class="field-label">
-          Project
-          <input type="text" id="report-project" placeholder="Project name">
-        </label>
-        <label class="field-label">
-          Unit / Floor
-          <input type="text" id="report-unit" placeholder="e.g. 12-05">
-        </label>
-      </div>
-      <label class="field-label">
-        Location
-        <input type="text" id="report-location" placeholder="e.g. Kitchen, Bedroom, Toilet">
-      </label>
-
-      <!-- Analyze Button -->
-      <button class="btn btn-primary btn-block" id="btn-analyze">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1010 10A10 10 0 0012 2z"/><path d="M12 6v6l4 2"/></svg>
-        Analyze with AI
-      </button>
-    </div>
-  </section>
-
-  <!-- ===== VIEW: REVIEW (AI results + edit) ===== -->
-  <section id="view-review" class="view" hidden>
-    <header class="app-header">
-      <button class="btn-icon btn-back" data-back="report" aria-label="Back">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      </button>
-      <h1>Review Defect</h1>
-      <div style="width:40px"></div>
-    </header>
-
-    <div class="review-content">
-      <div id="review-photo-wrap" class="review-photo" hidden>
-        <img id="review-photo" alt="Defect photo">
-      </div>
-
-      <div class="review-fields">
-        <label class="field-label">
-          Location
-          <input type="text" id="review-location">
-        </label>
-        <div class="field-row">
-          <label class="field-label">
-            Category
-            <select id="review-category"></select>
-          </label>
-          <label class="field-label">
-            Severity
-            <select id="review-severity">
-              <option value="Critical">Critical</option>
-              <option value="High">High</option>
-              <option value="Medium" selected>Medium</option>
-              <option value="Low">Low</option>
-            </select>
-          </label>
-        </div>
-        <label class="field-label">
-          Defect Type
-          <select id="review-defect-type"></select>
-        </label>
-        <label class="field-label">
-          Description <span class="optional">(tap to edit)</span>
-          <textarea id="review-description" rows="5" placeholder="Describe the defect..."></textarea>
-        </label>
-        <div class="field-row">
-          <label class="field-label">
-            Trade
-            <input type="text" id="review-trade">
-          </label>
-          <label class="field-label">
-            Target Fix Date
-            <input type="date" id="review-target-date">
-          </label>
-        </div>
-      </div>
-
-      <button class="btn btn-primary btn-block" id="btn-submit">
-        Submit Defect
-      </button>
-    </div>
-  </section>
-
-  <!-- ===== VIEW: WALK MODE ===== -->
-  <section id="view-walk" class="view" hidden>
-    <header class="app-header">
-      <button class="btn-icon btn-back" data-back="home" aria-label="Back">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      </button>
-      <h1>Site Walk</h1>
-      <span id="walk-count" class="walk-count">0 items</span>
-    </header>
-
-    <div class="walk-content">
-      <!-- Walk Setup -->
-      <div id="walk-setup" class="walk-setup">
-        <div class="field-row">
-          <label class="field-label">
-            Project
-            <input type="text" id="walk-project" placeholder="Project name">
-          </label>
-          <label class="field-label">
-            Unit / Floor
-            <input type="text" id="walk-unit" placeholder="e.g. Unit 12-05">
-          </label>
-        </div>
-        <div class="field-row">
-          <label class="field-label">
-            Location
-            <input type="text" id="walk-location" placeholder="e.g. Kitchen, Bedroom, Toilet">
-          </label>
-        </div>
-      </div>
-
-      <!-- Walk Items List -->
-      <div id="walk-items" class="walk-items"></div>
-
-      <!-- Walk Actions -->
-      <div class="walk-actions">
-        <label class="btn btn-secondary walk-add-btn">
-          <input type="file" accept="image/*" capture="environment" id="walk-photo-input" hidden>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M8 6l1.5-3h5L16 6"/><circle cx="12" cy="13" r="3.5"/></svg>
-          Add Photo
-        </label>
-        <button class="btn btn-voice walk-voice-btn" id="walk-voice-btn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/></svg>
-          Add Voice
-        </button>
-      </div>
-
-      <button class="btn btn-primary btn-block" id="btn-walk-process" disabled>
-        Process All Items
-      </button>
-    </div>
-  </section>
-
-  <!-- ===== VIEW: WALK REVIEW ===== -->
-  <section id="view-walk-review" class="view" hidden>
-    <header class="app-header">
-      <button class="btn-icon btn-back" data-back="walk" aria-label="Back">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      </button>
-      <h1>Review Walk</h1>
-      <div style="width:40px"></div>
-    </header>
-    <div id="walk-review-list" class="walk-review-list"></div>
-    <div class="walk-review-actions">
-      <button class="btn btn-primary btn-block" id="btn-walk-submit">
-        Submit All Defects
-      </button>
-    </div>
-  </section>
-
-  <!-- ===== VIEW: HISTORY ===== -->
-  <section id="view-history" class="view" hidden>
-    <header class="app-header">
-      <button class="btn-icon btn-back" data-back="home" aria-label="Back">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      </button>
-      <h1>Defect History</h1>
-      <div style="width:40px"></div>
-    </header>
-
-    <div class="history-content">
-      <div class="filter-bar">
-        <select id="filter-status">
-          <option value="">All Status</option>
-          <option value="Outstanding">Outstanding</option>
-          <option value="Completed">Completed</option>
-        </select>
-        <input type="search" id="filter-search" placeholder="Search...">
-      </div>
-      <div id="history-list" class="defect-list">
-        <p class="empty-state">Loading...</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== VIEW: SETTINGS ===== -->
-  <section id="view-settings" class="view" hidden>
-    <header class="app-header">
-      <button class="btn-icon btn-back" data-back="home" aria-label="Back">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      </button>
-      <h1>Settings</h1>
-      <div style="width:40px"></div>
-    </header>
-    <div class="settings-content">
-      <form id="form-settings" autocomplete="off">
-        <label>
-          Your Name
-          <input type="text" id="settings-name" required>
-        </label>
-        <label>
-          Default Project
-          <input type="text" id="settings-project">
-        </label>
-        <label>
-          Apps Script URL
-          <input type="url" id="settings-api" required>
-        </label>
-        <label>
-          Google Sheet URL
-          <input type="url" id="settings-sheet" placeholder="https://docs.google.com/spreadsheets/d/.../edit">
-        </label>
-        <label>
-          Gemini API Key
-          <input type="password" id="settings-gemini">
-        </label>
-        <button type="submit" class="btn btn-primary btn-block">Save Settings</button>
-      </form>
-      <div class="settings-info">
-        <p>SiteSnag v1.0</p>
-        <p>Share this app: copy the URL and send to your team.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== DEFECT DETAIL MODAL ===== -->
-  <div id="defect-modal" class="modal" hidden>
-    <div class="modal-backdrop"></div>
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 id="modal-defect-id">DEF-0001</h3>
-        <button class="btn-icon" id="btn-modal-close" aria-label="Close">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        </button>
-      </div>
-      <div id="modal-photo" class="modal-photo" hidden>
-        <img id="modal-photo-img" alt="Defect photo">
-      </div>
-      <div class="modal-fields">
-        <div class="modal-field"><b>Status:</b> <span id="modal-status"></span></div>
-        <div class="modal-field"><b>Project:</b> <span id="modal-project"></span></div>
-        <div class="modal-field"><b>Unit:</b> <span id="modal-unit"></span></div>
-        <div class="modal-field"><b>Location:</b> <span id="modal-location"></span></div>
-        <div class="modal-field"><b>Category:</b> <span id="modal-category"></span></div>
-        <div class="modal-field"><b>Severity:</b> <span id="modal-severity"></span></div>
-        <div class="modal-field"><b>Description:</b> <span id="modal-description"></span></div>
-        <div class="modal-field"><b>Trade:</b> <span id="modal-trade"></span></div>
-        <div class="modal-field"><b>Submitted:</b> <span id="modal-timestamp"></span></div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-primary btn-block" id="btn-resolve" hidden>Mark as Completed</button>
-        <p id="modal-resolved-info" class="modal-resolved-info" hidden></p>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== BOTTOM NAV ===== -->
-  <nav id="bottom-nav" class="bottom-nav" hidden>
-    <button class="nav-btn active" data-view="home">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
-      <span>Home</span>
-    </button>
-    <button class="nav-btn" data-view="report">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-      <span>Report</span>
-    </button>
-    <button class="nav-btn" data-view="walk">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 6l-3.2 11.2"/><path d="M5.5 16.5l1.5-5 3 3-1.5 5z"/><circle cx="14" cy="3.5" r="1.5"/><path d="M18 8l-4 2"/></svg>
-      <span>Walk</span>
-    </button>
-    <button class="nav-btn" data-view="history">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
-      <span>History</span>
-    </button>
-  </nav>
-
-  <script src="js/app.js"></script>
+<div id="root"></div>
+<script>
+// Firebase init
+const firebaseConfig={
+  apiKey:"AIzaSyBpVbLffabCPCxt_Jkd8j1goaUhjfdSX0o",
+  authDomain:"sitesnag-e70ad.firebaseapp.com",
+  projectId:"sitesnag-e70ad",
+  storageBucket:"sitesnag-e70ad.firebasestorage.app",
+  messagingSenderId:"452570764409",
+  appId:"1:452570764409:web:b9deb4e0c29179565bb0a8"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore();
+const auth=firebase.auth();
+// PWA service worker
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+</script>
+<!-- App logic — Babel processes JSX -->
+<script type="text/babel" src="js/app.js"></script>
 </body>
 </html>

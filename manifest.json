@@ -1,15 +1,13 @@
 {
-  "name": "SiteSnag - Defect Reporter",
+  "name": "SiteSnag – Defect Tracker",
   "short_name": "SiteSnag",
-  "description": "Snap a photo, speak the defect, AI does the rest.",
-  "id": "/",
-  "start_url": ".",
-  "scope": ".",
+  "description": "Construction defect tracking with AI, voice, Telegram and real-time sync",
+  "start_url": "/PWA/",
+  "scope": "/PWA/",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#ffffff",
-  "theme_color": "#E65100",
-  "categories": ["productivity", "utilities"],
+  "background_color": "#1a1a1a",
+  "theme_color": "#ff6b00",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "icons/icon-192.svg",
@@ -24,16 +22,6 @@
       "purpose": "any maskable"
     }
   ],
-  "screenshots": [],
-  "share_target": {
-    "action": ".",
-    "method": "POST",
-    "enctype": "multipart/form-data",
-    "params": {
-      "files": [{
-        "name": "photo",
-        "accept": ["image/*"]
-      }]
-    }
-  }
+  "categories": ["productivity", "utilities", "business"],
+  "screenshots": []
 }
