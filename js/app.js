@@ -284,7 +284,7 @@ function AuthScreen({onAuth}){
 // ── Screen: Company Setup ─────────────────────────────────────────
 function CompanySetupScreen({user,inviteCode,onDone}){
   const[mode,setMode]=useState(inviteCode?"join":"create");
-  const[cName,setCName]=useState("");const[jobTitle,setJobTitle]=useState(JOB_TITLES[0]);
+  const[cName,setCName]=useState("");const[jobTitle,setJobTitle]=useState(JOB_TITLES[0]);const[customTitle,setCustomTitle]=useState("");
   const[code,setCode]=useState(inviteCode||"");
   const[loading,setLoading]=useState(false);const[err,setErr]=useState("");
 
@@ -294,7 +294,8 @@ function CompanySetupScreen({user,inviteCode,onDone}){
     try{
       const ref=db.collection("companies").doc();
       await ref.set({name:cName.trim(),createdAt:firebase.firestore.FieldValue.serverTimestamp(),adminId:user.uid,adminEmail:user.email});
-      await ref.collection("members").doc(user.uid).set({name:user.displayName||user.email,email:user.email,role:"Admin",jobTitle,joinedAt:firebase.firestore.FieldValue.serverTimestamp()});
+      const finalTitle=jobTitle==="Other"?customTitle.trim()||"Other":jobTitle;
+      await ref.collection("members").doc(user.uid).set({name:user.displayName||user.email,email:user.email,role:"Admin",jobTitle:finalTitle,joinedAt:firebase.firestore.FieldValue.serverTimestamp()});
       const pRef=await ref.collection("projects").add({name:"Default Project",createdAt:firebase.firestore.FieldValue.serverTimestamp()});
       const cd={companyId:ref.id,companyName:cName.trim()};
       const proj={id:pRef.id,name:"Default Project"};
@@ -350,7 +351,8 @@ function CompanySetupScreen({user,inviteCode,onDone}){
         </div>
         {mode==="create"&&<>
           <div style={{marginBottom:12}}><label style={lbl("#fff")}>COMPANY / ORGANISATION NAME</label><input value={cName} onChange={e=>setCName(e.target.value)} placeholder="e.g. ABC Construction Sdn Bhd" style={darkInp}/></div>
-          <div style={{marginBottom:20}}><label style={lbl("#fff")}>YOUR JOB TITLE</label><select value={jobTitle} onChange={e=>setJobTitle(e.target.value)} style={{...darkInp,appearance:"none"}}>{JOB_TITLES.map(t=><option key={t} style={{background:"#222"}}>{t}</option>)}</select></div>
+          <div style={{marginBottom:jobTitle==="Other"?8:20}}><label style={lbl("#fff")}>YOUR JOB TITLE</label><select value={jobTitle} onChange={e=>setJobTitle(e.target.value)} style={{...darkInp,appearance:"none"}}>{JOB_TITLES.map(t=><option key={t} style={{background:"#222"}}>{t}</option>)}</select></div>
+          {jobTitle==="Other"&&<div style={{marginBottom:20}}><input value={customTitle} onChange={e=>setCustomTitle(e.target.value)} placeholder="Enter your role / job title" style={darkInp}/></div>}
           <div style={{background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:"rgba(255,255,255,0.6)"}}>You will be the <b style={{color:"#ff6b00"}}>Admin</b>. Invite your team after setup.</div>
           <button onClick={create} disabled={loading||!cName.trim()} style={{width:"100%",background:cName.trim()?"#ff6b00":"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"15px",color:"#fff",fontSize:15,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",opacity:loading?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
             {loading?<Spin size={16}/>:null}{loading?"CREATING...":"CREATE COMPANY →"}
@@ -372,7 +374,7 @@ function CompanySetupScreen({user,inviteCode,onDone}){
 // ── User Management (Admin only) ──────────────────────────────────
 function UserManagement({onClose,company,member,members}){
   const[invRole,setInvRole]=useState("Inspector");
-  const[invJob,setInvJob]=useState(JOB_TITLES[0]);
+  const[invJob,setInvJob]=useState(JOB_TITLES[0]);const[invCustomJob,setInvCustomJob]=useState("");
   const[link,setLink]=useState("");
   const[gen,setGen]=useState(false);
   const[copied,setCopied]=useState(false);
@@ -382,8 +384,9 @@ function UserManagement({onClose,company,member,members}){
     setGen(true);setLink("");
     try{
       const code=Math.random().toString(36).substring(2,10).toUpperCase();
+      const finalInvJob=invJob==="Other"?invCustomJob.trim()||"Other":invJob;
       await db.collection("companies").doc(company.companyId).collection("invites").doc(code).set({
-        role:invRole,jobTitle:invJob,
+        role:invRole,jobTitle:finalInvJob,
         createdAt:firebase.firestore.FieldValue.serverTimestamp(),
         createdBy:auth.currentUser.uid,
         expiresAt:new Date(Date.now()+7*24*60*60*1000)
@@ -459,12 +462,13 @@ function UserManagement({onClose,company,member,members}){
               {invRole==="Manager"?"Log, update defects · Manage projects · View reports":invRole==="Inspector"?"Log defects · Add comments · View all":"View defects only — no editing"}
             </div>
           </div>
-          <div style={{marginBottom:14}}>
+          <div style={{marginBottom:invJob==="Other"?8:14}}>
             <div style={lbl()}>JOB TITLE</div>
             <select value={invJob} onChange={e=>setInvJob(e.target.value)} style={{...inp,width:"100%",flex:"unset",appearance:"none"}}>
               {JOB_TITLES.map(t=><option key={t}>{t}</option>)}
             </select>
           </div>
+          {invJob==="Other"&&<div style={{marginBottom:14}}><input value={invCustomJob} onChange={e=>setInvCustomJob(e.target.value)} placeholder="Enter custom job title" style={{...inp,width:"100%"}}/></div>}
           <button onClick={genInvite} disabled={gen} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:10,padding:"12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
             {gen?<Spin size={14}/>:null}{gen?"GENERATING...":"GENERATE INVITE LINK"}
           </button>
