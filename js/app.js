@@ -1938,7 +1938,7 @@ function App(){
             <div style={{padding:"20px 16px"}}>
               {[
                 ["Getting Started",[
-                  ["What is SiteShrimp?","A mobile-first app for construction site defect tracking. Log defects with photos, voice, and AI — your whole team sees updates instantly."],
+                  ["What is SiteShrimp?","A real-time, paperless mobile app for construction site management. Track defects, site checks, progress updates, safety audits, and feedback — all with photos, voice input, and AI. Built for HDB inspections, CPC handovers, contractor coordination, and daily site walks. Your whole team sees updates instantly, no paper forms needed."],
                   ["First time?","After signing up and creating your company, set up integrations using the header icons: AI (robot icon), Telegram (paper plane icon). Then invite your team via Team Management (people icon, Admin only)."],
                 ]],
                 ["Navigation (Bottom Bar)",[
