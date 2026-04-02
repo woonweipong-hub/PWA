@@ -1,4 +1,4 @@
-// SiteSnag v2 — Multi-tenant Construction Defect Tracker
+// SiteShrimp v2 — Multi-tenant Construction Defect Tracker
 // Features: Auth, Companies, Projects, Roles, AI, Telegram, Email, PWA
 const {useState,useEffect,useRef,useCallback}=React;
 
@@ -69,7 +69,7 @@ function exportCSV(defects,projectName){
   const csv=[headers.join(","),...rows].join("\n");
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
-  a.download=`SiteSnag_${(projectName||"Export").replace(/\s/g,"_")}_${new Date().toLocaleDateString("en-GB").replace(/\//g,"-")}.csv`;
+  a.download=`SiteShrimp_${(projectName||"Export").replace(/\s/g,"_")}_${new Date().toLocaleDateString("en-GB").replace(/\//g,"-")}.csv`;
   a.click();
 }
 
@@ -105,7 +105,7 @@ function generateEmailHTML(defects,projectName,companyName){
     const dt=d.created?new Date(d.created).toLocaleDateString("en-GB"):"—";
     const comments=(d.comments||[]).map(c=>`<div style="padding:6px 10px;background:#f5f5f5;border-radius:6px;font-size:12px;margin:4px 0"><b style="color:#ff6b00">${c.by}:</b> ${c.text}</div>`).join("");
     // Photos excluded from email — base64 exceeds EmailJS 50KB free tier limit
-    const photo=d.photo?`<div style="font-size:11px;color:#888;font-style:italic;margin-top:6px;padding:6px 8px;background:#f5f5f5;border-radius:6px">📷 Photo available in SiteSnag app</div>`:"";
+    const photo=d.photo?`<div style="font-size:11px;color:#888;font-style:italic;margin-top:6px;padding:6px 8px;background:#f5f5f5;border-radius:6px">📷 Photo available in SiteShrimp app</div>`:"";
 
     return `<div style="margin-bottom:14px;padding:14px;border:1px solid #e5e5e5;border-radius:10px;border-left:5px solid ${SEV_COLOR[d.severity]}">
       <div style="font-size:15px;font-weight:bold;margin-bottom:6px">${d.title}</div>
@@ -124,7 +124,7 @@ function generateEmailHTML(defects,projectName,companyName){
   }).join("");
   return `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#f5f5f5">
     <div style="background:#1a1a1a;padding:22px;border-radius:12px;margin-bottom:16px">
-      <div style="color:#ff6b00;font-weight:bold;font-size:10px;letter-spacing:3px">SITESNAG · ${companyName||""}</div>
+      <div style="color:#ff6b00;font-weight:bold;font-size:10px;letter-spacing:3px">SITESHRIMP · ${companyName||""}</div>
       <div style="color:#fff;font-size:24px;font-weight:bold;margin-top:4px">${projectName||"SITE"} REPORT</div>
       <div style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:2px">${date}</div>
     </div>
@@ -140,7 +140,7 @@ function generateEmailHTML(defects,projectName,companyName){
       <div style="font-size:10px;font-weight:bold;color:#999;letter-spacing:2px;margin-bottom:12px">ALL DEFECTS</div>
       ${defectRows||'<div style="color:#999;text-align:center;padding:16px">No defects found.</div>'}
     </div>
-    <div style="text-align:center;color:#aaa;font-size:11px;padding:12px">SiteSnag v2 · ${date}</div>
+    <div style="text-align:center;color:#aaa;font-size:11px;padding:12px">SiteShrimp v2 · ${date}</div>
   </body></html>`;
 }
 
@@ -250,7 +250,7 @@ function AuthScreen({onAuth}){
     <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center",padding:28}}>
       <div style={{width:"100%",maxWidth:400}}>
         <div style={{background:"#ff6b00",width:48,height:6,borderRadius:3,marginBottom:20}}/>
-        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:36,fontWeight:800,color:"#fff",lineHeight:1.1,marginBottom:4}}>SITESNAG</div>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:36,fontWeight:800,color:"#fff",lineHeight:1.1,marginBottom:4}}>SITESHRIMP</div>
         <div style={{color:"rgba(255,255,255,0.4)",fontSize:13,marginBottom:24}}>Construction Defect Tracker · v2</div>
         {inv&&<div style={{background:"rgba(0,229,100,0.1)",border:"1px solid rgba(0,229,100,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:"#00e564"}}>✓ Team invite detected — {mode==="register"?"register":"login"} to join your team</div>}
         <div style={{display:"flex",gap:8,marginBottom:20}}>
@@ -459,7 +459,7 @@ function UserManagement({onClose,company,member,members}){
               <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:10,padding:"10px 12px",fontSize:11,color:"#1a7a35",wordBreak:"break-all",marginBottom:8}}>{link}</div>
               <div style={{display:"flex",gap:8}}>
                 <button onClick={copyLink} style={{flex:1,background:copied?"rgba(48,209,88,0.1)":"rgba(0,0,0,0.06)",border:`1px solid ${copied?"rgba(48,209,88,0.3)":"rgba(0,0,0,0.1)"}`,borderRadius:8,padding:"10px",fontSize:13,fontWeight:700,cursor:"pointer",color:copied?"#1a7a35":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif"}}>{copied?"✓ COPIED!":"COPY LINK"}</button>
-                <button onClick={()=>{if(navigator.share)navigator.share({title:"SiteSnag Team Invite",url:link});else copyLink();}} style={{flex:1,background:"#ff6b00",border:"none",borderRadius:8,padding:"10px",fontSize:13,fontWeight:700,cursor:"pointer",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif"}}>SHARE</button>
+                <button onClick={()=>{if(navigator.share)navigator.share({title:"SiteShrimp Team Invite",url:link});else copyLink();}} style={{flex:1,background:"#ff6b00",border:"none",borderRadius:8,padding:"10px",fontSize:13,fontWeight:700,cursor:"pointer",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif"}}>SHARE</button>
               </div>
               <div style={{fontSize:11,color:"rgba(0,0,0,0.35)",textAlign:"center",marginTop:6}}>Expires in 7 days · Single use</div>
             </div>
@@ -610,7 +610,7 @@ function TelegramSettings({onClose,companyId}){
   const[chatId,setChatId]=useState(()=>local.get(TG_KEY)?.chatId||"");
   const[saved,setSaved]=useState(false);const[testRes,setTestRes]=useState(null);const[testing,setTesting]=useState(false);
   const save=()=>{const cfg={token:token.trim(),chatId:chatId.trim()};local.set(TG_KEY,cfg);saveSettingToFirestore(companyId,"telegram",cfg);setSaved(true);setTimeout(()=>setSaved(false),2000);};
-  const test=async()=>{setTesting(true);setTestRes(null);const ok=await sendTelegram(token.trim(),chatId.trim(),"✅ <b>SiteSnag</b>\nTelegram connected successfully!");setTestRes(ok?"success":"fail");setTesting(false);};
+  const test=async()=>{setTesting(true);setTestRes(null);const ok=await sendTelegram(token.trim(),chatId.trim(),"✅ <b>SiteShrimp</b>\nTelegram connected successfully!");setTestRes(ok?"success":"fail");setTesting(false);};
   return(
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
       <SettingsBack onClose={onClose} title="TELEGRAM SETUP"/>
@@ -1124,7 +1124,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
       const html=generateEmailHTML(filtered,currentProject?.name,company?.companyName);
       const date=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
       for(const email of emailCfg.recipients.filter(r=>r.trim())){
-        await emailjs.send(emailCfg.serviceId,emailCfg.templateId,{to_email:email,subject:`SiteSnag Report – ${currentProject?.name||""} – ${date}`,html_content:html});
+        await emailjs.send(emailCfg.serviceId,emailCfg.templateId,{to_email:email,subject:`SiteShrimp Report – ${currentProject?.name||""} – ${date}`,html_content:html});
       }
       setSendRes("success");
     }catch(e){console.error(e);setSendRes("fail");}
@@ -1364,7 +1364,7 @@ function App(){
   if(authLoading||memberLoading)return(
     <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{textAlign:"center"}}>
-        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#ff6b00",marginBottom:16}}>SITESNAG</div>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#ff6b00",marginBottom:16}}>SITESHRIMP</div>
         <Spin size={24}/>
       </div>
     </div>

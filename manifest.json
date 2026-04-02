@@ -1,7 +1,7 @@
 {
-  "name": "SiteSnag – Defect Tracker",
-  "short_name": "SiteSnag",
-  "description": "Construction defect tracking with AI, voice, Telegram and real-time sync",
+  "name": "SiteShrimp – Site Tracker",
+  "short_name": "SiteShrimp",
+  "description": "Construction site tracking with AI, voice, Telegram and real-time sync",
   "start_url": "/PWA/",
   "scope": "/PWA/",
   "display": "standalone",

@@ -1,4 +1,4 @@
-# SiteSnag - Construction Defect Tracker
+# SiteShrimp - Construction Defect Tracker
 
 **Snap. Speak. Done.**
 

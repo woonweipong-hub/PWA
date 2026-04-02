@@ -1,4 +1,4 @@
-// SiteSnag — PocketBase Data Layer
+// SiteShrimp — PocketBase Data Layer
 // Drop-in replacement for Firebase (Firestore + Auth)
 // All UI code calls DB.* methods instead of firebase.*
 

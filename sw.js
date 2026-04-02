@@ -1,4 +1,4 @@
-const CACHE = 'sitesnag-v3';
+const CACHE = 'siteshrimp-v3';
 const ASSETS = [
   '/PWA/',
   '/PWA/index.html',

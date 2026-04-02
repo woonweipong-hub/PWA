@@ -1,4 +1,4 @@
-# SiteSnag v2 — Full Documentation
+# SiteShrimp v2 — Full Documentation
 
 **Version:** 2.0  
 **Stack:** Firebase (Auth + Firestore) · React 18 · Babel · PWA · Gemini AI · Telegram · EmailJS  
@@ -29,7 +29,7 @@
 
 ## 1. Overview
 
-SiteSnag is a mobile-first Progressive Web App for construction site defect tracking. It supports multiple companies, each with their own isolated data, users, projects, and access control. No native app store installation required — users add it to their home screen directly from the browser.
+SiteShrimp is a mobile-first Progressive Web App for construction site defect tracking. It supports multiple companies, each with their own isolated data, users, projects, and access control. No native app store installation required — users add it to their home screen directly from the browser.
 
 ### Key Capabilities
 - **Real-time sync** — All team members see defect updates instantly via Firebase Firestore
@@ -423,12 +423,12 @@ See Section 4 Step 5 for the complete rules.
 #### Step 1: Create a Bot (get Bot Token)
 1. Open Telegram, search for **@BotFather**
 2. Send `/newbot`
-3. Give it a name (e.g. "SiteSnag Alerts")
+3. Give it a name (e.g. "SiteShrimp Alerts")
 4. Give it a username (e.g. `sitesnag_alerts_bot`)
 5. BotFather replies with your **Bot Token** — looks like `7123456789:AAH...` — copy it
 
 #### Step 2: Create a Group and Add the Bot
-1. Create a new Telegram group (e.g. "SiteSnag - Yarwood Project")
+1. Create a new Telegram group (e.g. "SiteShrimp - Yarwood Project")
 2. Add your bot to the group (search its username)
 3. Go to group settings > **Administrators** > add the bot as admin (needed to send messages)
 
@@ -447,8 +447,8 @@ See Section 4 Step 5 for the complete rules.
 3. Find `"chat": { "id": -100xxxxxxxxxx }` in the JSON
 4. That negative number is your **Chat ID**
 
-#### Step 4: Configure in SiteSnag
-1. Open SiteSnag app
+#### Step 4: Configure in SiteShrimp
+1. Open SiteShrimp app
 2. Tap the Telegram icon (settings)
 3. Paste your **Bot Token**
 4. Paste your **Chat ID** (with the minus sign)
@@ -464,7 +464,7 @@ See Section 4 Step 5 for the complete rules.
 
 1. Go to [aistudio.google.com](https://aistudio.google.com) → sign in
 2. Get API Key → Create API Key → copy
-3. In SiteSnag: 🤖 → paste key → TEST → SAVE
+3. In SiteShrimp: 🤖 → paste key → TEST → SAVE
 
 **Free:** 1,500 requests/day, no credit card.  
 **Per-device setting** — stored in browser localStorage.
@@ -475,7 +475,7 @@ See Section 4 Step 5 for the complete rules.
 2. Add Email Service (Gmail/Outlook) → copy **Service ID**
 3. Create Template → Subject: `{{subject}}` · HTML body: `{{{html_content}}}` · To: `{{to_email}}` → copy **Template ID**
 4. Account → API Keys → copy **Public Key**
-5. In SiteSnag: Profile → Email Settings → paste all 3 keys + recipient emails → SAVE
+5. In SiteShrimp: Profile → Email Settings → paste all 3 keys + recipient emails → SAVE
 
 **Free:** 200 emails/month.  
 **Note:** Photos excluded from email (base64 too large for free tier — shows "📷 Photo available in app" note instead).
@@ -610,7 +610,7 @@ Firebase Console → Firestore → Indexes → Composite → Add:
 
 ## Appendix C — Sharing With Another Company
 
-Each company that wants to use SiteSnag independently should:
+Each company that wants to use SiteShrimp independently should:
 
 1. Create their own Firebase project (free)
 2. Enable Email/Password Auth + Firestore
@@ -626,4 +626,4 @@ Alternatively, multiple companies can share the same Firebase project using the 
 
 ---
 
-*SiteSnag v2 · Built with Firebase + React + Gemini AI · MIT License*
+*SiteShrimp v2 · Built with Firebase + React + Gemini AI · MIT License*
