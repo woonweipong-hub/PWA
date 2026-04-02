@@ -572,6 +572,7 @@ function CompanySetup({user,inviteCode,onDone,onSignOut}){
           break; // No company found, show form
         }catch(e){
           console.warn(`Company check attempt ${i+1}:`,e);
+          setErr(`Retry ${i+1}/3: ${e.message}`);
           if(i<2)await new Promise(r=>setTimeout(r,2000));
         }
       }
