@@ -77,7 +77,8 @@
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
     "createRule": "@request.auth.id != ''",
-    "updateRule": "@request.auth.id != ''"
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''"
   },
   {
     "name": "members",
@@ -111,7 +112,8 @@
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
     "createRule": "@request.auth.id != ''",
-    "updateRule": "@request.auth.id != ''"
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''"
   },
   {
     "name": "invites",
@@ -129,7 +131,8 @@
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
     "createRule": "@request.auth.id != ''",
-    "updateRule": "@request.auth.id != ''"
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''"
   },
   {
     "name": "settings",
@@ -142,7 +145,8 @@
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
     "createRule": "@request.auth.id != ''",
-    "updateRule": "@request.auth.id != ''"
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''"
   },
   {
     "name": "activity",
@@ -164,7 +168,8 @@
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
     "createRule": "@request.auth.id != ''",
-    "updateRule": "@request.auth.id != ''"
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''"
   },
   {
     "name": "location_presets",
@@ -242,6 +247,7 @@
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
     "createRule": "@request.auth.id != ''",
-    "updateRule": "@request.auth.id != ''"
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''"
   }
 ]
