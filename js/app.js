@@ -464,7 +464,7 @@ function AuthScreen({onAuth,onFullSetup}){
         {/* Feature Status Checklist */}
         <div style={{textAlign:"left"}}>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:800,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",marginBottom:16}}>ALL FEATURES ({[
-            ["Auth & Onboarding",["Login / Sign up","Password reset","One-step registration + company setup","Auto-recover session","Install as app (PWA)","Server URL config"]],
+            ["Auth & Onboarding",["Login / Sign up","Password reset","One-step registration + company setup","Auto-recover session","Install as app","Server URL config"]],
             ["Team",["Invite members (link + code)","Role-based access (Admin, Manager, Inspector, Viewer)","Edit roles / remove members","Permission matrix"]],
             ["Projects",["Create / rename projects","Switch active project","Archive / restore projects"]],
             ["Defect Logging",["Log defect with title, severity, location","Multi-level location (Level > Zone > Room > Grid)","Snap or upload up to 5 photos","AI photo analysis (Gemini)","Voice-to-text (title, description)","Component + issue selector","Assign to team member","Cost & time tracking fields","Batch logging (same location)"]],
@@ -475,7 +475,7 @@ function AuthScreen({onAuth,onFullSetup}){
             ["Profile",["View profile info","Sign out with credential cleanup"]],
           ].reduce((n,g)=>n+g[1].length,0)} features)</div>
           {[
-            ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as app (PWA)",true],["Server URL config",true]]],
+            ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as app",true],["Server URL config",true]]],
             ["Team",[["Invite members (link + code)",true],["Role-based access control",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
             ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
             ["Defect Logging",[["Log with title, severity, location",true],["Multi-level location hierarchy",true],["Snap / upload up to 5 photos",true],["AI photo analysis (Gemini)",true],["Voice-to-text input",true],["Component + issue selector",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
@@ -1994,7 +1994,7 @@ function App(){
               <div style={{marginBottom:24}}>
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:10,borderBottom:"1px solid rgba(255,255,255,0.1)",paddingBottom:6}}>ALL FEATURES</div>
                 {[
-                  ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as app (PWA)",true],["Server URL config",true]]],
+                  ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as app",true],["Server URL config",true]]],
                   ["Team",[["Invite members (link + code)",true],["Role-based access control",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
                   ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
                   ["Defect Logging",[["Log with title, severity, location",true],["Multi-level location hierarchy",true],["Snap / upload up to 5 photos",true],["AI photo analysis (Gemini)",true],["Voice-to-text input",true],["Component + issue selector",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
