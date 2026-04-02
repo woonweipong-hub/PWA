@@ -165,8 +165,9 @@ const DB = (() => {
   // ── Generic CRUD ─────────────────────────────────────────────────
   function crud(collection) {
     return {
-      async list(filter = '', sort = '-created', perPage = 500) {
-        const params = new URLSearchParams({ perPage, sort });
+      async list(filter = '', sort = '', perPage = 500) {
+        const params = new URLSearchParams({ perPage });
+        if (sort) params.set('sort', sort);
         if (filter) params.set('filter', filter);
         const result = await api(`/api/collections/${collection}/records?${params}`);
         return result.items || [];
