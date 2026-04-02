@@ -1,7 +1,8 @@
-const CACHE = 'siteshrimp-v7';
+const CACHE = 'siteshrimp-v9';
 const ASSETS = [
   '/',
   '/index.html',
+  '/css/style.css',
   '/js/db.js',
   '/js/constants.js',
   '/js/app.js',
@@ -28,17 +29,37 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  if (e.request.url.includes('pocketbase') || e.request.url.includes('api.telegram') || e.request.url.includes('googleapis') || e.request.url.includes('emailjs') || e.request.url.includes('generativelanguage')) return;
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      const fetchPromise = fetch(e.request).then(res => {
+  const url = new URL(e.request.url);
+
+  // Never cache third-party or API traffic. Keep cache scoped to app shell/static files.
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith('/api/')) return;
+
+  e.respondWith((async () => {
+    const cache = await caches.open(CACHE);
+    const cached = await cache.match(e.request);
+
+    const networkFetch = fetch(e.request)
+      .then(res => {
         if (res.ok) {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
+          cache.put(e.request, res.clone()).catch(() => {});
         }
         return res;
-      }).catch(() => cached);
-      return cached || fetchPromise;
-    })
-  );
+      });
+
+    if (cached) {
+      networkFetch.catch(() => {});
+      return cached;
+    }
+
+    try {
+      return await networkFetch;
+    } catch {
+      // Offline fallback for navigation requests.
+      if (e.request.mode === 'navigate') {
+        return (await cache.match('/index.html')) || Response.error();
+      }
+      return Response.error();
+    }
+  })());
 });

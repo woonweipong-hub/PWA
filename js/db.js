@@ -20,7 +20,7 @@ const DB = (() => {
   async function api(path, opts = {}) {
     const url = _baseUrl + path;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const timeout = setTimeout(() => controller.abort(), 6000);
     try {
       const resp = await fetch(url, {
         ...opts,
@@ -32,14 +32,24 @@ const DB = (() => {
       let data;
       try { data = JSON.parse(text); } catch { data = { raw: text }; }
       if (!resp.ok) {
-        const msg = data?.message || data?.data?.message || `API error ${resp.status}`;
-        throw new Error(msg);
+        // PocketBase validation errors live at data.data.fieldName.message
+        let msg = data?.message;
+        if (data?.data && typeof data.data === 'object') {
+          const fieldErrors = Object.values(data.data)
+            .map(v => (v && typeof v === 'object' ? v.message : null))
+            .filter(Boolean);
+          if (fieldErrors.length) msg = fieldErrors.join(' · ');
+        }
+        throw new Error(msg || `API error ${resp.status}`);
       }
       return data;
     } catch (err) {
       clearTimeout(timeout);
       if (err.name === 'AbortError') {
-        throw new Error('Server not responding. Check your connection or try again.');
+        throw new Error('Server not responding (timeout). Make sure your PocketBase VM is running, then reload.');
+      }
+      if (err.name === 'TypeError' || err.message === 'Failed to fetch') {
+        throw new Error('Cannot reach server. Start your PocketBase VM, check the URL, then reload.');
       }
       throw err;
     }
@@ -97,14 +107,25 @@ const DB = (() => {
     get currentUser() { return _user; },
 
     async login(email, password) {
-      const result = await apiJson('/api/collections/users/auth-with-password', 'POST', {
-        identity: email, password
-      });
-      _token = result.token;
-      _user = result.record;
-      _saveAuth();
-      _notifyAuth();
-      return { user: _user };
+      try {
+        const result = await apiJson('/api/collections/users/auth-with-password', 'POST', {
+          identity: email, password
+        });
+        _token = result.token;
+        _user = result.record;
+        _saveAuth();
+        _notifyAuth();
+        return { user: _user };
+      } catch (err) {
+        if (err.message && err.message.includes('Failed to authenticate')) {
+          throw new Error(
+            'Login failed — wrong email or password.\n' +
+            'If you forgot your password, tap "Forgot password?" below.\n' +
+            'If you\'re new, switch to SIGN UP.'
+          );
+        }
+        throw err;
+      }
     },
 
     async register(email, password, name) {

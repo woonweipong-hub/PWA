@@ -270,6 +270,42 @@ function SettingsBack({onClose,title}){
   );
 }
 
+// ── Server URL Configurator ───────────────────────────────────────
+// Lets users point the app at their own PocketBase instance without
+// touching the browser console. Saved URL persists via localStorage
+// (same key as index.html reads on startup).
+function ServerUrlConfig(){
+  const[open,setOpen]=useState(false);
+  const[url,setUrl]=useState(()=>localStorage.getItem('pb_url')||'https://siteshrimp.duckdns.org');
+  const[saved,setSaved]=useState(false);
+  const apply=()=>{
+    const cleaned=url.trim().replace(/\/+$/,'');
+    if(!cleaned)return;
+    localStorage.setItem('pb_url',cleaned);
+    setSaved(true);
+    setTimeout(()=>window.location.reload(),800);
+  };
+  return(
+    <div style={{marginTop:16}}>
+      <button onClick={()=>setOpen(o=>!o)} style={{background:'none',border:'none',color:'rgba(255,255,255,0.25)',fontSize:12,cursor:'pointer',width:'100%',textAlign:'center',fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:'0.06em',padding:'4px 0'}}>
+        ⚙ {open?'HIDE':'SERVER URL'}
+      </button>
+      {open&&(
+        <div style={{marginTop:8,padding:'12px 14px',background:'rgba(255,255,255,0.05)',borderRadius:10,border:'1px solid rgba(255,255,255,0.1)'}}>
+          <label style={lbl('rgba(255,255,255,0.4)')}>POCKETBASE URL</label>
+          <div style={{display:'flex',gap:8}}>
+            <input value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://your-server.example.com" style={{...darkInp,flex:1,fontSize:13,padding:'9px 12px'}}/>
+            <button onClick={apply} style={{background:'#ff6b00',border:'none',borderRadius:8,padding:'0 14px',color:'#fff',fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:'pointer',flexShrink:0}}>
+              {saved?'✓':'SET'}
+            </button>
+          </div>
+          <div style={{fontSize:11,color:'rgba(255,255,255,0.2)',marginTop:6}}>Changing URL will reload the app.</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Screen: Auth (with intro + install prompt) ───────────────────
 function AuthScreen({onAuth}){
   const[page,setPage]=useState("intro"); // "intro" or "auth"
@@ -309,7 +345,12 @@ function AuthScreen({onAuth}){
         onAuth(c.user,name.trim(),inv);
       }
     }catch(e){
-      setErr(e.message||"Authentication failed.");
+      const msg=e.message||"";
+      if(mode==="register"&&msg.includes("must be unique")){
+        setErr("This email is already registered. Switch to LOGIN instead.");
+      }else{
+        setErr(msg||"Something went wrong. Please try again.");
+      }
     }
     setLoading(false);
   };
@@ -384,17 +425,19 @@ function AuthScreen({onAuth}){
         {inv&&<div style={{background:"rgba(0,229,100,0.1)",border:"1px solid rgba(0,229,100,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:"#00e564"}}>Team invite detected — {mode==="register"?"register":"login"} to join</div>}
         <div style={{display:"flex",gap:8,marginBottom:20}}>
           {["login","register"].map(m=>(
-            <button key={m} onClick={()=>{setMode(m);setErr("");}} style={{flex:1,background:mode===m?"#ff6b00":"rgba(255,255,255,0.07)",border:"none",borderRadius:10,padding:"11px",color:mode===m?"#fff":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>{m==="login"?"LOGIN":"REGISTER"}</button>
+            <button key={m} onClick={()=>{setMode(m);setErr("");}} style={{flex:1,background:mode===m?"#ff6b00":"rgba(255,255,255,0.07)",border:"none",borderRadius:10,padding:"11px",color:mode===m?"#fff":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>{m==="login"?"LOGIN":"SIGN UP"}</button>
           ))}
         </div>
         {mode==="register"&&<div style={{marginBottom:12}}><label style={lbl("#fff")}>FULL NAME</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="Your full name" style={darkInp}/></div>}
         <div style={{marginBottom:12}}><label style={lbl("#fff")}>EMAIL</label><input value={email} onChange={e=>setEmail(e.target.value)} placeholder="email@example.com" type="email" style={darkInp}/></div>
-        <div style={{marginBottom:16}}><label style={lbl("#fff")}>PASSWORD</label><input value={pw} onChange={e=>setPw(e.target.value)} placeholder={mode==="register"?"Min 6 characters":"Password"} type="password" style={darkInp}/></div>
-        {err&&<div style={{background:err.startsWith("✓")||err.startsWith("Reset")?"rgba(0,229,100,0.1)":"rgba(255,59,48,0.12)",border:`1px solid ${err.startsWith("✓")||err.startsWith("Reset")?"rgba(0,229,100,0.3)":"rgba(255,59,48,0.3)"}`,borderRadius:10,padding:"10px 14px",marginBottom:14,color:err.startsWith("✓")||err.startsWith("Reset")?"#00e564":"#ff6b6b",fontSize:13}}>{err}</div>}
+        <div style={{marginBottom:16}}><label style={lbl("#fff")}>PASSWORD</label><input value={pw} onChange={e=>setPw(e.target.value)} placeholder={mode==="register"?"Min 8 characters":"Password"} type="password" style={darkInp}/></div>
+        {err&&<div style={{background:err.startsWith("✓")||err.startsWith("Reset")?"rgba(0,229,100,0.1)":"rgba(255,59,48,0.12)",border:`1px solid ${err.startsWith("✓")||err.startsWith("Reset")?"rgba(0,229,100,0.3)":"rgba(255,59,48,0.3)"}`,borderRadius:10,padding:"10px 14px",marginBottom:14,color:err.startsWith("✓")||err.startsWith("Reset")?"#00e564":"#ff6b6b",fontSize:13,whiteSpace:"pre-line"}}>{err}</div>}
         <button onClick={submit} disabled={loading} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:10,padding:"15px",color:"#fff",fontSize:15,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:10,opacity:loading?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-          {loading?<Spin size={16}/>:null}{loading?"PLEASE WAIT...":mode==="login"?"LOGIN":"CREATE ACCOUNT"}
+          {loading?<Spin size={16}/>:null}{loading?"CONNECTING...":mode==="login"?"LOGIN":"SIGN UP"}
         </button>
         {mode==="login"&&<button onClick={resetPw} style={{width:"100%",background:"none",border:"none",color:"rgba(255,255,255,0.3)",fontSize:13,cursor:"pointer",padding:"8px"}}>Forgot password?</button>}
+
+        <ServerUrlConfig/>
 
         {installable&&(
           <button onClick={installApp} style={{width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"12px",color:"rgba(255,255,255,0.5)",fontSize:12,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginTop:8,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
@@ -720,6 +763,8 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
 // ── Settings Sync (save to Firestore + localStorage) ─────────────
 async function saveSettingToFirestore(companyId,key,value){
   if(!companyId)return;
+  // Security hardening: keep integration secrets local on device.
+  if(["telegram","gemini","email"].includes(key))return;
   try{
     const existing=await DB.settings.getFirst(`companyId="${companyId}" && key="${key}"`);
     if(existing)await DB.settings.update(existing.id,{value,updatedAt:DB.serverTimestamp()});
@@ -732,9 +777,8 @@ async function loadSettingsFromFirestore(companyId){
     const items=await DB.settings.list(`companyId="${companyId}"`);
     items.forEach(doc=>{
       const key=doc.key;const val=doc.value;
-      if(key==="telegram")local.set(TG_KEY,val);
-      if(key==="gemini")local.set(GEMINI_KEY,val);
-      if(key==="email")local.set(EMAIL_KEY,val);
+      // Do not hydrate secret-bearing settings from shared backend storage.
+      if(key==="telegram"||key==="gemini"||key==="email")return;
     });
   }catch(e){console.warn("Settings load failed:",e);}
 }
@@ -1492,6 +1536,7 @@ function App(){
     DB.init(typeof PB_URL!=='undefined'?PB_URL:'https://siteshrimp.duckdns.org').then(()=>{
       unsub=DB.auth.onAuthStateChanged(async u=>{
         setAuthUser(u);
+        setAuthLoading(false); // unblock UI immediately; company recovery runs in background
         if(u&&!local.get(COMPANY_KEY)){
           try{
             const result=await DB.findUserCompany(u.id);
@@ -1509,7 +1554,6 @@ function App(){
             }
           }catch(e){console.warn("Auto-recover failed:",e);}
         }
-        setAuthLoading(false);
       });
     });
     return ()=>{if(unsub)unsub();};
