@@ -1619,22 +1619,34 @@ function App(){
       unsub=DB.auth.onAuthStateChanged(async u=>{
         setAuthUser(u);
         setAuthLoading(false); // unblock UI immediately; company recovery runs in background
-        if(u&&!local.get(COMPANY_KEY)){
-          try{
-            const result=await DB.findUserCompany(u.id);
-            if(result){
-              const cd={companyId:result.companyId,companyName:result.companyName};
-              local.set(COMPANY_KEY,cd);
-              setCompany(cd);
-              const projs=await DB.projects.list(`companyId="${result.companyId}" && archived!=true`);
-              if(projs.length){
-                const proj={id:projs[0].id,name:projs[0].name};
-                local.set(PROJECT_KEY,proj);
-                setCurrentProject(proj);
+        if(u){
+          // Always try to recover company if not in state
+          const saved=local.get(COMPANY_KEY);
+          if(saved){setCompany(saved);setCurrentProject(local.get(PROJECT_KEY));}
+          else{
+            // Retry up to 3 times with increasing delay
+            for(let attempt=0;attempt<3;attempt++){
+              try{
+                const result=await DB.findUserCompany(u.id);
+                if(result){
+                  const cd={companyId:result.companyId,companyName:result.companyName};
+                  local.set(COMPANY_KEY,cd);
+                  setCompany(cd);
+                  const projs=await DB.projects.list(`companyId="${result.companyId}" && archived!=true`);
+                  if(projs.length){
+                    const proj={id:projs[0].id,name:projs[0].name};
+                    local.set(PROJECT_KEY,proj);
+                    setCurrentProject(proj);
+                  }
+                  try{await loadSettingsFromFirestore(result.companyId);}catch{}
+                  break;
+                }else{break;} // User genuinely has no company
+              }catch(e){
+                console.warn(`Company recovery attempt ${attempt+1} failed:`,e);
+                if(attempt<2)await new Promise(r=>setTimeout(r,(attempt+1)*2000));
               }
-              await loadSettingsFromFirestore(result.companyId);
             }
-          }catch(e){console.warn("Auto-recover failed:",e);}
+          }
         }
       });
     });
