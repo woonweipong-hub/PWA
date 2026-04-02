@@ -12,11 +12,13 @@
 //   - Atomic defect ID counter (action: "next_id")
 //   - CORS-friendly responses
 
-// ====== CONFIGURE THESE ======
-var SHEET_ID = "1I0FmGgflVwMYywsNcIu14DaCogw6dVA80H3LKcJpgLA";
-var DRIVE_FOLDER_ID = "12jyX_reOM5sOGFceCVm0_NcrL1HyxVm7";
+// ====== CONFIGURE VIA SCRIPT PROPERTIES (Project Settings > Script Properties) ======
+// Required: SHEET_ID, DRIVE_FOLDER_ID
+// Optional: GEMINI_API_KEY
+var SHEET_ID = PropertiesService.getScriptProperties().getProperty("SHEET_ID") || "";
+var DRIVE_FOLDER_ID = PropertiesService.getScriptProperties().getProperty("DRIVE_FOLDER_ID") || "";
 var GEMINI_MODEL = "gemini-2.5-flash";
-// =============================
+// =================================================================================
 
 function doPost(e) {
   try {
