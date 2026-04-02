@@ -214,8 +214,8 @@ const DB = (() => {
           try { _sseConnections[key].close(); } catch {}
         }
 
-        // Initial load
-        this.list(filter).then(items => callback(items)).catch(() => {});
+        // Initial load — must call callback even on error so UI doesn't hang
+        this.list(filter).then(items => callback(items)).catch(() => callback([]));
 
         // SSE subscription
         try {

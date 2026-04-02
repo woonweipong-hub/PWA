@@ -394,8 +394,10 @@ function AuthScreen({onAuth,onFullSetup}){
 
   const resetPw=async()=>{
     if(!email.trim()){setErr("Enter your email first.");return;}
-    try{await DB.auth.resetPassword(email.trim());setErr("Reset email sent. Check your inbox.");}
-    catch{setErr("Could not send reset email.");}
+    try{
+      await DB.auth.resetPassword(email.trim());
+      setErr("Reset email sent. Check your inbox (and spam folder).\nIf no email arrives, contact your admin to reset your password.");
+    }catch{setErr("Could not send reset email. Email service may not be configured.\nContact your admin to reset your password.");}
   };
 
   // ── Intro / Welcome page ──
@@ -1737,11 +1739,19 @@ function App(){
   const canLog=["Admin","Manager","Inspector"].includes(member?.role);
   const isAdmin=member?.role==="Admin";
 
-  if(authLoading||memberLoading)return(
+  // Timeout: if memberLoading stays true for >8s, force it off
+  useEffect(()=>{
+    if(!memberLoading)return;
+    const t=setTimeout(()=>setMemberLoading(false),8000);
+    return()=>clearTimeout(t);
+  },[memberLoading]);
+
+  if(authLoading)return(
     <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{textAlign:"center"}}>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#ff6b00",marginBottom:16}}>SITESHRIMP</div>
         <Spin size={24}/>
+        <div style={{color:"rgba(255,255,255,0.4)",fontSize:12,marginTop:12}}>Connecting...</div>
       </div>
     </div>
   );
