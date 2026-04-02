@@ -19,18 +19,30 @@ const DB = (() => {
 
   async function api(path, opts = {}) {
     const url = _baseUrl + path;
-    const resp = await fetch(url, {
-      ...opts,
-      headers: headers(opts.headers || {}),
-    });
-    const text = await resp.text();
-    let data;
-    try { data = JSON.parse(text); } catch { data = { raw: text }; }
-    if (!resp.ok) {
-      const msg = data?.message || data?.data?.message || `API error ${resp.status}`;
-      throw new Error(msg);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const resp = await fetch(url, {
+        ...opts,
+        headers: headers(opts.headers || {}),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      const text = await resp.text();
+      let data;
+      try { data = JSON.parse(text); } catch { data = { raw: text }; }
+      if (!resp.ok) {
+        const msg = data?.message || data?.data?.message || `API error ${resp.status}`;
+        throw new Error(msg);
+      }
+      return data;
+    } catch (err) {
+      clearTimeout(timeout);
+      if (err.name === 'AbortError') {
+        throw new Error('Server not responding. Check your connection or try again.');
+      }
+      throw err;
     }
-    return data;
   }
 
   async function apiJson(path, method, body) {

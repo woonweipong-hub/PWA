@@ -1613,7 +1613,16 @@ function App(){
 
   // Auth check
   if(!authUser)return <AuthScreen onAuth={handleAuth}/>;
-  if(!company||!member)return <CompanySetupScreen user={authUser} inviteCode={inviteCode} onDone={handleCompanyDone}/>;
+  if(!company)return <CompanySetupScreen user={authUser} inviteCode={inviteCode} onDone={handleCompanyDone}/>;
+  if(!member)return(
+    <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{textAlign:"center"}}>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#ff6b00",marginBottom:16}}>SITESHRIMP</div>
+        <Spin size={24}/>
+        <div style={{color:"rgba(255,255,255,0.4)",fontSize:12,marginTop:12}}>Loading workspace...</div>
+      </div>
+    </div>
+  );
 
   const navItems=canLog?NAV:NAV.filter(n=>n.id!=="log");
 
