@@ -199,6 +199,68 @@ function VoiceField({label,value,onChange,placeholder,multiline}){
   );
 }
 
+// ComboField: dropdown with predefined options + free text input
+// For foreign workers: tap to select. For architects: type custom value.
+function ComboField({label,value,onChange,options,placeholder,grouped}){
+  const[custom,setCustom]=useState(false);
+  const[search,setSearch]=useState("");
+  const isCustom=custom||(!options.includes(value)&&value);
+
+  if(isCustom)return(
+    <div style={{marginBottom:16}}>
+      <label style={lbl()}>{label}</label>
+      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+        <input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder||"Type here..."} style={{...inp,flex:1}}/>
+        <MicBtn onResult={t=>onChange(t)} currentValue={value}/>
+        <button onClick={()=>{setCustom(false);setSearch("");}} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"8px 10px",fontSize:11,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,flexShrink:0}}>LIST</button>
+      </div>
+    </div>
+  );
+
+  // Grouped options (e.g. COMPONENT_GROUPS)
+  if(grouped){
+    const groups=grouped;
+    const filteredGroups=search
+      ?Object.fromEntries(Object.entries(groups).map(([g,items])=>[g,items.filter(it=>it.toLowerCase().includes(search.toLowerCase()))]).filter(([,items])=>items.length>0))
+      :groups;
+    return(
+      <div style={{marginBottom:16}}>
+        <label style={lbl()}>{label}</label>
+        <div style={{display:"flex",gap:8,marginBottom:8}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." style={{...inp,flex:1,fontSize:13}}/>
+          <button onClick={()=>setCustom(true)} style={{background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:8,padding:"8px 10px",fontSize:11,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff6b00",flexShrink:0}}>TYPE</button>
+        </div>
+        <div style={{maxHeight:200,overflowY:"auto",borderRadius:10,border:"1px solid rgba(0,0,0,0.08)"}}>
+          {Object.entries(filteredGroups).map(([group,items])=>(
+            <div key={group}>
+              <div style={{padding:"6px 12px",background:"rgba(0,0,0,0.04)",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",position:"sticky",top:0}}>{group.toUpperCase()}</div>
+              {items.map(it=>(
+                <div key={it} onClick={()=>{onChange(it);setSearch("");}} style={{padding:"10px 12px",cursor:"pointer",background:value===it?"rgba(255,107,0,0.08)":"#fff",borderBottom:"1px solid rgba(0,0,0,0.04)",fontSize:14,color:value===it?"#ff6b00":"#1a1a1a",fontWeight:value===it?700:400}}>
+                  {it}
+                </div>
+              ))}
+            </div>
+          ))}
+          {Object.keys(filteredGroups).length===0&&<div style={{padding:16,textAlign:"center",color:"rgba(0,0,0,0.3)",fontSize:13}}>No match</div>}
+        </div>
+      </div>
+    );
+  }
+
+  // Flat options list with chip-style buttons
+  return(
+    <div style={{marginBottom:16}}>
+      <label style={lbl()}>{label}</label>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:6}}>
+        {options.map(opt=>(
+          <button key={opt} onClick={()=>onChange(opt)} style={{padding:"8px 12px",borderRadius:20,border:`1.5px solid ${value===opt?"#ff6b00":"rgba(0,0,0,0.12)"}`,background:value===opt?"rgba(255,107,0,0.08)":"#fff",color:value===opt?"#ff6b00":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,fontSize:12,cursor:"pointer"}}>{opt}</button>
+        ))}
+      </div>
+      <button onClick={()=>setCustom(true)} style={{background:"none",border:"none",fontSize:11,color:"rgba(255,107,0,0.7)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:"4px 0"}}>+ Type custom value</button>
+    </div>
+  );
+}
+
 function SettingsBack({onClose,title}){
   return(
     <div style={{background:"#1a1a1a",padding:"16px",display:"flex",alignItems:"center",gap:12}}>
@@ -795,8 +857,11 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
 
 // ── Log Entry (with AI + Batch + Multi-photo) ────────────────────
 function LogDefect({member,company,currentProject,members,onSave}){
-  const blank={title:"",location:"",severity:"Major",description:"",assignee:member?.name||"",photos:[]};
+  const blank={title:"",location:"",severity:"Major",description:"",assignee:member?.name||"",photos:[],
+    component:"",issue:"",locationLevel:"",locationZone:"",locationSubzone:"",locationGrid:"",
+    entryType:"Defect",dueDate:"",duration:"",costImpact:"",costResponsible:"",costAmount:"",costRemarks:""};
   const[form,setForm]=useState(blank);
+  const[showMore,setShowMore]=useState(false);
   const[saving,setSaving]=useState(false);const[analyzing,setAnalyzing]=useState(false);const[aiResult,setAiResult]=useState(null);
   const[count,setCount]=useState(0);const[last,setLast]=useState(null);const[showBatch,setShowBatch]=useState(false);
   const fileRef=useRef();
@@ -847,7 +912,11 @@ function LogDefect({member,company,currentProject,members,onSave}){
   };
 
   const submit=async()=>{
-    if(!form.title.trim()||!form.location.trim())return;
+    if(!form.title.trim())return;
+    // Build location display from hierarchy
+    const locParts=[form.locationLevel,form.locationZone,form.locationSubzone,form.locationGrid].filter(Boolean);
+    const locationDisplay=locParts.join(" > ")||form.location||"";
+    if(!locationDisplay&&!form.location){alert("Please select a location.");return;}
     setSaving(true);
     try{
       const compressed=[];
@@ -855,20 +924,26 @@ function LogDefect({member,company,currentProject,members,onSave}){
         const c=await compressPhoto(p);
         if(c)compressed.push(c);
       }
+      const trade=COMPONENT_TRADE[form.component]||"";
       await onSave({
         ...form,
+        location:locationDisplay||form.location,
+        locationDisplay,
         photo:compressed[0]||null,
         extraPhotos:compressed.slice(1),
         projectId:currentProject?.id||"default",
         projectName:currentProject?.name||"",
+        entryType:form.entryType||"Defect",
+        trade,
         status:"Open",loggedBy:member?.name||"",
         loggedByRole:member?.role||"",
         createdAt:DB.serverTimestamp(),
         updatedAt:DB.serverTimestamp(),
         comments:[]
       });
-      setLast({location:form.location,assignee:form.assignee,severity:form.severity});
-      setCount(c=>c+1);setShowBatch(true);setForm(blank);setAiResult(null);
+      setLast({location:locationDisplay,assignee:form.assignee,severity:form.severity,
+        locationLevel:form.locationLevel,locationZone:form.locationZone,component:form.component});
+      setCount(c=>c+1);setShowBatch(true);setForm(blank);setAiResult(null);setShowMore(false);
     }catch(e){alert("Error saving: "+e.message);}
     setSaving(false);
   };
@@ -884,7 +959,10 @@ function LogDefect({member,company,currentProject,members,onSave}){
         <div style={{fontSize:13,color:"rgba(0,0,0,0.5)",marginBottom:6}}>Log another at the same location?</div>
         <div style={{fontSize:12,color:"rgba(0,0,0,0.4)"}}>📍 {last?.location} · → {last?.assignee}</div>
       </div>
-      <button onClick={()=>{setForm({...blank,location:last?.location||"",assignee:last?.assignee||member?.name||"",severity:last?.severity||"Major"});setShowBatch(false);}} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:16,color:"#fff",fontSize:15,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:10}}>+ LOG ANOTHER HERE</button>
+      <button onClick={()=>{setForm({...blank,
+        location:last?.location||"",assignee:last?.assignee||member?.name||"",severity:last?.severity||"Major",
+        locationLevel:last?.locationLevel||"",locationZone:last?.locationZone||"",component:last?.component||""
+      });setShowBatch(false);}} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:16,color:"#fff",fontSize:15,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:10}}>+ LOG ANOTHER HERE</button>
       <button onClick={()=>setShowBatch(false)} style={{width:"100%",background:"rgba(0,0,0,0.06)",border:"none",borderRadius:12,padding:14,fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>DONE — VIEW ALL</button>
     </div>
   );
@@ -898,9 +976,33 @@ function LogDefect({member,company,currentProject,members,onSave}){
       </div>
       <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:20}}>📁 {currentProject?.name||"—"} · Tap 🎙 to dictate</div>
 
-      <VoiceField label="TITLE *" value={form.title} onChange={v=>set("title",v)} placeholder="e.g. Crack in column C4"/>
-      <VoiceField label="LOCATION *" value={form.location} onChange={v=>set("location",v)} placeholder="e.g. Level 3, Grid C4"/>
+      {/* Entry Type */}
+      <div style={{marginBottom:16}}>
+        <label style={lbl()}>ENTRY TYPE</label>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {ENTRY_TYPES.map(t=>(
+            <button key={t} onClick={()=>set("entryType",t)} style={{padding:"8px 14px",borderRadius:20,border:`2px solid ${form.entryType===t?ENTRY_TYPE_COLOR[t]:"rgba(0,0,0,0.12)"}`,background:form.entryType===t?ENTRY_TYPE_BG[t]:"#fff",color:form.entryType===t?ENTRY_TYPE_COLOR[t]:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{ENTRY_TYPE_ICON[t]} {t.toUpperCase()}</button>
+          ))}
+        </div>
+      </div>
 
+      {/* Component (grouped dropdown) */}
+      <ComboField label="COMPONENT" value={form.component} onChange={v=>{set("component",v);set("issue","");}} grouped={COMPONENT_GROUPS} placeholder="e.g. Wall, Pipe, Tile..."/>
+
+      {/* Issue (filtered by selected component) */}
+      {form.component&&(
+        <ComboField label="ISSUE" value={form.issue} onChange={v=>{set("issue",v);if(!form.title)set("title",form.component+" — "+v);}} options={COMPONENT_ISSUES[form.component]||COMPONENT_ISSUES["General"]} placeholder="Describe the issue..."/>
+      )}
+
+      <VoiceField label="TITLE *" value={form.title} onChange={v=>set("title",v)} placeholder="e.g. Crack in column C4"/>
+
+      {/* Location hierarchy */}
+      <ComboField label="LEVEL / FLOOR" value={form.locationLevel} onChange={v=>set("locationLevel",v)} options={DEFAULT_LEVELS} placeholder="e.g. 3rd Floor"/>
+      <ComboField label="ZONE" value={form.locationZone} onChange={v=>set("locationZone",v)} options={DEFAULT_ZONES} placeholder="e.g. Zone A, Block B"/>
+      <ComboField label="ROOM / AREA" value={form.locationSubzone} onChange={v=>set("locationSubzone",v)} options={DEFAULT_SUBZONES} placeholder="e.g. Kitchen, Bathroom"/>
+      <VoiceField label="GRID REF (optional)" value={form.locationGrid} onChange={v=>set("locationGrid",v)} placeholder="e.g. C4, Grid 3-A"/>
+
+      {/* Severity */}
       <div style={{marginBottom:16}}>
         <label style={lbl()}>SEVERITY</label>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -910,6 +1012,7 @@ function LogDefect({member,company,currentProject,members,onSave}){
         </div>
       </div>
 
+      {/* Assignee */}
       <div style={{marginBottom:16}}>
         <label style={lbl()}>ASSIGN TO</label>
         <select value={form.assignee} onChange={e=>set("assignee",e.target.value)} style={{...inp,width:"100%",flex:"unset",appearance:"none"}}>
@@ -918,6 +1021,26 @@ function LogDefect({member,company,currentProject,members,onSave}){
       </div>
 
       <VoiceField label="DESCRIPTION" value={form.description} onChange={v=>set("description",v)} placeholder="Describe the issue..." multiline/>
+
+      {/* Cost & Time — collapsible */}
+      <button onClick={()=>setShowMore(!showMore)} style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"12px",marginBottom:showMore?12:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",color:"rgba(0,0,0,0.5)",textAlign:"left"}}>{showMore?"▼":"▶"} COST & TIME (optional)</button>
+      {showMore&&(
+        <div style={{background:"rgba(0,0,0,0.02)",borderRadius:12,padding:14,marginBottom:16,border:"1px solid rgba(0,0,0,0.06)"}}>
+          <div style={{marginBottom:12}}>
+            <label style={lbl()}>TARGET DATE</label>
+            <input type="date" value={form.dueDate} onChange={e=>set("dueDate",e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
+          </div>
+          <ComboField label="ESTIMATED DURATION" value={form.duration} onChange={v=>set("duration",v)} options={DURATION_OPTIONS} placeholder="e.g. 3 days"/>
+          <ComboField label="COST IMPACT" value={form.costImpact} onChange={v=>set("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder="e.g. No change"/>
+          {form.costImpact&&form.costImpact!=="No change"&&form.costImpact!=="To be confirmed by QS"&&(
+            <>
+              <VoiceField label="COST AMOUNT" value={form.costAmount} onChange={v=>set("costAmount",v)} placeholder="e.g. $500, TBC"/>
+              <ComboField label="COST RESPONSIBLE" value={form.costResponsible} onChange={v=>set("costResponsible",v)} options={COST_RESPONSIBLE_OPTIONS} placeholder="Who bears the cost?"/>
+              <VoiceField label="COST REMARKS" value={form.costRemarks} onChange={v=>set("costRemarks",v)} placeholder="Contract clause, reference..." multiline/>
+            </>
+          )}
+        </div>
+      )}
 
       <div style={{marginBottom:20}}>
         <label style={lbl()}>PHOTOS ({form.photos.length}/{MAX_PHOTOS})</label>
