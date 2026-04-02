@@ -334,7 +334,7 @@ function AuthScreen({onAuth}){
         <div style={{textAlign:"left",marginBottom:32}}>
           {[
             ["📷","Snap photos, AI describes the defect"],
-            ["mic","Voice input — speak, don't type"],
+            ["mic","Voice support — hands-free feature"],
             ["📋","Observations, defects, instructions — all in one"],
             ["👥","Team sync — everyone sees updates live"],
             ["📊","Reports, dashboards & PDF export"],
