@@ -1,4 +1,4 @@
-const CACHE = 'siteshrimp-v17';
+const CACHE = 'siteshrimp-v18';
 const ASSETS = [
   '/',
   '/index.html',

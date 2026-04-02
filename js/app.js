@@ -536,6 +536,35 @@ function CompanySetup({user,inviteCode,onDone,onSignOut}){
   const[mode,setMode]=useState(inviteCode?"join":"create");
   const[cName,setCName]=useState("");const[code,setCode]=useState(inviteCode||"");
   const[loading,setLoading]=useState(false);const[err,setErr]=useState("");
+  const[checking,setChecking]=useState(true);
+
+  // Auto-check if user already has a company before showing form
+  useEffect(()=>{
+    let cancelled=false;
+    (async()=>{
+      for(let i=0;i<3;i++){
+        try{
+          const result=await DB.findUserCompany(user.id);
+          if(cancelled)return;
+          if(result){
+            const cd={companyId:result.companyId,companyName:result.companyName};
+            local.set(COMPANY_KEY,cd);
+            const projs=await DB.projects.list(`companyId="${result.companyId}" && archived!=true`);
+            const proj=projs.length?{id:projs[0].id,name:projs[0].name}:null;
+            if(proj)local.set(PROJECT_KEY,proj);
+            onDone(cd,proj);
+            return;
+          }
+          break; // No company found, show form
+        }catch(e){
+          console.warn(`Company check attempt ${i+1}:`,e);
+          if(i<2)await new Promise(r=>setTimeout(r,2000));
+        }
+      }
+      if(!cancelled)setChecking(false);
+    })();
+    return()=>{cancelled=true;};
+  },[]);
 
   const create=async()=>{
     if(!cName.trim())return;
@@ -570,6 +599,16 @@ function CompanySetup({user,inviteCode,onDone,onSignOut}){
     }catch(e){setErr(e.message);}
     setLoading(false);
   };
+
+  if(checking)return(
+    <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{textAlign:"center"}}>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#ff6b00",marginBottom:16}}>SITESHRIMP</div>
+        <Spin size={24}/>
+        <div style={{color:"rgba(255,255,255,0.4)",fontSize:12,marginTop:12}}>Finding your workspace...</div>
+      </div>
+    </div>
+  );
 
   return(
     <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center",padding:28}}>
