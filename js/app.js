@@ -439,8 +439,44 @@ function AuthScreen({onAuth,onFullSetup}){
           INSTALL APP
         </button>
 
-        <div style={{color:"rgba(255,255,255,0.15)",fontSize:11,marginTop:20,fontFamily:"'Barlow Condensed',sans-serif"}}>
+        <div style={{color:"rgba(255,255,255,0.15)",fontSize:11,marginTop:20,marginBottom:40,fontFamily:"'Barlow Condensed',sans-serif"}}>
           Free for all teams · No app store needed
+        </div>
+
+        {/* Feature Status Checklist */}
+        <div style={{textAlign:"left"}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:800,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",marginBottom:16}}>ALL FEATURES ({[
+            ["Auth & Onboarding",["Login / Sign up","Password reset","One-step registration + company setup","Auto-recover session","Install as app (PWA)","Server URL config"]],
+            ["Team",["Invite members (link + code)","Role-based access (Admin, Manager, Inspector, Viewer)","Edit roles / remove members","Permission matrix"]],
+            ["Projects",["Create / rename projects","Switch active project","Archive / restore projects"]],
+            ["Defect Logging",["Log defect with title, severity, location","Multi-level location (Level > Zone > Room > Grid)","Snap or upload up to 5 photos","AI photo analysis (Gemini)","Voice-to-text (title, description)","Component + issue selector","Assign to team member","Cost & time tracking fields","Batch logging (same location)"]],
+            ["Defect Management",["View all entries with status/severity filters","Defect detail view with photos","Update status (Open > In Progress > Done > Verified > Closed)","Add comments (text + voice)","Delete defect (Admin only)","Telegram alerts on status change"]],
+            ["Dashboard",["Real-time stats (Open / In Progress / Done)","Critical defect alerts","Severity breakdown chart","Recent defects feed","Live sync indicator"]],
+            ["Reports",["Site report with charts + defect list","Filter by severity / status / assignee / date","CSV export","Email report (EmailJS)"]],
+            ["Settings",["Telegram bot setup + test","Gemini AI setup + test","Email report setup","Daily AI usage limit"]],
+            ["Profile",["View profile info","Sign out with credential cleanup"]],
+          ].reduce((n,g)=>n+g[1].length,0)} features)</div>
+          {[
+            ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as app (PWA)",true],["Server URL config",true]]],
+            ["Team",[["Invite members (link + code)",true],["Role-based access control",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
+            ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
+            ["Defect Logging",[["Log with title, severity, location",true],["Multi-level location hierarchy",true],["Snap / upload up to 5 photos",true],["AI photo analysis (Gemini)",true],["Voice-to-text input",true],["Component + issue selector",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
+            ["Defect Management",[["Status & severity filters",true],["Full detail view with photos",true],["Update status workflow",true],["Comments (text + voice)",true],["Delete defect (Admin)",true],["Telegram alerts",true]]],
+            ["Dashboard",[["Real-time stats overview",true],["Critical defect alerts",true],["Severity breakdown chart",true],["Recent defects feed",true],["Live sync indicator",true]]],
+            ["Reports",[["Site report with charts",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report (EmailJS)",true]]],
+            ["Settings",[["Telegram bot setup + test",true],["Gemini AI setup + test",true],["Email report config",true],["Daily AI usage limit",true]]],
+            ["Coming Soon",[["Drawings / floor plan pins",false],["Profile editing",false],["Search across defects",false],["Offline mode",false],["Push notifications",false]]],
+          ].map(([cat,items])=>(
+            <div key={cat} style={{marginBottom:16}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:6}}>{cat.toUpperCase()}</div>
+              {items.map(([feat,done])=>(
+                <div key={feat} style={{display:"flex",gap:8,alignItems:"center",padding:"4px 0",fontSize:12,color:done?"rgba(255,255,255,0.5)":"rgba(255,255,255,0.2)"}}>
+                  <span style={{fontSize:10,flexShrink:0,width:16,textAlign:"center"}}>{done?"✓":"○"}</span>
+                  <span>{feat}</span>
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       </div>
     </div>
