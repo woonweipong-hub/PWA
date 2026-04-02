@@ -17,6 +17,7 @@ function compressPhoto(dataUrl,maxPx=1200,quality=0.7){
     img.onload=()=>{
       let w=img.width,h=img.height;
       if(w>maxPx){h=Math.round(h*maxPx/w);w=maxPx;}
+      if(h>maxPx){w=Math.round(w*maxPx/h);h=maxPx;}
       const c=document.createElement("canvas");
       c.width=w;c.height=h;
       c.getContext("2d").drawImage(img,0,0,w,h);
@@ -1024,15 +1025,19 @@ function LogDefect({member,company,currentProject,members,onSave}){
       return;
     }
     setAnalyzing(true);
-    const compressed=await compressPhoto(form.photos[0],600,0.7);
-    const result=await analyzeWithGemini(geminiKey,compressed||form.photos[0]);
-    local.set(AI_LIMIT_KEY,{date:today,count:todayCount+1});
-    if(result){
-      setAiResult(result);
-      if(result.title)set("title",result.title);
-      if(result.severity&&SEVERITY.includes(result.severity))set("severity",result.severity);
-      if(result.description)set("description",result.description);
-    }
+    try{
+      const compressed=await compressPhoto(form.photos[0],600,0.7);
+      const result=await analyzeWithGemini(geminiKey,compressed||form.photos[0]);
+      if(result){
+        local.set(AI_LIMIT_KEY,{date:today,count:todayCount+1});
+        setAiResult(result);
+        if(result.title)set("title",result.title);
+        if(result.severity&&SEVERITY.includes(result.severity))set("severity",result.severity);
+        if(result.description)set("description",result.description);
+      }else{
+        alert("AI could not analyze the photo. Try a clearer image or log manually.");
+      }
+    }catch(e){alert("AI analysis error: "+e.message);}
     setAnalyzing(false);
   };
 
@@ -1257,6 +1262,8 @@ function DefectsList({defects,onView}){
 function DefectDetail({defect,onClose,onUpdate,member,company}){
   const[status,setStatus]=useState(defect.status);
   const[comment,setComment]=useState("");const[saving,setSaving]=useState(false);const[deleting,setDeleting]=useState(false);
+  const latestRef=useRef(defect);
+  useEffect(()=>{latestRef.current={...latestRef.current,...defect,status};},[defect,status]);
   const tgCfg=local.get(TG_KEY);
   const canUpdate=["Admin","Manager","Inspector"].includes(member?.role);
   const canDelete=member?.role==="Admin";
@@ -1264,30 +1271,39 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
   const updateStatus=async s=>{
     if(!canUpdate)return;
     setStatus(s);
-    await DB.defects.update(defect.id,{status:s,updatedAt:DB.serverTimestamp()});
-    onUpdate({...defect,status:s});
-    if(tgCfg?.token&&tgCfg?.chatId){
-      const e=STATUS_ICON[s]||"⚪";
-      await sendTelegram(tgCfg.token,tgCfg.chatId,`${e} <b>Status Updated</b>\n<b>${defect.title}</b>\nStatus: <b>${s}</b>\nBy: ${member?.name}`);
-    }
+    try{
+      await DB.defects.update(defect.id,{status:s});
+      latestRef.current={...latestRef.current,status:s};
+      onUpdate({...latestRef.current});
+      if(tgCfg?.token&&tgCfg?.chatId){
+        const e=STATUS_ICON[s]||"⚪";
+        sendTelegram(tgCfg.token,tgCfg.chatId,`${e} <b>Status Updated</b>\n<b>${defect.title}</b>\nStatus: <b>${s}</b>\nBy: ${member?.name}`).catch(()=>{});
+      }
+    }catch(e){setStatus(defect.status);alert("Failed to update status: "+e.message);}
   };
 
   const addComment=async()=>{
     if(!comment.trim()||saving||!canUpdate)return;
     setSaving(true);
     const newComment={text:comment,by:member?.name||"",role:member?.role||"",at:Date.now()};
-    const newComments=[...(defect.comments||[]),newComment];
-    await DB.defects.update(defect.id,{comments:newComments,updatedAt:DB.serverTimestamp()});
-    onUpdate({...defect,comments:newComments});
-    if(tgCfg?.token&&tgCfg?.chatId)await sendTelegram(tgCfg.token,tgCfg.chatId,`💬 <b>Comment — ${defect.title}</b>\n${member?.name}: ${comment}`);
-    setComment("");setSaving(false);
+    const newComments=[...(latestRef.current.comments||[]),newComment];
+    try{
+      await DB.defects.update(defect.id,{comments:newComments});
+      latestRef.current={...latestRef.current,comments:newComments};
+      onUpdate({...latestRef.current});
+      if(tgCfg?.token&&tgCfg?.chatId)sendTelegram(tgCfg.token,tgCfg.chatId,`💬 <b>Comment — ${defect.title}</b>\n${member?.name}: ${comment}`).catch(()=>{});
+      setComment("");
+    }catch(e){alert("Failed to add comment: "+e.message);}
+    setSaving(false);
   };
 
   const deleteDefect=async()=>{
     if(!canDelete||!confirm("Delete this defect permanently? This cannot be undone."))return;
     setDeleting(true);
-    await DB.defects.delete(defect.id);
-    onClose();
+    try{
+      await DB.defects.delete(defect.id);
+      onClose();
+    }catch(e){alert("Failed to delete: "+e.message);setDeleting(false);}
   };
 
   return(
@@ -1619,13 +1635,16 @@ function App(){
 
     await DB.addDefect(company.companyId,data);
 
-    const cfg=local.get(TG_KEY);
-    if(cfg?.token&&cfg?.chatId){
-      const e={Critical:"\u{1F534}",Major:"\u{1F7E0}",Minor:"\u{1F7E1}",Observation:"\u{1F535}"}[data.severity]||"\u26AA";
-      const text=`${e} <b>NEW DEFECT — ${company.companyName}</b>\n\n📁 ${currentProject.name}\n📋 <b>${data.title}</b>\n📍 ${data.location}\n⚠️ ${data.severity}\n👤 → ${data.assignee}\n✍️ By: ${data.loggedBy} (${data.loggedByRole})`;
-      if(data.photo)await sendTelegramPhoto(cfg.token,cfg.chatId,data.photo,text);
-      else await sendTelegram(cfg.token,cfg.chatId,text);
-    }
+    // Telegram notification (fire-and-forget, don't block on failure)
+    try{
+      const cfg=local.get(TG_KEY);
+      if(cfg?.token&&cfg?.chatId){
+        const e={Critical:"\u{1F534}",Major:"\u{1F7E0}",Minor:"\u{1F7E1}",Observation:"\u{1F535}"}[data.severity]||"\u26AA";
+        const text=`${e} <b>NEW DEFECT — ${company.companyName}</b>\n\n📁 ${currentProject.name}\n📋 <b>${data.title}</b>\n📍 ${data.location}\n⚠️ ${data.severity}\n👤 → ${data.assignee}\n✍️ By: ${data.loggedBy} (${data.loggedByRole})`;
+        if(data.photo)await sendTelegramPhoto(cfg.token,cfg.chatId,data.photo,text);
+        else await sendTelegram(cfg.token,cfg.chatId,text);
+      }
+    }catch(e){console.warn("Telegram notification failed:",e);}
   };
 
   const updateDefect=updated=>{
@@ -1636,6 +1655,7 @@ function App(){
   const signOut=()=>{
     DB.auth.signOut();
     local.del(COMPANY_KEY);local.del(PROJECT_KEY);
+    local.del(TG_KEY);local.del(GEMINI_KEY);local.del(EMAIL_KEY);local.del(AI_LIMIT_KEY);
     setCompany(null);setMember(null);setAuthUser(null);
     setDefects([]);setProjects([]);setCurrentProject(null);
     setMembers([]);setMemberLoading(false);
@@ -1664,6 +1684,7 @@ function App(){
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#ff6b00",marginBottom:16}}>SITESHRIMP</div>
         <Spin size={24}/>
         <div style={{color:"rgba(255,255,255,0.4)",fontSize:12,marginTop:12}}>Loading workspace...</div>
+        <button onClick={signOut} style={{background:"none",border:"none",color:"rgba(255,255,255,0.2)",fontSize:12,cursor:"pointer",padding:"16px 8px",marginTop:20}}>← Sign out</button>
       </div>
     </div>
   );
