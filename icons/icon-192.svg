@@ -1,16 +1,66 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
-  <rect width="192" height="192" rx="40" fill="#E65100"/>
-  <g transform="translate(32,28)" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Camera body -->
-    <rect x="8" y="36" width="112" height="80" rx="12" fill="none"/>
-    <path d="M40 36 L48 20 H80 L88 36"/>
-    <!-- Lens -->
-    <circle cx="64" cy="76" r="24"/>
-    <circle cx="64" cy="76" r="12"/>
-    <!-- Flash / warning -->
-    <path d="M100 52 L104 52" stroke-width="4"/>
-    <!-- Checkmark badge -->
-    <circle cx="104" cy="100" r="20" fill="#4CAF50" stroke="#fff" stroke-width="4"/>
-    <path d="M94 100 L101 107 L114 93" stroke="#fff" stroke-width="5"/>
+  <!-- Rounded rect border -->
+  <rect x="8" y="8" width="176" height="176" rx="28" fill="#fff" stroke="#e8802a" stroke-width="8"/>
+  <g fill="#e8802a">
+    <!-- Ground / hill -->
+    <path d="M8,156 Q40,120 70,134 Q90,142 96,128 Q104,118 120,130 Q140,144 160,126 Q172,118 184,124 L184,176 Q184,184 176,184 L16,184 Q8,184 8,176 Z"/>
+
+    <!-- BODY — shrimp facing right, perched on ground -->
+    <!-- Tail (left side, tapered) -->
+    <path d="M24,128 Q18,118 24,110 Q30,106 38,112 L44,120 Q36,128 28,130 Z"/>
+    <!-- Tail fin detail -->
+    <path d="M18,120 Q14,114 20,108 L26,112 Q22,118 20,122Z"/>
+
+    <!-- Body segments — thick, curving upward to head -->
+    <path d="M38,112 Q44,104 56,98 L60,116 Q50,122 42,120Z"/>
+    <path d="M56,98 Q66,88 78,82 L82,104 Q72,112 62,114Z"/>
+    <path d="M78,82 Q90,72 102,66 L106,90 Q96,100 84,102Z"/>
+
+    <!-- Segment groove lines (white cuts) -->
+    <path d="M56,98 L60,116" stroke="#fff" stroke-width="2.5" fill="none"/>
+    <path d="M78,82 L82,104" stroke="#fff" stroke-width="2.5" fill="none"/>
+
+    <!-- Head — large, angled up-right -->
+    <path d="M102,66 Q108,56 118,50 Q130,44 140,48 L144,52 Q148,60 146,72 Q144,82 136,90 L106,90Z"/>
+
+    <!-- White detail cut on head/body joint -->
+    <path d="M104,72 Q112,64 122,62 Q128,62 132,68" stroke="#fff" stroke-width="2.5" fill="none"/>
+    <path d="M108,84 Q114,78 120,80" stroke="#fff" stroke-width="1.5" fill="none"/>
+
+    <!-- BINOCULAR CAMERA EYES — extending right, overlapping border -->
+    <!-- Top eye (larger) — positioned at top-right -->
+    <circle cx="152" cy="48" r="18" fill="#e8802a"/>
+    <circle cx="152" cy="48" r="13" fill="#fff"/>
+    <circle cx="152" cy="48" r="9" fill="#e8802a"/>
+    <circle cx="152" cy="48" r="5" fill="#fff"/>
+
+    <!-- Bottom eye (smaller) -->
+    <circle cx="160" cy="72" r="14" fill="#e8802a"/>
+    <circle cx="160" cy="72" r="10" fill="#fff"/>
+    <circle cx="160" cy="72" r="7" fill="#e8802a"/>
+    <circle cx="160" cy="72" r="4" fill="#fff"/>
+
+    <!-- Eye barrel connecting to head -->
+    <path d="M136,52 L142,48 Q144,46 148,46" stroke="#e8802a" stroke-width="4" fill="none"/>
+    <path d="M140,72 L150,72" stroke="#e8802a" stroke-width="4" fill="none"/>
+
+    <!-- ANTENNAE -->
+    <path d="M124,46 Q110,32 100,28" stroke="#e8802a" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M118,44 Q108,28 96,22" stroke="#e8802a" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+    <!-- LEGS — jointed, standing on ground -->
+    <!-- Front legs (near head) -->
+    <path d="M120,90 L126,110 L134,120" stroke="#e8802a" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M112,92 L116,114 L124,126" stroke="#e8802a" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Middle legs -->
+    <path d="M98,96 L96,118 L102,132" stroke="#e8802a" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M88,100 L84,120 L88,134" stroke="#e8802a" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Back legs -->
+    <path d="M72,108 L66,126 L70,136" stroke="#e8802a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M58,114 L52,130 L54,138" stroke="#e8802a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Small claws at front -->
+    <path d="M140,86 Q148,92 152,88" stroke="#e8802a" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M138,92 Q144,100 150,96" stroke="#e8802a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
   </g>
 </svg>
