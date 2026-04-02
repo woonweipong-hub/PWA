@@ -529,6 +529,72 @@ function AuthScreen({onAuth,onFullSetup}){
   );
 }
 
+// ── Fallback: Company Setup for existing users without a company ──
+function CompanySetup({user,inviteCode,onDone,onSignOut}){
+  const[mode,setMode]=useState(inviteCode?"join":"create");
+  const[cName,setCName]=useState("");const[code,setCode]=useState(inviteCode||"");
+  const[loading,setLoading]=useState(false);const[err,setErr]=useState("");
+
+  const create=async()=>{
+    if(!cName.trim())return;
+    setLoading(true);setErr("");
+    try{
+      const result=await DB.createCompany(cName.trim(),user.id,user.email,user.name||user.email,JOB_TITLES[0]);
+      onDone({companyId:result.company.id,companyName:cName.trim()},{id:result.project.id,name:"Default Project"});
+    }catch(e){setErr(e.message);}
+    setLoading(false);
+  };
+
+  const join=async()=>{
+    if(!code.trim())return;
+    setLoading(true);setErr("");
+    try{
+      const parts=code.trim().split(":");
+      if(parts.length!==2)throw new Error("Invalid invite code — should be companyId:code");
+      const[companyId,invCode]=parts;
+      const invite=await DB.invites.getFirst(`companyId="${companyId}" && code="${invCode}"`);
+      if(!invite)throw new Error("Invite not found or expired.");
+      if(invite.usedBy)throw new Error("This invite has already been used.");
+      if(invite.expiresAt&&new Date(invite.expiresAt)<new Date())throw new Error("Invite expired.");
+      await DB.members.create({
+        companyId,userId:user.id,name:user.name||user.email,email:user.email,
+        role:invite.role,jobTitle:invite.jobTitle||JOB_TITLES[0],joinedAt:DB.serverTimestamp()
+      });
+      await DB.invites.update(invite.id,{usedBy:user.id,usedAt:DB.serverTimestamp()});
+      const compDoc=await DB.companies.get(companyId);
+      const projs=await DB.projects.list(`companyId="${companyId}"`);
+      const proj=projs.length?{id:projs[0].id,name:projs[0].name}:null;
+      onDone({companyId,companyName:compDoc.name},proj);
+    }catch(e){setErr(e.message);}
+    setLoading(false);
+  };
+
+  return(
+    <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center",padding:28}}>
+      <div style={{width:"100%",maxWidth:400}}>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#fff",marginBottom:4}}>SETUP WORKSPACE</div>
+        <div style={{color:"rgba(255,255,255,0.4)",fontSize:12,marginBottom:20}}>{user.email}</div>
+        {mode==="create"&&<>
+          <div style={{marginBottom:14}}><label style={lbl("#fff")}>COMPANY NAME</label><input value={cName} onChange={e=>setCName(e.target.value)} placeholder="Your company or organisation" style={darkInp}/></div>
+          <button onClick={create} disabled={loading||!cName.trim()} style={{width:"100%",background:cName.trim()?"#ff6b00":"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"15px",color:"#fff",fontSize:15,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",opacity:loading?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            {loading?<Spin size={16}/>:null}{loading?"CREATING...":"CREATE COMPANY"}
+          </button>
+          <button onClick={()=>setMode("join")} style={{background:"none",border:"none",color:"rgba(255,255,255,0.25)",fontSize:11,cursor:"pointer",padding:"14px 0",width:"100%",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>Have an invite code?</button>
+        </>}
+        {mode==="join"&&<>
+          <div style={{marginBottom:14}}><label style={lbl("#fff")}>INVITE CODE</label><input value={code} onChange={e=>setCode(e.target.value)} placeholder="Paste invite code from your admin" style={darkInp}/></div>
+          <button onClick={join} disabled={loading||!code.trim()} style={{width:"100%",background:code.trim()?"#ff6b00":"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"15px",color:"#fff",fontSize:15,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",opacity:loading?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            {loading?<Spin size={16}/>:null}{loading?"JOINING...":"JOIN COMPANY"}
+          </button>
+          <button onClick={()=>setMode("create")} style={{background:"none",border:"none",color:"rgba(255,255,255,0.25)",fontSize:11,cursor:"pointer",padding:"14px 0",width:"100%",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>Creating a new company?</button>
+        </>}
+        {err&&<div style={{background:"rgba(255,59,48,0.12)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"10px 14px",marginTop:14,color:"#ff6b6b",fontSize:13}}>{err}</div>}
+        <button onClick={onSignOut} style={{width:"100%",background:"none",border:"none",color:"rgba(255,255,255,0.2)",fontSize:12,cursor:"pointer",padding:"16px 8px",marginTop:8}}>Sign out</button>
+      </div>
+    </div>
+  );
+}
+
 // ── User Management (Admin only) ──────────────────────────────────
 function UserManagement({onClose,company,member,members}){
   const[invRole,setInvRole]=useState("Inspector");
@@ -1682,7 +1748,7 @@ function App(){
 
   // Auth check
   if(!authUser)return <AuthScreen onAuth={handleAuth} onFullSetup={handleFullSetup}/>;
-  if(!company)return <CompanySetupScreen user={authUser} inviteCode={inviteCode} onDone={handleCompanyDone}/>;
+  if(!company)return <CompanySetup user={authUser} inviteCode={inviteCode} onDone={handleCompanyDone} onSignOut={signOut}/>;
   if(!member)return(
     <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{textAlign:"center"}}>
