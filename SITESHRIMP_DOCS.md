@@ -91,8 +91,8 @@ SiteShrimp/
 ├── manifest.json       ← App install config (name, icons, theme colour)
 ├── sw.js               ← Service worker: caches app shell, enables offline
 ├── icons/
-│   ├── icon-192.svg    ← App icon (home screen, splash)
-│   └── icon-512.svg    ← App icon (large)
+│   ├── icon-192.png    ← App icon (home screen, splash)
+│   └── icon-512.png    ← App icon (large)
 ├── css/                ← Legacy (styles now inline in app.js)
 └── backend/            ← Legacy (Google Sheets backend, optional)
 ```

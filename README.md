@@ -196,8 +196,8 @@ SiteShrimp/
   manifest.json           # Install config
   sw.js                   # Service worker (offline cache)
   icons/
-    icon-192.svg          # App icon
-    icon-512.svg          # App icon (large)
+    icon-192.png          # App icon
+    icon-512.png          # App icon (large)
   SITESHRIMP_DOCS.md        # Detailed technical documentation
   backend/                # Legacy Google Sheets backend (optional)
   deploy/                 # PocketBase deployment scripts (optional)
