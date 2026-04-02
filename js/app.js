@@ -270,12 +270,32 @@ function SettingsBack({onClose,title}){
   );
 }
 
-// ── Screen: Auth ──────────────────────────────────────────────────
+// ── Screen: Auth (with intro + install prompt) ───────────────────
 function AuthScreen({onAuth}){
+  const[page,setPage]=useState("intro"); // "intro" or "auth"
   const[mode,setMode]=useState("login");
   const[email,setEmail]=useState("");const[pw,setPw]=useState("");const[name,setName]=useState("");
   const[err,setErr]=useState("");const[loading,setLoading]=useState(false);
+  const[installable,setInstallable]=useState(!!_deferredInstallPrompt);
   const inv=new URLSearchParams(window.location.search).get("invite")||"";
+
+  // Skip intro if invite link
+  useEffect(()=>{if(inv)setPage("auth");},[]);
+
+  // Watch for install prompt becoming available
+  useEffect(()=>{
+    const check=()=>setInstallable(!!_deferredInstallPrompt);
+    window.addEventListener("beforeinstallprompt",check);
+    return()=>window.removeEventListener("beforeinstallprompt",check);
+  },[]);
+
+  const installApp=async()=>{
+    if(!_deferredInstallPrompt)return;
+    _deferredInstallPrompt.prompt();
+    const result=await _deferredInstallPrompt.userChoice;
+    if(result.outcome==="accepted")setInstallable(false);
+    _deferredInstallPrompt=null;
+  };
 
   const submit=async()=>{
     if(!email.trim()||!pw.trim()||(mode==="register"&&!name.trim()))return;
@@ -296,17 +316,70 @@ function AuthScreen({onAuth}){
 
   const resetPw=async()=>{
     if(!email.trim()){setErr("Enter your email first.");return;}
-    try{await DB.auth.resetPassword(email.trim());setErr("✓ Reset email sent. Check your inbox.");}
+    try{await DB.auth.resetPassword(email.trim());setErr("Reset email sent. Check your inbox.");}
     catch{setErr("Could not send reset email.");}
   };
 
+  // ── Intro / Welcome page ──
+  if(page==="intro")return(
+    <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,textAlign:"center"}}>
+      <div style={{width:"100%",maxWidth:400}}>
+        <div style={{background:"#ff6b00",width:56,height:6,borderRadius:3,marginBottom:24,marginLeft:"auto",marginRight:"auto"}}/>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:42,fontWeight:800,color:"#fff",lineHeight:1,marginBottom:8}}>SITESHRIMP</div>
+        <div style={{color:"rgba(255,255,255,0.5)",fontSize:14,marginBottom:32,lineHeight:1.6}}>
+          Construction site tracking<br/>for teams that build.
+        </div>
+
+        {/* Feature highlights */}
+        <div style={{textAlign:"left",marginBottom:32}}>
+          {[
+            ["📷","Snap photos, AI describes the defect"],
+            ["🎙","Voice input — speak, don't type"],
+            ["📋","Observations, defects, instructions — all in one"],
+            ["👥","Team sync — everyone sees updates live"],
+            ["📊","Reports, dashboards & PDF export"],
+            ["🔔","Telegram & email notifications"],
+          ].map(([icon,text],i)=>(
+            <div key={i} className="anim" style={{animationDelay:`${i*0.08}s`,display:"flex",gap:12,alignItems:"center",padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+              <div style={{fontSize:20,width:32,textAlign:"center",flexShrink:0}}>{icon}</div>
+              <div style={{color:"rgba(255,255,255,0.7)",fontSize:14}}>{text}</div>
+            </div>
+          ))}
+        </div>
+
+        <button onClick={()=>setPage("auth")} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:"16px",color:"#fff",fontSize:16,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:12,letterSpacing:"0.04em"}}>GET STARTED</button>
+
+        {installable&&(
+          <button onClick={installApp} style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"14px",color:"rgba(255,255,255,0.8)",fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            <span style={{fontSize:18}}>+</span> INSTALL APP
+          </button>
+        )}
+
+        {!installable&&(
+          <div style={{color:"rgba(255,255,255,0.25)",fontSize:11,marginTop:4}}>
+            Tip: Add to Home Screen for the best experience
+          </div>
+        )}
+
+        <div style={{color:"rgba(255,255,255,0.15)",fontSize:11,marginTop:20,fontFamily:"'Barlow Condensed',sans-serif"}}>
+          Free for all teams · No app store needed
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Login / Register page ──
   return(
     <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center",padding:28}}>
       <div style={{width:"100%",maxWidth:400}}>
-        <div style={{background:"#ff6b00",width:48,height:6,borderRadius:3,marginBottom:20}}/>
-        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:36,fontWeight:800,color:"#fff",lineHeight:1.1,marginBottom:4}}>SITESHRIMP</div>
-        <div style={{color:"rgba(255,255,255,0.4)",fontSize:13,marginBottom:24}}>Construction Site Tracker · v2</div>
-        {inv&&<div style={{background:"rgba(0,229,100,0.1)",border:"1px solid rgba(0,229,100,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:"#00e564"}}>✓ Team invite detected — {mode==="register"?"register":"login"} to join your team</div>}
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+          <button onClick={()=>setPage("intro")} style={{background:"rgba(255,255,255,0.07)",border:"none",borderRadius:20,padding:"6px 12px",color:"rgba(255,255,255,0.5)",fontSize:12,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>←</button>
+          <div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#fff",lineHeight:1}}>SITESHRIMP</div>
+            <div style={{color:"rgba(255,255,255,0.4)",fontSize:12}}>Construction Site Tracker</div>
+          </div>
+        </div>
+        {inv&&<div style={{background:"rgba(0,229,100,0.1)",border:"1px solid rgba(0,229,100,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:"#00e564"}}>Team invite detected — {mode==="register"?"register":"login"} to join</div>}
         <div style={{display:"flex",gap:8,marginBottom:20}}>
           {["login","register"].map(m=>(
             <button key={m} onClick={()=>{setMode(m);setErr("");}} style={{flex:1,background:mode===m?"#ff6b00":"rgba(255,255,255,0.07)",border:"none",borderRadius:10,padding:"11px",color:mode===m?"#fff":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>{m==="login"?"LOGIN":"REGISTER"}</button>
@@ -315,11 +388,17 @@ function AuthScreen({onAuth}){
         {mode==="register"&&<div style={{marginBottom:12}}><label style={lbl("#fff")}>FULL NAME</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="Your full name" style={darkInp}/></div>}
         <div style={{marginBottom:12}}><label style={lbl("#fff")}>EMAIL</label><input value={email} onChange={e=>setEmail(e.target.value)} placeholder="email@example.com" type="email" style={darkInp}/></div>
         <div style={{marginBottom:16}}><label style={lbl("#fff")}>PASSWORD</label><input value={pw} onChange={e=>setPw(e.target.value)} placeholder={mode==="register"?"Min 6 characters":"Password"} type="password" style={darkInp}/></div>
-        {err&&<div style={{background:err.startsWith("✓")?"rgba(0,229,100,0.1)":"rgba(255,59,48,0.12)",border:`1px solid ${err.startsWith("✓")?"rgba(0,229,100,0.3)":"rgba(255,59,48,0.3)"}`,borderRadius:10,padding:"10px 14px",marginBottom:14,color:err.startsWith("✓")?"#00e564":"#ff6b6b",fontSize:13}}>{err}</div>}
+        {err&&<div style={{background:err.startsWith("✓")||err.startsWith("Reset")?"rgba(0,229,100,0.1)":"rgba(255,59,48,0.12)",border:`1px solid ${err.startsWith("✓")||err.startsWith("Reset")?"rgba(0,229,100,0.3)":"rgba(255,59,48,0.3)"}`,borderRadius:10,padding:"10px 14px",marginBottom:14,color:err.startsWith("✓")||err.startsWith("Reset")?"#00e564":"#ff6b6b",fontSize:13}}>{err}</div>}
         <button onClick={submit} disabled={loading} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:10,padding:"15px",color:"#fff",fontSize:15,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:10,opacity:loading?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-          {loading?<Spin size={16}/>:null}{loading?"PLEASE WAIT...":mode==="login"?"LOGIN →":"CREATE ACCOUNT →"}
+          {loading?<Spin size={16}/>:null}{loading?"PLEASE WAIT...":mode==="login"?"LOGIN":"CREATE ACCOUNT"}
         </button>
         {mode==="login"&&<button onClick={resetPw} style={{width:"100%",background:"none",border:"none",color:"rgba(255,255,255,0.3)",fontSize:13,cursor:"pointer",padding:"8px"}}>Forgot password?</button>}
+
+        {installable&&(
+          <button onClick={installApp} style={{width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"12px",color:"rgba(255,255,255,0.5)",fontSize:12,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginTop:8,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+            <span style={{fontSize:15}}>+</span> INSTALL AS APP
+          </button>
+        )}
       </div>
     </div>
   );
