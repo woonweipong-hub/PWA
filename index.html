@@ -38,11 +38,11 @@ input,textarea,select{outline:none;font-family:'Barlow',sans-serif;}
 <script>
 // PocketBase backend URL
 const PB_URL = localStorage.getItem('pb_url') || 'https://siteshrimp.duckdns.org';
-// PWA service worker
+// Service worker
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 }
-// Capture PWA install prompt for later use
+// Capture install prompt for later use
 let _deferredInstallPrompt = null;
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();

@@ -1,7 +1,7 @@
 # SiteShrimp v2 — Full Documentation
 
 **Version:** 2.0  
-**Stack:** Firebase (Auth + Firestore) · React 18 · Babel · PWA · Gemini AI · Telegram · EmailJS  
+**Stack:** PocketBase · React 18 · Babel · Gemini AI · Telegram · EmailJS  
 **Live URL:** https://siteshrimp.pages.dev  
 **GitHub:** Private repository  
 
@@ -19,7 +19,7 @@
 8. [Firestore Security Rules](#8-firestore-security-rules)
 9. [Features Reference](#9-features-reference)
 10. [Integrations Setup](#10-integrations-setup)
-11. [PWA Installation](#11-pwa-installation)
+11. [App Installation](#11-app-installation)
 12. [Deployment](#12-deployment)
 13. [Known Limitations & Notes](#13-known-limitations--notes)
 14. [Firestore Index Required](#14-firestore-index-required)
@@ -50,12 +50,12 @@ SiteShrimp is a mobile-first Progressive Web App for construction site defect tr
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    USER'S PHONE (PWA)                       │
+│                    USER'S PHONE (SiteShrimp)                │
 │                                                             │
 │  index.html (shell)                                         │
 │    └── js/app.js (all React components via Babel)          │
 │    └── sw.js (service worker — offline cache)              │
-│    └── manifest.json (installable PWA config)              │
+│    └── manifest.json (installable app config)              │
 └──────────────────────┬──────────────────────────────────────┘
                        │
           ┌────────────┼──────────────────┐
@@ -84,11 +84,11 @@ SiteShrimp is a mobile-first Progressive Web App for construction site defect tr
 ## 3. File Structure
 
 ```
-PWA/
+SiteShrimp/
 ├── index.html          ← HTML shell: loads Firebase, React, Babel, EmailJS, calls js/app.js
 ├── js/
 │   └── app.js          ← All React components, business logic, Firestore operations (92KB)
-├── manifest.json       ← PWA install config (name, icons, theme colour)
+├── manifest.json       ← App install config (name, icons, theme colour)
 ├── sw.js               ← Service worker: caches app shell, enables offline
 ├── icons/
 │   ├── icon-192.svg    ← App icon (home screen, splash)
@@ -482,7 +482,7 @@ See Section 4 Step 5 for the complete rules.
 
 ---
 
-## 11. PWA Installation
+## 11. App Installation
 
 ### Android (Chrome)
 1. Open app URL in Chrome

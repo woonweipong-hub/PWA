@@ -2,7 +2,7 @@
 
 **Snap. Speak. Done.**
 
-A mobile-first PWA for construction site defect tracking with AI photo analysis, real-time sync, Telegram notifications, and multi-tenant team management. No app store needed — open the link, add to home screen, start reporting.
+A mobile-first app for construction site tracking with AI photo analysis, real-time sync, Telegram notifications, and multi-tenant team management. No app store needed — open the link, add to home screen, start reporting.
 
 **Live:** https://siteshrimp.pages.dev
 
@@ -46,14 +46,14 @@ A mobile-first PWA for construction site defect tracking with AI photo analysis,
 | **Offline Support** | App shell cached, works without internet |
 | **Comments** | Team discussion thread on each defect |
 | **Status Tracking** | Open > In Progress > Closed workflow |
-| **Installable PWA** | Add to home screen, works like native app |
+| **Installable App** | Add to home screen, works like native app |
 
 ---
 
 ## Architecture
 
 ```
-Phone (PWA)                     Cloud Services (all free tier)
+Phone (SiteShrimp)              Cloud Services (all free tier)
 +------------------+            +---------------------------+
 |  React 18 (JSX)  |            |  Firebase                 |
 |  Babel (browser)  |---------->|    Auth (email/password)   |
@@ -190,10 +190,10 @@ companies/{companyId}/
 ## File Structure
 
 ```
-PWA/
-  index.html              # App shell: Firebase, React, Babel, EmailJS
+SiteShrimp/
+  index.html              # App shell: React, Babel, PocketBase, EmailJS
   js/app.js               # All React components + business logic
-  manifest.json           # PWA install config
+  manifest.json           # Install config
   sw.js                   # Service worker (offline cache)
   icons/
     icon-192.svg          # App icon

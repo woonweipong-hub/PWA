@@ -1,4 +1,4 @@
-// Enhanced Google Apps Script for SiteShrimp PWA
+// Enhanced Google Apps Script for SiteShrimp
 // Deploy: Extensions > Apps Script > Deploy > Web app > Anyone > Deploy
 //
 // QUICK SETUP (run once in Apps Script editor):
@@ -178,7 +178,7 @@ function getGeminiKey(data) {
   return key || "";
 }
 
-// ====== REMOTE CONFIGURE (called from PWA setup) ======
+// ====== REMOTE CONFIGURE (called from SiteShrimp setup) ======
 
 function handleConfigure(data) {
   var changes = [];

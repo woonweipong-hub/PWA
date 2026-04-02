@@ -1,5 +1,5 @@
 // SiteShrimp v2 — Multi-tenant Construction Site Tracker
-// Features: Auth, Companies, Projects, Roles, AI, Telegram, Email, PWA
+// Features: Auth, Companies, Projects, Roles, AI, Telegram, Email
 // Constants loaded from js/constants.js (SEVERITY, STATUS, ROLES, ENTRY_TYPES, etc.)
 const {useState,useEffect,useRef,useCallback}=React;
 

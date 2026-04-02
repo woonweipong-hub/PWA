@@ -1,4 +1,4 @@
-// Enhanced Google Apps Script for SiteShrimp PWA
+// Enhanced Google Apps Script for SiteShrimp
 // Deploy: Extensions > Apps Script > Deploy > Web app > Anyone > Deploy
 //
 // SETUP:
