@@ -263,6 +263,46 @@ const DEFAULT_SUBZONES = [
   "Meeting Room", "Office", "Reception"
 ];
 
+// ── Cost Impact ──────────────────────────────────────────────────
+const COST_IMPACT_OPTIONS = [
+  "No change",
+  "To be confirmed by QS",
+  "Variation Order (VO)",
+  "Back charge to Contractor",
+  "Back charge to Sub-Con",
+  "Client to bear",
+  "Shared cost",
+  "Insurance claim",
+  "Warranty claim",
+  "Other",
+];
+
+const COST_RESPONSIBLE_OPTIONS = [
+  "Main Contractor",
+  "Sub-Contractor",
+  "Client / Owner",
+  "Architect",
+  "Engineer",
+  "Developer",
+  "Shared",
+  "TBD",
+  "Other",
+];
+
+// ── Time / Duration ──────────────────────────────────────────────
+const DURATION_OPTIONS = [
+  "Same day",
+  "1 day",
+  "2 days",
+  "3 days",
+  "1 week",
+  "2 weeks",
+  "1 month",
+  "2 months",
+  "3 months",
+  "TBD",
+];
+
 // ── Report Pack Defaults ─────────────────────────────────────────
 const REPORT_SECTIONS = [
   { id: "summary", label: "Site Visit Summary", default: true },
