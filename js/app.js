@@ -308,18 +308,20 @@ function ServerUrlConfig(){
 }
 
 // ── Screen: Auth (with intro + install prompt) ───────────────────
-function AuthScreen({onAuth}){
+function AuthScreen({onAuth,onFullSetup}){
   const[page,setPage]=useState("intro"); // "intro" or "auth"
-  const[mode,setMode]=useState("login");
+  const[mode,setMode]=useState("login"); // "login" or "register"
+  const[joinMode,setJoinMode]=useState(false); // register: false=create company, true=join with invite
   const[email,setEmail]=useState("");const[pw,setPw]=useState("");const[name,setName]=useState("");
-  const[err,setErr]=useState("");const[loading,setLoading]=useState(false);
+  const[cName,setCName]=useState("");const[jobTitle,setJobTitle]=useState(JOB_TITLES[0]);const[customTitle,setCustomTitle]=useState("");
+  const[code,setCode]=useState("");
+  const[err,setErr]=useState("");const[loading,setLoading]=useState(false);const[step,setStep]=useState("");
   const[installable,setInstallable]=useState(!!_deferredInstallPrompt);
   const inv=new URLSearchParams(window.location.search).get("invite")||"";
 
-  // Skip intro if invite link
-  useEffect(()=>{if(inv)setPage("auth");},[]);
+  // Auto-setup for invite links
+  useEffect(()=>{if(inv){setPage("auth");setMode("register");setJoinMode(true);setCode(inv);}},[]);
 
-  // Watch for install prompt becoming available
   useEffect(()=>{
     const check=()=>setInstallable(!!_deferredInstallPrompt);
     window.addEventListener("beforeinstallprompt",check);
@@ -335,25 +337,71 @@ function AuthScreen({onAuth}){
   };
 
   const submit=async()=>{
-    if(!email.trim()||!pw.trim()||(mode==="register"&&!name.trim()))return;
-    setLoading(true);setErr("");
-    try{
-      if(mode==="login"){
+    // ── Login ──
+    if(mode==="login"){
+      if(!email.trim()||!pw.trim())return;
+      setLoading(true);setErr("");setStep("Logging in...");
+      try{
         const c=await DB.auth.login(email.trim(),pw);
         onAuth(c.user,null,inv);
+      }catch(e){
+        setErr(e.message||"Something went wrong. Please try again.");
+      }
+      setLoading(false);setStep("");
+      return;
+    }
+
+    // ── Register + setup in one go ──
+    if(!name.trim()||!email.trim()||!pw.trim()){setErr("Please fill in name, email and password.");return;}
+    if(!joinMode&&!cName.trim()){setErr("Please enter your company name.");return;}
+    if(joinMode&&!code.trim()){setErr("Please enter your invite code.");return;}
+
+    setLoading(true);setErr("");
+    try{
+      // Step 1: Register
+      setStep("Creating account...");
+      const c=await DB.auth.register(email.trim(),pw,name.trim());
+      const user=c.user;
+
+      if(joinMode){
+        // Step 2a: Join existing company via invite
+        setStep("Joining company...");
+        const parts=code.trim().split(":");
+        if(parts.length!==2)throw new Error("Invalid invite code format — should be companyId:code");
+        const[companyId,invCode]=parts;
+        const invite=await DB.invites.getFirst(`companyId="${companyId}" && code="${invCode}"`);
+        if(!invite)throw new Error("Invite not found or expired.");
+        if(invite.usedBy)throw new Error("This invite has already been used.");
+        if(invite.expiresAt&&new Date(invite.expiresAt)<new Date())throw new Error("Invite has expired.");
+        await DB.members.create({
+          companyId,userId:user.id,name:user.name||user.email,email:user.email,
+          role:invite.role,jobTitle:invite.jobTitle||JOB_TITLES[0],
+          joinedAt:DB.serverTimestamp()
+        });
+        await DB.invites.update(invite.id,{usedBy:user.id,usedAt:DB.serverTimestamp()});
+        const compDoc=await DB.companies.get(companyId);
+        const projs=await DB.projects.list(`companyId="${companyId}"`);
+        const proj=projs.length?{id:projs[0].id,name:projs[0].name}:null;
+        const cd={companyId,companyName:compDoc.name};
+        onFullSetup(user,cd,proj);
       }else{
-        const c=await DB.auth.register(email.trim(),pw,name.trim());
-        onAuth(c.user,name.trim(),inv);
+        // Step 2b: Create new company
+        setStep("Setting up workspace...");
+        const finalTitle=jobTitle==="Other"?customTitle.trim()||"Other":jobTitle;
+        const result=await DB.createCompany(cName.trim(),user.id,user.email,name.trim(),finalTitle);
+        const cd={companyId:result.company.id,companyName:cName.trim()};
+        const proj={id:result.project.id,name:"Default Project"};
+        onFullSetup(user,cd,proj);
       }
     }catch(e){
       const msg=e.message||"";
-      if(mode==="register"&&msg.includes("must be unique")){
+      if(msg.includes("must be unique")){
         setErr("This email is already registered. Switch to LOGIN instead.");
       }else{
         setErr(msg||"Something went wrong. Please try again.");
       }
     }
-    setLoading(false);
+    setLoading(false);setStep("");
   };
 
   const resetPw=async()=>{
@@ -372,7 +420,6 @@ function AuthScreen({onAuth}){
           Construction site works, defects and items<br/>tracking and monitoring for teams that deliver.
         </div>
 
-        {/* Feature highlights */}
         <div style={{textAlign:"left",marginBottom:32}}>
           {[
             ["📷","Snap photos, AI describes the defect"],
@@ -412,7 +459,7 @@ function AuthScreen({onAuth}){
     </div>
   );
 
-  // ── Login / Register page ──
+  // ── Login / Register page (consolidated) ──
   return(
     <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center",padding:28}}>
       <div style={{width:"100%",maxWidth:400}}>
@@ -423,19 +470,46 @@ function AuthScreen({onAuth}){
             <div style={{color:"rgba(255,255,255,0.4)",fontSize:12}}>Construction Site Tracker</div>
           </div>
         </div>
-        {inv&&<div style={{background:"rgba(0,229,100,0.1)",border:"1px solid rgba(0,229,100,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:"#00e564"}}>Team invite detected — {mode==="register"?"register":"login"} to join</div>}
+
+        {/* Mode tabs */}
         <div style={{display:"flex",gap:8,marginBottom:20}}>
           {["login","register"].map(m=>(
-            <button key={m} onClick={()=>{setMode(m);setErr("");}} style={{flex:1,background:mode===m?"#ff6b00":"rgba(255,255,255,0.07)",border:"none",borderRadius:10,padding:"11px",color:mode===m?"#fff":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>{m==="login"?"LOGIN":"SIGN UP"}</button>
+            <button key={m} onClick={()=>{setMode(m);setErr("");setStep("");}} style={{flex:1,background:mode===m?"#ff6b00":"rgba(255,255,255,0.07)",border:"none",borderRadius:10,padding:"11px",color:mode===m?"#fff":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>{m==="login"?"LOGIN":"SIGN UP"}</button>
           ))}
         </div>
+
+        {/* Name — register only */}
         {mode==="register"&&<div style={{marginBottom:12}}><label style={lbl("#fff")}>FULL NAME</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="Your full name" style={darkInp}/></div>}
+
+        {/* Email + Password — always */}
         <div style={{marginBottom:12}}><label style={lbl("#fff")}>EMAIL</label><input value={email} onChange={e=>setEmail(e.target.value)} placeholder="email@example.com" type="email" style={darkInp}/></div>
-        <div style={{marginBottom:16}}><label style={lbl("#fff")}>PASSWORD</label><input value={pw} onChange={e=>setPw(e.target.value)} placeholder={mode==="register"?"Min 8 characters":"Password"} type="password" style={darkInp}/></div>
-        {err&&<div style={{background:err.startsWith("✓")||err.startsWith("Reset")?"rgba(0,229,100,0.1)":"rgba(255,59,48,0.12)",border:`1px solid ${err.startsWith("✓")||err.startsWith("Reset")?"rgba(0,229,100,0.3)":"rgba(255,59,48,0.3)"}`,borderRadius:10,padding:"10px 14px",marginBottom:14,color:err.startsWith("✓")||err.startsWith("Reset")?"#00e564":"#ff6b6b",fontSize:13,whiteSpace:"pre-line"}}>{err}</div>}
+        <div style={{marginBottom:mode==="register"?12:16}}><label style={lbl("#fff")}>PASSWORD</label><input value={pw} onChange={e=>setPw(e.target.value)} placeholder={mode==="register"?"Min 8 characters":"Password"} type="password" style={darkInp}/></div>
+
+        {/* Company setup — register only */}
+        {mode==="register"&&<>
+          <div style={{height:1,background:"rgba(255,255,255,0.08)",margin:"8px 0 16px"}}/>
+          <div style={{display:"flex",gap:6,marginBottom:14}}>
+            {[["create","NEW COMPANY"],["join","HAVE INVITE"]].map(([m,l])=>(
+              <button key={m} onClick={()=>{setJoinMode(m==="join");setErr("");}} style={{flex:1,background:(joinMode?m==="join":m==="create")?"rgba(255,107,0,0.15)":"rgba(255,255,255,0.04)",border:`1px solid ${(joinMode?m==="join":m==="create")?"rgba(255,107,0,0.3)":"rgba(255,255,255,0.08)"}`,borderRadius:8,padding:"9px",color:(joinMode?m==="join":m==="create")?"#ff6b00":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",letterSpacing:"0.04em"}}>{l}</button>
+            ))}
+          </div>
+          {!joinMode&&<>
+            <div style={{marginBottom:12}}><label style={lbl("#fff")}>COMPANY / ORGANISATION</label><input value={cName} onChange={e=>setCName(e.target.value)} placeholder="e.g. ABC Construction Sdn Bhd" style={darkInp}/></div>
+            <div style={{marginBottom:jobTitle==="Other"?8:12}}><label style={lbl("#fff")}>YOUR ROLE</label><select value={jobTitle} onChange={e=>setJobTitle(e.target.value)} style={{...darkInp,appearance:"none"}}>{JOB_TITLES.map(t=><option key={t} style={{background:"#222"}}>{t}</option>)}</select></div>
+            {jobTitle==="Other"&&<div style={{marginBottom:12}}><input value={customTitle} onChange={e=>setCustomTitle(e.target.value)} placeholder="Enter your role / job title" style={darkInp}/></div>}
+            <div style={{background:"rgba(255,107,0,0.08)",borderRadius:8,padding:"8px 12px",marginBottom:14,fontSize:11,color:"rgba(255,255,255,0.5)"}}>You'll be the <b style={{color:"#ff6b00"}}>Admin</b>. Invite your team after setup.</div>
+          </>}
+          {joinMode&&<div style={{marginBottom:14}}><label style={lbl("#fff")}>INVITE CODE</label><input value={code} onChange={e=>setCode(e.target.value)} placeholder="Paste your invite code here" style={darkInp}/><div style={{color:"rgba(255,255,255,0.3)",fontSize:11,marginTop:4}}>Your admin will share this code with you</div></div>}
+        </>}
+
+        {/* Error / success messages */}
+        {err&&<div style={{background:err.startsWith("Reset")?"rgba(0,229,100,0.1)":"rgba(255,59,48,0.12)",border:`1px solid ${err.startsWith("Reset")?"rgba(0,229,100,0.3)":"rgba(255,59,48,0.3)"}`,borderRadius:10,padding:"10px 14px",marginBottom:14,color:err.startsWith("Reset")?"#00e564":"#ff6b6b",fontSize:13,whiteSpace:"pre-line"}}>{err}</div>}
+
+        {/* Submit button */}
         <button onClick={submit} disabled={loading} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:10,padding:"15px",color:"#fff",fontSize:15,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:10,opacity:loading?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-          {loading?<Spin size={16}/>:null}{loading?"CONNECTING...":mode==="login"?"LOGIN":"SIGN UP"}
+          {loading?<Spin size={16}/>:null}{loading?(step||"CONNECTING..."):mode==="login"?"LOGIN":joinMode?"SIGN UP & JOIN":"SIGN UP & CREATE"}
         </button>
+
         {mode==="login"&&<button onClick={resetPw} style={{width:"100%",background:"none",border:"none",color:"rgba(255,255,255,0.3)",fontSize:13,cursor:"pointer",padding:"8px"}}>Forgot password?</button>}
 
         <ServerUrlConfig/>
@@ -449,85 +523,6 @@ function AuthScreen({onAuth}){
     </div>
   );
 }
-
-// ── Screen: Company Setup ─────────────────────────────────────────
-function CompanySetupScreen({user,inviteCode,onDone}){
-  const[mode,setMode]=useState(inviteCode?"join":"create");
-  const[cName,setCName]=useState("");const[jobTitle,setJobTitle]=useState(JOB_TITLES[0]);const[customTitle,setCustomTitle]=useState("");
-  const[code,setCode]=useState(inviteCode||"");
-  const[loading,setLoading]=useState(false);const[err,setErr]=useState("");
-
-  const create=async()=>{
-    if(!cName.trim())return;
-    setLoading(true);setErr("");
-    try{
-      const finalTitle=jobTitle==="Other"?customTitle.trim()||"Other":jobTitle;
-      const result=await DB.createCompany(cName.trim(),user.id,user.email,user.name||user.email,finalTitle);
-      const cd={companyId:result.company.id,companyName:cName.trim()};
-      const proj={id:result.project.id,name:"Default Project"};
-      local.set(COMPANY_KEY,cd);local.set(PROJECT_KEY,proj);
-      onDone(cd,proj);
-    }catch(e){setErr(e.message);}
-    setLoading(false);
-  };
-
-  const join=async()=>{
-    if(!code.trim())return;
-    setLoading(true);setErr("");
-    try{
-      const parts=code.trim().split(":");
-      if(parts.length!==2)throw new Error("Invalid invite code format — should be companyId:code");
-      const[companyId,invCode]=parts;
-      const invite=await DB.invites.getFirst(`companyId="${companyId}" && code="${invCode}"`);
-      if(!invite)throw new Error("Invite not found or expired.");
-      if(invite.usedBy)throw new Error("This invite has already been used.");
-      if(invite.expiresAt&&new Date(invite.expiresAt)<new Date())throw new Error("Invite has expired.");
-      await DB.members.create({
-        companyId,userId:user.id,name:user.name||user.email,email:user.email,
-        role:invite.role,jobTitle:invite.jobTitle||JOB_TITLES[0],
-        joinedAt:DB.serverTimestamp()
-      });
-      await DB.invites.update(invite.id,{usedBy:user.id,usedAt:DB.serverTimestamp()});
-      const compDoc=await DB.companies.get(companyId);
-      const projs=await DB.projects.list(`companyId="${companyId}"`);
-      const proj=projs.length?{id:projs[0].id,name:projs[0].name}:{id:"default",name:"Default"};
-      const cd={companyId,companyName:compDoc.name};
-      local.set(COMPANY_KEY,cd);local.set(PROJECT_KEY,proj);
-      onDone(cd,proj);
-    }catch(e){setErr(e.message);}
-    setLoading(false);
-  };
-
-  return(
-    <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center",padding:28}}>
-      <div style={{width:"100%",maxWidth:400}}>
-        <div style={{background:"#ff6b00",width:48,height:6,borderRadius:3,marginBottom:20}}/>
-        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#fff",marginBottom:4}}>SETUP WORKSPACE</div>
-        <div style={{color:"rgba(255,255,255,0.4)",fontSize:12,marginBottom:20}}>{user.email}</div>
-        <div style={{display:"flex",gap:8,marginBottom:20}}>
-          {[["create","Create Company"],["join","Join with Invite"]].map(([m,l])=>(
-            <button key={m} onClick={()=>{setMode(m);setErr("");}} style={{flex:1,background:mode===m?"#ff6b00":"rgba(255,255,255,0.07)",border:"none",borderRadius:10,padding:"11px",color:mode===m?"#fff":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{l.toUpperCase()}</button>
-          ))}
-        </div>
-        {mode==="create"&&<>
-          <div style={{marginBottom:12}}><label style={lbl("#fff")}>COMPANY / ORGANISATION NAME</label><input value={cName} onChange={e=>setCName(e.target.value)} placeholder="e.g. ABC Construction Sdn Bhd" style={darkInp}/></div>
-          <div style={{marginBottom:jobTitle==="Other"?8:20}}><label style={lbl("#fff")}>YOUR ROLE</label><select value={jobTitle} onChange={e=>setJobTitle(e.target.value)} style={{...darkInp,appearance:"none"}}>{JOB_TITLES.map(t=><option key={t} style={{background:"#222"}}>{t}</option>)}</select></div>
-          {jobTitle==="Other"&&<div style={{marginBottom:20}}><input value={customTitle} onChange={e=>setCustomTitle(e.target.value)} placeholder="Enter your role / job title" style={darkInp}/></div>}
-          <div style={{background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:"rgba(255,255,255,0.6)"}}>You will be the <b style={{color:"#ff6b00"}}>Admin</b>. Invite your team after setup.</div>
-          <button onClick={create} disabled={loading||!cName.trim()} style={{width:"100%",background:cName.trim()?"#ff6b00":"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"15px",color:"#fff",fontSize:15,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",opacity:loading?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-            {loading?<Spin size={16}/>:null}{loading?"CREATING...":"CREATE COMPANY →"}
-          </button>
-        </>}
-        {mode==="join"&&<>
-          <div style={{marginBottom:20}}><label style={lbl("#fff")}>INVITE CODE</label><input value={code} onChange={e=>setCode(e.target.value)} placeholder="Paste your invite code here" style={darkInp}/><div style={{color:"rgba(255,255,255,0.3)",fontSize:11,marginTop:6}}>Your admin will share this invite link/code with you</div></div>
-          <button onClick={join} disabled={loading||!code.trim()} style={{width:"100%",background:code.trim()?"#ff6b00":"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"15px",color:"#fff",fontSize:15,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",opacity:loading?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-            {loading?<Spin size={16}/>:null}{loading?"JOINING...":"JOIN COMPANY →"}
-          </button>
-        </>}
-        {err&&<div style={{background:"rgba(255,59,48,0.12)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"10px 14px",marginTop:14,color:"#ff6b6b",fontSize:13}}>{err}</div>}
-        <button onClick={()=>DB.auth.signOut()} style={{width:"100%",background:"none",border:"none",color:"rgba(255,255,255,0.2)",fontSize:13,cursor:"pointer",padding:"16px 8px",marginTop:8}}>← Sign out</button>
-      </div>
-    </div>
   );
 }
 
@@ -1620,6 +1615,13 @@ function App(){
 
   const handleAuth=(user,name,inv)=>{setAuthUser(user);if(inv)setInviteCode(inv);};
 
+  // Called when register + company setup completes in one step
+  const handleFullSetup=(user,cd,proj)=>{
+    setAuthUser(user);
+    local.set(COMPANY_KEY,cd);setCompany(cd);
+    if(proj){local.set(PROJECT_KEY,proj);setCurrentProject(proj);}
+  };
+
   const handleCompanyDone=(cd,proj)=>{
     local.set(COMPANY_KEY,cd);
     setCompany(cd);
@@ -1676,7 +1678,7 @@ function App(){
   );
 
   // Auth check
-  if(!authUser)return <AuthScreen onAuth={handleAuth}/>;
+  if(!authUser)return <AuthScreen onAuth={handleAuth} onFullSetup={handleFullSetup}/>;
   if(!company)return <CompanySetupScreen user={authUser} inviteCode={inviteCode} onDone={handleCompanyDone}/>;
   if(!member)return(
     <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center"}}>
