@@ -316,7 +316,7 @@ function AuthScreen({onAuth,onFullSetup}){
   const[email,setEmail]=useState("");const[pw,setPw]=useState("");const[name,setName]=useState("");
   const[cName,setCName]=useState("");
   const[code,setCode]=useState("");const[showInvite,setShowInvite]=useState(false);
-  const[err,setErr]=useState("");const[loading,setLoading]=useState(false);const[step,setStep]=useState("");
+  const[err,setErr]=useState("");const[loading,setLoading]=useState(false);const[step,setStep]=useState("");const[showPw,setShowPw]=useState(false);
   const[installable,setInstallable]=useState(!!_deferredInstallPrompt);
   const inv=new URLSearchParams(window.location.search).get("invite")||"";
 
@@ -521,7 +521,7 @@ function AuthScreen({onAuth,onFullSetup}){
 
         {mode==="register"&&<div style={{marginBottom:12}}><label style={lbl("#fff")}>NAME</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="Your name" style={darkInp}/></div>}
         <div style={{marginBottom:12}}><label style={lbl("#fff")}>EMAIL</label><input value={email} onChange={e=>setEmail(e.target.value)} placeholder="email@example.com" type="email" style={darkInp}/></div>
-        <div style={{marginBottom:mode==="register"?12:16}}><label style={lbl("#fff")}>PASSWORD</label><input value={pw} onChange={e=>setPw(e.target.value)} placeholder={mode==="register"?"Min 8 characters":"Password"} type="password" style={darkInp}/></div>
+        <div style={{marginBottom:mode==="register"?12:16}}><label style={lbl("#fff")}>PASSWORD</label><div style={{position:"relative"}}><input value={pw} onChange={e=>setPw(e.target.value)} placeholder={mode==="register"?"Min 8 characters":"Password"} type={showPw?"text":"password"} style={{...darkInp,paddingRight:44}}/><button type="button" onClick={()=>setShowPw(!showPw)} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",padding:6,color:"rgba(255,255,255,0.4)",fontSize:16}}>{showPw?<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>:<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" strokeWidth="1.5"/><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5"/></svg>}</button></div></div>
         {mode==="register"&&!showInvite&&<div style={{marginBottom:12}}><label style={lbl("#fff")}>COMPANY NAME</label><input value={cName} onChange={e=>setCName(e.target.value)} placeholder="Your company or organisation" style={darkInp}/></div>}
         {mode==="register"&&showInvite&&<div style={{marginBottom:12}}><label style={lbl("#fff")}>INVITE CODE</label><input value={code} onChange={e=>setCode(e.target.value)} placeholder="Paste invite code from your admin" style={darkInp}/></div>}
         {mode==="register"&&!inv&&<button onClick={()=>{setShowInvite(!showInvite);setErr("");}} style={{background:"none",border:"none",color:"rgba(255,255,255,0.25)",fontSize:11,cursor:"pointer",padding:"0 0 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{showInvite?"← Creating a new company":"Have an invite code?"}</button>}
