@@ -2,10 +2,8 @@
 # SiteShrimp — PocketBase Setup Script
 # Run on your GCP VM (or any Linux server) to set up the backend
 #
-# Usage:
-#   curl -sL https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/deploy/pocketbase/setup.sh | bash
-#   OR
-#   chmod +x setup.sh && ./setup.sh
+# Usage (from cloned repo):
+#   chmod +x deploy/pocketbase/setup.sh && ./deploy/pocketbase/setup.sh
 #
 # What this does:
 #   1. Downloads PocketBase (single binary, ~30MB)
