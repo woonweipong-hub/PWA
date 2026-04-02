@@ -205,7 +205,8 @@ function VoiceField({label,value,onChange,placeholder,multiline}){
 function ComboField({label,value,onChange,options,placeholder,grouped}){
   const[custom,setCustom]=useState(false);
   const[search,setSearch]=useState("");
-  const isCustom=custom||(!options.includes(value)&&value);
+  const allOpts=grouped?Object.values(grouped).flat():options||[];
+  const isCustom=custom||(!allOpts.includes(value)&&value);
 
   if(isCustom)return(
     <div style={{marginBottom:16}}>
@@ -236,7 +237,7 @@ function ComboField({label,value,onChange,options,placeholder,grouped}){
             <div key={group}>
               <div style={{padding:"6px 12px",background:"rgba(0,0,0,0.04)",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",position:"sticky",top:0}}>{group.toUpperCase()}</div>
               {items.map(it=>(
-                <div key={it} onClick={()=>{onChange(it);setSearch("");}} style={{padding:"10px 12px",cursor:"pointer",background:value===it?"rgba(255,107,0,0.08)":"#fff",borderBottom:"1px solid rgba(0,0,0,0.04)",fontSize:14,color:value===it?"#ff6b00":"#1a1a1a",fontWeight:value===it?700:400}}>
+                <div key={it} onClick={()=>{if(it==="Other"||it==="General"){setCustom(true);onChange("");}else{onChange(it);}setSearch("");}} style={{padding:"10px 12px",cursor:"pointer",background:value===it?"rgba(255,107,0,0.08)":"#fff",borderBottom:"1px solid rgba(0,0,0,0.04)",fontSize:14,color:value===it?"#ff6b00":"#1a1a1a",fontWeight:value===it?700:400}}>
                   {it}
                 </div>
               ))}
@@ -254,7 +255,7 @@ function ComboField({label,value,onChange,options,placeholder,grouped}){
       <label style={lbl()}>{label}</label>
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:6}}>
         {options.map(opt=>(
-          <button key={opt} onClick={()=>onChange(opt)} style={{padding:"8px 12px",borderRadius:20,border:`1.5px solid ${value===opt?"#ff6b00":"rgba(0,0,0,0.12)"}`,background:value===opt?"rgba(255,107,0,0.08)":"#fff",color:value===opt?"#ff6b00":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,fontSize:12,cursor:"pointer"}}>{opt}</button>
+          <button key={opt} onClick={()=>{if(opt==="Other"||opt==="General"){setCustom(true);onChange("");}else onChange(opt);}} style={{padding:"8px 12px",borderRadius:20,border:`1.5px solid ${value===opt?"#ff6b00":"rgba(0,0,0,0.12)"}`,background:value===opt?"rgba(255,107,0,0.08)":"#fff",color:value===opt?"#ff6b00":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,fontSize:12,cursor:"pointer"}}>{opt}</button>
         ))}
       </div>
       <button onClick={()=>setCustom(true)} style={{background:"none",border:"none",fontSize:11,color:"rgba(255,107,0,0.7)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:"4px 0"}}>+ Type custom value</button>
