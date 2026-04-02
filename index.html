@@ -38,7 +38,7 @@ input,textarea,select{outline:none;font-family:'Barlow',sans-serif;}
 <div id="root"></div>
 <script>
 // PocketBase backend URL
-const PB_URL = localStorage.getItem('pb_url') || 'https://siteshrimp.duckdns.org';
+const PB_URL = localStorage.getItem('pb_url') || 'https://api.siteshrimp.org';
 // Service worker
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));

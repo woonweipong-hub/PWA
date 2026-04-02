@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://siteshrimp.pages.dev">siteshrimp.pages.dev</a> · Free for all teams · No app store needed
+  <a href="https://siteshrimp.org">siteshrimp.org</a> · Free for all teams · No app store needed
 </p>
 
 ---
@@ -18,7 +18,7 @@
 
 ### For site workers (30 seconds)
 
-1. Open **https://siteshrimp.pages.dev** on your phone
+1. Open **https://siteshrimp.org** on your phone
 2. Tap **INSTALL APP** (or Add to Home Screen)
 3. Sign up with email, join or create a company
 4. Start logging
@@ -68,17 +68,17 @@
 Phone (SiteShrimp)              Cloud Services (all free tier)
 +------------------+            +---------------------------+
 |  React 18 (JSX)  |            |  PocketBase               |
-|  Babel (browser)  |---------->|    Auth (email/password)   |
-|  Service Worker  |            |    Database + File storage |
+|  Babel (browser) |----------->|    Auth (email/password)  |
+|  Service Worker  |            |    Database + File storage|
 +------------------+            +---------------------------+
-       |                        |  Google Gemini AI          |
-       |  Photo + Voice ------->|    (photo analysis)        |
+       |                        |  Google Gemini AI         |
+       |  Photo + Voice ------->|    (photo analysis)       |
        |                        +---------------------------+
-       |                        |  Telegram Bot API          |
-       |  Notifications ------->|    (team alerts)           |
+       |                        |  Telegram Bot API         |
+       |  Notifications ------->|    (team alerts)          |
        |                        +---------------------------+
-       |                        |  EmailJS                   |
-       +--- Email reports ----->|    (HTML reports)          |
+       |                        |  EmailJS                  |
+       +--- Email reports ----->|    (HTML reports)         |
                                 +---------------------------+
 ```
 
@@ -97,7 +97,7 @@ Phone (SiteShrimp)              Cloud Services (all free tier)
 | Voice | Web Speech API | Free (browser built-in) |
 | Notifications | Telegram Bot API | Free |
 | Email | EmailJS | Free (200/month) |
-| Hosting | Cloudflare Pages | Free |
+| Hosting | GitHub Pages | Free |
 | **Total** | | **$0/month** |
 
 ---
@@ -186,7 +186,7 @@ SiteShrimp/
 
 ## Deployment
 
-The app is deployed automatically via Cloudflare Pages. Push to `main` and the site updates.
+The app is deployed automatically via GitHub Pages (see `.github/workflows/deploy.yml`). Push to `main` and the site updates.
 
 **Backend:** PocketBase runs on a GCP VM with Caddy for HTTPS.
 

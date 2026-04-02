@@ -2,7 +2,8 @@
 
 **Version:** 2.0  
 **Stack:** PocketBase · React 18 · Babel · Gemini AI · Telegram · EmailJS  
-**Live URL:** https://siteshrimp.pages.dev  
+**Live URL:** https://siteshrimp.org  
+**PocketBase URL:** https://api.siteshrimp.org  
 **GitHub:** Private repository  
 
 ---
@@ -12,18 +13,17 @@
 1. [Overview](#1-overview)
 2. [Architecture](#2-architecture)
 3. [File Structure](#3-file-structure)
-4. [Firebase Setup](#4-firebase-setup)
+4. [PocketBase Setup](#4-pocketbase-setup)
 5. [User Flows](#5-user-flows)
 6. [Role & Permission System](#6-role--permission-system)
 7. [Multi-Tenant Data Model](#7-multi-tenant-data-model)
-8. [Firestore Security Rules](#8-firestore-security-rules)
+8. [PocketBase API Rules](#8-pocketbase-api-rules)
 9. [Features Reference](#9-features-reference)
 10. [Integrations Setup](#10-integrations-setup)
 11. [App Installation](#11-app-installation)
 12. [Deployment](#12-deployment)
 13. [Known Limitations & Notes](#13-known-limitations--notes)
-14. [Firestore Index Required](#14-firestore-index-required)
-15. [Future Roadmap](#15-future-roadmap)
+14. [Future Roadmap](#14-future-roadmap)
 
 ---
 
@@ -32,11 +32,11 @@
 SiteShrimp is a mobile-first Progressive Web App for construction site defect tracking. It supports multiple companies, each with their own isolated data, users, projects, and access control. No native app store installation required — users add it to their home screen directly from the browser.
 
 ### Key Capabilities
-- **Real-time sync** — All team members see defect updates instantly via Firebase Firestore
+- **Real-time sync** — All team members see defect updates instantly via PocketBase SSE (Server-Sent Events)
 - **Multi-tenant** — Each company has completely isolated data; companies cannot see each other
 - **Role-based access** — Admin, Manager, Inspector, Viewer with different permissions
 - **Multi-project** — Each company manages multiple construction projects
-- **AI photo analysis** — Google Gemini auto-fills defect title, severity, description from photos
+- **AI photo analysis** — Google Gemini auto-fills defect title, severity, description from photos (client-side + server-side hooks)
 - **Voice input** — Speak to fill any text field
 - **Telegram notifications** — New defects and status changes sent to team group with photo
 - **Email reports** — Filtered HTML report sent to multiple recipients via EmailJS
@@ -54,6 +54,8 @@ SiteShrimp is a mobile-first Progressive Web App for construction site defect tr
 │                                                             │
 │  index.html (shell)                                         │
 │    └── js/app.js (all React components via Babel)          │
+│    └── js/db.js (PocketBase data layer)                    │
+│    └── js/constants.js (config, roles, localStorage keys)  │
 │    └── sw.js (service worker — offline cache)              │
 │    └── manifest.json (installable app config)              │
 └──────────────────────┬──────────────────────────────────────┘
@@ -61,9 +63,10 @@ SiteShrimp is a mobile-first Progressive Web App for construction site defect tr
           ┌────────────┼──────────────────┐
           │            │                  │
    ┌──────▼──────┐  ┌──▼─────────┐  ┌───▼──────────────┐
-   │  Firebase   │  │  Telegram  │  │  Google Gemini   │
+   │ PocketBase  │  │  Telegram  │  │  Google Gemini   │
    │  Auth +     │  │  Bot API   │  │  Vision AI API   │
-   │  Firestore  │  │            │  │  (photo analysis)│
+   │  Database   │  │            │  │  (photo analysis)│
+   │  + SSE      │  │            │  │                  │
    └─────────────┘  └────────────┘  └──────────────────┘
           │
    ┌──────▼──────┐
@@ -73,10 +76,11 @@ SiteShrimp is a mobile-first Progressive Web App for construction site defect tr
 ```
 
 ### Design Decisions
-- **Single HTML file + one JS file** — No build step, deployable anywhere, easy to update
+- **Single HTML file + JS files** — No build step, deployable anywhere, easy to update
 - **Babel standalone** — JSX compiled in-browser; acceptable for this scale
-- **Firebase free tier** — 50K reads/20K writes per day; sufficient for most site teams
-- **Each company = own Firebase subcollection** — Full data isolation without separate Firebase projects
+- **PocketBase** — Self-hosted backend on a VM (DuckDNS domain), handles auth + database + file storage + real-time SSE
+- **db.js abstraction layer** — All UI code calls `DB.*` methods; PocketBase REST API details are encapsulated
+- **Each company = own set of records filtered by companyId** — Full data isolation via collection-level filters
 - **localStorage** for user session persistence — company, project, settings survive page refresh
 
 ---
@@ -85,28 +89,41 @@ SiteShrimp is a mobile-first Progressive Web App for construction site defect tr
 
 ```
 SiteShrimp/
-├── index.html          ← HTML shell: loads Firebase, React, Babel, EmailJS, calls js/app.js
+├── index.html          ← HTML shell: loads React, Babel, EmailJS, inits PocketBase via DB.init()
 ├── js/
-│   └── app.js          ← All React components, business logic, Firestore operations (92KB)
+│   ├── app.js          ← All React components, business logic (1900+ lines)
+│   ├── db.js           ← PocketBase data layer: auth, CRUD, SSE subscriptions (380 lines)
+│   └── constants.js    ← Config, roles, severity levels, localStorage keys (320 lines)
 ├── manifest.json       ← App install config (name, icons, theme colour)
 ├── sw.js               ← Service worker: caches app shell, enables offline
 ├── icons/
 │   ├── icon-192.png    ← App icon (home screen, splash)
 │   └── icon-512.png    ← App icon (large)
-├── css/                ← Legacy (styles now inline in app.js)
-└── backend/            ← Legacy (Google Sheets backend, optional)
+├── deploy/
+│   └── pocketbase/
+│       └── pb_hooks/
+│           └── main.pb.js  ← Server-side hooks (defect ID generation, Gemini AI analysis)
+└── css/                ← Legacy (styles now inline in app.js)
 ```
 
 ### index.html responsibilities
-- Loads all CDN scripts in correct order
-- Initialises Firebase (`db`, `auth` as globals)
+- Loads all CDN scripts in correct order (React, Babel, EmailJS)
+- Sets `PB_URL` from localStorage or defaults to `https://api.siteshrimp.org`
 - Registers service worker
 - Provides `<div id="root">` mount point
 - Loads `js/app.js` as `type="text/babel"`
 
+### db.js — PocketBase Data Layer
+- Encapsulates all PocketBase REST API calls
+- Provides `DB.auth.*` methods (login, register, resetPassword, signOut, onAuthStateChanged)
+- Provides `DB.{collection}.*` CRUD methods (list, get, getFirst, create, update, delete, subscribe)
+- SSE real-time subscriptions with automatic reconnect and polling fallback
+- Token management via localStorage (`pb_auth`)
+- 12-second API timeout with clear error messages
+
 ### app.js structure (in order)
 ```
-Constants & Config
+Constants & Config (imported from constants.js)
 Utility Functions (compress, AI, CSV, Telegram, email HTML)
 UI Helpers (useVoice, MicBtn, chips, Spinner, VoiceField)
 AuthScreen
@@ -122,91 +139,60 @@ LogDefect
 DefectsList
 DefectDetail
 Report
-App (root component with all state + Firestore listeners)
+App (root component with all state + PocketBase listeners)
 ReactDOM.createRoot().render(<App/>)
 ```
 
 ---
 
-## 4. Firebase Setup
+## 4. PocketBase Setup
 
-### Required Services
-| Service | Purpose |
+### Overview
+SiteShrimp uses a self-hosted PocketBase instance as its backend. PocketBase provides:
+- **Authentication** — Email/password login for all users
+- **Database** — Collections for companies, members, projects, defects, invites, etc.
+- **File storage** — Defect photos stored as file uploads
+- **Real-time** — SSE (Server-Sent Events) for live data sync
+- **Server hooks** — JavaScript hooks for auto-generating defect IDs and AI analysis
+
+### Step 1 — Install PocketBase
+1. Download PocketBase from [pocketbase.io](https://pocketbase.io)
+2. Run on a VM (e.g., Oracle Cloud free tier)
+3. Set up DuckDNS domain pointing to your VM
+4. Configure HTTPS (e.g., Caddy reverse proxy)
+
+### Step 2 — Collections Required
+PocketBase needs these collections:
+
+| Collection | Purpose |
 |---|---|
-| **Authentication** | Email/password login for all users |
-| **Firestore** | Real-time database for defects, companies, members, projects |
+| `users` | Built-in PocketBase auth collection |
+| `companies` | Company records (name, adminId, adminEmail) |
+| `members` | Company membership (companyId, userId, role, jobTitle) |
+| `projects` | Projects per company (companyId, name, archived) |
+| `defects` | Defect records with photo file field |
+| `invites` | Invite codes for team joining |
+| `counters` | Auto-increment counter for defect IDs |
+| `settings` | Per-company settings |
+| `activity` | Activity log |
+| `location_presets` | Saved location templates |
+| `component_presets` | Saved component templates |
+| `drawings` | Drawing/plan uploads |
+| `pins` | Pins on drawings |
 
-### Step 1 — Create Firebase Project
-1. Go to [console.firebase.google.com](https://console.firebase.google.com)
-2. Create new project (or use existing `siteshrimp-e70ad`)
-3. No Google Analytics needed
+### Step 3 — Deploy Server Hooks
+Copy `deploy/pocketbase/pb_hooks/main.pb.js` to your PocketBase `pb_hooks/` directory. This enables:
+- **Auto defect ID** — Sequential `DEF-0001`, `DEF-0002`, etc. via the `counters` collection
+- **Gemini AI analysis** — Server-side photo analysis on defect creation (requires `GEMINI_API_KEY` env var)
+- **Auto timestamps** — Sets `timestamp_utc` if not provided
+- **Default status** — Sets status to "Open" for new defects
 
-### Step 2 — Enable Email/Password Authentication
-1. Authentication → Sign-in method
-2. Enable **Email/Password**
-3. Disable **Anonymous** (no longer used in v2)
-
-### Step 3 — Create Firestore Database
-1. Firestore Database → Create database
-2. Start in **production mode** (rules set in Step 5)
-3. Choose server location closest to users
-
-### Step 4 — Create Composite Index (REQUIRED)
-The defects query filters by `projectId` AND sorts by `createdAt`. Firestore requires a composite index for this.
-
-**Option A — Auto-create (easiest):**
-1. Deploy the app and open it
-2. Open browser DevTools → Console
-3. You will see: `⚠️ Missing Firestore index. Create at: ...` with a direct link
-4. Click the link → Firebase creates the index automatically
-
-**Option B — Manual:**
-1. Firestore → Indexes → Composite → Add index
-2. Collection group: `defects`
-3. Fields:
-   - `projectId` — Ascending
-   - `createdAt` — Descending
-4. Click Create → wait ~2 minutes
-
-### Step 5 — Set Firestore Security Rules
-
+### Step 4 — Configure Client
+In `index.html`, the PocketBase URL is set via:
+```javascript
+const PB_URL = localStorage.getItem('pb_url') || 'https://api.siteshrimp.org';
 ```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    function isMember(companyId) {
-      return request.auth != null &&
-        exists(/databases/$(database)/documents/companies/$(companyId)/members/$(request.auth.uid));
-    }
-
-    match /companies/{companyId} {
-      allow read: if isMember(companyId);
-      allow create: if request.auth != null;
-      allow update: if isMember(companyId);
-    }
-
-    match /companies/{companyId}/members/{memberId} {
-      allow read: if isMember(companyId);
-      allow create: if request.auth != null;
-      allow update, delete: if isMember(companyId);
-    }
-
-    match /companies/{companyId}/invites/{inviteId} {
-      allow read, update: if request.auth != null;
-      allow create: if isMember(companyId);
-    }
-
-    match /companies/{companyId}/projects/{projectId} {
-      allow read, write: if isMember(companyId);
-    }
-
-    match /companies/{companyId}/defects/{defectId} {
-      allow read, write: if isMember(companyId);
-    }
-  }
-}
-```
+Users can override by setting `pb_url` in localStorage.
 
 ---
 
@@ -219,15 +205,15 @@ Open app URL
     ↓
 Register with email + password
     ↓
-"Create Company" → enter company name + job title
-    → Creates: companies/{id}, members/{uid} as Admin, projects/default
+"Create Company" → enter company name
+    → Creates: company record, member record (as Admin), "Default Project"
     ↓
 Main App — Dashboard
     ↓
-🤖 Setup AI (optional) → paste Gemini API key → Test → Save
+Setup AI (optional) → paste Gemini API key → Test → Save
 Telegram icon → setup Bot Token + Chat ID → Test → Save
     ↓
-👥 Team Management → generate invite links → share with team
+Team Management → generate invite links → share with team
 ```
 
 ### 5.2 Team Member Joins via Invite
@@ -253,15 +239,16 @@ Member enters main app — sees company data
 ```
 Tap LOG tab
     ↓
-📷 Add photo (camera opens)
+Add photo (camera opens)
     ↓
-Optional: 🤖 ANALYZE WITH AI → auto-fills title, severity, description
+Optional: ANALYZE WITH AI → auto-fills title, severity, description
     ↓
 Edit/confirm: Title · Location · Severity · Assign To · Description
     ↓
 SUBMIT DEFECT
-    → Saved to Firestore under company/project
-    → Telegram: photo + details sent to group
+    → Saved to PocketBase (photo uploaded as file)
+    → Server hook assigns DEF-XXXX ID + optional Gemini AI analysis
+    → Telegram: photo + details sent to group (client-side)
     ↓
 "Log another at same location?" → YES (same location pre-filled) or DONE
 ```
@@ -271,9 +258,10 @@ SUBMIT DEFECT
 ```
 Open app URL → Loading spinner
     ↓
-Firebase Auth restores session automatically
+PocketBase auth token restored from localStorage (pb_auth)
+Token validated via auth-refresh API call
 Company + project loaded from localStorage
-Member data loaded from Firestore
+Member data loaded from PocketBase
     ↓
 Main app shown — no re-login required
 ```
@@ -295,20 +283,20 @@ Main app shown — no re-login required
 
 | Action | Admin | Manager | Inspector | Viewer |
 |---|---|---|---|---|
-| View dashboard / defects / report | ✅ | ✅ | ✅ | ✅ |
-| Log new defect | ✅ | ✅ | ✅ | ❌ |
-| Update defect status | ✅ | ✅ | ✅ | ❌ |
-| Add comments | ✅ | ✅ | ✅ | ❌ |
-| Delete defect | ✅ | ❌ | ❌ | ❌ |
-| Manage projects (add/archive) | ✅ | ✅ | ❌ | ❌ |
-| Invite users | ✅ | ❌ | ❌ | ❌ |
-| Change user roles / remove users | ✅ | ❌ | ❌ | ❌ |
-| Email reports / CSV export | ✅ | ✅ | ✅ | ✅ |
+| View dashboard / defects / report | Yes | Yes | Yes | Yes |
+| Log new defect | Yes | Yes | Yes | No |
+| Update defect status | Yes | Yes | Yes | No |
+| Add comments | Yes | Yes | Yes | No |
+| Delete defect | Yes | No | No | No |
+| Manage projects (add/archive) | Yes | Yes | No | No |
+| Invite users | Yes | No | No | No |
+| Change user roles / remove users | Yes | No | No | No |
+| Email reports / CSV export | Yes | Yes | Yes | Yes |
 
 ### UI Enforcement
 - Log tab **hidden from Viewer** in bottom nav
 - Delete button **only shown to Admin** in Defect Detail
-- 👥 Team icon **only shown to Admin** in header
+- Team icon **only shown to Admin** in header
 - Comment input **hidden from Viewer** (shows "Viewer access — comments disabled")
 - Role badge shown alongside commenter name in comments
 
@@ -316,51 +304,54 @@ Main app shown — no re-login required
 
 ## 7. Multi-Tenant Data Model
 
-### Firestore Structure
+### PocketBase Collection Structure
+
+All collections are flat (not subcollections). Multi-tenancy is enforced by `companyId` field on every record:
 
 ```
-companies/
-  {companyId}/
-    name, adminId, adminEmail, createdAt
+companies
+  id, name, adminId, adminEmail, createdAt
 
-    members/
-      {userId}/
-        name, email, role, jobTitle, joinedAt
+members
+  id, companyId, userId, name, email, role, jobTitle, joinedAt
 
-    invites/
-      {code}/
-        role, jobTitle, createdBy, createdAt, expiresAt, usedBy, usedAt
+invites
+  id, companyId, code, role, jobTitle, createdBy, createdAt, expiresAt, usedBy, usedAt
 
-    projects/
-      {projectId}/
-        name, createdAt, createdBy, archived
+projects
+  id, companyId, name, createdAt, createdBy, archived
 
-    defects/
-      {defectId}/
-        title, location, severity, status, assignee
-        description, photo (base64 ~15-25KB)
-        projectId, projectName
-        loggedBy, loggedByRole
-        createdAt, updatedAt
-        comments: [{text, by, role, at}]
+defects
+  id, companyId, projectId, projectName, defect_id (DEF-XXXX)
+  title, location, severity, status, assignee
+  description, photo (file field, supports multiple)
+  loggedBy, loggedByRole
+  category, defect_type, trade (AI-filled)
+  createdAt, updatedAt
+  comments: [{text, by, role, at}]
+
+counters
+  id, key ("defect_counter"), value (integer)
 ```
 
 ### Isolation Guarantee
-- Every Firestore read/write goes through `companies/{companyId}/...`
-- Firestore rules block cross-company access at database level
+- Every PocketBase query includes `companyId` in the filter
+- API rules should enforce that users can only access records matching their company membership
 - localStorage only stores `companyId` + `projectId` references — no actual defect data
 
 ---
 
-## 8. Firestore Security Rules
+## 8. PocketBase API Rules
 
-See Section 4 Step 5 for the complete rules.
+Access control is enforced via PocketBase collection API rules (configured in PocketBase Admin UI):
 
 **Key principles:**
-1. Authentication required for all access
-2. `isMember()` helper enforces company membership at every path
-3. Role-based permissions (Admin/Manager/Inspector/Viewer) enforced in app JavaScript
-4. Invite paths allow any authenticated user to read/update (required for joining)
+1. Authentication required for all access — all rules require `@request.auth.id != ""`
+2. Company membership enforced — list/view rules filter by `companyId` matching the user's membership
+3. Role-based permissions (Admin/Manager/Inspector/Viewer) enforced in app JavaScript (client-side)
+4. Invite records allow any authenticated user to read/update (required for joining)
+
+Configure these rules in the PocketBase Admin dashboard at `https://api.siteshrimp.org/_/`.
 
 ---
 
@@ -389,7 +380,7 @@ See Section 4 Step 5 for the complete rules.
 
 ### Defect Detail
 - All defect fields + project name
-- Photo (full width)
+- Photo (full width, supports multiple)
 - Status update (Inspector+)
 - Comments with role badge and voice input
 - Delete (Admin only, with confirm dialog)
@@ -399,8 +390,8 @@ See Section 4 Step 5 for the complete rules.
 - 5 filter types: Severity, Status, Assignee, Date From, Date To
 - Active filter count badge
 - Summary stats + severity chart + status tiles + assignee table
-- 📧 EMAIL REPORT (filtered, HTML format)
-- 📊 CSV EXPORT (filtered, spreadsheet-ready)
+- EMAIL REPORT (filtered, HTML format)
+- CSV EXPORT (filtered, spreadsheet-ready)
 
 ### Profile Dropdown
 - Name, email, role, job title
@@ -408,10 +399,10 @@ See Section 4 Step 5 for the complete rules.
 - Sign out
 
 ### Header
-- Company name + project switcher (▼)
+- Company name + project switcher
 - Open count
-- 🤖 AI + Telegram setup buttons
-- 👥 Team management (Admin)
+- AI + Telegram setup buttons
+- Team management (Admin)
 - Profile avatar
 
 ---
@@ -462,23 +453,25 @@ See Section 4 Step 5 for the complete rules.
 
 ### Gemini AI
 
-1. Go to [aistudio.google.com](https://aistudio.google.com) → sign in
-2. Get API Key → Create API Key → copy
-3. In SiteShrimp: 🤖 → paste key → TEST → SAVE
+1. Go to [aistudio.google.com](https://aistudio.google.com) — sign in
+2. Get API Key — Create API Key — copy
+3. In SiteShrimp: AI icon — paste key — TEST — SAVE
 
 **Free:** 1,500 requests/day, no credit card.  
 **Per-device setting** — stored in browser localStorage.
 
+**Server-side AI:** If `GEMINI_API_KEY` environment variable is set on the PocketBase VM, defect photos are also analysed server-side via hooks (auto-fills category, defect_type, severity, trade).
+
 ### Email Reports (EmailJS)
 
-1. [emailjs.com](https://emailjs.com) → sign up free
-2. Add Email Service (Gmail/Outlook) → copy **Service ID**
-3. Create Template → Subject: `{{subject}}` · HTML body: `{{{html_content}}}` · To: `{{to_email}}` → copy **Template ID**
-4. Account → API Keys → copy **Public Key**
-5. In SiteShrimp: Profile → Email Settings → paste all 3 keys + recipient emails → SAVE
+1. [emailjs.com](https://emailjs.com) — sign up free
+2. Add Email Service (Gmail/Outlook) — copy **Service ID**
+3. Create Template — Subject: `{{subject}}` · HTML body: `{{{html_content}}}` · To: `{{to_email}}` — copy **Template ID**
+4. Account — API Keys — copy **Public Key**
+5. In SiteShrimp: Profile — Email Settings — paste all 3 keys + recipient emails — SAVE
 
 **Free:** 200 emails/month.  
-**Note:** Photos excluded from email (base64 too large for free tier — shows "📷 Photo available in app" note instead).
+**Note:** Photos excluded from email (base64 too large for free tier — shows "Photo available in app" note instead).
 
 ---
 
@@ -486,11 +479,11 @@ See Section 4 Step 5 for the complete rules.
 
 ### Android (Chrome)
 1. Open app URL in Chrome
-2. Tap ⋮ menu → **Add to Home screen** → Confirm
+2. Tap menu — **Add to Home screen** — Confirm
 
 ### iPhone (Safari)
 1. Open app URL in Safari
-2. Tap Share icon → **Add to Home Screen** → Confirm
+2. Tap Share icon — **Add to Home Screen** — Confirm
 
 App launches full-screen with no browser chrome, like a native app.
 
@@ -498,23 +491,25 @@ App launches full-screen with no browser chrome, like a native app.
 
 ## 12. Deployment
 
-### GitHub Pages (primary)
-Auto-deploys from `main` branch. Edit files via GitHub web editor → commit → live in ~1 minute.
+### Cloudflare Pages (primary — frontend)
+Auto-deploys from `main` branch. Push to GitHub — live in ~1 minute.
 
 **Files to update per release:**
 
 | File | When |
 |---|---|
 | `js/app.js` | Every feature update |
-| `index.html` | New CDN libs or Firebase config change |
+| `js/db.js` | PocketBase API changes |
+| `js/constants.js` | Config, role, or key changes |
+| `index.html` | New CDN libs or PB_URL change |
 | `manifest.json` | App name / icon / theme changes |
-| `sw.js` | Cache strategy changes — bump `siteshrimp-v2` → `siteshrimp-v3` |
+| `sw.js` | Cache strategy changes — bump version string |
 
-### How to Edit on GitHub Mobile
-1. Go to the private GitHub repository
-2. Tap file → pencil ✏️ icon
-3. Select All → paste new content
-4. Scroll down → Commit changes
+### PocketBase VM (backend)
+- Hosted on a VM (e.g., Oracle Cloud free tier)
+- Domain: `api.siteshrimp.org`
+- Server hooks in `pb_hooks/main.pb.js`
+- Admin dashboard at `https://api.siteshrimp.org/_/`
 
 ---
 
@@ -522,46 +517,23 @@ Auto-deploys from `main` branch. Edit files via GitHub web editor → commit →
 
 | Issue | Detail | Workaround |
 |---|---|---|
-| Email photos excluded | Base64 exceeds EmailJS 50KB free limit | Email shows "📷 Photo in app" note |
+| Email photos excluded | Base64 exceeds EmailJS 50KB free limit | Email shows "Photo in app" note |
 | Gemini key per-device | Stored in localStorage, not shared | Each user enters own free key |
-| Firebase free tier | 50K reads / 20K writes per day | Upgrade to Blaze if needed |
 | Voice: Firefox | Web Speech API not supported | Mic button auto-hidden |
 | Offline submissions | Cannot save defects without internet | Planned: offline queue |
 | Telegram caption limit | 1024 chars max | Long names auto-truncated by Telegram |
-| Composite index needed | Required for defects query | See Section 14 |
+| PocketBase VM uptime | VM may sleep/restart | Check VM status if app shows timeout errors |
+| API timeout | 12-second timeout on all PocketBase calls | Increase in db.js if VM is slow |
 
 ---
 
-## 14. Firestore Index Required
-
-**Without this, the defects list will be empty.**
-
-### Index to Create
-
-| Collection path | Field | Order |
-|---|---|---|
-| `companies/{id}/defects` | `projectId` | Ascending |
-| `companies/{id}/defects` | `createdAt` | Descending |
-
-### Auto-create (recommended)
-Open the app → browser DevTools → Console → click the Firebase error link that appears → index created automatically.
-
-### Manual
-Firebase Console → Firestore → Indexes → Composite → Add:
-- Collection: `defects`
-- `projectId` Ascending + `createdAt` Descending
-- Wait ~2 minutes to build.
-
----
-
-## 15. Future Roadmap
+## 14. Future Roadmap
 
 ### Near Term
-- Firebase setup wizard in-app (guided onboarding for new companies)
-- Push notifications (FCM) — alerts when app is closed
+- Push notifications — alerts when app is closed
 - Offline submission queue (IndexedDB)
 - PDF report export
-- Multiple photos per defect
+- Multiple photos per defect (partially implemented — PB supports it)
 
 ### Medium Term
 - Custom defect categories per company
@@ -582,7 +554,7 @@ Firebase Console → Firestore → Indexes → Composite → Add:
 | Component | Props | Description |
 |---|---|---|
 | `AuthScreen` | `onAuth(user, name, inviteCode)` | Login / Register |
-| `CompanySetupScreen` | `user, inviteCode, onDone(cd, proj)` | Create or join company |
+| `CompanySetup` | `user, inviteCode, onDone(cd, proj), onSignOut` | Create or join company |
 | `UserManagement` | `onClose, company, member, members` | Admin: invite + manage roles |
 | `ProjectManagement` | `onClose, company, member, projects, currentProject, onSelect(proj)` | Switch / add projects |
 | `TelegramSettings` | `onClose` | Bot Token + Chat ID setup |
@@ -600,30 +572,27 @@ Firebase Console → Firestore → Indexes → Composite → Add:
 
 | Key | Value | Notes |
 |---|---|---|
+| `pb_auth` | `{token, user}` | PocketBase auth token + user record |
+| `pb_url` | `"https://..."` | PocketBase server URL override |
 | `sdt-co-v1` | `{companyId, companyName}` | Active company (persists session) |
 | `sdt-proj-v1` | `{id, name}` | Active project |
 | `sdt-tg-v2` | `{token, chatId}` | Telegram config (per device) |
 | `sdt-email-v1` | `{publicKey, serviceId, templateId, recipients[]}` | EmailJS config (per device) |
 | `sdt-gemini-v1` | `"AIzaSy..."` | Gemini API key (per device) |
+| `sdt-ai-usage` | `{date, count}` | Daily AI usage counter |
 
 ---
 
 ## Appendix C — Sharing With Another Company
 
-Each company that wants to use SiteShrimp independently should:
+Multiple companies can use the same PocketBase instance — they are fully isolated from each other via `companyId` filtering on all data.
 
-1. Create their own Firebase project (free)
-2. Enable Email/Password Auth + Firestore
-3. Copy `firebaseConfig` from Firebase Console → Project Settings → Your apps
-4. Replace `firebaseConfig` in `index.html` with their own values
-5. Set Firestore rules (Section 4 Step 5)
-6. Create composite index (Section 14)
-7. Host on their own GitHub Pages
-
-This gives each company full data sovereignty — their data never touches another company's Firebase.
-
-Alternatively, multiple companies can share the same Firebase project using the multi-tenant subcollection model already implemented — they will be fully isolated from each other by the `isMember()` Firestore rules.
+For a fully independent setup:
+1. Deploy their own PocketBase instance
+2. Set `pb_url` in localStorage to point to their server
+3. Create required collections (see Section 4)
+4. Deploy the same frontend (or host separately)
 
 ---
 
-*SiteShrimp v2 · Built with Firebase + React + Gemini AI · MIT License*
+*SiteShrimp v2 · Built with PocketBase + React + Gemini AI · MIT License*

@@ -1707,18 +1707,36 @@ function App(){
     return ()=>{if(unsub)unsub();};
   },[]);
 
-  // Member + all members listener
+  // Member + all members listener (with retry if member not found yet)
   useEffect(()=>{
     if(!authUser||!company?.companyId)return;
     setMemberLoading(true);
+    let retryCount=0;
+    let retryTimer=null;
     const unsub=DB.members.subscribe(`companyId="${company.companyId}"`,items=>{
       const me=items.find(m=>m.userId===authUser.id);
-      if(me)setMember({uid:me.userId,...me});
-      else setMember(null);
+      if(me){
+        retryCount=0;
+        setMember({uid:me.userId,...me});
+        setMemberLoading(false);
+      }else if(retryCount<5){
+        // Member record may not be available yet — retry
+        retryCount++;
+        console.warn(`Member not found (attempt ${retryCount}/5), retrying...`);
+        retryTimer=setTimeout(()=>{
+          DB.members.list(`companyId="${company.companyId}"`).then(fresh=>{
+            const me2=fresh.find(m=>m.userId===authUser.id);
+            if(me2){setMember({uid:me2.userId,...me2});setMemberLoading(false);}
+          }).catch(()=>{});
+        },retryCount*1500);
+      }else{
+        console.error("Member record not found after 5 retries");
+        setMember(null);
+        setMemberLoading(false);
+      }
       setMembers(items.map(m=>({uid:m.userId,...m})));
-      setMemberLoading(false);
     });
-    return unsub;
+    return ()=>{if(retryTimer)clearTimeout(retryTimer);unsub();};
   },[authUser?.id,company?.companyId]);
 
   // Projects listener
@@ -1829,9 +1847,13 @@ function App(){
     <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{textAlign:"center"}}>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#ff6b00",marginBottom:16}}>SITESHRIMP</div>
-        <Spin size={24}/>
-        <div style={{color:"rgba(255,255,255,0.4)",fontSize:12,marginTop:12}}>Loading workspace...</div>
-        <button onClick={signOut} style={{background:"none",border:"none",color:"rgba(255,255,255,0.2)",fontSize:12,cursor:"pointer",padding:"16px 8px",marginTop:20}}>← Sign out</button>
+        {memberLoading?<><Spin size={24}/><div style={{color:"rgba(255,255,255,0.4)",fontSize:12,marginTop:12}}>Loading workspace...</div></>:(
+          <div style={{color:"rgba(255,255,255,0.6)",fontSize:14,maxWidth:280}}>
+            <div style={{marginBottom:12}}>Could not find your membership record.</div>
+            <button onClick={()=>{setCompany(null);local.del(COMPANY_KEY);}} style={{background:"#ff6b00",border:"none",color:"#fff",fontSize:14,cursor:"pointer",padding:"10px 20px",borderRadius:8,marginBottom:8,width:"100%"}}>Try another company</button>
+            <button onClick={signOut} style={{background:"none",border:"1px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.5)",fontSize:13,cursor:"pointer",padding:"8px 16px",borderRadius:8,width:"100%"}}>Sign out</button>
+          </div>
+        )}
       </div>
     </div>
   );
