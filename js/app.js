@@ -335,8 +335,8 @@ function AuthScreen({onAuth}){
           {[
             ["📷","Snap photos, AI describes the defect"],
             ["mic","Voice support — hands-free feature"],
-            ["📋","Defects tracking, Site Monitoring, Feedbacks and Reporting"],
-            ["👥","Team sync — everyone sees updates live"],
+            ["📋","Paperless Defects Tracking, Site Monitoring and Instant Feedbacks"],
+            ["👥","Team sync, live updates"],
             ["📊","Reports, dashboards & PDF export"],
             ["🔔","Telegram & email notifications"],
           ].map(([icon,text],i)=>(
