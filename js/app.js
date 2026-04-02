@@ -338,7 +338,7 @@ function AuthScreen({onAuth}){
             ["📋","Paperless Defects Tracking, Site Monitoring and Instant Feedbacks"],
             ["👥","Team sync, live updates"],
             ["📊","Real Time Visual Dashboard Reports"],
-            ["🔔","Telegram & email notifications"],
+            ["🔔","Telegram-linked, CSV Export and Email Summary"],
           ].map(([icon,text],i)=>(
             <div key={i} className="anim" style={{animationDelay:`${i*0.08}s`,display:"flex",gap:12,alignItems:"center",padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
               <div style={{width:32,textAlign:"center",flexShrink:0}}>
