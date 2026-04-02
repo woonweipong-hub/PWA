@@ -327,7 +327,7 @@ function AuthScreen({onAuth}){
         <div style={{background:"#ff6b00",width:56,height:6,borderRadius:3,marginBottom:24,marginLeft:"auto",marginRight:"auto"}}/>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:42,fontWeight:800,color:"#fff",lineHeight:1,marginBottom:8}}>SITESHRIMP</div>
         <div style={{color:"rgba(255,255,255,0.5)",fontSize:14,marginBottom:32,lineHeight:1.6}}>
-          Construction site tracking<br/>for teams that build.
+          Construction site works, defects and items<br/>tracking and monitoring for teams that deliver.
         </div>
 
         {/* Feature highlights */}
