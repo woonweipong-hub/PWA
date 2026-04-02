@@ -342,9 +342,23 @@ function AuthScreen({onAuth,onFullSetup}){
       setLoading(true);setErr("");setStep("Logging in...");
       try{
         const c=await DB.auth.login(email.trim(),pw);
-        onAuth(c.user,null,inv);
+        // Try to find company during login so user goes straight to dashboard
+        setStep("Loading workspace...");
+        try{
+          const result=await DB.findUserCompany(c.user.id);
+          if(result){
+            const cd={companyId:result.companyId,companyName:result.companyName};
+            const projs=await DB.projects.list(`companyId="${result.companyId}" && archived!=true`);
+            const proj=projs.length?{id:projs[0].id,name:projs[0].name}:null;
+            onFullSetup(c.user,cd,proj);
+          }else{
+            onAuth(c.user,null,inv);
+          }
+        }catch{
+          onAuth(c.user,null,inv); // Fallback: let auth callback handle it
+        }
       }catch(e){
-        setErr(e.message||"Something went wrong. Please try again.");
+        setErr(e.message||"Something went wrong.");
       }
       setLoading(false);setStep("");
       return;
