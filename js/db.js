@@ -238,6 +238,11 @@ const DB = (() => {
   const defects = crud('defects');
   const invites = crud('invites');
   const settings = crud('settings');
+  const activity = crud('activity');
+  const locationPresets = crud('location_presets');
+  const componentPresets = crud('component_presets');
+  const drawings = crud('drawings');
+  const pins = crud('pins');
 
   // ── High-level helpers ───────────────────────────────────────────
   const helpers = {
@@ -265,24 +270,45 @@ const DB = (() => {
     },
 
     async addDefect(companyId, data) {
-      // Handle photo: convert base64 to file upload
-      let photoBlob = null;
-      let photoName = 'photo.jpg';
+      // Handle photos: convert base64 to file uploads (supports multiple)
       const cleanData = { ...data, companyId };
+      const extraPhotos = cleanData.extraPhotos || [];
+      delete cleanData.extraPhotos;
+      delete cleanData.photos; // Remove the array form, we use photo + extraPhotos
 
-      if (data.photo && data.photo.startsWith('data:')) {
-        const parts = data.photo.split(',');
+      function b64toBlob(dataUrl) {
+        const parts = dataUrl.split(',');
         const mime = parts[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
         const b64 = parts[1];
         const bytes = atob(b64);
         const arr = new Uint8Array(bytes.length);
         for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-        photoBlob = new Blob([arr], { type: mime });
-        delete cleanData.photo;
+        return new Blob([arr], { type: mime });
       }
 
-      if (photoBlob) {
-        return defects.createWithFile(cleanData, 'photo', photoBlob, photoName);
+      // Build FormData with all photos
+      const hasMainPhoto = cleanData.photo && cleanData.photo.startsWith('data:');
+      const hasExtra = extraPhotos.length > 0;
+
+      if (hasMainPhoto || hasExtra) {
+        const fd = new FormData();
+        const photoField = cleanData.photo;
+        delete cleanData.photo;
+        for (const [k, v] of Object.entries(cleanData)) {
+          if (v !== null && v !== undefined) {
+            fd.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
+          }
+        }
+        // Append all photos under the same 'photo' field (PocketBase supports multiple)
+        if (hasMainPhoto) {
+          fd.append('photo', b64toBlob(photoField), 'photo_1.jpg');
+        }
+        for (let i = 0; i < extraPhotos.length; i++) {
+          if (extraPhotos[i] && extraPhotos[i].startsWith('data:')) {
+            fd.append('photo', b64toBlob(extraPhotos[i]), `photo_${i + 2}.jpg`);
+          }
+        }
+        return api(`/api/collections/defects/records`, { method: 'POST', body: fd });
       } else {
         delete cleanData.photo;
         return defects.create(cleanData);
@@ -309,6 +335,11 @@ const DB = (() => {
     defects,
     invites,
     settings,
+    activity,
+    locationPresets,
+    componentPresets,
+    drawings,
+    pins,
     ...helpers,
     get baseUrl() { return _baseUrl; },
   };

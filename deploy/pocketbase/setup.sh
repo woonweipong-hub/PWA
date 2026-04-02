@@ -1,5 +1,5 @@
 #!/bin/bash
-# SiteSnag — PocketBase Setup Script
+# SiteShrimp — PocketBase Setup Script
 # Run on your GCP VM (or any Linux server) to set up the backend
 #
 # Usage:
@@ -17,15 +17,15 @@
 set -e
 
 # ====== CONFIG ======
-PB_VERSION="0.25.9"
-PB_DIR="/opt/sitesnag"
+PB_VERSION="0.36.8"
+PB_DIR="/opt/siteshrimp"
 PB_PORT="8090"
-PB_DOMAIN="${SITESNAG_DOMAIN:-}"  # Optional: set for HTTPS
-ADMIN_EMAIL="${SITESNAG_ADMIN_EMAIL:-admin@sitesnag.app}"
-ADMIN_PASSWORD="${SITESNAG_ADMIN_PASSWORD:-$(openssl rand -base64 16)}"
+PB_DOMAIN="${SITESHRIMP_DOMAIN:-}"  # Optional: set for HTTPS
+ADMIN_EMAIL="${SITESHRIMP_ADMIN_EMAIL:-admin@siteshrimp.app}"
+ADMIN_PASSWORD="${SITESHRIMP_ADMIN_PASSWORD:-$(openssl rand -base64 16)}"
 # ====================
 
-echo "=== SiteSnag PocketBase Setup ==="
+echo "=== SiteShrimp PocketBase Setup ==="
 echo ""
 
 # 1. Create directory
@@ -58,9 +58,9 @@ if [ -f "$SCRIPT_DIR/pb_hooks/main.pb.js" ]; then
 fi
 
 # 4. Create systemd service
-sudo tee /etc/systemd/system/sitesnag.service > /dev/null << EOF
+sudo tee /etc/systemd/system/siteshrimp.service > /dev/null << EOF
 [Unit]
-Description=SiteSnag PocketBase Backend
+Description=SiteShrimp PocketBase Backend
 After=network.target
 
 [Service]
@@ -77,11 +77,11 @@ WantedBy=multi-user.target
 EOF
 
 sudo systemctl daemon-reload
-sudo systemctl enable sitesnag
-sudo systemctl start sitesnag
+sudo systemctl enable siteshrimp
+sudo systemctl start siteshrimp
 
 echo ""
-echo "=== SiteSnag Backend Running ==="
+echo "=== SiteShrimp Backend Running ==="
 echo ""
 echo "  PocketBase:  http://$(curl -s ifconfig.me 2>/dev/null || echo 'YOUR_VM_IP'):${PB_PORT}"
 echo "  Admin UI:    http://$(curl -s ifconfig.me 2>/dev/null || echo 'YOUR_VM_IP'):${PB_PORT}/_/"
@@ -90,11 +90,11 @@ echo "  Admin Pass:  ${ADMIN_PASSWORD}"
 echo ""
 echo "  Create admin:  $PB_DIR/pocketbase admin create ${ADMIN_EMAIL} ${ADMIN_PASSWORD}"
 echo ""
-echo "  Service:       sudo systemctl status sitesnag"
-echo "  Logs:          sudo journalctl -u sitesnag -f"
-echo "  Restart:       sudo systemctl restart sitesnag"
+echo "  Service:       sudo systemctl status siteshrimp"
+echo "  Logs:          sudo journalctl -u siteshrimp -f"
+echo "  Restart:       sudo systemctl restart siteshrimp"
 echo ""
 echo "Next: Open the Admin UI in your browser to create your admin account,"
-echo "then set this URL in the SiteSnag PWA settings."
+echo "then set this URL in the SiteShrimp PWA settings."
 echo ""
 echo "=== Done ==="

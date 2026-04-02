@@ -93,7 +93,7 @@ Phone (PWA)                     Cloud Services (all free tier)
 ### 1. Create Firebase Project
 
 1. Go to **https://console.firebase.google.com/**
-2. Click **Add project** > name it (e.g. "sitesnag")
+2. Click **Add project** > name it (e.g. "siteshrimp")
 3. Disable Google Analytics (optional) > **Create project**
 
 ### 2. Enable Authentication
@@ -198,7 +198,7 @@ PWA/
   icons/
     icon-192.svg          # App icon
     icon-512.svg          # App icon (large)
-  SITESNAG_DOCS.md        # Detailed technical documentation
+  SITESHRIMP_DOCS.md        # Detailed technical documentation
   backend/                # Legacy Google Sheets backend (optional)
   deploy/                 # PocketBase deployment scripts (optional)
 ```

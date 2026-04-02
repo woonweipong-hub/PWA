@@ -1,6 +1,6 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-// SiteSnag PocketBase Hooks
+// SiteShrimp PocketBase Hooks
 // Runs server-side inside PocketBase (JavaScript ES5)
 //
 // Features:
@@ -63,8 +63,15 @@ onRecordAfterCreateSuccess((e) => {
   if (!photo || !geminiKey || record.get("category")) return;
 
   try {
-    // Read photo file
+    // Read photo file from PocketBase storage
+    const fsys = $app.newFilesystem();
     const fileKey = record.baseFilesPath() + "/" + photo;
+    const reader = fsys.getFile(fileKey);
+    const photoBytes = reader.readAll();
+    reader.close();
+    fsys.close();
+
+    const b64Photo = $security.base64Encode(photoBytes);
 
     // Build Gemini request
     const prompt = [
@@ -83,9 +90,14 @@ onRecordAfterCreateSuccess((e) => {
       url: url,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
+        contents: [{
+          parts: [
+            { text: prompt },
+            { inline_data: { mime_type: "image/jpeg", data: b64Photo } }
+          ]
+        }],
       }),
-      timeout: 30,
+      timeout: 60,
     });
 
     if (res.statusCode === 200) {

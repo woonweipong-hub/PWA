@@ -1,5 +1,5 @@
 #!/bin/bash
-# SiteSnag — HTTPS Setup with Caddy + DuckDNS
+# SiteShrimp — HTTPS Setup with Caddy + DuckDNS
 # Run AFTER setup.sh on the GCP VM
 #
 # Prerequisites:
@@ -7,14 +7,14 @@
 #   2. DuckDNS subdomain created and pointing to this VM's IP
 #
 # Usage:
-#   DUCKDNS_DOMAIN=sitesnag.duckdns.org DUCKDNS_TOKEN=your-token ./setup_https.sh
+#   DUCKDNS_DOMAIN=siteshrimp.duckdns.org DUCKDNS_TOKEN=your-token ./setup_https.sh
 
 set -e
 
-DOMAIN="${DUCKDNS_DOMAIN:-sitesnag.duckdns.org}"
+DOMAIN="${DUCKDNS_DOMAIN:-siteshrimp.duckdns.org}"
 DUCKDNS_TOKEN="${DUCKDNS_TOKEN:-}"
 
-echo "=== SiteSnag HTTPS Setup ==="
+echo "=== SiteShrimp HTTPS Setup ==="
 echo "Domain: $DOMAIN"
 
 # 1. Install Caddy
@@ -40,14 +40,14 @@ sudo systemctl enable caddy
 # 4. Set up DuckDNS auto-update (keeps IP in sync)
 if [ -n "$DUCKDNS_TOKEN" ]; then
   # Create update script
-  sudo tee /opt/sitesnag/duckdns_update.sh > /dev/null << DDEOF
+  sudo tee /opt/siteshrimp/duckdns_update.sh > /dev/null << DDEOF
 #!/bin/bash
 curl -s "https://www.duckdns.org/update?domains=${DOMAIN%.duckdns.org}&token=${DUCKDNS_TOKEN}&ip=" > /dev/null
 DDEOF
-  sudo chmod +x /opt/sitesnag/duckdns_update.sh
+  sudo chmod +x /opt/siteshrimp/duckdns_update.sh
 
   # Add cron job to update every 5 minutes
-  (crontab -l 2>/dev/null; echo "*/5 * * * * /opt/sitesnag/duckdns_update.sh") | crontab -
+  (crontab -l 2>/dev/null; echo "*/5 * * * * /opt/siteshrimp/duckdns_update.sh") | crontab -
   echo "DuckDNS auto-update configured."
 fi
 
@@ -59,6 +59,6 @@ echo "  PocketBase Admin:       https://$DOMAIN/_/"
 echo "  Caddy status:           sudo systemctl status caddy"
 echo ""
 echo "  Share this link with your team:"
-echo "  https://woonweipong-hub.github.io/PWA/?api=https://$DOMAIN"
+echo "  https://siteshrimp.pages.dev/?api=https://$DOMAIN"
 echo ""
 echo "=== Done ==="

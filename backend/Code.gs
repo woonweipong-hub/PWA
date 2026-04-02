@@ -1,4 +1,4 @@
-// Enhanced Google Apps Script for SiteSnag PWA
+// Enhanced Google Apps Script for SiteShrimp PWA
 // Deploy: Extensions > Apps Script > Deploy > Web app > Anyone > Deploy
 //
 // SETUP:
@@ -46,7 +46,7 @@ function doGet(e) {
   var template = HtmlService.createTemplateFromFile('Dashboard');
   template.scriptUrl = ScriptApp.getService().getUrl();
   return template.evaluate()
-    .setTitle('SiteSnag Dashboard')
+    .setTitle('SiteShrimp Dashboard')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -297,7 +297,7 @@ function handlePhotoUpload(data) {
 
 function testSetup() {
   // Run this manually to verify configuration
-  Logger.log("=== SiteSnag Setup Test ===");
+  Logger.log("=== SiteShrimp Setup Test ===");
 
   // Test sheet access
   try {

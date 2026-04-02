@@ -138,7 +138,7 @@ ReactDOM.createRoot().render(<App/>)
 
 ### Step 1 — Create Firebase Project
 1. Go to [console.firebase.google.com](https://console.firebase.google.com)
-2. Create new project (or use existing `sitesnag-e70ad`)
+2. Create new project (or use existing `siteshrimp-e70ad`)
 3. No Google Analytics needed
 
 ### Step 2 — Enable Email/Password Authentication
@@ -424,7 +424,7 @@ See Section 4 Step 5 for the complete rules.
 1. Open Telegram, search for **@BotFather**
 2. Send `/newbot`
 3. Give it a name (e.g. "SiteShrimp Alerts")
-4. Give it a username (e.g. `sitesnag_alerts_bot`)
+4. Give it a username (e.g. `siteshrimp_alerts_bot`)
 5. BotFather replies with your **Bot Token** — looks like `7123456789:AAH...` — copy it
 
 #### Step 2: Create a Group and Add the Bot
@@ -508,7 +508,7 @@ Auto-deploys from `main` branch. Edit files via GitHub web editor → commit →
 | `js/app.js` | Every feature update |
 | `index.html` | New CDN libs or Firebase config change |
 | `manifest.json` | App name / icon / theme changes |
-| `sw.js` | Cache strategy changes — bump `sitesnag-v2` → `sitesnag-v3` |
+| `sw.js` | Cache strategy changes — bump `siteshrimp-v2` → `siteshrimp-v3` |
 
 ### How to Edit on GitHub Mobile
 1. Go to `github.com/woonweipong-hub/PWA`
@@ -618,7 +618,7 @@ Each company that wants to use SiteShrimp independently should:
 4. Replace `firebaseConfig` in `index.html` with their own values
 5. Set Firestore rules (Section 4 Step 5)
 6. Create composite index (Section 14)
-7. Host on their own GitHub Pages or Netlify
+7. Host on their own GitHub Pages
 
 This gives each company full data sovereignty — their data never touches another company's Firebase.
 

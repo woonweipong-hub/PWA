@@ -1,11 +1,13 @@
-const CACHE = 'siteshrimp-v3';
+const CACHE = 'siteshrimp-v4';
 const ASSETS = [
-  '/PWA/',
-  '/PWA/index.html',
-  '/PWA/js/db.js',
-  '/PWA/manifest.json',
-  '/PWA/icons/icon-192.svg',
-  '/PWA/icons/icon-512.svg'
+  '/',
+  '/index.html',
+  '/js/db.js',
+  '/js/constants.js',
+  '/js/app.js',
+  '/manifest.json',
+  '/icons/icon-192.svg',
+  '/icons/icon-512.svg'
 ];
 
 self.addEventListener('install', e => {
@@ -26,7 +28,7 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  if (e.request.url.includes('firebase') || e.request.url.includes('api.telegram') || e.request.url.includes('googleapis') || e.request.url.includes('emailjs')) return;
+  if (e.request.url.includes('pocketbase') || e.request.url.includes('api.telegram') || e.request.url.includes('googleapis') || e.request.url.includes('emailjs') || e.request.url.includes('generativelanguage')) return;
   e.respondWith(
     caches.match(e.request).then(cached => {
       const fetchPromise = fetch(e.request).then(res => {

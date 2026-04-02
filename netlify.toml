@@ -1,7 +1,0 @@
-[build]
-  publish = "."
-  command = "echo 'No build needed'"
-  environment = { NODE_VERSION = "20" }
-
-[build.processing]
-  skip_processing = true

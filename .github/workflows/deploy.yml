@@ -1,4 +1,4 @@
-name: Deploy SiteSnag PWA to GitHub Pages
+name: Deploy SiteShrimp PWA to GitHub Pages
 
 on:
   push:

@@ -1,4 +1,4 @@
-// Enhanced Google Apps Script for SiteSnag PWA
+// Enhanced Google Apps Script for SiteShrimp PWA
 // Deploy: Extensions > Apps Script > Deploy > Web app > Anyone > Deploy
 //
 // QUICK SETUP (run once in Apps Script editor):
@@ -41,8 +41,8 @@ function setup() {
   // 2. Auto-create Drive folder or use existing
   var folderId = getConfig("DRIVE_FOLDER_ID");
   if (!folderId) {
-    Logger.log("Creating 'SiteSnag Photos' folder in Drive...");
-    var folder = DriveApp.createFolder("SiteSnag Photos");
+    Logger.log("Creating 'SiteShrimp Photos' folder in Drive...");
+    var folder = DriveApp.createFolder("SiteShrimp Photos");
     folderId = folder.getId();
     setConfig("DRIVE_FOLDER_ID", folderId);
     Logger.log("Drive folder created: " + folderId);
@@ -83,7 +83,7 @@ function setupWithUrl(sheetUrl, geminiKey) {
 
   // Auto-create Drive folder if not set
   if (!getConfig("DRIVE_FOLDER_ID")) {
-    var folder = DriveApp.createFolder("SiteSnag Photos");
+    var folder = DriveApp.createFolder("SiteShrimp Photos");
     setConfig("DRIVE_FOLDER_ID", folder.getId());
     Logger.log("Drive folder created: " + folder.getId());
   }
@@ -100,7 +100,7 @@ function prompt_(message, defaultVal) {
   // Try UI prompt first (works when run from Sheet), fall back to Logger
   try {
     var ui = SpreadsheetApp.getUi();
-    var result = ui.prompt("SiteSnag Setup", message, ui.ButtonSet.OK_CANCEL);
+    var result = ui.prompt("SiteShrimp Setup", message, ui.ButtonSet.OK_CANCEL);
     if (result.getSelectedButton() === ui.Button.OK) {
       return result.getResponseText();
     }
@@ -154,7 +154,7 @@ function doGet(e) {
   var template = HtmlService.createTemplateFromFile('Dashboard');
   template.scriptUrl = ScriptApp.getService().getUrl();
   return template.evaluate()
-    .setTitle('SiteSnag Dashboard')
+    .setTitle('SiteShrimp Dashboard')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -206,7 +206,7 @@ function handleConfigure(data) {
 
   // Auto-create Drive folder if not set
   if (!getConfig("DRIVE_FOLDER_ID")) {
-    var folder = DriveApp.createFolder("SiteSnag Photos");
+    var folder = DriveApp.createFolder("SiteShrimp Photos");
     setConfig("DRIVE_FOLDER_ID", folder.getId());
     changes.push("drive_folder=" + folder.getId());
   }
@@ -444,7 +444,7 @@ function handlePhotoUpload(data) {
 
 function testSetup() {
   // Run this manually to verify configuration
-  Logger.log("=== SiteSnag Setup Test ===");
+  Logger.log("=== SiteShrimp Setup Test ===");
 
   var sheetId = getConfig("SHEET_ID");
   Logger.log("SHEET_ID: " + (sheetId || "NOT SET"));

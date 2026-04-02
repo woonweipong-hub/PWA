@@ -1,19 +1,7 @@
-// SiteShrimp v2 — Multi-tenant Construction Defect Tracker
+// SiteShrimp v2 — Multi-tenant Construction Site Tracker
 // Features: Auth, Companies, Projects, Roles, AI, Telegram, Email, PWA
+// Constants loaded from js/constants.js (SEVERITY, STATUS, ROLES, ENTRY_TYPES, etc.)
 const {useState,useEffect,useRef,useCallback}=React;
-
-// ── Constants ─────────────────────────────────────────────────────
-const COMPANY_KEY="sdt-co-v1",TG_KEY="sdt-tg-v2",EMAIL_KEY="sdt-email-v1";
-const GEMINI_KEY="sdt-gemini-v1",PROJECT_KEY="sdt-proj-v1";
-// Free for all — WhatsApp model
-const SEVERITY=["Critical","Major","Minor","Observation"];
-const SEV_COLOR={Critical:"#ff3b30",Major:"#ff9500",Minor:"#e6b800",Observation:"#34aadc"};
-const SEV_BG={Critical:"rgba(255,59,48,0.12)",Major:"rgba(255,149,0,0.12)",Minor:"rgba(230,184,0,0.12)",Observation:"rgba(52,170,220,0.12)"};
-const STATUS=["Open","In Progress","Closed"];
-const STATUS_COLOR={Open:"#ff3b30","In Progress":"#ff9500",Closed:"#30d158"};
-const ROLES=["Admin","Manager","Inspector","Viewer"];
-const ROLE_COLOR={Admin:"#ff3b30",Manager:"#ff9500",Inspector:"#34aadc",Viewer:"#8e8e93"};
-const JOB_TITLES=["Site Manager","Project Manager","Engineer","Contractor","QC Inspector","Safety Officer","Supervisor","Architect","Foreman","Resident","Homeowner","Other"];
 
 // ── Local Storage ─────────────────────────────────────────────────
 const local={
@@ -23,7 +11,7 @@ const local={
 };
 
 // ── Utilities ─────────────────────────────────────────────────────
-function compressPhoto(dataUrl,maxPx=400,quality=0.45){
+function compressPhoto(dataUrl,maxPx=1200,quality=0.7){
   return new Promise(resolve=>{
     const img=new Image();
     img.onload=()=>{
@@ -99,6 +87,8 @@ function generateEmailHTML(defects,projectName,companyName){
   const total=defects.length;
   const open=defects.filter(d=>d.status==="Open").length;
   const inProg=defects.filter(d=>d.status==="In Progress").length;
+  const done=defects.filter(d=>d.status==="Done").length;
+  const verified=defects.filter(d=>d.status==="Verified").length;
   const closed=defects.filter(d=>d.status==="Closed").length;
   const date=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
   const defectRows=defects.map(d=>{
@@ -132,12 +122,14 @@ function generateEmailHTML(defects,projectName,companyName){
       <table style="width:100%"><tr>
         <td><div style="font-size:30px;font-weight:bold">${total}</div><div style="font-size:10px;color:#999">TOTAL</div></td>
         <td><div style="font-size:30px;font-weight:bold;color:#ff3b30">${open}</div><div style="font-size:10px;color:#999">OPEN</div></td>
-        <td><div style="font-size:30px;font-weight:bold;color:#ff9500">${inProg}</div><div style="font-size:10px;color:#999">IN PROGRESS</div></td>
-        <td><div style="font-size:30px;font-weight:bold;color:#30d158">${closed}</div><div style="font-size:10px;color:#999">CLOSED</div></td>
+        <td><div style="font-size:30px;font-weight:bold;color:#ff9500">${inProg}</div><div style="font-size:10px;color:#999">IN PROG</div></td>
+        <td><div style="font-size:30px;font-weight:bold;color:#34aadc">${done}</div><div style="font-size:10px;color:#999">DONE</div></td>
+        <td><div style="font-size:30px;font-weight:bold;color:#30d158">${verified}</div><div style="font-size:10px;color:#999">VERIFIED</div></td>
+        <td><div style="font-size:30px;font-weight:bold;color:#8e8e93">${closed}</div><div style="font-size:10px;color:#999">CLOSED</div></td>
       </tr></table>
     </div>
     <div style="background:#fff;padding:18px;border-radius:12px;margin-bottom:14px">
-      <div style="font-size:10px;font-weight:bold;color:#999;letter-spacing:2px;margin-bottom:12px">ALL DEFECTS</div>
+      <div style="font-size:10px;font-weight:bold;color:#999;letter-spacing:2px;margin-bottom:12px">ALL ENTRIES</div>
       ${defectRows||'<div style="color:#999;text-align:center;padding:16px">No defects found.</div>'}
     </div>
     <div style="text-align:center;color:#aaa;font-size:11px;padding:12px">SiteShrimp v2 · ${date}</div>
@@ -251,7 +243,7 @@ function AuthScreen({onAuth}){
       <div style={{width:"100%",maxWidth:400}}>
         <div style={{background:"#ff6b00",width:48,height:6,borderRadius:3,marginBottom:20}}/>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:36,fontWeight:800,color:"#fff",lineHeight:1.1,marginBottom:4}}>SITESHRIMP</div>
-        <div style={{color:"rgba(255,255,255,0.4)",fontSize:13,marginBottom:24}}>Construction Defect Tracker · v2</div>
+        <div style={{color:"rgba(255,255,255,0.4)",fontSize:13,marginBottom:24}}>Construction Site Tracker · v2</div>
         {inv&&<div style={{background:"rgba(0,229,100,0.1)",border:"1px solid rgba(0,229,100,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:"#00e564"}}>✓ Team invite detected — {mode==="register"?"register":"login"} to join your team</div>}
         <div style={{display:"flex",gap:8,marginBottom:20}}>
           {["login","register"].map(m=>(
@@ -716,8 +708,10 @@ function EmailSettings({onClose,companyId}){
 function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentProject,member}){
   const open=defects.filter(d=>d.status==="Open").length;
   const inprog=defects.filter(d=>d.status==="In Progress").length;
+  const done=defects.filter(d=>d.status==="Done").length;
+  const verified=defects.filter(d=>d.status==="Verified").length;
   const closed=defects.filter(d=>d.status==="Closed").length;
-  const critical=defects.filter(d=>d.severity==="Critical"&&d.status!=="Closed").length;
+  const critical=defects.filter(d=>d.severity==="Critical"&&!["Verified","Closed"].includes(d.status)).length;
   const sevData=SEVERITY.map(s=>({s,count:defects.filter(d=>d.severity===s).length})).filter(x=>x.count>0);
 
   const Card=({label,value,color})=>(
@@ -744,10 +738,12 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
         </div>
       </div>
 
-      <div style={{display:"flex",gap:10,marginBottom:10}}>
+      <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
         <Card label="OPEN" value={open} color="#ff3b30"/>
         <Card label="IN PROG" value={inprog} color="#ff9500"/>
-        <Card label="CLOSED" value={closed} color="#30d158"/>
+        <Card label="DONE" value={done} color="#34aadc"/>
+        <Card label="VERIFIED" value={verified} color="#30d158"/>
+        <Card label="CLOSED" value={closed} color="#8e8e93"/>
       </div>
 
       {critical>0&&(
@@ -797,9 +793,9 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
   );
 }
 
-// ── Log Defect (with AI + Batch) ──────────────────────────────────
+// ── Log Entry (with AI + Batch + Multi-photo) ────────────────────
 function LogDefect({member,company,currentProject,members,onSave}){
-  const blank={title:"",location:"",severity:"Major",description:"",assignee:member?.name||"",photo:null};
+  const blank={title:"",location:"",severity:"Major",description:"",assignee:member?.name||"",photos:[]};
   const[form,setForm]=useState(blank);
   const[saving,setSaving]=useState(false);const[analyzing,setAnalyzing]=useState(false);const[aiResult,setAiResult]=useState(null);
   const[count,setCount]=useState(0);const[last,setLast]=useState(null);const[showBatch,setShowBatch]=useState(false);
@@ -807,30 +803,39 @@ function LogDefect({member,company,currentProject,members,onSave}){
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
   const geminiKey=local.get(GEMINI_KEY);
   const assignees=members.length>0?members.map(m=>m.name):["Site Manager","Engineer","Contractor","QC Inspector","Safety Officer"];
+  const MAX_PHOTOS=5;
 
   const handlePhoto=e=>{
-    const f=e.target.files[0];if(!f)return;
-    const r=new FileReader();r.onload=()=>set("photo",r.result);r.readAsDataURL(f);
+    const files=Array.from(e.target.files||[]);
+    if(!files.length)return;
+    const remaining=MAX_PHOTOS-form.photos.length;
+    const toAdd=files.slice(0,remaining);
+    toAdd.forEach(f=>{
+      const r=new FileReader();
+      r.onload=()=>setForm(prev=>{
+        if(prev.photos.length>=MAX_PHOTOS)return prev;
+        return{...prev,photos:[...prev.photos,r.result]};
+      });
+      r.readAsDataURL(f);
+    });
     setAiResult(null);
+    if(fileRef.current)fileRef.current.value="";
   };
 
-  const AI_LIMIT_KEY="sdt-ai-usage";
-  const AI_DAILY_LIMIT=50;
+  const removePhoto=idx=>setForm(f=>({...f,photos:f.photos.filter((_,i)=>i!==idx)}));
 
   const analyze=async()=>{
-    if(!form.photo||!geminiKey)return;
-    // Check daily AI limit
+    if(!form.photos.length||!geminiKey)return;
     const today=new Date().toISOString().slice(0,10);
     const aiUsage=local.get(AI_LIMIT_KEY)||{date:"",count:0};
     const todayCount=aiUsage.date===today?aiUsage.count:0;
     if(todayCount>=AI_DAILY_LIMIT){
-      alert(`AI analysis limit reached (${AI_DAILY_LIMIT}/day).\n\nYou can still log defects manually.`);
+      alert(`AI analysis limit reached (${AI_DAILY_LIMIT}/day).\n\nYou can still log entries manually.`);
       return;
     }
     setAnalyzing(true);
-    const compressed=await compressPhoto(form.photo,600,0.7);
-    const result=await analyzeWithGemini(geminiKey,compressed||form.photo);
-    // Increment AI usage
+    const compressed=await compressPhoto(form.photos[0],600,0.7);
+    const result=await analyzeWithGemini(geminiKey,compressed||form.photos[0]);
     local.set(AI_LIMIT_KEY,{date:today,count:todayCount+1});
     if(result){
       setAiResult(result);
@@ -845,10 +850,15 @@ function LogDefect({member,company,currentProject,members,onSave}){
     if(!form.title.trim()||!form.location.trim())return;
     setSaving(true);
     try{
-      let photo=form.photo;
-      if(photo)photo=await compressPhoto(photo);
+      const compressed=[];
+      for(const p of form.photos){
+        const c=await compressPhoto(p);
+        if(c)compressed.push(c);
+      }
       await onSave({
-        ...form,photo,
+        ...form,
+        photo:compressed[0]||null,
+        extraPhotos:compressed.slice(1),
         projectId:currentProject?.id||"default",
         projectName:currentProject?.name||"",
         status:"Open",loggedBy:member?.name||"",
@@ -867,28 +877,28 @@ function LogDefect({member,company,currentProject,members,onSave}){
     <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
       <div style={{background:"rgba(48,209,88,0.1)",border:"1px solid rgba(48,209,88,0.3)",borderRadius:14,padding:24,textAlign:"center",marginBottom:20}}>
         <div style={{fontSize:36,marginBottom:8}}>✓</div>
-        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:18,color:"#1a7a35",marginBottom:4}}>DEFECT LOGGED</div>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:18,color:"#1a7a35",marginBottom:4}}>ENTRY LOGGED</div>
         <div style={{fontSize:13,color:"rgba(0,0,0,0.5)"}}>{count} logged this session · Team notified</div>
       </div>
       <div style={{background:"#fff",borderRadius:14,padding:14,marginBottom:12}}>
         <div style={{fontSize:13,color:"rgba(0,0,0,0.5)",marginBottom:6}}>Log another at the same location?</div>
         <div style={{fontSize:12,color:"rgba(0,0,0,0.4)"}}>📍 {last?.location} · → {last?.assignee}</div>
       </div>
-      <button onClick={()=>{setForm({...blank,location:last?.location||"",assignee:last?.assignee||member?.name||"",severity:last?.severity||"Major"});setShowBatch(false);}} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:16,color:"#fff",fontSize:15,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:10}}>➕ LOG ANOTHER HERE</button>
-      <button onClick={()=>setShowBatch(false)} style={{width:"100%",background:"rgba(0,0,0,0.06)",border:"none",borderRadius:12,padding:14,fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>✓ DONE — VIEW ALL</button>
+      <button onClick={()=>{setForm({...blank,location:last?.location||"",assignee:last?.assignee||member?.name||"",severity:last?.severity||"Major"});setShowBatch(false);}} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:16,color:"#fff",fontSize:15,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:10}}>+ LOG ANOTHER HERE</button>
+      <button onClick={()=>setShowBatch(false)} style={{width:"100%",background:"rgba(0,0,0,0.06)",border:"none",borderRadius:12,padding:14,fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>DONE — VIEW ALL</button>
     </div>
   );
 
   return(
     <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
-        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>LOG DEFECT</div>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>LOG ENTRY</div>
         {count>0&&<div style={{fontSize:10,fontWeight:700,color:"#30d158",background:"rgba(48,209,88,0.1)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>{count} LOGGED</div>}
         <div style={{fontSize:10,fontWeight:700,color:"#ff6b00",background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>🎙 VOICE</div>
       </div>
       <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:20}}>📁 {currentProject?.name||"—"} · Tap 🎙 to dictate</div>
 
-      <VoiceField label="DEFECT TITLE *" value={form.title} onChange={v=>set("title",v)} placeholder="e.g. Crack in column C4"/>
+      <VoiceField label="TITLE *" value={form.title} onChange={v=>set("title",v)} placeholder="e.g. Crack in column C4"/>
       <VoiceField label="LOCATION *" value={form.location} onChange={v=>set("location",v)} placeholder="e.g. Level 3, Grid C4"/>
 
       <div style={{marginBottom:16}}>
@@ -907,16 +917,23 @@ function LogDefect({member,company,currentProject,members,onSave}){
         </select>
       </div>
 
-      <VoiceField label="DESCRIPTION" value={form.description} onChange={v=>set("description",v)} placeholder="Describe the defect..." multiline/>
+      <VoiceField label="DESCRIPTION" value={form.description} onChange={v=>set("description",v)} placeholder="Describe the issue..." multiline/>
 
       <div style={{marginBottom:20}}>
-        <label style={lbl()}>PHOTO</label>
-        <input type="file" accept="image/*" capture="environment" ref={fileRef} onChange={handlePhoto} style={{display:"none"}}/>
-        {form.photo?(
+        <label style={lbl()}>PHOTOS ({form.photos.length}/{MAX_PHOTOS})</label>
+        <input type="file" accept="image/*" capture="environment" multiple ref={fileRef} onChange={handlePhoto} style={{display:"none"}}/>
+        {form.photos.length>0&&(
           <div>
-            <div style={{position:"relative",marginBottom:8}}>
-              <img src={form.photo} alt="" style={{width:"100%",borderRadius:10,maxHeight:200,objectFit:"cover"}}/>
-              <button onClick={()=>{set("photo",null);setAiResult(null);}} style={{position:"absolute",top:8,right:8,background:"rgba(0,0,0,0.6)",border:"none",borderRadius:20,color:"#fff",padding:"4px 10px",fontSize:12,cursor:"pointer"}}>Remove</button>
+            <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8,marginBottom:8}}>
+              {form.photos.map((p,i)=>(
+                <div key={i} style={{position:"relative",flexShrink:0}}>
+                  <img src={p} alt="" style={{width:100,height:100,borderRadius:10,objectFit:"cover"}}/>
+                  <button onClick={()=>removePhoto(i)} style={{position:"absolute",top:4,right:4,background:"rgba(0,0,0,0.7)",border:"none",borderRadius:"50%",color:"#fff",width:22,height:22,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+                </div>
+              ))}
+              {form.photos.length<MAX_PHOTOS&&(
+                <button onClick={()=>fileRef.current.click()} style={{width:100,height:100,borderRadius:10,border:"2px dashed rgba(0,0,0,0.15)",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:24,color:"rgba(0,0,0,0.3)"}}>+</button>
+              )}
             </div>
             {geminiKey&&(
               <button onClick={analyze} disabled={analyzing} style={{width:"100%",background:"rgba(88,86,214,0.08)",border:"1.5px solid rgba(88,86,214,0.3)",borderRadius:10,padding:"11px",color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
@@ -926,18 +943,19 @@ function LogDefect({member,company,currentProject,members,onSave}){
             {!geminiKey&&<div style={{fontSize:11,color:"rgba(0,0,0,0.35)",textAlign:"center",padding:"6px 0"}}>Setup AI (🤖 in header) to auto-fill from photo</div>}
             {aiResult&&(
               <div style={{background:"rgba(88,86,214,0.06)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:10,padding:"10px 12px",marginTop:8}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#5856d6",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif"}}>✓ AI FILLED — REVIEW & EDIT ABOVE</div>
+                <div style={{fontSize:11,fontWeight:700,color:"#5856d6",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif"}}>AI FILLED — REVIEW & EDIT ABOVE</div>
                 <div style={{fontSize:11,color:"rgba(0,0,0,0.5)"}}>{aiResult.description}</div>
               </div>
             )}
           </div>
-        ):(
-          <button onClick={()=>fileRef.current.click()} style={{width:"100%",background:"#fff",border:"2px dashed rgba(0,0,0,0.15)",borderRadius:10,padding:20,color:"rgba(0,0,0,0.4)",fontSize:14,cursor:"pointer"}}>📷 Add photo{geminiKey?" · AI will auto-analyze":""}</button>
+        )}
+        {form.photos.length===0&&(
+          <button onClick={()=>fileRef.current.click()} style={{width:"100%",background:"#fff",border:"2px dashed rgba(0,0,0,0.15)",borderRadius:10,padding:20,color:"rgba(0,0,0,0.4)",fontSize:14,cursor:"pointer"}}>📷 Add photos (up to {MAX_PHOTOS}){geminiKey?" · AI will auto-analyze":""}</button>
         )}
       </div>
 
       <button onClick={submit} disabled={saving||!form.title.trim()||!form.location.trim()} style={{width:"100%",background:form.title.trim()&&form.location.trim()&&!saving?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:12,padding:16,color:form.title.trim()&&form.location.trim()?"#fff":"rgba(0,0,0,0.3)",fontSize:16,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-        {saving?<><Spin size={16}/><span>SAVING...</span></>:"SUBMIT DEFECT"}
+        {saving?<><Spin size={16}/><span>SAVING...</span></>:"SUBMIT ENTRY"}
       </button>
     </div>
   );
@@ -1001,7 +1019,7 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
     await DB.defects.update(defect.id,{status:s,updatedAt:DB.serverTimestamp()});
     onUpdate({...defect,status:s});
     if(tgCfg?.token&&tgCfg?.chatId){
-      const e={Open:"🔴","In Progress":"🟡",Closed:"🟢"}[s]||"⚪";
+      const e=STATUS_ICON[s]||"⚪";
       await sendTelegram(tgCfg.token,tgCfg.chatId,`${e} <b>Status Updated</b>\n<b>${defect.title}</b>\nStatus: <b>${s}</b>\nBy: ${member?.name}`);
     }
   };
@@ -1028,7 +1046,7 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:100,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
       <div style={{position:"sticky",top:0,background:"rgba(240,237,232,0.95)",backdropFilter:"blur(8px)",padding:"16px 16px 12px",display:"flex",alignItems:"center",gap:12,borderBottom:"1px solid rgba(0,0,0,0.08)",zIndex:10}}>
         <button onClick={onClose} style={{background:"rgba(0,0,0,0.08)",border:"none",borderRadius:20,padding:"7px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>← BACK</button>
-        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a",flex:1}}>DEFECT DETAIL</div>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a",flex:1}}>ENTRY DETAIL</div>
         {canDelete&&<button onClick={deleteDefect} disabled={deleting} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{deleting?"...":"DELETE"}</button>}
       </div>
       <div style={{padding:16}}>
@@ -1048,7 +1066,15 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
           )}
         </div>
 
-        {defect.photo&&<img src={defect.photo} alt="" style={{width:"100%",borderRadius:12,maxHeight:250,objectFit:"cover",marginBottom:14}}/>}
+        {defect.photo&&(
+          typeof defect.photo==="string"
+            ?<img src={defect.photo} alt="" style={{width:"100%",borderRadius:12,maxHeight:250,objectFit:"cover",marginBottom:14}}/>
+            :Array.isArray(defect.photo)&&defect.photo.length>0
+              ?<div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8,marginBottom:14}}>
+                {defect.photo.map((p,i)=><img key={i} src={p} alt="" style={{height:180,borderRadius:12,objectFit:"cover",flexShrink:0}}/>)}
+              </div>
+              :null
+        )}
 
         {canUpdate&&(
           <div style={{marginBottom:14}}>
@@ -1257,29 +1283,32 @@ function App(){
   useEffect(()=>{
     const inv=new URLSearchParams(window.location.search).get("invite")||"";
     setInviteCode(inv);
-    // Init PocketBase
-    DB.init(typeof PB_URL!=='undefined'?PB_URL:'https://sitesnag.duckdns.org');
-    return DB.auth.onAuthStateChanged(async u=>{
-      setAuthUser(u);
-      if(u&&!local.get(COMPANY_KEY)){
-        try{
-          const result=await DB.findUserCompany(u.id);
-          if(result){
-            const cd={companyId:result.companyId,companyName:result.companyName};
-            local.set(COMPANY_KEY,cd);
-            setCompany(cd);
-            const projs=await DB.projects.list(`companyId="${result.companyId}" && archived!=true`);
-            if(projs.length){
-              const proj={id:projs[0].id,name:projs[0].name};
-              local.set(PROJECT_KEY,proj);
-              setCurrentProject(proj);
+    // Init PocketBase — must complete before auth callbacks fire
+    let unsub;
+    DB.init(typeof PB_URL!=='undefined'?PB_URL:'https://siteshrimp.duckdns.org').then(()=>{
+      unsub=DB.auth.onAuthStateChanged(async u=>{
+        setAuthUser(u);
+        if(u&&!local.get(COMPANY_KEY)){
+          try{
+            const result=await DB.findUserCompany(u.id);
+            if(result){
+              const cd={companyId:result.companyId,companyName:result.companyName};
+              local.set(COMPANY_KEY,cd);
+              setCompany(cd);
+              const projs=await DB.projects.list(`companyId="${result.companyId}" && archived!=true`);
+              if(projs.length){
+                const proj={id:projs[0].id,name:projs[0].name};
+                local.set(PROJECT_KEY,proj);
+                setCurrentProject(proj);
+              }
+              await loadSettingsFromFirestore(result.companyId);
             }
-            await loadSettingsFromFirestore(result.companyId);
-          }
-        }catch(e){console.warn("Auto-recover failed:",e);}
-      }
-      setAuthLoading(false);
+          }catch(e){console.warn("Auto-recover failed:",e);}
+        }
+        setAuthLoading(false);
+      });
     });
+    return ()=>{if(unsub)unsub();};
   },[]);
 
   // Member + all members listener
@@ -1310,8 +1339,16 @@ function App(){
     if(!company?.companyId||!currentProject?.id)return;
     setSyncing(true);
     return DB.defects.subscribe(`companyId="${company.companyId}" && projectId="${currentProject.id}"`,items=>{
-      // Add photo URL for display
-      const withPhotos=items.map(d=>({...d,photo:d.photo?DB.fileUrl("defects",d.id,d.photo):d.photo}));
+      // Map photo filenames to URLs (supports single string or array)
+      const withPhotos=items.map(d=>{
+        let photo=d.photo;
+        if(Array.isArray(photo)&&photo.length>0){
+          photo=photo.map(f=>DB.fileUrl("defects",d.id,f));
+        }else if(typeof photo==="string"&&photo){
+          photo=DB.fileUrl("defects",d.id,photo);
+        }
+        return{...d,photo};
+      });
       setDefects(withPhotos);
       setSyncing(false);
     });
@@ -1336,7 +1373,7 @@ function App(){
 
     const cfg=local.get(TG_KEY);
     if(cfg?.token&&cfg?.chatId){
-      const e={Critical:"🔴",Major:"🟠",Minor:"🟡",Observation:"🔵"}[data.severity]||"⚪";
+      const e={Critical:"\u{1F534}",Major:"\u{1F7E0}",Minor:"\u{1F7E1}",Observation:"\u{1F535}"}[data.severity]||"\u26AA";
       const text=`${e} <b>NEW DEFECT — ${company.companyName}</b>\n\n📁 ${currentProject.name}\n📋 <b>${data.title}</b>\n📍 ${data.location}\n⚠️ ${data.severity}\n👤 → ${data.assignee}\n✍️ By: ${data.loggedBy} (${data.loggedByRole})`;
       if(data.photo)await sendTelegramPhoto(cfg.token,cfg.chatId,data.photo,text);
       else await sendTelegram(cfg.token,cfg.chatId,text);
@@ -1388,8 +1425,8 @@ function App(){
         </button>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           <div style={{textAlign:"right",marginRight:2}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#fff",lineHeight:1}}>{defects.filter(d=>d.status==="Open").length}</div>
-            <div style={{fontSize:9,color:"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif"}}>OPEN</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#fff",lineHeight:1}}>{defects.filter(d=>!["Verified","Closed"].includes(d.status)).length}</div>
+            <div style={{fontSize:9,color:"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif"}}>ACTIVE</div>
           </div>
           <button onClick={()=>setShowGemini(true)} title="AI Setup" style={{width:32,height:32,borderRadius:8,background:aiEnabled?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${aiEnabled?"rgba(88,86,214,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:15}}>🤖</button>
           <button onClick={()=>setShowTg(true)} title="Telegram Setup" style={{width:32,height:32,borderRadius:8,background:tgEnabled?"rgba(0,136,204,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${tgEnabled?"rgba(0,136,204,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>

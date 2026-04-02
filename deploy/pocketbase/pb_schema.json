@@ -3,48 +3,227 @@
     "name": "defects",
     "type": "base",
     "schema": [
-      { "name": "defect_id", "type": "text", "required": true, "options": { "min": 1, "max": 20 } },
-      { "name": "status", "type": "text", "required": true, "options": { "min": 1, "max": 20 } },
-      { "name": "timestamp_utc", "type": "text" },
-      { "name": "user_name", "type": "text" },
-      { "name": "project", "type": "text" },
-      { "name": "unit", "type": "text" },
-      { "name": "location", "type": "text" },
-      { "name": "category", "type": "text" },
-      { "name": "defect_type", "type": "text" },
-      { "name": "severity", "type": "text" },
+      { "name": "companyId", "type": "text", "required": true },
+      { "name": "projectId", "type": "text", "required": true },
+      { "name": "projectName", "type": "text" },
+      { "name": "entryType", "type": "text", "required": true },
+      { "name": "title", "type": "text", "required": true },
       { "name": "description", "type": "text", "options": { "max": 5000 } },
-      { "name": "trade", "type": "text" },
-      { "name": "assigned_to", "type": "text" },
-      { "name": "target_fix_date", "type": "text" },
-      { "name": "resolved_date", "type": "text" },
-      { "name": "input_source", "type": "text" },
+      { "name": "severity", "type": "text" },
+      { "name": "status", "type": "text", "required": true },
+      { "name": "component", "type": "text" },
+      { "name": "locationLevel", "type": "text" },
+      { "name": "locationZone", "type": "text" },
+      { "name": "locationSubzone", "type": "text" },
+      { "name": "locationGrid", "type": "text" },
+      { "name": "locationDisplay", "type": "text" },
+      { "name": "location", "type": "text" },
+      { "name": "assignee", "type": "text" },
+      { "name": "assigneeId", "type": "text" },
+      { "name": "dueDate", "type": "text" },
+      { "name": "loggedBy", "type": "text" },
+      { "name": "loggedByRole", "type": "text" },
       { "name": "photo", "type": "file", "options": { "maxSelect": 5, "maxSize": 10485760, "mimeTypes": ["image/jpeg", "image/png", "image/webp"] } },
+      { "name": "photoOriginal", "type": "file", "options": { "maxSelect": 5, "maxSize": 10485760, "mimeTypes": ["image/jpeg", "image/png", "image/webp"] } },
+      { "name": "comments", "type": "json" },
+      { "name": "closedAt", "type": "text" },
+      { "name": "verifiedAt", "type": "text" },
+      { "name": "verifiedBy", "type": "text" },
+      { "name": "drawingPinId", "type": "text" },
+      { "name": "defect_id", "type": "text" },
+      { "name": "telegram_user", "type": "text" },
+      { "name": "transcript_text", "type": "text", "options": { "max": 5000 } },
+      { "name": "voice_file_id", "type": "text" },
+      { "name": "photo_file_id", "type": "text" },
+      { "name": "photo_url", "type": "text", "options": { "max": 2000 } },
       { "name": "initiated_by", "type": "text" },
       { "name": "responsible_party", "type": "text" },
       { "name": "follow_up_by", "type": "text" },
       { "name": "remarks", "type": "text" },
       { "name": "cost", "type": "text" },
-      { "name": "quality", "type": "text" }
+      { "name": "quality", "type": "text" },
+      { "name": "target_fix_date", "type": "text" },
+      { "name": "resolved_date", "type": "text" },
+      { "name": "input_source", "type": "text" },
+      { "name": "unit", "type": "text" },
+      { "name": "category", "type": "text" },
+      { "name": "defect_type", "type": "text" },
+      { "name": "trade", "type": "text" },
+      { "name": "assigned_to", "type": "text" },
+      { "name": "timestamp_utc", "type": "text" }
     ],
-    "listRule": "",
-    "viewRule": "",
-    "createRule": "",
-    "updateRule": "",
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''"
+  },
+  {
+    "name": "companies",
+    "type": "base",
+    "schema": [
+      { "name": "name", "type": "text", "required": true },
+      { "name": "adminId", "type": "text" },
+      { "name": "adminEmail", "type": "text" },
+      { "name": "createdAt", "type": "text" }
+    ],
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id != ''"
+  },
+  {
+    "name": "members",
+    "type": "base",
+    "schema": [
+      { "name": "companyId", "type": "text", "required": true },
+      { "name": "userId", "type": "text", "required": true },
+      { "name": "name", "type": "text" },
+      { "name": "email", "type": "text" },
+      { "name": "role", "type": "text", "required": true },
+      { "name": "jobTitle", "type": "text" },
+      { "name": "joinedAt", "type": "text" }
+    ],
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id != ''",
     "deleteRule": "@request.auth.id != ''"
   },
   {
     "name": "projects",
     "type": "base",
     "schema": [
+      { "name": "companyId", "type": "text", "required": true },
       { "name": "name", "type": "text", "required": true },
-      { "name": "code", "type": "text", "required": true },
-      { "name": "created_by", "type": "text" }
+      { "name": "code", "type": "text" },
+      { "name": "createdBy", "type": "text" },
+      { "name": "createdAt", "type": "text" },
+      { "name": "archived", "type": "bool" }
     ],
-    "listRule": "",
-    "viewRule": "",
-    "createRule": "",
-    "updateRule": ""
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id != ''"
+  },
+  {
+    "name": "invites",
+    "type": "base",
+    "schema": [
+      { "name": "companyId", "type": "text", "required": true },
+      { "name": "code", "type": "text", "required": true },
+      { "name": "role", "type": "text" },
+      { "name": "jobTitle", "type": "text" },
+      { "name": "createdBy", "type": "text" },
+      { "name": "expiresAt", "type": "text" },
+      { "name": "usedBy", "type": "text" },
+      { "name": "usedAt", "type": "text" }
+    ],
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id != ''"
+  },
+  {
+    "name": "settings",
+    "type": "base",
+    "schema": [
+      { "name": "companyId", "type": "text", "required": true },
+      { "name": "key", "type": "text", "required": true },
+      { "name": "value", "type": "json" }
+    ],
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id != ''"
+  },
+  {
+    "name": "activity",
+    "type": "base",
+    "schema": [
+      { "name": "entryId", "type": "text", "required": true },
+      { "name": "companyId", "type": "text", "required": true },
+      { "name": "type", "type": "text", "required": true },
+      { "name": "action", "type": "text" },
+      { "name": "oldValue", "type": "text" },
+      { "name": "newValue", "type": "text" },
+      { "name": "comment", "type": "text", "options": { "max": 5000 } },
+      { "name": "userId", "type": "text" },
+      { "name": "userName", "type": "text" },
+      { "name": "userRole", "type": "text" },
+      { "name": "photo", "type": "file", "options": { "maxSelect": 1, "maxSize": 10485760, "mimeTypes": ["image/jpeg", "image/png", "image/webp"] } },
+      { "name": "timestamp", "type": "text" }
+    ],
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id != ''"
+  },
+  {
+    "name": "location_presets",
+    "type": "base",
+    "schema": [
+      { "name": "companyId", "type": "text", "required": true },
+      { "name": "projectId", "type": "text", "required": true },
+      { "name": "type", "type": "text", "required": true },
+      { "name": "parentValue", "type": "text" },
+      { "name": "value", "type": "text", "required": true },
+      { "name": "sortOrder", "type": "number" }
+    ],
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''"
+  },
+  {
+    "name": "component_presets",
+    "type": "base",
+    "schema": [
+      { "name": "companyId", "type": "text", "required": true },
+      { "name": "value", "type": "text", "required": true },
+      { "name": "sortOrder", "type": "number" }
+    ],
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''"
+  },
+  {
+    "name": "drawings",
+    "type": "base",
+    "schema": [
+      { "name": "companyId", "type": "text", "required": true },
+      { "name": "projectId", "type": "text", "required": true },
+      { "name": "name", "type": "text", "required": true },
+      { "name": "file", "type": "file", "required": true, "options": { "maxSelect": 1, "maxSize": 52428800, "mimeTypes": ["application/pdf"] } },
+      { "name": "pageCount", "type": "number" },
+      { "name": "uploadedBy", "type": "text" },
+      { "name": "uploadedAt", "type": "text" }
+    ],
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''"
+  },
+  {
+    "name": "pins",
+    "type": "base",
+    "schema": [
+      { "name": "drawingId", "type": "text", "required": true },
+      { "name": "entryId", "type": "text", "required": true },
+      { "name": "pageNum", "type": "number", "required": true },
+      { "name": "x", "type": "number", "required": true },
+      { "name": "y", "type": "number", "required": true },
+      { "name": "label", "type": "text" }
+    ],
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''"
   },
   {
     "name": "counters",
@@ -53,9 +232,9 @@
       { "name": "key", "type": "text", "required": true },
       { "name": "value", "type": "number", "required": true }
     ],
-    "listRule": "",
-    "viewRule": "",
-    "createRule": "",
-    "updateRule": ""
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id != ''"
   }
 ]
