@@ -37,7 +37,8 @@ input,textarea,select{outline:none;font-family:'Barlow',sans-serif;}
 <body>
 <div id="root"></div>
 <script>
-// PocketBase backend URL
+// PocketBase backend URL — auto-migrate old DuckDNS URLs
+if((localStorage.getItem('pb_url')||'').includes('duckdns')){localStorage.removeItem('pb_url');}
 const PB_URL = localStorage.getItem('pb_url') || 'https://api.siteshrimp.org';
 // Service worker
 if('serviceWorker' in navigator){
