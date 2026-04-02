@@ -1664,6 +1664,8 @@ function App(){
   const[showProjects,setShowProjects]=useState(false);
   const[showProfile,setShowProfile]=useState(false);
   const[showHelp,setShowHelp]=useState(false);
+  const[showFeedback,setShowFeedback]=useState(false);
+  const[fbText,setFbText]=useState("");const[fbType,setFbType]=useState("suggestion");const[fbSent,setFbSent]=useState(false);const[fbSending,setFbSending]=useState(false);
 
   // Auth listener — also auto-recover company if localStorage was cleared
   useEffect(()=>{
@@ -1882,7 +1884,10 @@ function App(){
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21.5 4.5L2.5 11.5L9 13.5L11 20.5L15 15.5L20 18.5L21.5 4.5Z" stroke={tgEnabled?"#0088cc":"rgba(255,255,255,0.4)"} strokeWidth="1.5" strokeLinejoin="round"/></svg>
           </button>
           {isAdmin&&<button onClick={()=>setShowUsers(true)} title="Team Management" style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:15}}>👥</button>}
-          <button onClick={()=>setShowHelp(true)} title="Help & Guide" style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"rgba(255,255,255,0.5)"}}>?</button>
+          <button onClick={()=>setShowHelp(true)} title="Help" style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"rgba(255,255,255,0.5)"}}>?</button>
+          <button onClick={()=>{setShowFeedback(true);setFbSent(false);setFbText("");}} title="Feedback" style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:13}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
           <button onClick={()=>setShowProfile(!showProfile)} style={{width:32,height:32,borderRadius:"50%",background:"#ff6b00",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#fff",flexShrink:0}}>
             {(member?.name||"?")[0].toUpperCase()}
           </button>
@@ -1928,7 +1933,7 @@ function App(){
           <div style={{maxWidth:430,margin:"0 auto",padding:"0 0 40px"}}>
             <div style={{background:"#1a1a1a",padding:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:1}}>
               <button onClick={()=>setShowHelp(false)} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>← BACK</button>
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff"}}>HOW TO USE SITESHRIMP</div>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff"}}>HELP</div>
             </div>
             <div style={{padding:"20px 16px"}}>
               {[
@@ -1948,7 +1953,8 @@ function App(){
                   ["AI (robot)","Set up your Gemini API key for AI photo analysis. Free at aistudio.google.com."],
                   ["Telegram (plane)","Connect a Telegram bot to get instant notifications when defects are logged or updated."],
                   ["Team (people, Admin only)","Invite members, set roles, manage your team."],
-                  ["? (Help)","You're here! This guide."],
+                  ["? (Help)","This guide — how to use the app."],
+                  ["Chat (Feedback)","Share suggestions, report bugs, or tell us what you think."],
                   ["Profile (avatar)","View your profile, email report settings, or sign out."],
                 ]],
                 ["Logging an Entry",[
@@ -2020,6 +2026,46 @@ function App(){
                 <button onClick={()=>setShowHelp(false)} style={{marginTop:16,background:"#ff6b00",border:"none",borderRadius:10,padding:"12px 32px",color:"#fff",fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>GOT IT</button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {showFeedback&&(
+        <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <div style={{background:"#1a1a1a",borderRadius:16,padding:24,width:"100%",maxWidth:400,animation:"fadeIn 0.15s ease"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#fff",marginBottom:4}}>FEEDBACK</div>
+            <div style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:20,lineHeight:1.5}}>Help us improve SiteShrimp! Share your thoughts on the design, usability, or features. What works well? What feels confusing? Any ideas for improvement?</div>
+            {fbSent?(
+              <div style={{textAlign:"center",padding:"20px 0"}}>
+                <div style={{fontSize:28,marginBottom:10}}>✓</div>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#00e564",marginBottom:6}}>THANK YOU!</div>
+                <div style={{fontSize:13,color:"rgba(255,255,255,0.5)",marginBottom:20}}>Your feedback has been recorded. We read every submission.</div>
+                <button onClick={()=>setShowFeedback(false)} style={{background:"#ff6b00",border:"none",borderRadius:10,padding:"12px 32px",color:"#fff",fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>DONE</button>
+              </div>
+            ):(
+              <>
+                <div style={{display:"flex",gap:6,marginBottom:14}}>
+                  {[["suggestion","Suggestion"],["bug","Bug Report"],["praise","What I Like"],["other","Other"]].map(([id,label])=>(
+                    <button key={id} onClick={()=>setFbType(id)} style={{flex:1,padding:"8px 4px",borderRadius:8,border:`1.5px solid ${fbType===id?"#ff6b00":"rgba(255,255,255,0.1)"}`,background:fbType===id?"rgba(255,107,0,0.15)":"rgba(255,255,255,0.05)",color:fbType===id?"#ff6b00":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{label}</button>
+                  ))}
+                </div>
+                <div style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:16}}>
+                  <textarea value={fbText} onChange={e=>setFbText(e.target.value)} placeholder="Type your feedback here... What would make this app better for your team?" rows={4} style={{flex:1,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"12px",color:"#fff",fontSize:14,resize:"none",fontFamily:"'Barlow',sans-serif"}}/>
+                  <MicBtn onResult={t=>setFbText(t)} append={true} currentValue={fbText}/>
+                </div>
+                <button onClick={async()=>{
+                  if(!fbText.trim())return;
+                  setFbSending(true);
+                  try{
+                    await DB.activity.create({companyId:company?.companyId||"none",type:"feedback",feedbackType:fbType,text:fbText.trim(),userId:authUser?.id,userEmail:authUser?.email,userName:member?.name||"",createdAt:new Date().toISOString()});
+                    setFbSent(true);
+                  }catch(e){console.warn("Feedback save failed:",e);}
+                  setFbSending(false);
+                }} disabled={fbSending||!fbText.trim()} style={{width:"100%",background:fbText.trim()?"#ff6b00":"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"14px",color:"#fff",fontSize:15,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",opacity:fbSending?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                  {fbSending?<Spin size={16}/>:null}{fbSending?"SENDING...":"SUBMIT FEEDBACK"}
+                </button>
+                <button onClick={()=>setShowFeedback(false)} style={{width:"100%",background:"none",border:"none",color:"rgba(255,255,255,0.3)",fontSize:12,cursor:"pointer",padding:"12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600}}>Cancel</button>
+              </>
+            )}
           </div>
         </div>
       )}
