@@ -324,7 +324,7 @@ function AuthScreen({onAuth}){
   if(page==="intro")return(
     <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,textAlign:"center"}}>
       <div style={{width:"100%",maxWidth:400}}>
-        <div style={{background:"#ff6b00",width:56,height:6,borderRadius:3,marginBottom:24,marginLeft:"auto",marginRight:"auto"}}/>
+        <img src="icons/icon-192.png" alt="SiteShrimp" style={{width:80,height:80,borderRadius:18,marginBottom:16,boxShadow:"0 4px 20px rgba(255,107,0,0.3)"}}/>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:42,fontWeight:800,color:"#fff",lineHeight:1,marginBottom:8}}>SITESHRIMP</div>
         <div style={{color:"rgba(255,255,255,0.5)",fontSize:14,marginBottom:32,lineHeight:1.6}}>
           Construction site works, defects and items<br/>tracking and monitoring for teams that deliver.
@@ -334,14 +334,23 @@ function AuthScreen({onAuth}){
         <div style={{textAlign:"left",marginBottom:32}}>
           {[
             ["📷","Snap photos, AI describes the defect"],
-            ["🎙","Voice input — speak, don't type"],
+            ["mic","Voice input — speak, don't type"],
             ["📋","Observations, defects, instructions — all in one"],
             ["👥","Team sync — everyone sees updates live"],
             ["📊","Reports, dashboards & PDF export"],
             ["🔔","Telegram & email notifications"],
           ].map(([icon,text],i)=>(
             <div key={i} className="anim" style={{animationDelay:`${i*0.08}s`,display:"flex",gap:12,alignItems:"center",padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
-              <div style={{fontSize:20,width:32,textAlign:"center",flexShrink:0}}>{icon}</div>
+              <div style={{width:32,textAlign:"center",flexShrink:0}}>
+                {icon==="mic"
+                  ?<svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{display:"inline-block"}}>
+                    <rect x="9" y="2" width="6" height="12" rx="3" fill="#ff6b00"/>
+                    <path d="M5 10a7 7 0 0014 0" stroke="#ff6b00" strokeWidth="2" strokeLinecap="round"/>
+                    <line x1="12" y1="19" x2="12" y2="22" stroke="#ff6b00" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                  :<span style={{fontSize:20}}>{icon}</span>
+                }
+              </div>
               <div style={{color:"rgba(255,255,255,0.7)",fontSize:14}}>{text}</div>
             </div>
           ))}
@@ -349,17 +358,10 @@ function AuthScreen({onAuth}){
 
         <button onClick={()=>setPage("auth")} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:"16px",color:"#fff",fontSize:16,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:12,letterSpacing:"0.04em"}}>GET STARTED</button>
 
-        {installable&&(
-          <button onClick={installApp} style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"14px",color:"rgba(255,255,255,0.8)",fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-            <span style={{fontSize:18}}>+</span> INSTALL APP
-          </button>
-        )}
-
-        {!installable&&(
-          <div style={{color:"rgba(255,255,255,0.25)",fontSize:11,marginTop:4}}>
-            Tip: Add to Home Screen for the best experience
-          </div>
-        )}
+        <button onClick={installable?installApp:()=>alert("To install:\n\nAndroid: Menu (⋮) → Add to Home Screen\n\niPhone: Share (↑) → Add to Home Screen")} style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"14px",color:"rgba(255,255,255,0.8)",fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(255,255,255,0.8)" strokeWidth="2" strokeLinecap="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(255,255,255,0.8)" strokeWidth="2" strokeLinecap="round"/></svg>
+          INSTALL APP
+        </button>
 
         <div style={{color:"rgba(255,255,255,0.15)",fontSize:11,marginTop:20,fontFamily:"'Barlow Condensed',sans-serif"}}>
           Free for all teams · No app store needed
