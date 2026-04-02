@@ -2,8 +2,8 @@
 
 **Version:** 2.0  
 **Stack:** Firebase (Auth + Firestore) · React 18 · Babel · PWA · Gemini AI · Telegram · EmailJS  
-**Live URL:** https://woonweipong-hub.github.io/PWA/  
-**GitHub:** https://github.com/woonweipong-hub/PWA  
+**Live URL:** https://siteshrimp.pages.dev  
+**GitHub:** https://github.com/woonweipong-hub/SiteShrimp  
 
 ---
 
@@ -511,7 +511,7 @@ Auto-deploys from `main` branch. Edit files via GitHub web editor → commit →
 | `sw.js` | Cache strategy changes — bump `siteshrimp-v2` → `siteshrimp-v3` |
 
 ### How to Edit on GitHub Mobile
-1. Go to `github.com/woonweipong-hub/PWA`
+1. Go to `github.com/woonweipong-hub/SiteShrimp`
 2. Tap file → pencil ✏️ icon
 3. Select All → paste new content
 4. Scroll down → Commit changes

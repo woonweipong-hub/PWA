@@ -4,7 +4,7 @@
 
 A mobile-first PWA for construction site defect tracking with AI photo analysis, real-time sync, Telegram notifications, and multi-tenant team management. No app store needed — open the link, add to home screen, start reporting.
 
-**Live:** https://woonweipong-hub.github.io/PWA/
+**Live:** https://siteshrimp.pages.dev
 
 ---
 
@@ -12,7 +12,7 @@ A mobile-first PWA for construction site defect tracking with AI photo analysis,
 
 ### For site workers (30 seconds)
 
-1. Open **https://woonweipong-hub.github.io/PWA/** on your phone
+1. Open **https://siteshrimp.pages.dev** on your phone
 2. **Android**: Menu > "Add to Home Screen"
 3. **iPhone**: Share > "Add to Home Screen"
 4. Sign up with email, join or create a company
@@ -213,7 +213,7 @@ To fork and deploy your own:
 1. Fork this repo
 2. Update Firebase config in `index.html`
 3. Enable GitHub Pages (Settings > Pages > main branch)
-4. Your app is live at `https://YOUR_USERNAME.github.io/PWA/`
+4. Your app is live at your Cloudflare Pages URL
 
 ---
 

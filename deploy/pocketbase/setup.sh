@@ -3,7 +3,7 @@
 # Run on your GCP VM (or any Linux server) to set up the backend
 #
 # Usage:
-#   curl -sL https://raw.githubusercontent.com/woonweipong-hub/PWA/main/deploy/pocketbase/setup.sh | bash
+#   curl -sL https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/deploy/pocketbase/setup.sh | bash
 #   OR
 #   chmod +x setup.sh && ./setup.sh
 #
