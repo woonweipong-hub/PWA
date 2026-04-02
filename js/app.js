@@ -230,6 +230,7 @@ function ComboField({label,value,onChange,options,placeholder,grouped}){
         <label style={lbl()}>{label}</label>
         <div style={{display:"flex",gap:8,marginBottom:8}}>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." style={{...inp,flex:1,fontSize:13}}/>
+          <MicBtn onResult={t=>setSearch(t)} currentValue={search}/>
           <button onClick={()=>setCustom(true)} style={{background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:8,padding:"8px 10px",fontSize:11,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff6b00",flexShrink:0}}>TYPE</button>
         </div>
         <div style={{maxHeight:200,overflowY:"auto",borderRadius:10,border:"1px solid rgba(0,0,0,0.08)"}}>
