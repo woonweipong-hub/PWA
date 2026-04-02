@@ -1,7 +1,8 @@
-const CACHE = 'sitesnag-v2';
+const CACHE = 'sitesnag-v3';
 const ASSETS = [
   '/PWA/',
   '/PWA/index.html',
+  '/PWA/js/db.js',
   '/PWA/manifest.json',
   '/PWA/icons/icon-192.svg',
   '/PWA/icons/icon-512.svg'

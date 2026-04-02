@@ -62,7 +62,7 @@ function exportCSV(defects,projectName){
     `"${(d.title||"").replace(/"/g,'""')}"`,
     `"${(d.location||"").replace(/"/g,'""')}"`,
     d.severity||"",d.status||"",d.assignee||"",d.loggedBy||"",
-    d.createdAt?.toDate?d.createdAt.toDate().toLocaleDateString("en-GB"):"",
+    d.created?new Date(d.created).toLocaleDateString("en-GB"):"",
     `"${(d.description||"").replace(/"/g,'""')}"`,
     `"${(d.comments||[]).map(c=>`${c.by}: ${c.text}`).join(" | ")}"`
   ].join(","));
@@ -102,7 +102,7 @@ function generateEmailHTML(defects,projectName,companyName){
   const closed=defects.filter(d=>d.status==="Closed").length;
   const date=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
   const defectRows=defects.map(d=>{
-    const dt=d.createdAt?.toDate?d.createdAt.toDate().toLocaleDateString("en-GB"):"—";
+    const dt=d.created?new Date(d.created).toLocaleDateString("en-GB"):"—";
     const comments=(d.comments||[]).map(c=>`<div style="padding:6px 10px;background:#f5f5f5;border-radius:6px;font-size:12px;margin:4px 0"><b style="color:#ff6b00">${c.by}:</b> ${c.text}</div>`).join("");
     // Photos excluded from email — base64 exceeds EmailJS 50KB free tier limit
     const photo=d.photo?`<div style="font-size:11px;color:#888;font-style:italic;margin-top:6px;padding:6px 8px;background:#f5f5f5;border-radius:6px">📷 Photo available in SiteSnag app</div>`:"";
@@ -228,29 +228,21 @@ function AuthScreen({onAuth}){
     setLoading(true);setErr("");
     try{
       if(mode==="login"){
-        const c=await auth.signInWithEmailAndPassword(email.trim(),pw);
+        const c=await DB.auth.login(email.trim(),pw);
         onAuth(c.user,null,inv);
       }else{
-        const c=await auth.createUserWithEmailAndPassword(email.trim(),pw);
-        await c.user.updateProfile({displayName:name.trim()});
+        const c=await DB.auth.register(email.trim(),pw,name.trim());
         onAuth(c.user,name.trim(),inv);
       }
     }catch(e){
-      const msgs={
-        "auth/user-not-found":"No account found — please register.",
-        "auth/wrong-password":"Incorrect password.",
-        "auth/email-already-in-use":"Email already registered — please login.",
-        "auth/weak-password":"Password must be at least 6 characters.",
-        "auth/invalid-email":"Please enter a valid email address."
-      };
-      setErr(msgs[e.code]||e.message);
+      setErr(e.message||"Authentication failed.");
     }
     setLoading(false);
   };
 
   const resetPw=async()=>{
     if(!email.trim()){setErr("Enter your email first.");return;}
-    try{await auth.sendPasswordResetEmail(email.trim());setErr("✓ Reset email sent. Check your inbox.");}
+    try{await DB.auth.resetPassword(email.trim());setErr("✓ Reset email sent. Check your inbox.");}
     catch{setErr("Could not send reset email.");}
   };
 
@@ -290,13 +282,10 @@ function CompanySetupScreen({user,inviteCode,onDone}){
     if(!cName.trim())return;
     setLoading(true);setErr("");
     try{
-      const ref=db.collection("companies").doc();
-      await ref.set({name:cName.trim(),createdAt:firebase.firestore.FieldValue.serverTimestamp(),adminId:user.uid,adminEmail:user.email});
       const finalTitle=jobTitle==="Other"?customTitle.trim()||"Other":jobTitle;
-      await ref.collection("members").doc(user.uid).set({name:user.displayName||user.email,email:user.email,role:"Admin",jobTitle:finalTitle,joinedAt:firebase.firestore.FieldValue.serverTimestamp()});
-      const pRef=await ref.collection("projects").add({name:"Default Project",createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-      const cd={companyId:ref.id,companyName:cName.trim()};
-      const proj={id:pRef.id,name:"Default Project"};
+      const result=await DB.createCompany(cName.trim(),user.id,user.email,user.name||user.email,finalTitle);
+      const cd={companyId:result.company.id,companyName:cName.trim()};
+      const proj={id:result.project.id,name:"Default Project"};
       local.set(COMPANY_KEY,cd);local.set(PROJECT_KEY,proj);
       onDone(cd,proj);
     }catch(e){setErr(e.message);}
@@ -310,26 +299,20 @@ function CompanySetupScreen({user,inviteCode,onDone}){
       const parts=code.trim().split(":");
       if(parts.length!==2)throw new Error("Invalid invite code format — should be companyId:code");
       const[companyId,invCode]=parts;
-      const invDoc=await db.collection("companies").doc(companyId).collection("invites").doc(invCode).get();
-      if(!invDoc.exists)throw new Error("Invite not found or expired.");
-      const invite=invDoc.data();
+      const invite=await DB.invites.getFirst(`companyId="${companyId}" && code="${invCode}"`);
+      if(!invite)throw new Error("Invite not found or expired.");
       if(invite.usedBy)throw new Error("This invite has already been used.");
-      if(invite.expiresAt?.toDate&&invite.expiresAt.toDate()<new Date())throw new Error("Invite has expired.");
-      // Check member limit on shared Firebase
-      if(!isCustomFirebase){
-        const memSnap=await db.collection("companies").doc(companyId).collection("members").get();
-        if(memSnap.size>=FREE_TRIAL_USERS)throw new Error(`Free trial limited to ${FREE_TRIAL_USERS} members per company. Set up your own Firebase for unlimited users.`);
-      }
-      await db.collection("companies").doc(companyId).collection("members").doc(user.uid).set({
-        name:user.displayName||user.email,email:user.email,
+      if(invite.expiresAt&&new Date(invite.expiresAt)<new Date())throw new Error("Invite has expired.");
+      await DB.members.create({
+        companyId,userId:user.id,name:user.name||user.email,email:user.email,
         role:invite.role,jobTitle:invite.jobTitle||JOB_TITLES[0],
-        joinedAt:firebase.firestore.FieldValue.serverTimestamp()
+        joinedAt:DB.serverTimestamp()
       });
-      await db.collection("companies").doc(companyId).collection("invites").doc(invCode).update({usedBy:user.uid,usedAt:firebase.firestore.FieldValue.serverTimestamp()});
-      const compDoc=await db.collection("companies").doc(companyId).get();
-      const pSnap=await db.collection("companies").doc(companyId).collection("projects").limit(1).get();
-      const proj=pSnap.empty?{id:"default",name:"Default"}:{id:pSnap.docs[0].id,...pSnap.docs[0].data()};
-      const cd={companyId,companyName:compDoc.data().name};
+      await DB.invites.update(invite.id,{usedBy:user.id,usedAt:DB.serverTimestamp()});
+      const compDoc=await DB.companies.get(companyId);
+      const projs=await DB.projects.list(`companyId="${companyId}"`);
+      const proj=projs.length?{id:projs[0].id,name:projs[0].name}:{id:"default",name:"Default"};
+      const cd={companyId,companyName:compDoc.name};
       local.set(COMPANY_KEY,cd);local.set(PROJECT_KEY,proj);
       onDone(cd,proj);
     }catch(e){setErr(e.message);}
@@ -363,7 +346,7 @@ function CompanySetupScreen({user,inviteCode,onDone}){
           </button>
         </>}
         {err&&<div style={{background:"rgba(255,59,48,0.12)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"10px 14px",marginTop:14,color:"#ff6b6b",fontSize:13}}>{err}</div>}
-        <button onClick={()=>auth.signOut()} style={{width:"100%",background:"none",border:"none",color:"rgba(255,255,255,0.2)",fontSize:13,cursor:"pointer",padding:"16px 8px",marginTop:8}}>← Sign out</button>
+        <button onClick={()=>DB.auth.signOut()} style={{width:"100%",background:"none",border:"none",color:"rgba(255,255,255,0.2)",fontSize:13,cursor:"pointer",padding:"16px 8px",marginTop:8}}>← Sign out</button>
       </div>
     </div>
   );
@@ -383,11 +366,10 @@ function UserManagement({onClose,company,member,members}){
     try{
       const code=Math.random().toString(36).substring(2,10).toUpperCase();
       const finalInvJob=invJob==="Other"?invCustomJob.trim()||"Other":invJob;
-      await db.collection("companies").doc(company.companyId).collection("invites").doc(code).set({
-        role:invRole,jobTitle:finalInvJob,
-        createdAt:firebase.firestore.FieldValue.serverTimestamp(),
-        createdBy:auth.currentUser.uid,
-        expiresAt:new Date(Date.now()+7*24*60*60*1000)
+      await DB.invites.create({
+        companyId:company.companyId,code,role:invRole,jobTitle:finalInvJob,
+        createdBy:DB.auth.currentUser.id,
+        expiresAt:new Date(Date.now()+7*24*60*60*1000).toISOString()
       });
       const url=`${window.location.origin}${window.location.pathname}?invite=${company.companyId}:${code}`;
       setLink(url);
@@ -400,13 +382,15 @@ function UserManagement({onClose,company,member,members}){
   };
 
   const changeRole=async(uid,role)=>{
-    await db.collection("companies").doc(company.companyId).collection("members").doc(uid).update({role});
+    const mem=members.find(m=>m.userId===uid);
+    if(mem)await DB.members.update(mem.id,{role});
     setEditing(null);
   };
 
   const removeMember=async uid=>{
     if(!confirm("Remove this member from the company?"))return;
-    await db.collection("companies").doc(company.companyId).collection("members").doc(uid).delete();
+    const mem=members.find(m=>m.userId===uid);
+    if(mem)await DB.members.delete(mem.id);
   };
 
   return(
@@ -423,12 +407,12 @@ function UserManagement({onClose,company,member,members}){
           <div key={m.uid} style={{background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:8}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div>
-                <div style={{fontWeight:600,fontSize:14,color:"#1a1a1a"}}>{m.name}{m.uid===auth.currentUser?.uid?" (you)":""}</div>
+                <div style={{fontWeight:600,fontSize:14,color:"#1a1a1a"}}>{m.name}{m.uid===DB.auth.currentUser?.id?" (you)":""}</div>
                 <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginTop:2}}>{m.email} · {m.jobTitle||"—"}</div>
               </div>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                 <RoleChip r={m.role}/>
-                {member.role==="Admin"&&m.uid!==auth.currentUser?.uid&&(
+                {member.role==="Admin"&&m.uid!==DB.auth.currentUser?.id&&(
                   <button onClick={()=>setEditing(editing===m.uid?null:m.uid)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600}}>Edit</button>
                 )}
               </div>
@@ -505,20 +489,20 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
 
   useEffect(()=>{
     if(!showArchived||!company?.companyId)return;
-    db.collection("companies").doc(company.companyId).collection("projects").where("archived","==",true).get().then(snap=>{
-      setArchived(snap.docs.map(d=>({id:d.id,...d.data()})));
+    DB.projects.list(`companyId="${company.companyId}" && archived=true`).then(items=>{
+      setArchived(items);
     });
   },[showArchived]);
 
   const restoreProject=async id=>{
-    await db.collection("companies").doc(company.companyId).collection("projects").doc(id).update({archived:false});
+    await DB.projects.update(id,{archived:false});
     setArchived(prev=>prev.filter(p=>p.id!==id));
   };
 
   const addProject=async()=>{
     if(!newName.trim())return;setAdding(true);
     try{
-      const ref=await db.collection("companies").doc(company.companyId).collection("projects").add({name:newName.trim(),createdAt:firebase.firestore.FieldValue.serverTimestamp(),createdBy:auth.currentUser?.uid});
+      const ref=await DB.projects.create({companyId:company.companyId,name:newName.trim(),createdAt:DB.serverTimestamp(),createdBy:DB.auth.currentUser?.id});
       onSelect({id:ref.id,name:newName.trim()});
       setNewName("");
     }catch(e){alert(e.message);}
@@ -527,7 +511,7 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
 
   const renameProject=async(id)=>{
     if(!editName.trim())return;
-    await db.collection("companies").doc(company.companyId).collection("projects").doc(id).update({name:editName.trim()});
+    await DB.projects.update(id,{name:editName.trim()});
     if(currentProject?.id===id)onSelect({id,name:editName.trim()});
     setEditingId(null);setEditName("");
   };
@@ -535,7 +519,7 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
   const archiveProject=async id=>{
     if(projects.length<=1){alert("Cannot archive the only project.");return;}
     if(!confirm("Archive this project? Defects will be preserved."))return;
-    await db.collection("companies").doc(company.companyId).collection("projects").doc(id).update({archived:true});
+    await DB.projects.update(id,{archived:true});
     if(currentProject?.id===id){const next=projects.find(p=>p.id!==id);if(next)onSelect(next);}
   };
 
@@ -599,16 +583,20 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
 }
 
 // ── Settings Sync (save to Firestore + localStorage) ─────────────
-function saveSettingToFirestore(companyId,key,value){
+async function saveSettingToFirestore(companyId,key,value){
   if(!companyId)return;
-  try{db.collection("companies").doc(companyId).collection("settings").doc(key).set({value,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});}catch(e){console.warn("Settings save failed:",e);}
+  try{
+    const existing=await DB.settings.getFirst(`companyId="${companyId}" && key="${key}"`);
+    if(existing)await DB.settings.update(existing.id,{value,updatedAt:DB.serverTimestamp()});
+    else await DB.settings.create({companyId,key,value});
+  }catch(e){console.warn("Settings save failed:",e);}
 }
 async function loadSettingsFromFirestore(companyId){
   if(!companyId)return;
   try{
-    const snap=await db.collection("companies").doc(companyId).collection("settings").get();
-    snap.docs.forEach(doc=>{
-      const key=doc.id;const val=doc.data().value;
+    const items=await DB.settings.list(`companyId="${companyId}"`);
+    items.forEach(doc=>{
+      const key=doc.key;const val=doc.value;
       if(key==="telegram")local.set(TG_KEY,val);
       if(key==="gemini")local.set(GEMINI_KEY,val);
       if(key==="email")local.set(EMAIL_KEY,val);
@@ -865,8 +853,8 @@ function LogDefect({member,company,currentProject,members,onSave}){
         projectName:currentProject?.name||"",
         status:"Open",loggedBy:member?.name||"",
         loggedByRole:member?.role||"",
-        createdAt:firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
+        createdAt:DB.serverTimestamp(),
+        updatedAt:DB.serverTimestamp(),
         comments:[]
       });
       setLast({location:form.location,assignee:form.assignee,severity:form.severity});
@@ -991,7 +979,7 @@ function DefectsList({defects,onView}){
           </div>
           <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",display:"flex",justifyContent:"space-between"}}>
             <span>→ {d.assignee}</span>
-            <span>{d.createdAt?.toDate?d.createdAt.toDate().toLocaleDateString():"Just now"}</span>
+            <span>{d.created?new Date(d.created).toLocaleDateString():"Just now"}</span>
           </div>
         </div>
       ))}
@@ -1010,7 +998,7 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
   const updateStatus=async s=>{
     if(!canUpdate)return;
     setStatus(s);
-    await db.collection("companies").doc(company.companyId).collection("defects").doc(defect.id).update({status:s,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    await DB.defects.update(defect.id,{status:s,updatedAt:DB.serverTimestamp()});
     onUpdate({...defect,status:s});
     if(tgCfg?.token&&tgCfg?.chatId){
       const e={Open:"🔴","In Progress":"🟡",Closed:"🟢"}[s]||"⚪";
@@ -1023,7 +1011,7 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
     setSaving(true);
     const newComment={text:comment,by:member?.name||"",role:member?.role||"",at:Date.now()};
     const newComments=[...(defect.comments||[]),newComment];
-    await db.collection("companies").doc(company.companyId).collection("defects").doc(defect.id).update({comments:newComments,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    await DB.defects.update(defect.id,{comments:newComments,updatedAt:DB.serverTimestamp()});
     onUpdate({...defect,comments:newComments});
     if(tgCfg?.token&&tgCfg?.chatId)await sendTelegram(tgCfg.token,tgCfg.chatId,`💬 <b>Comment — ${defect.title}</b>\n${member?.name}: ${comment}`);
     setComment("");setSaving(false);
@@ -1032,7 +1020,7 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
   const deleteDefect=async()=>{
     if(!canDelete||!confirm("Delete this defect permanently? This cannot be undone."))return;
     setDeleting(true);
-    await db.collection("companies").doc(company.companyId).collection("defects").doc(defect.id).delete();
+    await DB.defects.delete(defect.id);
     onClose();
   };
 
@@ -1048,7 +1036,7 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:20,color:"#1a1a1a",marginBottom:10}}>{defect.title}</div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}><SevChip s={defect.severity}/><StatusChip s={status}/></div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            {[["📍 Location",defect.location],["👤 Assigned",defect.assignee],["📁 Project",defect.projectName||"—"],["🗓 Date",defect.createdAt?.toDate?defect.createdAt.toDate().toLocaleDateString():"—"],["✍️ Logged by",defect.loggedBy],["🔑 Role",defect.loggedByRole||"—"]].map(([l,v])=>(
+            {[["📍 Location",defect.location],["👤 Assigned",defect.assignee],["📁 Project",defect.projectName||"—"],["🗓 Date",defect.created?new Date(defect.created).toLocaleDateString():"—"],["✍️ Logged by",defect.loggedBy],["🔑 Role",defect.loggedByRole||"—"]].map(([l,v])=>(
               <div key={l}><div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em"}}>{l}</div><div style={{fontSize:13,color:"#1a1a1a",marginTop:2}}>{v||"—"}</div></div>
             ))}
           </div>
@@ -1119,7 +1107,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
     if(statusFilter.length&&!statusFilter.includes(d.status))return false;
     if(assigneeFilter.length&&!assigneeFilter.includes(d.assignee))return false;
     if(dateFrom||dateTo){
-      const dt=d.createdAt?.toDate?d.createdAt.toDate():null;
+      const dt=d.created?new Date(d.created):null;
       if(dt){
         if(dateFrom&&dt<new Date(dateFrom))return false;
         if(dateTo&&dt>new Date(dateTo+"T23:59:59"))return false;
@@ -1243,99 +1231,8 @@ function Report({defects,onEmailSetup,currentProject,company}){
 // ── App Root ──────────────────────────────────────────────────────
 const NAV=[{id:"dashboard",icon:"⊞",label:"Dashboard"},{id:"log",icon:"+",label:"Log"},{id:"defects",icon:"≡",label:"Defects"},{id:"report",icon:"◎",label:"Report"}];
 
-// ── Firebase Config Setup (Bring Your Own Firebase) ──────────────
-function FirebaseSetupScreen({onDone}){
-  const[mode,setMode]=useState("choose");
-  const[config,setConfig]=useState("");
-  const[err,setErr]=useState("");
-  const[loading,setLoading]=useState(false);
-
-  const useDefault=()=>{
-    localStorage.removeItem(FIREBASE_CFG_KEY);
-    onDone();
-  };
-
-  const useCustom=()=>{
-    setErr("");
-    setLoading(true);
-    try{
-      // Try parsing JSON directly or extract from code snippet
-      let parsed;
-      const jsonMatch=config.match(/\{[\s\S]*apiKey[\s\S]*\}/);
-      if(jsonMatch){
-        // Replace single quotes with double quotes, handle unquoted keys
-        let clean=jsonMatch[0].replace(/'/g,'"').replace(/(\w+)\s*:/g,'"$1":').replace(/,\s*}/g,'}');
-        parsed=JSON.parse(clean);
-      }else{
-        parsed=JSON.parse(config);
-      }
-      if(!parsed.apiKey||!parsed.projectId||!parsed.authDomain){
-        setErr("Missing required fields: apiKey, projectId, authDomain");
-        setLoading(false);
-        return;
-      }
-      localStorage.setItem(FIREBASE_CFG_KEY,JSON.stringify(parsed));
-      // Reload to reinitialize Firebase with new config
-      window.location.reload();
-    }catch(e){
-      setErr("Invalid config. Paste the firebaseConfig object from Firebase Console.");
-      setLoading(false);
-    }
-  };
-
-  const S={
-    wrap:{minHeight:"100vh",background:"linear-gradient(135deg,#1a1a1a 0%,#2d2d2d 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:20},
-    card:{background:"#fff",borderRadius:20,padding:"32px 24px",width:"100%",maxWidth:420},
-    title:{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:24,color:"#1a1a1a",marginBottom:4},
-    sub:{fontSize:13,color:"rgba(0,0,0,0.5)",marginBottom:24},
-    btn:{width:"100%",padding:16,border:"none",borderRadius:12,fontSize:15,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:10},
-    textarea:{width:"100%",minHeight:120,padding:12,border:"1.5px solid #ddd",borderRadius:10,fontSize:12,fontFamily:"monospace",marginBottom:12,resize:"vertical"},
-    err:{color:"#ff3b30",fontSize:12,marginBottom:10},
-    info:{fontSize:12,color:"rgba(0,0,0,0.4)",lineHeight:1.6,marginBottom:16},
-  };
-
-  if(mode==="choose")return(
-    <div style={S.wrap}><div style={S.card}>
-      <div style={{textAlign:"center",marginBottom:20}}>
-        <div style={{fontSize:36,marginBottom:8}}>🔥</div>
-        <div style={S.title}>DATA PRIVACY SETUP</div>
-        <div style={S.sub}>Where should your defect data be stored?</div>
-      </div>
-      <button onClick={useDefault} style={{...S.btn,background:"#ff6b00",color:"#fff"}}>
-        FREE TRIAL — START NOW
-      </button>
-      <div style={{textAlign:"center",fontSize:11,color:"rgba(0,0,0,0.35)",marginBottom:8}}>{FREE_TRIAL_LIMIT} defects · {FREE_TRIAL_USERS} team members · No setup needed.</div>
-      <button onClick={()=>setMode("custom")} style={{...S.btn,background:"rgba(0,0,0,0.06)",color:"#1a1a1a"}}>
-        OWN FIREBASE (unlimited + private)
-      </button>
-      <div style={{textAlign:"center",fontSize:11,color:"rgba(0,0,0,0.35)"}}>Your data stays in YOUR Firebase project. Free forever.</div>
-    </div></div>
-  );
-
-  return(
-    <div style={S.wrap}><div style={S.card}>
-      <div style={S.title}>YOUR FIREBASE CONFIG</div>
-      <div style={S.info}>
-        1. Go to <b>console.firebase.google.com</b><br/>
-        2. Create a project (free)<br/>
-        3. Enable <b>Authentication</b> → Email/Password<br/>
-        4. Create <b>Firestore Database</b> (production mode)<br/>
-        5. Go to Project Settings → General → scroll to "Your apps" → Web app<br/>
-        6. Copy the <b>firebaseConfig</b> object and paste below:
-      </div>
-      <textarea style={S.textarea} placeholder={'{\n  apiKey: "AIza...",\n  authDomain: "your-project.firebaseapp.com",\n  projectId: "your-project-id",\n  storageBucket: "...",\n  messagingSenderId: "...",\n  appId: "..."\n}'} value={config} onChange={e=>setConfig(e.target.value)}/>
-      {err&&<div style={S.err}>{err}</div>}
-      <button onClick={useCustom} disabled={loading||!config.trim()} style={{...S.btn,background:config.trim()?"#ff6b00":"#ccc",color:"#fff"}}>{loading?"CONNECTING...":"CONNECT MY FIREBASE"}</button>
-      <button onClick={()=>setMode("choose")} style={{...S.btn,background:"none",color:"rgba(0,0,0,0.4)",fontSize:13}}>← Back</button>
-    </div></div>
-  );
-}
 
 function App(){
-  const[firebaseReady,setFirebaseReady]=useState(()=>{
-    // Skip setup screen if user already has a saved config, used the app before, or is logged in
-    return !!localStorage.getItem(FIREBASE_CFG_KEY)||!!localStorage.getItem(COMPANY_KEY)||!!auth.currentUser;
-  });
   const[authUser,setAuthUser]=useState(null);
   const[authLoading,setAuthLoading]=useState(true);
   const[memberLoading,setMemberLoading]=useState(false);
@@ -1360,30 +1257,24 @@ function App(){
   useEffect(()=>{
     const inv=new URLSearchParams(window.location.search).get("invite")||"";
     setInviteCode(inv);
-    return auth.onAuthStateChanged(async u=>{
+    // Init PocketBase
+    DB.init(typeof PB_URL!=='undefined'?PB_URL:'https://sitesnag.duckdns.org');
+    return DB.auth.onAuthStateChanged(async u=>{
       setAuthUser(u);
-      setFirebaseReady(true); // skip setup screen if user is logged in
-      // Auto-recover company if user is logged in but company is missing from localStorage
       if(u&&!local.get(COMPANY_KEY)){
         try{
-          const companiesSnap=await db.collection("companies").get();
-          for(const compDoc of companiesSnap.docs){
-            const memDoc=await compDoc.ref.collection("members").doc(u.uid).get();
-            if(memDoc.exists){
-              const cd={companyId:compDoc.id,companyName:compDoc.data().name};
-              local.set(COMPANY_KEY,cd);
-              setCompany(cd);
-              // Also recover project
-              const projSnap=await compDoc.ref.collection("projects").limit(1).get();
-              if(!projSnap.empty){
-                const proj={id:projSnap.docs[0].id,...projSnap.docs[0].data()};
-                local.set(PROJECT_KEY,proj);
-                setCurrentProject(proj);
-              }
-              // Recover settings (Telegram, Gemini, Email)
-              await loadSettingsFromFirestore(compDoc.id);
-              break;
+          const result=await DB.findUserCompany(u.id);
+          if(result){
+            const cd={companyId:result.companyId,companyName:result.companyName};
+            local.set(COMPANY_KEY,cd);
+            setCompany(cd);
+            const projs=await DB.projects.list(`companyId="${result.companyId}" && archived!=true`);
+            if(projs.length){
+              const proj={id:projs[0].id,name:projs[0].name};
+              local.set(PROJECT_KEY,proj);
+              setCurrentProject(proj);
             }
+            await loadSettingsFromFirestore(result.companyId);
           }
         }catch(e){console.warn("Auto-recover failed:",e);}
       }
@@ -1395,43 +1286,35 @@ function App(){
   useEffect(()=>{
     if(!authUser||!company?.companyId)return;
     setMemberLoading(true);
-    const u1=db.collection("companies").doc(company.companyId).collection("members").doc(authUser.uid).onSnapshot(doc=>{
-      if(doc.exists)setMember({uid:authUser.uid,...doc.data()});
+    const unsub=DB.members.subscribe(`companyId="${company.companyId}"`,items=>{
+      const me=items.find(m=>m.userId===authUser.id);
+      if(me)setMember({uid:me.userId,...me});
       else setMember(null);
+      setMembers(items.map(m=>({uid:m.userId,...m})));
       setMemberLoading(false);
     });
-    const u2=db.collection("companies").doc(company.companyId).collection("members").onSnapshot(snap=>{
-      setMembers(snap.docs.map(d=>({uid:d.id,...d.data()})));
-    });
-    return()=>{u1();u2();};
-  },[authUser?.uid,company?.companyId]);
+    return unsub;
+  },[authUser?.id,company?.companyId]);
 
   // Projects listener
   useEffect(()=>{
     if(!company?.companyId)return;
-    return db.collection("companies").doc(company.companyId).collection("projects").onSnapshot(snap=>{
-      const projs=snap.docs.map(d=>({id:d.id,...d.data()})).filter(p=>!p.archived);
-      setProjects(projs);
-      if(!currentProject&&projs.length>0){setCurrentProject(projs[0]);local.set(PROJECT_KEY,projs[0]);}
-    },err=>console.error("Projects:",err));
+    return DB.projects.subscribe(`companyId="${company.companyId}" && archived!=true`,items=>{
+      setProjects(items);
+      if(!currentProject&&items.length>0){setCurrentProject(items[0]);local.set(PROJECT_KEY,items[0]);}
+    });
   },[company?.companyId]);
 
   // Defects listener
   useEffect(()=>{
     if(!company?.companyId||!currentProject?.id)return;
     setSyncing(true);
-    return db.collection("companies").doc(company.companyId).collection("defects")
-      .where("projectId","==",currentProject.id).orderBy("createdAt","desc")
-      .onSnapshot(snap=>{
-        setDefects(snap.docs.map(d=>({id:d.id,...d.data()})));
-        setSyncing(false);
-      },err=>{
-        console.error("Defects query error:",err.message);
-        if(err.message&&err.message.includes("index")){
-          console.warn("⚠️ Missing Firestore index. Create at: Firebase Console → Firestore → Indexes → Add: companies/{id}/defects, fields: projectId ASC + createdAt DESC");
-        }
-        setSyncing(false);
-      });
+    return DB.defects.subscribe(`companyId="${company.companyId}" && projectId="${currentProject.id}"`,items=>{
+      // Add photo URL for display
+      const withPhotos=items.map(d=>({...d,photo:d.photo?DB.fileUrl("defects",d.id,d.photo):d.photo}));
+      setDefects(withPhotos);
+      setSyncing(false);
+    });
   },[company?.companyId,currentProject?.id]);
 
   const handleAuth=(user,name,inv)=>{setAuthUser(user);if(inv)setInviteCode(inv);};
@@ -1449,7 +1332,7 @@ function App(){
   const addDefect=async data=>{
     if(!company?.companyId||!currentProject)return;
 
-    await db.collection("companies").doc(company.companyId).collection("defects").add(data);
+    await DB.addDefect(company.companyId,data);
 
     const cfg=local.get(TG_KEY);
     if(cfg?.token&&cfg?.chatId){
@@ -1466,7 +1349,7 @@ function App(){
   };
 
   const signOut=()=>{
-    auth.signOut();
+    DB.auth.signOut();
     local.del(COMPANY_KEY);local.del(PROJECT_KEY);
     setCompany(null);setMember(null);setAuthUser(null);
     setDefects([]);setProjects([]);setCurrentProject(null);
@@ -1487,7 +1370,7 @@ function App(){
     </div>
   );
 
-  // Firebase setup screen removed — WhatsApp model: everyone uses shared server
+  // Auth check
   if(!authUser)return <AuthScreen onAuth={handleAuth}/>;
   if(!company||!member)return <CompanySetupScreen user={authUser} inviteCode={inviteCode} onDone={handleCompanyDone}/>;
 
