@@ -20,7 +20,7 @@ const DB = (() => {
   async function api(path, opts = {}) {
     const url = _baseUrl + path;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
+    const timeout = setTimeout(() => controller.abort(), 12000);
     try {
       const resp = await fetch(url, {
         ...opts,
