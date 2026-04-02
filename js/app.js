@@ -1663,6 +1663,7 @@ function App(){
   const[showUsers,setShowUsers]=useState(false);
   const[showProjects,setShowProjects]=useState(false);
   const[showProfile,setShowProfile]=useState(false);
+  const[showHelp,setShowHelp]=useState(false);
 
   // Auth listener — also auto-recover company if localStorage was cleared
   useEffect(()=>{
@@ -1881,6 +1882,7 @@ function App(){
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21.5 4.5L2.5 11.5L9 13.5L11 20.5L15 15.5L20 18.5L21.5 4.5Z" stroke={tgEnabled?"#0088cc":"rgba(255,255,255,0.4)"} strokeWidth="1.5" strokeLinejoin="round"/></svg>
           </button>
           {isAdmin&&<button onClick={()=>setShowUsers(true)} title="Team Management" style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:15}}>👥</button>}
+          <button onClick={()=>setShowHelp(true)} title="Help & Guide" style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"rgba(255,255,255,0.5)"}}>?</button>
           <button onClick={()=>setShowProfile(!showProfile)} style={{width:32,height:32,borderRadius:"50%",background:"#ff6b00",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#fff",flexShrink:0}}>
             {(member?.name||"?")[0].toUpperCase()}
           </button>
@@ -1921,6 +1923,106 @@ function App(){
 
       {/* Overlays */}
       {viewing&&<DefectDetail defect={viewing} onClose={()=>setViewing(null)} onUpdate={updateDefect} member={member} company={company}/>}
+      {showHelp&&(
+        <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.85)",overflowY:"auto"}}>
+          <div style={{maxWidth:430,margin:"0 auto",padding:"0 0 40px"}}>
+            <div style={{background:"#1a1a1a",padding:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:1}}>
+              <button onClick={()=>setShowHelp(false)} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>← BACK</button>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff"}}>HOW TO USE SITESHRIMP</div>
+            </div>
+            <div style={{padding:"20px 16px"}}>
+              {[
+                ["Getting Started",[
+                  ["What is SiteShrimp?","A mobile-first app for construction site defect tracking. Log defects with photos, voice, and AI — your whole team sees updates instantly."],
+                  ["First time?","After signing up and creating your company, set up integrations using the header icons: AI (robot icon), Telegram (paper plane icon). Then invite your team via Team Management (people icon, Admin only)."],
+                ]],
+                ["Navigation (Bottom Bar)",[
+                  ["Dashboard","Overview of all active entries — status counts, severity chart, critical alerts, and recent items."],
+                  ["Log (+)","Create a new entry. Select entry type, snap a photo, use AI to auto-fill, or speak into any text field using the mic button."],
+                  ["Defects","Browse all entries with filters by status and severity. Tap any entry to view full details, update status, or add comments."],
+                  ["Report","Filtered statistics with charts. Export as CSV or send an email report to your team."],
+                ]],
+                ["Header Icons",[
+                  ["Company & Project (top left)","Tap to switch between projects or create new ones."],
+                  ["Active count","Shows number of entries not yet Verified or Closed."],
+                  ["AI (robot)","Set up your Gemini API key for AI photo analysis. Free at aistudio.google.com."],
+                  ["Telegram (plane)","Connect a Telegram bot to get instant notifications when defects are logged or updated."],
+                  ["Team (people, Admin only)","Invite members, set roles, manage your team."],
+                  ["? (Help)","You're here! This guide."],
+                  ["Profile (avatar)","View your profile, email report settings, or sign out."],
+                ]],
+                ["Logging an Entry",[
+                  ["1. Entry Type","Select: Defect, Observation, Instruction, or Update."],
+                  ["2. Photo","Tap the camera area to snap or upload a photo. Up to 5 photos per entry."],
+                  ["3. AI Analysis","If AI is set up, tap 'ANALYZE WITH AI' to auto-fill title, severity, and description from your photo."],
+                  ["4. Component & Issue","Tap to select from predefined lists, or tap TYPE to enter a custom value. Use the mic icon to search by voice."],
+                  ["5. Location","Select Level, Zone, Room/Area, and Grid Ref. These carry forward in batch mode."],
+                  ["6. Voice Input","Tap the mic icon next to any text field to speak instead of type. Works on Title, Description, Grid Ref, Cost fields, and search bars."],
+                  ["7. Batch Mode","After submitting, choose 'Log another at same location' to quickly log multiple entries. Location fields stay pre-filled."],
+                ]],
+                ["Entry Status Flow",[
+                  ["Open","New entry, not yet actioned."],
+                  ["In Progress","Work has started on this item."],
+                  ["Done","Work completed, awaiting verification."],
+                  ["Verified","Checked and confirmed by Manager/Admin."],
+                  ["Closed","Fully resolved and archived."],
+                ]],
+                ["Roles & Permissions",[
+                  ["Admin","Full access — manage team, delete entries, all features."],
+                  ["Manager","Log entries, update status, manage projects, send reports."],
+                  ["Inspector","Log entries, add comments, update status on own items."],
+                  ["Viewer","Read-only — view entries and reports only."],
+                ]],
+                ["Tips",[
+                  ["Offline","The app shell works offline. You can browse cached data, but need internet to submit new entries."],
+                  ["Install as App","Tap the INSTALL button on the login screen, or use your browser's 'Add to Home Screen' option for a native app experience."],
+                  ["Multiple Projects","Use the project selector (top left) to switch between projects. Each project has its own set of entries."],
+                  ["CSV Export","In the Report tab, use CSV EXPORT to download filtered data for Excel or Google Sheets."],
+                ]],
+              ].map(([section,items])=>(
+                <div key={section} style={{marginBottom:24}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:10,borderBottom:"1px solid rgba(255,255,255,0.1)",paddingBottom:6}}>{section.toUpperCase()}</div>
+                  {items.map(([title,desc])=>(
+                    <div key={title} style={{marginBottom:12}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#fff",marginBottom:2}}>{title}</div>
+                      <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.5}}>{desc}</div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+              {/* Features Checklist */}
+              <div style={{marginBottom:24}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:10,borderBottom:"1px solid rgba(255,255,255,0.1)",paddingBottom:6}}>ALL FEATURES</div>
+                {[
+                  ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as app (PWA)",true],["Server URL config",true]]],
+                  ["Team",[["Invite members (link + code)",true],["Role-based access control",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
+                  ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
+                  ["Defect Logging",[["Log with title, severity, location",true],["Multi-level location hierarchy",true],["Snap / upload up to 5 photos",true],["AI photo analysis (Gemini)",true],["Voice-to-text input",true],["Component + issue selector",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
+                  ["Defect Management",[["Status & severity filters",true],["Full detail view with photos",true],["Update status workflow",true],["Comments (text + voice)",true],["Delete defect (Admin)",true],["Telegram alerts",true]]],
+                  ["Dashboard",[["Real-time stats overview",true],["Critical defect alerts",true],["Severity breakdown chart",true],["Recent defects feed",true],["Live sync indicator",true]]],
+                  ["Reports",[["Site report with charts",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report (EmailJS)",true]]],
+                  ["Settings",[["Telegram bot setup + test",true],["Gemini AI setup + test",true],["Email report config",true],["Daily AI usage limit",true]]],
+                  ["Coming Soon",[["Drawings / floor plan pins",false],["Profile editing",false],["Search across defects",false],["Offline submission queue",false],["Push notifications",false]]],
+                ].map(([cat,items])=>(
+                  <div key={cat} style={{marginBottom:12}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.6)",letterSpacing:"0.08em",marginBottom:4}}>{cat.toUpperCase()}</div>
+                    {items.map(([feat,done])=>(
+                      <div key={feat} style={{display:"flex",gap:8,alignItems:"center",padding:"3px 0",fontSize:12,color:done?"rgba(255,255,255,0.45)":"rgba(255,255,255,0.2)"}}>
+                        <span style={{fontSize:10,flexShrink:0,width:14,textAlign:"center"}}>{done?"✓":"○"}</span>
+                        <span>{feat}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <div style={{textAlign:"center",marginTop:20}}>
+                <div style={{fontSize:11,color:"rgba(255,255,255,0.2)",fontFamily:"'Barlow Condensed',sans-serif"}}>SiteShrimp v2 — Built for teams that deliver</div>
+                <button onClick={()=>setShowHelp(false)} style={{marginTop:16,background:"#ff6b00",border:"none",borderRadius:10,padding:"12px 32px",color:"#fff",fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>GOT IT</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {showTg&&<TelegramSettings onClose={()=>setShowTg(false)} companyId={company?.companyId}/>}
       {showEmail&&<EmailSettings onClose={()=>setShowEmail(false)} companyId={company?.companyId}/>}
       {showGemini&&<GeminiSettings onClose={()=>setShowGemini(false)} companyId={company?.companyId}/>}
