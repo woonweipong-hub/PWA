@@ -1,4 +1,4 @@
-const CACHE = 'siteshrimp-v28';
+const CACHE = 'siteshrimp-v29';
 const ASSETS = [
   '/',
   '/index.html',
@@ -37,25 +37,17 @@ self.addEventListener('fetch', e => {
 
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
-    const cached = await cache.match(e.request);
 
-    const networkFetch = fetch(e.request)
-      .then(res => {
-        if (res.ok) {
-          cache.put(e.request, res.clone()).catch(() => {});
-        }
-        return res;
-      });
-
-    if (cached) {
-      networkFetch.catch(() => {});
-      return cached;
-    }
-
+    // Network-first: always try to get fresh files, fall back to cache if offline
     try {
-      return await networkFetch;
+      const res = await fetch(e.request);
+      if (res.ok) {
+        cache.put(e.request, res.clone()).catch(() => {});
+      }
+      return res;
     } catch {
-      // Offline fallback for navigation requests.
+      const cached = await cache.match(e.request);
+      if (cached) return cached;
       if (e.request.mode === 'navigate') {
         return (await cache.match('/index.html')) || Response.error();
       }
