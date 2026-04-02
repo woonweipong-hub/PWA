@@ -324,7 +324,7 @@ function AuthScreen({onAuth}){
   if(page==="intro")return(
     <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,textAlign:"center"}}>
       <div style={{width:"100%",maxWidth:400}}>
-        <img src="icons/icon-192.png" alt="SiteShrimp" style={{width:80,height:80,borderRadius:18,marginBottom:16,boxShadow:"0 4px 20px rgba(255,107,0,0.3)"}}/>
+        <img src="icons/icon-192.png" alt="SiteShrimp" style={{width:80,height:80,borderRadius:8,marginBottom:16,boxShadow:"0 4px 20px rgba(255,107,0,0.3)"}}/>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:42,fontWeight:800,color:"#fff",lineHeight:1,marginBottom:8}}>SITESHRIMP</div>
         <div style={{color:"rgba(255,255,255,0.5)",fontSize:14,marginBottom:32,lineHeight:1.6}}>
           Construction site works, defects and items<br/>tracking and monitoring for teams that deliver.
