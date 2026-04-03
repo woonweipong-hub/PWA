@@ -3937,22 +3937,22 @@ function App(){
   return(
     <div style={{width:"100%",maxWidth:430,margin:"0 auto",height:"100dvh",background:"#f0ede8",display:"flex",flexDirection:"column",overflow:"hidden"}}>
       {/* Header */}
-      <div style={{background:"#1a1a1a",padding:"12px 14px 10px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <button onClick={()=>setShowProjects(true)} style={{background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0,flex:1,minWidth:0}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:9,fontWeight:700,color:"#ff6b00",letterSpacing:"0.15em"}}>{company.companyName}</div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:800,color:"#fff",marginTop:1}}>
+        <div style={{background:"#1a1a1a",padding:"10px 12px 8px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+          <button onClick={()=>setShowProjects(true)} style={{background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0,flex:1,minWidth:0,maxWidth:"calc(100% - 214px)"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:8.5,fontWeight:700,color:"#ff6b00",letterSpacing:"0.13em",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{company.companyName}</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13.5,fontWeight:800,color:"#fff",marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
             {currentProject?.name||"SELECT PROJECT"} <span style={{fontSize:10,color:"rgba(255,255,255,0.3)"}}>▼</span>
           </div>
         </button>
-        <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap",justifyContent:"flex-end",maxWidth:"62%"}}>
+          <div style={{display:"flex",alignItems:"center",gap:3,flexWrap:"nowrap",justifyContent:"flex-end",flexShrink:0}}>
           {queueCount>0&&(
-            <button onClick={syncQueue} title="Queued offline entries" style={{display:"flex",alignItems:"center",gap:4,background:"rgba(255,149,0,0.2)",border:"1px solid rgba(255,149,0,0.4)",borderRadius:8,padding:"4px 8px",cursor:"pointer",height:28}}>
-              {syncing2?<Spin size={10}/>:<span style={{fontSize:12}}>📤</span>}
-              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#ff9500"}}>{queueCount}</span>
+              <button onClick={syncQueue} title="Queued offline entries" style={{position:"relative",width:26,height:26,borderRadius:8,background:"rgba(255,149,0,0.2)",border:"1px solid rgba(255,149,0,0.4)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,flexShrink:0}}>
+                {syncing2?<Spin size={9}/>:<span style={{fontSize:11}}>📤</span>}
+                <span style={{position:"absolute",top:-5,right:-4,minWidth:14,height:14,borderRadius:999,background:"#ff9500",color:"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,lineHeight:"14px",padding:"0 3px",textAlign:"center"}}>{queueCount}</span>
             </button>
           )}
           <div style={{position:"relative"}}>
-            <button onClick={()=>setShowAiMenu(!showAiMenu)} title="AI Tools" style={{width:28,height:28,borderRadius:8,background:aiEnabled?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${aiEnabled?"rgba(88,86,214,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:13}}>🤖</button>
+              <button onClick={()=>setShowAiMenu(!showAiMenu)} title="AI Tools" style={{width:26,height:26,borderRadius:8,background:aiEnabled?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${aiEnabled?"rgba(88,86,214,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:12,flexShrink:0}}>🤖</button>
             {showAiMenu&&<div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,overflow:"hidden",zIndex:100,minWidth:180}}>
               <button onClick={()=>{setShowGemini(true);setShowAiMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
                 🧠 AI Photo Analysis
@@ -3962,18 +3962,18 @@ function App(){
               </button>
             </div>}
           </div>
-          <button onClick={()=>setShowTg(true)} title="Telegram" style={{width:28,height:28,borderRadius:8,background:tgEnabled?"rgba(0,136,204,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${tgEnabled?"rgba(0,136,204,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
+          <button onClick={()=>setShowTg(true)} title="Telegram" style={{width:26,height:26,borderRadius:8,background:tgEnabled?"rgba(0,136,204,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${tgEnabled?"rgba(0,136,204,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21.5 4.5L2.5 11.5L9 13.5L11 20.5L15 15.5L20 18.5L21.5 4.5Z" stroke={tgEnabled?"#0088cc":"rgba(255,255,255,0.4)"} strokeWidth="1.5" strokeLinejoin="round"/></svg>
           </button>
-          <button onClick={()=>setShowStorage(true)} title="Storage Settings" style={{width:28,height:28,borderRadius:8,background:(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"rgba(48,209,88,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"rgba(48,209,88,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:13}}>
+          <button onClick={()=>setShowStorage(true)} title="Storage Settings" style={{width:26,height:26,borderRadius:8,background:(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"rgba(48,209,88,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"rgba(48,209,88,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:12,flexShrink:0}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 4h16v4H4V4zm0 6h16v4H4v-4zm0 6h16v4H4v-4z" stroke={(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"#30d158":"rgba(255,255,255,0.4)"} strokeWidth="1.5" strokeLinejoin="round"/><circle cx="7" cy="6" r="1" fill={(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"#30d158":"rgba(255,255,255,0.4)"}/><circle cx="7" cy="12" r="1" fill={(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"#30d158":"rgba(255,255,255,0.4)"}/><circle cx="7" cy="18" r="1" fill={(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"#30d158":"rgba(255,255,255,0.4)"}/></svg>
           </button>
-          {isAdmin&&<button onClick={()=>setShowUsers(true)} title="Team" style={{width:28,height:28,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:13}}>👥</button>}
-          <button onClick={()=>setShowHelp(true)} title="Help" style={{width:28,height:28,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"rgba(255,255,255,0.5)"}}>?</button>
-          <button onClick={()=>{setShowFeedback(true);setFbSent(false);setFbText("");}} title="Feedback" style={{width:28,height:28,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:12}}>
+          {isAdmin&&<button onClick={()=>setShowUsers(true)} title="Team" style={{width:26,height:26,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:12,flexShrink:0}}>👥</button>}
+          <button onClick={()=>setShowHelp(true)} title="Help" style={{width:26,height:26,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"rgba(255,255,255,0.5)",flexShrink:0}}>?</button>
+          <button onClick={()=>{setShowFeedback(true);setFbSent(false);setFbText("");}} title="Feedback" style={{width:26,height:26,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:11,flexShrink:0}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
-          <button onClick={()=>setShowProfile(!showProfile)} style={{width:28,height:28,borderRadius:"50%",background:"#ff6b00",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff",flexShrink:0}}>
+          <button onClick={()=>setShowProfile(!showProfile)} style={{width:26,height:26,borderRadius:"50%",background:"#ff6b00",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,color:"#fff",flexShrink:0}}>
             {(member?.name||"?")[0].toUpperCase()}
           </button>
         </div>
