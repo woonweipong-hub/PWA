@@ -561,7 +561,7 @@ function AuthScreen({onAuth,onFullSetup}){
             ["Team",["Invite members (link + code)","Role-based access (Admin, Manager, Inspector, Viewer)","Edit roles / remove members","Permission matrix"]],
             ["Projects",["Create / rename projects","Switch active project","Archive / restore projects"]],
             ["Entry Logging",["Log entry with title, severity, location","4 default types + custom entry types","Custom type manager (icon & color picker)","Multi-level location (Level > Zone > Room > Grid)","Snap or upload up to 10 photos","AI photo analysis (Gemini, Ollama, GPT)","Voice-to-text (title, description, search)","Component + issue selector (93 components, 517 issues)","Assign to team member","Cost & time tracking fields","Batch logging (same location)"]],
-            ["Entry Management",["Filter by status, severity, and entry type","Entry type badges on list items","Detail view with photos","Update status (Open > In Progress > Done > Verified > Closed)","Add comments (text + voice)","Delete entry (Admin only)","Telegram alerts on new entry and status change"]],
+            ["Entry Management",["Full-text search with highlighting","Filter by status, severity, and entry type","Collapsible filters with clear button","Entry type badges on list items","Detail view with photos","Update status (Open > In Progress > Done > Verified > Closed)","Add comments (text + voice)","Delete entry (Admin only)","Telegram alerts on new entry and status change"]],
             ["Dashboard",["Real-time stats (Open / In Progress / Done / Verified / Closed)","Critical alerts","Severity breakdown chart","Recent entries with type badges","Live sync indicator"]],
             ["Admin Analytics",["Entries logged today / week / month / all time","Active users — who submitted today and this week","Entries per user ranking (bar chart)","Photos total and average per entry","Entries by entry type breakdown","Entries by project breakdown","AI usage stats (today / limit / coverage / provider)"]],
             ["Reports",["Site report with charts + entry list","Filter by severity / status / assignee / date","CSV export","Email report (EmailJS)"]],
@@ -574,14 +574,14 @@ function AuthScreen({onAuth,onFullSetup}){
             ["Team",[["Invite members (link + code)",true],["Role-based access control",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
             ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
             ["Entry Logging",[["Log with title, severity, location",true],["4 default types + custom entry types",true],["Custom type manager (icon & color picker)",true],["Multi-level location hierarchy",true],["Snap / upload up to 10 photos",true],["AI photo analysis (Gemini, Ollama, GPT)",true],["Voice-to-text input",true],["Component + issue selector (93 / 517)",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
-            ["Entry Management",[["Filter by status, severity, entry type",true],["Entry type badges on list items",true],["Detail view with photos",true],["Update status workflow",true],["Comments (text + voice)",true],["Delete entry (Admin)",true],["Telegram alerts",true]]],
+            ["Entry Management",[["Full-text search with highlighting",true],["Filter by status, severity, entry type",true],["Collapsible filters with clear button",true],["Entry type badges on list items",true],["Detail view with photos",true],["Update status workflow",true],["Comments (text + voice)",true],["Delete entry (Admin)",true],["Telegram alerts",true]]],
             ["Dashboard",[["Real-time stats overview",true],["Critical alerts",true],["Severity breakdown chart",true],["Recent entries with type badges",true],["Live sync indicator",true]]],
             ["Admin Analytics",[["Entries today / week / month",true],["Active users & submissions",true],["Per-user ranking (bar chart)",true],["Photos stats (total & avg)",true],["By entry type breakdown",true],["By project breakdown",true],["AI usage stats",true]]],
             ["Reports",[["Site report with charts",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report (EmailJS)",true]]],
             ["Storage",[["PocketBase (default)",true],["Local path (server/machine)",true],["Google Drive (OAuth)",true]]],
             ["Settings",[["Telegram bot setup + test",true],["AI multi-provider setup + test",true],["Email report config",true],["Daily AI usage limit",true],["Storage mode selector",true]]],
             ["Other",[["Help guide",true],["Feedback form",true],["Offline app shell",true],["Password visibility toggle",true]]],
-            ["Coming Soon",[["Drawings / floor plan pins",false],["Profile editing",false],["Search across entries",false],["Offline submission queue",false],["Push notifications",false]]],
+            ["Coming Soon",[["Drawings / floor plan pins",false],["Profile editing",false],["Offline submission queue",false],["Push notifications",false]]],
           ].map(([cat,items])=>(
             <div key={cat} style={{marginBottom:16}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:6}}>{cat.toUpperCase()}</div>
@@ -597,7 +597,7 @@ function AuthScreen({onAuth,onFullSetup}){
 
         {/* Verification Badge */}
         <div style={{marginTop:24,background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.15)",borderRadius:12,padding:16,textAlign:"center"}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#30d158",lineHeight:1,marginBottom:4}}>65/65 VERIFIED</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#30d158",lineHeight:1,marginBottom:4}}>69/69 VERIFIED</div>
           <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginBottom:10}}>All features code-verified · April 2026</div>
           <div style={{display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap"}}>
             {[["Mobile","iOS · Android"],["Desktop","Chrome · Firefox · Edge"],["PWA","Install · Offline"]].map(([p,d])=>(
@@ -1869,57 +1869,103 @@ function LogDefect({member,company,currentProject,members,onSave}){
   );
 }
 
+// ── Highlight matching text ───────────────────────────────────────
+function Highlight({text,query}){
+  if(!query||!text)return text||"";
+  const parts=String(text).split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")})`,"gi"));
+  return parts.map((p,i)=>p.toLowerCase()===query.toLowerCase()?<mark key={i} style={{background:"rgba(255,107,0,0.3)",color:"#1a1a1a",borderRadius:2,padding:"0 1px"}}>{p}</mark>:p);
+}
+
 // ── Defects List ──────────────────────────────────────────────────
 function DefectsList({defects,onView}){
   const[filter,setFilter]=useState("All");const[sevF,setSevF]=useState("All");const[typeF,setTypeF]=useState("All");
+  const[search,setSearch]=useState("");const[showFilters,setShowFilters]=useState(false);
+  const searchRef=useRef(null);
   const allTypes=getAllEntryTypes();
   const usedTypes=[...new Set(defects.map(d=>d.entryType).filter(Boolean))];
   const typeFilterOptions=allTypes.filter(t=>usedTypes.includes(t));
-  const filtered=defects.filter(d=>(filter==="All"||d.status===filter)&&(sevF==="All"||d.severity===sevF)&&(typeF==="All"||d.entryType===typeF));
+  const q=search.trim().toLowerCase();
+  const filtered=defects.filter(d=>{
+    if(filter!=="All"&&d.status!==filter)return false;
+    if(sevF!=="All"&&d.severity!==sevF)return false;
+    if(typeF!=="All"&&d.entryType!==typeF)return false;
+    if(q){
+      const hay=[d.title,d.description,d.component,d.issue,d.assignee,d.location,d.loggedBy,d.entryType,d.defect_id].filter(Boolean).join(" ").toLowerCase();
+      if(!hay.includes(q))return false;
+    }
+    return true;
+  });
+  const activeFilters=(filter!=="All"?1:0)+(sevF!=="All"?1:0)+(typeF!=="All"?1:0);
+  const clearAll=()=>{setFilter("All");setSevF("All");setTypeF("All");setSearch("");};
   return(
     <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
-      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",marginBottom:14}}>ALL ENTRIES <span style={{color:"rgba(0,0,0,0.3)",fontSize:18}}>({filtered.length})</span></div>
-      {/* Type filter */}
-      {typeFilterOptions.length>1&&(
-        <div style={{marginBottom:10}}>
-          <div style={lbl()}>TYPE</div>
-          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-            {["All",...typeFilterOptions].map(t=>(
-              <button key={t} onClick={()=>setTypeF(t)} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${typeF===t?(t==="All"?"#ff6b00":typeColor(t)):"rgba(0,0,0,0.12)"}`,background:typeF===t?(t==="All"?"#ff6b00":typeBg(t)):"#fff",color:typeF===t?(t==="All"?"#fff":typeColor(t)):"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t==="All"?"ALL":typeIcon(t)+" "+t.toUpperCase()}</button>
-            ))}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>ALL ENTRIES <span style={{color:"rgba(0,0,0,0.3)",fontSize:18}}>({filtered.length})</span></div>
+        {(activeFilters>0||q)&&<button onClick={clearAll} style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:20,padding:"4px 10px",color:"#ff3b30",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>CLEAR ({activeFilters+(q?1:0)})</button>}
+      </div>
+
+      {/* Search bar */}
+      <div style={{position:"relative",marginBottom:14}}>
+        <div style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:14,color:"rgba(0,0,0,0.3)",pointerEvents:"none"}}>🔍</div>
+        <input ref={searchRef} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search title, description, component, assignee, location..." style={{...inp,width:"100%",flex:"unset",paddingLeft:34,paddingRight:search?34:12,fontSize:13}}/>
+        {search&&<button onClick={()=>{setSearch("");searchRef.current?.focus();}} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"rgba(0,0,0,0.08)",border:"none",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:12,color:"rgba(0,0,0,0.4)",padding:0}}>×</button>}
+      </div>
+
+      {/* Filter toggle */}
+      <button onClick={()=>setShowFilters(!showFilters)} style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"8px 14px",marginBottom:showFilters?12:16,width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:"rgba(0,0,0,0.5)"}}>
+        <span>FILTERS {activeFilters>0?`(${activeFilters} active)`:""}</span>
+        <span style={{fontSize:10}}>{showFilters?"▲":"▼"}</span>
+      </button>
+
+      {showFilters&&(
+        <div style={{marginBottom:16}}>
+          {/* Type filter */}
+          {typeFilterOptions.length>1&&(
+            <div style={{marginBottom:10}}>
+              <div style={lbl()}>TYPE</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {["All",...typeFilterOptions].map(t=>(
+                  <button key={t} onClick={()=>setTypeF(t)} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${typeF===t?(t==="All"?"#ff6b00":typeColor(t)):"rgba(0,0,0,0.12)"}`,background:typeF===t?(t==="All"?"#ff6b00":typeBg(t)):"#fff",color:typeF===t?(t==="All"?"#fff":typeColor(t)):"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t==="All"?"ALL":typeIcon(t)+" "+t.toUpperCase()}</button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div style={{marginBottom:10}}>
+            <div style={lbl()}>STATUS</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {["All",...STATUS].map(s=>(
+                <button key={s} onClick={()=>setFilter(s)} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${filter===s?"#ff6b00":"rgba(0,0,0,0.12)"}`,background:filter===s?"#ff6b00":"#fff",color:filter===s?"#fff":"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{s.toUpperCase()}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div style={lbl()}>SEVERITY</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {["All",...SEVERITY].map(s=>(
+                <button key={s} onClick={()=>setSevF(s)} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${sevF===s?"#1a1a1a":"rgba(0,0,0,0.12)"}`,background:sevF===s?"#1a1a1a":"#fff",color:sevF===s?"#fff":"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{s.toUpperCase()}</button>
+              ))}
+            </div>
           </div>
         </div>
       )}
-      <div style={{marginBottom:10}}>
-        <div style={lbl()}>STATUS</div>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          {["All",...STATUS].map(s=>(
-            <button key={s} onClick={()=>setFilter(s)} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${filter===s?"#ff6b00":"rgba(0,0,0,0.12)"}`,background:filter===s?"#ff6b00":"#fff",color:filter===s?"#fff":"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{s.toUpperCase()}</button>
-          ))}
-        </div>
-      </div>
-      <div style={{marginBottom:16}}>
-        <div style={lbl()}>SEVERITY</div>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          {["All",...SEVERITY].map(s=>(
-            <button key={s} onClick={()=>setSevF(s)} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${sevF===s?"#1a1a1a":"rgba(0,0,0,0.12)"}`,background:sevF===s?"#1a1a1a":"#fff",color:sevF===s?"#fff":"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{s.toUpperCase()}</button>
-          ))}
-        </div>
-      </div>
-      {filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>No entries found</div>}
+
+      {filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>{q?"No entries matching \""+search+"\"":"No entries found"}</div>}
       {filtered.map((d,i)=>(
         <div key={d.id} className="anim" style={{animationDelay:`${i*0.04}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:`4px solid ${SEV_COLOR[d.severity]}`}} onClick={()=>onView(d)}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,color:"#1a1a1a",flex:1,paddingRight:8}}>{d.title}</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,color:"#1a1a1a",flex:1,paddingRight:8}}><Highlight text={d.title} query={q}/></div>
             <StatusChip s={d.status}/>
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:4}}>
             {d.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(d.entryType),background:typeBg(d.entryType),padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(d.entryType)} {d.entryType.toUpperCase()}</span>}
             <SevChip s={d.severity}/>
-            <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>📍 {d.location}</span>
+            <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>📍 <Highlight text={d.location} query={q}/></span>
           </div>
+          {q&&d.description&&d.description.toLowerCase().includes(q)&&(
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.45)",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}><Highlight text={d.description.slice(0,100)} query={q}/></div>
+          )}
           <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",display:"flex",justifyContent:"space-between"}}>
-            <span>→ {d.assignee}</span>
+            <span>→ <Highlight text={d.assignee} query={q}/></span>
             <span>{d.created?new Date(d.created).toLocaleDateString():"Just now"}</span>
           </div>
         </div>
@@ -2729,7 +2775,7 @@ function App(){
                 ["Navigation (Bottom Bar)",[
                   ["Dashboard","Overview of all active entries — status counts, severity chart, critical alerts, and recent items."],
                   ["Log (+)","Create a new entry. Select entry type, snap a photo, use AI to auto-fill, or speak into any text field using the mic button."],
-                  ["Defects","Browse all entries with filters by status and severity. Tap any entry to view full details, update status, or add comments."],
+                  ["Defects","Search and browse all entries. Use the search bar to find entries by title, description, component, assignee, or location. Matching text is highlighted in orange. Use filters for status, severity, and entry type."],
                   ["Report","Filtered statistics with charts. Export as CSV or send an email report to your team."],
                   ["Admin (lightning, Admin only)","Analytics dashboard — entries by day/week/month, per-user rankings, photos stats, entries by project, AI usage. Visible to Admin role only."],
                 ]],
@@ -2792,14 +2838,14 @@ function App(){
                   ["Team",[["Invite members (link + code)",true],["Role-based access control",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
                   ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
                   ["Entry Logging",[["Log with title, severity, location",true],["4 default types + custom entry types",true],["Custom type manager (icon & color picker)",true],["Multi-level location hierarchy",true],["Snap / upload up to 10 photos",true],["AI photo analysis (Gemini, Ollama, GPT)",true],["Voice-to-text input",true],["Component + issue selector (93 / 517)",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
-                  ["Entry Management",[["Filter by status, severity, entry type",true],["Entry type badges on list items",true],["Detail view with photos",true],["Update status workflow",true],["Comments (text + voice)",true],["Delete entry (Admin)",true],["Telegram alerts",true]]],
+                  ["Entry Management",[["Full-text search with highlighting",true],["Filter by status, severity, entry type",true],["Collapsible filters with clear button",true],["Entry type badges on list items",true],["Detail view with photos",true],["Update status workflow",true],["Comments (text + voice)",true],["Delete entry (Admin)",true],["Telegram alerts",true]]],
                   ["Dashboard",[["Real-time stats overview",true],["Critical alerts",true],["Severity breakdown chart",true],["Recent entries with type badges",true],["Live sync indicator",true]]],
                   ["Admin Analytics",[["Entries today / week / month",true],["Active users & submissions",true],["Per-user ranking (bar chart)",true],["Photos stats (total & avg)",true],["By entry type breakdown",true],["By project breakdown",true],["AI usage stats",true]]],
                   ["Reports",[["Site report with charts",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report (EmailJS)",true]]],
                   ["Storage",[["PocketBase (default)",true],["Local path (server/machine)",true],["Google Drive (OAuth)",true]]],
                   ["Settings",[["Telegram bot setup + test",true],["AI multi-provider setup + test",true],["Email report config",true],["Daily AI usage limit",true],["Storage mode selector",true]]],
                   ["Other",[["Help guide",true],["Feedback form",true],["Offline app shell",true],["Password visibility toggle",true]]],
-                  ["Coming Soon",[["Drawings / floor plan pins",false],["Profile editing",false],["Search across entries",false],["Offline submission queue",false],["Push notifications",false]]],
+                  ["Coming Soon",[["Drawings / floor plan pins",false],["Profile editing",false],["Offline submission queue",false],["Push notifications",false]]],
                 ].map(([cat,items])=>(
                   <div key={cat} style={{marginBottom:12}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.6)",letterSpacing:"0.08em",marginBottom:4}}>{cat.toUpperCase()}</div>
@@ -2817,13 +2863,13 @@ function App(){
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:10,borderBottom:"1px solid rgba(255,255,255,0.1)",paddingBottom:6}}>VERIFICATION STATUS</div>
                 <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:12,padding:16,marginBottom:14}}>
                   <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#30d158",lineHeight:1}}>65/65</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#30d158",lineHeight:1}}>69/69</div>
                     <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#30d158"}}>ALL FEATURES VERIFIED</div><div style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>Code-level verification · April 2026</div></div>
                   </div>
                   {[
-                    ["Auth & Onboarding","7/7"],["Team","4/4"],["Entry Logging","11/11"],["Entry Management","7/7"],
+                    ["Auth & Onboarding","7/7"],["Team","4/4"],["Entry Logging","11/11"],["Entry Management","9/9"],
                     ["Dashboard","5/5"],["Admin Analytics","7/7"],["Reports","4/4"],["Storage","3/3"],
-                    ["Settings","5/5"],["Other","4/4"],["Coming Soon","0/5"],
+                    ["Settings","5/5"],["Other","4/4"],["Coming Soon","0/4"],
                   ].map(([cat,score])=>(
                     <div key={cat} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",fontSize:11}}>
                       <span style={{color:"rgba(255,255,255,0.45)"}}>{cat}</span>
