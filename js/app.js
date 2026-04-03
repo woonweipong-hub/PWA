@@ -4047,7 +4047,7 @@ function App(){
                 <div>
                   {[
                     ["The Problem",[
-                      ["","Construction site management remains fragmented. Defects, site instructions, safety checks, and progress updates are often tracked across disconnected tools, creating lost records, delayed action, and unnecessary reporting effort."],
+                      ["","Construction site management remains fragmented. Defects, site inspections, safety checks, and progress updates are often tracked across disconnected tools, creating lost records, delayed action, and unnecessary reporting effort."],
                     ]],
                     ["What SiteShrimp Does",[
                       ["","SiteShrimp helps teams manage defects, inspections, progress updates, safety audits, and site feedback in one place. It makes site reporting faster, clearer, and more accountable with photos, voice input, and AI-assisted workflows."],
