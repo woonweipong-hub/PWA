@@ -744,12 +744,12 @@ function AuthScreen({onAuth,onFullSetup}){
 
         <div style={{textAlign:"left",marginBottom:32}}>
           {[
-            ["📷","Snap photos, AI describes the defect (Gemini, Ollama, GPT)"],
-            ["mic","Voice support — hands-free feature"],
-            ["📋","Paperless Defects Tracking, Site Monitoring and Instant Feedbacks"],
-            ["👥","Team sync, live updates"],
-            ["📊","Real Time Visual Dashboard Reports"],
-            ["🔔","Telegram-linked, CSV Export and Email Summary"],
+            ["📷","AI-powered photo analysis + markup annotations (Gemini, Ollama, GPT)"],
+            ["📐","Floor plan pins, heatmap overlay, before/after comparison"],
+            ["mic","Voice support — hands-free defect logging"],
+            ["📋","Paperless tracking with resolution timeline and quick reactions"],
+            ["👥","Team collaboration, role-based access, live sync"],
+            ["📊","Real-time dashboard, analytics, CSV & email reports"],
           ].map(([icon,text],i)=>(
             <div key={i} className="anim" style={{animationDelay:`${i*0.08}s`,display:"flex",gap:12,alignItems:"center",padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
               <div style={{width:32,textAlign:"center",flexShrink:0}}>
@@ -785,8 +785,8 @@ function AuthScreen({onAuth,onFullSetup}){
             ["Team",["Invite members (link + code)","Role-based access (Admin, Manager, Inspector, Viewer)","Edit roles / remove members","Permission matrix"]],
             ["Projects",["Create / rename projects","Switch active project","Archive / restore projects"]],
             ["Entry Logging",["Log entry with title, severity, location","4 default types + custom entry types","Custom type manager (icon & color picker)","Multi-level location (Level > Zone > Room > Grid)","Snap or upload up to 10 photos","AI photo analysis (Gemini, Ollama, GPT)","Voice-to-text (title, description, search)","Component + issue selector (93 components, 517 issues)","Assign to team member","Cost & time tracking fields","Batch logging (same location)"]],
-            ["Entry Management",["Full-text search with highlighting","Filter by status, severity, and entry type","Collapsible filters with clear button","Entry type badges on list items","Detail view with photos","Update status (Open > In Progress > Done > Verified > Closed)","Add comments (text + voice)","Delete entry (Admin only)","Telegram alerts on new entry and status change"]],
-            ["Drawings (Beta)",["Upload floor plans (JPG, PNG, PDF)","View with zoom & pan","Place defect pins on drawings","Severity-colored pins with tooltips","Link pins to entries"]],
+            ["Entry Management",["Full-text search with highlighting","Filter by status, severity, and entry type","Collapsible filters with clear button","Entry type badges on list items","Detail view with photos","Photo markup editor (arrows, circles, freehand, text)","Update status with verification photo","Before/after photo comparison slider","Resolution timeline with photo comments","Quick reactions on timeline entries","Delete entry (Admin only)","Telegram alerts on new entry and status change"]],
+            ["Drawings",["Upload floor plans (JPG, PNG, TIF, PDF)","View with zoom, pan & pinch-to-zoom","Ring-style defect pins with severity pulse","Pin tooltips with entry details","Quick-pin: create entry directly from floor plan","Defect heatmap overlay","Drawing-level markup (freehand, arrows, circles)","PDF rendering with multi-page navigation"]],
             ["Dashboard",["Real-time stats (Open / In Progress / Done / Verified / Closed)","Critical alerts","Severity breakdown chart","Recent entries with type badges","Live sync indicator"]],
             ["Admin Analytics",["Entries logged today / week / month / all time","Active users — who submitted today and this week","Entries per user ranking (bar chart)","Photos total and average per entry","Entries by entry type breakdown","Entries by project breakdown","AI usage stats (today / limit / coverage / provider)"]],
             ["Reports",["Site report with charts + entry list","Filter by severity / status / assignee / date","CSV export","Email report (EmailJS)"]],
@@ -800,16 +800,17 @@ function AuthScreen({onAuth,onFullSetup}){
             ["Team",[["Invite members (link + code)",true],["Role-based access control",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
             ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
             ["Entry Logging",[["Log with title, severity, location",true],["4 default types + custom entry types",true],["Custom type manager (icon & color picker)",true],["Multi-level location hierarchy",true],["Snap / upload up to 10 photos",true],["AI photo analysis (Gemini, Ollama, GPT)",true],["Voice-to-text input",true],["Component + issue selector (93 / 517)",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
-            ["Entry Management",[["Full-text search with highlighting",true],["Filter by status, severity, entry type",true],["Collapsible filters with clear button",true],["Entry type badges on list items",true],["Detail view with photos",true],["Update status workflow",true],["Comments (text + voice)",true],["Delete entry (Admin)",true],["Telegram alerts",true]]],
+            ["Entry Management",[["Full-text search with highlighting",true],["Filter by status, severity, entry type",true],["Collapsible filters with clear button",true],["Entry type badges on list items",true],["Detail view with photos",true],["Photo markup editor (arrows, circles, text)",true],["Update status with verification photo",true],["Before/after photo comparison slider",true],["Resolution timeline with photo comments",true],["Quick reactions on timeline entries",true],["Delete entry (Admin)",true],["Telegram alerts",true]]],
             ["Dashboard",[["Real-time stats overview",true],["Critical alerts",true],["Severity breakdown chart",true],["Recent entries with type badges",true],["Live sync indicator",true]]],
             ["Admin Analytics",[["Entries today / week / month",true],["Active users & submissions",true],["Per-user ranking (bar chart)",true],["Photos stats (total & avg)",true],["By entry type breakdown",true],["By project breakdown",true],["AI usage stats",true]]],
             ["Reports",[["Site report with charts",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report (EmailJS)",true]]],
             ["Storage",[["PocketBase (default)",true],["Local path (server/machine)",true],["Google Drive (OAuth)",true]]],
             ["Settings",[["Telegram bot setup + test",true],["AI multi-provider setup + test",true],["Email report config",true],["Daily AI usage limit",true],["Storage mode selector",true]]],
             ["Other",[["Help guide",true],["Feedback form",true],["Offline app shell",true],["Password visibility toggle",true]]],
-            ["Drawings (Beta)",[["Upload floor plans (JPG, PNG, PDF)",true],["View drawings with zoom & pan",true],["Place defect pins on drawings",true],["Severity-colored pins",true],["Pin tooltips with entry details",true],["Link pins to existing entries",true]]],
+            ["Drawings",[["Upload floor plans (JPG, PNG, TIF, PDF)",true],["View with zoom, pan & pinch-to-zoom",true],["Ring-style pins with severity pulse",true],["Quick-pin: create entry from floor plan",true],["Defect heatmap overlay",true],["Drawing-level markup (freehand, arrows, circles)",true],["PDF rendering with multi-page navigation",true],["Pin count & severity badges on cards",true]]],
             ["Offline",[["Save entries to IndexedDB when offline",true],["Queued badge in header + Dashboard",true],["Auto-sync when back online",true],["Manual sync tap",true],["Queued/synced status on success screen",true]]],
-            ["Coming Soon",[["Profile editing",false],["Push notifications",false]]],
+            ["Account",[["Edit name",true],["Change email",true],["Change password",true]]],
+            ["Coming Soon",[["Push notifications",false]]],
           ].map(([cat,items])=>(
             <div key={cat} style={{marginBottom:16}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:6}}>{cat.toUpperCase()}</div>
@@ -825,7 +826,7 @@ function AuthScreen({onAuth,onFullSetup}){
 
         {/* Verification Badge */}
         <div style={{marginTop:24,background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.15)",borderRadius:12,padding:16,textAlign:"center"}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#30d158",lineHeight:1,marginBottom:4}}>80/80 VERIFIED</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#30d158",lineHeight:1,marginBottom:4}}>FEATURES VERIFIED</div>
           <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginBottom:10}}>All features code-verified · April 2026</div>
           <div style={{display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap"}}>
             {[["Mobile","iOS · Android"],["Desktop","Chrome · Firefox · Edge"],["PWA","Install · Offline"]].map(([p,d])=>(
@@ -2483,6 +2484,109 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
 }
 
 // ── Report ────────────────────────────────────────────────────────
+// ── Profile Panel (edit name, email, password) ──────────────────
+function ProfilePanel({member,authUser,company,onClose,onEmailSettings,onSignOut}){
+  const[editName,setEditName]=useState(member?.name||"");
+  const[editEmail,setEditEmail]=useState(member?.email||authUser?.email||"");
+  const[oldPass,setOldPass]=useState("");const[newPass,setNewPass]=useState("");const[confirmPass,setConfirmPass]=useState("");
+  const[saving,setSaving]=useState(false);const[msg,setMsg]=useState(null);
+
+  const saveName=async()=>{
+    if(!editName.trim()||editName===member?.name)return;
+    setSaving(true);setMsg(null);
+    try{
+      await DB.members.update(member.id,{name:editName.trim()});
+      setMsg({type:"ok",text:"Name updated"});
+    }catch(e){setMsg({type:"err",text:e.message});}
+    setSaving(false);
+  };
+
+  const saveEmail=async()=>{
+    if(!editEmail.trim()||editEmail===authUser?.email)return;
+    setSaving(true);setMsg(null);
+    try{
+      // Update auth user email via PocketBase
+      const token=JSON.parse(localStorage.getItem("pb_auth")||"{}").token||"";
+      const resp=await fetch(DB.baseUrl+"/api/collections/users/records/"+authUser.id,{
+        method:"PATCH",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+        body:JSON.stringify({email:editEmail.trim()})
+      });
+      if(!resp.ok){const d=await resp.json();throw new Error(d?.message||"Failed");}
+      // Update member record too
+      if(member?.id)await DB.members.update(member.id,{email:editEmail.trim()});
+      setMsg({type:"ok",text:"Email updated"});
+    }catch(e){setMsg({type:"err",text:e.message});}
+    setSaving(false);
+  };
+
+  const savePassword=async()=>{
+    if(!oldPass||!newPass){setMsg({type:"err",text:"Fill in both fields"});return;}
+    if(newPass!==confirmPass){setMsg({type:"err",text:"Passwords don't match"});return;}
+    if(newPass.length<8){setMsg({type:"err",text:"Password must be at least 8 characters"});return;}
+    setSaving(true);setMsg(null);
+    try{
+      const token=JSON.parse(localStorage.getItem("pb_auth")||"{}").token||"";
+      const resp=await fetch(DB.baseUrl+"/api/collections/users/records/"+authUser.id,{
+        method:"PATCH",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+        body:JSON.stringify({oldPassword:oldPass,password:newPass,passwordConfirm:newPass})
+      });
+      if(!resp.ok){const d=await resp.json();throw new Error(d?.data?.oldPassword?.message||d?.message||"Failed");}
+      setOldPass("");setNewPass("");setConfirmPass("");
+      setMsg({type:"ok",text:"Password changed successfully"});
+    }catch(e){setMsg({type:"err",text:e.message});}
+    setSaving(false);
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:300,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
+      <SettingsBack onClose={onClose} title="MY PROFILE"/>
+      <div style={{padding:20}}>
+        {/* Avatar */}
+        <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:24}}>
+          <div style={{width:56,height:56,borderRadius:"50%",background:"#ff6b00",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,fontWeight:800,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif"}}>{(member?.name||"?")[0].toUpperCase()}</div>
+          <div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:18,color:"#1a1a1a"}}>{member?.name}</div>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}><RoleChip r={member?.role}/><span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>{member?.jobTitle}</span></div>
+          </div>
+        </div>
+
+        {msg&&<div style={{background:msg.type==="ok"?"rgba(48,209,88,0.1)":"rgba(255,59,48,0.1)",border:`1px solid ${msg.type==="ok"?"rgba(48,209,88,0.3)":"rgba(255,59,48,0.3)"}`,borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:msg.type==="ok"?"#30d158":"#ff3b30",fontWeight:700}}>{msg.text}</div>}
+
+        {/* Edit Name */}
+        <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:12}}>
+          <div style={lbl()}>DISPLAY NAME</div>
+          <div style={{display:"flex",gap:8}}>
+            <input value={editName} onChange={e=>setEditName(e.target.value)} style={{...inp,flex:1}}/>
+            <button onClick={saveName} disabled={saving||!editName.trim()||editName===member?.name} style={{background:editName!==member?.name?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:"10px 16px",color:editName!==member?.name?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",flexShrink:0}}>SAVE</button>
+          </div>
+        </div>
+
+        {/* Edit Email */}
+        <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:12}}>
+          <div style={lbl()}>EMAIL</div>
+          <div style={{display:"flex",gap:8}}>
+            <input value={editEmail} onChange={e=>setEditEmail(e.target.value)} type="email" style={{...inp,flex:1}}/>
+            <button onClick={saveEmail} disabled={saving||!editEmail.trim()||editEmail===authUser?.email} style={{background:editEmail!==authUser?.email?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:"10px 16px",color:editEmail!==authUser?.email?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",flexShrink:0}}>SAVE</button>
+          </div>
+        </div>
+
+        {/* Change Password */}
+        <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:12}}>
+          <div style={lbl()}>CHANGE PASSWORD</div>
+          <input value={oldPass} onChange={e=>setOldPass(e.target.value)} type="password" placeholder="Current password" style={{...inp,width:"100%",marginBottom:8}}/>
+          <input value={newPass} onChange={e=>setNewPass(e.target.value)} type="password" placeholder="New password (min 8 chars)" style={{...inp,width:"100%",marginBottom:8}}/>
+          <input value={confirmPass} onChange={e=>setConfirmPass(e.target.value)} type="password" placeholder="Confirm new password" style={{...inp,width:"100%",marginBottom:10}}/>
+          <button onClick={savePassword} disabled={saving||!oldPass||!newPass} style={{width:"100%",background:oldPass&&newPass?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:"12px",color:oldPass&&newPass?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>UPDATE PASSWORD</button>
+        </div>
+
+        {/* Actions */}
+        <button onClick={onEmailSettings} style={{width:"100%",background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:14,padding:"14px 16px",marginBottom:10,cursor:"pointer",display:"flex",alignItems:"center",gap:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#1a1a1a"}}>📧 Email Report Settings</button>
+        <button onClick={onSignOut} style={{width:"100%",background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.15)",borderRadius:14,padding:"14px 16px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#ff3b30"}}>Sign Out</button>
+      </div>
+    </div>
+  );
+}
+
 function Report({defects,onEmailSetup,currentProject,company}){
   const[sending,setSending]=useState(false);const[sendRes,setSendRes]=useState(null);
   const[showFilters,setShowFilters]=useState(false);
@@ -2679,10 +2783,7 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
       <SettingsBack onClose={onClose} title="DRAWINGS"/>
       <div style={{padding:20}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-          <span style={{fontSize:10,fontWeight:700,color:"#ff9500",background:"rgba(255,149,0,0.12)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:10,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>BETA — WORK IN PROGRESS</span>
-        </div>
-        <div style={{fontSize:12,color:"rgba(0,0,0,0.4)",marginBottom:16}}>📁 {currentProject?.name} · Upload floor plans and tap to place defect pins</div>
+        <div style={{fontSize:12,color:"rgba(0,0,0,0.4)",marginBottom:16}}>📁 {currentProject?.name} · Upload floor plans, place defect pins, markup & heatmap</div>
 
         {/* Upload button */}
         {canUpload&&(
@@ -3734,18 +3835,8 @@ function App(){
         </div>
       </div>
 
-      {/* Profile dropdown */}
-      {showProfile&&(
-        <div style={{position:"fixed",inset:0,zIndex:300}} onClick={()=>setShowProfile(false)}>
-          <div style={{position:"absolute",top:56,right:8,background:"#1a1a1a",borderRadius:14,padding:16,minWidth:210,animation:"fadeIn 0.15s ease",maxWidth:280}} onClick={e=>e.stopPropagation()}>
-            <div style={{fontWeight:700,color:"#fff",fontSize:14,marginBottom:2}}>{member?.name}</div>
-            <div style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:6}}>{member?.email||authUser?.email}</div>
-            <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:14}}><RoleChip r={member?.role}/><span style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>{member?.jobTitle}</span></div>
-            <button onClick={()=>{setShowEmail(true);setShowProfile(false);}} style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"none",borderRadius:8,padding:"9px",color:"rgba(255,255,255,0.7)",fontSize:13,cursor:"pointer",marginBottom:6,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,textAlign:"left"}}>📧 Email Report Settings</button>
-            <button onClick={signOut} style={{width:"100%",background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:8,padding:"9px",color:"#ff6b6b",fontSize:13,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600}}>Sign Out</button>
-          </div>
-        </div>
-      )}
+      {/* Profile panel */}
+      {showProfile&&<ProfilePanel member={member} authUser={authUser} company={company} onClose={()=>setShowProfile(false)} onEmailSettings={()=>{setShowEmail(true);setShowProfile(false);}} onSignOut={signOut}/>}
 
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:72}}>
@@ -3790,11 +3881,13 @@ function App(){
                   ["Admin (lightning, Admin only)","Analytics dashboard — entries by day/week/month, per-user rankings, photos stats, entries by project, AI usage. Visible to Admin role only."],
                 ]],
                 ["Drawings",[
-                  ["Accessing Drawings","Tap the 'Floor Plans & Drawings' card on the Dashboard to open the Drawings panel."],
-                  ["Upload","Admin and Manager can upload floor plan images (JPG, PNG) or PDFs. Max 50MB."],
-                  ["Viewing","Tap a drawing to open it full-screen. Use + / − buttons or pinch to zoom. Drag to pan."],
-                  ["Placing Pins","Tap 'ADD PIN', then tap on the drawing. Select the entry to link. A severity-colored pin appears."],
-                  ["Pin Details","Hover or tap a pin to see the linked entry's title, severity, and status. Admins can remove pins."],
+                  ["Accessing Drawings","Tap the 'Floor Plans & Drawings' card on the Dashboard to open the Drawings panel. Each card shows pin count and severity badges."],
+                  ["Upload","Admin and Manager can upload floor plans — JPG, PNG, TIF, or PDF. Max 50MB. PDFs render via PDF.js with page navigation."],
+                  ["Viewing","Tap a drawing to open it full-screen. Use + / − buttons or pinch to zoom. Drag to pan. Two-finger drag works even in pin placement mode."],
+                  ["Placing Pins","Tap 'ADD PIN', then tap on the drawing. Link to an existing entry, or tap 'CREATE NEW ENTRY & PIN HERE' to log a defect directly from the floor plan with photo, title, and severity."],
+                  ["Pin Style","Ring-style indicators show severity initial (C/M/O). Critical + Open pins pulse to draw attention. Tap a pin to see details or remove it."],
+                  ["Heatmap","Tap the 🔥 button to toggle a severity-weighted heatmap overlay. Red zones highlight problem areas at a glance."],
+                  ["Drawing Markup","Tap '✏ MARKUP' to draw directly on the floor plan — freehand, arrows, or circles in multiple colors. Undo and clear available."],
                 ]],
                 ["Header Icons",[
                   ["Company & Project (top left)","Tap to switch between projects or create new ones."],
@@ -3820,8 +3913,17 @@ function App(){
                   ["Open","New entry, not yet actioned."],
                   ["In Progress","Work has started on this item."],
                   ["Done","Work completed, awaiting verification."],
-                  ["Verified","Checked and confirmed by Manager/Admin."],
-                  ["Closed","Fully resolved and archived."],
+                  ["Verified","Checked and confirmed by Manager/Admin. Prompts for a verification photo."],
+                  ["Closed","Fully resolved and archived. Before/after photo comparison shows automatically."],
+                ]],
+                ["Comments & Timeline",[
+                  ["Resolution Timeline","Comments appear as a visual timeline with colored dots — orange for comments, green for verification, purple for status changes."],
+                  ["Photo Comments","Attach photos to comments using the 📷 button. Great for documenting progress."],
+                  ["Quick Reactions","React to timeline entries with 👍 ✅ ⚠️ 🔧 for fast acknowledgment."],
+                  ["Photo Markup","Tap any photo thumbnail in the entry form to annotate it — draw arrows, circles, freehand, or add text labels."],
+                ]],
+                ["Profile",[
+                  ["Edit Profile","Tap your avatar in the header to open profile settings. You can change your display name, email, and password."],
                 ]],
                 ["Roles & Permissions",[
                   ["Admin","Full access — manage team, delete entries, all features."],
@@ -3855,16 +3957,17 @@ function App(){
                   ["Team",[["Invite members (link + code)",true],["Role-based access control",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
                   ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
                   ["Entry Logging",[["Log with title, severity, location",true],["4 default types + custom entry types",true],["Custom type manager (icon & color picker)",true],["Multi-level location hierarchy",true],["Snap / upload up to 10 photos",true],["AI photo analysis (Gemini, Ollama, GPT)",true],["Voice-to-text input",true],["Component + issue selector (93 / 517)",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
-                  ["Entry Management",[["Full-text search with highlighting",true],["Filter by status, severity, entry type",true],["Collapsible filters with clear button",true],["Entry type badges on list items",true],["Detail view with photos",true],["Update status workflow",true],["Comments (text + voice)",true],["Delete entry (Admin)",true],["Telegram alerts",true]]],
+                  ["Entry Management",[["Full-text search with highlighting",true],["Filter by status, severity, entry type",true],["Collapsible filters with clear button",true],["Entry type badges on list items",true],["Detail view with photos",true],["Photo markup editor (arrows, circles, text)",true],["Update status with verification photo",true],["Before/after photo comparison slider",true],["Resolution timeline with photo comments",true],["Quick reactions on timeline entries",true],["Delete entry (Admin)",true],["Telegram alerts",true]]],
                   ["Dashboard",[["Real-time stats overview",true],["Critical alerts",true],["Severity breakdown chart",true],["Recent entries with type badges",true],["Live sync indicator",true]]],
                   ["Admin Analytics",[["Entries today / week / month",true],["Active users & submissions",true],["Per-user ranking (bar chart)",true],["Photos stats (total & avg)",true],["By entry type breakdown",true],["By project breakdown",true],["AI usage stats",true]]],
                   ["Reports",[["Site report with charts",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report (EmailJS)",true]]],
                   ["Storage",[["PocketBase (default)",true],["Local path (server/machine)",true],["Google Drive (OAuth)",true]]],
                   ["Settings",[["Telegram bot setup + test",true],["AI multi-provider setup + test",true],["Email report config",true],["Daily AI usage limit",true],["Storage mode selector",true]]],
                   ["Other",[["Help guide",true],["Feedback form",true],["Offline app shell",true],["Password visibility toggle",true]]],
-                  ["Drawings (Beta)",[["Upload floor plans (JPG, PNG, PDF)",true],["View drawings with zoom & pan",true],["Place defect pins on drawings",true],["Severity-colored pins",true],["Pin tooltips with entry details",true],["Link pins to existing entries",true]]],
+                  ["Drawings",[["Upload floor plans (JPG, PNG, TIF, PDF)",true],["View with zoom, pan & pinch-to-zoom",true],["Ring-style pins with severity pulse",true],["Quick-pin: create entry from floor plan",true],["Defect heatmap overlay",true],["Drawing-level markup (freehand, arrows, circles)",true],["PDF rendering with multi-page navigation",true],["Pin count & severity badges on cards",true]]],
             ["Offline",[["Save entries to IndexedDB when offline",true],["Queued badge in header + Dashboard",true],["Auto-sync when back online",true],["Manual sync tap",true],["Queued/synced status on success screen",true]]],
-            ["Coming Soon",[["Profile editing",false],["Push notifications",false]]],
+            ["Account",[["Edit name",true],["Change email",true],["Change password",true]]],
+            ["Coming Soon",[["Push notifications",false]]],
                 ].map(([cat,items])=>(
                   <div key={cat} style={{marginBottom:12}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.6)",letterSpacing:"0.08em",marginBottom:4}}>{cat.toUpperCase()}</div>
