@@ -780,38 +780,24 @@ function AuthScreen({onAuth,onFullSetup}){
 
         {/* Feature Status Checklist */}
         <div style={{textAlign:"left"}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:800,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",marginBottom:16}}>ALL FEATURES ({[
-            ["Auth & Onboarding",["Login / Sign up","Password reset","Password visibility toggle","One-step registration + company setup","Auto-recover session","Install as app","Server URL config"]],
-            ["Team",["Invite members (link + code)","Role-based access (Admin, Manager, Inspector, Viewer)","Edit roles / remove members","Permission matrix"]],
-            ["Projects",["Create / rename projects","Switch active project","Archive / restore projects"]],
-            ["Entry Logging",["Log entry with title, severity, location","4 default types + custom entry types","Custom type manager (icon & color picker)","Multi-level location (Level > Zone > Room > Grid)","Snap or upload up to 10 photos","AI photo analysis (Gemini, Ollama, GPT)","Voice-to-text (title, description, search)","Component + issue selector (93 components, 517 issues)","Assign to team member","Cost & time tracking fields","Batch logging (same location)"]],
-            ["Entry Management",["Full-text search with highlighting","Filter by status, severity, and entry type","Collapsible filters with clear button","Entry type badges on list items","Detail view with photos","Photo markup editor (arrows, circles, freehand, text)","Update status with verification photo","Before/after photo comparison slider","Resolution timeline with photo comments","Quick reactions on timeline entries","Delete entry (Admin only)","Telegram alerts on new entry and status change"]],
-            ["Drawings",["Upload floor plans (JPG, PNG, TIF, PDF)","View with zoom, pan & pinch-to-zoom","Ring-style defect pins with severity pulse","Pin tooltips with entry details","Quick-pin: create entry directly from floor plan","Defect heatmap overlay","Drawing-level markup (freehand, arrows, circles)","PDF rendering with multi-page navigation"]],
-            ["Dashboard",["Real-time stats (Open / In Progress / Done / Verified / Closed)","Critical alerts","Severity breakdown chart","Recent entries with type badges","Live sync indicator"]],
-            ["Admin Analytics",["Entries logged today / week / month / all time","Active users — who submitted today and this week","Entries per user ranking (bar chart)","Photos total and average per entry","Entries by entry type breakdown","Entries by project breakdown","AI usage stats (today / limit / coverage / provider)"]],
-            ["Reports",["Site report with charts + entry list","Filter by severity / status / assignee / date","CSV export","Email report (EmailJS)"]],
-            ["Storage",["PocketBase (default server)","Local path (self-hosted server/machine)","Google Drive (OAuth, personal cloud)"]],
-            ["Settings",["Telegram bot setup + test","AI multi-provider setup + test","Email report config","Daily AI usage limit","Storage mode selector"]],
-            ["Offline",["Save entries offline to IndexedDB","Queued badge (header + dashboard)","Auto-sync when back online","Manual sync tap","Queued/synced status indicator"]],
-            ["Other",["Help guide with full user manual","Feedback form (suggestion, bug, praise)","Cached app shell (service worker)","Password visibility toggle"]],
-          ].reduce((n,g)=>n+g[1].length,0)} features)</div>
-          {[
-            ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["Password visibility toggle",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as app",true],["Server URL config",true]]],
-            ["Team",[["Invite members (link + code)",true],["Role-based access control",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
+          {(()=>{const cats=[
+            ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["Password visibility toggle",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as PWA",true],["Server URL config",true]]],
+            ["Team",[["Invite members (link + code)",true],["Role-based access (Admin, Manager, Inspector, Viewer)",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
             ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
-            ["Entry Logging",[["Log with title, severity, location",true],["4 default types + custom entry types",true],["Custom type manager (icon & color picker)",true],["Multi-level location hierarchy",true],["Snap / upload up to 10 photos",true],["AI photo analysis (Gemini, Ollama, GPT)",true],["Voice-to-text input",true],["Component + issue selector (93 / 517)",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
-            ["Entry Management",[["Full-text search with highlighting",true],["Filter by status, severity, entry type",true],["Collapsible filters with clear button",true],["Entry type badges on list items",true],["Detail view with photos",true],["Photo markup editor (arrows, circles, text)",true],["Update status with verification photo",true],["Before/after photo comparison slider",true],["Resolution timeline with photo comments",true],["Quick reactions on timeline entries",true],["Delete entry (Admin)",true],["Telegram alerts",true]]],
-            ["Dashboard",[["Real-time stats overview",true],["Critical alerts",true],["Severity breakdown chart",true],["Recent entries with type badges",true],["Live sync indicator",true]]],
-            ["Admin Analytics",[["Entries today / week / month",true],["Active users & submissions",true],["Per-user ranking (bar chart)",true],["Photos stats (total & avg)",true],["By entry type breakdown",true],["By project breakdown",true],["AI usage stats",true]]],
-            ["Reports",[["Site report with charts",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report (EmailJS)",true]]],
-            ["Storage",[["PocketBase (default)",true],["Local path (server/machine)",true],["Google Drive (OAuth)",true]]],
+            ["Entry Logging",[["Log with title, severity, location",true],["4 default types + custom entry types",true],["Custom type manager (icon & color picker)",true],["Multi-level location (Level > Zone > Room > Grid)",true],["Snap / upload up to 10 photos",true],["Photo markup editor (arrows, circles, freehand, text)",true],["AI photo analysis (Gemini, Ollama, GPT)",true],["Voice-to-text input (title, description, search)",true],["Component + issue selector (93 / 517)",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode (same location)",true]]],
+            ["Entry Management",[["Full-text search with highlighting",true],["Filter by status, severity, entry type",true],["Collapsible filters with clear button",true],["Entry type badges on list & detail",true],["Detail view with all fields + photos",true],["Update status workflow (5 stages)",true],["Verification photo on Close/Verify",true],["Before/after photo comparison slider",true],["Resolution timeline (visual, color-coded)",true],["Photo comments in timeline",true],["Quick reactions (thumbs, check, warn, fix)",true],["Delete entry (Admin only)",true],["Telegram alerts on new entry & status change",true]]],
+            ["Drawings & Floor Plans",[["Upload floor plans (JPG, PNG, TIF, PDF)",true],["PDF rendering via PDF.js with page navigation",true],["Zoom, pan & pinch-to-zoom (mobile)",true],["Ring-style defect pins with severity initial",true],["Critical pin pulse animation",true],["Pin tooltip with entry details + remove",true],["Quick-pin: create entry directly from drawing",true],["Defect heatmap overlay (severity-weighted)",true],["Drawing-level markup (freehand, arrows, circles)",true],["Markup color picker + undo/clear",true],["Pin count & severity badges on cards",true],["PDF thumbnail preview in list",true]]],
+            ["Dashboard",[["Real-time status counts (5 stages)",true],["Critical alerts banner",true],["Severity breakdown chart",true],["Recent entries with type badges",true],["Live sync indicator + queue count",true]]],
+            ["Admin Analytics",[["Entries today / week / month / all time",true],["Active users — who submitted today & this week",true],["Per-user ranking bar chart",true],["Photos stats (total & avg per entry)",true],["Entries by entry type breakdown",true],["Entries by project breakdown",true],["AI usage stats (daily limit, coverage, provider)",true]]],
+            ["Reports",[["Site report with charts + entry list",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report via EmailJS",true]]],
+            ["Storage",[["PocketBase (default server)",true],["Local path (self-hosted server/machine)",true],["Google Drive (OAuth, personal cloud)",true]]],
             ["Settings",[["Telegram bot setup + test",true],["AI multi-provider setup + test",true],["Email report config",true],["Daily AI usage limit",true],["Storage mode selector",true]]],
-            ["Other",[["Help guide",true],["Feedback form",true],["Offline app shell",true],["Password visibility toggle",true]]],
-            ["Drawings",[["Upload floor plans (JPG, PNG, TIF, PDF)",true],["View with zoom, pan & pinch-to-zoom",true],["Ring-style pins with severity pulse",true],["Quick-pin: create entry from floor plan",true],["Defect heatmap overlay",true],["Drawing-level markup (freehand, arrows, circles)",true],["PDF rendering with multi-page navigation",true],["Pin count & severity badges on cards",true]]],
-            ["Offline",[["Save entries to IndexedDB when offline",true],["Queued badge in header + Dashboard",true],["Auto-sync when back online",true],["Manual sync tap",true],["Queued/synced status on success screen",true]]],
-            ["Account",[["Edit name",true],["Change email",true],["Change password",true]]],
-            ["Coming Soon",[["Push notifications",false]]],
-          ].map(([cat,items])=>(
+            ["Offline",[["Save entries to IndexedDB when offline",true],["Queued badge in header + Dashboard",true],["Auto-sync when back online",true],["Manual sync tap",true],["Queued/synced status indicator",true]]],
+            ["Account",[["Edit display name",true],["Change email",true],["Change password",true]]],
+            ["Other",[["Comprehensive help guide",true],["Feedback form (suggestion, bug, praise)",true],["Cached app shell (service worker)",true],["Photo compression (auto-resize)",true]]],
+          ];const total=cats.reduce((n,[,items])=>n+items.filter(([,d])=>d).length,0);return(<>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:800,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",marginBottom:16}}>ALL FEATURES ({total} verified)</div>
+          {cats.map(([cat,items])=>(
             <div key={cat} style={{marginBottom:16}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:6}}>{cat.toUpperCase()}</div>
               {items.map(([feat,done])=>(
@@ -822,7 +808,7 @@ function AuthScreen({onAuth,onFullSetup}){
               ))}
             </div>
           ))}
-        </div>
+        </>);})()}
 
         {/* Verification Badge */}
         <div style={{marginTop:24,background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.15)",borderRadius:12,padding:16,textAlign:"center"}}>
@@ -3952,23 +3938,22 @@ function App(){
               {/* Features Checklist */}
               <div style={{marginBottom:24}}>
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:10,borderBottom:"1px solid rgba(255,255,255,0.1)",paddingBottom:6}}>ALL FEATURES</div>
-                {[
-                  ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["Password visibility toggle",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as app",true],["Server URL config",true]]],
-                  ["Team",[["Invite members (link + code)",true],["Role-based access control",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
+                {(()=>{const hcats=[
+                  ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["Password visibility toggle",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as PWA",true],["Server URL config",true]]],
+                  ["Team",[["Invite members (link + code)",true],["Role-based access (Admin, Manager, Inspector, Viewer)",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
                   ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
-                  ["Entry Logging",[["Log with title, severity, location",true],["4 default types + custom entry types",true],["Custom type manager (icon & color picker)",true],["Multi-level location hierarchy",true],["Snap / upload up to 10 photos",true],["AI photo analysis (Gemini, Ollama, GPT)",true],["Voice-to-text input",true],["Component + issue selector (93 / 517)",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
-                  ["Entry Management",[["Full-text search with highlighting",true],["Filter by status, severity, entry type",true],["Collapsible filters with clear button",true],["Entry type badges on list items",true],["Detail view with photos",true],["Photo markup editor (arrows, circles, text)",true],["Update status with verification photo",true],["Before/after photo comparison slider",true],["Resolution timeline with photo comments",true],["Quick reactions on timeline entries",true],["Delete entry (Admin)",true],["Telegram alerts",true]]],
-                  ["Dashboard",[["Real-time stats overview",true],["Critical alerts",true],["Severity breakdown chart",true],["Recent entries with type badges",true],["Live sync indicator",true]]],
-                  ["Admin Analytics",[["Entries today / week / month",true],["Active users & submissions",true],["Per-user ranking (bar chart)",true],["Photos stats (total & avg)",true],["By entry type breakdown",true],["By project breakdown",true],["AI usage stats",true]]],
-                  ["Reports",[["Site report with charts",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report (EmailJS)",true]]],
-                  ["Storage",[["PocketBase (default)",true],["Local path (server/machine)",true],["Google Drive (OAuth)",true]]],
+                  ["Entry Logging",[["Log with title, severity, location",true],["4 default types + custom entry types",true],["Custom type manager (icon & color picker)",true],["Multi-level location (Level > Zone > Room > Grid)",true],["Snap / upload up to 10 photos",true],["Photo markup editor (arrows, circles, freehand, text)",true],["AI photo analysis (Gemini, Ollama, GPT)",true],["Voice-to-text input",true],["Component + issue selector (93 / 517)",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
+                  ["Entry Management",[["Full-text search with highlighting",true],["Filter by status, severity, entry type",true],["Collapsible filters with clear button",true],["Entry type badges on list & detail",true],["Detail view with all fields + photos",true],["Update status workflow (5 stages)",true],["Verification photo on Close/Verify",true],["Before/after photo comparison slider",true],["Resolution timeline (visual, color-coded)",true],["Photo comments in timeline",true],["Quick reactions (thumbs, check, warn, fix)",true],["Delete entry (Admin only)",true],["Telegram alerts on new entry & status change",true]]],
+                  ["Drawings & Floor Plans",[["Upload floor plans (JPG, PNG, TIF, PDF)",true],["PDF rendering via PDF.js with page navigation",true],["Zoom, pan & pinch-to-zoom (mobile)",true],["Ring-style defect pins with severity initial",true],["Critical pin pulse animation",true],["Pin tooltip with entry details + remove",true],["Quick-pin: create entry directly from drawing",true],["Defect heatmap overlay (severity-weighted)",true],["Drawing-level markup (freehand, arrows, circles)",true],["Markup color picker + undo/clear",true],["Pin count & severity badges on cards",true],["PDF thumbnail preview in list",true]]],
+                  ["Dashboard",[["Real-time status counts (5 stages)",true],["Critical alerts banner",true],["Severity breakdown chart",true],["Recent entries with type badges",true],["Live sync indicator + queue count",true]]],
+                  ["Admin Analytics",[["Entries today / week / month / all time",true],["Active users — who submitted today & this week",true],["Per-user ranking bar chart",true],["Photos stats (total & avg per entry)",true],["Entries by entry type breakdown",true],["Entries by project breakdown",true],["AI usage stats (daily limit, coverage, provider)",true]]],
+                  ["Reports",[["Site report with charts + entry list",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report via EmailJS",true]]],
+                  ["Storage",[["PocketBase (default server)",true],["Local path (self-hosted)",true],["Google Drive (OAuth)",true]]],
                   ["Settings",[["Telegram bot setup + test",true],["AI multi-provider setup + test",true],["Email report config",true],["Daily AI usage limit",true],["Storage mode selector",true]]],
-                  ["Other",[["Help guide",true],["Feedback form",true],["Offline app shell",true],["Password visibility toggle",true]]],
-                  ["Drawings",[["Upload floor plans (JPG, PNG, TIF, PDF)",true],["View with zoom, pan & pinch-to-zoom",true],["Ring-style pins with severity pulse",true],["Quick-pin: create entry from floor plan",true],["Defect heatmap overlay",true],["Drawing-level markup (freehand, arrows, circles)",true],["PDF rendering with multi-page navigation",true],["Pin count & severity badges on cards",true]]],
-            ["Offline",[["Save entries to IndexedDB when offline",true],["Queued badge in header + Dashboard",true],["Auto-sync when back online",true],["Manual sync tap",true],["Queued/synced status on success screen",true]]],
-            ["Account",[["Edit name",true],["Change email",true],["Change password",true]]],
-            ["Coming Soon",[["Push notifications",false]]],
-                ].map(([cat,items])=>(
+                  ["Offline",[["Save entries to IndexedDB when offline",true],["Queued badge in header + Dashboard",true],["Auto-sync when back online",true],["Manual sync tap",true],["Queued/synced status indicator",true]]],
+                  ["Account",[["Edit display name",true],["Change email",true],["Change password",true]]],
+                  ["Other",[["Comprehensive help guide",true],["Feedback form (suggestion, bug, praise)",true],["Cached app shell (service worker)",true],["Photo compression (auto-resize)",true]]],
+                ];const ht=hcats.reduce((n,[,items])=>n+items.filter(([,d])=>d).length,0);return hcats.map(([cat,items])=>(
                   <div key={cat} style={{marginBottom:12}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.6)",letterSpacing:"0.08em",marginBottom:4}}>{cat.toUpperCase()}</div>
                     {items.map(([feat,done])=>(
@@ -3978,20 +3963,20 @@ function App(){
                       </div>
                     ))}
                   </div>
-                ))}
+                ));})()}
               </div>
               {/* Test Results */}
               <div style={{marginBottom:24}}>
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:10,borderBottom:"1px solid rgba(255,255,255,0.1)",paddingBottom:6}}>VERIFICATION STATUS</div>
                 <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:12,padding:16,marginBottom:14}}>
                   <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#30d158",lineHeight:1}}>80/80</div>
-                    <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#30d158"}}>ALL FEATURES VERIFIED</div><div style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>Code-level verification · April 2026</div></div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#30d158",lineHeight:1}}>ALL</div>
+                    <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#30d158"}}>FEATURES VERIFIED</div><div style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>Code-level verification · April 2026</div></div>
                   </div>
                   {[
-                    ["Auth & Onboarding","7/7"],["Team","4/4"],["Entry Logging","11/11"],["Entry Management","9/9"],
-                    ["Dashboard","5/5"],["Admin Analytics","7/7"],["Reports","4/4"],["Storage","3/3"],
-                    ["Settings","5/5"],["Other","4/4"],["Drawings (Beta)","6/6"],["Offline","5/5"],["Coming Soon","0/2"],
+                    ["Auth & Onboarding","7/7"],["Team","4/4"],["Projects","3/3"],["Entry Logging","12/12"],["Entry Management","13/13"],
+                    ["Drawings & Floor Plans","12/12"],["Dashboard","5/5"],["Admin Analytics","7/7"],["Reports","4/4"],["Storage","3/3"],
+                    ["Settings","5/5"],["Offline","5/5"],["Account","3/3"],["Other","4/4"],
                   ].map(([cat,score])=>(
                     <div key={cat} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",fontSize:11}}>
                       <span style={{color:"rgba(255,255,255,0.45)"}}>{cat}</span>
