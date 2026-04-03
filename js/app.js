@@ -834,20 +834,20 @@ function AuthScreen({onAuth,onFullSetup}){
 
   // ── Login / Register page (consolidated) ──
   return(
-    <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center",padding:28}}>
-      <div style={{width:"100%",maxWidth:400}}>
+    <div style={{minHeight:"100dvh",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center",padding:"18px 16px",overflowY:"auto"}}>
+      <div style={{width:"100%",maxWidth:420}}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
           <button onClick={()=>setPage("intro")} style={{background:"rgba(255,255,255,0.07)",border:"none",borderRadius:20,padding:"6px 12px",color:"rgba(255,255,255,0.5)",fontSize:12,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>←</button>
           <div>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#fff",lineHeight:1}}>SITESHRIMP</div>
-            <div style={{color:"rgba(255,255,255,0.4)",fontSize:12}}>Construction Site Tracker</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:31,fontWeight:800,color:"#fff",lineHeight:1}}>SITESHRIMP</div>
+            <div style={{color:"rgba(255,255,255,0.45)",fontSize:13}}>Construction Site Tracker</div>
           </div>
         </div>
 
         {/* Mode tabs */}
         <div style={{display:"flex",gap:8,marginBottom:20}}>
           {["login","register"].map(m=>(
-            <button key={m} onClick={()=>{setMode(m);setErr("");setStep("");}} style={{flex:1,background:mode===m?"#ff6b00":"rgba(255,255,255,0.07)",border:"none",borderRadius:10,padding:"11px",color:mode===m?"#fff":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>{m==="login"?"LOGIN":"SIGN UP"}</button>
+            <button key={m} onClick={()=>{setMode(m);setErr("");setStep("");}} style={{flex:1,background:mode===m?"#ff6b00":"rgba(255,255,255,0.07)",border:"none",borderRadius:10,padding:"12px",color:mode===m?"#fff":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,cursor:"pointer"}}>{m==="login"?"LOGIN":"SIGN UP"}</button>
           ))}
         </div>
 
@@ -3934,16 +3934,16 @@ function App(){
   });
 
   return(
-    <div style={{maxWidth:430,margin:"0 auto",minHeight:"100vh",background:"#f0ede8",display:"flex",flexDirection:"column"}}>
+    <div style={{width:"100%",maxWidth:430,margin:"0 auto",height:"100dvh",background:"#f0ede8",display:"flex",flexDirection:"column",overflow:"hidden"}}>
       {/* Header */}
       <div style={{background:"#1a1a1a",padding:"12px 14px 10px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <button onClick={()=>setShowProjects(true)} style={{background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0,flex:1}}>
+        <button onClick={()=>setShowProjects(true)} style={{background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0,flex:1,minWidth:0}}>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:9,fontWeight:700,color:"#ff6b00",letterSpacing:"0.15em"}}>{company.companyName}</div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:800,color:"#fff",marginTop:1}}>
             {currentProject?.name||"SELECT PROJECT"} <span style={{fontSize:10,color:"rgba(255,255,255,0.3)"}}>▼</span>
           </div>
         </button>
-        <div style={{display:"flex",alignItems:"center",gap:6}}>
+        <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap",justifyContent:"flex-end",maxWidth:"62%"}}>
           <div style={{textAlign:"right",marginRight:2}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#fff",lineHeight:1}}>{defects.filter(d=>!["Verified","Closed"].includes(d.status)).length}</div>
             <div style={{fontSize:9,color:"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif"}}>ACTIVE</div>
@@ -3954,20 +3954,20 @@ function App(){
               <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#ff9500"}}>{queueCount}</span>
             </button>
           )}
-          <button onClick={()=>{setShowAiSearch(true);setTab("defects");}} title="AI Search" style={{width:32,height:32,borderRadius:8,background:"rgba(255,107,0,0.15)",border:"1px solid rgba(255,107,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:14}}>💬</button>
-          <button onClick={()=>setShowGemini(true)} title="AI Setup" style={{width:32,height:32,borderRadius:8,background:aiEnabled?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${aiEnabled?"rgba(88,86,214,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:15}}>🤖</button>
-          <button onClick={()=>setShowTg(true)} title="Telegram Setup" style={{width:32,height:32,borderRadius:8,background:tgEnabled?"rgba(0,136,204,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${tgEnabled?"rgba(0,136,204,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
+          <button onClick={()=>{setShowAiSearch(true);setTab("defects");}} title="AI Search" style={{width:28,height:28,borderRadius:8,background:"rgba(255,107,0,0.15)",border:"1px solid rgba(255,107,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:13}}>💬</button>
+          <button onClick={()=>setShowGemini(true)} title="AI Setup" style={{width:28,height:28,borderRadius:8,background:aiEnabled?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${aiEnabled?"rgba(88,86,214,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:13}}>🤖</button>
+          <button onClick={()=>setShowTg(true)} title="Telegram Setup" style={{width:28,height:28,borderRadius:8,background:tgEnabled?"rgba(0,136,204,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${tgEnabled?"rgba(0,136,204,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21.5 4.5L2.5 11.5L9 13.5L11 20.5L15 15.5L20 18.5L21.5 4.5Z" stroke={tgEnabled?"#0088cc":"rgba(255,255,255,0.4)"} strokeWidth="1.5" strokeLinejoin="round"/></svg>
           </button>
-          <button onClick={()=>setShowStorage(true)} title="Storage Settings" style={{width:32,height:32,borderRadius:8,background:(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"rgba(48,209,88,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"rgba(48,209,88,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:14}}>
+          <button onClick={()=>setShowStorage(true)} title="Storage Settings" style={{width:28,height:28,borderRadius:8,background:(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"rgba(48,209,88,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"rgba(48,209,88,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:13}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 4h16v4H4V4zm0 6h16v4H4v-4zm0 6h16v4H4v-4z" stroke={(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"#30d158":"rgba(255,255,255,0.4)"} strokeWidth="1.5" strokeLinejoin="round"/><circle cx="7" cy="6" r="1" fill={(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"#30d158":"rgba(255,255,255,0.4)"}/><circle cx="7" cy="12" r="1" fill={(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"#30d158":"rgba(255,255,255,0.4)"}/><circle cx="7" cy="18" r="1" fill={(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"#30d158":"rgba(255,255,255,0.4)"}/></svg>
           </button>
-          {isAdmin&&<button onClick={()=>setShowUsers(true)} title="Team Management" style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:15}}>👥</button>}
-          <button onClick={()=>setShowHelp(true)} title="Help" style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"rgba(255,255,255,0.5)"}}>?</button>
-          <button onClick={()=>{setShowFeedback(true);setFbSent(false);setFbText("");}} title="Feedback" style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:13}}>
+          {isAdmin&&<button onClick={()=>setShowUsers(true)} title="Team Management" style={{width:28,height:28,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:13}}>👥</button>}
+          <button onClick={()=>setShowHelp(true)} title="Help" style={{width:28,height:28,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"rgba(255,255,255,0.5)"}}>?</button>
+          <button onClick={()=>{setShowFeedback(true);setFbSent(false);setFbText("");}} title="Feedback" style={{width:28,height:28,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:12}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
-          <button onClick={()=>setShowProfile(!showProfile)} style={{width:32,height:32,borderRadius:"50%",background:"#ff6b00",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#fff",flexShrink:0}}>
+          <button onClick={()=>setShowProfile(!showProfile)} style={{width:28,height:28,borderRadius:"50%",background:"#ff6b00",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff",flexShrink:0}}>
             {(member?.name||"?")[0].toUpperCase()}
           </button>
         </div>
