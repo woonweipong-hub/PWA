@@ -771,89 +771,43 @@ function AuthScreen({onAuth,onFullSetup}){
       <div style={{width:"100%",maxWidth:400}}>
         <img src="icons/icon-192.png" alt="SiteShrimp" style={{width:80,height:80,borderRadius:8,marginBottom:16,boxShadow:"0 4px 20px rgba(255,107,0,0.3)"}}/>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:42,fontWeight:800,color:"#fff",lineHeight:1,marginBottom:8}}>SITESHRIMP</div>
-        <div style={{color:"rgba(255,255,255,0.5)",fontSize:14,marginBottom:32,lineHeight:1.6}}>
-          Construction site works, defects and items<br/>tracking and monitoring for teams that deliver.
+        <div style={{color:"rgba(255,255,255,0.5)",fontSize:14,marginBottom:8,lineHeight:1.6}}>
+          AI-powered site management for defects, inspections, and site works.
+        </div>
+        <div style={{color:"rgba(255,255,255,0.35)",fontSize:13,marginBottom:32,lineHeight:1.6}}>
+          Capture issues with photos, voice, and drawings. Track progress, coordinate your team, and generate reports faster — all in one place.
         </div>
 
         <div style={{textAlign:"left",marginBottom:32}}>
           {[
-            ["📷","AI photo analysis, auto-assign, safety scoring + markup (Gemini, Ollama, GPT)"],
-            ["📐","Floor plan pins, heatmap overlay, before/after comparison, AI search"],
-            ["mic","Voice support — hands-free defect logging"],
-            ["📋","Paperless tracking with resolution timeline and quick reactions"],
-            ["👥","Team collaboration, role-based access, live sync"],
-            ["📊","Real-time dashboard, analytics, CSV & email reports"],
-          ].map(([icon,text],i)=>(
-            <div key={i} className="anim" style={{animationDelay:`${i*0.08}s`,display:"flex",gap:12,alignItems:"center",padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
-              <div style={{width:32,textAlign:"center",flexShrink:0}}>
-                {icon==="mic"
-                  ?<svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{display:"inline-block"}}>
-                    <rect x="9" y="2" width="6" height="12" rx="3" fill="#ff6b00"/>
-                    <path d="M5 10a7 7 0 0014 0" stroke="#ff6b00" strokeWidth="2" strokeLinecap="round"/>
-                    <line x1="12" y1="19" x2="12" y2="22" stroke="#ff6b00" strokeWidth="2" strokeLinecap="round"/>
-                  </svg>
-                  :<span style={{fontSize:20}}>{icon}</span>
-                }
+            ["📷","Log faster with AI","Snap a photo to suggest details, assign trades, assess safety risk, and annotate instantly."],
+            ["📐","See issues on drawings","Pin entries to floor plans, review defect clusters, and spot problem areas with heatmaps."],
+            ["🎤","Work hands-free on site","Use voice input to log entries, fill fields, and search without typing."],
+            ["📋","Keep a clear audit trail","Track updates, comments, verification photos, and before/after comparisons from start to closure."],
+            ["👥","Coordinate your team","Assign work, manage roles, and keep everyone updated with live sync and notifications."],
+            ["📊","Report without rework","Review dashboards, filter data, and export CSV or email reports in minutes."],
+          ].map(([icon,title,desc],i)=>(
+            <div key={i} className="anim" style={{animationDelay:`${i*0.08}s`,padding:"12px 0",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+              <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:4}}>
+                <span style={{fontSize:20,flexShrink:0}}>{icon}</span>
+                <span style={{color:"#fff",fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>{title}</span>
               </div>
-              <div style={{color:"rgba(255,255,255,0.7)",fontSize:14}}>{text}</div>
+              <div style={{color:"rgba(255,255,255,0.45)",fontSize:13,lineHeight:1.5,paddingLeft:30}}>{desc}</div>
             </div>
           ))}
         </div>
 
-        <button onClick={()=>setPage("auth")} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:"16px",color:"#fff",fontSize:16,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:12,letterSpacing:"0.04em"}}>GET STARTED</button>
+        <button onClick={()=>setPage("auth")} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:"16px",color:"#fff",fontSize:16,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:6,letterSpacing:"0.04em"}}>GET STARTED</button>
+        <div style={{fontSize:11,color:"rgba(255,255,255,0.3)",marginBottom:16}}>Create your company and start logging site issues.</div>
 
-        <button onClick={installable?installApp:()=>alert("To install:\n\nAndroid: Menu (⋮) → Add to Home Screen\n\niPhone: Share (↑) → Add to Home Screen")} style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"14px",color:"rgba(255,255,255,0.8)",fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+        <button onClick={installable?installApp:()=>alert("To install:\n\nAndroid: Menu (⋮) → Add to Home Screen\n\niPhone: Share (↑) → Add to Home Screen")} style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"14px",color:"rgba(255,255,255,0.8)",fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:6,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(255,255,255,0.8)" strokeWidth="2" strokeLinecap="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(255,255,255,0.8)" strokeWidth="2" strokeLinecap="round"/></svg>
           INSTALL APP
         </button>
+        <div style={{fontSize:11,color:"rgba(255,255,255,0.3)",marginBottom:20}}>Add SiteShrimp to your device for faster access on site.</div>
 
-        <div style={{color:"rgba(255,255,255,0.15)",fontSize:11,marginTop:20,marginBottom:40,fontFamily:"'Barlow Condensed',sans-serif"}}>
+        <div style={{color:"rgba(255,255,255,0.15)",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif"}}>
           Free for all teams · No app store needed
-        </div>
-
-        {/* Feature Status Checklist */}
-        <div style={{textAlign:"left"}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:800,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",marginBottom:16}}>ALL FEATURES (91)</div>
-          {[
-            ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["Password visibility toggle",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as PWA",true],["Server URL config",true]]],
-            ["Team",[["Invite members (link + code)",true],["Role-based access (Admin, Manager, Inspector, Viewer)",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
-            ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
-            ["Entry Logging",[["Log with title, severity, location",true],["4 default types + custom entry types",true],["Custom type manager (icon & color picker)",true],["Multi-level location (Level > Zone > Room > Grid)",true],["Snap / upload up to 10 photos",true],["Photo markup editor (arrows, circles, freehand, text)",true],["AI photo analysis (Gemini, Ollama, GPT)",true],["AI auto-assign trade + suggested assignee",true],["AI safety risk scoring (auto-escalate Critical)",true],["Duplicate detection (similarity check on submit)",true],["Voice-to-text input (title, description, search)",true],["Component + issue selector (93 / 517)",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode (same location)",true]]],
-            ["Entry Management",[["Full-text search with highlighting",true],["AI natural language search (voice + text)",true],["Filter by status, severity, entry type",true],["Collapsible filters with clear button",true],["Entry type badges on list & detail",true],["Detail view with all fields + photos",true],["Update status workflow (5 stages)",true],["Verification photo on Close/Verify",true],["Before/after photo comparison slider",true],["Resolution timeline (visual, color-coded)",true],["Photo comments in timeline",true],["Quick reactions (thumbs, check, warn, fix)",true],["Delete entry (Admin only)",true],["Telegram alerts on new entry & status change",true]]],
-            ["Drawings & Floor Plans",[["Upload floor plans (JPG, PNG, TIF, PDF)",true],["PDF rendering via PDF.js with page navigation",true],["Zoom, pan & pinch-to-zoom (mobile)",true],["Ring-style defect pins with severity initial",true],["Critical pin pulse animation",true],["Pin tooltip with entry details + remove",true],["Quick-pin: create entry directly from drawing",true],["Defect heatmap overlay (severity-weighted)",true],["Drawing-level markup (freehand, arrows, circles)",true],["Markup color picker + undo/clear",true],["Pin count & severity badges on cards",true],["PDF thumbnail preview in list",true]]],
-            ["Dashboard",[["Real-time status counts (5 stages)",true],["Critical alerts banner",true],["Severity breakdown chart",true],["Recent entries with type badges",true],["Live sync indicator + queue count",true]]],
-            ["Admin Analytics",[["Entries today / week / month / all time",true],["Active users — who submitted today & this week",true],["Per-user ranking bar chart",true],["Photos stats (total & avg per entry)",true],["Entries by entry type breakdown",true],["Entries by project breakdown",true],["AI usage stats (daily limit, coverage, provider)",true]]],
-            ["Reports",[["Site report with charts + entry list",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report via EmailJS",true]]],
-            ["Storage",[["PocketBase (default server)",true],["Local path (self-hosted server/machine)",true],["Google Drive (OAuth, personal cloud)",true]]],
-            ["Settings",[["Telegram bot setup + test",true],["AI multi-provider setup + test",true],["Email report config",true],["Daily AI usage limit",true],["Storage mode selector",true]]],
-            ["Offline",[["Save entries to IndexedDB when offline",true],["Queued badge in header + Dashboard",true],["Auto-sync when back online",true],["Manual sync tap",true],["Queued/synced status indicator",true]]],
-            ["Account",[["Edit display name + job title",true],["Change email",true],["Change password",true]]],
-            ["Other",[["Comprehensive help guide",true],["Feedback form (suggestion, bug, praise)",true],["Cached app shell (service worker)",true],["Photo compression (auto-resize)",true]]],
-          ].map(([cat,items])=>(
-            <div key={cat} style={{marginBottom:16}}>
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:6}}>{cat.toUpperCase()}</div>
-              {items.map(([feat,done])=>(
-                <div key={feat} style={{display:"flex",gap:8,alignItems:"center",padding:"4px 0",fontSize:12,color:done?"rgba(255,255,255,0.5)":"rgba(255,255,255,0.2)"}}>
-                  <span style={{fontSize:10,flexShrink:0,width:16,textAlign:"center"}}>{done?"✓":"○"}</span>
-                  <span>{feat}</span>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-
-        {/* Verification Badge */}
-        <div style={{marginTop:24,background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.15)",borderRadius:12,padding:16,textAlign:"center"}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#30d158",lineHeight:1,marginBottom:4}}>91 FEATURES</div>
-          <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginBottom:10}}>Built for construction teams · April 2026</div>
-          <div style={{display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap"}}>
-            {[["Mobile","iOS · Android"],["Desktop","Chrome · Firefox · Edge"],["APP","Install · Offline"]].map(([p,d])=>(
-              <div key={p} style={{background:"rgba(255,255,255,0.05)",borderRadius:8,padding:"6px 12px"}}>
-                <div style={{fontSize:10,fontWeight:700,color:"#30d158",fontFamily:"'Barlow Condensed',sans-serif"}}>{p}</div>
-                <div style={{fontSize:9,color:"rgba(255,255,255,0.3)"}}>{d}</div>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     </div>
