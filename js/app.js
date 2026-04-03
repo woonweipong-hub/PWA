@@ -199,28 +199,45 @@ function generateEmailHTML(defects,projectName,companyName){
   const done=defects.filter(d=>d.status==="Done").length;
   const verified=defects.filter(d=>d.status==="Verified").length;
   const closed=defects.filter(d=>d.status==="Closed").length;
+  const critical=defects.filter(d=>d.severity==="Critical"&&!["Verified","Closed"].includes(d.status)).length;
   const date=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
+
+  // Entry type summary
+  const typeCounts={};
+  defects.forEach(d=>{const t=d.entryType||"Defect";typeCounts[t]=(typeCounts[t]||0)+1;});
+  const typeSummary=Object.entries(typeCounts).map(([t,c])=>`<span style="display:inline-block;margin:2px 4px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:bold;color:${typeColor(t)};background:${typeBg(t)}">${typeIcon(t)} ${t} (${c})</span>`).join("");
+
+  const row=(label,val)=>val?`<tr><td style="padding:2px 8px 2px 0;color:#999;white-space:nowrap;vertical-align:top">${label}</td><td>${val}</td></tr>`:"";
+
   const defectRows=defects.map(d=>{
-    const dt=d.created?new Date(d.created).toLocaleDateString("en-GB"):"—";
+    const dt=(d.createdAt||d.created)?new Date(d.createdAt||d.created).toLocaleDateString("en-GB"):"—";
+    const entryTypeBadge=d.entryType?`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;color:${typeColor(d.entryType)};background:${typeBg(d.entryType)};margin-right:6px">${typeIcon(d.entryType)} ${d.entryType}</span>`:"";
+    const sevBadge=`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;color:${SEV_COLOR[d.severity]};background:${SEV_BG[d.severity]}">${d.severity}</span>`;
+    const statusBadge=`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;color:${STATUS_COLOR[d.status]||"#8e8e93"};background:rgba(0,0,0,0.06)">${d.status}</span>`;
     const comments=(d.comments||[]).map(c=>`<div style="padding:6px 10px;background:#f5f5f5;border-radius:6px;font-size:12px;margin:4px 0"><b style="color:#ff6b00">${c.by}:</b> ${c.text}</div>`).join("");
-    // Photos excluded from email — base64 exceeds EmailJS 50KB free tier limit
-    const photo=d.photo?`<div style="font-size:11px;color:#888;font-style:italic;margin-top:6px;padding:6px 8px;background:#f5f5f5;border-radius:6px">📷 Photo available in SiteShrimp app</div>`:"";
+    const photoNote=d.photo?`<div style="font-size:11px;color:#888;font-style:italic;margin-top:6px;padding:6px 8px;background:#f5f5f5;border-radius:6px">📷 ${Array.isArray(d.photo)?d.photo.length:1} photo(s) — view in SiteShrimp app</div>`:"";
 
     return `<div style="margin-bottom:14px;padding:14px;border:1px solid #e5e5e5;border-radius:10px;border-left:5px solid ${SEV_COLOR[d.severity]}">
-      <div style="font-size:15px;font-weight:bold;margin-bottom:6px">${d.title}</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">${entryTypeBadge}${sevBadge}${statusBadge}${d.defect_id?`<span style="font-size:10px;color:#aaa;margin-left:auto">${d.defect_id}</span>`:""}</div>
+      <div style="font-size:15px;font-weight:bold;margin-bottom:8px">${d.title||"—"}</div>
       <table style="font-size:12px;color:#555;margin-bottom:6px"><tbody>
-        <tr><td style="padding:2px 8px 2px 0;color:#999">Location</td><td>${d.location}</td></tr>
-        <tr><td style="padding:2px 8px 2px 0;color:#999">Assigned</td><td>${d.assignee}</td></tr>
-        <tr><td style="padding:2px 8px 2px 0;color:#999">Severity</td><td style="color:${SEV_COLOR[d.severity]};font-weight:bold">${d.severity}</td></tr>
-        <tr><td style="padding:2px 8px 2px 0;color:#999">Status</td><td>${d.status}</td></tr>
-        <tr><td style="padding:2px 8px 2px 0;color:#999">Date</td><td>${dt}</td></tr>
-        <tr><td style="padding:2px 8px 2px 0;color:#999">By</td><td>${d.loggedBy||"—"}</td></tr>
+        ${row("📍 Location",d.location)}
+        ${row("👤 Assigned",d.assignee)}
+        ${row("🔧 Component",d.component?(d.component+(d.issue?" — "+d.issue:"")):"") }
+        ${row("🏗 Trade",d.trade)}
+        ${row("✍️ By",d.loggedBy?(d.loggedBy+(d.loggedByRole?" ("+d.loggedByRole+")":"")):"") }
+        ${row("📅 Date",dt)}
+        ${row("⏰ Due",d.dueDate)}
+        ${row("⏱ Duration",d.duration)}
+        ${row("💰 Cost",d.costImpact?(d.costImpact+(d.costAmount?" — $"+d.costAmount:"")):"") }
+        ${row("📋 Responsible",d.costResponsible)}
       </tbody></table>
       ${d.description?`<div style="font-size:13px;color:#444;padding:8px;background:#f9f9f9;border-radius:6px;margin-bottom:6px">${d.description}</div>`:""}
-      ${photo}
-      ${comments?`<div style="margin-top:8px"><div style="font-size:10px;font-weight:bold;color:#999;margin-bottom:4px">COMMENTS</div>${comments}</div>`:""}
+      ${photoNote}
+      ${comments?`<div style="margin-top:8px"><div style="font-size:10px;font-weight:bold;color:#999;margin-bottom:4px">COMMENTS (${(d.comments||[]).length})</div>${comments}</div>`:""}
     </div>`;
   }).join("");
+
   return `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#f5f5f5">
     <div style="background:#1a1a1a;padding:22px;border-radius:12px;margin-bottom:16px">
       <div style="color:#ff6b00;font-weight:bold;font-size:10px;letter-spacing:3px">SITESHRIMP · ${companyName||""}</div>
@@ -229,17 +246,19 @@ function generateEmailHTML(defects,projectName,companyName){
     </div>
     <div style="background:#fff;padding:18px;border-radius:12px;margin-bottom:14px;text-align:center">
       <table style="width:100%"><tr>
-        <td><div style="font-size:30px;font-weight:bold">${total}</div><div style="font-size:10px;color:#999">TOTAL</div></td>
-        <td><div style="font-size:30px;font-weight:bold;color:#ff3b30">${open}</div><div style="font-size:10px;color:#999">OPEN</div></td>
-        <td><div style="font-size:30px;font-weight:bold;color:#ff9500">${inProg}</div><div style="font-size:10px;color:#999">IN PROG</div></td>
-        <td><div style="font-size:30px;font-weight:bold;color:#34aadc">${done}</div><div style="font-size:10px;color:#999">DONE</div></td>
-        <td><div style="font-size:30px;font-weight:bold;color:#30d158">${verified}</div><div style="font-size:10px;color:#999">VERIFIED</div></td>
-        <td><div style="font-size:30px;font-weight:bold;color:#8e8e93">${closed}</div><div style="font-size:10px;color:#999">CLOSED</div></td>
+        <td><div style="font-size:28px;font-weight:bold">${total}</div><div style="font-size:10px;color:#999">TOTAL</div></td>
+        <td><div style="font-size:28px;font-weight:bold;color:#ff3b30">${open}</div><div style="font-size:10px;color:#999">OPEN</div></td>
+        <td><div style="font-size:28px;font-weight:bold;color:#ff9500">${inProg}</div><div style="font-size:10px;color:#999">IN PROG</div></td>
+        <td><div style="font-size:28px;font-weight:bold;color:#34aadc">${done}</div><div style="font-size:10px;color:#999">DONE</div></td>
+        <td><div style="font-size:28px;font-weight:bold;color:#30d158">${verified}</div><div style="font-size:10px;color:#999">VERIFIED</div></td>
+        <td><div style="font-size:28px;font-weight:bold;color:#8e8e93">${closed}</div><div style="font-size:10px;color:#999">CLOSED</div></td>
       </tr></table>
     </div>
+    ${critical>0?`<div style="background:rgba(255,59,48,0.08);border:1px solid rgba(255,59,48,0.2);border-radius:12px;padding:14px;margin-bottom:14px;text-align:center"><div style="font-size:18px;font-weight:bold;color:#ff3b30">⚠️ ${critical} CRITICAL UNRESOLVED</div><div style="font-size:12px;color:#888">Requires immediate attention</div></div>`:""}
+    ${typeSummary?`<div style="background:#fff;padding:14px;border-radius:12px;margin-bottom:14px;text-align:center"><div style="font-size:10px;font-weight:bold;color:#999;letter-spacing:2px;margin-bottom:8px">BY TYPE</div>${typeSummary}</div>`:""}
     <div style="background:#fff;padding:18px;border-radius:12px;margin-bottom:14px">
-      <div style="font-size:10px;font-weight:bold;color:#999;letter-spacing:2px;margin-bottom:12px">ALL ENTRIES</div>
-      ${defectRows||'<div style="color:#999;text-align:center;padding:16px">No defects found.</div>'}
+      <div style="font-size:10px;font-weight:bold;color:#999;letter-spacing:2px;margin-bottom:12px">ALL ENTRIES (${total})</div>
+      ${defectRows||'<div style="color:#999;text-align:center;padding:16px">No entries found.</div>'}
     </div>
     <div style="text-align:center;color:#aaa;font-size:11px;padding:12px">SiteShrimp v2 · ${date}</div>
   </body></html>`;
