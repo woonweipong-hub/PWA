@@ -668,6 +668,7 @@ function AuthScreen({onAuth,onFullSetup}){
   const[code,setCode]=useState("");const[showInvite,setShowInvite]=useState(false);
   const[err,setErr]=useState("");const[loading,setLoading]=useState(false);const[step,setStep]=useState("");const[showPw,setShowPw]=useState(false);
   const[installable,setInstallable]=useState(!!_deferredInstallPrompt);
+  const[viewportH,setViewportH]=useState(window.innerHeight||800);
   const inv=new URLSearchParams(window.location.search).get("invite")||"";
 
   useEffect(()=>{if(inv){setPage("auth");setMode("register");setShowInvite(true);setCode(inv);}},[]);
@@ -677,6 +678,23 @@ function AuthScreen({onAuth,onFullSetup}){
     window.addEventListener("beforeinstallprompt",check);
     return()=>window.removeEventListener("beforeinstallprompt",check);
   },[]);
+
+  useEffect(()=>{
+    const onResize=()=>setViewportH(window.innerHeight||800);
+    window.addEventListener("resize",onResize);
+    window.addEventListener("orientationchange",onResize);
+    return()=>{
+      window.removeEventListener("resize",onResize);
+      window.removeEventListener("orientationchange",onResize);
+    };
+  },[]);
+
+  // Mobile viewport presets tuned for common phone heights (~640-915 CSS px)
+  const introPreset=viewportH<=700
+    ? {padding:"14px 16px",maxWidth:360,icon:46,title:30,sub:11.5,body:11,lineH:1.32,titleGap:5,textGap:8,rowPad:"2px 0",rowGap:8,featTitle:12,featDesc:11,btnPad:"11px",btnFont:13.5,btnGap:7,footer:10.5}
+    : viewportH<=820
+      ? {padding:"18px 20px",maxWidth:380,icon:52,title:33,sub:12.3,body:11.8,lineH:1.38,titleGap:6,textGap:11,rowPad:"3px 0",rowGap:9,featTitle:12.5,featDesc:11.5,btnPad:"12px",btnFont:14,btnGap:7,footer:11}
+      : {padding:"22px 24px",maxWidth:390,icon:56,title:36,sub:13,body:12.2,lineH:1.42,titleGap:7,textGap:12,rowPad:"4px 0",rowGap:10,featTitle:13,featDesc:12,btnPad:"13px",btnFont:14.5,btnGap:8,footer:11.5};
 
   const installApp=async()=>{
     if(!_deferredInstallPrompt)return;
@@ -767,44 +785,44 @@ function AuthScreen({onAuth,onFullSetup}){
 
   // ── Intro / Welcome page ──
   if(page==="intro")return(
-    <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"16px 20px",textAlign:"center"}}>
-      <div style={{width:"100%",maxWidth:380}}>
-        <img src="icons/icon-192.png" alt="SiteShrimp" style={{width:50,height:50,borderRadius:8,marginBottom:8,boxShadow:"0 4px 18px rgba(255,107,0,0.3)"}}/>
-        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:32,fontWeight:800,color:"#fff",lineHeight:1,marginBottom:5}}>SITESHRIMP</div>
-        <div style={{color:"rgba(255,255,255,0.56)",fontSize:12,marginBottom:3,lineHeight:1.35}}>
+    <div style={{minHeight:"100dvh",background:"#1a1a1a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:introPreset.padding,textAlign:"center"}}>
+      <div style={{width:"100%",maxWidth:introPreset.maxWidth}}>
+        <img src="icons/icon-192.png" alt="SiteShrimp" style={{width:introPreset.icon,height:introPreset.icon,borderRadius:8,marginBottom:9,boxShadow:"0 4px 20px rgba(255,107,0,0.3)"}}/>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:introPreset.title,fontWeight:800,color:"#fff",lineHeight:1,marginBottom:introPreset.titleGap}}>SITESHRIMP</div>
+        <div style={{color:"rgba(255,255,255,0.56)",fontSize:introPreset.sub,marginBottom:4,lineHeight:introPreset.lineH}}>
           Manage defects, inspections, progress, and records.
         </div>
-        <div style={{color:"rgba(255,255,255,0.42)",fontSize:11.5,marginBottom:10,lineHeight:1.35}}>
+        <div style={{color:"rgba(255,255,255,0.42)",fontSize:introPreset.body,marginBottom:introPreset.textGap,lineHeight:introPreset.lineH}}>
           Capture issues with photos, voice, and drawings. Turn messy data into clean records and reports for faster closure.
         </div>
 
-        <div style={{textAlign:"left",marginBottom:10}}>
+        <div style={{textAlign:"left",marginBottom:introPreset.textGap}}>
           {[
-            ["📷","Log faster with AI","Snap and auto-fill issue details in seconds."],
-            ["📐","See issues on drawings","Pin and track issues directly on plans."],
-            ["🎤","Work hands-free","Use voice to log and search quickly."],
-            ["📋","Clear audit trail","Track updates and before/after proof."],
-            ["👥","Coordinate your team","Assign tasks with live sync alerts."],
-            ["📊","Report without rework","Export CSV and send reports fast."],
+            ["📷","Log faster with AI","Snap photos and auto-fill issue details in seconds."],
+            ["📐","See issues on drawings","Pin and track issues directly on floor plans."],
+            ["🎤","Work hands-free","Use voice to log, fill fields, and search quickly."],
+            ["📋","Clear audit trail","Track updates with verification and before/after proof."],
+            ["👥","Coordinate your team","Assign tasks with live sync and instant alerts."],
+            ["📊","Report without rework","Export CSV and share polished reports fast."],
           ].map(([icon,title,desc],i)=>(
-            <div key={i} className="anim" style={{animationDelay:`${i*0.05}s`,display:"flex",gap:9,alignItems:"flex-start",padding:"2px 0"}}>
+            <div key={i} className="anim" style={{animationDelay:`${i*0.05}s`,display:"flex",gap:introPreset.rowGap,alignItems:"flex-start",padding:introPreset.rowPad}}>
               <span style={{fontSize:14,flexShrink:0,marginTop:1}}>{icon}</span>
               <div>
-                <span style={{color:"#fff",fontSize:12,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>{title}</span>
-                <span style={{color:"rgba(255,255,255,0.42)",fontSize:11}}> — {desc}</span>
+                <span style={{color:"#fff",fontSize:introPreset.featTitle,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>{title}</span>
+                <span style={{color:"rgba(255,255,255,0.42)",fontSize:introPreset.featDesc}}> — {desc}</span>
               </div>
             </div>
           ))}
         </div>
 
-        <button onClick={()=>setPage("auth")} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:11,padding:"12px",color:"#fff",fontSize:14,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:8,letterSpacing:"0.04em"}}>GET STARTED</button>
+        <button onClick={()=>setPage("auth")} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:11,padding:introPreset.btnPad,color:"#fff",fontSize:introPreset.btnFont,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:8,letterSpacing:"0.04em"}}>GET STARTED</button>
 
-        <button onClick={installable?installApp:()=>alert("To install:\n\nAndroid: Menu (⋮) → Add to Home Screen\n\niPhone: Share (↑) → Add to Home Screen")} style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:11,padding:"11px",color:"rgba(255,255,255,0.82)",fontSize:12.5,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:9,display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>
+        <button onClick={installable?installApp:()=>alert("To install:\n\nAndroid: Menu (⋮) → Add to Home Screen\n\niPhone: Share (↑) → Add to Home Screen")} style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:11,padding:introPreset.btnPad,color:"rgba(255,255,255,0.82)",fontSize:introPreset.featTitle,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:9,display:"flex",alignItems:"center",justifyContent:"center",gap:introPreset.btnGap}}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(255,255,255,0.82)" strokeWidth="2" strokeLinecap="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(255,255,255,0.82)" strokeWidth="2" strokeLinecap="round"/></svg>
           INSTALL APP
         </button>
 
-        <div style={{color:"rgba(255,255,255,0.62)",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif"}}>
+        <div style={{color:"rgba(255,255,255,0.62)",fontSize:introPreset.footer,fontFamily:"'Barlow Condensed',sans-serif"}}>
           Free for all Users.
         </div>
       </div>
