@@ -209,7 +209,7 @@
       { "name": "companyId", "type": "text", "required": true },
       { "name": "projectId", "type": "text", "required": true },
       { "name": "name", "type": "text", "required": true },
-      { "name": "file", "type": "file", "required": true, "options": { "maxSelect": 1, "maxSize": 52428800, "mimeTypes": ["application/pdf"] } },
+      { "name": "file", "type": "file", "required": true, "options": { "maxSelect": 1, "maxSize": 52428800, "mimeTypes": ["application/pdf", "image/jpeg", "image/png", "image/webp"] } },
       { "name": "pageCount", "type": "number" },
       { "name": "uploadedBy", "type": "text" },
       { "name": "uploadedAt", "type": "text" }
