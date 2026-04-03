@@ -4031,7 +4031,7 @@ function App(){
       {showAiSearch&&<AiSearch defects={defects} onClose={()=>setShowAiSearch(false)} onApplyFilters={f=>{setNlFilters(f);setTab("defects");}}/>}
       {viewing&&<DefectDetail defect={viewing} onClose={()=>setViewing(null)} onUpdate={updateDefect} member={member} company={company}/>}
       {showHelp&&(
-        <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.85)",overflowY:"auto"}}>
+        <div style={{position:"fixed",inset:0,zIndex:500,background:"#1a1a1a",overflowY:"auto"}}>
           <div style={{maxWidth:430,margin:"0 auto",padding:"0 0 40px"}}>
             <div style={{background:"#1a1a1a",padding:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:1}}>
               <button onClick={()=>setShowHelp(false)} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>← BACK</button>
