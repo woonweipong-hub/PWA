@@ -138,19 +138,34 @@ function typeBg(t){
 }
 
 function exportCSV(defects,projectName){
-  const headers=["ID","Title","Location","Severity","Status","Assignee","Logged By","Date","Description","Comments"];
-  const rows=defects.map((d,i)=>[
-    `DEF-${String(i+1).padStart(4,"0")}`,
-    `"${(d.title||"").replace(/"/g,'""')}"`,
-    `"${(d.location||"").replace(/"/g,'""')}"`,
-    d.severity||"",d.status||"",d.assignee||"",d.loggedBy||"",
-    d.created?new Date(d.created).toLocaleDateString("en-GB"):"",
-    `"${(d.description||"").replace(/"/g,'""')}"`,
-    `"${(d.comments||[]).map(c=>`${c.by}: ${c.text}`).join(" | ")}"`
+  const esc=v=>`"${String(v||"").replace(/"/g,'""')}"`;
+  const headers=["ID","Entry Type","Title","Component","Issue","Location","Severity","Status","Assignee","Trade","Logged By","Role","Date","Due Date","Duration","Cost Impact","Cost Responsible","Cost Amount","Description","Comments"];
+  const rows=defects.map(d=>[
+    d.defect_id||d.id||"",
+    d.entryType||"Defect",
+    esc(d.title),
+    esc(d.component),
+    esc(d.issue),
+    esc(d.location),
+    d.severity||"",
+    d.status||"",
+    esc(d.assignee),
+    esc(d.trade),
+    esc(d.loggedBy),
+    d.loggedByRole||"",
+    (d.createdAt||d.created)?new Date(d.createdAt||d.created).toLocaleDateString("en-GB"):"",
+    d.dueDate||"",
+    d.duration||"",
+    esc(d.costImpact),
+    esc(d.costResponsible),
+    d.costAmount||"",
+    esc(d.description),
+    esc((d.comments||[]).map(c=>`${c.by}: ${c.text}`).join(" | "))
   ].join(","));
-  const csv=[headers.join(","),...rows].join("\n");
+  const bom="\uFEFF";
+  const csv=bom+[headers.join(","),...rows].join("\n");
   const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
   a.download=`SiteShrimp_${(projectName||"Export").replace(/\s/g,"_")}_${new Date().toLocaleDateString("en-GB").replace(/\//g,"-")}.csv`;
   a.click();
 }
