@@ -290,6 +290,36 @@ async function analyzePhoto(base64Image){
   return analyzeWithGemini(key,base64Image);
 }
 
+// Text-only AI query (no image) — for natural language search
+async function askAI(prompt){
+  const provider=local.get(AI_PROVIDER_KEY)||"gemini";
+  try{
+    if(provider==="gemini"){
+      const key=local.get(GEMINI_KEY);if(!key)return null;
+      const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
+      });
+      const data=await res.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text||null;
+    }
+    if(provider==="ollama"){
+      const cfg=local.get(OLLAMA_KEY)||{};
+      const res=await fetch(`${cfg.url}/api/generate`,{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:cfg.model||"llama3",prompt,stream:false})});
+      const data=await res.json();return data.response||null;
+    }
+    if(provider==="openai"){
+      const cfg=local.get(OPENAI_KEY)||{};
+      const res=await fetch(`${cfg.url||"https://api.openai.com"}/v1/chat/completions`,{method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},
+        body:JSON.stringify({model:cfg.model||"gpt-4o-mini",messages:[{role:"user",content:prompt}]})});
+      const data=await res.json();return data.choices?.[0]?.message?.content||null;
+    }
+  }catch{return null;}
+  return null;
+}
+
 function isAiConfigured(){
   const provider=local.get(AI_PROVIDER_KEY)||"gemini";
   if(provider==="gemini")return !!local.get(GEMINI_KEY);
@@ -2125,10 +2155,111 @@ function Highlight({text,query}){
 }
 
 // ── Defects List ──────────────────────────────────────────────────
-function DefectsList({defects,onView}){
+// ── AI Natural Language Search ───────────────────────────────────
+const NL_SEARCH_PROMPT=`You are a search assistant for a construction defect tracking app. Convert the user's natural language query into structured JSON filters. Available fields:
+- status: "Open","In Progress","Done","Verified","Closed" (or "All")
+- severity: "Critical","Major","Minor","Observation" (or "All")
+- entryType: "Defect","Check","Progress","Safety" (or custom types, or "All")
+- search: free text to match against title, description, component, assignee, location
+- summary: a brief natural language answer to show the user (1 sentence)
+
+Respond ONLY with valid JSON, no markdown:
+{"status":"All","severity":"All","entryType":"All","search":"","summary":""}
+
+Examples:
+- "critical plumbing defects" → {"status":"All","severity":"Critical","entryType":"Defect","search":"plumbing","summary":"Showing all critical plumbing defects"}
+- "what's open in Block A?" → {"status":"Open","severity":"All","entryType":"All","search":"Block A","summary":"Showing all open entries in Block A"}
+- "safety issues assigned to John" → {"status":"All","severity":"All","entryType":"Safety","search":"John","summary":"Showing safety entries assigned to John"}
+
+User query: `;
+
+function AiSearch({defects,onApplyFilters,onClose}){
+  const[query,setQuery]=useState("");const[thinking,setThinking]=useState(false);
+  const[messages,setMessages]=useState([{role:"ai",text:"Ask me anything about your entries. Try:\n• \"Show critical defects in Level 3\"\n• \"What's still open?\"\n• \"Plumbing issues assigned to KH\""}]);
+  const scrollRef=useRef();
+  const aiReady=isAiConfigured();
+
+  useEffect(()=>{if(scrollRef.current)scrollRef.current.scrollTop=scrollRef.current.scrollHeight;},[messages]);
+
+  const search=async(text)=>{
+    if(!text.trim())return;
+    const q=text.trim();
+    setMessages(m=>[...m,{role:"user",text:q}]);
+    setQuery("");setThinking(true);
+
+    // Try AI first
+    if(aiReady){
+      try{
+        const raw=await askAI(NL_SEARCH_PROMPT+q);
+        if(raw){
+          const parsed=JSON.parse(raw.replace(/```json|```/g,"").trim());
+          const count=defects.filter(d=>{
+            if(parsed.status&&parsed.status!=="All"&&d.status!==parsed.status)return false;
+            if(parsed.severity&&parsed.severity!=="All"&&d.severity!==parsed.severity)return false;
+            if(parsed.entryType&&parsed.entryType!=="All"&&d.entryType!==parsed.entryType)return false;
+            if(parsed.search){const hay=[d.title,d.description,d.component,d.assignee,d.location,d.loggedBy].filter(Boolean).join(" ").toLowerCase();if(!hay.includes(parsed.search.toLowerCase()))return false;}
+            return true;
+          }).length;
+          setMessages(m=>[...m,{role:"ai",text:`${parsed.summary||"Here are your results."}\n\n📊 **${count} entries found**`,filters:parsed}]);
+          setThinking(false);return;
+        }
+      }catch{}
+    }
+
+    // Fallback: simple keyword search
+    const lower=q.toLowerCase();
+    const count=defects.filter(d=>[d.title,d.description,d.component,d.assignee,d.location,d.severity,d.status,d.entryType].filter(Boolean).join(" ").toLowerCase().includes(lower)).length;
+    setMessages(m=>[...m,{role:"ai",text:aiReady?`I couldn't parse that query. Falling back to keyword search.\n\n📊 **${count} entries matching "${q}"**`:`AI not configured. Using keyword search.\n\n📊 **${count} entries matching "${q}"**`,filters:{search:q,status:"All",severity:"All",entryType:"All"}}]);
+    setThinking(false);
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:400,display:"flex",flexDirection:"column"}}>
+      <div style={{maxWidth:430,width:"100%",margin:"0 auto",display:"flex",flexDirection:"column",height:"100%"}}>
+        {/* Header */}
+        <div style={{padding:"12px 14px",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0}}>
+          <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>← BACK</button>
+          <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff"}}>AI SEARCH</div>
+          {!aiReady&&<div style={{fontSize:10,color:"#ff9500",fontWeight:700}}>AI not configured</div>}
+        </div>
+
+        {/* Messages */}
+        <div ref={scrollRef} style={{flex:1,overflowY:"auto",padding:16}}>
+          {messages.map((m,i)=>(
+            <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:12}}>
+              <div style={{maxWidth:"85%",background:m.role==="user"?"#ff6b00":"rgba(255,255,255,0.08)",borderRadius:m.role==="user"?"14px 14px 4px 14px":"14px 14px 14px 4px",padding:"10px 14px"}}>
+                <div style={{fontSize:13,color:"#fff",whiteSpace:"pre-wrap",lineHeight:1.5}}>{m.text.replace(/\*\*(.*?)\*\*/g,"$1")}</div>
+                {m.filters&&<button onClick={()=>{onApplyFilters(m.filters);onClose();}} style={{marginTop:8,width:"100%",background:"rgba(255,107,0,0.2)",border:"1px solid rgba(255,107,0,0.4)",borderRadius:8,padding:"8px",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>SHOW RESULTS →</button>}
+              </div>
+            </div>
+          ))}
+          {thinking&&<div style={{display:"flex",gap:8,alignItems:"center",color:"rgba(255,255,255,0.4)",fontSize:12}}><Spin size={14}/> Thinking...</div>}
+        </div>
+
+        {/* Input */}
+        <div style={{padding:"12px 14px",borderTop:"1px solid rgba(255,255,255,0.1)",display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
+          <MicBtn onResult={t=>{setQuery(t);search(t);}} currentValue={query}/>
+          <input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&search(query)} placeholder="Ask about your entries..." style={{flex:1,padding:12,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
+          <button onClick={()=>search(query)} disabled={thinking||!query.trim()} style={{background:query.trim()?"#ff6b00":"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"12px 16px",color:query.trim()?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",flexShrink:0}}>ASK</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DefectsList({defects,onView,nlFilters,onClearNl}){
   const[filter,setFilter]=useState("All");const[sevF,setSevF]=useState("All");const[typeF,setTypeF]=useState("All");
   const[search,setSearch]=useState("");const[showFilters,setShowFilters]=useState(false);
   const searchRef=useRef(null);
+
+  // Apply NL filters from AI search
+  useEffect(()=>{
+    if(!nlFilters)return;
+    if(nlFilters.status&&nlFilters.status!=="All")setFilter(nlFilters.status);
+    if(nlFilters.severity&&nlFilters.severity!=="All")setSevF(nlFilters.severity);
+    if(nlFilters.entryType&&nlFilters.entryType!=="All")setTypeF(nlFilters.entryType);
+    if(nlFilters.search)setSearch(nlFilters.search);
+  },[nlFilters]);
   const allTypes=getAllEntryTypes();
   const usedTypes=[...new Set(defects.map(d=>d.entryType).filter(Boolean))];
   const typeFilterOptions=allTypes.filter(t=>usedTypes.includes(t));
@@ -2144,7 +2275,7 @@ function DefectsList({defects,onView}){
     return true;
   });
   const activeFilters=(filter!=="All"?1:0)+(sevF!=="All"?1:0)+(typeF!=="All"?1:0);
-  const clearAll=()=>{setFilter("All");setSevF("All");setTypeF("All");setSearch("");};
+  const clearAll=()=>{setFilter("All");setSevF("All");setTypeF("All");setSearch("");if(onClearNl)onClearNl();};
   return(
     <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
@@ -3492,6 +3623,8 @@ function App(){
   const[showFeedback,setShowFeedback]=useState(false);
   const[showStorage,setShowStorage]=useState(false);
   const[showDrawings,setShowDrawings]=useState(false);
+  const[showAiSearch,setShowAiSearch]=useState(false);
+  const[nlFilters,setNlFilters]=useState(null);
   const[queueCount,setQueueCount]=useState(0);
   const[syncing2,setSyncing2]=useState(false);
   const[fbText,setFbText]=useState("");const[fbType,setFbType]=useState("suggestion");const[fbSent,setFbSent]=useState(false);const[fbSending,setFbSending]=useState(false);
@@ -3806,6 +3939,7 @@ function App(){
               <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#ff9500"}}>{queueCount}</span>
             </button>
           )}
+          <button onClick={()=>{setShowAiSearch(true);setTab("defects");}} title="AI Search" style={{width:32,height:32,borderRadius:8,background:"rgba(255,107,0,0.15)",border:"1px solid rgba(255,107,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:14}}>💬</button>
           <button onClick={()=>setShowGemini(true)} title="AI Setup" style={{width:32,height:32,borderRadius:8,background:aiEnabled?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${aiEnabled?"rgba(88,86,214,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:15}}>🤖</button>
           <button onClick={()=>setShowTg(true)} title="Telegram Setup" style={{width:32,height:32,borderRadius:8,background:tgEnabled?"rgba(0,136,204,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${tgEnabled?"rgba(0,136,204,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21.5 4.5L2.5 11.5L9 13.5L11 20.5L15 15.5L20 18.5L21.5 4.5Z" stroke={tgEnabled?"#0088cc":"rgba(255,255,255,0.4)"} strokeWidth="1.5" strokeLinejoin="round"/></svg>
@@ -3832,7 +3966,7 @@ function App(){
         {tab==="dashboard"&&<Dashboard defects={defects} onView={setViewing} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} company={company} currentProject={currentProject} member={member} onDrawings={()=>setShowDrawings(true)} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>Viewer access — defect logging disabled</div>}
-        {tab==="defects"&&<DefectsList defects={defects} onView={setViewing}/>}
+        {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)}/>}
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company}/>}
         {tab==="admin"&&isAdmin&&<AdminAnalytics defects={defects} members={members} company={company} currentProject={currentProject} projects={projects}/>}
       </div>
@@ -3848,6 +3982,7 @@ function App(){
       </div>
 
       {/* Overlays */}
+      {showAiSearch&&<AiSearch defects={defects} onClose={()=>setShowAiSearch(false)} onApplyFilters={f=>{setNlFilters(f);setTab("defects");}}/>}
       {viewing&&<DefectDetail defect={viewing} onClose={()=>setViewing(null)} onUpdate={updateDefect} member={member} company={company}/>}
       {showHelp&&(
         <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.85)",overflowY:"auto"}}>
