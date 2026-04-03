@@ -2383,7 +2383,7 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
           return afterPhoto&&origPhoto?(
             <BeforeAfter before={origPhoto} after={afterPhoto}/>
           ):typeof defect.photo==="string"
-            ?<img src={defect.photo} alt="" style={{width:"100%",borderRadius:12,maxHeight:250,objectFit:"cover",marginBottom:14}}/>
+            ?<img src={defect.photo} alt="" style={{maxWidth:"100%",borderRadius:12,maxHeight:350,objectFit:"contain",display:"block",marginBottom:14,background:"#f8f8f6"}}/>
             :Array.isArray(defect.photo)&&defect.photo.length>0
               ?<div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8,marginBottom:14}}>
                 {defect.photo.map((p,i)=><img key={i} src={p} alt="" style={{height:180,borderRadius:12,objectFit:"cover",flexShrink:0}}/>)}
@@ -3170,9 +3170,9 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
         onPointerDown={markupMode?undefined:onPointerDown} onPointerMove={markupMode?undefined:onPointerMove} onPointerUp={markupMode?undefined:onPointerUp} onPointerCancel={markupMode?undefined:onPointerUp}
         onTouchMove={markupMode?undefined:onTouchMove} onTouchEnd={markupMode?undefined:onTouchEnd}>
         {isImage?(
-          <div style={{position:"relative",transform:`scale(${scale}) translate(${offset.x/scale}px,${offset.y/scale}px)`,transformOrigin:"0 0",transition:dragRef.current?"none":"transform 0.15s ease"}}>
+          <div style={{position:"relative",transform:`scale(${scale}) translate(${offset.x/scale}px,${offset.y/scale}px)`,transformOrigin:"0 0",transition:dragRef.current?"none":"transform 0.15s ease",maxWidth:"100%",margin:"0 auto"}}>
             <img ref={imgRef} src={fileUrl} alt={drawing.name} onClick={markupMode?undefined:handleDrawingClick}
-              style={{width:"100%",display:"block",userSelect:"none",pointerEvents:markupMode?"none":"auto"}}
+              style={{maxWidth:"100%",maxHeight:"calc(100vh - 120px)",objectFit:"contain",display:"block",margin:"0 auto",userSelect:"none",pointerEvents:markupMode?"none":"auto"}}
               draggable={false}/>
             {/* Markup SVG overlay */}
             <svg ref={markupSvgRef} viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:markupMode?"auto":"none",touchAction:"none"}}
@@ -3188,7 +3188,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
           <div style={{position:"relative",transform:`scale(${scale}) translate(${offset.x/scale}px,${offset.y/scale}px)`,transformOrigin:"0 0",transition:dragRef.current?"none":"transform 0.15s ease"}}>
             {pdfLoading&&<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"60vh",color:"rgba(255,255,255,0.4)"}}><Spin size={20}/><span style={{marginLeft:10,fontSize:13}}>Loading PDF...</span></div>}
             {pdfError&&<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"60vh",color:"#ff6b6b",fontSize:13}}>{pdfError}</div>}
-            {!pdfLoading&&!pdfError&&<canvas ref={canvasRef} onClick={markupMode?undefined:handleDrawingClick} style={{width:"100%",display:"block",userSelect:"none",pointerEvents:markupMode?"none":"auto"}}/>}
+            {!pdfLoading&&!pdfError&&<canvas ref={canvasRef} onClick={markupMode?undefined:handleDrawingClick} style={{maxWidth:"100%",maxHeight:"calc(100vh - 120px)",objectFit:"contain",display:"block",margin:"0 auto",userSelect:"none",pointerEvents:markupMode?"none":"auto"}}/>}
             {/* Markup SVG overlay for PDF */}
             {!pdfLoading&&!pdfError&&(
               <svg ref={markupSvgRef} viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:markupMode?"auto":"none",touchAction:"none"}}
