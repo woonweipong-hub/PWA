@@ -772,7 +772,7 @@ function AuthScreen({onAuth,onFullSetup}){
         <img src="icons/icon-192.png" alt="SiteShrimp" style={{width:56,height:56,borderRadius:8,marginBottom:10,boxShadow:"0 4px 20px rgba(255,107,0,0.3)"}}/>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:36,fontWeight:800,color:"#fff",lineHeight:1,marginBottom:6}}>SITESHRIMP</div>
         <div style={{color:"rgba(255,255,255,0.5)",fontSize:13,marginBottom:4,lineHeight:1.5}}>
-          Manage defects, inspections, progress, and records
+          Manage defects, inspections, progress, and records.
         </div>
         <div style={{color:"rgba(255,255,255,0.35)",fontSize:12,marginBottom:20,lineHeight:1.5}}>
           Capture issues with photos, voice, and drawings. Track progress, coordinate your team, and generate reports faster.
