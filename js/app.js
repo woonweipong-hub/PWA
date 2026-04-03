@@ -2298,15 +2298,20 @@ function DrawingsPanel({onClose,company,currentProject,member,defects}){
   const[drawings,setDrawings]=useState([]);const[loading,setLoading]=useState(true);
   const[viewing,setViewing]=useState(null);
   const[uploading,setUploading]=useState(false);
+  const[allPins,setAllPins]=useState([]);
   const fileRef=useRef();
   const canUpload=["Admin","Manager"].includes(member?.role);
 
-  // Load drawings for current project
+  // Load drawings and all pins for current project
   useEffect(()=>{
     if(!company?.companyId||!currentProject?.id)return;
     setLoading(true);
     DB.drawings.list(`companyId="${company.companyId}" && projectId="${currentProject.id}"`).then(items=>{
       setDrawings(items);setLoading(false);
+      // Load pins for all drawings
+      Promise.all(items.map(d=>DB.pins.list(`drawingId="${d.id}"`))).then(results=>{
+        setAllPins(results.flat());
+      }).catch(()=>{});
     }).catch(()=>setLoading(false));
   },[company?.companyId,currentProject?.id]);
 
@@ -2374,16 +2379,30 @@ function DrawingsPanel({onClose,company,currentProject,member,defects}){
         {drawings.map(d=>{
           const fileUrl=DB.fileUrl("drawings",d.id,d.file);
           const isImage=/\.(jpg|jpeg|png|gif|webp|tif|tiff)$/i.test(d.file);
+          const drawingPins=allPins.filter(p=>p.drawingId===d.id);
+          const pinDefects=drawingPins.map(p=>defects.find(df=>df.id===p.entryId)).filter(Boolean);
+          const sevCounts={};
+          pinDefects.forEach(df=>{const s=df.severity||"Unknown";sevCounts[s]=(sevCounts[s]||0)+1;});
           return(
             <div key={d.id} onClick={()=>setViewing(d)} style={{background:"#fff",borderRadius:14,padding:0,marginBottom:12,cursor:"pointer",overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)"}}>
               {isImage&&<img src={fileUrl} alt={d.name} style={{width:"100%",maxHeight:"50vh",objectFit:"contain",display:"block",background:"#f8f8f6"}}/>}
               {!isImage&&<PdfThumb url={fileUrl}/>}
-              <div style={{padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <div>
-                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a"}}>{d.name}</div>
-                  <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>By {d.uploadedBy||"—"} · {d.uploadedAt?new Date(d.uploadedAt).toLocaleDateString():""}</div>
+              <div style={{padding:"12px 14px"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a"}}>{d.name}</div>
+                    <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>By {d.uploadedBy||"—"} · {d.uploadedAt?new Date(d.uploadedAt).toLocaleDateString():""}</div>
+                  </div>
+                  {member?.role==="Admin"&&<button onClick={e=>{e.stopPropagation();deleteDrawing(d.id);}} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:"#ff3b30",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>DELETE</button>}
                 </div>
-                {member?.role==="Admin"&&<button onClick={e=>{e.stopPropagation();deleteDrawing(d.id);}} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:"#ff3b30",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>DELETE</button>}
+                {drawingPins.length>0&&(
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginTop:8,flexWrap:"wrap"}}>
+                    <span style={{fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif"}}>📌 {drawingPins.length} PIN{drawingPins.length>1?"S":""}</span>
+                    {Object.entries(sevCounts).map(([sev,count])=>(
+                      <span key={sev} style={{fontSize:10,fontWeight:700,color:SEV_COLOR[sev]||"#8e8e93",background:(SEV_COLOR[sev]||"#8e8e93")+"18",border:`1px solid ${(SEV_COLOR[sev]||"#8e8e93")}30`,borderRadius:10,padding:"2px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>{count} {sev}</span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           );
