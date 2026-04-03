@@ -9,6 +9,19 @@
 //   - Local path storage (copy photos to user-specified folder)
 //   - Auto-set timestamps
 
+// ====== RATE LIMITER ======
+// Simple in-memory rate limiter (per IP, resets on restart)
+var _rateLimits = {};
+function rateLimit(key, maxPerMinute) {
+  var now = Date.now();
+  if (!_rateLimits[key]) _rateLimits[key] = [];
+  // Remove entries older than 60s
+  _rateLimits[key] = _rateLimits[key].filter(function(t) { return now - t < 60000; });
+  if (_rateLimits[key].length >= maxPerMinute) return false;
+  _rateLimits[key].push(now);
+  return true;
+}
+
 // ====== AUTO DEFECT ID ======
 
 onRecordCreate((e) => {
@@ -97,6 +110,10 @@ onRecordAfterCreateSuccess((e) => {
 // Lets users test if a local path is writable
 
 routerAdd("POST", "/api/storage/test", (e) => {
+  var ip = e.request.remoteAddr || "unknown";
+  if (!rateLimit("storage_test_" + ip, 10)) {
+    return e.json(429, { error: "Too many requests. Try again in a minute." });
+  }
   var body = e.request.body;
   var path = "";
   try {
@@ -216,6 +233,8 @@ onRecordAfterCreateSuccess((e) => {
   if (!photo || record.get("category")) return;
   // Skip Google Drive records (photos not on PocketBase storage)
   if (record.get("storageMode") === "gdrive") return;
+  // Rate limit AI analysis: max 30 per minute globally
+  if (!rateLimit("ai_analysis", 30)) return;
 
   // Determine which AI provider to use (env vars)
   var geminiKey = $os.getenv("GEMINI_API_KEY");

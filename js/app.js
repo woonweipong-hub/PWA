@@ -11,6 +11,9 @@ const local={
 };
 
 // ── Utilities ─────────────────────────────────────────────────────
+// Sanitize user input for safe HTML embedding (Telegram, email reports)
+function sanitize(str){return String(str||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+
 function compressPhoto(dataUrl,maxPx=1800,quality=0.8){
   return new Promise(resolve=>{
     const img=new Image();
@@ -404,12 +407,12 @@ function generateEmailHTML(defects,projectName,companyName){
     const entryTypeBadge=d.entryType?`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;color:${typeColor(d.entryType)};background:${typeBg(d.entryType)};margin-right:6px">${typeIcon(d.entryType)} ${d.entryType}</span>`:"";
     const sevBadge=`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;color:${SEV_COLOR[d.severity]};background:${SEV_BG[d.severity]}">${d.severity}</span>`;
     const statusBadge=`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;color:${STATUS_COLOR[d.status]||"#8e8e93"};background:rgba(0,0,0,0.06)">${d.status}</span>`;
-    const comments=(d.comments||[]).map(c=>`<div style="padding:6px 10px;background:#f5f5f5;border-radius:6px;font-size:12px;margin:4px 0"><b style="color:#ff6b00">${c.by}:</b> ${c.text}</div>`).join("");
+    const comments=(d.comments||[]).map(c=>`<div style="padding:6px 10px;background:#f5f5f5;border-radius:6px;font-size:12px;margin:4px 0"><b style="color:#ff6b00">${sanitize(c.by)}:</b> ${sanitize(c.text)}</div>`).join("");
     const photoNote=d.photo?`<div style="font-size:11px;color:#888;font-style:italic;margin-top:6px;padding:6px 8px;background:#f5f5f5;border-radius:6px">📷 ${Array.isArray(d.photo)?d.photo.length:1} photo(s) — view in SiteShrimp app</div>`:"";
 
     return `<div style="margin-bottom:14px;padding:14px;border:1px solid #e5e5e5;border-radius:10px;border-left:5px solid ${SEV_COLOR[d.severity]}">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">${entryTypeBadge}${sevBadge}${statusBadge}${d.defect_id?`<span style="font-size:10px;color:#aaa;margin-left:auto">${d.defect_id}</span>`:""}</div>
-      <div style="font-size:15px;font-weight:bold;margin-bottom:8px">${d.title||"—"}</div>
+      <div style="font-size:15px;font-weight:bold;margin-bottom:8px">${sanitize(d.title)||"—"}</div>
       <table style="font-size:12px;color:#555;margin-bottom:6px"><tbody>
         ${row("📍 Location",d.location)}
         ${row("👤 Assigned",d.assignee)}
@@ -422,7 +425,7 @@ function generateEmailHTML(defects,projectName,companyName){
         ${row("💰 Cost",d.costImpact?(d.costImpact+(d.costAmount?" — $"+d.costAmount:"")):"") }
         ${row("📋 Responsible",d.costResponsible)}
       </tbody></table>
-      ${d.description?`<div style="font-size:13px;color:#444;padding:8px;background:#f9f9f9;border-radius:6px;margin-bottom:6px">${d.description}</div>`:""}
+      ${d.description?`<div style="font-size:13px;color:#444;padding:8px;background:#f9f9f9;border-radius:6px;margin-bottom:6px">${sanitize(d.description)}</div>`:""}
       ${photoNote}
       ${comments?`<div style="margin-top:8px"><div style="font-size:10px;font-weight:bold;color:#999;margin-bottom:4px">COMMENTS (${(d.comments||[]).length})</div>${comments}</div>`:""}
     </div>`;
@@ -2307,7 +2310,7 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
       setVerifyPhoto(null);
       if(tgCfg?.token&&tgCfg?.chatId){
         const e=STATUS_ICON[s]||"⚪";
-        sendTelegram(tgCfg.token,tgCfg.chatId,`${e} <b>Status Updated</b>\n<b>${defect.title}</b>\nStatus: <b>${s}</b>\nBy: ${member?.name}`).catch(()=>{});
+        sendTelegram(tgCfg.token,tgCfg.chatId,`${e} <b>Status Updated</b>\n<b>${sanitize(defect.title)}</b>\nStatus: <b>${s}</b>\nBy: ${sanitize(member?.name)}`).catch(()=>{});
       }
     }catch(e){setStatus(defect.status);alert("Failed to update status: "+e.message);}
   };
@@ -2323,7 +2326,7 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
       await DB.defects.update(defect.id,{comments:newComments});
       latestRef.current={...latestRef.current,comments:newComments};
       onUpdate({...latestRef.current});
-      if(tgCfg?.token&&tgCfg?.chatId)sendTelegram(tgCfg.token,tgCfg.chatId,`💬 <b>Comment — ${defect.title}</b>\n${member?.name}: ${comment}${photo?" [📷 photo]":""}`).catch(()=>{});
+      if(tgCfg?.token&&tgCfg?.chatId)sendTelegram(tgCfg.token,tgCfg.chatId,`💬 <b>Comment — ${sanitize(defect.title)}</b>\n${sanitize(member?.name)}: ${sanitize(comment)}${photo?" [📷 photo]":""}`).catch(()=>{});
       setComment("");setCommentPhoto(null);
     }catch(e){alert("Failed to add comment: "+e.message);}
     setSaving(false);
@@ -3659,7 +3662,7 @@ function App(){
           const cfg=local.get(TG_KEY);
           if(cfg?.token&&cfg?.chatId){
             const e={Critical:"\u{1F534}",Major:"\u{1F7E0}",Minor:"\u{1F7E1}",Observation:"\u{1F535}"}[item.data.severity]||"\u26AA";
-            sendTelegram(cfg.token,cfg.chatId,`${e} <b>SYNCED (offline)</b>\n📋 ${item.data.title}\n📍 ${item.data.location}`).catch(()=>{});
+            sendTelegram(cfg.token,cfg.chatId,`${e} <b>SYNCED (offline)</b>\n📋 ${sanitize(item.data.title)}\n📍 ${sanitize(item.data.location)}`).catch(()=>{});
           }
         }catch{}
       }catch(err){
@@ -3698,7 +3701,7 @@ function App(){
         const cfg=local.get(TG_KEY);
         if(cfg?.token&&cfg?.chatId){
           const e={Critical:"\u{1F534}",Major:"\u{1F7E0}",Minor:"\u{1F7E1}",Observation:"\u{1F535}"}[data.severity]||"\u26AA";
-          const text=`${e} <b>NEW DEFECT — ${company.companyName}</b>\n\n📁 ${currentProject.name}\n📋 <b>${data.title}</b>\n📍 ${data.location}\n⚠️ ${data.severity}\n👤 → ${data.assignee}\n✍️ By: ${data.loggedBy} (${data.loggedByRole})`;
+          const text=`${e} <b>NEW DEFECT — ${sanitize(company.companyName)}</b>\n\n📁 ${sanitize(currentProject.name)}\n📋 <b>${sanitize(data.title)}</b>\n📍 ${sanitize(data.location)}\n⚠️ ${data.severity}\n👤 → ${sanitize(data.assignee)}\n✍️ By: ${sanitize(data.loggedBy)} (${data.loggedByRole})`;
           if(data.photo)await sendTelegramPhoto(cfg.token,cfg.chatId,data.photo,text);
           else await sendTelegram(cfg.token,cfg.chatId,text);
         }
