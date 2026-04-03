@@ -840,6 +840,7 @@ function AuthScreen({onAuth,onFullSetup}){
               ))}
             </div>
           ))}
+        </div>
 
         {/* Verification Badge */}
         <div style={{marginTop:24,background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.15)",borderRadius:12,padding:16,textAlign:"center"}}>
