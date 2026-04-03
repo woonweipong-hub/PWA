@@ -168,4 +168,65 @@ except:
         body = e.read().decode() if hasattr(e, "read") else str(e)
         print(f"  counters: FAILED ({body})")
 
+# 8. Create drawings collection if missing
+print("\n=== Checking drawings collection ===")
+try:
+    api("GET", "/api/collections/drawings", token=token)
+    print("  drawings: exists")
+except:
+    print("  drawings: NOT FOUND - creating...")
+    try:
+        api("POST", "/api/collections", {
+            "name": "drawings",
+            "type": "base",
+            "fields": [
+                {"name":"companyId","type":"text","required":True},
+                {"name":"projectId","type":"text","required":True},
+                {"name":"name","type":"text","required":True},
+                {"name":"file","type":"file","required":True,"options":{"maxSelect":1,"maxSize":52428800,"mimeTypes":["application/pdf","image/jpeg","image/png","image/webp"]}},
+                {"name":"pageCount","type":"number"},
+                {"name":"uploadedBy","type":"text"},
+                {"name":"uploadedAt","type":"text"},
+            ],
+            "listRule": "@request.auth.id != ''",
+            "viewRule": "@request.auth.id != ''",
+            "createRule": "@request.auth.id != ''",
+            "updateRule": "@request.auth.id != ''",
+            "deleteRule": "@request.auth.id != ''",
+        }, token=token)
+        print("  drawings: CREATED")
+    except Exception as e:
+        body = e.read().decode() if hasattr(e, "read") else str(e)
+        print(f"  drawings: FAILED ({body})")
+
+# 9. Create pins collection if missing
+print("\n=== Checking pins collection ===")
+try:
+    api("GET", "/api/collections/pins", token=token)
+    print("  pins: exists")
+except:
+    print("  pins: NOT FOUND - creating...")
+    try:
+        api("POST", "/api/collections", {
+            "name": "pins",
+            "type": "base",
+            "fields": [
+                {"name":"drawingId","type":"text","required":True},
+                {"name":"entryId","type":"text","required":True},
+                {"name":"pageNum","type":"number","required":True},
+                {"name":"x","type":"number","required":True},
+                {"name":"y","type":"number","required":True},
+                {"name":"label","type":"text"},
+            ],
+            "listRule": "@request.auth.id != ''",
+            "viewRule": "@request.auth.id != ''",
+            "createRule": "@request.auth.id != ''",
+            "updateRule": "@request.auth.id != ''",
+            "deleteRule": "@request.auth.id != ''",
+        }, token=token)
+        print("  pins: CREATED")
+    except Exception as e:
+        body = e.read().decode() if hasattr(e, "read") else str(e)
+        print(f"  pins: FAILED ({body})")
+
 print("\n=== ALL DONE ===")

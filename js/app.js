@@ -2310,46 +2310,18 @@ function DrawingsPanel({onClose,company,currentProject,member,defects}){
     }).catch(()=>setLoading(false));
   },[company?.companyId,currentProject?.id]);
 
-  // Convert PDF to high-res JPEG using PDF.js (so server only needs to accept images)
-  const pdfToImage=async(file)=>{
-    const pdfjsLib=window.pdfjsLib;
-    if(!pdfjsLib)throw new Error("PDF.js not loaded");
-    if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
-      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    }
-    const arrayBuffer=await file.arrayBuffer();
-    const doc=await pdfjsLib.getDocument({data:arrayBuffer}).promise;
-    const page=await doc.getPage(1);
-    const viewport=page.getViewport({scale:3}); // High-res for floor plan detail
-    const canvas=document.createElement('canvas');
-    canvas.width=viewport.width;canvas.height=viewport.height;
-    await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
-    doc.destroy();
-    return new Promise(resolve=>{
-      canvas.toBlob(blob=>resolve(blob),'image/jpeg',0.92);
-    });
-  };
-
   const uploadDrawing=async e=>{
     const file=e.target.files?.[0];
     if(!file)return;
     setUploading(true);
     try{
-      const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
-      let uploadFile=file;
-      let uploadName=file.name.replace(/\.[^.]+$/,"");
-      // Convert PDF to JPEG before upload
-      if(isPdf){
-        const blob=await pdfToImage(file);
-        uploadFile=new File([blob],uploadName+".jpg",{type:"image/jpeg"});
-      }
       const rec=await DB.drawings.createWithFile({
         companyId:company.companyId,
         projectId:currentProject.id,
-        name:uploadName,
+        name:file.name.replace(/\.[^.]+$/,""),
         uploadedBy:member?.name||"",
         uploadedAt:new Date().toISOString()
-      },"file",uploadFile,uploadFile.name);
+      },"file",file,file.name);
       setDrawings(prev=>[rec,...prev]);
     }catch(err){alert("Upload failed: "+err.message);}
     setUploading(false);
@@ -2381,11 +2353,11 @@ function DrawingsPanel({onClose,company,currentProject,member,defects}){
         {/* Upload button */}
         {canUpload&&(
           <div style={{marginBottom:20}}>
-            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf" onChange={uploadDrawing} style={{display:"none"}}/>
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf,.pdf,.tif,.tiff" onChange={uploadDrawing} style={{display:"none"}}/>
             <button onClick={()=>fileRef.current?.click()} disabled={uploading} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:14,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
               {uploading?<><Spin size={14}/><span>UPLOADING...</span></>:"📐 UPLOAD FLOOR PLAN"}
             </button>
-            <div style={{fontSize:11,color:"rgba(0,0,0,0.3)",marginTop:6,textAlign:"center"}}>JPG, PNG, or PDF · Max 50MB</div>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.3)",marginTop:6,textAlign:"center"}}>JPG, PNG, TIF, or PDF · Max 50MB</div>
           </div>
         )}
 
@@ -2401,11 +2373,11 @@ function DrawingsPanel({onClose,company,currentProject,member,defects}){
 
         {drawings.map(d=>{
           const fileUrl=DB.fileUrl("drawings",d.id,d.file);
-          const isImage=/\.(jpg|jpeg|png|gif|webp)$/i.test(d.file);
+          const isImage=/\.(jpg|jpeg|png|gif|webp|tif|tiff)$/i.test(d.file);
           return(
             <div key={d.id} onClick={()=>setViewing(d)} style={{background:"#fff",borderRadius:14,padding:0,marginBottom:12,cursor:"pointer",overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)"}}>
-              {isImage&&<img src={fileUrl} alt={d.name} style={{width:"100%",height:160,objectFit:"cover"}}/>}
-              {!isImage&&<div style={{width:"100%",height:100,background:"rgba(0,0,0,0.04)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:32}}>📄</div>}
+              {isImage&&<img src={fileUrl} alt={d.name} style={{width:"100%",maxHeight:"50vh",objectFit:"contain",display:"block",background:"#f8f8f6"}}/>}
+              {!isImage&&<PdfThumb url={fileUrl}/>}
               <div style={{padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                 <div>
                   <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a"}}>{d.name}</div>
@@ -2419,6 +2391,28 @@ function DrawingsPanel({onClose,company,currentProject,member,defects}){
       </div>
     </div>
   );
+}
+
+// PDF thumbnail — renders page 1 to canvas for list preview
+function PdfThumb({url}){
+  const ref=useRef();
+  useEffect(()=>{
+    if(!window.pdfjsLib||!ref.current)return;
+    const pdfjsLib=window.pdfjsLib;
+    if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    let cancelled=false;
+    pdfjsLib.getDocument(url).promise.then(doc=>doc.getPage(1)).then(page=>{
+      if(cancelled)return;
+      const viewport=page.getViewport({scale:1.5});
+      const canvas=ref.current;
+      canvas.width=viewport.width;canvas.height=viewport.height;
+      page.render({canvasContext:canvas.getContext('2d'),viewport});
+    }).catch(()=>{});
+    return()=>{cancelled=true;};
+  },[url]);
+  return <canvas ref={ref} style={{width:"100%",display:"block",background:"#f8f8f6"}}/>;
 }
 
 function DrawingViewer({drawing,onClose,company,member,defects}){
@@ -2512,11 +2506,37 @@ function DrawingViewer({drawing,onClose,company,member,defects}){
   const prevPage=()=>setCurrentPage(p=>Math.max(1,p-1));
   const nextPage=()=>setCurrentPage(p=>Math.min(pdfPageCount,p+1));
 
-  // Touch/drag for panning
+  // Drag for panning (single pointer when not placing, always for multi-touch)
   const dragRef=useRef(null);
-  const onPointerDown=e=>{if(!placing)dragRef.current={startX:e.clientX-offset.x,startY:e.clientY-offset.y};};
-  const onPointerMove=e=>{if(dragRef.current&&!placing){setOffset({x:e.clientX-dragRef.current.startX,y:e.clientY-dragRef.current.startY});}};
-  const onPointerUp=()=>{dragRef.current=null;};
+  const pointerCount=useRef(0);
+  const onPointerDown=e=>{
+    pointerCount.current++;
+    // Allow pan with one finger when not placing, or always with two fingers
+    if(!placing||pointerCount.current>=2){
+      dragRef.current={startX:e.clientX-offset.x,startY:e.clientY-offset.y};
+    }
+  };
+  const onPointerMove=e=>{
+    if(dragRef.current){setOffset({x:e.clientX-dragRef.current.startX,y:e.clientY-dragRef.current.startY});}
+  };
+  const onPointerUp=()=>{pointerCount.current=Math.max(0,pointerCount.current-1);if(pointerCount.current===0)dragRef.current=null;};
+
+  // Pinch-to-zoom for mobile
+  const lastPinchDist=useRef(null);
+  const onTouchMove=e=>{
+    if(e.touches.length===2){
+      e.preventDefault();
+      const dx=e.touches[0].clientX-e.touches[1].clientX;
+      const dy=e.touches[0].clientY-e.touches[1].clientY;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      if(lastPinchDist.current!==null){
+        const delta=(dist-lastPinchDist.current)*0.005;
+        setScale(s=>Math.min(Math.max(s+delta,0.5),4));
+      }
+      lastPinchDist.current=dist;
+    }
+  };
+  const onTouchEnd=()=>{lastPinchDist.current=null;};
 
   // Shared pin overlay
   const renderPins=()=>pagePins.map(p=>{
@@ -2579,7 +2599,8 @@ function DrawingViewer({drawing,onClose,company,member,defects}){
 
       {/* Drawing canvas */}
       <div ref={containerRef} style={{flex:1,overflow:"hidden",position:"relative",cursor:placing?"crosshair":"grab",touchAction:"none"}}
-        onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
+        onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
+        onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         {isImage?(
           <div style={{position:"relative",transform:`scale(${scale}) translate(${offset.x/scale}px,${offset.y/scale}px)`,transformOrigin:"0 0",transition:dragRef.current?"none":"transform 0.15s ease"}}>
             <img ref={imgRef} src={fileUrl} alt={drawing.name} onClick={handleDrawingClick}
