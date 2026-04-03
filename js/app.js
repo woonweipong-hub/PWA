@@ -767,18 +767,18 @@ function AuthScreen({onAuth,onFullSetup}){
 
   // ── Intro / Welcome page ──
   if(page==="intro")return(
-    <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"12px 16px",textAlign:"center",overflow:"hidden"}}>
-      <div style={{width:"100%",maxWidth:360}}>
-        <img src="icons/icon-192.png" alt="SiteShrimp" style={{width:42,height:42,borderRadius:8,marginBottom:6,boxShadow:"0 3px 14px rgba(255,107,0,0.28)"}}/>
-        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#fff",lineHeight:1,marginBottom:3}}>SITESHRIMP</div>
-        <div style={{color:"rgba(255,255,255,0.56)",fontSize:11,marginBottom:2,lineHeight:1.3}}>
+    <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"16px 20px",textAlign:"center"}}>
+      <div style={{width:"100%",maxWidth:380}}>
+        <img src="icons/icon-192.png" alt="SiteShrimp" style={{width:50,height:50,borderRadius:8,marginBottom:8,boxShadow:"0 4px 18px rgba(255,107,0,0.3)"}}/>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:32,fontWeight:800,color:"#fff",lineHeight:1,marginBottom:5}}>SITESHRIMP</div>
+        <div style={{color:"rgba(255,255,255,0.56)",fontSize:12,marginBottom:3,lineHeight:1.35}}>
           Manage defects, inspections, progress, and records.
         </div>
-        <div style={{color:"rgba(255,255,255,0.4)",fontSize:10.5,marginBottom:8,lineHeight:1.3}}>
+        <div style={{color:"rgba(255,255,255,0.42)",fontSize:11.5,marginBottom:10,lineHeight:1.35}}>
           Capture issues with photos, voice, and drawings. Turn messy data into clean records and reports for faster closure.
         </div>
 
-        <div style={{textAlign:"left",marginBottom:8}}>
+        <div style={{textAlign:"left",marginBottom:10}}>
           {[
             ["📷","Log faster with AI","Snap and auto-fill issue details in seconds."],
             ["📐","See issues on drawings","Pin and track issues directly on plans."],
@@ -787,24 +787,24 @@ function AuthScreen({onAuth,onFullSetup}){
             ["👥","Coordinate your team","Assign tasks with live sync alerts."],
             ["📊","Report without rework","Export CSV and send reports fast."],
           ].map(([icon,title,desc],i)=>(
-            <div key={i} className="anim" style={{animationDelay:`${i*0.05}s`,display:"flex",gap:8,alignItems:"flex-start",padding:"1px 0"}}>
-              <span style={{fontSize:13,flexShrink:0,marginTop:1}}>{icon}</span>
+            <div key={i} className="anim" style={{animationDelay:`${i*0.05}s`,display:"flex",gap:9,alignItems:"flex-start",padding:"2px 0"}}>
+              <span style={{fontSize:14,flexShrink:0,marginTop:1}}>{icon}</span>
               <div>
-                <span style={{color:"#fff",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>{title}</span>
-                <span style={{color:"rgba(255,255,255,0.42)",fontSize:10}}> — {desc}</span>
+                <span style={{color:"#fff",fontSize:12,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>{title}</span>
+                <span style={{color:"rgba(255,255,255,0.42)",fontSize:11}}> — {desc}</span>
               </div>
             </div>
           ))}
         </div>
 
-        <button onClick={()=>setPage("auth")} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:10,padding:"10px",color:"#fff",fontSize:13,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:6,letterSpacing:"0.04em"}}>GET STARTED</button>
+        <button onClick={()=>setPage("auth")} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:11,padding:"12px",color:"#fff",fontSize:14,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:8,letterSpacing:"0.04em"}}>GET STARTED</button>
 
-        <button onClick={installable?installApp:()=>alert("To install:\n\nAndroid: Menu (⋮) → Add to Home Screen\n\niPhone: Share (↑) → Add to Home Screen")} style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:10,padding:"9px",color:"rgba(255,255,255,0.82)",fontSize:12,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:8,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+        <button onClick={installable?installApp:()=>alert("To install:\n\nAndroid: Menu (⋮) → Add to Home Screen\n\niPhone: Share (↑) → Add to Home Screen")} style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:11,padding:"11px",color:"rgba(255,255,255,0.82)",fontSize:12.5,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:9,display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(255,255,255,0.82)" strokeWidth="2" strokeLinecap="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(255,255,255,0.82)" strokeWidth="2" strokeLinecap="round"/></svg>
           INSTALL APP
         </button>
 
-        <div style={{color:"rgba(255,255,255,0.62)",fontSize:10,fontFamily:"'Barlow Condensed',sans-serif"}}>
+        <div style={{color:"rgba(255,255,255,0.62)",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif"}}>
           Free for all Users.
         </div>
       </div>
