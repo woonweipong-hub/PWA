@@ -596,7 +596,7 @@ function AuthScreen({onAuth,onFullSetup}){
             ["Projects",["Create / rename projects","Switch active project","Archive / restore projects"]],
             ["Entry Logging",["Log entry with title, severity, location","4 default types + custom entry types","Custom type manager (icon & color picker)","Multi-level location (Level > Zone > Room > Grid)","Snap or upload up to 10 photos","AI photo analysis (Gemini, Ollama, GPT)","Voice-to-text (title, description, search)","Component + issue selector (93 components, 517 issues)","Assign to team member","Cost & time tracking fields","Batch logging (same location)"]],
             ["Entry Management",["Full-text search with highlighting","Filter by status, severity, and entry type","Collapsible filters with clear button","Entry type badges on list items","Detail view with photos","Update status (Open > In Progress > Done > Verified > Closed)","Add comments (text + voice)","Delete entry (Admin only)","Telegram alerts on new entry and status change"]],
-            ["Drawings",["Upload floor plans (JPG, PNG, PDF)","View with zoom & pan","Place defect pins on drawings","Severity-colored pins with tooltips","Link pins to entries"]],
+            ["Drawings (Beta)",["Upload floor plans (JPG, PNG, PDF)","View with zoom & pan","Place defect pins on drawings","Severity-colored pins with tooltips","Link pins to entries"]],
             ["Dashboard",["Real-time stats (Open / In Progress / Done / Verified / Closed)","Critical alerts","Severity breakdown chart","Recent entries with type badges","Live sync indicator"]],
             ["Admin Analytics",["Entries logged today / week / month / all time","Active users — who submitted today and this week","Entries per user ranking (bar chart)","Photos total and average per entry","Entries by entry type breakdown","Entries by project breakdown","AI usage stats (today / limit / coverage / provider)"]],
             ["Reports",["Site report with charts + entry list","Filter by severity / status / assignee / date","CSV export","Email report (EmailJS)"]],
@@ -616,7 +616,7 @@ function AuthScreen({onAuth,onFullSetup}){
             ["Storage",[["PocketBase (default)",true],["Local path (server/machine)",true],["Google Drive (OAuth)",true]]],
             ["Settings",[["Telegram bot setup + test",true],["AI multi-provider setup + test",true],["Email report config",true],["Daily AI usage limit",true],["Storage mode selector",true]]],
             ["Other",[["Help guide",true],["Feedback form",true],["Offline app shell",true],["Password visibility toggle",true]]],
-            ["Drawings",[["Upload floor plans (JPG, PNG, PDF)",true],["View drawings with zoom & pan",true],["Place defect pins on drawings",true],["Severity-colored pins",true],["Pin tooltips with entry details",true],["Link pins to existing entries",true]]],
+            ["Drawings (Beta)",[["Upload floor plans (JPG, PNG, PDF)",true],["View drawings with zoom & pan",true],["Place defect pins on drawings",true],["Severity-colored pins",true],["Pin tooltips with entry details",true],["Link pins to existing entries",true]]],
             ["Coming Soon",[["Profile editing",false],["Offline submission queue",false],["Push notifications",false]]],
           ].map(([cat,items])=>(
             <div key={cat} style={{marginBottom:16}}>
@@ -1558,7 +1558,7 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
       <button onClick={onDrawings} style={{width:"100%",background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:14,padding:"14px 16px",marginBottom:16,cursor:"pointer",display:"flex",alignItems:"center",gap:12,textAlign:"left"}}>
         <span style={{fontSize:24}}>📐</span>
         <div style={{flex:1}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a"}}>FLOOR PLANS & DRAWINGS</div>
+          <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a"}}>FLOOR PLANS & DRAWINGS</span><span style={{fontSize:9,fontWeight:700,color:"#ff9500",background:"rgba(255,149,0,0.12)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:10,padding:"2px 6px",fontFamily:"'Barlow Condensed',sans-serif"}}>BETA</span></div>
           <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>Upload drawings, tap to place defect pins</div>
         </div>
         <span style={{color:"rgba(0,0,0,0.2)",fontSize:14}}>→</span>
@@ -2335,6 +2335,9 @@ function DrawingsPanel({onClose,company,currentProject,member,defects}){
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
       <SettingsBack onClose={onClose} title="DRAWINGS"/>
       <div style={{padding:20}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+          <span style={{fontSize:10,fontWeight:700,color:"#ff9500",background:"rgba(255,149,0,0.12)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:10,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>BETA — WORK IN PROGRESS</span>
+        </div>
         <div style={{fontSize:12,color:"rgba(0,0,0,0.4)",marginBottom:16}}>📁 {currentProject?.name} · Upload floor plans and tap to place defect pins</div>
 
         {/* Upload button */}
@@ -3148,7 +3151,7 @@ function App(){
                   ["Storage",[["PocketBase (default)",true],["Local path (server/machine)",true],["Google Drive (OAuth)",true]]],
                   ["Settings",[["Telegram bot setup + test",true],["AI multi-provider setup + test",true],["Email report config",true],["Daily AI usage limit",true],["Storage mode selector",true]]],
                   ["Other",[["Help guide",true],["Feedback form",true],["Offline app shell",true],["Password visibility toggle",true]]],
-                  ["Drawings",[["Upload floor plans (JPG, PNG, PDF)",true],["View drawings with zoom & pan",true],["Place defect pins on drawings",true],["Severity-colored pins",true],["Pin tooltips with entry details",true],["Link pins to existing entries",true]]],
+                  ["Drawings (Beta)",[["Upload floor plans (JPG, PNG, PDF)",true],["View drawings with zoom & pan",true],["Place defect pins on drawings",true],["Severity-colored pins",true],["Pin tooltips with entry details",true],["Link pins to existing entries",true]]],
             ["Coming Soon",[["Profile editing",false],["Offline submission queue",false],["Push notifications",false]]],
                 ].map(([cat,items])=>(
                   <div key={cat} style={{marginBottom:12}}>
@@ -3173,7 +3176,7 @@ function App(){
                   {[
                     ["Auth & Onboarding","7/7"],["Team","4/4"],["Entry Logging","11/11"],["Entry Management","9/9"],
                     ["Dashboard","5/5"],["Admin Analytics","7/7"],["Reports","4/4"],["Storage","3/3"],
-                    ["Settings","5/5"],["Other","4/4"],["Drawings","6/6"],["Coming Soon","0/3"],
+                    ["Settings","5/5"],["Other","4/4"],["Drawings (Beta)","6/6"],["Coming Soon","0/3"],
                   ].map(([cat,score])=>(
                     <div key={cat} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",fontSize:11}}>
                       <span style={{color:"rgba(255,255,255,0.45)"}}>{cat}</span>
