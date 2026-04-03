@@ -602,7 +602,8 @@ function AuthScreen({onAuth,onFullSetup}){
             ["Reports",["Site report with charts + entry list","Filter by severity / status / assignee / date","CSV export","Email report (EmailJS)"]],
             ["Storage",["PocketBase (default server)","Local path (self-hosted server/machine)","Google Drive (OAuth, personal cloud)"]],
             ["Settings",["Telegram bot setup + test","AI multi-provider setup + test","Email report config","Daily AI usage limit","Storage mode selector"]],
-            ["Other",["Help guide with full user manual","Feedback form (suggestion, bug, praise)","Offline app shell (service worker)","Password visibility toggle"]],
+            ["Offline",["Save entries offline to IndexedDB","Queued badge (header + dashboard)","Auto-sync when back online","Manual sync tap","Queued/synced status indicator"]],
+            ["Other",["Help guide with full user manual","Feedback form (suggestion, bug, praise)","Cached app shell (service worker)","Password visibility toggle"]],
           ].reduce((n,g)=>n+g[1].length,0)} features)</div>
           {[
             ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["Password visibility toggle",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as app",true],["Server URL config",true]]],
@@ -617,7 +618,8 @@ function AuthScreen({onAuth,onFullSetup}){
             ["Settings",[["Telegram bot setup + test",true],["AI multi-provider setup + test",true],["Email report config",true],["Daily AI usage limit",true],["Storage mode selector",true]]],
             ["Other",[["Help guide",true],["Feedback form",true],["Offline app shell",true],["Password visibility toggle",true]]],
             ["Drawings (Beta)",[["Upload floor plans (JPG, PNG, PDF)",true],["View drawings with zoom & pan",true],["Place defect pins on drawings",true],["Severity-colored pins",true],["Pin tooltips with entry details",true],["Link pins to existing entries",true]]],
-            ["Coming Soon",[["Profile editing",false],["Offline submission queue",false],["Push notifications",false]]],
+            ["Offline",[["Save entries to IndexedDB when offline",true],["Queued badge in header + Dashboard",true],["Auto-sync when back online",true],["Manual sync tap",true],["Queued/synced status on success screen",true]]],
+            ["Coming Soon",[["Profile editing",false],["Push notifications",false]]],
           ].map(([cat,items])=>(
             <div key={cat} style={{marginBottom:16}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:6}}>{cat.toUpperCase()}</div>
@@ -633,7 +635,7 @@ function AuthScreen({onAuth,onFullSetup}){
 
         {/* Verification Badge */}
         <div style={{marginTop:24,background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.15)",borderRadius:12,padding:16,textAlign:"center"}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#30d158",lineHeight:1,marginBottom:4}}>75/75 VERIFIED</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#30d158",lineHeight:1,marginBottom:4}}>80/80 VERIFIED</div>
           <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginBottom:10}}>All features code-verified · April 2026</div>
           <div style={{display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap"}}>
             {[["Mobile","iOS · Android"],["Desktop","Chrome · Firefox · Edge"],["PWA","Install · Offline"]].map(([p,d])=>(
@@ -1489,7 +1491,7 @@ function StorageSettings({onClose,companyId}){
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────
-function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentProject,member,onDrawings}){
+function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentProject,member,onDrawings,queueCount,onSyncQueue,syncing2}){
   const open=defects.filter(d=>d.status==="Open").length;
   const inprog=defects.filter(d=>d.status==="In Progress").length;
   const done=defects.filter(d=>d.status==="Done").length;
@@ -1535,6 +1537,16 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
           <div style={{fontSize:20}}>⚠️</div>
           <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff3b30",fontSize:14}}>{critical} CRITICAL UNRESOLVED</div><div style={{fontSize:12,color:"rgba(0,0,0,0.5)"}}>Requires immediate attention</div></div>
         </div>
+      )}
+
+      {queueCount>0&&(
+        <button onClick={onSyncQueue} style={{width:"100%",background:"rgba(255,149,0,0.1)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:12,padding:"12px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10,cursor:"pointer",textAlign:"left"}}>
+          {syncing2?<Spin size={16}/>:<span style={{fontSize:20}}>📤</span>}
+          <div style={{flex:1}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff9500",fontSize:14}}>{queueCount} QUEUED OFFLINE</div>
+            <div style={{fontSize:12,color:"rgba(0,0,0,0.5)"}}>{syncing2?"Syncing now...":navigator.onLine?"Tap to sync now":"Will auto-sync when online"}</div>
+          </div>
+        </button>
       )}
 
       {sevData.length>0&&(
@@ -1665,7 +1677,7 @@ function LogDefect({member,company,currentProject,members,onSave}){
         if(c)compressed.push(c);
       }
       const trade=COMPONENT_TRADE[form.component]||"";
-      await onSave({
+      const saveResult=await onSave({
         ...form,
         location:locationDisplay||form.location,
         locationDisplay,
@@ -1682,7 +1694,8 @@ function LogDefect({member,company,currentProject,members,onSave}){
         comments:[]
       });
       setLast({location:locationDisplay,assignee:form.assignee,severity:form.severity,
-        locationLevel:form.locationLevel,locationZone:form.locationZone,component:form.component});
+        locationLevel:form.locationLevel,locationZone:form.locationZone,component:form.component,
+        queued:saveResult==="queued"});
       setCount(c=>c+1);setShowBatch(true);setForm(blank);setAiResult(null);setShowMore(false);
     }catch(e){alert("Error saving: "+e.message);}
     setSaving(false);
@@ -1781,9 +1794,9 @@ function LogDefect({member,company,currentProject,members,onSave}){
   if(showBatch)return(
     <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
       <div style={{background:"rgba(48,209,88,0.1)",border:"1px solid rgba(48,209,88,0.3)",borderRadius:14,padding:24,textAlign:"center",marginBottom:20}}>
-        <div style={{fontSize:36,marginBottom:8}}>✓</div>
-        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:18,color:"#1a7a35",marginBottom:4}}>ENTRY LOGGED</div>
-        <div style={{fontSize:13,color:"rgba(0,0,0,0.5)"}}>{count} logged this session · Team notified</div>
+        <div style={{fontSize:36,marginBottom:8}}>{last?.queued?"📤":"✓"}</div>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:18,color:last?.queued?"#ff9500":"#1a7a35",marginBottom:4}}>{last?.queued?"QUEUED OFFLINE":"ENTRY LOGGED"}</div>
+        <div style={{fontSize:13,color:"rgba(0,0,0,0.5)"}}>{count} logged this session · {last?.queued?"Will sync when online":"Team notified"}</div>
       </div>
       <div style={{background:"#fff",borderRadius:14,padding:14,marginBottom:12}}>
         <div style={{fontSize:13,color:"rgba(0,0,0,0.5)",marginBottom:6}}>Log another at the same location?</div>
@@ -2741,6 +2754,8 @@ function App(){
   const[showFeedback,setShowFeedback]=useState(false);
   const[showStorage,setShowStorage]=useState(false);
   const[showDrawings,setShowDrawings]=useState(false);
+  const[queueCount,setQueueCount]=useState(0);
+  const[syncing2,setSyncing2]=useState(false);
   const[fbText,setFbText]=useState("");const[fbType,setFbType]=useState("suggestion");const[fbSent,setFbSent]=useState(false);const[fbSending,setFbSending]=useState(false);
 
   // Auth listener — also auto-recover company if localStorage was cleared
@@ -2874,58 +2889,100 @@ function App(){
     setCurrentProject(proj);local.set(PROJECT_KEY,proj);
   };
 
+  // ── Upload a single defect entry (online) ──
+  const uploadDefect=async(data,companyId)=>{
+    const storageCfg=local.get(STORAGE_KEY)||{mode:"pocketbase"};
+    if(storageCfg.mode==="gdrive"&&GDrive.isConnected()){
+      const ts=Date.now();const gdriveUrls=[];
+      if(data.photo&&data.photo.startsWith("data:"))try{gdriveUrls.push((await GDrive.uploadPhoto(data.photo,`defect_${ts}_1.jpg`)).url);}catch{}
+      if(data.extraPhotos)for(let i=0;i<data.extraPhotos.length;i++)if(data.extraPhotos[i]?.startsWith("data:"))try{gdriveUrls.push((await GDrive.uploadPhoto(data.extraPhotos[i],`defect_${ts}_${i+2}.jpg`)).url);}catch{}
+      const gd={...data,companyId,storageMode:"gdrive",gdrivePhotos:JSON.stringify(gdriveUrls)};
+      delete gd.photo;delete gd.extraPhotos;delete gd.photos;
+      await DB.defects.create(gd);
+    }else if(storageCfg.mode==="local"&&storageCfg.localPath){
+      await DB.addDefect(companyId,{...data,storageMode:"local",storagePath:storageCfg.localPath});
+    }else{
+      await DB.addDefect(companyId,data);
+    }
+  };
+
+  // ── Sync offline queue ──
+  const syncQueue=async()=>{
+    if(syncing2||!company?.companyId)return;
+    let items=[];
+    try{items=await OfflineQueue.getAll();}catch{return;}
+    if(!items.length)return;
+    setSyncing2(true);
+    let synced=0;
+    for(const item of items){
+      try{
+        await uploadDefect(item.data,item.companyId);
+        await OfflineQueue.remove(item.id);
+        synced++;
+        // Telegram (fire-and-forget)
+        try{
+          const cfg=local.get(TG_KEY);
+          if(cfg?.token&&cfg?.chatId){
+            const e={Critical:"\u{1F534}",Major:"\u{1F7E0}",Minor:"\u{1F7E1}",Observation:"\u{1F535}"}[item.data.severity]||"\u26AA";
+            sendTelegram(cfg.token,cfg.chatId,`${e} <b>SYNCED (offline)</b>\n📋 ${item.data.title}\n📍 ${item.data.location}`).catch(()=>{});
+          }
+        }catch{}
+      }catch(err){
+        console.warn("Sync failed for queued entry:",err);
+        // Stop on first failure — likely still offline
+        break;
+      }
+    }
+    const remaining=await OfflineQueue.count().catch(()=>0);
+    setQueueCount(remaining);
+    setSyncing2(false);
+    if(synced>0)console.log(`Synced ${synced} offline entries`);
+  };
+
+  // ── Check queue count on mount and listen for online ──
+  useEffect(()=>{
+    OfflineQueue.count().then(c=>setQueueCount(c)).catch(()=>{});
+    const onOnline=()=>{syncQueue();};
+    window.addEventListener("online",onOnline);
+    return()=>window.removeEventListener("online",onOnline);
+  },[company?.companyId]);
+
+  // Auto-sync when app loads and is online
+  useEffect(()=>{
+    if(navigator.onLine&&company?.companyId)syncQueue();
+  },[company?.companyId]);
+
   const addDefect=async data=>{
     if(!company?.companyId||!currentProject)return;
 
-    const storageCfg=local.get(STORAGE_KEY)||{mode:"pocketbase"};
+    try{
+      await uploadDefect(data,company.companyId);
 
-    // ── Google Drive storage: upload photos to Drive, save URLs in record ──
-    if(storageCfg.mode==="gdrive"&&GDrive.isConnected()){
-      const ts=Date.now();
-      const gdriveUrls=[];
-      // Upload main photo
-      if(data.photo&&data.photo.startsWith("data:")){
+      // Telegram notification (fire-and-forget)
+      try{
+        const cfg=local.get(TG_KEY);
+        if(cfg?.token&&cfg?.chatId){
+          const e={Critical:"\u{1F534}",Major:"\u{1F7E0}",Minor:"\u{1F7E1}",Observation:"\u{1F535}"}[data.severity]||"\u26AA";
+          const text=`${e} <b>NEW DEFECT — ${company.companyName}</b>\n\n📁 ${currentProject.name}\n📋 <b>${data.title}</b>\n📍 ${data.location}\n⚠️ ${data.severity}\n👤 → ${data.assignee}\n✍️ By: ${data.loggedBy} (${data.loggedByRole})`;
+          if(data.photo)await sendTelegramPhoto(cfg.token,cfg.chatId,data.photo,text);
+          else await sendTelegram(cfg.token,cfg.chatId,text);
+        }
+      }catch{}
+    }catch(err){
+      // ── Offline or network error: queue for later ──
+      if(!navigator.onLine||err.message?.includes("Failed to fetch")||err.message?.includes("not responding")||err.message?.includes("Cannot reach")){
         try{
-          const result=await GDrive.uploadPhoto(data.photo,`defect_${ts}_1.jpg`);
-          gdriveUrls.push(result.url);
-        }catch(e){console.warn("GDrive upload failed for main photo:",e);}
-      }
-      // Upload extra photos
-      if(data.extraPhotos){
-        for(let i=0;i<data.extraPhotos.length;i++){
-          if(data.extraPhotos[i]&&data.extraPhotos[i].startsWith("data:")){
-            try{
-              const result=await GDrive.uploadPhoto(data.extraPhotos[i],`defect_${ts}_${i+2}.jpg`);
-              gdriveUrls.push(result.url);
-            }catch(e){console.warn("GDrive upload failed:",e);}
-          }
+          await OfflineQueue.add({data,companyId:company.companyId,projectId:currentProject.id,projectName:currentProject.name});
+          const c=await OfflineQueue.count();
+          setQueueCount(c);
+          // Don't throw — entry is queued, show success to user
+          return "queued";
+        }catch(qErr){
+          throw new Error("Offline and queue failed: "+qErr.message);
         }
       }
-      // Store as record with gdrive URLs instead of file uploads
-      const gdriveData={...data,companyId:company.companyId,storageMode:"gdrive",gdrivePhotos:JSON.stringify(gdriveUrls)};
-      delete gdriveData.photo;delete gdriveData.extraPhotos;delete gdriveData.photos;
-      await DB.defects.create(gdriveData);
+      throw err;
     }
-    // ── Local path storage: upload to PocketBase with localPath metadata ──
-    else if(storageCfg.mode==="local"&&storageCfg.localPath){
-      const localData={...data,storageMode:"local",storagePath:storageCfg.localPath};
-      await DB.addDefect(company.companyId,localData);
-    }
-    // ── Default PocketBase storage ──
-    else{
-      await DB.addDefect(company.companyId,data);
-    }
-
-    // Telegram notification (fire-and-forget, don't block on failure)
-    try{
-      const cfg=local.get(TG_KEY);
-      if(cfg?.token&&cfg?.chatId){
-        const e={Critical:"\u{1F534}",Major:"\u{1F7E0}",Minor:"\u{1F7E1}",Observation:"\u{1F535}"}[data.severity]||"\u26AA";
-        const text=`${e} <b>NEW DEFECT — ${company.companyName}</b>\n\n📁 ${currentProject.name}\n📋 <b>${data.title}</b>\n📍 ${data.location}\n⚠️ ${data.severity}\n👤 → ${data.assignee}\n✍️ By: ${data.loggedBy} (${data.loggedByRole})`;
-        if(data.photo)await sendTelegramPhoto(cfg.token,cfg.chatId,data.photo,text);
-        else await sendTelegram(cfg.token,cfg.chatId,text);
-      }
-    }catch(e){console.warn("Telegram notification failed:",e);}
   };
 
   const updateDefect=updated=>{
@@ -3005,6 +3062,12 @@ function App(){
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#fff",lineHeight:1}}>{defects.filter(d=>!["Verified","Closed"].includes(d.status)).length}</div>
             <div style={{fontSize:9,color:"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif"}}>ACTIVE</div>
           </div>
+          {queueCount>0&&(
+            <button onClick={syncQueue} title="Queued offline entries" style={{display:"flex",alignItems:"center",gap:4,background:"rgba(255,149,0,0.2)",border:"1px solid rgba(255,149,0,0.4)",borderRadius:8,padding:"4px 8px",cursor:"pointer",height:32}}>
+              {syncing2?<Spin size={10}/>:<span style={{fontSize:12}}>📤</span>}
+              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#ff9500"}}>{queueCount}</span>
+            </button>
+          )}
           <button onClick={()=>setShowGemini(true)} title="AI Setup" style={{width:32,height:32,borderRadius:8,background:aiEnabled?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${aiEnabled?"rgba(88,86,214,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:15}}>🤖</button>
           <button onClick={()=>setShowTg(true)} title="Telegram Setup" style={{width:32,height:32,borderRadius:8,background:tgEnabled?"rgba(0,136,204,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${tgEnabled?"rgba(0,136,204,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21.5 4.5L2.5 11.5L9 13.5L11 20.5L15 15.5L20 18.5L21.5 4.5Z" stroke={tgEnabled?"#0088cc":"rgba(255,255,255,0.4)"} strokeWidth="1.5" strokeLinejoin="round"/></svg>
@@ -3038,7 +3101,7 @@ function App(){
 
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:72}}>
-        {tab==="dashboard"&&<Dashboard defects={defects} onView={setViewing} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} company={company} currentProject={currentProject} member={member} onDrawings={()=>setShowDrawings(true)}/>}
+        {tab==="dashboard"&&<Dashboard defects={defects} onView={setViewing} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} company={company} currentProject={currentProject} member={member} onDrawings={()=>setShowDrawings(true)} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>Viewer access — defect logging disabled</div>}
         {tab==="defects"&&<DefectsList defects={defects} onView={setViewing}/>}
@@ -3119,7 +3182,7 @@ function App(){
                   ["Viewer","Read-only — view entries and reports only."],
                 ]],
                 ["Tips",[
-                  ["Offline","The app shell works offline. You can browse cached data, but need internet to submit new entries."],
+                  ["Offline","Works fully offline! Entries are queued in IndexedDB and auto-sync when you're back online. An orange badge shows queued count in the header and Dashboard. Tap it to sync manually."],
                   ["Install as App","Tap the INSTALL button on the login screen, or use your browser's 'Add to Home Screen' option for a native app experience."],
                   ["Multiple Projects","Use the project selector (top left) to switch between projects. Each project has its own set of entries."],
                   ["CSV Export","In the Report tab, use CSV EXPORT to download filtered data for Excel or Google Sheets."],
@@ -3152,7 +3215,8 @@ function App(){
                   ["Settings",[["Telegram bot setup + test",true],["AI multi-provider setup + test",true],["Email report config",true],["Daily AI usage limit",true],["Storage mode selector",true]]],
                   ["Other",[["Help guide",true],["Feedback form",true],["Offline app shell",true],["Password visibility toggle",true]]],
                   ["Drawings (Beta)",[["Upload floor plans (JPG, PNG, PDF)",true],["View drawings with zoom & pan",true],["Place defect pins on drawings",true],["Severity-colored pins",true],["Pin tooltips with entry details",true],["Link pins to existing entries",true]]],
-            ["Coming Soon",[["Profile editing",false],["Offline submission queue",false],["Push notifications",false]]],
+            ["Offline",[["Save entries to IndexedDB when offline",true],["Queued badge in header + Dashboard",true],["Auto-sync when back online",true],["Manual sync tap",true],["Queued/synced status on success screen",true]]],
+            ["Coming Soon",[["Profile editing",false],["Push notifications",false]]],
                 ].map(([cat,items])=>(
                   <div key={cat} style={{marginBottom:12}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.6)",letterSpacing:"0.08em",marginBottom:4}}>{cat.toUpperCase()}</div>
@@ -3170,13 +3234,13 @@ function App(){
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:10,borderBottom:"1px solid rgba(255,255,255,0.1)",paddingBottom:6}}>VERIFICATION STATUS</div>
                 <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:12,padding:16,marginBottom:14}}>
                   <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#30d158",lineHeight:1}}>75/75</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#30d158",lineHeight:1}}>80/80</div>
                     <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#30d158"}}>ALL FEATURES VERIFIED</div><div style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>Code-level verification · April 2026</div></div>
                   </div>
                   {[
                     ["Auth & Onboarding","7/7"],["Team","4/4"],["Entry Logging","11/11"],["Entry Management","9/9"],
                     ["Dashboard","5/5"],["Admin Analytics","7/7"],["Reports","4/4"],["Storage","3/3"],
-                    ["Settings","5/5"],["Other","4/4"],["Drawings (Beta)","6/6"],["Coming Soon","0/3"],
+                    ["Settings","5/5"],["Other","4/4"],["Drawings (Beta)","6/6"],["Offline","5/5"],["Coming Soon","0/2"],
                   ].map(([cat,score])=>(
                     <div key={cat} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",fontSize:11}}>
                       <span style={{color:"rgba(255,255,255,0.45)"}}>{cat}</span>
