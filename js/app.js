@@ -3952,14 +3952,12 @@ function App(){
                 <span style={{position:"absolute",top:-5,right:-4,minWidth:14,height:14,borderRadius:999,background:"#ff9500",color:"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,lineHeight:"14px",padding:"0 3px",textAlign:"center"}}>{queueCount}</span>
             </button>
           )}
+          <button onClick={()=>{setShowAiSearch(true);setTab("defects");setShowHeaderMenu(false);setShowAiMenu(false);}} title="AI Search" style={{width:26,height:26,borderRadius:8,background:"rgba(255,107,0,0.15)",border:"1px solid rgba(255,107,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:12,flexShrink:0}}>💬</button>
           <div style={{position:"relative"}}>
             <button onClick={()=>{setShowAiMenu(!showAiMenu);setShowHeaderMenu(false);}} title="AI Tools" style={{width:26,height:26,borderRadius:8,background:aiEnabled?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${aiEnabled?"rgba(88,86,214,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:12,flexShrink:0}}>🤖</button>
             {showAiMenu&&<div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,overflow:"hidden",zIndex:100,minWidth:180}}>
               <button onClick={()=>{setShowGemini(true);setShowAiMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
-                🧠 AI Photo Analysis
-              </button>
-              <button onClick={()=>{setShowAiSearch(true);setTab("defects");setShowAiMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13}}>
-                💬 AI Search
+                🧠 AI Setup
               </button>
             </div>}
           </div>
