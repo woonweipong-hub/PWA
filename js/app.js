@@ -2233,6 +2233,39 @@ function DefectsList({defects,onView}){
 }
 
 // ── Defect Detail ─────────────────────────────────────────────────
+// ── Before/After Photo Comparison ────────────────────────────────
+function BeforeAfter({before,after}){
+  const[split,setSplit]=useState(50);
+  const containerRef=useRef();
+  const onMove=e=>{
+    const rect=containerRef.current.getBoundingClientRect();
+    const t=e.touches?e.touches[0]:e;
+    const x=Math.max(5,Math.min(95,((t.clientX-rect.left)/rect.width)*100));
+    setSplit(x);
+  };
+  return(
+    <div style={{marginBottom:14}}>
+      <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",marginBottom:6}}>BEFORE / AFTER</div>
+      <div ref={containerRef} style={{position:"relative",width:"100%",height:220,borderRadius:12,overflow:"hidden",cursor:"col-resize",touchAction:"none",background:"#f8f8f6"}}
+        onMouseMove={e=>e.buttons===1&&onMove(e)} onTouchMove={onMove}>
+        {/* After (full) */}
+        <img src={after} alt="After" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
+        {/* Before (clipped) */}
+        <div style={{position:"absolute",inset:0,width:`${split}%`,overflow:"hidden"}}>
+          <img src={before} alt="Before" style={{width:containerRef.current?.clientWidth||"100%",height:"100%",objectFit:"cover"}}/>
+        </div>
+        {/* Slider line */}
+        <div style={{position:"absolute",top:0,bottom:0,left:`${split}%`,width:3,background:"#fff",transform:"translateX(-50%)",boxShadow:"0 0 8px rgba(0,0,0,0.5)"}}>
+          <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:28,height:28,borderRadius:"50%",background:"#fff",boxShadow:"0 2px 8px rgba(0,0,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#1a1a1a"}}>⇔</div>
+        </div>
+        {/* Labels */}
+        <div style={{position:"absolute",top:8,left:8,background:"rgba(0,0,0,0.6)",borderRadius:6,padding:"3px 8px",fontSize:10,fontWeight:700,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif"}}>BEFORE</div>
+        <div style={{position:"absolute",top:8,right:8,background:"rgba(0,0,0,0.6)",borderRadius:6,padding:"3px 8px",fontSize:10,fontWeight:700,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif"}}>AFTER</div>
+      </div>
+    </div>
+  );
+}
+
 function DefectDetail({defect,onClose,onUpdate,member,company}){
   const[status,setStatus]=useState(defect.status);
   const[comment,setComment]=useState("");const[saving,setSaving]=useState(false);const[deleting,setDeleting]=useState(false);
@@ -2342,15 +2375,20 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
           )}
         </div>
 
-        {defect.photo&&(
-          typeof defect.photo==="string"
+        {defect.photo&&(()=>{
+          const origPhoto=typeof defect.photo==="string"?defect.photo:Array.isArray(defect.photo)&&defect.photo[0]?defect.photo[0]:null;
+          const verifyComment=(latestRef.current.comments||[]).find(c=>c.text?.startsWith("✅")&&c.photo);
+          const afterPhoto=verifyComment?.photo;
+          return afterPhoto&&origPhoto?(
+            <BeforeAfter before={origPhoto} after={afterPhoto}/>
+          ):typeof defect.photo==="string"
             ?<img src={defect.photo} alt="" style={{width:"100%",borderRadius:12,maxHeight:250,objectFit:"cover",marginBottom:14}}/>
             :Array.isArray(defect.photo)&&defect.photo.length>0
               ?<div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8,marginBottom:14}}>
                 {defect.photo.map((p,i)=><img key={i} src={p} alt="" style={{height:180,borderRadius:12,objectFit:"cover",flexShrink:0}}/>)}
               </div>
-              :null
-        )}
+              :null;
+        })()}
 
         {canUpdate&&(
           <div style={{marginBottom:14}}>
@@ -2364,18 +2402,60 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
         )}
 
         <div>
-          <div style={lbl()}>COMMENTS ({(latestRef.current.comments||[]).length})</div>
-          {(latestRef.current.comments||[]).map((c,i)=>(
-            <div key={i} style={{background:"#fff",borderRadius:10,padding:"10px 12px",marginBottom:8}}>
-              <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:3}}>
-                <span style={{fontSize:11,fontWeight:700,color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif"}}>{c.by}</span>
-                {c.role&&<RoleChip r={c.role}/>}
-                <span style={{fontSize:10,color:"rgba(0,0,0,0.3)"}}>{new Date(c.at).toLocaleDateString()}</span>
+          <div style={lbl()}>TIMELINE ({(latestRef.current.comments||[]).length})</div>
+          {(latestRef.current.comments||[]).map((c,i)=>{
+            const isVerify=c.text?.startsWith("✅");
+            const isStatus=c.text?.startsWith("✅")||c.text?.startsWith("🔄");
+            const timelineColor=isVerify?"#34c759":isStatus?"#5856d6":"#ff6b00";
+            const REACTIONS=["👍","✅","⚠️","🔧"];
+            const reactions=c.reactions||{};
+            const addReaction=async(emoji)=>{
+              const comments=[...(latestRef.current.comments||[])];
+              const entry=comments[i];
+              if(!entry.reactions)entry.reactions={};
+              const key=emoji;
+              if(!entry.reactions[key])entry.reactions[key]=[];
+              const name=member?.name||"";
+              if(entry.reactions[key].includes(name)){entry.reactions[key]=entry.reactions[key].filter(n=>n!==name);}
+              else{entry.reactions[key].push(name);}
+              if(entry.reactions[key].length===0)delete entry.reactions[key];
+              try{
+                await DB.defects.update(defect.id,{comments});
+                latestRef.current={...latestRef.current,comments};
+                onUpdate({...latestRef.current});
+              }catch{}
+            };
+            return(
+              <div key={i} style={{display:"flex",gap:10,marginBottom:0,position:"relative"}}>
+                {/* Timeline line */}
+                <div style={{display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0,width:20}}>
+                  <div style={{width:10,height:10,borderRadius:"50%",background:timelineColor,border:"2px solid #f0ede8",zIndex:1,flexShrink:0}}/>
+                  {i<(latestRef.current.comments||[]).length-1&&<div style={{width:2,flex:1,background:"rgba(0,0,0,0.08)"}}/>}
+                </div>
+                {/* Content */}
+                <div style={{flex:1,background:"#fff",borderRadius:10,padding:"10px 12px",marginBottom:10,borderLeft:`3px solid ${timelineColor}`}}>
+                  <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:3}}>
+                    <span style={{fontSize:11,fontWeight:700,color:timelineColor,fontFamily:"'Barlow Condensed',sans-serif"}}>{c.by}</span>
+                    {c.role&&<RoleChip r={c.role}/>}
+                    <span style={{fontSize:10,color:"rgba(0,0,0,0.3)"}}>{new Date(c.at).toLocaleDateString()}{" "}{new Date(c.at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</span>
+                  </div>
+                  {c.text&&<div style={{fontSize:13,color:"#333"}}>{c.text}</div>}
+                  {c.photo&&<img src={c.photo} alt="" style={{width:"100%",maxHeight:200,objectFit:"contain",borderRadius:8,marginTop:6,background:"#f8f8f6"}}/>}
+                  {/* Reactions */}
+                  <div style={{display:"flex",gap:4,marginTop:6,flexWrap:"wrap",alignItems:"center"}}>
+                    {Object.entries(reactions).map(([emoji,users])=>(
+                      <button key={emoji} onClick={()=>addReaction(emoji)} style={{background:users.includes(member?.name||"")?"rgba(255,107,0,0.12)":"rgba(0,0,0,0.04)",border:users.includes(member?.name||"")?"1px solid rgba(255,107,0,0.3)":"1px solid rgba(0,0,0,0.08)",borderRadius:12,padding:"2px 8px",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:3}} title={users.join(", ")}>{emoji}<span style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.5)"}}>{users.length}</span></button>
+                    ))}
+                    {canUpdate&&<div style={{display:"flex",gap:2,marginLeft:Object.keys(reactions).length?4:0}}>
+                      {REACTIONS.filter(r=>!reactions[r]).map(emoji=>(
+                        <button key={emoji} onClick={()=>addReaction(emoji)} style={{background:"none",border:"none",fontSize:13,cursor:"pointer",opacity:0.3,padding:2}} title={`React with ${emoji}`}>{emoji}</button>
+                      ))}
+                    </div>}
+                  </div>
+                </div>
               </div>
-              {c.text&&<div style={{fontSize:13,color:"#333"}}>{c.text}</div>}
-              {c.photo&&<img src={c.photo} alt="" style={{width:"100%",maxHeight:200,objectFit:"contain",borderRadius:8,marginTop:6,background:"#f8f8f6"}}/>}
-            </div>
-          ))}
+            );
+          })}
           {canUpdate?(
             <div>
               <input type="file" accept="image/*" capture="environment" ref={commentPhotoRef} onChange={handleCommentPhoto} style={{display:"none"}}/>
@@ -2692,7 +2772,8 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   const[scale,setScale]=useState(1);const[offset,setOffset]=useState({x:0,y:0});
   const[pdfPageCount,setPdfPageCount]=useState(0);const[currentPage,setCurrentPage]=useState(1);
   const[pdfLoading,setPdfLoading]=useState(false);const[pdfError,setPdfError]=useState(null);
-  // Drawing markup state
+  // Heatmap + drawing markup state
+  const[showHeatmap,setShowHeatmap]=useState(false);
   const[markupMode,setMarkupMode]=useState(false);const[markupTool,setMarkupTool]=useState("freehand");
   const[markupColor,setMarkupColor]=useState("#ff3b30");const[markupStrokes,setMarkupStrokes]=useState([]);
   const[markupCurrent,setMarkupCurrent]=useState(null);
@@ -2861,6 +2942,32 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     return null;
   });
 
+  // Heatmap overlay — radial gradients per pin, weighted by severity
+  const renderHeatmap=()=>{
+    if(!showHeatmap||pagePins.length===0)return null;
+    const sevWeight={Critical:1,Major:0.7,Minor:0.4,Observation:0.2};
+    return(
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",opacity:0.55,mixBlendMode:"multiply"}}>
+        <defs>
+          {pagePins.map((p,i)=>{
+            const d=getDefect(p.entryId);
+            const w=sevWeight[d?.severity]||0.3;
+            const color=d?SEV_COLOR[d.severity]||"#ff6b00":"#8e8e93";
+            return(
+              <radialGradient key={i} id={`hg${i}`} cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor={color} stopOpacity={w}/>
+                <stop offset="100%" stopColor={color} stopOpacity="0"/>
+              </radialGradient>
+            );
+          })}
+        </defs>
+        {pagePins.map((p,i)=>(
+          <circle key={i} cx={p.x} cy={p.y} r="8" fill={`url(#hg${i})`}/>
+        ))}
+      </svg>
+    );
+  };
+
   // Active pin tooltip (tap to show/hide)
   const[activePin,setActivePin]=useState(null);
 
@@ -2869,21 +2976,30 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     const d=getDefect(p.entryId);
     const color=d?SEV_COLOR[d.severity]||"#ff6b00":"#8e8e93";
     const isActive=activePin===p.id;
+    const isCritical=d?.severity==="Critical";
+    const isOpen=d?.status==="Open";
     return(
-      <div key={p.id} style={{position:"absolute",left:`${p.x}%`,top:`${p.y}%`,transform:"translate(-50%,-100%)",zIndex:isActive?15:5,cursor:"pointer"}}
+      <div key={p.id} style={{position:"absolute",left:`${p.x}%`,top:`${p.y}%`,transform:"translate(-50%,-50%)",zIndex:isActive?15:5,cursor:"pointer"}}
         onClick={e=>{e.stopPropagation();setActivePin(isActive?null:p.id);}}>
-        <div style={{position:"relative"}}>
-          <svg width="28" height="36" viewBox="0 0 24 32">
-            <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20C24 5.4 18.6 0 12 0z" fill={color} stroke={isActive?"#fff":"none"} strokeWidth="2"/>
-            <circle cx="12" cy="11" r="5" fill="#fff" opacity="0.9"/>
-          </svg>
+        <div style={{position:"relative",width:32,height:32}}>
+          {/* Pulse ring for Critical/Open */}
+          {isCritical&&isOpen&&<div style={{position:"absolute",top:"50%",left:"50%",width:32,height:32,borderRadius:"50%",background:color,animation:"sevPulse 2s ease-in-out infinite"}}/>}
+          {/* Outer ring */}
+          <div style={{position:"absolute",inset:0,borderRadius:"50%",border:`3px solid ${color}`,background:isActive?"rgba(255,255,255,0.15)":"rgba(0,0,0,0.4)",boxShadow:isActive?`0 0 12px ${color}`:"0 2px 6px rgba(0,0,0,0.4)"}}/>
+          {/* Inner dot */}
+          <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:12,height:12,borderRadius:"50%",background:color}}/>
+          {/* Severity initial */}
+          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",textShadow:"0 1px 2px rgba(0,0,0,0.8)"}}>{d?.severity?d.severity[0]:""}</div>
           {isActive&&(
-            <div style={{position:"absolute",bottom:40,left:"50%",transform:"translateX(-50%)",background:"#1a1a1a",borderRadius:10,padding:"10px 14px",minWidth:160,zIndex:20,boxShadow:"0 4px 20px rgba(0,0,0,0.5)"}}>
+            <div style={{position:"absolute",bottom:38,left:"50%",transform:"translateX(-50%)",background:"#1a1a1a",borderRadius:10,padding:"10px 14px",minWidth:180,zIndex:20,boxShadow:"0 4px 20px rgba(0,0,0,0.5)",border:`1px solid ${color}30`}}>
               {d?(<>
-                <div style={{fontSize:12,fontWeight:700,color:"#fff",marginBottom:3}}>{d.title}</div>
-                <div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginBottom:6}}>{d.severity} · {d.status}</div>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:color,flexShrink:0}}/>
+                  <div style={{fontSize:12,fontWeight:700,color:"#fff"}}>{d.title}</div>
+                </div>
+                <div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginBottom:6}}>{d.severity} · {d.status}{d.assignee?` · ${d.assignee}`:""}</div>
               </>):(<div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginBottom:6}}>Entry not found</div>)}
-              {canPin&&<button onClick={e=>{e.stopPropagation();deletePin(p.id);setActivePin(null);}} style={{width:"100%",background:"rgba(255,59,48,0.2)",border:"none",borderRadius:6,padding:"6px 10px",color:"#ff6b6b",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>REMOVE PIN</button>}
+              {canPin&&<button onClick={e=>{e.stopPropagation();deletePin(p.id);setActivePin(null);}} style={{width:"100%",background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:6,padding:"6px 10px",color:"#ff6b6b",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>REMOVE PIN</button>}
             </div>
           )}
         </div>
@@ -2917,6 +3033,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
         <button onClick={zoomIn} style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
         <button onClick={resetZoom} style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{Math.round(scale*100)}%</button>
         <button onClick={zoomOut} style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+        {pagePins.length>0&&<button onClick={()=>setShowHeatmap(!showHeatmap)} style={{width:36,height:36,borderRadius:10,background:showHeatmap?"rgba(255,59,48,0.6)":"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",marginTop:4}} title="Heatmap">🔥</button>}
       </div>
 
       {/* PDF page navigation */}
@@ -2963,6 +3080,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
               {renderMarkupSvg(markupStrokes)}
               {markupCurrent&&renderMarkupSvg([markupCurrent])}
             </svg>
+            {renderHeatmap()}
             {!markupMode&&renderPins()}
           </div>
         ):isPdf?(
@@ -2979,6 +3097,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
                 {markupCurrent&&renderMarkupSvg([markupCurrent])}
               </svg>
             )}
+            {!pdfLoading&&!pdfError&&renderHeatmap()}
             {!markupMode&&!pdfLoading&&!pdfError&&renderPins()}
           </div>
         ):(
