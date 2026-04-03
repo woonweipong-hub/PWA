@@ -557,26 +557,31 @@ function AuthScreen({onAuth,onFullSetup}){
         {/* Feature Status Checklist */}
         <div style={{textAlign:"left"}}>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:800,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",marginBottom:16}}>ALL FEATURES ({[
-            ["Auth & Onboarding",["Login / Sign up","Password reset","One-step registration + company setup","Auto-recover session","Install as app","Server URL config"]],
+            ["Auth & Onboarding",["Login / Sign up","Password reset","Password visibility toggle","One-step registration + company setup","Auto-recover session","Install as app","Server URL config"]],
             ["Team",["Invite members (link + code)","Role-based access (Admin, Manager, Inspector, Viewer)","Edit roles / remove members","Permission matrix"]],
             ["Projects",["Create / rename projects","Switch active project","Archive / restore projects"]],
-            ["Defect Logging",["Log defect with title, severity, location","Custom entry types (Site Checks, Safety Audit, etc.)","Multi-level location (Level > Zone > Room > Grid)","Snap or upload up to 10 photos","AI photo analysis (Gemini, Ollama, GPT)","Voice-to-text (title, description)","Component + issue selector","Assign to team member","Cost & time tracking fields","Batch logging (same location)"]],
-            ["Defect Management",["View all entries with status/severity filters","Defect detail view with photos","Update status (Open > In Progress > Done > Verified > Closed)","Add comments (text + voice)","Delete defect (Admin only)","Telegram alerts on status change"]],
-            ["Dashboard",["Real-time stats (Open / In Progress / Done)","Critical defect alerts","Severity breakdown chart","Recent defects feed","Live sync indicator","Admin analytics (entries/users/photos/projects/AI)"]],
-            ["Reports",["Site report with charts + defect list","Filter by severity / status / assignee / date","CSV export","Email report (EmailJS)"]],
-            ["Settings",["Telegram bot setup + test","AI setup — Gemini / Ollama / OpenAI","Email report setup","Daily AI usage limit","Storage (PocketBase / Local Path / Google Drive)"]],
-            ["Profile",["View profile info","Sign out with credential cleanup"]],
+            ["Entry Logging",["Log entry with title, severity, location","4 default types + custom entry types","Custom type manager (icon & color picker)","Multi-level location (Level > Zone > Room > Grid)","Snap or upload up to 10 photos","AI photo analysis (Gemini, Ollama, GPT)","Voice-to-text (title, description, search)","Component + issue selector (93 components, 517 issues)","Assign to team member","Cost & time tracking fields","Batch logging (same location)"]],
+            ["Entry Management",["Filter by status, severity, and entry type","Entry type badges on list items","Detail view with photos","Update status (Open > In Progress > Done > Verified > Closed)","Add comments (text + voice)","Delete entry (Admin only)","Telegram alerts on new entry and status change"]],
+            ["Dashboard",["Real-time stats (Open / In Progress / Done / Verified / Closed)","Critical alerts","Severity breakdown chart","Recent entries with type badges","Live sync indicator"]],
+            ["Admin Analytics",["Entries logged today / week / month / all time","Active users — who submitted today and this week","Entries per user ranking (bar chart)","Photos total and average per entry","Entries by entry type breakdown","Entries by project breakdown","AI usage stats (today / limit / coverage / provider)"]],
+            ["Reports",["Site report with charts + entry list","Filter by severity / status / assignee / date","CSV export","Email report (EmailJS)"]],
+            ["Storage",["PocketBase (default server)","Local path (self-hosted server/machine)","Google Drive (OAuth, personal cloud)"]],
+            ["Settings",["Telegram bot setup + test","AI multi-provider setup + test","Email report config","Daily AI usage limit","Storage mode selector"]],
+            ["Other",["Help guide with full user manual","Feedback form (suggestion, bug, praise)","Offline app shell (service worker)","Password visibility toggle"]],
           ].reduce((n,g)=>n+g[1].length,0)} features)</div>
           {[
-            ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as app",true],["Server URL config",true]]],
+            ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["Password visibility toggle",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as app",true],["Server URL config",true]]],
             ["Team",[["Invite members (link + code)",true],["Role-based access control",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
             ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
-            ["Defect Logging",[["Log with title, severity, location",true],["Custom entry types (user-defined)",true],["Multi-level location hierarchy",true],["Snap / upload up to 10 photos",true],["AI photo analysis (Gemini, Ollama, GPT)",true],["Voice-to-text input",true],["Component + issue selector",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
-            ["Defect Management",[["Status & severity filters",true],["Full detail view with photos",true],["Update status workflow",true],["Comments (text + voice)",true],["Delete defect (Admin)",true],["Telegram alerts",true]]],
-            ["Dashboard",[["Real-time stats overview",true],["Critical defect alerts",true],["Severity breakdown chart",true],["Recent defects feed",true],["Live sync indicator",true],["Admin analytics dashboard",true]]],
+            ["Entry Logging",[["Log with title, severity, location",true],["4 default types + custom entry types",true],["Custom type manager (icon & color picker)",true],["Multi-level location hierarchy",true],["Snap / upload up to 10 photos",true],["AI photo analysis (Gemini, Ollama, GPT)",true],["Voice-to-text input",true],["Component + issue selector (93 / 517)",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
+            ["Entry Management",[["Filter by status, severity, entry type",true],["Entry type badges on list items",true],["Detail view with photos",true],["Update status workflow",true],["Comments (text + voice)",true],["Delete entry (Admin)",true],["Telegram alerts",true]]],
+            ["Dashboard",[["Real-time stats overview",true],["Critical alerts",true],["Severity breakdown chart",true],["Recent entries with type badges",true],["Live sync indicator",true]]],
+            ["Admin Analytics",[["Entries today / week / month",true],["Active users & submissions",true],["Per-user ranking (bar chart)",true],["Photos stats (total & avg)",true],["By entry type breakdown",true],["By project breakdown",true],["AI usage stats",true]]],
             ["Reports",[["Site report with charts",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report (EmailJS)",true]]],
-            ["Settings",[["Telegram bot setup + test",true],["AI setup — Gemini / Ollama / OpenAI",true],["Email report config",true],["Daily AI usage limit",true],["Storage (PocketBase / Local / Google Drive)",true]]],
-            ["Coming Soon",[["Drawings / floor plan pins",false],["Profile editing",false],["Search across defects",false],["Offline mode",false],["Push notifications",false]]],
+            ["Storage",[["PocketBase (default)",true],["Local path (server/machine)",true],["Google Drive (OAuth)",true]]],
+            ["Settings",[["Telegram bot setup + test",true],["AI multi-provider setup + test",true],["Email report config",true],["Daily AI usage limit",true],["Storage mode selector",true]]],
+            ["Other",[["Help guide",true],["Feedback form",true],["Offline app shell",true],["Password visibility toggle",true]]],
+            ["Coming Soon",[["Drawings / floor plan pins",false],["Profile editing",false],["Search across entries",false],["Offline submission queue",false],["Push notifications",false]]],
           ].map(([cat,items])=>(
             <div key={cat} style={{marginBottom:16}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:6}}>{cat.toUpperCase()}</div>
@@ -2727,7 +2732,7 @@ function App(){
                 ]],
                 ["Logging an Entry",[
                   ["1. Entry Type","Select from defaults (Defect, Observation, Instruction, Update) or custom types created by your team. Tap '+ TYPE' to add new types like Site Checks, Safety Audit, etc."],
-                  ["2. Photo","Tap the camera area to snap or upload a photo. Up to 5 photos per entry."],
+                  ["2. Photo","Tap the camera area to snap or upload a photo. Up to 10 photos per entry."],
                   ["3. AI Analysis","If AI is set up (Gemini, Ollama, or OpenAI), tap 'ANALYZE WITH AI' to auto-fill title, severity, and description from your photo."],
                   ["4. Component & Issue","Tap to select from predefined lists, or tap TYPE to enter a custom value. Use the mic icon to search by voice."],
                   ["5. Location","Select Level, Zone, Room/Area, and Grid Ref. These carry forward in batch mode."],
@@ -2769,15 +2774,18 @@ function App(){
               <div style={{marginBottom:24}}>
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:10,borderBottom:"1px solid rgba(255,255,255,0.1)",paddingBottom:6}}>ALL FEATURES</div>
                 {[
-                  ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as app",true],["Server URL config",true]]],
+                  ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["Password visibility toggle",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as app",true],["Server URL config",true]]],
                   ["Team",[["Invite members (link + code)",true],["Role-based access control",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
                   ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
-                  ["Defect Logging",[["Log with title, severity, location",true],["Custom entry types (user-defined)",true],["Multi-level location hierarchy",true],["Snap / upload up to 10 photos",true],["AI photo analysis (Gemini, Ollama, GPT)",true],["Voice-to-text input",true],["Component + issue selector",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
-                  ["Defect Management",[["Status & severity filters",true],["Full detail view with photos",true],["Update status workflow",true],["Comments (text + voice)",true],["Delete defect (Admin)",true],["Telegram alerts",true]]],
-                  ["Dashboard",[["Real-time stats overview",true],["Critical defect alerts",true],["Severity breakdown chart",true],["Recent defects feed",true],["Live sync indicator",true],["Admin analytics dashboard",true]]],
+                  ["Entry Logging",[["Log with title, severity, location",true],["4 default types + custom entry types",true],["Custom type manager (icon & color picker)",true],["Multi-level location hierarchy",true],["Snap / upload up to 10 photos",true],["AI photo analysis (Gemini, Ollama, GPT)",true],["Voice-to-text input",true],["Component + issue selector (93 / 517)",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
+                  ["Entry Management",[["Filter by status, severity, entry type",true],["Entry type badges on list items",true],["Detail view with photos",true],["Update status workflow",true],["Comments (text + voice)",true],["Delete entry (Admin)",true],["Telegram alerts",true]]],
+                  ["Dashboard",[["Real-time stats overview",true],["Critical alerts",true],["Severity breakdown chart",true],["Recent entries with type badges",true],["Live sync indicator",true]]],
+                  ["Admin Analytics",[["Entries today / week / month",true],["Active users & submissions",true],["Per-user ranking (bar chart)",true],["Photos stats (total & avg)",true],["By entry type breakdown",true],["By project breakdown",true],["AI usage stats",true]]],
                   ["Reports",[["Site report with charts",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report (EmailJS)",true]]],
-                  ["Settings",[["Telegram bot setup + test",true],["AI setup — Gemini / Ollama / OpenAI",true],["Email report config",true],["Daily AI usage limit",true],["Storage options (PocketBase / Local Path / Google Drive)",true]]],
-                  ["Coming Soon",[["Drawings / floor plan pins",false],["Profile editing",false],["Search across defects",false],["Offline submission queue",false],["Push notifications",false]]],
+                  ["Storage",[["PocketBase (default)",true],["Local path (server/machine)",true],["Google Drive (OAuth)",true]]],
+                  ["Settings",[["Telegram bot setup + test",true],["AI multi-provider setup + test",true],["Email report config",true],["Daily AI usage limit",true],["Storage mode selector",true]]],
+                  ["Other",[["Help guide",true],["Feedback form",true],["Offline app shell",true],["Password visibility toggle",true]]],
+                  ["Coming Soon",[["Drawings / floor plan pins",false],["Profile editing",false],["Search across entries",false],["Offline submission queue",false],["Push notifications",false]]],
                 ].map(([cat,items])=>(
                   <div key={cat} style={{marginBottom:12}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.6)",letterSpacing:"0.08em",marginBottom:4}}>{cat.toUpperCase()}</div>
