@@ -31,7 +31,7 @@ function compressPhoto(dataUrl,maxPx=1800,quality=0.8){
 async function analyzeWithGemini(apiKey,base64Image){
   try{
     const b64=base64Image.split(",")[1];
-    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,{
+    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,{
       method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({contents:[{parts:[
         {inline_data:{mime_type:"image/jpeg",data:b64}},
@@ -944,8 +944,8 @@ function GeminiSettings({onClose,companyId}){
   const test=async()=>{
     setTesting(true);setTestRes(null);
     try{
-      const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key.trim()}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:"Reply with just: OK"}]}]})});
-      setTestRes(res.ok?"success":"fail");
+      const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key.trim()}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:"Reply with just: OK"}]}]})});
+      if(res.ok){setTestRes("success");}else{const err=await res.json().catch(()=>({}));console.warn("Gemini test error:",res.status,err);setTestRes("fail");}
     }catch{setTestRes("fail");}
     setTesting(false);
   };
