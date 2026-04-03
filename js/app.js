@@ -221,7 +221,7 @@ function PhotoMarkup({src,onSave,onCancel}){
   );
 }
 
-const AI_PROMPT='Analyze this construction defect photo. Respond in valid JSON only, no markdown: {"title":"max 5 word defect title","severity":"one of Critical Major Minor Observation","description":"2 sentence technical description"}';
+const AI_PROMPT='Analyze this construction defect photo. Respond in valid JSON only, no markdown: {"title":"max 5 word defect title","severity":"one of Critical Major Minor Observation","description":"2 sentence technical description","trade":"responsible trade e.g. Plumbing Electrical Waterproofing Painting Tiling Structural Carpentry Aircon General","safety_risk":1 to 5 integer where 5 is life-threatening hazard and 1 is cosmetic,"suggested_assignee":"trade role to assign e.g. Plumber Electrician Painter Tiler Contractor"}';
 
 async function analyzeWithGemini(apiKey,base64Image){
   try{
@@ -1811,7 +1811,7 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
 }
 
 // ── Log Entry (with AI + Batch + Multi-photo) ────────────────────
-function LogDefect({member,company,currentProject,members,onSave}){
+function LogDefect({member,company,currentProject,members,onSave,existingDefects=[]}){
   const blank={title:"",location:"",severity:"Major",description:"",assignee:member?.name||"",photos:[],
     component:"",issue:"",locationLevel:"",locationZone:"",locationSubzone:"",locationGrid:"",
     entryType:"Defect",dueDate:"",duration:"",costImpact:"",costResponsible:"",costAmount:"",costRemarks:""};
@@ -1867,11 +1867,43 @@ function LogDefect({member,company,currentProject,members,onSave}){
         if(result.title)set("title",result.title);
         if(result.severity&&SEVERITY.includes(result.severity))set("severity",result.severity);
         if(result.description)set("description",result.description);
+        if(result.trade)set("component",result.trade);
+        // Auto-escalate severity for high safety risk
+        if(result.safety_risk&&result.safety_risk>=4&&result.severity!=="Critical"){
+          set("severity","Critical");
+          result.severity="Critical";
+        }
+        // Auto-suggest assignee from team members if AI provides a trade/role
+        if(result.suggested_assignee&&assignees.length>0){
+          const suggestion=result.suggested_assignee.toLowerCase();
+          const match=assignees.find(a=>a.toLowerCase().includes(suggestion))||assignees.find(a=>suggestion.includes(a.toLowerCase()));
+          if(match)set("assignee",match);
+        }
       }else{
         alert("AI could not analyze the photo. Try a clearer image or log manually.");
       }
     }catch(e){alert("AI analysis error: "+e.message);}
     setAnalyzing(false);
+  };
+
+  // Duplicate detection — word overlap similarity
+  const findDuplicate=(title,location)=>{
+    if(!title||existingDefects.length===0)return null;
+    const words=title.toLowerCase().split(/\s+/).filter(w=>w.length>2);
+    if(words.length===0)return null;
+    const openEntries=existingDefects.filter(d=>!["Verified","Closed"].includes(d.status));
+    let bestMatch=null,bestScore=0;
+    for(const d of openEntries){
+      const dWords=(d.title||"").toLowerCase().split(/\s+/).filter(w=>w.length>2);
+      if(dWords.length===0)continue;
+      const overlap=words.filter(w=>dWords.includes(w)).length;
+      const score=overlap/Math.max(words.length,dWords.length);
+      // Boost score if same location
+      const sameLocation=location&&d.location&&d.location.toLowerCase().includes(location.toLowerCase().split(" > ")[0]);
+      const finalScore=sameLocation?score+0.2:score;
+      if(finalScore>bestScore){bestScore=finalScore;bestMatch=d;}
+    }
+    return bestScore>=0.6?bestMatch:null;
   };
 
   const submit=async()=>{
@@ -1880,6 +1912,11 @@ function LogDefect({member,company,currentProject,members,onSave}){
     const locParts=[form.locationLevel,form.locationZone,form.locationSubzone,form.locationGrid].filter(Boolean);
     const locationDisplay=locParts.join(" > ")||form.location||"";
     if(!locationDisplay&&!form.location){alert("Please select a location.");return;}
+
+    // Check for duplicates
+    const dup=findDuplicate(form.title,locationDisplay);
+    if(dup&&!confirm(`⚠️ Similar entry found:\n\n"${dup.title}"\n${dup.severity} · ${dup.status} · ${dup.location}\n${dup.defect_id||""}\n\nSubmit anyway?`))return;
+
     setSaving(true);
     try{
       const compressed=[];
@@ -2123,7 +2160,12 @@ function LogDefect({member,company,currentProject,members,onSave}){
             {aiResult&&(
               <div style={{background:"rgba(88,86,214,0.06)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:10,padding:"10px 12px",marginTop:8}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#5856d6",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif"}}>AI FILLED — REVIEW & EDIT ABOVE</div>
-                <div style={{fontSize:11,color:"rgba(0,0,0,0.5)"}}>{aiResult.description}</div>
+                <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",marginBottom:6}}>{aiResult.description}</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {aiResult.trade&&<span style={{fontSize:10,fontWeight:700,background:"rgba(88,86,214,0.1)",color:"#5856d6",padding:"2px 8px",borderRadius:10}}>🔧 {aiResult.trade}</span>}
+                  {aiResult.suggested_assignee&&<span style={{fontSize:10,fontWeight:700,background:"rgba(255,107,0,0.1)",color:"#ff6b00",padding:"2px 8px",borderRadius:10}}>👤 → {aiResult.suggested_assignee}</span>}
+                  {aiResult.safety_risk&&aiResult.safety_risk>=3&&<span style={{fontSize:10,fontWeight:700,background:aiResult.safety_risk>=4?"rgba(255,59,48,0.15)":"rgba(255,149,0,0.15)",color:aiResult.safety_risk>=4?"#ff3b30":"#ff9500",padding:"2px 8px",borderRadius:10}}>⚠️ Safety Risk: {aiResult.safety_risk}/5</span>}
+                </div>
               </div>
             )}
           </div>
@@ -3964,7 +4006,7 @@ function App(){
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:72}}>
         {tab==="dashboard"&&<Dashboard defects={defects} onView={setViewing} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} company={company} currentProject={currentProject} member={member} onDrawings={()=>setShowDrawings(true)} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
-        {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect}/>}
+        {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>Viewer access — defect logging disabled</div>}
         {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)}/>}
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company}/>}
