@@ -2469,8 +2469,9 @@ function DrawingViewer({drawing,onClose,company,member,defects}){
   // Filter pins for current page
   const pagePins=isPdf?pins.filter(p=>(p.pageNum||1)===currentPage):pins;
 
-  // Handle tap on drawing to place pin
+  // Handle tap on drawing to place pin or dismiss tooltip
   const handleDrawingClick=e=>{
+    if(activePin){setActivePin(null);return;}
     if(!placing)return;
     const target=isImage?imgRef.current:canvasRef.current;
     if(!target)return;
@@ -2538,25 +2539,31 @@ function DrawingViewer({drawing,onClose,company,member,defects}){
   };
   const onTouchEnd=()=>{lastPinchDist.current=null;};
 
+  // Active pin tooltip (tap to show/hide)
+  const[activePin,setActivePin]=useState(null);
+
   // Shared pin overlay
   const renderPins=()=>pagePins.map(p=>{
     const d=getDefect(p.entryId);
     const color=d?SEV_COLOR[d.severity]||"#ff6b00":"#8e8e93";
+    const isActive=activePin===p.id;
     return(
-      <div key={p.id} style={{position:"absolute",left:`${p.x}%`,top:`${p.y}%`,transform:"translate(-50%,-100%)",zIndex:5,cursor:"pointer"}}
-        onClick={e=>{e.stopPropagation();}}>
+      <div key={p.id} style={{position:"absolute",left:`${p.x}%`,top:`${p.y}%`,transform:"translate(-50%,-100%)",zIndex:isActive?15:5,cursor:"pointer"}}
+        onClick={e=>{e.stopPropagation();setActivePin(isActive?null:p.id);}}>
         <div style={{position:"relative"}}>
-          <svg width="24" height="32" viewBox="0 0 24 32">
-            <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20C24 5.4 18.6 0 12 0z" fill={color}/>
+          <svg width="28" height="36" viewBox="0 0 24 32">
+            <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20C24 5.4 18.6 0 12 0z" fill={color} stroke={isActive?"#fff":"none"} strokeWidth="2"/>
             <circle cx="12" cy="11" r="5" fill="#fff" opacity="0.9"/>
           </svg>
-          <div style={{position:"absolute",bottom:36,left:"50%",transform:"translateX(-50%)",background:"#1a1a1a",borderRadius:8,padding:"6px 10px",minWidth:120,display:"none",zIndex:20}} className="pin-tip">
-            {d?(<>
-              <div style={{fontSize:11,fontWeight:700,color:"#fff",marginBottom:2}}>{d.title}</div>
-              <div style={{fontSize:10,color:"rgba(255,255,255,0.5)"}}>{d.severity} · {d.status}</div>
-            </>):(<div style={{fontSize:11,color:"rgba(255,255,255,0.5)"}}>Entry not found</div>)}
-            {canPin&&<button onClick={e=>{e.stopPropagation();deletePin(p.id);}} style={{marginTop:4,background:"rgba(255,59,48,0.2)",border:"none",borderRadius:4,padding:"3px 8px",color:"#ff6b6b",fontSize:10,cursor:"pointer",width:"100%"}}>Remove pin</button>}
-          </div>
+          {isActive&&(
+            <div style={{position:"absolute",bottom:40,left:"50%",transform:"translateX(-50%)",background:"#1a1a1a",borderRadius:10,padding:"10px 14px",minWidth:160,zIndex:20,boxShadow:"0 4px 20px rgba(0,0,0,0.5)"}}>
+              {d?(<>
+                <div style={{fontSize:12,fontWeight:700,color:"#fff",marginBottom:3}}>{d.title}</div>
+                <div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginBottom:6}}>{d.severity} · {d.status}</div>
+              </>):(<div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginBottom:6}}>Entry not found</div>)}
+              {canPin&&<button onClick={e=>{e.stopPropagation();deletePin(p.id);setActivePin(null);}} style={{width:"100%",background:"rgba(255,59,48,0.2)",border:"none",borderRadius:6,padding:"6px 10px",color:"#ff6b6b",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>REMOVE PIN</button>}
+            </div>
+          )}
         </div>
       </div>
     );
