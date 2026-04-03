@@ -3665,7 +3665,7 @@ function App(){
   const[showUsers,setShowUsers]=useState(false);
   const[showProjects,setShowProjects]=useState(false);
   const[showProfile,setShowProfile]=useState(false);
-  const[showHelp,setShowHelp]=useState(false);
+  const[showHelp,setShowHelp]=useState(false);const[helpTab,setHelpTab]=useState("help");
   const[showFeedback,setShowFeedback]=useState(false);
   const[showStorage,setShowStorage]=useState(false);
   const[showDrawings,setShowDrawings]=useState(false);
@@ -4035,153 +4035,117 @@ function App(){
           <div style={{maxWidth:430,margin:"0 auto",padding:"0 0 40px"}}>
             <div style={{background:"#1a1a1a",padding:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:1}}>
               <button onClick={()=>setShowHelp(false)} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>← BACK</button>
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff"}}>HELP</div>
+              <div style={{display:"flex",gap:0,flex:1}}>
+                <button onClick={()=>setHelpTab("help")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="help"?"2px solid #ff6b00":"2px solid transparent",color:helpTab==="help"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>HELP</button>
+                <button onClick={()=>setHelpTab("features")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="features"?"2px solid #ff6b00":"2px solid transparent",color:helpTab==="features"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>FEATURES</button>
+              </div>
             </div>
             <div style={{padding:"20px 16px"}}>
-              {[
-                ["Getting Started",[
-                  ["What is SiteShrimp?","A real-time, paperless mobile app for construction site management. Track defects, site checks, progress updates, safety audits, and feedback — all with photos, voice input, and AI. Built for HDB inspections, CPC handovers, contractor coordination, and daily site walks. Your whole team sees updates instantly, no paper forms needed."],
-                  ["First time?","After signing up and creating your company, set up integrations using the header icons: AI (robot icon), Telegram (paper plane icon). Then invite your team via Team Management (people icon, Admin only)."],
-                ]],
-                ["Navigation (Bottom Bar)",[
-                  ["Dashboard","Overview of all active entries — status counts, severity chart, critical alerts, and recent items."],
-                  ["Log (+)","Create a new entry. Select entry type, snap a photo, use AI to auto-fill, or speak into any text field using the mic button."],
-                  ["Defects","Search and browse all entries. Use the search bar to find entries by title, description, component, assignee, or location. Matching text is highlighted in orange. Use filters for status, severity, and entry type."],
-                  ["Report","Filtered statistics with charts. Export as CSV or send an email report to your team."],
-                  ["Admin (lightning, Admin only)","Analytics dashboard — entries by day/week/month, per-user rankings, photos stats, entries by project, AI usage. Visible to Admin role only."],
-                ]],
-                ["Drawings",[
-                  ["Accessing Drawings","Tap the 'Floor Plans & Drawings' card on the Dashboard to open the Drawings panel. Each card shows pin count and severity badges."],
-                  ["Upload","Admin and Manager can upload floor plans — JPG, PNG, TIF, or PDF. Max 50MB. PDFs render via PDF.js with page navigation."],
-                  ["Viewing","Tap a drawing to open it full-screen. Use + / − buttons or pinch to zoom. Drag to pan. Two-finger drag works even in pin placement mode."],
-                  ["Placing Pins","Tap 'ADD PIN', then tap on the drawing. Link to an existing entry, or tap 'CREATE NEW ENTRY & PIN HERE' to log a defect directly from the floor plan with photo, title, and severity."],
-                  ["Pin Style","Ring-style indicators show severity initial (C/M/O). Critical + Open pins pulse to draw attention. Tap a pin to see details or remove it."],
-                  ["Heatmap","Tap the 🔥 button to toggle a severity-weighted heatmap overlay. Red zones highlight problem areas at a glance."],
-                  ["Drawing Markup","Tap '✏ MARKUP' to draw directly on the floor plan — freehand, arrows, or circles in multiple colors. Undo and clear available."],
-                ]],
-                ["Header Icons",[
-                  ["Company & Project (top left)","Tap to switch between projects or create new ones."],
-                  ["Active count","Shows number of entries not yet Verified or Closed."],
-                  ["AI Search (💬)","Ask questions in natural language — 'show critical plumbing in Block A'. Speak or type. AI converts to filters and shows results."],
-                  ["AI Setup (robot)","Set up AI photo analysis — choose Google Gemini (free cloud), Ollama (local AI on your machine), or OpenAI/GPT."],
-                  ["Telegram (plane)","Connect a Telegram bot to get instant notifications when defects are logged or updated."],
-                  ["Storage (server icon)","Configure where photos are stored — PocketBase (default), local folder path, or your own Google Drive."],
-                  ["Team (people, Admin only)","Invite members, set roles, manage your team."],
-                  ["? (Help)","This guide — how to use the app."],
-                  ["Chat (Feedback)","Share suggestions, report bugs, or tell us what you think."],
-                  ["Profile (avatar)","View your profile, email report settings, or sign out."],
-                ]],
-                ["Logging an Entry",[
-                  ["1. Entry Type","Select from defaults (Defect, Observation, Instruction, Update) or custom types created by your team. Tap '+ TYPE' to add new types like Site Checks, Safety Audit, etc."],
-                  ["2. Photo","Tap the camera area to snap or upload a photo. Up to 10 photos per entry."],
-                  ["3. AI Analysis","If AI is set up (Gemini, Ollama, or OpenAI), tap 'ANALYZE WITH AI' to auto-fill title, severity, description, trade, and suggested assignee. Safety hazards (risk ≥4) are auto-escalated to Critical."],
-                  ["4. Component & Issue","Tap to select from predefined lists, or tap TYPE to enter a custom value. Use the mic icon to search by voice."],
-                  ["5. Location","Select Level, Zone, Room/Area, and Grid Ref. These carry forward in batch mode."],
-                  ["6. Voice Input","Tap the mic icon next to any text field to speak instead of type. Works on Title, Description, Grid Ref, Cost fields, and search bars."],
-                  ["7. Batch Mode","After submitting, choose 'Log another at same location' to quickly log multiple entries. Location fields stay pre-filled."],
-                  ["8. Duplicate Check","On submit, the app checks for similar open entries in the same zone. If found, a confirmation dialog shows the match — proceed or review the existing entry."],
-                ]],
-                ["Entry Status Flow",[
-                  ["Open","New entry, not yet actioned."],
-                  ["In Progress","Work has started on this item."],
-                  ["Done","Work completed, awaiting verification."],
-                  ["Verified","Checked and confirmed by Manager/Admin. Prompts for a verification photo."],
-                  ["Closed","Fully resolved and archived. Before/after photo comparison shows automatically."],
-                ]],
-                ["Comments & Timeline",[
-                  ["Resolution Timeline","Comments appear as a visual timeline with colored dots — orange for comments, green for verification, purple for status changes."],
-                  ["Photo Comments","Attach photos to comments using the 📷 button. Great for documenting progress."],
-                  ["Quick Reactions","React to timeline entries with 👍 ✅ ⚠️ 🔧 for fast acknowledgment."],
-                  ["Photo Markup","Tap any photo thumbnail in the entry form to annotate it — draw arrows, circles, freehand, or add text labels."],
-                ]],
-                ["Profile",[
-                  ["Edit Profile","Tap your avatar in the header to open profile settings. You can change your display name, email, and password."],
-                ]],
-                ["Roles & Permissions",[
-                  ["Admin","Full access — manage team, delete entries, all features."],
-                  ["Manager","Log entries, update status, manage projects, send reports."],
-                  ["Inspector","Log entries, add comments, update status on own items."],
-                  ["Viewer","Read-only — view entries and reports only."],
-                ]],
-                ["Tips",[
-                  ["Offline","Works fully offline! Entries are queued in IndexedDB and auto-sync when you're back online. An orange badge shows queued count in the header and Dashboard. Tap it to sync manually."],
-                  ["Install as App","Tap the INSTALL button on the login screen, or use your browser's 'Add to Home Screen' option for a native app experience."],
-                  ["Multiple Projects","Use the project selector (top left) to switch between projects. Each project has its own set of entries."],
-                  ["CSV Export","In the Report tab, use CSV EXPORT to download filtered data for Excel or Google Sheets."],
-                  ["Storage Options","Tap the storage icon in the header to choose where photos are saved — default PocketBase server, a local folder on your machine, or your own Google Drive account."],
-                ]],
-              ].map(([section,items])=>(
-                <div key={section} style={{marginBottom:24}}>
-                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:10,borderBottom:"1px solid rgba(255,255,255,0.1)",paddingBottom:6}}>{section.toUpperCase()}</div>
-                  {items.map(([title,desc])=>(
-                    <div key={title} style={{marginBottom:12}}>
-                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#fff",marginBottom:2}}>{title}</div>
-                      <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.5}}>{desc}</div>
-                    </div>
-                  ))}
-                </div>
-              ))}
-              {/* Features Checklist */}
-              <div style={{marginBottom:24}}>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:10,borderBottom:"1px solid rgba(255,255,255,0.1)",paddingBottom:6}}>ALL FEATURES</div>
-                {[
-                  ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["Password visibility toggle",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as PWA",true],["Server URL config",true]]],
-                  ["Team",[["Invite members (link + code)",true],["Role-based access (Admin, Manager, Inspector, Viewer)",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
-                  ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
-                  ["Entry Logging",[["Log with title, severity, location",true],["4 default types + custom entry types",true],["Custom type manager (icon & color picker)",true],["Multi-level location (Level > Zone > Room > Grid)",true],["Snap / upload up to 10 photos",true],["Photo markup editor (arrows, circles, freehand, text)",true],["AI photo analysis (Gemini, Ollama, GPT)",true],["AI auto-assign trade + suggested assignee",true],["AI safety risk scoring (auto-escalate Critical)",true],["Duplicate detection (similarity check on submit)",true],["Voice-to-text input",true],["Component + issue selector (93 / 517)",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
-                  ["Entry Management",[["Full-text search with highlighting",true],["AI natural language search (voice + text)",true],["Filter by status, severity, entry type",true],["Collapsible filters with clear button",true],["Entry type badges on list & detail",true],["Detail view with all fields + photos",true],["Update status workflow (5 stages)",true],["Verification photo on Close/Verify",true],["Before/after photo comparison slider",true],["Resolution timeline (visual, color-coded)",true],["Photo comments in timeline",true],["Quick reactions (thumbs, check, warn, fix)",true],["Delete entry (Admin only)",true],["Telegram alerts on new entry & status change",true]]],
-                  ["Drawings & Floor Plans",[["Upload floor plans (JPG, PNG, TIF, PDF)",true],["PDF rendering via PDF.js with page navigation",true],["Zoom, pan & pinch-to-zoom (mobile)",true],["Ring-style defect pins with severity initial",true],["Critical pin pulse animation",true],["Pin tooltip with entry details + remove",true],["Quick-pin: create entry directly from drawing",true],["Defect heatmap overlay (severity-weighted)",true],["Drawing-level markup (freehand, arrows, circles)",true],["Markup color picker + undo/clear",true],["Pin count & severity badges on cards",true],["PDF thumbnail preview in list",true]]],
-                  ["Dashboard",[["Real-time status counts (5 stages)",true],["Critical alerts banner",true],["Severity breakdown chart",true],["Recent entries with type badges",true],["Live sync indicator + queue count",true]]],
-                  ["Admin Analytics",[["Entries today / week / month / all time",true],["Active users — who submitted today & this week",true],["Per-user ranking bar chart",true],["Photos stats (total & avg per entry)",true],["Entries by entry type breakdown",true],["Entries by project breakdown",true],["AI usage stats (daily limit, coverage, provider)",true]]],
-                  ["Reports",[["Site report with charts + entry list",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report via EmailJS",true]]],
-                  ["Storage",[["PocketBase (default server)",true],["Local path (self-hosted)",true],["Google Drive (OAuth)",true]]],
-                  ["Settings",[["Telegram bot setup + test",true],["AI multi-provider setup + test",true],["Email report config",true],["Daily AI usage limit",true],["Storage mode selector",true]]],
-                  ["Offline",[["Save entries to IndexedDB when offline",true],["Queued badge in header + Dashboard",true],["Auto-sync when back online",true],["Manual sync tap",true],["Queued/synced status indicator",true]]],
-                  ["Account",[["Edit display name",true],["Change email",true],["Change password",true]]],
-                  ["Other",[["Comprehensive help guide",true],["Feedback form (suggestion, bug, praise)",true],["Cached app shell (service worker)",true],["Photo compression (auto-resize)",true]]],
-                ].map(([cat,items])=>(
-                  <div key={cat} style={{marginBottom:12}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.6)",letterSpacing:"0.08em",marginBottom:4}}>{cat.toUpperCase()}</div>
-                    {items.map(([feat,done])=>(
-                      <div key={feat} style={{display:"flex",gap:8,alignItems:"center",padding:"3px 0",fontSize:12,color:done?"rgba(255,255,255,0.45)":"rgba(255,255,255,0.2)"}}>
-                        <span style={{fontSize:10,flexShrink:0,width:14,textAlign:"center"}}>{done?"✓":"○"}</span>
-                        <span>{feat}</span>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-              {/* Test Results */}
-              <div style={{marginBottom:24}}>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:10,borderBottom:"1px solid rgba(255,255,255,0.1)",paddingBottom:6}}>VERIFICATION STATUS</div>
-                <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:12,padding:16,marginBottom:14}}>
-                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#30d158",lineHeight:1}}>ALL</div>
-                    <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#30d158"}}>FEATURES VERIFIED</div><div style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>Code-level verification · April 2026</div></div>
-                  </div>
+
+              {/* ── HELP TAB ── */}
+              {helpTab==="help"&&(
+                <div>
                   {[
-                    ["Auth & Onboarding","7/7"],["Team","4/4"],["Projects","3/3"],["Entry Logging","15/15"],["Entry Management","14/14"],
-                    ["Drawings & Floor Plans","12/12"],["Dashboard","5/5"],["Admin Analytics","7/7"],["Reports","4/4"],["Storage","3/3"],
-                    ["Settings","5/5"],["Offline","5/5"],["Account","3/3"],["Other","4/4"],
-                  ].map(([cat,score])=>(
-                    <div key={cat} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",fontSize:11}}>
-                      <span style={{color:"rgba(255,255,255,0.45)"}}>{cat}</span>
-                      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:score.startsWith("0")?"rgba(255,255,255,0.2)":"#30d158"}}>{score}</span>
+                    ["The Problem",[
+                      ["","Construction site management remains fragmented. Defects, site instructions, safety checks, and progress updates are often tracked across disconnected tools, creating lost records, delayed action, and unnecessary reporting effort."],
+                    ]],
+                    ["What SiteShrimp Does",[
+                      ["","SiteShrimp helps teams manage defects, inspections, progress updates, safety audits, and site feedback in one place. It makes site reporting faster, clearer, and more accountable with photos, voice input, and AI-assisted workflows."],
+                    ]],
+                    ["First-Time Setup",[
+                      ["1.","Sign up and create your company."],
+                      ["2.","Connect AI and Telegram from the header."],
+                      ["3.","Invite your team in Team Management (Admin only)."],
+                      ["4.","Create or select a project before logging entries."],
+                    ]],
+                    ["Main Navigation",[
+                      ["Dashboard","View active items, status counts, severity summary, alerts, and recent entries."],
+                      ["Log (+)","Create a new entry with photos, voice input, and AI-assisted filling."],
+                      ["Defects","Browse, search, and filter entries by keyword, location, assignee, status, severity, or type."],
+                      ["Report","Review charts, filtered statistics, and export or email reports."],
+                      ["Admin","Manage analytics, projects, team settings, and system controls (Admin only)."],
+                    ]],
+                    ["Logging an Entry",[
+                      ["1.","Choose an entry type such as Defect, Observation, Instruction, or Update."],
+                      ["2.","Add or capture photos on site."],
+                      ["3.","Use AI analysis to suggest the title, severity, description, trade, and assignee."],
+                      ["4.","Fill in component, issue, and location details."],
+                      ["5.","Submit the entry, or continue in batch mode if logging multiple items in the same area."],
+                    ]],
+                    ["Drawings",[
+                      ["","Open Floor Plans & Drawings from the Dashboard to upload or view drawings. You can place pins on plans, link them to existing entries, create entries directly from a drawing, and use the heatmap to spot problem areas quickly."],
+                    ]],
+                    ["Entry Status Flow",[
+                      ["Open","New item logged and awaiting action."],
+                      ["In Progress","Work has started on this item."],
+                      ["Done","Work has been completed and is pending review."],
+                      ["Verified","The item has been checked and confirmed."],
+                      ["Closed","The item is fully resolved and archived."],
+                    ]],
+                    ["Header Tools",[
+                      ["Project selector","Switch between projects or create a new one."],
+                      ["Active count","Shows how many items are still active."],
+                      ["AI Search","Search in natural language, such as 'show critical plumbing in Block A'."],
+                      ["AI Setup","Connect and configure your preferred AI provider."],
+                      ["Telegram","Receive notifications when items are logged or updated."],
+                      ["Storage","Choose where photos and files are stored."],
+                      ["Team","Invite members and manage roles."],
+                      ["Help","Open this guide."],
+                      ["Feedback","Send suggestions or report bugs."],
+                      ["Profile","Manage your account settings and sign out."],
+                    ]],
+                    ["Practical Tips",[
+                      ["Offline use","You can continue logging entries while offline and sync them later when you reconnect."],
+                      ["Multiple projects","Use the project selector to switch between project workspaces."],
+                      ["CSV export","Use the Report tab to download filtered data for sharing or analysis."],
+                      ["Voice input","Use the mic button in supported fields to speak instead of typing."],
+                      ["Batch logging","If you are logging several issues in the same area, reuse the same location to work faster."],
+                    ]],
+                  ].map(([section,items])=>(
+                    <div key={section} style={{marginBottom:24}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:10,borderBottom:"1px solid rgba(255,255,255,0.1)",paddingBottom:6}}>{section.toUpperCase()}</div>
+                      {items.map(([title,desc],i)=>(
+                        <div key={i} style={{marginBottom:10}}>
+                          {title&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#fff",marginBottom:2}}>{title}</div>}
+                          <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.6}}>{desc}</div>
+                        </div>
+                      ))}
                     </div>
                   ))}
                 </div>
-                <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>PLATFORM COMPATIBILITY</div>
-                {[
-                  ["Mobile (iOS Safari, Android Chrome)","✓ Full support"],
-                  ["Desktop (Chrome, Firefox, Edge)","✓ Full support"],
-                  ["PWA Installed Mode","✓ Offline shell + install"],
-                ].map(([p,s])=>(
-                  <div key={p} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",fontSize:11}}>
-                    <span style={{color:"rgba(255,255,255,0.4)"}}>{p}</span>
-                    <span style={{color:"#30d158",fontWeight:600}}>{s}</span>
-                  </div>
-                ))}
-              </div>
+              )}
+
+              {/* ── FEATURES TAB ── */}
+              {helpTab==="features"&&(
+                <div>
+                  {[
+                    ["Authentication & Onboarding",["Login / Sign up","Password reset","One-step registration + company setup","Auto-recover session","Install as app","Server URL config"]],
+                    ["Team & Roles",["Invite members (link + code)","Role-based access (Admin, Manager, Inspector, Viewer)","Edit roles / remove members","Permission matrix"]],
+                    ["Project Management",["Create / rename projects","Switch active project","Archive / restore projects"]],
+                    ["Entry Logging",["Log with title, severity, location","4 default + custom entry types with icon & color","Multi-level location (Level > Zone > Room > Grid)","Up to 10 photos with markup editor","AI photo analysis (Gemini, Ollama, GPT)","AI auto-assign trade + suggested assignee","AI safety risk scoring (auto-escalate Critical)","Duplicate detection on submit","Voice-to-text on all fields","Component + issue selector (93 / 517)","Cost & time tracking","Batch logging mode"]],
+                    ["Entry Management",["Full-text search with highlighting","AI natural language search (voice + text)","Filter by status, severity, entry type","Resolution timeline with photo comments","Quick reactions on timeline entries","Verification photo on Close / Verify","Before / after photo comparison","Update status workflow (5 stages)","Delete entry (Admin only)","Telegram alerts"]],
+                    ["Drawings & Floor Plans",["Upload JPG, PNG, TIF, PDF (max 50MB)","PDF rendering with page navigation","Zoom, pan, pinch-to-zoom","Ring-style pins with severity pulse","Quick-pin: create entry from drawing","Defect heatmap overlay","Drawing-level markup (freehand, arrows, circles)","Pin count & severity badges"]],
+                    ["Dashboard & Analytics",["Real-time status counts + critical alerts","Severity breakdown chart","Admin analytics (per-user, per-type, per-project)","AI usage stats"]],
+                    ["Reports & Exports",["Site report with charts","Filter by severity / status / assignee / date","CSV export","Email report via EmailJS"]],
+                    ["AI Integrations",["Google Gemini (cloud)","Ollama (local / self-hosted)","OpenAI / GPT (API-compatible)","Auto-fill title, severity, description, trade, assignee","Safety risk scoring","Natural language search"]],
+                    ["Telegram Notifications",["Bot setup + test","Alerts on new entries","Alerts on status changes + comments"]],
+                    ["Storage Options",["PocketBase (default server)","Local path (self-hosted)","Google Drive (OAuth)"]],
+                    ["Offline Sync",["Save entries to IndexedDB when offline","Queued badge in header + Dashboard","Auto-sync when back online","Manual sync"]],
+                    ["Account Settings",["Edit display name + job title","Change email","Change password"]],
+                    ["Platform Compatibility",["Mobile (iOS Safari, Android Chrome)","Desktop (Chrome, Firefox, Edge)","Installable as app (PWA)","Offline-capable"]],
+                  ].map(([cat,items])=>(
+                    <div key={cat} style={{marginBottom:18}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:6}}>{cat.toUpperCase()}</div>
+                      {items.map((feat,i)=>(
+                        <div key={i} style={{display:"flex",gap:8,alignItems:"center",padding:"3px 0",fontSize:12,color:"rgba(255,255,255,0.5)"}}>
+                          <span style={{fontSize:10,color:"#30d158",flexShrink:0}}>✓</span>
+                          <span>{feat}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div style={{textAlign:"center",marginTop:20}}>
                 <div style={{fontSize:11,color:"rgba(255,255,255,0.2)",fontFamily:"'Barlow Condensed',sans-serif"}}>SiteShrimp v2 — Built for teams that deliver</div>
