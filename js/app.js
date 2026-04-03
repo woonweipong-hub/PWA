@@ -847,7 +847,7 @@ function AuthScreen({onAuth,onFullSetup}){
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#30d158",lineHeight:1,marginBottom:4}}>FEATURES VERIFIED</div>
           <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginBottom:10}}>All features code-verified · April 2026</div>
           <div style={{display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap"}}>
-            {[["Mobile","iOS · Android"],["Desktop","Chrome · Firefox · Edge"],["PWA","Install · Offline"]].map(([p,d])=>(
+            {[["Mobile","iOS · Android"],["Desktop","Chrome · Firefox · Edge"],["APP","Install · Offline"]].map(([p,d])=>(
               <div key={p} style={{background:"rgba(255,255,255,0.05)",borderRadius:8,padding:"6px 12px"}}>
                 <div style={{fontSize:10,fontWeight:700,color:"#30d158",fontFamily:"'Barlow Condensed',sans-serif"}}>{p}</div>
                 <div style={{fontSize:9,color:"rgba(255,255,255,0.3)"}}>{d}</div>
