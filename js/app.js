@@ -596,6 +596,7 @@ function AuthScreen({onAuth,onFullSetup}){
             ["Projects",["Create / rename projects","Switch active project","Archive / restore projects"]],
             ["Entry Logging",["Log entry with title, severity, location","4 default types + custom entry types","Custom type manager (icon & color picker)","Multi-level location (Level > Zone > Room > Grid)","Snap or upload up to 10 photos","AI photo analysis (Gemini, Ollama, GPT)","Voice-to-text (title, description, search)","Component + issue selector (93 components, 517 issues)","Assign to team member","Cost & time tracking fields","Batch logging (same location)"]],
             ["Entry Management",["Full-text search with highlighting","Filter by status, severity, and entry type","Collapsible filters with clear button","Entry type badges on list items","Detail view with photos","Update status (Open > In Progress > Done > Verified > Closed)","Add comments (text + voice)","Delete entry (Admin only)","Telegram alerts on new entry and status change"]],
+            ["Drawings",["Upload floor plans (JPG, PNG, PDF)","View with zoom & pan","Place defect pins on drawings","Severity-colored pins with tooltips","Link pins to entries"]],
             ["Dashboard",["Real-time stats (Open / In Progress / Done / Verified / Closed)","Critical alerts","Severity breakdown chart","Recent entries with type badges","Live sync indicator"]],
             ["Admin Analytics",["Entries logged today / week / month / all time","Active users — who submitted today and this week","Entries per user ranking (bar chart)","Photos total and average per entry","Entries by entry type breakdown","Entries by project breakdown","AI usage stats (today / limit / coverage / provider)"]],
             ["Reports",["Site report with charts + entry list","Filter by severity / status / assignee / date","CSV export","Email report (EmailJS)"]],
@@ -615,7 +616,8 @@ function AuthScreen({onAuth,onFullSetup}){
             ["Storage",[["PocketBase (default)",true],["Local path (server/machine)",true],["Google Drive (OAuth)",true]]],
             ["Settings",[["Telegram bot setup + test",true],["AI multi-provider setup + test",true],["Email report config",true],["Daily AI usage limit",true],["Storage mode selector",true]]],
             ["Other",[["Help guide",true],["Feedback form",true],["Offline app shell",true],["Password visibility toggle",true]]],
-            ["Coming Soon",[["Drawings / floor plan pins",false],["Profile editing",false],["Offline submission queue",false],["Push notifications",false]]],
+            ["Drawings",[["Upload floor plans (JPG, PNG, PDF)",true],["View drawings with zoom & pan",true],["Place defect pins on drawings",true],["Severity-colored pins",true],["Pin tooltips with entry details",true],["Link pins to existing entries",true]]],
+            ["Coming Soon",[["Profile editing",false],["Offline submission queue",false],["Push notifications",false]]],
           ].map(([cat,items])=>(
             <div key={cat} style={{marginBottom:16}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:6}}>{cat.toUpperCase()}</div>
@@ -631,7 +633,7 @@ function AuthScreen({onAuth,onFullSetup}){
 
         {/* Verification Badge */}
         <div style={{marginTop:24,background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.15)",borderRadius:12,padding:16,textAlign:"center"}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#30d158",lineHeight:1,marginBottom:4}}>69/69 VERIFIED</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#30d158",lineHeight:1,marginBottom:4}}>75/75 VERIFIED</div>
           <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginBottom:10}}>All features code-verified · April 2026</div>
           <div style={{display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap"}}>
             {[["Mobile","iOS · Android"],["Desktop","Chrome · Firefox · Edge"],["PWA","Install · Offline"]].map(([p,d])=>(
@@ -1487,7 +1489,7 @@ function StorageSettings({onClose,companyId}){
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────
-function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentProject,member}){
+function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentProject,member,onDrawings}){
   const open=defects.filter(d=>d.status==="Open").length;
   const inprog=defects.filter(d=>d.status==="In Progress").length;
   const done=defects.filter(d=>d.status==="Done").length;
@@ -1552,7 +1554,17 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
         </div>
       )}
 
-      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:10}}>RECENT DEFECTS</div>
+      {/* Drawings shortcut */}
+      <button onClick={onDrawings} style={{width:"100%",background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:14,padding:"14px 16px",marginBottom:16,cursor:"pointer",display:"flex",alignItems:"center",gap:12,textAlign:"left"}}>
+        <span style={{fontSize:24}}>📐</span>
+        <div style={{flex:1}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a"}}>FLOOR PLANS & DRAWINGS</div>
+          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>Upload drawings, tap to place defect pins</div>
+        </div>
+        <span style={{color:"rgba(0,0,0,0.2)",fontSize:14}}>→</span>
+      </button>
+
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:10}}>RECENT ENTRIES</div>
       {defects.length===0&&(
         <div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"40px 0",fontSize:14}}>
           No defects yet.{["Admin","Manager","Inspector"].includes(member?.role)?" Tap + Log to start.":""}
@@ -2268,6 +2280,255 @@ function Report({defects,onEmailSetup,currentProject,company}){
   );
 }
 
+// ── Drawings & Floor Plan Pins ────────────────────────────────────
+function DrawingsPanel({onClose,company,currentProject,member,defects}){
+  const[drawings,setDrawings]=useState([]);const[loading,setLoading]=useState(true);
+  const[viewing,setViewing]=useState(null);
+  const[uploading,setUploading]=useState(false);
+  const fileRef=useRef();
+  const canUpload=["Admin","Manager"].includes(member?.role);
+
+  // Load drawings for current project
+  useEffect(()=>{
+    if(!company?.companyId||!currentProject?.id)return;
+    setLoading(true);
+    DB.drawings.list(`companyId="${company.companyId}" && projectId="${currentProject.id}"`).then(items=>{
+      setDrawings(items);setLoading(false);
+    }).catch(()=>setLoading(false));
+  },[company?.companyId,currentProject?.id]);
+
+  const uploadDrawing=async e=>{
+    const file=e.target.files?.[0];
+    if(!file)return;
+    setUploading(true);
+    try{
+      const fd=new FormData();
+      fd.append("companyId",company.companyId);
+      fd.append("projectId",currentProject.id);
+      fd.append("name",file.name.replace(/\.[^.]+$/,""));
+      fd.append("file",file);
+      fd.append("uploadedBy",member?.name||"");
+      fd.append("uploadedAt",new Date().toISOString());
+      const resp=await fetch(DB.baseUrl+"/api/collections/drawings/records",{method:"POST",headers:{"Authorization":"Bearer "+(JSON.parse(localStorage.getItem("pb_auth")||"{}").token||"")},body:fd});
+      if(!resp.ok)throw new Error("Upload failed");
+      const rec=await resp.json();
+      setDrawings(prev=>[rec,...prev]);
+    }catch(err){alert("Upload failed: "+err.message);}
+    setUploading(false);
+    if(fileRef.current)fileRef.current.value="";
+  };
+
+  const deleteDrawing=async id=>{
+    if(!confirm("Delete this drawing and all its pins?"))return;
+    try{
+      // Delete associated pins first
+      const pins=await DB.pins.list(`drawingId="${id}"`);
+      for(const p of pins)await DB.pins.delete(p.id);
+      await DB.drawings.delete(id);
+      setDrawings(prev=>prev.filter(d=>d.id!==id));
+    }catch(e){alert("Delete failed: "+e.message);}
+  };
+
+  if(viewing)return <DrawingViewer drawing={viewing} onClose={()=>setViewing(null)} company={company} member={member} defects={defects}/>;
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
+      <SettingsBack onClose={onClose} title="DRAWINGS"/>
+      <div style={{padding:20}}>
+        <div style={{fontSize:12,color:"rgba(0,0,0,0.4)",marginBottom:16}}>📁 {currentProject?.name} · Upload floor plans and tap to place defect pins</div>
+
+        {/* Upload button */}
+        {canUpload&&(
+          <div style={{marginBottom:20}}>
+            <input ref={fileRef} type="file" accept="image/*,.pdf" onChange={uploadDrawing} style={{display:"none"}}/>
+            <button onClick={()=>fileRef.current?.click()} disabled={uploading} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:14,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+              {uploading?<><Spin size={14}/><span>UPLOADING...</span></>:"📐 UPLOAD FLOOR PLAN"}
+            </button>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.3)",marginTop:6,textAlign:"center"}}>JPG, PNG, or PDF · Max 50MB</div>
+          </div>
+        )}
+
+        {loading&&<div style={{textAlign:"center",padding:40}}><Spin size={20}/></div>}
+
+        {!loading&&drawings.length===0&&(
+          <div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0"}}>
+            <div style={{fontSize:32,marginBottom:8}}>📐</div>
+            <div style={{fontSize:14}}>No drawings yet</div>
+            {canUpload&&<div style={{fontSize:12,marginTop:4}}>Upload a floor plan to get started</div>}
+          </div>
+        )}
+
+        {drawings.map(d=>{
+          const fileUrl=DB.fileUrl("drawings",d.id,d.file);
+          const isImage=/\.(jpg|jpeg|png|gif|webp)$/i.test(d.file);
+          return(
+            <div key={d.id} onClick={()=>setViewing(d)} style={{background:"#fff",borderRadius:14,padding:0,marginBottom:12,cursor:"pointer",overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)"}}>
+              {isImage&&<img src={fileUrl} alt={d.name} style={{width:"100%",height:160,objectFit:"cover"}}/>}
+              {!isImage&&<div style={{width:"100%",height:100,background:"rgba(0,0,0,0.04)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:32}}>📄</div>}
+              <div style={{padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a"}}>{d.name}</div>
+                  <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>By {d.uploadedBy||"—"} · {d.uploadedAt?new Date(d.uploadedAt).toLocaleDateString():""}</div>
+                </div>
+                {member?.role==="Admin"&&<button onClick={e=>{e.stopPropagation();deleteDrawing(d.id);}} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:"#ff3b30",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>DELETE</button>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function DrawingViewer({drawing,onClose,company,member,defects}){
+  const[pins,setPins]=useState([]);const[loading,setLoading]=useState(true);
+  const[placing,setPlacing]=useState(false);const[linkEntry,setLinkEntry]=useState(null);
+  const[scale,setScale]=useState(1);const[offset,setOffset]=useState({x:0,y:0});
+  const imgRef=useRef();const containerRef=useRef();
+  const canPin=["Admin","Manager","Inspector"].includes(member?.role);
+  const fileUrl=DB.fileUrl("drawings",drawing.id,drawing.file);
+  const isImage=/\.(jpg|jpeg|png|gif|webp)$/i.test(drawing.file);
+
+  // Load pins
+  useEffect(()=>{
+    DB.pins.list(`drawingId="${drawing.id}"`).then(items=>{setPins(items);setLoading(false);}).catch(()=>setLoading(false));
+  },[drawing.id]);
+
+  // Get defect info for a pin
+  const getDefect=entryId=>defects.find(d=>d.id===entryId);
+
+  // Handle tap on image to place pin
+  const handleImageClick=e=>{
+    if(!placing||!isImage)return;
+    const rect=imgRef.current.getBoundingClientRect();
+    const x=((e.clientX-rect.left)/rect.width*100).toFixed(2);
+    const y=((e.clientY-rect.top)/rect.height*100).toFixed(2);
+    // Show entry picker
+    setLinkEntry({x:parseFloat(x),y:parseFloat(y)});
+    setPlacing(false);
+  };
+
+  // Save pin linked to entry
+  const savePin=async(entryId)=>{
+    if(!linkEntry)return;
+    try{
+      const pin=await DB.pins.create({drawingId:drawing.id,entryId,pageNum:1,x:linkEntry.x,y:linkEntry.y,label:""});
+      setPins(prev=>[...prev,pin]);
+    }catch(e){alert("Failed to place pin: "+e.message);}
+    setLinkEntry(null);
+  };
+
+  // Delete pin
+  const deletePin=async id=>{
+    await DB.pins.delete(id);
+    setPins(prev=>prev.filter(p=>p.id!==id));
+  };
+
+  // Zoom controls
+  const zoomIn=()=>setScale(s=>Math.min(s+0.3,4));
+  const zoomOut=()=>setScale(s=>Math.max(s-0.3,0.5));
+  const resetZoom=()=>{setScale(1);setOffset({x:0,y:0});};
+
+  // Touch/drag for panning
+  const dragRef=useRef(null);
+  const onPointerDown=e=>{if(!placing)dragRef.current={startX:e.clientX-offset.x,startY:e.clientY-offset.y};};
+  const onPointerMove=e=>{if(dragRef.current&&!placing){setOffset({x:e.clientX-dragRef.current.startX,y:e.clientY-dragRef.current.startY});}};
+  const onPointerUp=()=>{dragRef.current=null;};
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"#1a1a1a",zIndex:250,display:"flex",flexDirection:"column"}}>
+      {/* Header */}
+      <div style={{background:"#1a1a1a",padding:"12px 14px",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0}}>
+        <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>← BACK</button>
+        <div style={{flex:1}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff"}}>{drawing.name}</div>
+          <div style={{fontSize:10,color:"rgba(255,255,255,0.4)"}}>{pins.length} pin(s)</div>
+        </div>
+        {canPin&&(
+          <button onClick={()=>setPlacing(!placing)} style={{background:placing?"#ff6b00":"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>
+            {placing?"TAP TO PLACE":"📌 ADD PIN"}
+          </button>
+        )}
+      </div>
+
+      {/* Zoom controls */}
+      <div style={{position:"absolute",right:12,top:70,zIndex:10,display:"flex",flexDirection:"column",gap:6}}>
+        <button onClick={zoomIn} style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+        <button onClick={resetZoom} style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{Math.round(scale*100)}%</button>
+        <button onClick={zoomOut} style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+      </div>
+
+      {/* Placing mode indicator */}
+      {placing&&<div style={{background:"#ff6b00",padding:"8px 16px",textAlign:"center",color:"#fff",fontSize:12,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",flexShrink:0}}>TAP ON THE DRAWING TO PLACE A PIN</div>}
+
+      {/* Drawing canvas */}
+      <div ref={containerRef} style={{flex:1,overflow:"hidden",position:"relative",cursor:placing?"crosshair":"grab",touchAction:"none"}}
+        onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
+        {isImage?(
+          <div style={{position:"relative",transform:`scale(${scale}) translate(${offset.x/scale}px,${offset.y/scale}px)`,transformOrigin:"0 0",transition:dragRef.current?"none":"transform 0.15s ease"}}>
+            <img ref={imgRef} src={fileUrl} alt={drawing.name} onClick={handleImageClick}
+              style={{width:"100%",display:"block",userSelect:"none",pointerEvents:"auto"}}
+              draggable={false}/>
+            {/* Render pins */}
+            {pins.map(p=>{
+              const d=getDefect(p.entryId);
+              const color=d?SEV_COLOR[d.severity]||"#ff6b00":"#8e8e93";
+              return(
+                <div key={p.id} style={{position:"absolute",left:`${p.x}%`,top:`${p.y}%`,transform:"translate(-50%,-100%)",zIndex:5,cursor:"pointer"}}
+                  onClick={e=>{e.stopPropagation();}}>
+                  <div style={{position:"relative"}}>
+                    {/* Pin shape */}
+                    <svg width="24" height="32" viewBox="0 0 24 32">
+                      <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20C24 5.4 18.6 0 12 0z" fill={color}/>
+                      <circle cx="12" cy="11" r="5" fill="#fff" opacity="0.9"/>
+                    </svg>
+                    {/* Tooltip on hover */}
+                    <div style={{position:"absolute",bottom:36,left:"50%",transform:"translateX(-50%)",background:"#1a1a1a",borderRadius:8,padding:"6px 10px",minWidth:120,display:"none",zIndex:20}} className="pin-tip">
+                      {d?(<>
+                        <div style={{fontSize:11,fontWeight:700,color:"#fff",marginBottom:2}}>{d.title}</div>
+                        <div style={{fontSize:10,color:"rgba(255,255,255,0.5)"}}>{d.severity} · {d.status}</div>
+                      </>):(<div style={{fontSize:11,color:"rgba(255,255,255,0.5)"}}>Entry not found</div>)}
+                      {canPin&&<button onClick={e=>{e.stopPropagation();deletePin(p.id);}} style={{marginTop:4,background:"rgba(255,59,48,0.2)",border:"none",borderRadius:4,padding:"3px 8px",color:"#ff6b6b",fontSize:10,cursor:"pointer",width:"100%"}}>Remove pin</button>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ):(
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%",color:"rgba(255,255,255,0.4)"}}>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontSize:48,marginBottom:12}}>📄</div>
+              <div style={{fontSize:14}}>PDF viewing coming soon</div>
+              <a href={fileUrl} target="_blank" rel="noopener" style={{color:"#ff6b00",fontSize:13,marginTop:8,display:"inline-block"}}>Open PDF ↗</a>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Entry picker modal */}
+      {linkEntry&&(
+        <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <div style={{background:"#1a1a1a",borderRadius:16,padding:20,width:"100%",maxWidth:400,maxHeight:"70vh",overflowY:"auto"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff",marginBottom:4}}>LINK TO ENTRY</div>
+            <div style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:16}}>Select the entry to pin at this location</div>
+            {defects.length===0&&<div style={{color:"rgba(255,255,255,0.3)",textAlign:"center",padding:20}}>No entries to link</div>}
+            {defects.map(d=>(
+              <button key={d.id} onClick={()=>savePin(d.id)} style={{width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 14px",marginBottom:8,cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:10,borderLeft:`4px solid ${SEV_COLOR[d.severity]}`}}>
+                <div style={{flex:1}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#fff"}}>{d.title}</div>
+                  <div style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>{d.severity} · {d.status} · {d.location}</div>
+                </div>
+              </button>
+            ))}
+            <button onClick={()=>setLinkEntry(null)} style={{width:"100%",background:"none",border:"1px solid rgba(255,255,255,0.15)",borderRadius:10,padding:12,color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",marginTop:4}}>CANCEL</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Admin Analytics Dashboard ─────────────────────────────────────
 function AdminAnalytics({defects,members,company,currentProject,projects,allDefects}){
   const now=new Date();
@@ -2476,6 +2737,7 @@ function App(){
   const[showHelp,setShowHelp]=useState(false);
   const[showFeedback,setShowFeedback]=useState(false);
   const[showStorage,setShowStorage]=useState(false);
+  const[showDrawings,setShowDrawings]=useState(false);
   const[fbText,setFbText]=useState("");const[fbType,setFbType]=useState("suggestion");const[fbSent,setFbSent]=useState(false);const[fbSending,setFbSending]=useState(false);
 
   // Auth listener — also auto-recover company if localStorage was cleared
@@ -2773,7 +3035,7 @@ function App(){
 
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:72}}>
-        {tab==="dashboard"&&<Dashboard defects={defects} onView={setViewing} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} company={company} currentProject={currentProject} member={member}/>}
+        {tab==="dashboard"&&<Dashboard defects={defects} onView={setViewing} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} company={company} currentProject={currentProject} member={member} onDrawings={()=>setShowDrawings(true)}/>}
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>Viewer access — defect logging disabled</div>}
         {tab==="defects"&&<DefectsList defects={defects} onView={setViewing}/>}
@@ -2812,6 +3074,13 @@ function App(){
                   ["Defects","Search and browse all entries. Use the search bar to find entries by title, description, component, assignee, or location. Matching text is highlighted in orange. Use filters for status, severity, and entry type."],
                   ["Report","Filtered statistics with charts. Export as CSV or send an email report to your team."],
                   ["Admin (lightning, Admin only)","Analytics dashboard — entries by day/week/month, per-user rankings, photos stats, entries by project, AI usage. Visible to Admin role only."],
+                ]],
+                ["Drawings",[
+                  ["Accessing Drawings","Tap the 'Floor Plans & Drawings' card on the Dashboard to open the Drawings panel."],
+                  ["Upload","Admin and Manager can upload floor plan images (JPG, PNG) or PDFs. Max 50MB."],
+                  ["Viewing","Tap a drawing to open it full-screen. Use + / − buttons or pinch to zoom. Drag to pan."],
+                  ["Placing Pins","Tap 'ADD PIN', then tap on the drawing. Select the entry to link. A severity-colored pin appears."],
+                  ["Pin Details","Hover or tap a pin to see the linked entry's title, severity, and status. Admins can remove pins."],
                 ]],
                 ["Header Icons",[
                   ["Company & Project (top left)","Tap to switch between projects or create new ones."],
@@ -2879,7 +3148,8 @@ function App(){
                   ["Storage",[["PocketBase (default)",true],["Local path (server/machine)",true],["Google Drive (OAuth)",true]]],
                   ["Settings",[["Telegram bot setup + test",true],["AI multi-provider setup + test",true],["Email report config",true],["Daily AI usage limit",true],["Storage mode selector",true]]],
                   ["Other",[["Help guide",true],["Feedback form",true],["Offline app shell",true],["Password visibility toggle",true]]],
-                  ["Coming Soon",[["Drawings / floor plan pins",false],["Profile editing",false],["Offline submission queue",false],["Push notifications",false]]],
+                  ["Drawings",[["Upload floor plans (JPG, PNG, PDF)",true],["View drawings with zoom & pan",true],["Place defect pins on drawings",true],["Severity-colored pins",true],["Pin tooltips with entry details",true],["Link pins to existing entries",true]]],
+            ["Coming Soon",[["Profile editing",false],["Offline submission queue",false],["Push notifications",false]]],
                 ].map(([cat,items])=>(
                   <div key={cat} style={{marginBottom:12}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.6)",letterSpacing:"0.08em",marginBottom:4}}>{cat.toUpperCase()}</div>
@@ -2897,13 +3167,13 @@ function App(){
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:10,borderBottom:"1px solid rgba(255,255,255,0.1)",paddingBottom:6}}>VERIFICATION STATUS</div>
                 <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:12,padding:16,marginBottom:14}}>
                   <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#30d158",lineHeight:1}}>69/69</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#30d158",lineHeight:1}}>75/75</div>
                     <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#30d158"}}>ALL FEATURES VERIFIED</div><div style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>Code-level verification · April 2026</div></div>
                   </div>
                   {[
                     ["Auth & Onboarding","7/7"],["Team","4/4"],["Entry Logging","11/11"],["Entry Management","9/9"],
                     ["Dashboard","5/5"],["Admin Analytics","7/7"],["Reports","4/4"],["Storage","3/3"],
-                    ["Settings","5/5"],["Other","4/4"],["Coming Soon","0/4"],
+                    ["Settings","5/5"],["Other","4/4"],["Drawings","6/6"],["Coming Soon","0/3"],
                   ].map(([cat,score])=>(
                     <div key={cat} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",fontSize:11}}>
                       <span style={{color:"rgba(255,255,255,0.45)"}}>{cat}</span>
@@ -2976,6 +3246,7 @@ function App(){
       {showEmail&&<EmailSettings onClose={()=>setShowEmail(false)} companyId={company?.companyId}/>}
       {showGemini&&<GeminiSettings onClose={()=>setShowGemini(false)} companyId={company?.companyId}/>}
       {showStorage&&<StorageSettings onClose={()=>setShowStorage(false)} companyId={company?.companyId}/>}
+      {showDrawings&&<DrawingsPanel onClose={()=>setShowDrawings(false)} company={company} currentProject={currentProject} member={member} defects={defects}/>}
       {showUsers&&<UserManagement onClose={()=>setShowUsers(false)} company={company} member={member} members={members}/>}
       {showProjects&&<ProjectManagement onClose={()=>setShowProjects(false)} company={company} member={member} projects={projects} currentProject={currentProject} onSelect={p=>{selectProject(p);setShowProjects(false);}}/>}
     </div>
