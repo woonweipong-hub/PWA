@@ -105,6 +105,36 @@ function isAiConfigured(){
   return false;
 }
 
+// ── Custom Entry Types helpers ────────────────────────────────────
+function getCustomTypes(){return local.get(CUSTOM_TYPES_KEY)||[];}
+function saveCustomTypes(types){local.set(CUSTOM_TYPES_KEY,types);}
+
+// Returns merged list: [...defaults, ...custom names]
+function getAllEntryTypes(){return[...ENTRY_TYPES,...getCustomTypes().map(t=>t.name)];}
+
+// Get icon/color/bg for any entry type (default or custom)
+function typeIcon(t){
+  if(ENTRY_TYPE_ICON[t])return ENTRY_TYPE_ICON[t];
+  const custom=getCustomTypes();
+  const idx=custom.findIndex(c=>c.name===t);
+  if(idx>=0&&custom[idx].icon)return custom[idx].icon;
+  return CUSTOM_TYPE_ICONS[idx%CUSTOM_TYPE_ICONS.length]||"\u{1F4DD}";
+}
+function typeColor(t){
+  if(ENTRY_TYPE_COLOR[t])return ENTRY_TYPE_COLOR[t];
+  const custom=getCustomTypes();
+  const idx=custom.findIndex(c=>c.name===t);
+  if(idx>=0&&custom[idx].color)return custom[idx].color;
+  return CUSTOM_TYPE_COLORS[idx%CUSTOM_TYPE_COLORS.length]||"#607d8b";
+}
+function typeBg(t){
+  if(ENTRY_TYPE_BG[t])return ENTRY_TYPE_BG[t];
+  const c=typeColor(t);
+  // Convert hex color to rgba with 0.12 alpha
+  const r=parseInt(c.slice(1,3),16),g=parseInt(c.slice(3,5),16),b=parseInt(c.slice(5,7),16);
+  return `rgba(${r},${g},${b},0.12)`;
+}
+
 function exportCSV(defects,projectName){
   const headers=["ID","Title","Location","Severity","Status","Assignee","Logged By","Date","Description","Comments"];
   const rows=defects.map((d,i)=>[
@@ -528,7 +558,7 @@ function AuthScreen({onAuth,onFullSetup}){
             ["Auth & Onboarding",["Login / Sign up","Password reset","One-step registration + company setup","Auto-recover session","Install as app","Server URL config"]],
             ["Team",["Invite members (link + code)","Role-based access (Admin, Manager, Inspector, Viewer)","Edit roles / remove members","Permission matrix"]],
             ["Projects",["Create / rename projects","Switch active project","Archive / restore projects"]],
-            ["Defect Logging",["Log defect with title, severity, location","Multi-level location (Level > Zone > Room > Grid)","Snap or upload up to 10 photos","AI photo analysis (Gemini)","Voice-to-text (title, description)","Component + issue selector","Assign to team member","Cost & time tracking fields","Batch logging (same location)"]],
+            ["Defect Logging",["Log defect with title, severity, location","Custom entry types (Site Checks, Safety Audit, etc.)","Multi-level location (Level > Zone > Room > Grid)","Snap or upload up to 10 photos","AI photo analysis (Gemini, Ollama, GPT)","Voice-to-text (title, description)","Component + issue selector","Assign to team member","Cost & time tracking fields","Batch logging (same location)"]],
             ["Defect Management",["View all entries with status/severity filters","Defect detail view with photos","Update status (Open > In Progress > Done > Verified > Closed)","Add comments (text + voice)","Delete defect (Admin only)","Telegram alerts on status change"]],
             ["Dashboard",["Real-time stats (Open / In Progress / Done)","Critical defect alerts","Severity breakdown chart","Recent defects feed","Live sync indicator"]],
             ["Reports",["Site report with charts + defect list","Filter by severity / status / assignee / date","CSV export","Email report (EmailJS)"]],
@@ -539,7 +569,7 @@ function AuthScreen({onAuth,onFullSetup}){
             ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as app",true],["Server URL config",true]]],
             ["Team",[["Invite members (link + code)",true],["Role-based access control",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
             ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
-            ["Defect Logging",[["Log with title, severity, location",true],["Multi-level location hierarchy",true],["Snap / upload up to 10 photos",true],["AI photo analysis (Gemini)",true],["Voice-to-text input",true],["Component + issue selector",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
+            ["Defect Logging",[["Log with title, severity, location",true],["Custom entry types (user-defined)",true],["Multi-level location hierarchy",true],["Snap / upload up to 10 photos",true],["AI photo analysis (Gemini, Ollama, GPT)",true],["Voice-to-text input",true],["Component + issue selector",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
             ["Defect Management",[["Status & severity filters",true],["Full detail view with photos",true],["Update status workflow",true],["Comments (text + voice)",true],["Delete defect (Admin)",true],["Telegram alerts",true]]],
             ["Dashboard",[["Real-time stats overview",true],["Critical defect alerts",true],["Severity breakdown chart",true],["Recent defects feed",true],["Live sync indicator",true]]],
             ["Reports",[["Site report with charts",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report (EmailJS)",true]]],
@@ -962,6 +992,10 @@ async function loadSettingsFromFirestore(companyId){
       const key=doc.key;const val=doc.value;
       // Do not hydrate secret-bearing settings from shared backend storage.
       if(key==="telegram"||key==="gemini"||key==="email")return;
+      // Hydrate custom entry types from cloud (shared across team)
+      if(key==="customEntryTypes"&&Array.isArray(val)){
+        local.set(CUSTOM_TYPES_KEY,val);
+      }
     });
   }catch(e){console.warn("Settings load failed:",e);}
 }
@@ -1476,6 +1510,7 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
             <StatusChip s={d.status}/>
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {d.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(d.entryType),background:typeBg(d.entryType),padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(d.entryType)} {d.entryType.toUpperCase()}</span>}
             <SevChip s={d.severity}/>
             <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>📍 {d.location}</span>
             <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>→ {d.assignee}</span>
@@ -1495,6 +1530,9 @@ function LogDefect({member,company,currentProject,members,onSave}){
   const[showMore,setShowMore]=useState(false);
   const[saving,setSaving]=useState(false);const[analyzing,setAnalyzing]=useState(false);const[aiResult,setAiResult]=useState(null);
   const[count,setCount]=useState(0);const[last,setLast]=useState(null);const[showBatch,setShowBatch]=useState(false);
+  const[showTypeManager,setShowTypeManager]=useState(false);
+  const[customTypes,setCustomTypes]=useState(()=>getCustomTypes());
+  const[newTypeName,setNewTypeName]=useState("");
   const fileRef=useRef();
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
   const aiReady=isAiConfigured();
@@ -1583,6 +1621,96 @@ function LogDefect({member,company,currentProject,members,onSave}){
     setSaving(false);
   };
 
+  // ── Custom type manager helpers ──
+  const addCustomType=()=>{
+    const name=newTypeName.trim();
+    if(!name)return;
+    // Check duplicates (defaults + custom)
+    if(getAllEntryTypes().map(t=>t.toLowerCase()).includes(name.toLowerCase())){alert("Type already exists.");return;}
+    const idx=customTypes.length;
+    const newType={name,icon:CUSTOM_TYPE_ICONS[idx%CUSTOM_TYPE_ICONS.length],color:CUSTOM_TYPE_COLORS[idx%CUSTOM_TYPE_COLORS.length]};
+    const updated=[...customTypes,newType];
+    setCustomTypes(updated);saveCustomTypes(updated);
+    saveSettingToFirestore(company?.companyId,"customEntryTypes",updated);
+    setNewTypeName("");
+  };
+  const removeCustomType=(name)=>{
+    const updated=customTypes.filter(t=>t.name!==name);
+    setCustomTypes(updated);saveCustomTypes(updated);
+    saveSettingToFirestore(company?.companyId,"customEntryTypes",updated);
+    if(form.entryType===name)set("entryType","Defect");
+  };
+  const updateCustomTypeIcon=(name,icon)=>{
+    const updated=customTypes.map(t=>t.name===name?{...t,icon}:t);
+    setCustomTypes(updated);saveCustomTypes(updated);
+    saveSettingToFirestore(company?.companyId,"customEntryTypes",updated);
+  };
+  const updateCustomTypeColor=(name,color)=>{
+    const updated=customTypes.map(t=>t.name===name?{...t,color}:t);
+    setCustomTypes(updated);saveCustomTypes(updated);
+    saveSettingToFirestore(company?.companyId,"customEntryTypes",updated);
+  };
+
+  if(showTypeManager)return(
+    <div style={{padding:"20px 16px",animation:"fadeIn 0.15s ease"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+        <button onClick={()=>setShowTypeManager(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:20,padding:"7px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>← BACK</button>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:18,color:"#1a1a1a"}}>ENTRY TYPES</div>
+      </div>
+
+      {/* Default types (read-only) */}
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.08em",marginBottom:8}}>DEFAULT TYPES</div>
+      <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:20}}>
+        {ENTRY_TYPES.map(t=>(
+          <div key={t} style={{display:"flex",alignItems:"center",gap:10,background:"#fff",borderRadius:10,padding:"10px 14px",borderLeft:`4px solid ${ENTRY_TYPE_COLOR[t]}`}}>
+            <span style={{fontSize:18}}>{ENTRY_TYPE_ICON[t]}</span>
+            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,flex:1}}>{t}</span>
+            <span style={{fontSize:10,color:"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif"}}>BUILT-IN</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Custom types */}
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.08em",marginBottom:8}}>CUSTOM TYPES ({customTypes.length})</div>
+      {customTypes.length===0&&(
+        <div style={{background:"rgba(0,0,0,0.03)",borderRadius:10,padding:"16px",textAlign:"center",marginBottom:14,fontSize:13,color:"rgba(0,0,0,0.35)"}}>No custom types yet. Add one below.</div>
+      )}
+      <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:20}}>
+        {customTypes.map(t=>(
+          <div key={t.name} style={{background:"#fff",borderRadius:10,padding:"10px 14px",borderLeft:`4px solid ${t.color}`,display:"flex",alignItems:"center",gap:8}}>
+            {/* Icon picker */}
+            <div style={{position:"relative"}}>
+              <button onClick={(e)=>{const el=e.currentTarget.nextSibling;el.style.display=el.style.display==="none"?"flex":"none";}} style={{fontSize:18,background:"none",border:"1px solid rgba(0,0,0,0.1)",borderRadius:6,width:32,height:32,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{t.icon}</button>
+              <div style={{display:"none",position:"absolute",top:36,left:0,background:"#fff",border:"1px solid rgba(0,0,0,0.15)",borderRadius:8,padding:6,gap:4,flexWrap:"wrap",width:160,zIndex:10,boxShadow:"0 4px 12px rgba(0,0,0,0.15)"}}>
+                {CUSTOM_TYPE_ICONS.map((ic,i)=>(
+                  <button key={i} onClick={(e)=>{updateCustomTypeIcon(t.name,ic);e.currentTarget.parentNode.style.display="none";}} style={{fontSize:16,background:t.icon===ic?"rgba(255,107,0,0.15)":"none",border:"none",borderRadius:4,width:28,height:28,cursor:"pointer"}}>{ic}</button>
+                ))}
+              </div>
+            </div>
+            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,flex:1}}>{t.name}</span>
+            {/* Color picker */}
+            <div style={{display:"flex",gap:3}}>
+              {CUSTOM_TYPE_COLORS.map(c=>(
+                <button key={c} onClick={()=>updateCustomTypeColor(t.name,c)} style={{width:16,height:16,borderRadius:"50%",background:c,border:t.color===c?"2px solid #1a1a1a":"2px solid transparent",cursor:"pointer",padding:0}}/>
+              ))}
+            </div>
+            <button onClick={()=>removeCustomType(t.name)} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:6,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",color:"#ff3b30",cursor:"pointer",fontSize:14,fontWeight:700,flexShrink:0}}>×</button>
+          </div>
+        ))}
+      </div>
+
+      {/* Add new type */}
+      <div style={{background:"#fff",borderRadius:12,padding:14}}>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"rgba(0,0,0,0.5)",marginBottom:8}}>ADD NEW TYPE</div>
+        <div style={{display:"flex",gap:8}}>
+          <input value={newTypeName} onChange={e=>setNewTypeName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addCustomType()} placeholder="e.g. Site Checks, Safety Audit..." style={{...inp,flex:1}}/>
+          <button onClick={addCustomType} disabled={!newTypeName.trim()} style={{background:newTypeName.trim()?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:"0 18px",color:newTypeName.trim()?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer"}}>ADD</button>
+        </div>
+        <div style={{fontSize:11,color:"rgba(0,0,0,0.3)",marginTop:8}}>Custom types are shared across your team. Suggestions: Site Checks, Progress Update, Safety Audit, Handover, Snag List, RFI</div>
+      </div>
+    </div>
+  );
+
   if(showBatch)return(
     <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
       <div style={{background:"rgba(48,209,88,0.1)",border:"1px solid rgba(48,209,88,0.3)",borderRadius:14,padding:24,textAlign:"center",marginBottom:20}}>
@@ -1615,9 +1743,10 @@ function LogDefect({member,company,currentProject,members,onSave}){
       <div style={{marginBottom:16}}>
         <label style={lbl()}>ENTRY TYPE</label>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          {ENTRY_TYPES.map(t=>(
-            <button key={t} onClick={()=>set("entryType",t)} style={{padding:"8px 14px",borderRadius:20,border:`2px solid ${form.entryType===t?ENTRY_TYPE_COLOR[t]:"rgba(0,0,0,0.12)"}`,background:form.entryType===t?ENTRY_TYPE_BG[t]:"#fff",color:form.entryType===t?ENTRY_TYPE_COLOR[t]:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{ENTRY_TYPE_ICON[t]} {t.toUpperCase()}</button>
+          {getAllEntryTypes().map(t=>(
+            <button key={t} onClick={()=>set("entryType",t)} style={{padding:"8px 14px",borderRadius:20,border:`2px solid ${form.entryType===t?typeColor(t):"rgba(0,0,0,0.12)"}`,background:form.entryType===t?typeBg(t):"#fff",color:form.entryType===t?typeColor(t):"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{typeIcon(t)} {t.toUpperCase()}</button>
           ))}
+          <button onClick={()=>setShowTypeManager(true)} style={{padding:"8px 12px",borderRadius:20,border:"2px dashed rgba(0,0,0,0.15)",background:"#fff",color:"rgba(0,0,0,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>+ TYPE</button>
         </div>
       </div>
 
@@ -1721,11 +1850,25 @@ function LogDefect({member,company,currentProject,members,onSave}){
 
 // ── Defects List ──────────────────────────────────────────────────
 function DefectsList({defects,onView}){
-  const[filter,setFilter]=useState("All");const[sevF,setSevF]=useState("All");
-  const filtered=defects.filter(d=>(filter==="All"||d.status===filter)&&(sevF==="All"||d.severity===sevF));
+  const[filter,setFilter]=useState("All");const[sevF,setSevF]=useState("All");const[typeF,setTypeF]=useState("All");
+  const allTypes=getAllEntryTypes();
+  const usedTypes=[...new Set(defects.map(d=>d.entryType).filter(Boolean))];
+  const typeFilterOptions=allTypes.filter(t=>usedTypes.includes(t));
+  const filtered=defects.filter(d=>(filter==="All"||d.status===filter)&&(sevF==="All"||d.severity===sevF)&&(typeF==="All"||d.entryType===typeF));
   return(
     <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
-      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",marginBottom:14}}>ALL DEFECTS <span style={{color:"rgba(0,0,0,0.3)",fontSize:18}}>({filtered.length})</span></div>
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",marginBottom:14}}>ALL ENTRIES <span style={{color:"rgba(0,0,0,0.3)",fontSize:18}}>({filtered.length})</span></div>
+      {/* Type filter */}
+      {typeFilterOptions.length>1&&(
+        <div style={{marginBottom:10}}>
+          <div style={lbl()}>TYPE</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {["All",...typeFilterOptions].map(t=>(
+              <button key={t} onClick={()=>setTypeF(t)} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${typeF===t?(t==="All"?"#ff6b00":typeColor(t)):"rgba(0,0,0,0.12)"}`,background:typeF===t?(t==="All"?"#ff6b00":typeBg(t)):"#fff",color:typeF===t?(t==="All"?"#fff":typeColor(t)):"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t==="All"?"ALL":typeIcon(t)+" "+t.toUpperCase()}</button>
+            ))}
+          </div>
+        </div>
+      )}
       <div style={{marginBottom:10}}>
         <div style={lbl()}>STATUS</div>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
@@ -1742,7 +1885,7 @@ function DefectsList({defects,onView}){
           ))}
         </div>
       </div>
-      {filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>No defects found</div>}
+      {filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>No entries found</div>}
       {filtered.map((d,i)=>(
         <div key={d.id} className="anim" style={{animationDelay:`${i*0.04}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:`4px solid ${SEV_COLOR[d.severity]}`}} onClick={()=>onView(d)}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
@@ -1750,6 +1893,7 @@ function DefectsList({defects,onView}){
             <StatusChip s={d.status}/>
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:4}}>
+            {d.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(d.entryType),background:typeBg(d.entryType),padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(d.entryType)} {d.entryType.toUpperCase()}</span>}
             <SevChip s={d.severity}/>
             <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>📍 {d.location}</span>
           </div>
@@ -1821,7 +1965,7 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
       <div style={{padding:16}}>
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,borderLeft:`5px solid ${SEV_COLOR[defect.severity]}`}}>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:20,color:"#1a1a1a",marginBottom:10}}>{defect.title}</div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}><SevChip s={defect.severity}/><StatusChip s={status}/></div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>{defect.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(defect.entryType),background:typeBg(defect.entryType),padding:"3px 10px",borderRadius:12,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(defect.entryType)} {defect.entryType.toUpperCase()}</span>}<SevChip s={defect.severity}/><StatusChip s={status}/></div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             {[["📍 Location",defect.location],["👤 Assigned",defect.assignee],["📁 Project",defect.projectName||"—"],["🗓 Date",defect.created?new Date(defect.created).toLocaleDateString():"—"],["✍️ Logged by",defect.loggedBy],["🔑 Role",defect.loggedByRole||"—"]].map(([l,v])=>(
               <div key={l}><div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em"}}>{l}</div><div style={{fontSize:13,color:"#1a1a1a",marginTop:2}}>{v||"—"}</div></div>
@@ -2393,7 +2537,7 @@ function App(){
                   ["Profile (avatar)","View your profile, email report settings, or sign out."],
                 ]],
                 ["Logging an Entry",[
-                  ["1. Entry Type","Select: Defect, Observation, Instruction, or Update."],
+                  ["1. Entry Type","Select from defaults (Defect, Observation, Instruction, Update) or custom types created by your team. Tap '+ TYPE' to add new types like Site Checks, Safety Audit, etc."],
                   ["2. Photo","Tap the camera area to snap or upload a photo. Up to 5 photos per entry."],
                   ["3. AI Analysis","If AI is set up (Gemini, Ollama, or OpenAI), tap 'ANALYZE WITH AI' to auto-fill title, severity, and description from your photo."],
                   ["4. Component & Issue","Tap to select from predefined lists, or tap TYPE to enter a custom value. Use the mic icon to search by voice."],
@@ -2439,7 +2583,7 @@ function App(){
                   ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as app",true],["Server URL config",true]]],
                   ["Team",[["Invite members (link + code)",true],["Role-based access control",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
                   ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
-                  ["Defect Logging",[["Log with title, severity, location",true],["Multi-level location hierarchy",true],["Snap / upload up to 10 photos",true],["AI photo analysis (Gemini)",true],["Voice-to-text input",true],["Component + issue selector",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
+                  ["Defect Logging",[["Log with title, severity, location",true],["Custom entry types (user-defined)",true],["Multi-level location hierarchy",true],["Snap / upload up to 10 photos",true],["AI photo analysis (Gemini, Ollama, GPT)",true],["Voice-to-text input",true],["Component + issue selector",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
                   ["Defect Management",[["Status & severity filters",true],["Full detail view with photos",true],["Update status workflow",true],["Comments (text + voice)",true],["Delete defect (Admin)",true],["Telegram alerts",true]]],
                   ["Dashboard",[["Real-time stats overview",true],["Critical defect alerts",true],["Severity breakdown chart",true],["Recent defects feed",true],["Live sync indicator",true]]],
                   ["Reports",[["Site report with charts",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report (EmailJS)",true]]],

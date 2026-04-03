@@ -7,6 +7,11 @@ const ENTRY_TYPE_ICON = { Observation: "\u{1F441}", Defect: "\u26A0\uFE0F", Upda
 const ENTRY_TYPE_COLOR = { Observation: "#34aadc", Defect: "#ff3b30", Update: "#ff9500", Instruction: "#5856d6" };
 const ENTRY_TYPE_BG = { Observation: "rgba(52,170,220,0.12)", Defect: "rgba(255,59,48,0.12)", Update: "rgba(255,149,0,0.12)", Instruction: "rgba(88,86,214,0.12)" };
 
+// Palette for custom entry types (cycles through these)
+const CUSTOM_TYPE_COLORS = ["#e91e63","#9c27b0","#00bcd4","#4caf50","#795548","#607d8b","#ff5722","#3f51b5"];
+const CUSTOM_TYPE_ICONS = ["\u{1F4DD}","\u{1F50D}","\u{1F3D7}","\u2705","\u{1F6E1}","\u{1F4CA}","\u{1F527}","\u{1F4CC}"];
+const CUSTOM_TYPES_KEY = "sdt-custom-types-v1";
+
 // ── Severity ─────────────────────────────────────────────────────
 const SEVERITY = ["Critical", "Major", "Minor", "Observation"];
 const SEV_COLOR = { Critical: "#ff3b30", Major: "#ff9500", Minor: "#e6b800", Observation: "#34aadc" };
