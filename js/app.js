@@ -4118,7 +4118,7 @@ function App(){
               {/* ── FEATURES TAB ── */}
               {helpTab==="features"&&(
                 <div>
-                  {[
+                  {(()=>{const fc=[
                     ["Authentication & Onboarding",["Login / Sign up","Password reset","One-step registration + company setup","Auto-recover session","Install as app","Server URL config"]],
                     ["Team & Roles",["Invite members (link + code)","Role-based access (Admin, Manager, Inspector, Viewer)","Edit roles / remove members","Permission matrix"]],
                     ["Project Management",["Create / rename projects","Switch active project","Archive / restore projects"]],
@@ -4133,17 +4133,22 @@ function App(){
                     ["Offline Sync",["Save entries to IndexedDB when offline","Queued badge in header + Dashboard","Auto-sync when back online","Manual sync"]],
                     ["Account Settings",["Edit display name + job title","Change email","Change password"]],
                     ["Platform Compatibility",["Mobile (iOS Safari, Android Chrome)","Desktop (Chrome, Firefox, Edge)","Installable as app (PWA)","Offline-capable"]],
-                  ].map(([cat,items])=>(
-                    <div key={cat} style={{marginBottom:18}}>
-                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:6}}>{cat.toUpperCase()}</div>
-                      {items.map((feat,i)=>(
-                        <div key={i} style={{display:"flex",gap:8,alignItems:"center",padding:"3px 0",fontSize:12,color:"rgba(255,255,255,0.5)"}}>
-                          <span style={{fontSize:10,color:"#30d158",flexShrink:0}}>✓</span>
-                          <span>{feat}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
+                  ];const total=fc.reduce((n,c)=>n+c[1].length,0);return React.createElement(React.Fragment,null,
+                    React.createElement("div",{style:{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:12,padding:16,marginBottom:20,textAlign:"center"}},
+                      React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#30d158",lineHeight:1,marginBottom:4}},total),
+                      React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.4)"}},"verified features")
+                    ),
+                    fc.map(function(c){var cat=c[0],items=c[1];return React.createElement("div",{key:cat,style:{marginBottom:18}},
+                      React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:6,display:"flex",justifyContent:"space-between"}},
+                        React.createElement("span",null,cat.toUpperCase()),
+                        React.createElement("span",{style:{color:"rgba(255,255,255,0.3)",fontWeight:600}},items.length)
+                      ),
+                      items.map(function(feat,i){return React.createElement("div",{key:i,style:{display:"flex",gap:8,alignItems:"center",padding:"3px 0",fontSize:12,color:"rgba(255,255,255,0.5)"}},
+                        React.createElement("span",{style:{fontSize:10,color:"#30d158",flexShrink:0}},"✓"),
+                        React.createElement("span",null,feat)
+                      );})
+                    );})
+                  );})()}
                 </div>
               )}
 
