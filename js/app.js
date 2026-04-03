@@ -4139,7 +4139,7 @@ function App(){
                   ["Offline",[["Save entries to IndexedDB when offline",true],["Queued badge in header + Dashboard",true],["Auto-sync when back online",true],["Manual sync tap",true],["Queued/synced status indicator",true]]],
                   ["Account",[["Edit display name",true],["Change email",true],["Change password",true]]],
                   ["Other",[["Comprehensive help guide",true],["Feedback form (suggestion, bug, praise)",true],["Cached app shell (service worker)",true],["Photo compression (auto-resize)",true]]],
-                ];const ht=hcats.reduce((n,[,items])=>n+items.filter(([,d])=>d).length,0);return hcats.map(([cat,items])=>(
+                ].map(([cat,items])=>(
                   <div key={cat} style={{marginBottom:12}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.6)",letterSpacing:"0.08em",marginBottom:4}}>{cat.toUpperCase()}</div>
                     {items.map(([feat,done])=>(
