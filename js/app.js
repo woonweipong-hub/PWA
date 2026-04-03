@@ -3631,6 +3631,7 @@ function App(){
   const[showTg,setShowTg]=useState(false);
   const[showEmail,setShowEmail]=useState(false);
   const[showGemini,setShowGemini]=useState(false);
+  const[showAiMenu,setShowAiMenu]=useState(false);
   const[showUsers,setShowUsers]=useState(false);
   const[showProjects,setShowProjects]=useState(false);
   const[showProfile,setShowProfile]=useState(false);
@@ -3944,25 +3945,30 @@ function App(){
           </div>
         </button>
         <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap",justifyContent:"flex-end",maxWidth:"62%"}}>
-          <div style={{textAlign:"right",marginRight:2}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#fff",lineHeight:1}}>{defects.filter(d=>!["Verified","Closed"].includes(d.status)).length}</div>
-            <div style={{fontSize:9,color:"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif"}}>ACTIVE</div>
-          </div>
           {queueCount>0&&(
-            <button onClick={syncQueue} title="Queued offline entries" style={{display:"flex",alignItems:"center",gap:4,background:"rgba(255,149,0,0.2)",border:"1px solid rgba(255,149,0,0.4)",borderRadius:8,padding:"4px 8px",cursor:"pointer",height:32}}>
+            <button onClick={syncQueue} title="Queued offline entries" style={{display:"flex",alignItems:"center",gap:4,background:"rgba(255,149,0,0.2)",border:"1px solid rgba(255,149,0,0.4)",borderRadius:8,padding:"4px 8px",cursor:"pointer",height:28}}>
               {syncing2?<Spin size={10}/>:<span style={{fontSize:12}}>📤</span>}
               <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#ff9500"}}>{queueCount}</span>
             </button>
           )}
-          <button onClick={()=>{setShowAiSearch(true);setTab("defects");}} title="AI Search" style={{width:28,height:28,borderRadius:8,background:"rgba(255,107,0,0.15)",border:"1px solid rgba(255,107,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:13}}>💬</button>
-          <button onClick={()=>setShowGemini(true)} title="AI Setup" style={{width:28,height:28,borderRadius:8,background:aiEnabled?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${aiEnabled?"rgba(88,86,214,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:13}}>🤖</button>
-          <button onClick={()=>setShowTg(true)} title="Telegram Setup" style={{width:28,height:28,borderRadius:8,background:tgEnabled?"rgba(0,136,204,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${tgEnabled?"rgba(0,136,204,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
+          <div style={{position:"relative"}}>
+            <button onClick={()=>setShowAiMenu(!showAiMenu)} title="AI Tools" style={{width:28,height:28,borderRadius:8,background:aiEnabled?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${aiEnabled?"rgba(88,86,214,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:13}}>🤖</button>
+            {showAiMenu&&<div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,overflow:"hidden",zIndex:100,minWidth:180}}>
+              <button onClick={()=>{setShowGemini(true);setShowAiMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+                🧠 AI Photo Analysis
+              </button>
+              <button onClick={()=>{setShowAiSearch(true);setTab("defects");setShowAiMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13}}>
+                💬 AI Search
+              </button>
+            </div>}
+          </div>
+          <button onClick={()=>setShowTg(true)} title="Telegram" style={{width:28,height:28,borderRadius:8,background:tgEnabled?"rgba(0,136,204,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${tgEnabled?"rgba(0,136,204,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21.5 4.5L2.5 11.5L9 13.5L11 20.5L15 15.5L20 18.5L21.5 4.5Z" stroke={tgEnabled?"#0088cc":"rgba(255,255,255,0.4)"} strokeWidth="1.5" strokeLinejoin="round"/></svg>
           </button>
           <button onClick={()=>setShowStorage(true)} title="Storage Settings" style={{width:28,height:28,borderRadius:8,background:(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"rgba(48,209,88,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"rgba(48,209,88,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:13}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 4h16v4H4V4zm0 6h16v4H4v-4zm0 6h16v4H4v-4z" stroke={(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"#30d158":"rgba(255,255,255,0.4)"} strokeWidth="1.5" strokeLinejoin="round"/><circle cx="7" cy="6" r="1" fill={(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"#30d158":"rgba(255,255,255,0.4)"}/><circle cx="7" cy="12" r="1" fill={(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"#30d158":"rgba(255,255,255,0.4)"}/><circle cx="7" cy="18" r="1" fill={(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"#30d158":"rgba(255,255,255,0.4)"}/></svg>
           </button>
-          {isAdmin&&<button onClick={()=>setShowUsers(true)} title="Team Management" style={{width:28,height:28,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:13}}>👥</button>}
+          {isAdmin&&<button onClick={()=>setShowUsers(true)} title="Team" style={{width:28,height:28,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:13}}>👥</button>}
           <button onClick={()=>setShowHelp(true)} title="Help" style={{width:28,height:28,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"rgba(255,255,255,0.5)"}}>?</button>
           <button onClick={()=>{setShowFeedback(true);setFbSent(false);setFbText("");}} title="Feedback" style={{width:28,height:28,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:12}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
