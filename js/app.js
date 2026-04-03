@@ -28,6 +28,196 @@ function compressPhoto(dataUrl,maxPx=1800,quality=0.8){
   });
 }
 
+// ── Photo Markup Editor ──────────────────────────────────────────
+function PhotoMarkup({src,onSave,onCancel}){
+  const canvasRef=useRef();const overlayRef=useRef();
+  const[tool,setTool]=useState("arrow"); // arrow, circle, freehand, text
+  const[color,setColor]=useState("#ff3b30");
+  const[strokes,setStrokes]=useState([]);
+  const[current,setCurrent]=useState(null);
+  const[imgLoaded,setImgLoaded]=useState(false);
+  const[textInput,setTextInput]=useState(null);
+  const imgRef=useRef(new Image());
+  const sizeRef=useRef({w:0,h:0});
+
+  // Load image
+  useEffect(()=>{
+    const img=imgRef.current;
+    img.onload=()=>{setImgLoaded(true);};
+    img.src=src;
+  },[src]);
+
+  // Render all strokes
+  useEffect(()=>{
+    if(!imgLoaded||!canvasRef.current)return;
+    const canvas=canvasRef.current;
+    const container=canvas.parentElement;
+    const cw=container.clientWidth;
+    const img=imgRef.current;
+    const ratio=img.height/img.width;
+    const ch=Math.round(cw*ratio);
+    canvas.width=cw;canvas.height=ch;
+    sizeRef.current={w:cw,h:ch};
+    const ctx=canvas.getContext("2d");
+    ctx.drawImage(img,0,0,cw,ch);
+    [...strokes,current].filter(Boolean).forEach(s=>drawStroke(ctx,s));
+  },[imgLoaded,strokes,current]);
+
+  const drawStroke=(ctx,s)=>{
+    ctx.strokeStyle=s.color;ctx.fillStyle=s.color;ctx.lineWidth=3;ctx.lineCap="round";ctx.lineJoin="round";
+    if(s.type==="freehand"&&s.points.length>1){
+      ctx.beginPath();ctx.moveTo(s.points[0].x,s.points[0].y);
+      for(let i=1;i<s.points.length;i++)ctx.lineTo(s.points[i].x,s.points[i].y);
+      ctx.stroke();
+    }else if(s.type==="arrow"&&s.start&&s.end){
+      const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y;
+      const len=Math.sqrt(dx*dx+dy*dy);
+      if(len<5)return;
+      ctx.beginPath();ctx.moveTo(s.start.x,s.start.y);ctx.lineTo(s.end.x,s.end.y);ctx.stroke();
+      // Arrowhead
+      const angle=Math.atan2(dy,dx);const hl=14;
+      ctx.beginPath();
+      ctx.moveTo(s.end.x,s.end.y);
+      ctx.lineTo(s.end.x-hl*Math.cos(angle-0.4),s.end.y-hl*Math.sin(angle-0.4));
+      ctx.moveTo(s.end.x,s.end.y);
+      ctx.lineTo(s.end.x-hl*Math.cos(angle+0.4),s.end.y-hl*Math.sin(angle+0.4));
+      ctx.stroke();
+    }else if(s.type==="circle"&&s.start&&s.end){
+      const rx=Math.abs(s.end.x-s.start.x)/2,ry=Math.abs(s.end.y-s.start.y)/2;
+      const cx=Math.min(s.start.x,s.end.x)+rx,cy=Math.min(s.start.y,s.end.y)+ry;
+      if(rx<3&&ry<3)return;
+      ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();
+    }else if(s.type==="text"&&s.pos&&s.text){
+      ctx.font="bold 16px 'Barlow Condensed',sans-serif";
+      ctx.fillStyle=s.color;
+      // Background
+      const metrics=ctx.measureText(s.text);
+      ctx.fillStyle="rgba(0,0,0,0.6)";
+      ctx.fillRect(s.pos.x-2,s.pos.y-16,metrics.width+8,22);
+      ctx.fillStyle=s.color;
+      ctx.fillText(s.text,s.pos.x+2,s.pos.y);
+    }
+  };
+
+  const getPos=e=>{
+    const rect=canvasRef.current.getBoundingClientRect();
+    const t=e.touches?e.touches[0]:e;
+    return{x:t.clientX-rect.left,y:t.clientY-rect.top};
+  };
+
+  const onDown=e=>{
+    e.preventDefault();
+    if(tool==="text"){setTextInput(getPos(e));return;}
+    const p=getPos(e);
+    if(tool==="freehand")setCurrent({type:"freehand",color,points:[p]});
+    else setCurrent({type:tool,color,start:p,end:p});
+  };
+  const onMove=e=>{
+    if(!current)return;
+    e.preventDefault();
+    const p=getPos(e);
+    if(current.type==="freehand")setCurrent(c=>({...c,points:[...c.points,p]}));
+    else setCurrent(c=>({...c,end:p}));
+  };
+  const onUp=()=>{
+    if(current){setStrokes(s=>[...s,current]);setCurrent(null);}
+  };
+
+  const submitText=(text)=>{
+    if(text&&textInput){
+      setStrokes(s=>[...s,{type:"text",color,pos:textInput,text}]);
+    }
+    setTextInput(null);
+  };
+
+  const undo=()=>setStrokes(s=>s.slice(0,-1));
+
+  const save=()=>{
+    if(!canvasRef.current)return;
+    // Render at full resolution for quality
+    const img=imgRef.current;
+    const fc=document.createElement("canvas");
+    fc.width=img.width;fc.height=img.height;
+    const fctx=fc.getContext("2d");
+    fctx.drawImage(img,0,0);
+    // Scale strokes to full resolution
+    const sx=img.width/sizeRef.current.w,sy=img.height/sizeRef.current.h;
+    const scaleStroke=s=>{
+      if(s.type==="freehand")return{...s,points:s.points.map(p=>({x:p.x*sx,y:p.y*sy}))};
+      if(s.type==="text")return{...s,pos:{x:s.pos.x*sx,y:s.pos.y*sy}};
+      return{...s,start:{x:s.start.x*sx,y:s.start.y*sy},end:{x:s.end.x*sx,y:s.end.y*sy}};
+    };
+    fctx.lineWidth=3*sx;fctx.lineCap="round";fctx.lineJoin="round";
+    strokes.forEach(s=>{
+      const scaled=scaleStroke(s);
+      // Scale font for text
+      if(scaled.type==="text"){
+        fctx.font=`bold ${Math.round(16*sx)}px 'Barlow Condensed',sans-serif`;
+      }
+      drawStroke(fctx,scaled);
+    });
+    onSave(fc.toDataURL("image/jpeg",0.92));
+  };
+
+  const TOOLS=[
+    {id:"arrow",label:"↗",title:"Arrow"},
+    {id:"circle",label:"○",title:"Circle"},
+    {id:"freehand",label:"✏",title:"Draw"},
+    {id:"text",label:"T",title:"Text"}
+  ];
+  const COLORS=["#ff3b30","#ff9500","#ffcc00","#fff"];
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"#1a1a1a",zIndex:300,display:"flex",flexDirection:"column"}}>
+      {/* Header */}
+      <div style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0}}>
+        <button onClick={onCancel} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>CANCEL</button>
+        <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",textAlign:"center"}}>MARKUP PHOTO</div>
+        <button onClick={save} style={{background:"#ff6b00",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>SAVE</button>
+      </div>
+
+      {/* Toolbar */}
+      <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:8,borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0}}>
+        {TOOLS.map(t=>(
+          <button key={t.id} onClick={()=>setTool(t.id)} title={t.title} style={{width:40,height:40,borderRadius:10,border:tool===t.id?"2px solid #ff6b00":"2px solid rgba(255,255,255,0.15)",background:tool===t.id?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{t.label}</button>
+        ))}
+        <div style={{width:1,height:28,background:"rgba(255,255,255,0.15)",margin:"0 4px"}}/>
+        {COLORS.map(c=>(
+          <button key={c} onClick={()=>setColor(c)} style={{width:28,height:28,borderRadius:"50%",border:color===c?"3px solid #fff":"3px solid rgba(255,255,255,0.15)",background:c,cursor:"pointer"}}/>
+        ))}
+        <div style={{flex:1}}/>
+        <button onClick={undo} disabled={strokes.length===0} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"7px 12px",color:strokes.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>UNDO</button>
+      </div>
+
+      {/* Canvas */}
+      <div style={{flex:1,overflow:"auto",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:8}}>
+        {imgLoaded?(
+          <div style={{position:"relative",width:"100%",maxWidth:800}}>
+            <canvas ref={canvasRef} style={{width:"100%",display:"block",borderRadius:8,touchAction:"none"}}
+              onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
+              onTouchStart={onDown} onTouchMove={onMove} onTouchEnd={onUp}/>
+          </div>
+        ):<div style={{color:"rgba(255,255,255,0.4)",padding:40}}><Spin size={20}/></div>}
+      </div>
+
+      {/* Text input modal */}
+      {textInput&&(
+        <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.85)",zIndex:310,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <div style={{background:"#1a1a1a",borderRadius:16,padding:20,width:"100%",maxWidth:360}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",marginBottom:12}}>ADD TEXT ANNOTATION</div>
+            <input autoFocus type="text" placeholder="Type annotation..." onKeyDown={e=>{if(e.key==="Enter")submitText(e.target.value);}}
+              style={{width:"100%",padding:12,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
+            <div style={{display:"flex",gap:8,marginTop:12}}>
+              <button onClick={()=>setTextInput(null)} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>CANCEL</button>
+              <button onClick={e=>{const inp=e.target.closest("div").parentElement.querySelector("input");submitText(inp.value);}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>ADD</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const AI_PROMPT='Analyze this construction defect photo. Respond in valid JSON only, no markdown: {"title":"max 5 word defect title","severity":"one of Critical Major Minor Observation","description":"2 sentence technical description"}';
 
 async function analyzeWithGemini(apiKey,base64Image){
@@ -1612,6 +1802,7 @@ function LogDefect({member,company,currentProject,members,onSave}){
   const[showTypeManager,setShowTypeManager]=useState(false);
   const[customTypes,setCustomTypes]=useState(()=>getCustomTypes());
   const[newTypeName,setNewTypeName]=useState("");
+  const[markupIdx,setMarkupIdx]=useState(null);
   const fileRef=useRef();
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
   const aiReady=isAiConfigured();
@@ -1894,8 +2085,9 @@ function LogDefect({member,company,currentProject,members,onSave}){
             <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8,marginBottom:8}}>
               {form.photos.map((p,i)=>(
                 <div key={i} style={{position:"relative",flexShrink:0}}>
-                  <img src={p} alt="" style={{width:100,height:100,borderRadius:10,objectFit:"cover"}}/>
+                  <img src={p} alt="" onClick={()=>setMarkupIdx(i)} style={{width:100,height:100,borderRadius:10,objectFit:"cover",cursor:"pointer"}}/>
                   <button onClick={()=>removePhoto(i)} style={{position:"absolute",top:4,right:4,background:"rgba(0,0,0,0.7)",border:"none",borderRadius:"50%",color:"#fff",width:22,height:22,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+                  <div onClick={()=>setMarkupIdx(i)} style={{position:"absolute",bottom:4,left:4,background:"rgba(0,0,0,0.7)",borderRadius:10,padding:"2px 6px",color:"#fff",fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>✏ MARKUP</div>
                 </div>
               ))}
               {form.photos.length<MAX_PHOTOS&&(
@@ -1924,6 +2116,13 @@ function LogDefect({member,company,currentProject,members,onSave}){
       <button onClick={submit} disabled={saving||!form.title.trim()||(!form.locationLevel&&!form.location)} style={{width:"100%",background:form.title.trim()&&(form.locationLevel||form.location)&&!saving?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:12,padding:16,color:form.title.trim()&&(form.locationLevel||form.location)?"#fff":"rgba(0,0,0,0.3)",fontSize:16,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
         {saving?<><Spin size={16}/><span>SAVING...</span></>:"SUBMIT ENTRY"}
       </button>
+
+      {/* Photo Markup Editor */}
+      {markupIdx!==null&&form.photos[markupIdx]&&(
+        <PhotoMarkup src={form.photos[markupIdx]}
+          onSave={dataUrl=>{setForm(f=>({...f,photos:f.photos.map((p,i)=>i===markupIdx?dataUrl:p)}));setMarkupIdx(null);}}
+          onCancel={()=>setMarkupIdx(null)}/>
+      )}
     </div>
   );
 }
