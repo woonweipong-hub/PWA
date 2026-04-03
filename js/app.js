@@ -4053,10 +4053,10 @@ function App(){
                       ["","SiteShrimp helps teams manage defects, inspections, progress updates, safety audits, and site feedback in one place. It makes site reporting faster, clearer, and more accountable with photos, voice input, and AI-assisted workflows."],
                     ]],
                     ["First-Time Setup",[
-                      ["1.","Sign up and create your company."],
-                      ["2.","Connect AI and Telegram from the header."],
-                      ["3.","Invite your team in Team Management (Admin only)."],
-                      ["4.","Create or select a project before logging entries."],
+                      ["","1. Sign up and create your company."],
+                      ["","2. Connect AI and Telegram from the header."],
+                      ["","3. Invite your team in Team Management (Admin only)."],
+                      ["","4. Create or select a project before logging entries."],
                     ]],
                     ["Main Navigation",[
                       ["Dashboard","View active items, status counts, severity summary, alerts, and recent entries."],
@@ -4066,11 +4066,11 @@ function App(){
                       ["Admin","Manage analytics, projects, team settings, and system controls (Admin only)."],
                     ]],
                     ["Logging an Entry",[
-                      ["1.","Choose an entry type such as Defect, Observation, Instruction, or Update."],
-                      ["2.","Add or capture photos on site."],
-                      ["3.","Use AI analysis to suggest the title, severity, description, trade, and assignee."],
-                      ["4.","Fill in component, issue, and location details."],
-                      ["5.","Submit the entry, or continue in batch mode if logging multiple items in the same area."],
+                      ["","1. Choose an entry type such as Defect, Observation, Instruction, or Update."],
+                      ["","2. Add or capture photos on site."],
+                      ["","3. Use AI analysis to suggest the title, severity, description, trade, and assignee."],
+                      ["","4. Fill in component, issue, and location details."],
+                      ["","5. Submit the entry, or continue in batch mode if logging multiple items in the same area."],
                     ]],
                     ["Drawings",[
                       ["","Open Floor Plans & Drawings from the Dashboard to upload or view drawings. You can place pins on plans, link them to existing entries, create entries directly from a drawing, and use the heatmap to spot problem areas quickly."],
