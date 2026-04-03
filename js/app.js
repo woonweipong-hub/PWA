@@ -117,14 +117,16 @@ function typeIcon(t){
   if(ENTRY_TYPE_ICON[t])return ENTRY_TYPE_ICON[t];
   const custom=getCustomTypes();
   const idx=custom.findIndex(c=>c.name===t);
-  if(idx>=0&&custom[idx].icon)return custom[idx].icon;
+  if(idx<0)return "\u{1F4DD}";
+  if(custom[idx].icon)return custom[idx].icon;
   return CUSTOM_TYPE_ICONS[idx%CUSTOM_TYPE_ICONS.length]||"\u{1F4DD}";
 }
 function typeColor(t){
   if(ENTRY_TYPE_COLOR[t])return ENTRY_TYPE_COLOR[t];
   const custom=getCustomTypes();
   const idx=custom.findIndex(c=>c.name===t);
-  if(idx>=0&&custom[idx].color)return custom[idx].color;
+  if(idx<0)return "#607d8b";
+  if(custom[idx].color)return custom[idx].color;
   return CUSTOM_TYPE_COLORS[idx%CUSTOM_TYPE_COLORS.length]||"#607d8b";
 }
 function typeBg(t){
@@ -560,7 +562,7 @@ function AuthScreen({onAuth,onFullSetup}){
             ["Projects",["Create / rename projects","Switch active project","Archive / restore projects"]],
             ["Defect Logging",["Log defect with title, severity, location","Custom entry types (Site Checks, Safety Audit, etc.)","Multi-level location (Level > Zone > Room > Grid)","Snap or upload up to 10 photos","AI photo analysis (Gemini, Ollama, GPT)","Voice-to-text (title, description)","Component + issue selector","Assign to team member","Cost & time tracking fields","Batch logging (same location)"]],
             ["Defect Management",["View all entries with status/severity filters","Defect detail view with photos","Update status (Open > In Progress > Done > Verified > Closed)","Add comments (text + voice)","Delete defect (Admin only)","Telegram alerts on status change"]],
-            ["Dashboard",["Real-time stats (Open / In Progress / Done)","Critical defect alerts","Severity breakdown chart","Recent defects feed","Live sync indicator"]],
+            ["Dashboard",["Real-time stats (Open / In Progress / Done)","Critical defect alerts","Severity breakdown chart","Recent defects feed","Live sync indicator","Admin analytics (entries/users/photos/projects/AI)"]],
             ["Reports",["Site report with charts + defect list","Filter by severity / status / assignee / date","CSV export","Email report (EmailJS)"]],
             ["Settings",["Telegram bot setup + test","AI setup — Gemini / Ollama / OpenAI","Email report setup","Daily AI usage limit","Storage (PocketBase / Local Path / Google Drive)"]],
             ["Profile",["View profile info","Sign out with credential cleanup"]],
@@ -571,7 +573,7 @@ function AuthScreen({onAuth,onFullSetup}){
             ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
             ["Defect Logging",[["Log with title, severity, location",true],["Custom entry types (user-defined)",true],["Multi-level location hierarchy",true],["Snap / upload up to 10 photos",true],["AI photo analysis (Gemini, Ollama, GPT)",true],["Voice-to-text input",true],["Component + issue selector",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
             ["Defect Management",[["Status & severity filters",true],["Full detail view with photos",true],["Update status workflow",true],["Comments (text + voice)",true],["Delete defect (Admin)",true],["Telegram alerts",true]]],
-            ["Dashboard",[["Real-time stats overview",true],["Critical defect alerts",true],["Severity breakdown chart",true],["Recent defects feed",true],["Live sync indicator",true]]],
+            ["Dashboard",[["Real-time stats overview",true],["Critical defect alerts",true],["Severity breakdown chart",true],["Recent defects feed",true],["Live sync indicator",true],["Admin analytics dashboard",true]]],
             ["Reports",[["Site report with charts",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report (EmailJS)",true]]],
             ["Settings",[["Telegram bot setup + test",true],["AI setup — Gemini / Ollama / OpenAI",true],["Email report config",true],["Daily AI usage limit",true],["Storage (PocketBase / Local / Google Drive)",true]]],
             ["Coming Soon",[["Drawings / floor plan pins",false],["Profile editing",false],["Search across defects",false],["Offline mode",false],["Push notifications",false]]],
@@ -2167,8 +2169,189 @@ function Report({defects,onEmailSetup,currentProject,company}){
   );
 }
 
+// ── Admin Analytics Dashboard ─────────────────────────────────────
+function AdminAnalytics({defects,members,company,currentProject,projects,allDefects}){
+  const now=new Date();
+  const todayStr=now.toISOString().slice(0,10);
+  const weekAgo=new Date(now-7*86400000);
+  const monthAgo=new Date(now-30*86400000);
+
+  // Time-based counts
+  const toDate=d=>d.createdAt||d.created||d.timestamp_utc||"";
+  const today=defects.filter(d=>toDate(d).slice(0,10)===todayStr).length;
+  const week=defects.filter(d=>new Date(toDate(d))>=weekAgo).length;
+  const month=defects.filter(d=>new Date(toDate(d))>=monthAgo).length;
+
+  // Per-user stats
+  const userEntries={};
+  defects.forEach(d=>{const u=d.loggedBy||"Unknown";userEntries[u]=(userEntries[u]||0)+1;});
+  const userRanking=Object.entries(userEntries).sort((a,b)=>b[1]-a[1]);
+  const activeUsers=userRanking.length;
+
+  // Photos per entry
+  const totalPhotos=defects.reduce((n,d)=>{
+    if(Array.isArray(d.photo))return n+d.photo.length;
+    if(d.photo)return n+1;
+    if(d.gdrivePhotos){try{return n+JSON.parse(d.gdrivePhotos).length;}catch{}}
+    return n;
+  },0);
+  const avgPhotos=defects.length>0?(totalPhotos/defects.length).toFixed(1):"0";
+
+  // Entries by project (use allDefects if available for cross-project view)
+  const projEntries={};
+  (allDefects||defects).forEach(d=>{const p=d.projectName||"Unknown";projEntries[p]=(projEntries[p]||0)+1;});
+  const projRanking=Object.entries(projEntries).sort((a,b)=>b[1]-a[1]);
+
+  // AI usage
+  const aiUsage=local.get(AI_LIMIT_KEY)||{date:"",count:0};
+  const aiToday=aiUsage.date===todayStr?aiUsage.count:0;
+  const aiProvider=local.get(AI_PROVIDER_KEY)||"gemini";
+  const aiAnalyzed=defects.filter(d=>d.category||d.defect_type).length;
+
+  // Entry types breakdown
+  const typeEntries={};
+  defects.forEach(d=>{const t=d.entryType||"Defect";typeEntries[t]=(typeEntries[t]||0)+1;});
+  const typeRanking=Object.entries(typeEntries).sort((a,b)=>b[1]-a[1]);
+
+  // Per-user detail (who submitted what today/week)
+  const userToday={};const userWeek={};
+  defects.forEach(d=>{
+    const u=d.loggedBy||"Unknown";const dt=toDate(d);
+    if(dt.slice(0,10)===todayStr){userToday[u]=(userToday[u]||0)+1;}
+    if(new Date(dt)>=weekAgo){userWeek[u]=(userWeek[u]||0)+1;}
+  });
+
+  const StatCard=({label,value,sub,color})=>(
+    <div style={{flex:1,minWidth:90,background:"#fff",borderRadius:12,padding:"14px 12px",borderTop:`3px solid ${color||"#ff6b00"}`}}>
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#1a1a1a",lineHeight:1}}>{value}</div>
+      <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.06em",fontFamily:"'Barlow Condensed',sans-serif",marginTop:4}}>{label}</div>
+      {sub&&<div style={{fontSize:10,color:"rgba(0,0,0,0.3)",marginTop:2}}>{sub}</div>}
+    </div>
+  );
+
+  const BarRow=({label,value,max,color})=>(
+    <div style={{marginBottom:8}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+        <span style={{fontSize:12,color:"#444",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600}}>{label}</span>
+        <span style={{fontSize:12,fontWeight:700,color:color||"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif"}}>{value}</span>
+      </div>
+      <div style={{background:"rgba(0,0,0,0.06)",borderRadius:4,height:6,overflow:"hidden"}}>
+        <div style={{width:`${max>0?(value/max*100):0}%`,height:"100%",background:color||"#ff6b00",borderRadius:4,transition:"width 0.3s ease"}}/>
+      </div>
+    </div>
+  );
+
+  const maxUser=userRanking.length>0?userRanking[0][1]:1;
+  const maxProj=projRanking.length>0?projRanking[0][1]:1;
+
+  return(
+    <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>ADMIN ANALYTICS</div>
+        <div style={{fontSize:10,fontWeight:700,color:"#ff3b30",background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>ADMIN ONLY</div>
+      </div>
+      <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:20}}>📁 {currentProject?.name||"All"} · {company?.companyName}</div>
+
+      {/* Entries logged today/week/month */}
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:8}}>ENTRIES LOGGED</div>
+      <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
+        <StatCard label="TODAY" value={today} color="#30d158"/>
+        <StatCard label="THIS WEEK" value={week} color="#34aadc"/>
+        <StatCard label="THIS MONTH" value={month} color="#ff9500"/>
+        <StatCard label="ALL TIME" value={defects.length} color="#8e8e93"/>
+      </div>
+
+      {/* Active users */}
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:8}}>ACTIVE USERS & SUBMISSIONS</div>
+      <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
+        <div style={{display:"flex",gap:16,marginBottom:14}}>
+          <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#1a1a1a"}}>{activeUsers}</div><div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif"}}>USERS</div></div>
+          <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#1a1a1a"}}>{members.length}</div><div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif"}}>TEAM SIZE</div></div>
+        </div>
+        {/* Who submitted today */}
+        {Object.keys(userToday).length>0&&(
+          <div style={{marginBottom:12}}>
+            <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.35)",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>SUBMITTED TODAY</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {Object.entries(userToday).map(([u,c])=>(
+                <span key={u} style={{fontSize:11,background:"rgba(48,209,88,0.1)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:20,padding:"3px 10px",color:"#1a7a35",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600}}>{u} ({c})</span>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* Who submitted this week */}
+        {Object.keys(userWeek).length>0&&(
+          <div>
+            <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.35)",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>SUBMITTED THIS WEEK</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {Object.entries(userWeek).map(([u,c])=>(
+                <span key={u} style={{fontSize:11,background:"rgba(52,170,220,0.1)",border:"1px solid rgba(52,170,220,0.2)",borderRadius:20,padding:"3px 10px",color:"#1a6a8a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600}}>{u} ({c})</span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Entries per user ranking */}
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:8}}>ENTRIES PER USER (ALL TIME)</div>
+      <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
+        {userRanking.length===0&&<div style={{color:"rgba(0,0,0,0.3)",fontSize:13,textAlign:"center",padding:"10px 0"}}>No entries yet</div>}
+        {userRanking.map(([name,count],i)=>(
+          <BarRow key={name} label={`${i+1}. ${name}`} value={count} max={maxUser} color={i===0?"#ff6b00":i===1?"#ff9500":i===2?"#34aadc":"#8e8e93"}/>
+        ))}
+      </div>
+
+      {/* Photos per entry */}
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:8}}>PHOTOS</div>
+      <div style={{display:"flex",gap:8,marginBottom:20}}>
+        <StatCard label="TOTAL PHOTOS" value={totalPhotos} color="#5856d6"/>
+        <StatCard label="AVG / ENTRY" value={avgPhotos} color="#e91e63"/>
+      </div>
+
+      {/* Entry types breakdown */}
+      {typeRanking.length>1&&(
+        <>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:8}}>BY ENTRY TYPE</div>
+          <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
+            {typeRanking.map(([t,count])=>(
+              <BarRow key={t} label={`${typeIcon(t)} ${t}`} value={count} max={typeRanking[0][1]} color={typeColor(t)}/>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Entries by project */}
+      {projRanking.length>1&&(
+        <>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:8}}>BY PROJECT</div>
+          <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
+            {projRanking.map(([p,count])=>(
+              <BarRow key={p} label={`📁 ${p}`} value={count} max={maxProj} color="#ff6b00"/>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* AI usage */}
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:8}}>AI USAGE</div>
+      <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
+        <div style={{display:"flex",gap:16,marginBottom:10}}>
+          <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#5856d6"}}>{aiToday}</div><div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif"}}>TODAY / {AI_DAILY_LIMIT}</div></div>
+          <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#1a1a1a"}}>{aiAnalyzed}</div><div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif"}}>AI-ANALYZED</div></div>
+          <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#1a1a1a"}}>{defects.length>0?Math.round(aiAnalyzed/defects.length*100):0}%</div><div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif"}}>COVERAGE</div></div>
+        </div>
+        <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>Provider: <span style={{fontWeight:700,color:"#5856d6",textTransform:"uppercase"}}>{aiProvider}</span> · Daily limit: {AI_DAILY_LIMIT}</div>
+        {/* Usage bar */}
+        <div style={{marginTop:8,background:"rgba(0,0,0,0.06)",borderRadius:4,height:8,overflow:"hidden"}}>
+          <div style={{width:`${Math.min(aiToday/AI_DAILY_LIMIT*100,100)}%`,height:"100%",background:aiToday>=AI_DAILY_LIMIT?"#ff3b30":"#5856d6",borderRadius:4}}/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── App Root ──────────────────────────────────────────────────────
-const NAV=[{id:"dashboard",icon:"⊞",label:"Dashboard"},{id:"log",icon:"+",label:"Log"},{id:"defects",icon:"≡",label:"Defects"},{id:"report",icon:"◎",label:"Report"}];
+const NAV=[{id:"dashboard",icon:"⊞",label:"Dashboard"},{id:"log",icon:"+",label:"Log"},{id:"defects",icon:"≡",label:"Defects"},{id:"report",icon:"◎",label:"Report"},{id:"admin",icon:"⚡",label:"Admin"}];
 
 
 function App(){
@@ -2437,7 +2620,11 @@ function App(){
     </div>
   );
 
-  const navItems=canLog?NAV:NAV.filter(n=>n.id!=="log");
+  const navItems=NAV.filter(n=>{
+    if(n.id==="log"&&!canLog)return false;
+    if(n.id==="admin"&&!isAdmin)return false;
+    return true;
+  });
 
   return(
     <div style={{maxWidth:430,margin:"0 auto",minHeight:"100vh",background:"#f0ede8",display:"flex",flexDirection:"column"}}>
@@ -2492,6 +2679,7 @@ function App(){
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>Viewer access — defect logging disabled</div>}
         {tab==="defects"&&<DefectsList defects={defects} onView={setViewing}/>}
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company}/>}
+        {tab==="admin"&&isAdmin&&<AdminAnalytics defects={defects} members={members} company={company} currentProject={currentProject} projects={projects}/>}
       </div>
 
       {/* Bottom Nav */}
@@ -2524,6 +2712,7 @@ function App(){
                   ["Log (+)","Create a new entry. Select entry type, snap a photo, use AI to auto-fill, or speak into any text field using the mic button."],
                   ["Defects","Browse all entries with filters by status and severity. Tap any entry to view full details, update status, or add comments."],
                   ["Report","Filtered statistics with charts. Export as CSV or send an email report to your team."],
+                  ["Admin (lightning, Admin only)","Analytics dashboard — entries by day/week/month, per-user rankings, photos stats, entries by project, AI usage. Visible to Admin role only."],
                 ]],
                 ["Header Icons",[
                   ["Company & Project (top left)","Tap to switch between projects or create new ones."],
@@ -2585,7 +2774,7 @@ function App(){
                   ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
                   ["Defect Logging",[["Log with title, severity, location",true],["Custom entry types (user-defined)",true],["Multi-level location hierarchy",true],["Snap / upload up to 10 photos",true],["AI photo analysis (Gemini, Ollama, GPT)",true],["Voice-to-text input",true],["Component + issue selector",true],["Assign to team member",true],["Cost & time tracking fields",true],["Batch logging mode",true]]],
                   ["Defect Management",[["Status & severity filters",true],["Full detail view with photos",true],["Update status workflow",true],["Comments (text + voice)",true],["Delete defect (Admin)",true],["Telegram alerts",true]]],
-                  ["Dashboard",[["Real-time stats overview",true],["Critical defect alerts",true],["Severity breakdown chart",true],["Recent defects feed",true],["Live sync indicator",true]]],
+                  ["Dashboard",[["Real-time stats overview",true],["Critical defect alerts",true],["Severity breakdown chart",true],["Recent defects feed",true],["Live sync indicator",true],["Admin analytics dashboard",true]]],
                   ["Reports",[["Site report with charts",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report (EmailJS)",true]]],
                   ["Settings",[["Telegram bot setup + test",true],["AI setup — Gemini / Ollama / OpenAI",true],["Email report config",true],["Daily AI usage limit",true],["Storage options (PocketBase / Local Path / Google Drive)",true]]],
                   ["Coming Soon",[["Drawings / floor plan pins",false],["Profile editing",false],["Search across defects",false],["Offline submission queue",false],["Push notifications",false]]],
