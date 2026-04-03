@@ -2310,21 +2310,46 @@ function DrawingsPanel({onClose,company,currentProject,member,defects}){
     }).catch(()=>setLoading(false));
   },[company?.companyId,currentProject?.id]);
 
+  // Convert PDF to high-res JPEG using PDF.js (so server only needs to accept images)
+  const pdfToImage=async(file)=>{
+    const pdfjsLib=window.pdfjsLib;
+    if(!pdfjsLib)throw new Error("PDF.js not loaded");
+    if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    const arrayBuffer=await file.arrayBuffer();
+    const doc=await pdfjsLib.getDocument({data:arrayBuffer}).promise;
+    const page=await doc.getPage(1);
+    const viewport=page.getViewport({scale:3}); // High-res for floor plan detail
+    const canvas=document.createElement('canvas');
+    canvas.width=viewport.width;canvas.height=viewport.height;
+    await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+    doc.destroy();
+    return new Promise(resolve=>{
+      canvas.toBlob(blob=>resolve(blob),'image/jpeg',0.92);
+    });
+  };
+
   const uploadDrawing=async e=>{
     const file=e.target.files?.[0];
     if(!file)return;
     setUploading(true);
     try{
-      const fd=new FormData();
-      fd.append("companyId",company.companyId);
-      fd.append("projectId",currentProject.id);
-      fd.append("name",file.name.replace(/\.[^.]+$/,""));
-      fd.append("file",file);
-      fd.append("uploadedBy",member?.name||"");
-      fd.append("uploadedAt",new Date().toISOString());
-      const resp=await fetch(DB.baseUrl+"/api/collections/drawings/records",{method:"POST",headers:{"Authorization":"Bearer "+(JSON.parse(localStorage.getItem("pb_auth")||"{}").token||"")},body:fd});
-      if(!resp.ok)throw new Error("Upload failed");
-      const rec=await resp.json();
+      const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
+      let uploadFile=file;
+      let uploadName=file.name.replace(/\.[^.]+$/,"");
+      // Convert PDF to JPEG before upload
+      if(isPdf){
+        const blob=await pdfToImage(file);
+        uploadFile=new File([blob],uploadName+".jpg",{type:"image/jpeg"});
+      }
+      const rec=await DB.drawings.createWithFile({
+        companyId:company.companyId,
+        projectId:currentProject.id,
+        name:uploadName,
+        uploadedBy:member?.name||"",
+        uploadedAt:new Date().toISOString()
+      },"file",uploadFile,uploadFile.name);
       setDrawings(prev=>[rec,...prev]);
     }catch(err){alert("Upload failed: "+err.message);}
     setUploading(false);
@@ -2356,7 +2381,7 @@ function DrawingsPanel({onClose,company,currentProject,member,defects}){
         {/* Upload button */}
         {canUpload&&(
           <div style={{marginBottom:20}}>
-            <input ref={fileRef} type="file" accept="image/*,.pdf" onChange={uploadDrawing} style={{display:"none"}}/>
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf" onChange={uploadDrawing} style={{display:"none"}}/>
             <button onClick={()=>fileRef.current?.click()} disabled={uploading} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:14,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
               {uploading?<><Spin size={14}/><span>UPLOADING...</span></>:"📐 UPLOAD FLOOR PLAN"}
             </button>
@@ -2400,27 +2425,65 @@ function DrawingViewer({drawing,onClose,company,member,defects}){
   const[pins,setPins]=useState([]);const[loading,setLoading]=useState(true);
   const[placing,setPlacing]=useState(false);const[linkEntry,setLinkEntry]=useState(null);
   const[scale,setScale]=useState(1);const[offset,setOffset]=useState({x:0,y:0});
-  const imgRef=useRef();const containerRef=useRef();
+  const[pdfPageCount,setPdfPageCount]=useState(0);const[currentPage,setCurrentPage]=useState(1);
+  const[pdfLoading,setPdfLoading]=useState(false);const[pdfError,setPdfError]=useState(null);
+  const imgRef=useRef();const containerRef=useRef();const canvasRef=useRef();const pdfDocRef=useRef(null);
   const canPin=["Admin","Manager","Inspector"].includes(member?.role);
   const fileUrl=DB.fileUrl("drawings",drawing.id,drawing.file);
   const isImage=/\.(jpg|jpeg|png|gif|webp)$/i.test(drawing.file);
+  const isPdf=/\.pdf$/i.test(drawing.file);
 
   // Load pins
   useEffect(()=>{
     DB.pins.list(`drawingId="${drawing.id}"`).then(items=>{setPins(items);setLoading(false);}).catch(()=>setLoading(false));
   },[drawing.id]);
 
+  // Load PDF document
+  useEffect(()=>{
+    if(!isPdf||!window.pdfjsLib)return;
+    setPdfLoading(true);setPdfError(null);
+    const pdfjsLib=window.pdfjsLib;
+    if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    pdfjsLib.getDocument(fileUrl).promise.then(doc=>{
+      pdfDocRef.current=doc;
+      setPdfPageCount(doc.numPages);
+      setPdfLoading(false);
+    }).catch(err=>{setPdfError("Failed to load PDF: "+err.message);setPdfLoading(false);});
+    return()=>{if(pdfDocRef.current){pdfDocRef.current.destroy();pdfDocRef.current=null;}};
+  },[isPdf,fileUrl]);
+
+  // Render current PDF page to canvas
+  useEffect(()=>{
+    if(!pdfDocRef.current||!canvasRef.current)return;
+    let cancelled=false;
+    pdfDocRef.current.getPage(currentPage).then(page=>{
+      if(cancelled)return;
+      const viewport=page.getViewport({scale:2});
+      const canvas=canvasRef.current;
+      canvas.width=viewport.width;canvas.height=viewport.height;
+      const ctx=canvas.getContext('2d');
+      page.render({canvasContext:ctx,viewport}).promise.then(()=>{}).catch(()=>{});
+    });
+    return()=>{cancelled=true;};
+  },[currentPage,pdfPageCount]);
+
   // Get defect info for a pin
   const getDefect=entryId=>defects.find(d=>d.id===entryId);
 
-  // Handle tap on image to place pin
-  const handleImageClick=e=>{
-    if(!placing||!isImage)return;
-    const rect=imgRef.current.getBoundingClientRect();
+  // Filter pins for current page
+  const pagePins=isPdf?pins.filter(p=>(p.pageNum||1)===currentPage):pins;
+
+  // Handle tap on drawing to place pin
+  const handleDrawingClick=e=>{
+    if(!placing)return;
+    const target=isImage?imgRef.current:canvasRef.current;
+    if(!target)return;
+    const rect=target.getBoundingClientRect();
     const x=((e.clientX-rect.left)/rect.width*100).toFixed(2);
     const y=((e.clientY-rect.top)/rect.height*100).toFixed(2);
-    // Show entry picker
-    setLinkEntry({x:parseFloat(x),y:parseFloat(y)});
+    setLinkEntry({x:parseFloat(x),y:parseFloat(y),pageNum:currentPage});
     setPlacing(false);
   };
 
@@ -2428,7 +2491,7 @@ function DrawingViewer({drawing,onClose,company,member,defects}){
   const savePin=async(entryId)=>{
     if(!linkEntry)return;
     try{
-      const pin=await DB.pins.create({drawingId:drawing.id,entryId,pageNum:1,x:linkEntry.x,y:linkEntry.y,label:""});
+      const pin=await DB.pins.create({drawingId:drawing.id,entryId,pageNum:linkEntry.pageNum||1,x:linkEntry.x,y:linkEntry.y,label:""});
       setPins(prev=>[...prev,pin]);
     }catch(e){alert("Failed to place pin: "+e.message);}
     setLinkEntry(null);
@@ -2445,11 +2508,39 @@ function DrawingViewer({drawing,onClose,company,member,defects}){
   const zoomOut=()=>setScale(s=>Math.max(s-0.3,0.5));
   const resetZoom=()=>{setScale(1);setOffset({x:0,y:0});};
 
+  // Page navigation
+  const prevPage=()=>setCurrentPage(p=>Math.max(1,p-1));
+  const nextPage=()=>setCurrentPage(p=>Math.min(pdfPageCount,p+1));
+
   // Touch/drag for panning
   const dragRef=useRef(null);
   const onPointerDown=e=>{if(!placing)dragRef.current={startX:e.clientX-offset.x,startY:e.clientY-offset.y};};
   const onPointerMove=e=>{if(dragRef.current&&!placing){setOffset({x:e.clientX-dragRef.current.startX,y:e.clientY-dragRef.current.startY});}};
   const onPointerUp=()=>{dragRef.current=null;};
+
+  // Shared pin overlay
+  const renderPins=()=>pagePins.map(p=>{
+    const d=getDefect(p.entryId);
+    const color=d?SEV_COLOR[d.severity]||"#ff6b00":"#8e8e93";
+    return(
+      <div key={p.id} style={{position:"absolute",left:`${p.x}%`,top:`${p.y}%`,transform:"translate(-50%,-100%)",zIndex:5,cursor:"pointer"}}
+        onClick={e=>{e.stopPropagation();}}>
+        <div style={{position:"relative"}}>
+          <svg width="24" height="32" viewBox="0 0 24 32">
+            <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20C24 5.4 18.6 0 12 0z" fill={color}/>
+            <circle cx="12" cy="11" r="5" fill="#fff" opacity="0.9"/>
+          </svg>
+          <div style={{position:"absolute",bottom:36,left:"50%",transform:"translateX(-50%)",background:"#1a1a1a",borderRadius:8,padding:"6px 10px",minWidth:120,display:"none",zIndex:20}} className="pin-tip">
+            {d?(<>
+              <div style={{fontSize:11,fontWeight:700,color:"#fff",marginBottom:2}}>{d.title}</div>
+              <div style={{fontSize:10,color:"rgba(255,255,255,0.5)"}}>{d.severity} · {d.status}</div>
+            </>):(<div style={{fontSize:11,color:"rgba(255,255,255,0.5)"}}>Entry not found</div>)}
+            {canPin&&<button onClick={e=>{e.stopPropagation();deletePin(p.id);}} style={{marginTop:4,background:"rgba(255,59,48,0.2)",border:"none",borderRadius:4,padding:"3px 8px",color:"#ff6b6b",fontSize:10,cursor:"pointer",width:"100%"}}>Remove pin</button>}
+          </div>
+        </div>
+      </div>
+    );
+  });
 
   return(
     <div style={{position:"fixed",inset:0,background:"#1a1a1a",zIndex:250,display:"flex",flexDirection:"column"}}>
@@ -2458,7 +2549,7 @@ function DrawingViewer({drawing,onClose,company,member,defects}){
         <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>← BACK</button>
         <div style={{flex:1}}>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff"}}>{drawing.name}</div>
-          <div style={{fontSize:10,color:"rgba(255,255,255,0.4)"}}>{pins.length} pin(s)</div>
+          <div style={{fontSize:10,color:"rgba(255,255,255,0.4)"}}>{pins.length} pin(s){isPdf&&pdfPageCount>0?` · Page ${currentPage}/${pdfPageCount}`:""}</div>
         </div>
         {canPin&&(
           <button onClick={()=>setPlacing(!placing)} style={{background:placing?"#ff6b00":"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>
@@ -2474,6 +2565,15 @@ function DrawingViewer({drawing,onClose,company,member,defects}){
         <button onClick={zoomOut} style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
       </div>
 
+      {/* PDF page navigation */}
+      {isPdf&&pdfPageCount>1&&(
+        <div style={{position:"absolute",left:12,top:70,zIndex:10,display:"flex",flexDirection:"column",gap:6}}>
+          <button onClick={prevPage} disabled={currentPage<=1} style={{width:36,height:36,borderRadius:10,background:currentPage<=1?"rgba(0,0,0,0.3)":"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:16,cursor:currentPage<=1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>▲</button>
+          <div style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.6)",color:"#fff",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{currentPage}</div>
+          <button onClick={nextPage} disabled={currentPage>=pdfPageCount} style={{width:36,height:36,borderRadius:10,background:currentPage>=pdfPageCount?"rgba(0,0,0,0.3)":"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:16,cursor:currentPage>=pdfPageCount?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>▼</button>
+        </div>
+      )}
+
       {/* Placing mode indicator */}
       {placing&&<div style={{background:"#ff6b00",padding:"8px 16px",textAlign:"center",color:"#fff",fontSize:12,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",flexShrink:0}}>TAP ON THE DRAWING TO PLACE A PIN</div>}
 
@@ -2482,41 +2582,24 @@ function DrawingViewer({drawing,onClose,company,member,defects}){
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
         {isImage?(
           <div style={{position:"relative",transform:`scale(${scale}) translate(${offset.x/scale}px,${offset.y/scale}px)`,transformOrigin:"0 0",transition:dragRef.current?"none":"transform 0.15s ease"}}>
-            <img ref={imgRef} src={fileUrl} alt={drawing.name} onClick={handleImageClick}
+            <img ref={imgRef} src={fileUrl} alt={drawing.name} onClick={handleDrawingClick}
               style={{width:"100%",display:"block",userSelect:"none",pointerEvents:"auto"}}
               draggable={false}/>
-            {/* Render pins */}
-            {pins.map(p=>{
-              const d=getDefect(p.entryId);
-              const color=d?SEV_COLOR[d.severity]||"#ff6b00":"#8e8e93";
-              return(
-                <div key={p.id} style={{position:"absolute",left:`${p.x}%`,top:`${p.y}%`,transform:"translate(-50%,-100%)",zIndex:5,cursor:"pointer"}}
-                  onClick={e=>{e.stopPropagation();}}>
-                  <div style={{position:"relative"}}>
-                    {/* Pin shape */}
-                    <svg width="24" height="32" viewBox="0 0 24 32">
-                      <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20C24 5.4 18.6 0 12 0z" fill={color}/>
-                      <circle cx="12" cy="11" r="5" fill="#fff" opacity="0.9"/>
-                    </svg>
-                    {/* Tooltip on hover */}
-                    <div style={{position:"absolute",bottom:36,left:"50%",transform:"translateX(-50%)",background:"#1a1a1a",borderRadius:8,padding:"6px 10px",minWidth:120,display:"none",zIndex:20}} className="pin-tip">
-                      {d?(<>
-                        <div style={{fontSize:11,fontWeight:700,color:"#fff",marginBottom:2}}>{d.title}</div>
-                        <div style={{fontSize:10,color:"rgba(255,255,255,0.5)"}}>{d.severity} · {d.status}</div>
-                      </>):(<div style={{fontSize:11,color:"rgba(255,255,255,0.5)"}}>Entry not found</div>)}
-                      {canPin&&<button onClick={e=>{e.stopPropagation();deletePin(p.id);}} style={{marginTop:4,background:"rgba(255,59,48,0.2)",border:"none",borderRadius:4,padding:"3px 8px",color:"#ff6b6b",fontSize:10,cursor:"pointer",width:"100%"}}>Remove pin</button>}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {renderPins()}
+          </div>
+        ):isPdf?(
+          <div style={{position:"relative",transform:`scale(${scale}) translate(${offset.x/scale}px,${offset.y/scale}px)`,transformOrigin:"0 0",transition:dragRef.current?"none":"transform 0.15s ease"}}>
+            {pdfLoading&&<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"60vh",color:"rgba(255,255,255,0.4)"}}><Spin size={20}/><span style={{marginLeft:10,fontSize:13}}>Loading PDF...</span></div>}
+            {pdfError&&<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"60vh",color:"#ff6b6b",fontSize:13}}>{pdfError}</div>}
+            {!pdfLoading&&!pdfError&&<canvas ref={canvasRef} onClick={handleDrawingClick} style={{width:"100%",display:"block",userSelect:"none",pointerEvents:"auto"}}/>}
+            {!pdfLoading&&!pdfError&&renderPins()}
           </div>
         ):(
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%",color:"rgba(255,255,255,0.4)"}}>
             <div style={{textAlign:"center"}}>
               <div style={{fontSize:48,marginBottom:12}}>📄</div>
-              <div style={{fontSize:14}}>PDF viewing coming soon</div>
-              <a href={fileUrl} target="_blank" rel="noopener" style={{color:"#ff6b00",fontSize:13,marginTop:8,display:"inline-block"}}>Open PDF ↗</a>
+              <div style={{fontSize:14}}>Unsupported file type</div>
+              <a href={fileUrl} target="_blank" rel="noopener" style={{color:"#ff6b00",fontSize:13,marginTop:8,display:"inline-block"}}>Download file ↗</a>
             </div>
           </div>
         )}
