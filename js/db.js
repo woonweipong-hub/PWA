@@ -378,3 +378,178 @@ const DB = (() => {
     get baseUrl() { return _baseUrl; },
   };
 })();
+
+// ── Google Drive Storage Layer ────────────────────────────────────
+// Allows users to store photos in their own Google Drive account.
+// Uses OAuth2 with Google's client-side flow + Drive API v3.
+const GDrive = (() => {
+  const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+  const FOLDER_NAME = 'SiteShrimp Photos';
+  let _accessToken = '';
+  let _folderId = '';
+  let _clientId = '';
+  let _tokenExpiry = 0;
+
+  function init(clientId) {
+    _clientId = clientId;
+    // Restore saved token if still valid
+    try {
+      const saved = JSON.parse(localStorage.getItem(GDRIVE_KEY) || 'null');
+      if (saved?.token && saved?.expiry > Date.now()) {
+        _accessToken = saved.token;
+        _tokenExpiry = saved.expiry;
+      }
+    } catch {}
+  }
+
+  function isConnected() {
+    return !!(_accessToken && _tokenExpiry > Date.now());
+  }
+
+  // OAuth2 implicit flow — opens popup for Google sign-in
+  function authorize() {
+    return new Promise((resolve, reject) => {
+      if (!_clientId) return reject(new Error('Google Client ID not configured'));
+      const redirectUri = window.location.origin + window.location.pathname;
+      const url = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
+        client_id: _clientId,
+        redirect_uri: redirectUri,
+        response_type: 'token',
+        scope: SCOPES,
+        include_granted_scopes: 'true',
+        prompt: 'consent',
+      });
+      const popup = window.open(url, 'gdrive_auth', 'width=500,height=600,left=200,top=100');
+      if (!popup) return reject(new Error('Popup blocked — please allow popups for this site'));
+
+      const timer = setInterval(() => {
+        try {
+          if (popup.closed) { clearInterval(timer); reject(new Error('Auth cancelled')); return; }
+          const loc = popup.location.href;
+          if (loc && loc.startsWith(redirectUri)) {
+            clearInterval(timer);
+            const hash = new URL(loc).hash.substring(1);
+            const params = new URLSearchParams(hash);
+            const token = params.get('access_token');
+            const expiresIn = parseInt(params.get('expires_in') || '3600', 10);
+            popup.close();
+            if (token) {
+              _accessToken = token;
+              _tokenExpiry = Date.now() + expiresIn * 1000;
+              localStorage.setItem(GDRIVE_KEY, JSON.stringify({ token, expiry: _tokenExpiry }));
+              resolve(token);
+            } else {
+              reject(new Error('No access token received'));
+            }
+          }
+        } catch { /* cross-origin — keep polling */ }
+      }, 300);
+
+      // Timeout after 2 minutes
+      setTimeout(() => { clearInterval(timer); try { popup.close(); } catch {} reject(new Error('Auth timed out')); }, 120000);
+    });
+  }
+
+  function disconnect() {
+    _accessToken = '';
+    _tokenExpiry = 0;
+    _folderId = '';
+    localStorage.removeItem(GDRIVE_KEY);
+  }
+
+  async function _apiGet(path) {
+    const resp = await fetch('https://www.googleapis.com/drive/v3' + path, {
+      headers: { Authorization: 'Bearer ' + _accessToken },
+    });
+    if (!resp.ok) throw new Error('Drive API error: ' + resp.status);
+    return resp.json();
+  }
+
+  // Find or create the SiteShrimp Photos folder
+  async function _ensureFolder() {
+    if (_folderId) return _folderId;
+    // Search for existing folder
+    const q = encodeURIComponent(`name='${FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+    const result = await _apiGet(`/files?q=${q}&fields=files(id,name)&spaces=drive`);
+    if (result.files && result.files.length > 0) {
+      _folderId = result.files[0].id;
+      return _folderId;
+    }
+    // Create folder
+    const resp = await fetch('https://www.googleapis.com/drive/v3/files', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + _accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' }),
+    });
+    if (!resp.ok) throw new Error('Failed to create Drive folder');
+    const folder = await resp.json();
+    _folderId = folder.id;
+    return _folderId;
+  }
+
+  // Upload a photo (base64 data URL) to Google Drive, returns {fileId, webViewLink}
+  async function uploadPhoto(dataUrl, fileName) {
+    if (!isConnected()) throw new Error('Not connected to Google Drive');
+    const folderId = await _ensureFolder();
+
+    // Convert data URL to blob
+    const parts = dataUrl.split(',');
+    const mime = parts[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+    const b64 = parts[1];
+    const bytes = atob(b64);
+    const arr = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+    const blob = new Blob([arr], { type: mime });
+
+    // Multipart upload (metadata + file content)
+    const metadata = { name: fileName, parents: [folderId] };
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    form.append('file', blob);
+
+    const resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink,webContentLink', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + _accessToken },
+      body: form,
+    });
+    if (!resp.ok) throw new Error('Upload to Drive failed: ' + resp.status);
+    const file = await resp.json();
+
+    // Make file viewable by anyone with link (so photos display in the app)
+    await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}/permissions`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + _accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+    }).catch(() => {}); // non-critical
+
+    return {
+      fileId: file.id,
+      url: `https://drive.google.com/uc?export=view&id=${file.id}`,
+    };
+  }
+
+  // Get a direct-view URL for a file
+  function fileUrl(fileId) {
+    return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  }
+
+  // Test connection — list files to verify token works
+  async function testConnection() {
+    if (!isConnected()) return false;
+    try {
+      await _apiGet('/about?fields=user');
+      return true;
+    } catch { return false; }
+  }
+
+  // Get user info
+  async function getUserInfo() {
+    if (!isConnected()) return null;
+    try {
+      const result = await _apiGet('/about?fields=user');
+      return result.user;
+    } catch { return null; }
+  }
+
+  return { init, authorize, disconnect, isConnected, uploadPhoto, fileUrl, testConnection, getUserInfo };
+})();

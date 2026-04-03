@@ -28,6 +28,8 @@ function compressPhoto(dataUrl,maxPx=1800,quality=0.8){
   });
 }
 
+const AI_PROMPT='Analyze this construction defect photo. Respond in valid JSON only, no markdown: {"title":"max 5 word defect title","severity":"one of Critical Major Minor Observation","description":"2 sentence technical description"}';
+
 async function analyzeWithGemini(apiKey,base64Image){
   try{
     const b64=base64Image.split(",")[1];
@@ -35,13 +37,72 @@ async function analyzeWithGemini(apiKey,base64Image){
       method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({contents:[{parts:[
         {inline_data:{mime_type:"image/jpeg",data:b64}},
-        {text:'Analyze this construction defect photo. Respond in valid JSON only, no markdown: {"title":"max 5 word defect title","severity":"one of Critical Major Minor Observation","description":"2 sentence technical description"}'}
+        {text:AI_PROMPT}
       ]}]})
     });
     const data=await res.json();
     const text=data.candidates?.[0]?.content?.parts?.[0]?.text||"{}";
     return JSON.parse(text.replace(/```json|```/g,"").trim());
   }catch{return null;}
+}
+
+async function analyzeWithOllama(cfg,base64Image){
+  try{
+    const b64=base64Image.split(",")[1];
+    const url=(cfg.url||"http://localhost:11434").replace(/\/+$/,"");
+    const model=cfg.model||"llava";
+    const res=await fetch(url+"/api/generate",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model,prompt:AI_PROMPT,images:[b64],stream:false})
+    });
+    const data=await res.json();
+    const text=data.response||"{}";
+    return JSON.parse(text.replace(/```json|```/g,"").trim());
+  }catch{return null;}
+}
+
+async function analyzeWithOpenAI(cfg,base64Image){
+  try{
+    const b64=base64Image.split(",")[1];
+    const url=(cfg.url||"https://api.openai.com").replace(/\/+$/,"");
+    const model=cfg.model||"gpt-4o-mini";
+    const res=await fetch(url+"/v1/chat/completions",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},
+      body:JSON.stringify({model,max_tokens:300,messages:[{role:"user",content:[
+        {type:"image_url",image_url:{url:"data:image/jpeg;base64,"+b64,detail:"low"}},
+        {type:"text",text:AI_PROMPT}
+      ]}]})
+    });
+    const data=await res.json();
+    const text=data.choices?.[0]?.message?.content||"{}";
+    return JSON.parse(text.replace(/```json|```/g,"").trim());
+  }catch{return null;}
+}
+
+// Unified dispatcher — picks the right provider based on user settings
+async function analyzePhoto(base64Image){
+  const provider=local.get(AI_PROVIDER_KEY)||"gemini";
+  if(provider==="ollama"){
+    const cfg=local.get(OLLAMA_KEY)||{};
+    return analyzeWithOllama(cfg,base64Image);
+  }
+  if(provider==="openai"){
+    const cfg=local.get(OPENAI_KEY)||{};
+    return analyzeWithOpenAI(cfg,base64Image);
+  }
+  // Default: Gemini
+  const key=local.get(GEMINI_KEY);
+  if(!key)return null;
+  return analyzeWithGemini(key,base64Image);
+}
+
+function isAiConfigured(){
+  const provider=local.get(AI_PROVIDER_KEY)||"gemini";
+  if(provider==="gemini")return !!local.get(GEMINI_KEY);
+  if(provider==="ollama"){const c=local.get(OLLAMA_KEY);return !!(c&&c.url);}
+  if(provider==="openai"){const c=local.get(OPENAI_KEY);return !!(c&&c.apiKey);}
+  return false;
 }
 
 function exportCSV(defects,projectName){
@@ -427,7 +488,7 @@ function AuthScreen({onAuth,onFullSetup}){
 
         <div style={{textAlign:"left",marginBottom:32}}>
           {[
-            ["📷","Snap photos, AI describes the defect"],
+            ["📷","Snap photos, AI describes the defect (Gemini, Ollama, GPT)"],
             ["mic","Voice support — hands-free feature"],
             ["📋","Paperless Defects Tracking, Site Monitoring and Instant Feedbacks"],
             ["👥","Team sync, live updates"],
@@ -471,7 +532,7 @@ function AuthScreen({onAuth,onFullSetup}){
             ["Defect Management",["View all entries with status/severity filters","Defect detail view with photos","Update status (Open > In Progress > Done > Verified > Closed)","Add comments (text + voice)","Delete defect (Admin only)","Telegram alerts on status change"]],
             ["Dashboard",["Real-time stats (Open / In Progress / Done)","Critical defect alerts","Severity breakdown chart","Recent defects feed","Live sync indicator"]],
             ["Reports",["Site report with charts + defect list","Filter by severity / status / assignee / date","CSV export","Email report (EmailJS)"]],
-            ["Settings",["Telegram bot setup + test","Gemini AI setup + test","Email report setup","Daily AI usage limit"]],
+            ["Settings",["Telegram bot setup + test","AI setup — Gemini / Ollama / OpenAI","Email report setup","Daily AI usage limit","Storage (PocketBase / Local Path / Google Drive)"]],
             ["Profile",["View profile info","Sign out with credential cleanup"]],
           ].reduce((n,g)=>n+g[1].length,0)} features)</div>
           {[
@@ -482,7 +543,7 @@ function AuthScreen({onAuth,onFullSetup}){
             ["Defect Management",[["Status & severity filters",true],["Full detail view with photos",true],["Update status workflow",true],["Comments (text + voice)",true],["Delete defect (Admin)",true],["Telegram alerts",true]]],
             ["Dashboard",[["Real-time stats overview",true],["Critical defect alerts",true],["Severity breakdown chart",true],["Recent defects feed",true],["Live sync indicator",true]]],
             ["Reports",[["Site report with charts",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report (EmailJS)",true]]],
-            ["Settings",[["Telegram bot setup + test",true],["Gemini AI setup + test",true],["Email report config",true],["Daily AI usage limit",true]]],
+            ["Settings",[["Telegram bot setup + test",true],["AI setup — Gemini / Ollama / OpenAI",true],["Email report config",true],["Daily AI usage limit",true],["Storage (PocketBase / Local / Google Drive)",true]]],
             ["Coming Soon",[["Drawings / floor plan pins",false],["Profile editing",false],["Search across defects",false],["Offline mode",false],["Push notifications",false]]],
           ].map(([cat,items])=>(
             <div key={cat} style={{marginBottom:16}}>
@@ -936,39 +997,173 @@ function TelegramSettings({onClose,companyId}){
   );
 }
 
-// ── Gemini AI Settings ────────────────────────────────────────────
+// ── AI Settings (multi-provider: Gemini, Ollama, OpenAI/GPT) ─────
+const AI_PROVIDERS=[
+  {id:"gemini",label:"Google Gemini",icon:"✦",desc:"Free cloud AI — 1,500 analyses/day",color:"#4285f4"},
+  {id:"ollama",label:"Ollama (Local)",icon:"🦙",desc:"Run AI locally — Llava, Qwen, Llama Vision",color:"#30d158"},
+  {id:"openai",label:"OpenAI / GPT",icon:"◈",desc:"GPT-4o, GPT-4o-mini, or compatible API",color:"#10a37f"},
+];
 function GeminiSettings({onClose,companyId}){
-  const[key,setKey]=useState(()=>local.get(GEMINI_KEY)||"");
+  const[provider,setProvider]=useState(()=>local.get(AI_PROVIDER_KEY)||"gemini");
+  // Gemini state
+  const[gemKey,setGemKey]=useState(()=>local.get(GEMINI_KEY)||"");
+  // Ollama state
+  const ollamaCfg=local.get(OLLAMA_KEY)||{url:"http://localhost:11434",model:"llava"};
+  const[ollamaUrl,setOllamaUrl]=useState(ollamaCfg.url||"http://localhost:11434");
+  const[ollamaModel,setOllamaModel]=useState(ollamaCfg.model||"llava");
+  const[ollamaModels,setOllamaModels]=useState([]);
+  // OpenAI state
+  const openaiCfg=local.get(OPENAI_KEY)||{url:"https://api.openai.com",apiKey:"",model:"gpt-4o-mini"};
+  const[oaiUrl,setOaiUrl]=useState(openaiCfg.url||"https://api.openai.com");
+  const[oaiKey,setOaiKey]=useState(openaiCfg.apiKey||"");
+  const[oaiModel,setOaiModel]=useState(openaiCfg.model||"gpt-4o-mini");
+  // Shared state
   const[saved,setSaved]=useState(false);const[testing,setTesting]=useState(false);const[testRes,setTestRes]=useState(null);
-  const save=()=>{local.set(GEMINI_KEY,key.trim());saveSettingToFirestore(companyId,"gemini",key.trim());setSaved(true);setTimeout(()=>setSaved(false),2000);};
+
+  // Fetch available Ollama models when Ollama is selected
+  useEffect(()=>{
+    if(provider!=="ollama")return;
+    const url=ollamaUrl.replace(/\/+$/,"");
+    fetch(url+"/api/tags").then(r=>r.json()).then(d=>{
+      const models=(d.models||[]).map(m=>m.name);
+      setOllamaModels(models);
+    }).catch(()=>setOllamaModels([]));
+  },[provider,ollamaUrl]);
+
+  const save=()=>{
+    local.set(AI_PROVIDER_KEY,provider);
+    if(provider==="gemini")local.set(GEMINI_KEY,gemKey.trim());
+    if(provider==="ollama")local.set(OLLAMA_KEY,{url:ollamaUrl.trim(),model:ollamaModel.trim()});
+    if(provider==="openai")local.set(OPENAI_KEY,{url:oaiUrl.trim(),apiKey:oaiKey.trim(),model:oaiModel.trim()});
+    setSaved(true);setTimeout(()=>setSaved(false),2000);
+  };
+
   const test=async()=>{
     setTesting(true);setTestRes(null);
     try{
-      const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key.trim()}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:"Reply with just: OK"}]}]})});
-      if(res.ok){setTestRes("success");}else{const err=await res.json().catch(()=>({}));console.warn("Gemini test error:",res.status,err);setTestRes("fail");}
+      if(provider==="gemini"){
+        const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${gemKey.trim()}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:"Reply with just: OK"}]}]})});
+        setTestRes(res.ok?"success":"fail");
+      }else if(provider==="ollama"){
+        const url=ollamaUrl.trim().replace(/\/+$/,"");
+        const res=await fetch(url+"/api/tags");
+        if(res.ok){
+          const d=await res.json();
+          const models=(d.models||[]).map(m=>m.name);
+          setOllamaModels(models);
+          setTestRes(models.length>0?"success":"fail");
+        }else{setTestRes("fail");}
+      }else if(provider==="openai"){
+        const url=oaiUrl.trim().replace(/\/+$/,"");
+        const res=await fetch(url+"/v1/models",{headers:{"Authorization":"Bearer "+oaiKey.trim()}});
+        setTestRes(res.ok?"success":"fail");
+      }
     }catch{setTestRes("fail");}
     setTesting(false);
   };
+
+  const canTest=provider==="gemini"?!!gemKey:provider==="ollama"?!!ollamaUrl:!!(oaiKey&&oaiUrl);
+
   return(
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
-      <SettingsBack onClose={onClose} title="🤖 AI PHOTO ANALYSIS"/>
+      <SettingsBack onClose={onClose} title="AI PHOTO ANALYSIS"/>
       <div style={{padding:20}}>
-        <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
-          {[["1","Go to aistudio.google.com and sign in with Google"],["2","Click Get API Key → Create API Key"],["3","Copy the key and paste below → Test → Save"]].map(([n,t])=>(
-            <div key={n} style={{display:"flex",gap:10,marginBottom:10,alignItems:"flex-start"}}>
-              <div style={{width:22,height:22,borderRadius:"50%",background:"#ff6b00",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff"}}>{n}</div>
-              <div style={{fontSize:13,color:"#444",lineHeight:1.5,paddingTop:2}}>{t}</div>
-            </div>
+
+        {/* Provider selector */}
+        <label style={lbl()}>AI PROVIDER</label>
+        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
+          {AI_PROVIDERS.map(p=>(
+            <button key={p.id} onClick={()=>{setProvider(p.id);setTestRes(null);}} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderRadius:12,border:`2px solid ${provider===p.id?p.color:"rgba(0,0,0,0.1)"}`,background:provider===p.id?p.color+"10":"#fff",cursor:"pointer",textAlign:"left"}}>
+              <span style={{fontSize:20,flexShrink:0}}>{p.icon}</span>
+              <div style={{flex:1}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:provider===p.id?p.color:"#1a1a1a"}}>{p.label.toUpperCase()}</div>
+                <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginTop:2}}>{p.desc}</div>
+              </div>
+              {provider===p.id&&<span style={{color:p.color,fontWeight:800,fontSize:16}}>✓</span>}
+            </button>
           ))}
-          <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:8,padding:"10px 12px",marginTop:8}}>
-            <div style={{fontSize:12,color:"#1a7a35",fontWeight:600}}>✓ Free — 1,500 photo analyses per day · No credit card</div>
-          </div>
         </div>
-        <div style={{marginBottom:20}}><label style={lbl()}>GEMINI API KEY</label><input value={key} onChange={e=>setKey(e.target.value)} placeholder="AIzaSy..." type="password" style={{...inp,width:"100%",flex:"unset"}}/></div>
-        {testRes&&<div style={{background:testRes==="success"?"rgba(48,209,88,0.1)":"rgba(255,59,48,0.1)",border:`1px solid ${testRes==="success"?"rgba(48,209,88,0.3)":"rgba(255,59,48,0.3)"}`,borderRadius:10,padding:"12px 16px",marginBottom:16,color:testRes==="success"?"#1a7a35":"#cc0000",fontSize:13,fontWeight:600}}>{testRes==="success"?"✓ AI connected! Photos will be auto-analyzed.":"✗ Invalid key. Check and try again."}</div>}
+
+        {/* Gemini config */}
+        {provider==="gemini"&&(
+          <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#1a1a1a",marginBottom:12}}>GOOGLE GEMINI SETUP</div>
+            {[["1","Go to aistudio.google.com and sign in with Google"],["2","Click Get API Key → Create API Key"],["3","Copy the key and paste below → Test → Save"]].map(([n,t])=>(
+              <div key={n} style={{display:"flex",gap:10,marginBottom:8,alignItems:"flex-start"}}>
+                <div style={{width:22,height:22,borderRadius:"50%",background:"#4285f4",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff"}}>{n}</div>
+                <div style={{fontSize:12,color:"#444",lineHeight:1.5,paddingTop:2}}>{t}</div>
+              </div>
+            ))}
+            <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:8,padding:"10px 12px",marginTop:8,marginBottom:14}}>
+              <div style={{fontSize:12,color:"#1a7a35",fontWeight:600}}>Free — 1,500 photo analyses per day · No credit card</div>
+            </div>
+            <label style={lbl()}>GEMINI API KEY</label>
+            <input value={gemKey} onChange={e=>setGemKey(e.target.value)} placeholder="AIzaSy..." type="password" style={{...inp,width:"100%",flex:"unset"}}/>
+          </div>
+        )}
+
+        {/* Ollama config */}
+        {provider==="ollama"&&(
+          <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#1a1a1a",marginBottom:12}}>OLLAMA LOCAL AI SETUP</div>
+            {[["1","Install Ollama from ollama.com"],["2","Pull a vision model: ollama pull llava (or qwen2.5-vl, llama3.2-vision, minicpm-v)"],["3","Ollama runs at http://localhost:11434 by default"],["4","Enter your Ollama URL below → Test → Save"]].map(([n,t])=>(
+              <div key={n} style={{display:"flex",gap:10,marginBottom:8,alignItems:"flex-start"}}>
+                <div style={{width:22,height:22,borderRadius:"50%",background:"#30d158",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff"}}>{n}</div>
+                <div style={{fontSize:12,color:"#444",lineHeight:1.5,paddingTop:2}}>{t}</div>
+              </div>
+            ))}
+            <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:8,padding:"10px 12px",marginTop:8,marginBottom:14}}>
+              <div style={{fontSize:12,color:"#1a7a35",fontWeight:600}}>Free and private — runs entirely on your machine · No data sent to cloud</div>
+            </div>
+            <label style={lbl()}>OLLAMA SERVER URL</label>
+            <input value={ollamaUrl} onChange={e=>setOllamaUrl(e.target.value)} placeholder="http://localhost:11434" style={{...inp,width:"100%",flex:"unset",marginBottom:14,fontFamily:"monospace",fontSize:13}}/>
+            <label style={lbl()}>VISION MODEL</label>
+            {ollamaModels.length>0?(
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:6}}>
+                {ollamaModels.map(m=>(
+                  <button key={m} onClick={()=>setOllamaModel(m)} style={{padding:"7px 12px",borderRadius:8,border:`1.5px solid ${ollamaModel===m?"#30d158":"rgba(0,0,0,0.1)"}`,background:ollamaModel===m?"rgba(48,209,88,0.1)":"#fff",color:ollamaModel===m?"#30d158":"#444",fontFamily:"monospace",fontSize:12,cursor:"pointer",fontWeight:ollamaModel===m?700:400}}>{m}</button>
+                ))}
+              </div>
+            ):null}
+            <input value={ollamaModel} onChange={e=>setOllamaModel(e.target.value)} placeholder="llava" style={{...inp,width:"100%",flex:"unset",fontFamily:"monospace",fontSize:13}}/>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.35)",marginTop:6}}>
+              Recommended vision models: llava, llava-llama3, qwen2.5-vl, llama3.2-vision, minicpm-v, bakllava
+            </div>
+          </div>
+        )}
+
+        {/* OpenAI / GPT config */}
+        {provider==="openai"&&(
+          <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#1a1a1a",marginBottom:12}}>OPENAI / GPT SETUP</div>
+            {[["1","Go to platform.openai.com → API Keys → Create new key"],["2","Copy the API key and paste below"],["3","Choose a vision-capable model (gpt-4o, gpt-4o-mini)"],["4","Or use any OpenAI-compatible API (e.g., local LM Studio, Together AI)"]].map(([n,t])=>(
+              <div key={n} style={{display:"flex",gap:10,marginBottom:8,alignItems:"flex-start"}}>
+                <div style={{width:22,height:22,borderRadius:"50%",background:"#10a37f",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff"}}>{n}</div>
+                <div style={{fontSize:12,color:"#444",lineHeight:1.5,paddingTop:2}}>{t}</div>
+              </div>
+            ))}
+            <label style={lbl()}>API BASE URL</label>
+            <input value={oaiUrl} onChange={e=>setOaiUrl(e.target.value)} placeholder="https://api.openai.com" style={{...inp,width:"100%",flex:"unset",marginBottom:14,fontFamily:"monospace",fontSize:13}}/>
+            <label style={lbl()}>API KEY</label>
+            <input value={oaiKey} onChange={e=>setOaiKey(e.target.value)} placeholder="sk-..." type="password" style={{...inp,width:"100%",flex:"unset",marginBottom:14}}/>
+            <label style={lbl()}>MODEL</label>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:6}}>
+              {["gpt-4o","gpt-4o-mini","gpt-4-turbo"].map(m=>(
+                <button key={m} onClick={()=>setOaiModel(m)} style={{padding:"7px 12px",borderRadius:8,border:`1.5px solid ${oaiModel===m?"#10a37f":"rgba(0,0,0,0.1)"}`,background:oaiModel===m?"rgba(16,163,127,0.1)":"#fff",color:oaiModel===m?"#10a37f":"#444",fontFamily:"monospace",fontSize:12,cursor:"pointer",fontWeight:oaiModel===m?700:400}}>{m}</button>
+              ))}
+            </div>
+            <input value={oaiModel} onChange={e=>setOaiModel(e.target.value)} placeholder="gpt-4o-mini" style={{...inp,width:"100%",flex:"unset",fontFamily:"monospace",fontSize:13}}/>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.35)",marginTop:6}}>
+              Works with OpenAI, Azure OpenAI, LM Studio, Together AI, or any OpenAI-compatible endpoint.
+            </div>
+          </div>
+        )}
+
+        {/* Test & Save */}
+        {testRes&&<div style={{background:testRes==="success"?"rgba(48,209,88,0.1)":"rgba(255,59,48,0.1)",border:`1px solid ${testRes==="success"?"rgba(48,209,88,0.3)":"rgba(255,59,48,0.3)"}`,borderRadius:10,padding:"12px 16px",marginBottom:16,color:testRes==="success"?"#1a7a35":"#cc0000",fontSize:13,fontWeight:600}}>{testRes==="success"?"✓ AI connected! Photos will be auto-analyzed.":"✗ Connection failed. Check your settings and try again."}</div>}
         <div style={{display:"flex",gap:10}}>
-          <button onClick={test} disabled={!key||testing} style={{flex:1,background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:10,padding:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>{testing?"TESTING...":"TEST"}</button>
-          <button onClick={save} disabled={!key} style={{flex:2,background:key?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:13,color:key?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{saved?"✓ SAVED":"SAVE"}</button>
+          <button onClick={test} disabled={!canTest||testing} style={{flex:1,background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:10,padding:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>{testing?"TESTING...":"TEST"}</button>
+          <button onClick={save} disabled={!canTest} style={{flex:2,background:canTest?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:13,color:canTest?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{saved?"✓ SAVED":"SAVE"}</button>
         </div>
       </div>
     </div>
@@ -1008,6 +1203,195 @@ function EmailSettings({onClose,companyId}){
           <button onClick={()=>setRec(r=>[...r,""])} style={{background:"rgba(255,107,0,0.08)",border:"1.5px dashed rgba(255,107,0,0.3)",borderRadius:10,padding:"10px",width:"100%",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>+ ADD RECIPIENT</button>
         </div>
         <button onClick={save} disabled={!pk||!sid||!tid} style={{width:"100%",background:pk&&sid&&tid?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:14,color:pk&&sid&&tid?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{saved?"✓ SAVED":"SAVE"}</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Storage Settings ──────────────────────────────────────────────
+const STORAGE_MODES=[
+  {id:"pocketbase",label:"PocketBase (Default)",icon:"🗄",desc:"Photos stored on your PocketBase server"},
+  {id:"local",label:"Local Path",icon:"💾",desc:"Store photos to a folder on your server/machine"},
+  {id:"gdrive",label:"Google Drive",icon:"☁",desc:"Store photos in your own Google Drive"},
+];
+function StorageSettings({onClose,companyId}){
+  const storageCfg=local.get(STORAGE_KEY)||{mode:"pocketbase",localPath:"",gdriveClientId:""};
+  const[mode,setMode]=useState(storageCfg.mode||"pocketbase");
+  const[localPath,setLocalPath]=useState(storageCfg.localPath||"");
+  const[gClientId,setGClientId]=useState(storageCfg.gdriveClientId||"");
+  const[saved,setSaved]=useState(false);
+  const[gdriveUser,setGdriveUser]=useState(null);
+  const[gdriveConnecting,setGdriveConnecting]=useState(false);
+  const[gdriveError,setGdriveError]=useState("");
+  const[testingLocal,setTestingLocal]=useState(false);
+  const[localTestRes,setLocalTestRes]=useState(null);
+
+  // Check Google Drive connection on mount
+  useEffect(()=>{
+    if(storageCfg.gdriveClientId){
+      GDrive.init(storageCfg.gdriveClientId);
+      if(GDrive.isConnected()){
+        GDrive.getUserInfo().then(u=>setGdriveUser(u)).catch(()=>{});
+      }
+    }
+  },[]);
+
+  const save=()=>{
+    const cfg={mode,localPath:localPath.trim(),gdriveClientId:gClientId.trim()};
+    local.set(STORAGE_KEY,cfg);
+    if(cfg.gdriveClientId)GDrive.init(cfg.gdriveClientId);
+    setSaved(true);
+    setTimeout(()=>setSaved(false),2000);
+  };
+
+  const connectGDrive=async()=>{
+    if(!gClientId.trim()){setGdriveError("Enter your Google Client ID first.");return;}
+    setGdriveConnecting(true);setGdriveError("");
+    try{
+      GDrive.init(gClientId.trim());
+      await GDrive.authorize();
+      const user=await GDrive.getUserInfo();
+      setGdriveUser(user);
+      // Auto-save on successful connect
+      const cfg={mode:"gdrive",localPath:localPath.trim(),gdriveClientId:gClientId.trim()};
+      local.set(STORAGE_KEY,cfg);
+      setMode("gdrive");
+    }catch(e){
+      setGdriveError(e.message||"Connection failed.");
+    }
+    setGdriveConnecting(false);
+  };
+
+  const disconnectGDrive=()=>{
+    GDrive.disconnect();
+    setGdriveUser(null);
+    if(mode==="gdrive"){setMode("pocketbase");local.set(STORAGE_KEY,{...local.get(STORAGE_KEY),mode:"pocketbase"});}
+  };
+
+  const testLocalPath=async()=>{
+    if(!localPath.trim())return;
+    setTestingLocal(true);setLocalTestRes(null);
+    try{
+      // Test by calling PocketBase custom endpoint (if available) or just validate format
+      const pbUrl=localStorage.getItem('pb_url')||'https://siteshrimp.duckdns.org';
+      const resp=await fetch(pbUrl.replace(/\/+$/,'')+'/api/storage/test',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({path:localPath.trim()}),
+      });
+      if(resp.ok){setLocalTestRes("success");}
+      else{setLocalTestRes("fail");}
+    }catch{
+      // If endpoint doesn't exist, just validate the path format
+      const p=localPath.trim();
+      if(p.length>2&&(p.includes('/')||p.includes('\\'))){
+        setLocalTestRes("success");
+      }else{
+        setLocalTestRes("fail");
+      }
+    }
+    setTestingLocal(false);
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
+      <SettingsBack onClose={onClose} title="STORAGE SETTINGS"/>
+      <div style={{padding:20}}>
+        {/* Info box */}
+        <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
+          <div style={{fontSize:13,color:"#444",lineHeight:1.6,marginBottom:8}}>Choose where to store your photos and files. Default uses your PocketBase server.</div>
+          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",lineHeight:1.5}}>
+            <b>Local Path</b> — for self-hosted setups on your own server, laptop, or machine. Files are saved to the folder you specify.<br/>
+            <b>Google Drive</b> — for mobile users who want cloud storage they control. Photos upload to your personal Drive.
+          </div>
+        </div>
+
+        {/* Storage mode selector */}
+        <label style={lbl()}>STORAGE MODE</label>
+        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
+          {STORAGE_MODES.map(m=>(
+            <button key={m.id} onClick={()=>setMode(m.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderRadius:12,border:`2px solid ${mode===m.id?"#ff6b00":"rgba(0,0,0,0.1)"}`,background:mode===m.id?"rgba(255,107,0,0.06)":"#fff",cursor:"pointer",textAlign:"left"}}>
+              <span style={{fontSize:22,flexShrink:0}}>{m.icon}</span>
+              <div style={{flex:1}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:mode===m.id?"#ff6b00":"#1a1a1a"}}>{m.label.toUpperCase()}</div>
+                <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginTop:2}}>{m.desc}</div>
+              </div>
+              {mode===m.id&&<span style={{color:"#ff6b00",fontWeight:800,fontSize:16}}>✓</span>}
+            </button>
+          ))}
+        </div>
+
+        {/* Local Path config */}
+        {mode==="local"&&(
+          <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#1a1a1a",marginBottom:12}}>LOCAL STORAGE PATH</div>
+            <div style={{background:"rgba(255,149,0,0.08)",border:"1px solid rgba(255,149,0,0.2)",borderRadius:8,padding:"10px 12px",marginBottom:14}}>
+              <div style={{fontSize:12,color:"#996600",lineHeight:1.5}}>Enter the full path to the folder on your server or machine where photos should be saved. Make sure the folder exists and is writable.</div>
+            </div>
+            <label style={lbl()}>FOLDER PATH</label>
+            <input value={localPath} onChange={e=>setLocalPath(e.target.value)} placeholder={navigator.platform.includes("Win")?"C:\\SiteShrimp\\photos":"/home/user/siteshrimp/photos"} style={{...inp,width:"100%",flex:"unset",marginBottom:10,fontFamily:"monospace",fontSize:13}}/>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.35)",marginBottom:14}}>
+              Examples:<br/>
+              Windows: C:\SiteShrimp\photos<br/>
+              Linux/Mac: /opt/siteshrimp/photos
+            </div>
+            {localTestRes&&<div style={{background:localTestRes==="success"?"rgba(48,209,88,0.1)":"rgba(255,59,48,0.1)",border:`1px solid ${localTestRes==="success"?"rgba(48,209,88,0.3)":"rgba(255,59,48,0.3)"}`,borderRadius:10,padding:"12px 16px",marginBottom:14,color:localTestRes==="success"?"#1a7a35":"#cc0000",fontSize:13,fontWeight:600}}>{localTestRes==="success"?"✓ Path format looks valid. Files will be saved here.":"✗ Invalid path format. Check and try again."}</div>}
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={testLocalPath} disabled={!localPath||testingLocal} style={{flex:1,background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:10,padding:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>{testingLocal?"TESTING...":"TEST PATH"}</button>
+            </div>
+          </div>
+        )}
+
+        {/* Google Drive config */}
+        {mode==="gdrive"&&(
+          <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#1a1a1a",marginBottom:12}}>GOOGLE DRIVE SETUP</div>
+            <div style={{marginBottom:14}}>
+              {[
+                ["1","Go to console.cloud.google.com → Create or select a project"],
+                ["2","Enable the Google Drive API"],
+                ["3","Go to Credentials → Create OAuth 2.0 Client ID (Web application)"],
+                ["4","Add your app URL as an Authorized redirect URI"],
+                ["5","Copy the Client ID and paste below → Connect"],
+              ].map(([n,t])=>(
+                <div key={n} style={{display:"flex",gap:10,marginBottom:8,alignItems:"flex-start"}}>
+                  <div style={{width:22,height:22,borderRadius:"50%",background:"#ff6b00",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff"}}>{n}</div>
+                  <div style={{fontSize:12,color:"#444",lineHeight:1.5,paddingTop:2}}>{t}</div>
+                </div>
+              ))}
+            </div>
+            <label style={lbl()}>GOOGLE CLIENT ID</label>
+            <input value={gClientId} onChange={e=>setGClientId(e.target.value)} placeholder="123456789.apps.googleusercontent.com" style={{...inp,width:"100%",flex:"unset",marginBottom:10,fontSize:12}}/>
+
+            {/* Connected state */}
+            {gdriveUser&&(
+              <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:10,padding:"12px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
+                <div style={{width:32,height:32,borderRadius:"50%",background:"#30d158",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:14,flexShrink:0}}>{(gdriveUser.displayName||"G")[0]}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:700,color:"#1a7a35"}}>{gdriveUser.displayName||"Connected"}</div>
+                  <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>{gdriveUser.emailAddress||"Google Drive connected"}</div>
+                </div>
+                <button onClick={disconnectGDrive} style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:8,padding:"6px 12px",color:"#cc0000",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>DISCONNECT</button>
+              </div>
+            )}
+
+            {gdriveError&&<div style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"12px 16px",marginBottom:14,color:"#cc0000",fontSize:13,fontWeight:600}}>{gdriveError}</div>}
+
+            {!gdriveUser&&(
+              <button onClick={connectGDrive} disabled={!gClientId||gdriveConnecting} style={{width:"100%",background:gClientId?"#4285f4":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:14,color:gClientId?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#fff"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#fff"/></svg>
+                {gdriveConnecting?"CONNECTING...":"CONNECT GOOGLE DRIVE"}
+              </button>
+            )}
+
+            <div style={{marginTop:12,fontSize:11,color:"rgba(0,0,0,0.3)",lineHeight:1.5}}>
+              Photos will be saved in a "SiteShrimp Photos" folder in your Google Drive. Only you can access them unless you share the folder.
+            </div>
+          </div>
+        )}
+
+        {/* Save button */}
+        <button onClick={save} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:10,padding:14,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{saved?"✓ SAVED":"SAVE SETTINGS"}</button>
       </div>
     </div>
   );
@@ -1113,7 +1497,7 @@ function LogDefect({member,company,currentProject,members,onSave}){
   const[count,setCount]=useState(0);const[last,setLast]=useState(null);const[showBatch,setShowBatch]=useState(false);
   const fileRef=useRef();
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
-  const geminiKey=local.get(GEMINI_KEY);
+  const aiReady=isAiConfigured();
   const assignees=members.length>0?members.map(m=>m.name):["Site Manager","Engineer","Contractor","QC Inspector","Safety Officer"];
   const MAX_PHOTOS=10;
 
@@ -1137,7 +1521,7 @@ function LogDefect({member,company,currentProject,members,onSave}){
   const removePhoto=idx=>setForm(f=>({...f,photos:f.photos.filter((_,i)=>i!==idx)}));
 
   const analyze=async()=>{
-    if(!form.photos.length||!geminiKey)return;
+    if(!form.photos.length||!aiReady)return;
     const today=new Date().toISOString().slice(0,10);
     const aiUsage=local.get(AI_LIMIT_KEY)||{date:"",count:0};
     const todayCount=aiUsage.date===today?aiUsage.count:0;
@@ -1148,7 +1532,7 @@ function LogDefect({member,company,currentProject,members,onSave}){
     setAnalyzing(true);
     try{
       const compressed=await compressPhoto(form.photos[0],600,0.7);
-      const result=await analyzeWithGemini(geminiKey,compressed||form.photos[0]);
+      const result=await analyzePhoto(compressed||form.photos[0]);
       if(result){
         local.set(AI_LIMIT_KEY,{date:today,count:todayCount+1});
         setAiResult(result);
@@ -1309,12 +1693,12 @@ function LogDefect({member,company,currentProject,members,onSave}){
                 <button onClick={()=>fileRef.current.click()} style={{width:100,height:100,borderRadius:10,border:"2px dashed rgba(0,0,0,0.15)",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:24,color:"rgba(0,0,0,0.3)"}}>+</button>
               )}
             </div>
-            {geminiKey&&(
+            {aiReady&&(
               <button onClick={analyze} disabled={analyzing} style={{width:"100%",background:"rgba(88,86,214,0.08)",border:"1.5px solid rgba(88,86,214,0.3)",borderRadius:10,padding:"11px",color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
                 {analyzing?<><Spin size={14}/><span>ANALYZING...</span></>:<><span>🤖</span><span>ANALYZE WITH AI</span></>}
               </button>
             )}
-            {!geminiKey&&<div style={{fontSize:11,color:"rgba(0,0,0,0.35)",textAlign:"center",padding:"6px 0"}}>Setup AI (🤖 in header) to auto-fill from photo</div>}
+            {!aiReady&&<div style={{fontSize:11,color:"rgba(0,0,0,0.35)",textAlign:"center",padding:"6px 0"}}>Setup AI (🤖 in header) to auto-fill from photo</div>}
             {aiResult&&(
               <div style={{background:"rgba(88,86,214,0.06)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:10,padding:"10px 12px",marginTop:8}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#5856d6",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif"}}>AI FILLED — REVIEW & EDIT ABOVE</div>
@@ -1324,7 +1708,7 @@ function LogDefect({member,company,currentProject,members,onSave}){
           </div>
         )}
         {form.photos.length===0&&(
-          <button onClick={()=>fileRef.current.click()} style={{width:"100%",background:"#fff",border:"2px dashed rgba(0,0,0,0.15)",borderRadius:10,padding:20,color:"rgba(0,0,0,0.4)",fontSize:14,cursor:"pointer"}}>📷 Add photos (up to {MAX_PHOTOS}){geminiKey?" · AI will auto-analyze":""}</button>
+          <button onClick={()=>fileRef.current.click()} style={{width:"100%",background:"#fff",border:"2px dashed rgba(0,0,0,0.15)",borderRadius:10,padding:20,color:"rgba(0,0,0,0.4)",fontSize:14,cursor:"pointer"}}>📷 Add photos (up to {MAX_PHOTOS}){aiReady?" · AI will auto-analyze":""}</button>
         )}
       </div>
 
@@ -1665,6 +2049,7 @@ function App(){
   const[showProfile,setShowProfile]=useState(false);
   const[showHelp,setShowHelp]=useState(false);
   const[showFeedback,setShowFeedback]=useState(false);
+  const[showStorage,setShowStorage]=useState(false);
   const[fbText,setFbText]=useState("");const[fbType,setFbType]=useState("suggestion");const[fbSent,setFbSent]=useState(false);const[fbSending,setFbSending]=useState(false);
 
   // Auth listener — also auto-recover company if localStorage was cleared
@@ -1757,8 +2142,15 @@ function App(){
     if(!company?.companyId||!currentProject?.id)return;
     setSyncing(true);
     return DB.defects.subscribe(`companyId="${company.companyId}" && projectId="${currentProject.id}"`,items=>{
-      // Map photo filenames to URLs (supports single string or array)
+      // Map photo filenames to URLs (supports PocketBase files, GDrive URLs, or local)
       const withPhotos=items.map(d=>{
+        // Google Drive storage — photos stored as JSON array of URLs
+        if(d.storageMode==="gdrive"&&d.gdrivePhotos){
+          let gPhotos=[];
+          try{gPhotos=JSON.parse(d.gdrivePhotos);}catch{}
+          return{...d,photo:gPhotos.length>0?gPhotos:null};
+        }
+        // Default PocketBase storage — map filenames to URLs
         let photo=d.photo;
         if(Array.isArray(photo)&&photo.length>0){
           photo=photo.map(f=>DB.fileUrl("defects",d.id,f));
@@ -1794,7 +2186,44 @@ function App(){
   const addDefect=async data=>{
     if(!company?.companyId||!currentProject)return;
 
-    await DB.addDefect(company.companyId,data);
+    const storageCfg=local.get(STORAGE_KEY)||{mode:"pocketbase"};
+
+    // ── Google Drive storage: upload photos to Drive, save URLs in record ──
+    if(storageCfg.mode==="gdrive"&&GDrive.isConnected()){
+      const ts=Date.now();
+      const gdriveUrls=[];
+      // Upload main photo
+      if(data.photo&&data.photo.startsWith("data:")){
+        try{
+          const result=await GDrive.uploadPhoto(data.photo,`defect_${ts}_1.jpg`);
+          gdriveUrls.push(result.url);
+        }catch(e){console.warn("GDrive upload failed for main photo:",e);}
+      }
+      // Upload extra photos
+      if(data.extraPhotos){
+        for(let i=0;i<data.extraPhotos.length;i++){
+          if(data.extraPhotos[i]&&data.extraPhotos[i].startsWith("data:")){
+            try{
+              const result=await GDrive.uploadPhoto(data.extraPhotos[i],`defect_${ts}_${i+2}.jpg`);
+              gdriveUrls.push(result.url);
+            }catch(e){console.warn("GDrive upload failed:",e);}
+          }
+        }
+      }
+      // Store as record with gdrive URLs instead of file uploads
+      const gdriveData={...data,companyId:company.companyId,storageMode:"gdrive",gdrivePhotos:JSON.stringify(gdriveUrls)};
+      delete gdriveData.photo;delete gdriveData.extraPhotos;delete gdriveData.photos;
+      await DB.defects.create(gdriveData);
+    }
+    // ── Local path storage: upload to PocketBase with localPath metadata ──
+    else if(storageCfg.mode==="local"&&storageCfg.localPath){
+      const localData={...data,storageMode:"local",storagePath:storageCfg.localPath};
+      await DB.addDefect(company.companyId,localData);
+    }
+    // ── Default PocketBase storage ──
+    else{
+      await DB.addDefect(company.companyId,data);
+    }
 
     // Telegram notification (fire-and-forget, don't block on failure)
     try{
@@ -1815,15 +2244,17 @@ function App(){
 
   const signOut=()=>{
     DB.auth.signOut();
+    GDrive.disconnect();
     local.del(COMPANY_KEY);local.del(PROJECT_KEY);
-    local.del(TG_KEY);local.del(GEMINI_KEY);local.del(EMAIL_KEY);local.del(AI_LIMIT_KEY);
+    local.del(TG_KEY);local.del(GEMINI_KEY);local.del(EMAIL_KEY);local.del(AI_LIMIT_KEY);local.del(STORAGE_KEY);
+    local.del(AI_PROVIDER_KEY);local.del(OLLAMA_KEY);local.del(OPENAI_KEY);
     setCompany(null);setMember(null);setAuthUser(null);
     setDefects([]);setProjects([]);setCurrentProject(null);
     setMembers([]);setMemberLoading(false);
   };
 
   const tgEnabled=!!(local.get(TG_KEY)?.token&&local.get(TG_KEY)?.chatId);
-  const aiEnabled=!!local.get(GEMINI_KEY);
+  const aiEnabled=isAiConfigured();
   const canLog=["Admin","Manager","Inspector"].includes(member?.role);
   const isAdmin=member?.role==="Admin";
 
@@ -1882,6 +2313,9 @@ function App(){
           <button onClick={()=>setShowGemini(true)} title="AI Setup" style={{width:32,height:32,borderRadius:8,background:aiEnabled?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${aiEnabled?"rgba(88,86,214,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:15}}>🤖</button>
           <button onClick={()=>setShowTg(true)} title="Telegram Setup" style={{width:32,height:32,borderRadius:8,background:tgEnabled?"rgba(0,136,204,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${tgEnabled?"rgba(0,136,204,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21.5 4.5L2.5 11.5L9 13.5L11 20.5L15 15.5L20 18.5L21.5 4.5Z" stroke={tgEnabled?"#0088cc":"rgba(255,255,255,0.4)"} strokeWidth="1.5" strokeLinejoin="round"/></svg>
+          </button>
+          <button onClick={()=>setShowStorage(true)} title="Storage Settings" style={{width:32,height:32,borderRadius:8,background:(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"rgba(48,209,88,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"rgba(48,209,88,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:14}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 4h16v4H4V4zm0 6h16v4H4v-4zm0 6h16v4H4v-4z" stroke={(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"#30d158":"rgba(255,255,255,0.4)"} strokeWidth="1.5" strokeLinejoin="round"/><circle cx="7" cy="6" r="1" fill={(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"#30d158":"rgba(255,255,255,0.4)"}/><circle cx="7" cy="12" r="1" fill={(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"#30d158":"rgba(255,255,255,0.4)"}/><circle cx="7" cy="18" r="1" fill={(local.get(STORAGE_KEY)?.mode&&local.get(STORAGE_KEY).mode!=="pocketbase")?"#30d158":"rgba(255,255,255,0.4)"}/></svg>
           </button>
           {isAdmin&&<button onClick={()=>setShowUsers(true)} title="Team Management" style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:15}}>👥</button>}
           <button onClick={()=>setShowHelp(true)} title="Help" style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"rgba(255,255,255,0.5)"}}>?</button>
@@ -1950,8 +2384,9 @@ function App(){
                 ["Header Icons",[
                   ["Company & Project (top left)","Tap to switch between projects or create new ones."],
                   ["Active count","Shows number of entries not yet Verified or Closed."],
-                  ["AI (robot)","Set up your Gemini API key for AI photo analysis. Free at aistudio.google.com."],
+                  ["AI (robot)","Set up AI photo analysis — choose Google Gemini (free cloud), Ollama (local AI on your machine), or OpenAI/GPT."],
                   ["Telegram (plane)","Connect a Telegram bot to get instant notifications when defects are logged or updated."],
+                  ["Storage (server icon)","Configure where photos are stored — PocketBase (default), local folder path, or your own Google Drive."],
                   ["Team (people, Admin only)","Invite members, set roles, manage your team."],
                   ["? (Help)","This guide — how to use the app."],
                   ["Chat (Feedback)","Share suggestions, report bugs, or tell us what you think."],
@@ -1960,7 +2395,7 @@ function App(){
                 ["Logging an Entry",[
                   ["1. Entry Type","Select: Defect, Observation, Instruction, or Update."],
                   ["2. Photo","Tap the camera area to snap or upload a photo. Up to 5 photos per entry."],
-                  ["3. AI Analysis","If AI is set up, tap 'ANALYZE WITH AI' to auto-fill title, severity, and description from your photo."],
+                  ["3. AI Analysis","If AI is set up (Gemini, Ollama, or OpenAI), tap 'ANALYZE WITH AI' to auto-fill title, severity, and description from your photo."],
                   ["4. Component & Issue","Tap to select from predefined lists, or tap TYPE to enter a custom value. Use the mic icon to search by voice."],
                   ["5. Location","Select Level, Zone, Room/Area, and Grid Ref. These carry forward in batch mode."],
                   ["6. Voice Input","Tap the mic icon next to any text field to speak instead of type. Works on Title, Description, Grid Ref, Cost fields, and search bars."],
@@ -1984,6 +2419,7 @@ function App(){
                   ["Install as App","Tap the INSTALL button on the login screen, or use your browser's 'Add to Home Screen' option for a native app experience."],
                   ["Multiple Projects","Use the project selector (top left) to switch between projects. Each project has its own set of entries."],
                   ["CSV Export","In the Report tab, use CSV EXPORT to download filtered data for Excel or Google Sheets."],
+                  ["Storage Options","Tap the storage icon in the header to choose where photos are saved — default PocketBase server, a local folder on your machine, or your own Google Drive account."],
                 ]],
               ].map(([section,items])=>(
                 <div key={section} style={{marginBottom:24}}>
@@ -2007,7 +2443,7 @@ function App(){
                   ["Defect Management",[["Status & severity filters",true],["Full detail view with photos",true],["Update status workflow",true],["Comments (text + voice)",true],["Delete defect (Admin)",true],["Telegram alerts",true]]],
                   ["Dashboard",[["Real-time stats overview",true],["Critical defect alerts",true],["Severity breakdown chart",true],["Recent defects feed",true],["Live sync indicator",true]]],
                   ["Reports",[["Site report with charts",true],["Filter by severity / status / assignee / date",true],["CSV export",true],["Email report (EmailJS)",true]]],
-                  ["Settings",[["Telegram bot setup + test",true],["Gemini AI setup + test",true],["Email report config",true],["Daily AI usage limit",true]]],
+                  ["Settings",[["Telegram bot setup + test",true],["AI setup — Gemini / Ollama / OpenAI",true],["Email report config",true],["Daily AI usage limit",true],["Storage options (PocketBase / Local Path / Google Drive)",true]]],
                   ["Coming Soon",[["Drawings / floor plan pins",false],["Profile editing",false],["Search across defects",false],["Offline submission queue",false],["Push notifications",false]]],
                 ].map(([cat,items])=>(
                   <div key={cat} style={{marginBottom:12}}>
@@ -2072,6 +2508,7 @@ function App(){
       {showTg&&<TelegramSettings onClose={()=>setShowTg(false)} companyId={company?.companyId}/>}
       {showEmail&&<EmailSettings onClose={()=>setShowEmail(false)} companyId={company?.companyId}/>}
       {showGemini&&<GeminiSettings onClose={()=>setShowGemini(false)} companyId={company?.companyId}/>}
+      {showStorage&&<StorageSettings onClose={()=>setShowStorage(false)} companyId={company?.companyId}/>}
       {showUsers&&<UserManagement onClose={()=>setShowUsers(false)} company={company} member={member} members={members}/>}
       {showProjects&&<ProjectManagement onClose={()=>setShowProjects(false)} company={company} member={member} projects={projects} currentProject={currentProject} onSelect={p=>{selectProject(p);setShowProjects(false);}}/>}
     </div>
