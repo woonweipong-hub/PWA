@@ -813,7 +813,7 @@ function AuthScreen({onAuth,onFullSetup}){
 
         {/* Feature Status Checklist */}
         <div style={{textAlign:"left"}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:800,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",marginBottom:16}}>ALL FEATURES (98)</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:800,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",marginBottom:16}}>ALL FEATURES (91)</div>
           {[
             ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["Password visibility toggle",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as PWA",true],["Server URL config",true]]],
             ["Team",[["Invite members (link + code)",true],["Role-based access (Admin, Manager, Inspector, Viewer)",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
@@ -844,7 +844,7 @@ function AuthScreen({onAuth,onFullSetup}){
 
         {/* Verification Badge */}
         <div style={{marginTop:24,background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.15)",borderRadius:12,padding:16,textAlign:"center"}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#30d158",lineHeight:1,marginBottom:4}}>98 FEATURES</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#30d158",lineHeight:1,marginBottom:4}}>91 FEATURES</div>
           <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginBottom:10}}>Built for construction teams · April 2026</div>
           <div style={{display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap"}}>
             {[["Mobile","iOS · Android"],["Desktop","Chrome · Firefox · Edge"],["APP","Install · Offline"]].map(([p,d])=>(
@@ -4119,20 +4119,20 @@ function App(){
               {helpTab==="features"&&(
                 <div>
                   {(()=>{const fc=[
-                    ["Authentication & Onboarding",["Login / Sign up","Password reset","One-step registration + company setup","Auto-recover session","Install as app","Server URL config"]],
-                    ["Team & Roles",["Invite members (link + code)","Role-based access (Admin, Manager, Inspector, Viewer)","Edit roles / remove members","Permission matrix"]],
-                    ["Project Management",["Create / rename projects","Switch active project","Archive / restore projects"]],
-                    ["Entry Logging",["Log with title, severity, location","4 default + custom entry types with icon & color","Multi-level location (Level > Zone > Room > Grid)","Up to 10 photos with markup editor","AI photo analysis (Gemini, Ollama, GPT)","AI auto-assign trade + suggested assignee","AI safety risk scoring (auto-escalate Critical)","Duplicate detection on submit","Voice-to-text on all fields","Component + issue selector (93 / 517)","Cost & time tracking","Batch logging mode"]],
-                    ["Entry Management",["Full-text search with highlighting","AI natural language search (voice + text)","Filter by status, severity, entry type","Resolution timeline with photo comments","Quick reactions on timeline entries","Verification photo on Close / Verify","Before / after photo comparison","Update status workflow (5 stages)","Delete entry (Admin only)","Telegram alerts"]],
-                    ["Drawings & Floor Plans",["Upload JPG, PNG, TIF, PDF (max 50MB)","PDF rendering with page navigation","Zoom, pan, pinch-to-zoom","Ring-style pins with severity pulse","Quick-pin: create entry from drawing","Defect heatmap overlay","Drawing-level markup (freehand, arrows, circles)","Pin count & severity badges"]],
-                    ["Dashboard & Analytics",["Real-time status counts + critical alerts","Severity breakdown chart","Admin analytics (per-user, per-type, per-project)","AI usage stats"]],
-                    ["Reports & Exports",["Site report with charts","Filter by severity / status / assignee / date","CSV export","Email report via EmailJS"]],
-                    ["AI Integrations",["Google Gemini (cloud)","Ollama (local / self-hosted)","OpenAI / GPT (API-compatible)","Auto-fill title, severity, description, trade, assignee","Safety risk scoring","Natural language search"]],
-                    ["Telegram Notifications",["Bot setup + test","Alerts on new entries","Alerts on status changes + comments"]],
-                    ["Storage Options",["PocketBase (default server)","Local path (self-hosted)","Google Drive (OAuth)"]],
-                    ["Offline Sync",["Save entries to IndexedDB when offline","Queued badge in header + Dashboard","Auto-sync when back online","Manual sync"]],
-                    ["Account Settings",["Edit display name + job title","Change email","Change password"]],
-                    ["Platform Compatibility",["Mobile (iOS Safari, Android Chrome)","Desktop (Chrome, Firefox, Edge)","Installable as app (PWA)","Offline-capable"]],
+                    ["Auth & Onboarding",["Login / Sign up","Password reset","Password visibility toggle","One-step registration + company setup","Auto-recover session","Install as app","Server URL config"]],
+                    ["Team",["Invite members (link + code)","Role-based access (Admin, Manager, Inspector, Viewer)","Edit roles / remove members","Permission matrix display"]],
+                    ["Projects",["Create / rename projects","Switch active project","Archive / restore projects"]],
+                    ["Entry Logging",["Log with title, severity, location","4 default types + custom entry types","Custom type manager (icon & color picker)","Multi-level location (Level > Zone > Room > Grid)","Snap / upload up to 10 photos","Photo markup editor (arrows, circles, freehand, text)","AI photo analysis (Gemini, Ollama, GPT)","AI auto-assign trade + suggested assignee","AI safety risk scoring (auto-escalate Critical)","Duplicate detection (similarity check on submit)","Voice-to-text input (title, description, search)","Component + issue selector (93 / 517)","Assign to team member","Cost & time tracking fields","Batch logging mode (same location)"]],
+                    ["Entry Management",["Full-text search with highlighting","AI natural language search (voice + text)","Filter by status, severity, entry type","Collapsible filters with clear button","Entry type badges on list & detail","Detail view with all fields + photos","Update status workflow (5 stages)","Verification photo on Close / Verify","Before / after photo comparison slider","Resolution timeline (visual, color-coded)","Photo comments in timeline","Quick reactions (thumbs, check, warn, fix)","Delete entry (Admin only)","Telegram alerts on new entry & status change"]],
+                    ["Drawings & Floor Plans",["Upload floor plans (JPG, PNG, TIF, PDF)","PDF rendering via PDF.js with page navigation","Zoom, pan & pinch-to-zoom (mobile)","Ring-style defect pins with severity initial","Critical pin pulse animation","Pin tooltip with entry details + remove","Quick-pin: create entry directly from drawing","Defect heatmap overlay (severity-weighted)","Drawing-level markup (freehand, arrows, circles)","Markup color picker + undo / clear","Pin count & severity badges on cards","PDF thumbnail preview in list"]],
+                    ["Dashboard",["Real-time status counts (5 stages)","Critical alerts banner","Severity breakdown chart","Recent entries with type badges","Live sync indicator + queue count"]],
+                    ["Admin Analytics",["Entries today / week / month / all time","Active users — who submitted today & this week","Per-user ranking bar chart","Photos stats (total & avg per entry)","Entries by entry type breakdown","Entries by project breakdown","AI usage stats (daily limit, coverage, provider)"]],
+                    ["Reports",["Site report with charts + entry list","Filter by severity / status / assignee / date","CSV export","Email report via EmailJS"]],
+                    ["Storage",["PocketBase (default server)","Local path (self-hosted server / machine)","Google Drive (OAuth, personal cloud)"]],
+                    ["Settings",["Telegram bot setup + test","AI multi-provider setup + test","Email report config","Daily AI usage limit","Storage mode selector"]],
+                    ["Offline",["Save entries to IndexedDB when offline","Queued badge in header + Dashboard","Auto-sync when back online","Manual sync tap","Queued / synced status indicator"]],
+                    ["Account",["Edit display name + job title","Change email","Change password"]],
+                    ["Other",["Comprehensive help guide","Feedback form (suggestion, bug, praise)","Cached app shell (service worker)","Photo compression (auto-resize)"]],
                   ];const total=fc.reduce((n,c)=>n+c[1].length,0);return React.createElement(React.Fragment,null,
                     React.createElement("div",{style:{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:12,padding:16,marginBottom:20,textAlign:"center"}},
                       React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#30d158",lineHeight:1,marginBottom:4}},total),
