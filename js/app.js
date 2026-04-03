@@ -691,10 +691,10 @@ function AuthScreen({onAuth,onFullSetup}){
 
   // Mobile viewport presets tuned for common phone heights (~640-915 CSS px)
   const introPreset=viewportH<=700
-    ? {padding:"14px 16px",maxWidth:360,icon:46,title:30,sub:11.5,body:11,lineH:1.32,titleGap:5,textGap:8,rowPad:"2px 0",rowGap:8,featTitle:12,featDesc:11,btnPad:"11px",btnFont:13.5,btnGap:7,footer:10.5}
+    ? {padding:"14px 16px",maxWidth:360,icon:46,title:31,sub:12.5,body:12,lineH:1.34,titleGap:5,textGap:8,rowPad:"2px 0",rowGap:8,featTitle:13,featDesc:12,btnPad:"11px",btnFont:14.5,btnGap:7,footer:11.5}
     : viewportH<=820
-      ? {padding:"18px 20px",maxWidth:380,icon:52,title:33,sub:12.3,body:11.8,lineH:1.38,titleGap:6,textGap:11,rowPad:"3px 0",rowGap:9,featTitle:12.5,featDesc:11.5,btnPad:"12px",btnFont:14,btnGap:7,footer:11}
-      : {padding:"22px 24px",maxWidth:390,icon:56,title:36,sub:13,body:12.2,lineH:1.42,titleGap:7,textGap:12,rowPad:"4px 0",rowGap:10,featTitle:13,featDesc:12,btnPad:"13px",btnFont:14.5,btnGap:8,footer:11.5};
+      ? {padding:"18px 20px",maxWidth:380,icon:52,title:34,sub:13.2,body:12.8,lineH:1.4,titleGap:6,textGap:11,rowPad:"3px 0",rowGap:9,featTitle:13.5,featDesc:12.5,btnPad:"12px",btnFont:15,btnGap:7,footer:12}
+      : {padding:"22px 24px",maxWidth:390,icon:56,title:37,sub:14,body:13.2,lineH:1.44,titleGap:7,textGap:12,rowPad:"4px 0",rowGap:10,featTitle:14,featDesc:13,btnPad:"13px",btnFont:15.5,btnGap:8,footer:12.5};
 
   const installApp=async()=>{
     if(!_deferredInstallPrompt)return;
