@@ -813,7 +813,8 @@ function AuthScreen({onAuth,onFullSetup}){
 
         {/* Feature Status Checklist */}
         <div style={{textAlign:"left"}}>
-          {(()=>{const cats=[
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:800,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",marginBottom:16}}>ALL FEATURES (98 verified)</div>
+          {[
             ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["Password visibility toggle",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as PWA",true],["Server URL config",true]]],
             ["Team",[["Invite members (link + code)",true],["Role-based access (Admin, Manager, Inspector, Viewer)",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
             ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
@@ -826,11 +827,9 @@ function AuthScreen({onAuth,onFullSetup}){
             ["Storage",[["PocketBase (default server)",true],["Local path (self-hosted server/machine)",true],["Google Drive (OAuth, personal cloud)",true]]],
             ["Settings",[["Telegram bot setup + test",true],["AI multi-provider setup + test",true],["Email report config",true],["Daily AI usage limit",true],["Storage mode selector",true]]],
             ["Offline",[["Save entries to IndexedDB when offline",true],["Queued badge in header + Dashboard",true],["Auto-sync when back online",true],["Manual sync tap",true],["Queued/synced status indicator",true]]],
-            ["Account",[["Edit display name",true],["Change email",true],["Change password",true]]],
+            ["Account",[["Edit display name + job title",true],["Change email",true],["Change password",true]]],
             ["Other",[["Comprehensive help guide",true],["Feedback form (suggestion, bug, praise)",true],["Cached app shell (service worker)",true],["Photo compression (auto-resize)",true]]],
-          ];const total=cats.reduce((n,[,items])=>n+items.filter(([,d])=>d).length,0);return(<>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:800,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",marginBottom:16}}>ALL FEATURES ({total} verified)</div>
-          {cats.map(([cat,items])=>(
+          ].map(([cat,items])=>(
             <div key={cat} style={{marginBottom:16}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:6}}>{cat.toUpperCase()}</div>
               {items.map(([feat,done])=>(
@@ -841,7 +840,6 @@ function AuthScreen({onAuth,onFullSetup}){
               ))}
             </div>
           ))}
-        </>);})()}
 
         {/* Verification Badge */}
         <div style={{marginTop:24,background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.15)",borderRadius:12,padding:16,textAlign:"center"}}>
@@ -4125,7 +4123,7 @@ function App(){
               {/* Features Checklist */}
               <div style={{marginBottom:24}}>
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:10,borderBottom:"1px solid rgba(255,255,255,0.1)",paddingBottom:6}}>ALL FEATURES</div>
-                {(()=>{const hcats=[
+                {[
                   ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["Password visibility toggle",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as PWA",true],["Server URL config",true]]],
                   ["Team",[["Invite members (link + code)",true],["Role-based access (Admin, Manager, Inspector, Viewer)",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
                   ["Projects",[["Create / rename projects",true],["Switch active project",true],["Archive / restore projects",true]]],
@@ -4150,7 +4148,7 @@ function App(){
                       </div>
                     ))}
                   </div>
-                ));})()}
+                ))}
               </div>
               {/* Test Results */}
               <div style={{marginBottom:24}}>
