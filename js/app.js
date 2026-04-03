@@ -769,42 +769,40 @@ function AuthScreen({onAuth,onFullSetup}){
   if(page==="intro")return(
     <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,textAlign:"center"}}>
       <div style={{width:"100%",maxWidth:400}}>
-        <img src="icons/icon-192.png" alt="SiteShrimp" style={{width:80,height:80,borderRadius:8,marginBottom:16,boxShadow:"0 4px 20px rgba(255,107,0,0.3)"}}/>
-        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:42,fontWeight:800,color:"#fff",lineHeight:1,marginBottom:8}}>SITESHRIMP</div>
-        <div style={{color:"rgba(255,255,255,0.5)",fontSize:14,marginBottom:8,lineHeight:1.6}}>
+        <img src="icons/icon-192.png" alt="SiteShrimp" style={{width:56,height:56,borderRadius:8,marginBottom:10,boxShadow:"0 4px 20px rgba(255,107,0,0.3)"}}/>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:36,fontWeight:800,color:"#fff",lineHeight:1,marginBottom:6}}>SITESHRIMP</div>
+        <div style={{color:"rgba(255,255,255,0.5)",fontSize:13,marginBottom:4,lineHeight:1.5}}>
           AI-powered site management for defects, inspections, and site works.
         </div>
-        <div style={{color:"rgba(255,255,255,0.35)",fontSize:13,marginBottom:32,lineHeight:1.6}}>
-          Capture issues with photos, voice, and drawings. Track progress, coordinate your team, and generate reports faster — all in one place.
+        <div style={{color:"rgba(255,255,255,0.35)",fontSize:12,marginBottom:20,lineHeight:1.5}}>
+          Capture issues with photos, voice, and drawings. Track progress, coordinate your team, and generate reports faster.
         </div>
 
-        <div style={{textAlign:"left",marginBottom:32}}>
+        <div style={{textAlign:"left",marginBottom:20}}>
           {[
-            ["📷","Log faster with AI","Snap a photo to suggest details, assign trades, assess safety risk, and annotate instantly."],
-            ["📐","See issues on drawings","Pin entries to floor plans, review defect clusters, and spot problem areas with heatmaps."],
-            ["🎤","Work hands-free on site","Use voice input to log entries, fill fields, and search without typing."],
-            ["📋","Keep a clear audit trail","Track updates, comments, verification photos, and before/after comparisons from start to closure."],
-            ["👥","Coordinate your team","Assign work, manage roles, and keep everyone updated with live sync and notifications."],
-            ["📊","Report without rework","Review dashboards, filter data, and export CSV or email reports in minutes."],
+            ["📷","Log faster with AI","Snap a photo to suggest details, assign trades, and assess safety risk."],
+            ["📐","See issues on drawings","Pin entries to floor plans and spot problem areas with heatmaps."],
+            ["🎤","Work hands-free","Voice input to log, fill fields, and search without typing."],
+            ["📋","Clear audit trail","Track updates, verification photos, and before/after comparisons."],
+            ["👥","Coordinate your team","Assign work, manage roles, live sync and notifications."],
+            ["📊","Report without rework","Dashboards, filters, CSV and email reports in minutes."],
           ].map(([icon,title,desc],i)=>(
-            <div key={i} className="anim" style={{animationDelay:`${i*0.08}s`,padding:"12px 0",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
-              <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:4}}>
-                <span style={{fontSize:20,flexShrink:0}}>{icon}</span>
-                <span style={{color:"#fff",fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>{title}</span>
+            <div key={i} className="anim" style={{animationDelay:`${i*0.05}s`,display:"flex",gap:10,alignItems:"flex-start",padding:"6px 0"}}>
+              <span style={{fontSize:16,flexShrink:0,marginTop:1}}>{icon}</span>
+              <div>
+                <span style={{color:"#fff",fontSize:13,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>{title}</span>
+                <span style={{color:"rgba(255,255,255,0.4)",fontSize:12}}> — {desc}</span>
               </div>
-              <div style={{color:"rgba(255,255,255,0.45)",fontSize:13,lineHeight:1.5,paddingLeft:30}}>{desc}</div>
             </div>
           ))}
         </div>
 
-        <button onClick={()=>setPage("auth")} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:"16px",color:"#fff",fontSize:16,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:6,letterSpacing:"0.04em"}}>GET STARTED</button>
-        <div style={{fontSize:11,color:"rgba(255,255,255,0.3)",marginBottom:16}}>Create your company and start logging site issues.</div>
+        <button onClick={()=>setPage("auth")} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:"14px",color:"#fff",fontSize:15,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:10,letterSpacing:"0.04em"}}>GET STARTED</button>
 
-        <button onClick={installable?installApp:()=>alert("To install:\n\nAndroid: Menu (⋮) → Add to Home Screen\n\niPhone: Share (↑) → Add to Home Screen")} style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"14px",color:"rgba(255,255,255,0.8)",fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:6,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(255,255,255,0.8)" strokeWidth="2" strokeLinecap="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(255,255,255,0.8)" strokeWidth="2" strokeLinecap="round"/></svg>
+        <button onClick={installable?installApp:()=>alert("To install:\n\nAndroid: Menu (⋮) → Add to Home Screen\n\niPhone: Share (↑) → Add to Home Screen")} style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"12px",color:"rgba(255,255,255,0.8)",fontSize:13,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:16,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(255,255,255,0.8)" strokeWidth="2" strokeLinecap="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(255,255,255,0.8)" strokeWidth="2" strokeLinecap="round"/></svg>
           INSTALL APP
         </button>
-        <div style={{fontSize:11,color:"rgba(255,255,255,0.3)",marginBottom:20}}>Add SiteShrimp to your device for faster access on site.</div>
 
         <div style={{color:"rgba(255,255,255,0.15)",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif"}}>
           Free for all teams · No app store needed
