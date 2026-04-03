@@ -2650,15 +2650,20 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
 function ProfilePanel({member,authUser,company,onClose,onEmailSettings,onSignOut}){
   const[editName,setEditName]=useState(member?.name||"");
   const[editEmail,setEditEmail]=useState(member?.email||authUser?.email||"");
+  const[editJobTitle,setEditJobTitle]=useState(member?.jobTitle||"");
   const[oldPass,setOldPass]=useState("");const[newPass,setNewPass]=useState("");const[confirmPass,setConfirmPass]=useState("");
   const[saving,setSaving]=useState(false);const[msg,setMsg]=useState(null);
 
-  const saveName=async()=>{
-    if(!editName.trim()||editName===member?.name)return;
+  const saveProfile=async()=>{
+    if(!editName.trim())return;
+    const changes={};
+    if(editName.trim()!==member?.name)changes.name=editName.trim();
+    if(editJobTitle.trim()!==member?.jobTitle)changes.jobTitle=editJobTitle.trim();
+    if(Object.keys(changes).length===0)return;
     setSaving(true);setMsg(null);
     try{
-      await DB.members.update(member.id,{name:editName.trim()});
-      setMsg({type:"ok",text:"Name updated"});
+      await DB.members.update(member.id,changes);
+      setMsg({type:"ok",text:"Profile updated"});
     }catch(e){setMsg({type:"err",text:e.message});}
     setSaving(false);
   };
@@ -2714,13 +2719,13 @@ function ProfilePanel({member,authUser,company,onClose,onEmailSettings,onSignOut
 
         {msg&&<div style={{background:msg.type==="ok"?"rgba(48,209,88,0.1)":"rgba(255,59,48,0.1)",border:`1px solid ${msg.type==="ok"?"rgba(48,209,88,0.3)":"rgba(255,59,48,0.3)"}`,borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:msg.type==="ok"?"#30d158":"#ff3b30",fontWeight:700}}>{msg.text}</div>}
 
-        {/* Edit Name */}
+        {/* Edit Name + Job Title */}
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:12}}>
           <div style={lbl()}>DISPLAY NAME</div>
-          <div style={{display:"flex",gap:8}}>
-            <input value={editName} onChange={e=>setEditName(e.target.value)} style={{...inp,flex:1}}/>
-            <button onClick={saveName} disabled={saving||!editName.trim()||editName===member?.name} style={{background:editName!==member?.name?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:"10px 16px",color:editName!==member?.name?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",flexShrink:0}}>SAVE</button>
-          </div>
+          <input value={editName} onChange={e=>setEditName(e.target.value)} style={{...inp,width:"100%",marginBottom:10}}/>
+          <div style={lbl()}>JOB TITLE</div>
+          <input value={editJobTitle} onChange={e=>setEditJobTitle(e.target.value)} placeholder="e.g. Site Engineer, Project Manager" style={{...inp,width:"100%",marginBottom:10}}/>
+          <button onClick={saveProfile} disabled={saving||(editName===member?.name&&editJobTitle===(member?.jobTitle||""))} style={{width:"100%",background:(editName!==member?.name||editJobTitle!==(member?.jobTitle||""))?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:"12px",color:(editName!==member?.name||editJobTitle!==(member?.jobTitle||""))?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>SAVE PROFILE</button>
         </div>
 
         {/* Edit Email */}
