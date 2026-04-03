@@ -2236,19 +2236,55 @@ function DefectsList({defects,onView}){
 function DefectDetail({defect,onClose,onUpdate,member,company}){
   const[status,setStatus]=useState(defect.status);
   const[comment,setComment]=useState("");const[saving,setSaving]=useState(false);const[deleting,setDeleting]=useState(false);
+  const[commentPhoto,setCommentPhoto]=useState(null);const[verifyPhoto,setVerifyPhoto]=useState(null);
+  const commentPhotoRef=useRef();const verifyPhotoRef=useRef();
   const latestRef=useRef(defect);
   useEffect(()=>{latestRef.current={...latestRef.current,...defect,status};},[defect,status]);
   const tgCfg=local.get(TG_KEY);
   const canUpdate=["Admin","Manager","Inspector"].includes(member?.role);
   const canDelete=member?.role==="Admin";
 
+  // Capture photo for comment
+  const handleCommentPhoto=e=>{
+    const file=e.target.files?.[0];if(!file)return;
+    const r=new FileReader();r.onload=()=>setCommentPhoto(r.result);r.readAsDataURL(file);
+    if(commentPhotoRef.current)commentPhotoRef.current.value="";
+  };
+
+  // Capture verification photo
+  const handleVerifyPhoto=e=>{
+    const file=e.target.files?.[0];if(!file)return;
+    const r=new FileReader();r.onload=()=>setVerifyPhoto(r.result);r.readAsDataURL(file);
+    if(verifyPhotoRef.current)verifyPhotoRef.current.value="";
+  };
+
   const updateStatus=async s=>{
     if(!canUpdate)return;
+    // Require verification photo for Closed/Verified
+    if((s==="Closed"||s==="Verified")&&!verifyPhoto){
+      if(confirm(`Add a verification photo to confirm ${s.toLowerCase()}? Tap OK to attach, or Cancel to skip.`)){
+        verifyPhotoRef.current?.click();
+        return;
+      }
+    }
     setStatus(s);
     try{
-      await DB.defects.update(defect.id,{status:s});
-      latestRef.current={...latestRef.current,status:s};
+      const updateData={status:s};
+      if(s==="Closed"||s==="Verified"){
+        updateData[s==="Closed"?"closedAt":"verifiedAt"]=new Date().toISOString();
+        if(s==="Verified")updateData.verifiedBy=member?.name||"";
+        // Add verification photo as comment
+        if(verifyPhoto){
+          const compressed=await compressPhoto(verifyPhoto,1200,0.8);
+          const vComment={text:`✅ ${s} — verification photo attached`,by:member?.name||"",role:member?.role||"",at:Date.now(),photo:compressed||verifyPhoto};
+          const newComments=[...(latestRef.current.comments||[]),vComment];
+          updateData.comments=newComments;
+        }
+      }
+      await DB.defects.update(defect.id,updateData);
+      latestRef.current={...latestRef.current,...updateData};
       onUpdate({...latestRef.current});
+      setVerifyPhoto(null);
       if(tgCfg?.token&&tgCfg?.chatId){
         const e=STATUS_ICON[s]||"⚪";
         sendTelegram(tgCfg.token,tgCfg.chatId,`${e} <b>Status Updated</b>\n<b>${defect.title}</b>\nStatus: <b>${s}</b>\nBy: ${member?.name}`).catch(()=>{});
@@ -2257,16 +2293,18 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
   };
 
   const addComment=async()=>{
-    if(!comment.trim()||saving||!canUpdate)return;
+    if((!comment.trim()&&!commentPhoto)||saving||!canUpdate)return;
     setSaving(true);
-    const newComment={text:comment,by:member?.name||"",role:member?.role||"",at:Date.now()};
+    let photo=null;
+    if(commentPhoto){photo=await compressPhoto(commentPhoto,1200,0.8)||commentPhoto;}
+    const newComment={text:comment,by:member?.name||"",role:member?.role||"",at:Date.now(),photo};
     const newComments=[...(latestRef.current.comments||[]),newComment];
     try{
       await DB.defects.update(defect.id,{comments:newComments});
       latestRef.current={...latestRef.current,comments:newComments};
       onUpdate({...latestRef.current});
-      if(tgCfg?.token&&tgCfg?.chatId)sendTelegram(tgCfg.token,tgCfg.chatId,`💬 <b>Comment — ${defect.title}</b>\n${member?.name}: ${comment}`).catch(()=>{});
-      setComment("");
+      if(tgCfg?.token&&tgCfg?.chatId)sendTelegram(tgCfg.token,tgCfg.chatId,`💬 <b>Comment — ${defect.title}</b>\n${member?.name}: ${comment}${photo?" [📷 photo]":""}`).catch(()=>{});
+      setComment("");setCommentPhoto(null);
     }catch(e){alert("Failed to add comment: "+e.message);}
     setSaving(false);
   };
@@ -2326,22 +2364,34 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
         )}
 
         <div>
-          <div style={lbl()}>COMMENTS ({(defect.comments||[]).length})</div>
-          {(defect.comments||[]).map((c,i)=>(
+          <div style={lbl()}>COMMENTS ({(latestRef.current.comments||[]).length})</div>
+          {(latestRef.current.comments||[]).map((c,i)=>(
             <div key={i} style={{background:"#fff",borderRadius:10,padding:"10px 12px",marginBottom:8}}>
               <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:3}}>
                 <span style={{fontSize:11,fontWeight:700,color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif"}}>{c.by}</span>
                 {c.role&&<RoleChip r={c.role}/>}
                 <span style={{fontSize:10,color:"rgba(0,0,0,0.3)"}}>{new Date(c.at).toLocaleDateString()}</span>
               </div>
-              <div style={{fontSize:13,color:"#333"}}>{c.text}</div>
+              {c.text&&<div style={{fontSize:13,color:"#333"}}>{c.text}</div>}
+              {c.photo&&<img src={c.photo} alt="" style={{width:"100%",maxHeight:200,objectFit:"contain",borderRadius:8,marginTop:6,background:"#f8f8f6"}}/>}
             </div>
           ))}
           {canUpdate?(
-            <div style={{display:"flex",gap:8,marginTop:4,alignItems:"center"}}>
-              <input value={comment} onChange={e=>setComment(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addComment()} placeholder="Add a comment..." style={{...inp,flex:1}}/>
-              <MicBtn onResult={t=>setComment(c=>c+(c?" ":"")+t)} append currentValue={comment}/>
-              <button onClick={addComment} disabled={saving||!comment.trim()} style={{background:"#ff6b00",border:"none",borderRadius:10,padding:"11px 16px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",flexShrink:0}}>{saving?"...":"POST"}</button>
+            <div>
+              <input type="file" accept="image/*" capture="environment" ref={commentPhotoRef} onChange={handleCommentPhoto} style={{display:"none"}}/>
+              <input type="file" accept="image/*" capture="environment" ref={verifyPhotoRef} onChange={handleVerifyPhoto} style={{display:"none"}}/>
+              {commentPhoto&&(
+                <div style={{position:"relative",marginBottom:8,display:"inline-block"}}>
+                  <img src={commentPhoto} alt="" style={{height:80,borderRadius:8,objectFit:"cover"}}/>
+                  <button onClick={()=>setCommentPhoto(null)} style={{position:"absolute",top:2,right:2,background:"rgba(0,0,0,0.7)",border:"none",borderRadius:"50%",color:"#fff",width:20,height:20,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+                </div>
+              )}
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <button onClick={()=>commentPhotoRef.current?.click()} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:10,padding:"11px",cursor:"pointer",fontSize:16,flexShrink:0}}>📷</button>
+                <input value={comment} onChange={e=>setComment(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addComment()} placeholder="Add a comment..." style={{...inp,flex:1}}/>
+                <MicBtn onResult={t=>setComment(c=>c+(c?" ":"")+t)} append currentValue={comment}/>
+                <button onClick={addComment} disabled={saving||(!comment.trim()&&!commentPhoto)} style={{background:"#ff6b00",border:"none",borderRadius:10,padding:"11px 16px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",flexShrink:0}}>{saving?"...":"POST"}</button>
+              </div>
             </div>
           ):(
             <div style={{background:"rgba(0,0,0,0.04)",borderRadius:10,padding:"12px",textAlign:"center",fontSize:12,color:"rgba(0,0,0,0.4)"}}>Viewer access — comments disabled</div>
@@ -2493,7 +2543,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
 }
 
 // ── Drawings & Floor Plan Pins ────────────────────────────────────
-function DrawingsPanel({onClose,company,currentProject,member,defects}){
+function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntry}){
   const[drawings,setDrawings]=useState([]);const[loading,setLoading]=useState(true);
   const[viewing,setViewing]=useState(null);
   const[uploading,setUploading]=useState(false);
@@ -2543,7 +2593,7 @@ function DrawingsPanel({onClose,company,currentProject,member,defects}){
     }catch(e){alert("Delete failed: "+e.message);}
   };
 
-  if(viewing)return <DrawingViewer drawing={viewing} onClose={()=>setViewing(null)} company={company} member={member} defects={defects}/>;
+  if(viewing)return <DrawingViewer drawing={viewing} onClose={()=>setViewing(null)} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry}/>;
 
   return(
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
@@ -2633,12 +2683,20 @@ function PdfThumb({url}){
   return <canvas ref={ref} style={{width:"100%",display:"block",background:"#f8f8f6"}}/>;
 }
 
-function DrawingViewer({drawing,onClose,company,member,defects}){
+function DrawingViewer({drawing,onClose,company,currentProject,member,defects,onSaveEntry}){
   const[pins,setPins]=useState([]);const[loading,setLoading]=useState(true);
   const[placing,setPlacing]=useState(false);const[linkEntry,setLinkEntry]=useState(null);
+  const[quickCreate,setQuickCreate]=useState(false);
+  const[qTitle,setQTitle]=useState("");const[qSev,setQSev]=useState("Major");const[qSaving,setQSaving]=useState(false);
+  const qPhotoRef=useRef();const[qPhoto,setQPhoto]=useState(null);
   const[scale,setScale]=useState(1);const[offset,setOffset]=useState({x:0,y:0});
   const[pdfPageCount,setPdfPageCount]=useState(0);const[currentPage,setCurrentPage]=useState(1);
   const[pdfLoading,setPdfLoading]=useState(false);const[pdfError,setPdfError]=useState(null);
+  // Drawing markup state
+  const[markupMode,setMarkupMode]=useState(false);const[markupTool,setMarkupTool]=useState("freehand");
+  const[markupColor,setMarkupColor]=useState("#ff3b30");const[markupStrokes,setMarkupStrokes]=useState([]);
+  const[markupCurrent,setMarkupCurrent]=useState(null);
+  const markupSvgRef=useRef();
   const imgRef=useRef();const containerRef=useRef();const canvasRef=useRef();const pdfDocRef=useRef(null);
   const canPin=["Admin","Manager","Inspector"].includes(member?.role);
   const fileUrl=DB.fileUrl("drawings",drawing.id,drawing.file);
@@ -2757,6 +2815,52 @@ function DrawingViewer({drawing,onClose,company,member,defects}){
   };
   const onTouchEnd=()=>{lastPinchDist.current=null;};
 
+  // Drawing markup handlers
+  const getMarkupPos=e=>{
+    const svg=markupSvgRef.current;if(!svg)return null;
+    const rect=svg.getBoundingClientRect();
+    const t=e.touches?e.touches[0]:e;
+    return{x:((t.clientX-rect.left)/rect.width*100),y:((t.clientY-rect.top)/rect.height*100)};
+  };
+  const onMarkupDown=e=>{
+    if(!markupMode)return;e.preventDefault();e.stopPropagation();
+    const p=getMarkupPos(e);if(!p)return;
+    if(markupTool==="freehand")setMarkupCurrent({type:"freehand",color:markupColor,points:[p]});
+    else setMarkupCurrent({type:markupTool,color:markupColor,start:p,end:p});
+  };
+  const onMarkupMove=e=>{
+    if(!markupCurrent)return;e.preventDefault();e.stopPropagation();
+    const p=getMarkupPos(e);if(!p)return;
+    if(markupCurrent.type==="freehand")setMarkupCurrent(c=>({...c,points:[...c.points,p]}));
+    else setMarkupCurrent(c=>({...c,end:p}));
+  };
+  const onMarkupUp=()=>{
+    if(markupCurrent){setMarkupStrokes(s=>[...s,markupCurrent]);setMarkupCurrent(null);}
+  };
+  const undoMarkup=()=>setMarkupStrokes(s=>s.slice(0,-1));
+  const clearMarkup=()=>{if(markupStrokes.length&&confirm("Clear all markup?"))setMarkupStrokes([]);};
+
+  // Render SVG markup strokes
+  const renderMarkupSvg=(strokes)=>strokes.map((s,i)=>{
+    if(s.type==="freehand"&&s.points.length>1){
+      const d="M"+s.points.map(p=>`${p.x} ${p.y}`).join("L");
+      return <path key={i} d={d} stroke={s.color} strokeWidth="0.3" fill="none" strokeLinecap="round" strokeLinejoin="round"/>;
+    }else if(s.type==="arrow"&&s.start&&s.end){
+      const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y,len=Math.sqrt(dx*dx+dy*dy);
+      if(len<0.5)return null;
+      const angle=Math.atan2(dy,dx),hl=1.5;
+      return <g key={i}><line x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={s.color} strokeWidth="0.3"/>
+        <line x1={s.end.x} y1={s.end.y} x2={s.end.x-hl*Math.cos(angle-0.4)*1.5} y2={s.end.y-hl*Math.sin(angle-0.4)*1.5} stroke={s.color} strokeWidth="0.3"/>
+        <line x1={s.end.x} y1={s.end.y} x2={s.end.x-hl*Math.cos(angle+0.4)*1.5} y2={s.end.y-hl*Math.sin(angle+0.4)*1.5} stroke={s.color} strokeWidth="0.3"/></g>;
+    }else if(s.type==="circle"&&s.start&&s.end){
+      const cx=(s.start.x+s.end.x)/2,cy=(s.start.y+s.end.y)/2;
+      const rx=Math.abs(s.end.x-s.start.x)/2,ry=Math.abs(s.end.y-s.start.y)/2;
+      if(rx<0.3&&ry<0.3)return null;
+      return <ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry} stroke={s.color} strokeWidth="0.3" fill="none"/>;
+    }
+    return null;
+  });
+
   // Active pin tooltip (tap to show/hide)
   const[activePin,setActivePin]=useState(null);
 
@@ -2796,9 +2900,14 @@ function DrawingViewer({drawing,onClose,company,member,defects}){
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff"}}>{drawing.name}</div>
           <div style={{fontSize:10,color:"rgba(255,255,255,0.4)"}}>{pins.length} pin(s){isPdf&&pdfPageCount>0?` · Page ${currentPage}/${pdfPageCount}`:""}</div>
         </div>
-        {canPin&&(
+        {canPin&&!markupMode&&(
           <button onClick={()=>setPlacing(!placing)} style={{background:placing?"#ff6b00":"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>
             {placing?"TAP TO PLACE":"📌 ADD PIN"}
+          </button>
+        )}
+        {canPin&&!placing&&(
+          <button onClick={()=>setMarkupMode(!markupMode)} style={{background:markupMode?"#5856d6":"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>
+            {markupMode?"DONE":"✏ MARKUP"}
           </button>
         )}
       </div>
@@ -2822,23 +2931,55 @@ function DrawingViewer({drawing,onClose,company,member,defects}){
       {/* Placing mode indicator */}
       {placing&&<div style={{background:"#ff6b00",padding:"8px 16px",textAlign:"center",color:"#fff",fontSize:12,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",flexShrink:0}}>TAP ON THE DRAWING TO PLACE A PIN</div>}
 
+      {/* Markup toolbar */}
+      {markupMode&&(
+        <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:6,background:"#1a1a1a",borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0}}>
+          {[{id:"freehand",label:"✏"},{id:"arrow",label:"↗"},{id:"circle",label:"○"}].map(t=>(
+            <button key={t.id} onClick={()=>setMarkupTool(t.id)} style={{width:36,height:36,borderRadius:8,border:markupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:markupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{t.label}</button>
+          ))}
+          <div style={{width:1,height:24,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
+          {["#ff3b30","#ff9500","#ffcc00","#fff"].map(c=>(
+            <button key={c} onClick={()=>setMarkupColor(c)} style={{width:24,height:24,borderRadius:"50%",border:markupColor===c?"3px solid #fff":"3px solid rgba(255,255,255,0.15)",background:c,cursor:"pointer",flexShrink:0}}/>
+          ))}
+          <div style={{flex:1}}/>
+          <button onClick={undoMarkup} disabled={!markupStrokes.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:markupStrokes.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>UNDO</button>
+          <button onClick={clearMarkup} disabled={!markupStrokes.length} style={{background:"rgba(255,59,48,0.2)",border:"none",borderRadius:8,padding:"6px 10px",color:markupStrokes.length?"#ff6b6b":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>CLEAR</button>
+        </div>
+      )}
+
       {/* Drawing canvas */}
-      <div ref={containerRef} style={{flex:1,overflow:"hidden",position:"relative",cursor:placing?"crosshair":"grab",touchAction:"none"}}
-        onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
-        onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+      <div ref={containerRef} style={{flex:1,overflow:"hidden",position:"relative",cursor:markupMode?"crosshair":placing?"crosshair":"grab",touchAction:"none"}}
+        onPointerDown={markupMode?undefined:onPointerDown} onPointerMove={markupMode?undefined:onPointerMove} onPointerUp={markupMode?undefined:onPointerUp} onPointerCancel={markupMode?undefined:onPointerUp}
+        onTouchMove={markupMode?undefined:onTouchMove} onTouchEnd={markupMode?undefined:onTouchEnd}>
         {isImage?(
           <div style={{position:"relative",transform:`scale(${scale}) translate(${offset.x/scale}px,${offset.y/scale}px)`,transformOrigin:"0 0",transition:dragRef.current?"none":"transform 0.15s ease"}}>
-            <img ref={imgRef} src={fileUrl} alt={drawing.name} onClick={handleDrawingClick}
-              style={{width:"100%",display:"block",userSelect:"none",pointerEvents:"auto"}}
+            <img ref={imgRef} src={fileUrl} alt={drawing.name} onClick={markupMode?undefined:handleDrawingClick}
+              style={{width:"100%",display:"block",userSelect:"none",pointerEvents:markupMode?"none":"auto"}}
               draggable={false}/>
-            {renderPins()}
+            {/* Markup SVG overlay */}
+            <svg ref={markupSvgRef} viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:markupMode?"auto":"none",touchAction:"none"}}
+              onMouseDown={onMarkupDown} onMouseMove={onMarkupMove} onMouseUp={onMarkupUp} onMouseLeave={onMarkupUp}
+              onTouchStart={onMarkupDown} onTouchMove={onMarkupMove} onTouchEnd={onMarkupUp}>
+              {renderMarkupSvg(markupStrokes)}
+              {markupCurrent&&renderMarkupSvg([markupCurrent])}
+            </svg>
+            {!markupMode&&renderPins()}
           </div>
         ):isPdf?(
           <div style={{position:"relative",transform:`scale(${scale}) translate(${offset.x/scale}px,${offset.y/scale}px)`,transformOrigin:"0 0",transition:dragRef.current?"none":"transform 0.15s ease"}}>
             {pdfLoading&&<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"60vh",color:"rgba(255,255,255,0.4)"}}><Spin size={20}/><span style={{marginLeft:10,fontSize:13}}>Loading PDF...</span></div>}
             {pdfError&&<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"60vh",color:"#ff6b6b",fontSize:13}}>{pdfError}</div>}
-            {!pdfLoading&&!pdfError&&<canvas ref={canvasRef} onClick={handleDrawingClick} style={{width:"100%",display:"block",userSelect:"none",pointerEvents:"auto"}}/>}
-            {!pdfLoading&&!pdfError&&renderPins()}
+            {!pdfLoading&&!pdfError&&<canvas ref={canvasRef} onClick={markupMode?undefined:handleDrawingClick} style={{width:"100%",display:"block",userSelect:"none",pointerEvents:markupMode?"none":"auto"}}/>}
+            {/* Markup SVG overlay for PDF */}
+            {!pdfLoading&&!pdfError&&(
+              <svg ref={markupSvgRef} viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:markupMode?"auto":"none",touchAction:"none"}}
+                onMouseDown={onMarkupDown} onMouseMove={onMarkupMove} onMouseUp={onMarkupUp} onMouseLeave={onMarkupUp}
+                onTouchStart={onMarkupDown} onTouchMove={onMarkupMove} onTouchEnd={onMarkupUp}>
+                {renderMarkupSvg(markupStrokes)}
+                {markupCurrent&&renderMarkupSvg([markupCurrent])}
+              </svg>
+            )}
+            {!markupMode&&!pdfLoading&&!pdfError&&renderPins()}
           </div>
         ):(
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%",color:"rgba(255,255,255,0.4)"}}>
@@ -2852,12 +2993,16 @@ function DrawingViewer({drawing,onClose,company,member,defects}){
       </div>
 
       {/* Entry picker modal */}
-      {linkEntry&&(
+      {linkEntry&&!quickCreate&&(
         <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
           <div style={{background:"#1a1a1a",borderRadius:16,padding:20,width:"100%",maxWidth:400,maxHeight:"70vh",overflowY:"auto"}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff",marginBottom:4}}>LINK TO ENTRY</div>
-            <div style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:16}}>Select the entry to pin at this location</div>
-            {defects.length===0&&<div style={{color:"rgba(255,255,255,0.3)",textAlign:"center",padding:20}}>No entries to link</div>}
+            <div style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:16}}>Select an existing entry or create new</div>
+            {/* Quick-create button */}
+            {onSaveEntry&&(
+              <button onClick={()=>setQuickCreate(true)} style={{width:"100%",background:"rgba(255,107,0,0.15)",border:"2px dashed rgba(255,107,0,0.4)",borderRadius:10,padding:"12px 14px",marginBottom:12,cursor:"pointer",textAlign:"center",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13}}>+ CREATE NEW ENTRY & PIN HERE</button>
+            )}
+            {defects.length===0&&!onSaveEntry&&<div style={{color:"rgba(255,255,255,0.3)",textAlign:"center",padding:20}}>No entries to link</div>}
             {defects.map(d=>(
               <button key={d.id} onClick={()=>savePin(d.id)} style={{width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 14px",marginBottom:8,cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:10,borderLeft:`4px solid ${SEV_COLOR[d.severity]}`}}>
                 <div style={{flex:1}}>
@@ -2867,6 +3012,61 @@ function DrawingViewer({drawing,onClose,company,member,defects}){
               </button>
             ))}
             <button onClick={()=>setLinkEntry(null)} style={{width:"100%",background:"none",border:"1px solid rgba(255,255,255,0.15)",borderRadius:10,padding:12,color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",marginTop:4}}>CANCEL</button>
+          </div>
+        </div>
+      )}
+
+      {/* Quick-create entry form */}
+      {linkEntry&&quickCreate&&(
+        <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <div style={{background:"#1a1a1a",borderRadius:16,padding:20,width:"100%",maxWidth:400,maxHeight:"80vh",overflowY:"auto"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff",marginBottom:4}}>QUICK LOG ENTRY</div>
+            <div style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:16}}>Create entry and pin it to this location</div>
+            <input type="file" accept="image/*" capture="environment" ref={qPhotoRef} onChange={e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>setQPhoto(r.result);r.readAsDataURL(f);}} style={{display:"none"}}/>
+            {/* Photo */}
+            {qPhoto?(
+              <div style={{position:"relative",marginBottom:12}}>
+                <img src={qPhoto} alt="" style={{width:"100%",maxHeight:150,objectFit:"contain",borderRadius:10,background:"rgba(255,255,255,0.05)"}}/>
+                <button onClick={()=>setQPhoto(null)} style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,0.7)",border:"none",borderRadius:"50%",color:"#fff",width:24,height:24,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+              </div>
+            ):(
+              <button onClick={()=>qPhotoRef.current?.click()} style={{width:"100%",background:"rgba(255,255,255,0.05)",border:"2px dashed rgba(255,255,255,0.15)",borderRadius:10,padding:16,color:"rgba(255,255,255,0.4)",fontSize:13,cursor:"pointer",marginBottom:12}}>📷 Take photo</button>
+            )}
+            {/* Title */}
+            <input value={qTitle} onChange={e=>setQTitle(e.target.value)} placeholder="Defect title..." style={{width:"100%",padding:12,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",marginBottom:12,boxSizing:"border-box"}}/>
+            {/* Severity */}
+            <div style={{display:"flex",gap:6,marginBottom:16}}>
+              {SEVERITY.map(s=>(
+                <button key={s} onClick={()=>setQSev(s)} style={{flex:1,padding:"8px 4px",borderRadius:8,border:`2px solid ${qSev===s?SEV_COLOR[s]:"rgba(255,255,255,0.1)"}`,background:qSev===s?SEV_COLOR[s]+"30":"rgba(255,255,255,0.05)",color:qSev===s?SEV_COLOR[s]:"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,cursor:"pointer"}}>{s.toUpperCase()}</button>
+              ))}
+            </div>
+            {/* Actions */}
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>{setQuickCreate(false);setQTitle("");setQPhoto(null);}} style={{flex:1,padding:12,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>BACK</button>
+              <button disabled={!qTitle.trim()||qSaving} onClick={async()=>{
+                setQSaving(true);
+                try{
+                  let photo=null;
+                  if(qPhoto){photo=await compressPhoto(qPhoto);}
+                  const entryData={title:qTitle,severity:qSev,status:"Open",entryType:"Defect",
+                    location:drawing.name,description:"Pinned on: "+drawing.name,
+                    photo:photo||null,extraPhotos:[],
+                    projectId:currentProject?.id||"default",projectName:currentProject?.name||"",
+                    loggedBy:member?.name||"",loggedByRole:member?.role||"",
+                    createdAt:DB.serverTimestamp(),updatedAt:DB.serverTimestamp(),comments:[]};
+                  await onSaveEntry(entryData);
+                  // Reload defects to get the new entry, then pin it
+                  const allEntries=await DB.defects.list(`companyId="${company.companyId}" && projectId="${currentProject?.id}"`,"-created");
+                  const newEntry=allEntries.find(e=>e.title===qTitle);
+                  if(newEntry){
+                    const pin=await DB.pins.create({drawingId:drawing.id,entryId:newEntry.id,pageNum:linkEntry.pageNum||1,x:linkEntry.x,y:linkEntry.y,label:""});
+                    setPins(prev=>[...prev,pin]);
+                  }
+                  setQuickCreate(false);setQTitle("");setQSev("Major");setQPhoto(null);setLinkEntry(null);
+                }catch(e){alert("Failed: "+e.message);}
+                setQSaving(false);
+              }} style={{flex:1,padding:12,borderRadius:10,border:"none",background:qTitle.trim()?"#ff6b00":"rgba(255,255,255,0.1)",color:qTitle.trim()?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{qSaving?"SAVING...":"CREATE & PIN"}</button>
+            </div>
           </div>
         </div>
       )}
@@ -3642,7 +3842,7 @@ function App(){
       {showEmail&&<EmailSettings onClose={()=>setShowEmail(false)} companyId={company?.companyId}/>}
       {showGemini&&<GeminiSettings onClose={()=>setShowGemini(false)} companyId={company?.companyId}/>}
       {showStorage&&<StorageSettings onClose={()=>setShowStorage(false)} companyId={company?.companyId}/>}
-      {showDrawings&&<DrawingsPanel onClose={()=>setShowDrawings(false)} company={company} currentProject={currentProject} member={member} defects={defects}/>}
+      {showDrawings&&<DrawingsPanel onClose={()=>setShowDrawings(false)} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect}/>}
       {showUsers&&<UserManagement onClose={()=>setShowUsers(false)} company={company} member={member} members={members}/>}
       {showProjects&&<ProjectManagement onClose={()=>setShowProjects(false)} company={company} member={member} projects={projects} currentProject={currentProject} onSelect={p=>{selectProject(p);setShowProjects(false);}}/>}
     </div>
