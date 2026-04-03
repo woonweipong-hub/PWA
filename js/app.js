@@ -813,7 +813,7 @@ function AuthScreen({onAuth,onFullSetup}){
 
         {/* Feature Status Checklist */}
         <div style={{textAlign:"left"}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:800,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",marginBottom:16}}>ALL FEATURES (98 verified)</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:800,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",marginBottom:16}}>ALL FEATURES (98)</div>
           {[
             ["Auth & Onboarding",[["Login / Sign up",true],["Password reset",true],["Password visibility toggle",true],["One-step registration + company setup",true],["Auto-recover session",true],["Install as PWA",true],["Server URL config",true]]],
             ["Team",[["Invite members (link + code)",true],["Role-based access (Admin, Manager, Inspector, Viewer)",true],["Edit roles / remove members",true],["Permission matrix display",true]]],
@@ -844,8 +844,8 @@ function AuthScreen({onAuth,onFullSetup}){
 
         {/* Verification Badge */}
         <div style={{marginTop:24,background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.15)",borderRadius:12,padding:16,textAlign:"center"}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#30d158",lineHeight:1,marginBottom:4}}>FEATURES VERIFIED</div>
-          <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginBottom:10}}>All features code-verified · April 2026</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#30d158",lineHeight:1,marginBottom:4}}>98 FEATURES</div>
+          <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginBottom:10}}>Built for construction teams · April 2026</div>
           <div style={{display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap"}}>
             {[["Mobile","iOS · Android"],["Desktop","Chrome · Firefox · Edge"],["APP","Install · Offline"]].map(([p,d])=>(
               <div key={p} style={{background:"rgba(255,255,255,0.05)",borderRadius:8,padding:"6px 12px"}}>
@@ -4136,7 +4136,7 @@ function App(){
                   ];const total=fc.reduce((n,c)=>n+c[1].length,0);return React.createElement(React.Fragment,null,
                     React.createElement("div",{style:{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:12,padding:16,marginBottom:20,textAlign:"center"}},
                       React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#30d158",lineHeight:1,marginBottom:4}},total),
-                      React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.4)"}},"verified features")
+                      React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.4)"}},"features")
                     ),
                     fc.map(function(c){var cat=c[0],items=c[1];return React.createElement("div",{key:cat,style:{marginBottom:18}},
                       React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"#ff6b00",letterSpacing:"0.08em",marginBottom:6,display:"flex",justifyContent:"space-between"}},
