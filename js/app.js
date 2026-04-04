@@ -4740,8 +4740,8 @@ function App(){
       <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:"#1a1a1a",borderTop:"1px solid rgba(255,255,255,0.06)",display:"flex",padding:"8px 0 12px",zIndex:50}}>
         {navItems.map(n=>(
           <button key={n.id} onClick={()=>setTab(n.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 0"}}>
-            <div style={{fontSize:n.id==="log"?22:18,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.3)",fontWeight:700,lineHeight:1,fontFamily:n.id==="log"?"'Barlow Condensed',sans-serif":"inherit"}}>{n.icon}</div>
-            <div style={{fontSize:9,fontWeight:700,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.25)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em"}}>{n.label.toUpperCase()}</div>
+            <div style={{fontSize:n.id==="log"?22:18,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.55)",fontWeight:700,lineHeight:1,fontFamily:n.id==="log"?"'Barlow Condensed',sans-serif":"inherit"}}>{n.icon}</div>
+            <div style={{fontSize:9,fontWeight:700,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em"}}>{n.label.toUpperCase()}</div>
           </button>
         ))}
       </div>
