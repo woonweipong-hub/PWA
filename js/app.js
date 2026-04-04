@@ -2957,6 +2957,8 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[showUnlockPrompt,setShowUnlockPrompt]=useState(false);
   const[unlockReason,setUnlockReason]=useState("");
   const[comparePreviewLoading,setComparePreviewLoading]=useState(false);
+  const[compareViewMode,setCompareViewMode]=useState("overlay");
+  const compareOverlayCanvasRef=useRef();
   const[compareMarkupTool,setCompareMarkupTool]=useState("freehand");
   const[compareMarkupColor,setCompareMarkupColor]=useState("#ff3b30");
   const[compareMarkupStrokes,setCompareMarkupStrokes]=useState([]);
@@ -3247,20 +3249,63 @@ Return valid JSON only with this shape:
       pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
     let cancelled=false;
-    const renderPage=async(url,canvas)=>{
+    const renderPage=async(url,canvas,scale=1.2)=>{
       const doc=await pdfjsLib.getDocument(url).promise;
       try{
         const page=await doc.getPage(1);
-        const viewport=page.getViewport({scale:1.2});
+        const viewport=page.getViewport({scale});
         canvas.width=viewport.width;canvas.height=viewport.height;
         await page.render({canvasContext:canvas.getContext("2d"),viewport}).promise;
       }finally{try{await doc.destroy();}catch{}}
     };
     setComparePreviewLoading(true);
+    const baseUrl=DB.fileUrl("drawings",base.id,base.file);
+    const targetUrl=DB.fileUrl("drawings",target.id,target.file);
     Promise.all([
-      renderPage(DB.fileUrl("drawings",base.id,base.file),compareBaseCanvasRef.current),
-      renderPage(DB.fileUrl("drawings",target.id,target.file),compareTargetCanvasRef.current)
-    ]).catch(()=>{}).finally(()=>{if(!cancelled)setComparePreviewLoading(false);});
+      renderPage(baseUrl,compareBaseCanvasRef.current),
+      renderPage(targetUrl,compareTargetCanvasRef.current)
+    ]).then(()=>{
+      if(cancelled)return;
+      // Generate pixel-diff overlay: base=blue channel, revision=red channel
+      const oc=compareOverlayCanvasRef.current;
+      if(!oc)return;
+      const bc=compareBaseCanvasRef.current;
+      const tc=compareTargetCanvasRef.current;
+      const w=Math.max(bc.width,tc.width);
+      const h=Math.max(bc.height,tc.height);
+      oc.width=w;oc.height=h;
+      const ctx=oc.getContext("2d");
+      // Draw base to temp canvas to get pixel data at uniform size
+      const tmpB=document.createElement("canvas");tmpB.width=w;tmpB.height=h;
+      const ctxB=tmpB.getContext("2d");ctxB.drawImage(bc,0,0,w,h);
+      const tmpT=document.createElement("canvas");tmpT.width=w;tmpT.height=h;
+      const ctxT=tmpT.getContext("2d");ctxT.drawImage(tc,0,0,w,h);
+      const baseData=ctxB.getImageData(0,0,w,h);
+      const targetData=ctxT.getImageData(0,0,w,h);
+      const out=ctx.createImageData(w,h);
+      const bd=baseData.data,td=targetData.data,od=out.data;
+      for(let i=0;i<bd.length;i+=4){
+        // Convert to grayscale
+        const bGray=Math.round(bd[i]*0.299+bd[i+1]*0.587+bd[i+2]*0.114);
+        const tGray=Math.round(td[i]*0.299+td[i+1]*0.587+td[i+2]*0.114);
+        const diff=Math.abs(bGray-tGray);
+        if(diff<15){
+          // Matching — show as light gray
+          const g=Math.round((bGray+tGray)/2);
+          od[i]=g;od[i+1]=g;od[i+2]=g;od[i+3]=255;
+        }else{
+          // Different — base pixels in blue, revision pixels in red
+          // Intensity based on how dark the pixel is (darker = more content)
+          const bInt=255-bGray; // base content intensity
+          const tInt=255-tGray; // revision content intensity
+          od[i]=Math.min(255,40+tInt);   // Red = revision content
+          od[i+1]=Math.min(255,40+Math.round(Math.min(bInt,tInt)*0.3)); // slight green where overlap
+          od[i+2]=Math.min(255,40+bInt); // Blue = base content
+          od[i+3]=255;
+        }
+      }
+      ctx.putImageData(out,0,0);
+    }).catch(()=>{}).finally(()=>{if(!cancelled)setComparePreviewLoading(false);});
     return()=>{cancelled=true;};
   },[showCompare,compareBaseId,compareTargetId,drawings]);
 
@@ -3515,7 +3560,56 @@ Return valid JSON only with this shape:
 
               {(compareBaseId&&compareTargetId)&&(
                 <div style={{marginBottom:12}}>
-                  <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:6}}>Comparison Markup</div>
+                  {/* View mode toggle */}
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+                    <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",flex:1}}>Drawing Preview</div>
+                    {[{id:"overlay",label:"OVERLAY"},{id:"side",label:"SIDE BY SIDE"}].map(m=>(
+                      <button key={m.id} onClick={()=>setCompareViewMode(m.id)} style={{background:compareViewMode===m.id?"rgba(255,107,0,0.25)":"rgba(255,255,255,0.06)",border:`1px solid ${compareViewMode===m.id?"rgba(255,107,0,0.5)":"rgba(255,255,255,0.12)"}`,borderRadius:8,padding:"5px 10px",color:compareViewMode===m.id?"#ffb48a":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,cursor:"pointer",letterSpacing:"0.04em"}}>{m.label}</button>
+                    ))}
+                  </div>
+
+                  {/* Hidden source canvases for pixel data (always rendered) */}
+                  <div style={{display:"none"}}>
+                    <canvas ref={compareBaseCanvasRef}/>
+                    <canvas ref={compareTargetCanvasRef}/>
+                  </div>
+
+                  {/* Overlay diff view */}
+                  {compareViewMode==="overlay"&&(
+                    <div style={{position:"relative",borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.14)",background:"#0f0f10",marginBottom:8}}>
+                      <canvas ref={compareOverlayCanvasRef} style={{width:"100%",display:"block",objectFit:"contain",background:"#1a1a1a"}}/>
+                      <div style={{position:"absolute",left:6,top:6,display:"flex",gap:4}}>
+                        <div style={{background:"rgba(0,0,0,0.7)",borderRadius:6,padding:"2px 8px",fontSize:9,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",gap:4}}>
+                          <span style={{width:8,height:8,borderRadius:"50%",background:"#4a90ff",display:"inline-block"}}/>
+                          <span style={{color:"#8ab4ff"}}>BASE (REMOVED)</span>
+                        </div>
+                        <div style={{background:"rgba(0,0,0,0.7)",borderRadius:6,padding:"2px 8px",fontSize:9,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",gap:4}}>
+                          <span style={{width:8,height:8,borderRadius:"50%",background:"#ff4a4a",display:"inline-block"}}/>
+                          <span style={{color:"#ff8a8a"}}>REVISION (ADDED)</span>
+                        </div>
+                      </div>
+                      {comparePreviewLoading&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.35)",color:"rgba(255,255,255,0.7)",fontSize:12}}><Spin size={14}/> <span style={{marginLeft:8}}>Generating overlay...</span></div>}
+                    </div>
+                  )}
+
+                  {/* Side-by-side view — re-draw from source canvases */}
+                  {compareViewMode==="side"&&(
+                    <div style={{position:"relative",height:220,borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.14)",background:"#0f0f10",marginBottom:8}}>
+                      <div style={{position:"absolute",inset:0,display:"flex"}}>
+                        <div style={{flex:1,position:"relative",borderRight:"1px solid rgba(255,255,255,0.08)"}}>
+                          <canvas ref={c=>{if(c&&compareBaseCanvasRef.current&&compareBaseCanvasRef.current.width){c.width=compareBaseCanvasRef.current.width;c.height=compareBaseCanvasRef.current.height;c.getContext("2d").drawImage(compareBaseCanvasRef.current,0,0);}}} style={{width:"100%",height:"100%",display:"block",objectFit:"contain",background:"#1a1a1a"}}/>
+                          <div style={{position:"absolute",left:6,top:6,background:"rgba(0,0,0,0.65)",borderRadius:6,padding:"2px 6px",fontSize:10,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>BASE</div>
+                        </div>
+                        <div style={{flex:1,position:"relative"}}>
+                          <canvas ref={c=>{if(c&&compareTargetCanvasRef.current&&compareTargetCanvasRef.current.width){c.width=compareTargetCanvasRef.current.width;c.height=compareTargetCanvasRef.current.height;c.getContext("2d").drawImage(compareTargetCanvasRef.current,0,0);}}} style={{width:"100%",height:"100%",display:"block",objectFit:"contain",background:"#1a1a1a"}}/>
+                          <div style={{position:"absolute",left:6,top:6,background:"rgba(0,0,0,0.65)",borderRadius:6,padding:"2px 6px",fontSize:10,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>REVISION</div>
+                        </div>
+                      </div>
+                      {comparePreviewLoading&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.35)",color:"rgba(255,255,255,0.7)",fontSize:12}}><Spin size={14}/> <span style={{marginLeft:8}}>Loading pages...</span></div>}
+                    </div>
+                  )}
+
+                  {/* Markup tools */}
                   <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,flexWrap:"wrap"}}>
                     {[{id:"freehand",label:"✏"},{id:"arrow",label:"↗"},{id:"circle",label:"○"},{id:"text",label:"T"}].map(t=>(
                       <button key={t.id} onClick={()=>setCompareMarkupTool(t.id)} style={{width:34,height:34,borderRadius:8,border:compareMarkupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:compareMarkupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{t.label}</button>
@@ -3527,26 +3621,6 @@ Return valid JSON only with this shape:
                     <div style={{flex:1}}/>
                     <button onClick={undoCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>UNDO</button>
                     <button onClick={clearCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,59,48,0.2)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#ff8f8f":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>CLEAR</button>
-                  </div>
-
-                  <div ref={compareBoardRef} style={{position:"relative",height:220,borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.14)",background:"#0f0f10",touchAction:"none"}}
-                    onMouseDown={onCompareMarkupDown} onMouseMove={onCompareMarkupMove} onMouseUp={onCompareMarkupUp} onMouseLeave={onCompareMarkupUp}
-                    onTouchStart={onCompareMarkupDown} onTouchMove={onCompareMarkupMove} onTouchEnd={onCompareMarkupUp}>
-                    <div style={{position:"absolute",inset:0,display:"flex"}}>
-                      <div style={{flex:1,position:"relative",borderRight:"1px solid rgba(255,255,255,0.08)"}}>
-                        <canvas ref={compareBaseCanvasRef} style={{width:"100%",height:"100%",display:"block",objectFit:"contain",background:"#1a1a1a"}}/>
-                        <div style={{position:"absolute",left:6,top:6,background:"rgba(0,0,0,0.65)",borderRadius:6,padding:"2px 6px",fontSize:10,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>BASE</div>
-                      </div>
-                      <div style={{flex:1,position:"relative"}}>
-                        <canvas ref={compareTargetCanvasRef} style={{width:"100%",height:"100%",display:"block",objectFit:"contain",background:"#1a1a1a"}}/>
-                        <div style={{position:"absolute",left:6,top:6,background:"rgba(0,0,0,0.65)",borderRadius:6,padding:"2px 6px",fontSize:10,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>REVISION</div>
-                      </div>
-                    </div>
-                    <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}}>
-                      {renderCompareMarkup(compareMarkupStrokes)}
-                      {compareMarkupCurrent&&renderCompareMarkup([compareMarkupCurrent])}
-                    </svg>
-                    {comparePreviewLoading&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.35)",color:"rgba(255,255,255,0.7)",fontSize:12}}><Spin size={14}/> <span style={{marginLeft:8}}>Loading pages...</span></div>}
                   </div>
                 </div>
               )}
