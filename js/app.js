@@ -3194,10 +3194,10 @@ Return valid JSON only with this shape:
       const oc=compareOverlayCanvasRef.current;
       if(oc&&oc.width){
         const tmp=document.createElement("canvas");
-        const scale=Math.min(800/oc.width,600/oc.height,1);
+        const scale=Math.min(1600/oc.width,1200/oc.height,1);
         tmp.width=Math.round(oc.width*scale);tmp.height=Math.round(oc.height*scale);
         tmp.getContext("2d").drawImage(oc,0,0,tmp.width,tmp.height);
-        overlayThumb=tmp.toDataURL("image/jpeg",0.6);
+        overlayThumb=tmp.toDataURL("image/jpeg",0.85);
       }
     }catch(e){}
     const record={
@@ -3364,7 +3364,7 @@ Return valid JSON only with this shape:
       pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
     let cancelled=false;
-    const renderPage=async(url,canvas,scale=1.2)=>{
+    const renderPage=async(url,canvas,scale=2.5)=>{
       const doc=await pdfjsLib.getDocument(url).promise;
       try{
         const page=await doc.getPage(1);
