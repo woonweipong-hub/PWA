@@ -3345,9 +3345,11 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     try{return await extractPdfLines(url);}finally{URL.revokeObjectURL(url);}
   };
 
+  const[batchExpandedIdx,setBatchExpandedIdx]=useState(null);
+
   const runBatchCompare=async()=>{
     if(!batchMatches.length)return;
-    setBatchRunning(true);setBatchResults([]);
+    setBatchRunning(true);setBatchResults([]);setBatchExpandedIdx(null);
     setBatchProgress({current:0,total:batchMatches.length});
     const results=[];
     for(let i=0;i<batchMatches.length;i++){
@@ -3356,9 +3358,9 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
       try{
         const[linesA,linesB]=await Promise.all([extractPdfLinesFromBlob(m.fileA),extractPdfLinesFromBlob(m.fileB)]);
         const diff=comparePdfLineSets(linesA,linesB);
-        results.push({nameA:m.fileA.name,nameB:m.fileB.name,added:diff.added.length,removed:diff.removed.length,status:diff.added.length===0&&diff.removed.length===0?"identical":"changed",similarity:m.similarity});
+        results.push({nameA:m.fileA.name,nameB:m.fileB.name,added:diff.added.length,removed:diff.removed.length,addedLines:diff.added.slice(0,50),removedLines:diff.removed.slice(0,50),pagesA:linesA.length?Math.max(...linesA.map(l=>l.pageNum||1)):0,pagesB:linesB.length?Math.max(...linesB.map(l=>l.pageNum||1)):0,linesA:linesA.length,linesB:linesB.length,status:diff.added.length===0&&diff.removed.length===0?"identical":"changed",similarity:m.similarity});
       }catch(e){
-        results.push({nameA:m.fileA.name,nameB:m.fileB.name,added:0,removed:0,status:"error",error:e.message,similarity:m.similarity});
+        results.push({nameA:m.fileA.name,nameB:m.fileB.name,added:0,removed:0,addedLines:[],removedLines:[],pagesA:0,pagesB:0,linesA:0,linesB:0,status:"error",error:e.message,similarity:m.similarity});
       }
       setBatchResults([...results]);
     }
@@ -3368,10 +3370,19 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const exportBatchCsv=()=>{
     if(!batchResults.length&&!batchUnmatchedA.length&&!batchUnmatchedB.length)return;
     const cc=v=>`"${String(v??"").replace(/"/g,'""')}"`;
-    const header=["Status",batchLabelA+" Drawing",batchLabelB+" Drawing","Match %","Lines Added","Lines Removed"];
-    const rows=batchResults.map(r=>[r.status.toUpperCase(),r.nameA,r.nameB,Math.round((r.similarity||0)*100)+"%",r.added,r.removed]);
-    batchUnmatchedA.forEach(f=>rows.push(["ONLY_IN_"+batchLabelA.replace(/\s/g,"_"),f.name,"—","—","—","—"]));
-    batchUnmatchedB.forEach(f=>rows.push(["ONLY_IN_"+batchLabelB.replace(/\s/g,"_"),"—",f.name,"—","—","—"]));
+    const header=["Section","Status",batchLabelA,batchLabelB,"Pages A","Pages B","Lines Added","Lines Removed","Detail"];
+    const rows=[];
+    // Completeness
+    batchUnmatchedA.forEach(f=>rows.push(["COMPLETENESS","MISSING",f.name,"—","—","—","—","—","Only in "+batchLabelA]));
+    batchUnmatchedB.forEach(f=>rows.push(["COMPLETENESS","EXTRA","—",f.name,"—","—","—","—","Only in "+batchLabelB]));
+    // Content results
+    batchResults.forEach(r=>{
+      rows.push(["CONTENT",r.status.toUpperCase(),r.nameA,r.nameB,r.pagesA||"",r.pagesB||"",r.added,r.removed,""]);
+      if(r.status==="changed"){
+        (r.addedLines||[]).forEach(l=>rows.push(["DETAIL","ADDED_IN_"+batchLabelB.replace(/\s/g,"_"),r.nameA,r.nameB,"","","","",l.text||l]));
+        (r.removedLines||[]).forEach(l=>rows.push(["DETAIL","REMOVED_FROM_"+batchLabelA.replace(/\s/g,"_"),r.nameA,r.nameB,"","","","",l.text||l]));
+      }
+    });
     const csv=[header,...rows].map(r=>r.map(cc).join(",")).join("\n");
     const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
     const url=URL.createObjectURL(blob);
@@ -3384,11 +3395,32 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     const identical=batchResults.filter(r=>r.status==="identical").length;
     const changed=batchResults.filter(r=>r.status==="changed").length;
     const errors=batchResults.filter(r=>r.status==="error").length;
-    const resultRows=batchResults.map((r,i)=>`<tr style="background:${r.status==="identical"?"#f0fff5":r.status==="error"?"#fff3f2":"#fffbe6"}"><td>${i+1}</td><td>${sanitize(r.nameA)}</td><td>${sanitize(r.nameB)}</td><td>${Math.round((r.similarity||0)*100)}%</td><td style="color:#ff3b30;font-weight:bold">${r.status==="error"?"ERR":"+"+r.added}</td><td style="color:#34c759;font-weight:bold">${r.status==="error"?"ERR":"-"+r.removed}</td><td style="font-weight:bold;color:${r.status==="identical"?"#34c759":r.status==="error"?"#ff3b30":"#ff9500"}">${r.status.toUpperCase()}</td></tr>`).join("");
-    const unmatchedRows=[...batchUnmatchedA.map(f=>`<tr style="background:#fff3f2"><td>—</td><td>${sanitize(f.name)}</td><td style="color:#ff3b30;font-style:italic">No match in ${lblB}</td><td colspan="4" style="color:#ff3b30;font-weight:bold">MISSING</td></tr>`),...batchUnmatchedB.map(f=>`<tr style="background:#fffbe6"><td>—</td><td style="color:#ff9500;font-style:italic">No match in ${lblA}</td><td>${sanitize(f.name)}</td><td colspan="4" style="color:#ff9500;font-weight:bold">EXTRA</td></tr>`)].join("");
+    const isComplete=batchUnmatchedA.length===0&&batchUnmatchedB.length===0&&batchSetAFiles.length===batchSetBFiles.length;
+    // Completeness section
+    const unmatchedHtml=[...batchUnmatchedA.map(f=>`<tr style="background:#fff3f2"><td style="color:#ff3b30;font-weight:bold">MISSING</td><td>${sanitize(f.name)}</td><td style="color:#999;font-style:italic">No match in ${lblB}</td></tr>`),...batchUnmatchedB.map(f=>`<tr style="background:#fffbe6"><td style="color:#ff9500;font-weight:bold">EXTRA</td><td style="color:#999;font-style:italic">No match in ${lblA}</td><td>${sanitize(f.name)}</td></tr>`)].join("");
+    // Content results table
+    const resultRows=batchResults.map((r,i)=>`<tr style="background:${r.status==="identical"?"#f0fff5":r.status==="error"?"#fff3f2":"#fffbe6"}"><td>${i+1}</td><td>${sanitize(r.nameA)}</td><td>${sanitize(r.nameB)}</td><td style="color:#ff3b30;font-weight:bold">${r.status==="error"?"ERR":r.added>0?"+"+r.added:"0"}</td><td style="color:#34c759;font-weight:bold">${r.status==="error"?"ERR":r.removed>0?"-"+r.removed:"0"}</td><td style="font-weight:bold;color:${r.status==="identical"?"#34c759":r.status==="error"?"#ff3b30":"#ff9500"}">${r.status==="identical"?"IDENTICAL":r.status==="error"?"ERROR":"CHANGED"}</td></tr>`).join("");
+    // Per-file detail for changed files
+    const detailSections=batchResults.filter(r=>r.status==="changed").map(r=>{
+      const addedHtml=(r.addedLines||[]).slice(0,20).map(l=>`<div style="font-size:10px;padding:2px 6px;margin:1px 0;background:#fff3f8;border-left:3px solid #ff00ff;border-radius:2px">${sanitize(l.text||l)}</div>`).join("")+(r.added>20?`<div style="font-size:10px;color:#999;padding-left:8px">... and ${r.added-20} more</div>`:"");
+      const removedHtml=(r.removedLines||[]).slice(0,20).map(l=>`<div style="font-size:10px;padding:2px 6px;margin:1px 0;background:#fffde6;border-left:3px solid #ddcc00;border-radius:2px">${sanitize(l.text||l)}</div>`).join("")+(r.removed>20?`<div style="font-size:10px;color:#999;padding-left:8px">... and ${r.removed-20} more</div>`:"");
+      return`<div style="page-break-inside:avoid;margin-bottom:14px;border:1px solid #ddd;border-radius:8px;padding:12px"><div style="font-weight:bold;font-size:13px;margin-bottom:6px">${sanitize(r.nameA)} <span style="color:#999;font-weight:normal">↔</span> ${sanitize(r.nameB)}</div><div style="font-size:11px;color:#666;margin-bottom:6px">Pages: ${r.pagesA||"?"} vs ${r.pagesB||"?"} · Text lines: ${r.linesA||0} vs ${r.linesB||0}</div>${addedHtml?`<div style="margin-bottom:6px"><div style="font-size:10px;font-weight:bold;color:#ff00ff;margin-bottom:3px">+ IN ${lblB} ONLY (${r.added})</div>${addedHtml}</div>`:""}${removedHtml?`<div><div style="font-size:10px;font-weight:bold;color:#b8a700;margin-bottom:3px">- IN ${lblA} ONLY (${r.removed})</div>${removedHtml}</div>`:""}</div>`;
+    }).join("");
     const w=window.open("","_blank");
     if(!w){alert("Popup blocked.");return;}
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileTimestamp()}-Batch Comparison Report</title><style>body{font-family:Arial,sans-serif;padding:22px;color:#111;max-width:1000px;margin:0 auto}h1{margin:0 0 4px;font-size:22px}.meta{font-size:12px;color:#444;margin-bottom:6px}.cards{display:flex;gap:10px;margin:12px 0}.card{flex:1;border-radius:8px;padding:12px;border:1px solid #ddd;text-align:center}.card b{display:block;font-size:22px}table{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px}th,td{border:1px solid #ddd;padding:6px;vertical-align:top}th{background:#f5f5f5;text-align:left}@media print{.no-print{display:none}}</style></head><body><h1>Batch Drawing Comparison Report</h1><div class="meta"><b>Project:</b> ${sanitize(currentProject?.name||"—")} | <b>Company:</b> ${sanitize(company?.companyName||"—")} | <b>Generated:</b> ${sanitize(stamp)}</div><div class="cards"><div class="card" style="border-color:#5856d6;background:#f5f3ff"><b>${batchSetAFiles.length}</b><span style="font-size:11px;color:#5856d6">${lblA}</span></div><div class="card" style="border-color:#ff6b00;background:#fff8f3"><b>${batchSetBFiles.length}</b><span style="font-size:11px;color:#ff6b00">${lblB}</span></div><div class="card" style="border-color:#34c759;background:#f0fff5"><b>${batchMatches.length}</b><span style="font-size:11px;color:#34c759">Matched</span></div><div class="card" style="border-color:#34c759"><b>${identical}</b><span style="font-size:11px;color:#34c759">Identical</span></div><div class="card" style="border-color:#ff9500;background:#fffbe6"><b>${changed}</b><span style="font-size:11px;color:#ff9500">Changed</span></div><div class="card" style="border-color:#ff3b30;background:#fff3f2"><b>${batchUnmatchedA.length+batchUnmatchedB.length}</b><span style="font-size:11px;color:#ff3b30">Unmatched</span></div></div><h2>Comparison Results</h2><table><thead><tr><th>#</th><th>${lblA}</th><th>${lblB}</th><th>Match</th><th>Added</th><th>Removed</th><th>Status</th></tr></thead><tbody>${resultRows}${unmatchedRows}</tbody></table><br><button class="no-print" onclick="window.print()">Print / Save as PDF</button></body></html>`);
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileTimestamp()}-Batch Comparison Report</title><style>body{font-family:Arial,sans-serif;padding:22px;color:#111;max-width:1000px;margin:0 auto}h1{margin:0 0 4px;font-size:22px}h2{margin:18px 0 8px;font-size:16px;border-bottom:2px solid #ddd;padding-bottom:4px}.meta{font-size:12px;color:#444;margin-bottom:6px}.cards{display:flex;gap:10px;margin:12px 0}.card{flex:1;border-radius:8px;padding:12px;border:1px solid #ddd;text-align:center}.card b{display:block;font-size:22px}table{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px}th,td{border:1px solid #ddd;padding:6px;vertical-align:top}th{background:#f5f5f5;text-align:left}.status{font-size:12px;font-weight:bold;padding:6px 12px;border-radius:6px;display:inline-block;margin:6px 0}@media print{.no-print{display:none}}</style></head><body>
+      <h1>Batch PDFs Comparison Report</h1>
+      <div class="meta"><b>Project:</b> ${sanitize(currentProject?.name||"—")} | <b>Company:</b> ${sanitize(company?.companyName||"—")} | <b>Generated:</b> ${sanitize(stamp)}</div>
+      <h2>1. Completeness Check</h2>
+      <div class="cards"><div class="card" style="border-color:#5856d6;background:#f5f3ff"><b>${batchSetAFiles.length}</b><span style="font-size:11px;color:#5856d6">${lblA}</span></div><div class="card" style="border-color:#ff6b00;background:#fff8f3"><b>${batchSetBFiles.length}</b><span style="font-size:11px;color:#ff6b00">${lblB}</span></div><div class="card" style="border-color:#34c759;background:#f0fff5"><b>${batchMatches.length}</b><span style="font-size:11px;color:#34c759">Paired</span></div><div class="card" style="border-color:#ff3b30;background:#fff3f2"><b>${batchUnmatchedA.length+batchUnmatchedB.length}</b><span style="font-size:11px;color:#ff3b30">Unpaired</span></div></div>
+      <div class="status" style="background:${isComplete?"#f0fff5":"#fffbe6"};color:${isComplete?"#1a7a35":"#b36b00"};border:1px solid ${isComplete?"#9cd8ad":"#e6c800"}">${isComplete?`COMPLETE — All ${batchSetAFiles.length} drawings accounted for`:`GAPS FOUND — ${batchUnmatchedA.length+batchUnmatchedB.length} unpaired file(s), count difference: ${Math.abs(batchSetAFiles.length-batchSetBFiles.length)}`}</div>
+      ${unmatchedHtml?`<table><thead><tr><th>Status</th><th>${lblA}</th><th>${lblB}</th></tr></thead><tbody>${unmatchedHtml}</tbody></table>`:""}
+      <h2>2. Content Comparison</h2>
+      <div class="cards"><div class="card" style="border-color:#34c759;background:#f0fff5"><b>${identical}</b><span style="font-size:11px;color:#34c759">Identical</span></div><div class="card" style="border-color:#ff9500;background:#fffbe6"><b>${changed}</b><span style="font-size:11px;color:#ff9500">Changed</span></div><div class="card" style="border-color:#ff3b30;background:#fff3f2"><b>${errors}</b><span style="font-size:11px;color:#ff3b30">Errors</span></div></div>
+      <table><thead><tr><th>#</th><th>${lblA}</th><th>${lblB}</th><th>Added</th><th>Removed</th><th>Status</th></tr></thead><tbody>${resultRows}</tbody></table>
+      ${detailSections?`<h2>3. Change Details (per file)</h2>${detailSections}`:""}
+      <br><button class="no-print" onclick="window.print()">Print / Save as PDF</button>
+    </body></html>`);
     w.document.close();
   };
 
@@ -4225,70 +4257,157 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
               </div>
             )}
 
-            {/* Matched pairs */}
+            {/* ═══ PHASE 1: COMPLETENESS CHECK ═══ */}
+            {(batchSetAFiles.length>0||batchSetBFiles.length>0)&&(
+              <div style={{background:"#1a1a1a",borderRadius:14,padding:16,marginBottom:14}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#fff",letterSpacing:"0.1em",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{background:"#5856d6",color:"#fff",borderRadius:"50%",width:20,height:20,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:11,flexShrink:0}}>1</span>
+                  COMPLETENESS CHECK
+                  {batchMatches.length>0&&batchUnmatchedA.length===0&&batchUnmatchedB.length===0&&batchSetAFiles.length===batchSetBFiles.length&&<span style={{marginLeft:"auto",fontSize:11,color:"#34c759",fontWeight:700}}>COMPLETE</span>}
+                  {(batchUnmatchedA.length>0||batchUnmatchedB.length>0||batchSetAFiles.length!==batchSetBFiles.length)&&<span style={{marginLeft:"auto",fontSize:11,color:"#ff9500",fontWeight:700}}>GAPS FOUND</span>}
+                </div>
+                <div style={{display:"flex",gap:6,marginBottom:10}}>
+                  <div style={{flex:1,background:"rgba(88,86,214,0.15)",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#fff"}}>{batchSetAFiles.length}</div>
+                    <div style={{fontSize:9,color:"rgba(255,255,255,0.5)",fontWeight:700}}>{batchLabelA}</div>
+                  </div>
+                  <div style={{flex:1,background:"rgba(255,107,0,0.15)",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#fff"}}>{batchSetBFiles.length}</div>
+                    <div style={{fontSize:9,color:"rgba(255,255,255,0.5)",fontWeight:700}}>{batchLabelB}</div>
+                  </div>
+                  <div style={{flex:1,background:batchMatches.length?"rgba(48,209,88,0.15)":"rgba(255,255,255,0.05)",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:batchMatches.length?"#34c759":"rgba(255,255,255,0.3)"}}>{batchMatches.length}</div>
+                    <div style={{fontSize:9,color:"rgba(255,255,255,0.5)",fontWeight:700}}>PAIRED</div>
+                  </div>
+                  {(batchUnmatchedA.length+batchUnmatchedB.length>0)&&(
+                    <div style={{flex:1,background:"rgba(255,59,48,0.15)",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#ff3b30"}}>{batchUnmatchedA.length+batchUnmatchedB.length}</div>
+                      <div style={{fontSize:9,color:"rgba(255,255,255,0.5)",fontWeight:700}}>UNPAIRED</div>
+                    </div>
+                  )}
+                </div>
+                {batchSetAFiles.length!==batchSetBFiles.length&&batchSetAFiles.length>0&&batchSetBFiles.length>0&&(
+                  <div style={{background:"rgba(255,149,0,0.12)",borderRadius:8,padding:"8px 12px",fontSize:11,color:"#ffcc00",marginBottom:8}}>
+                    Count mismatch: {batchLabelA} has {batchSetAFiles.length} file(s), {batchLabelB} has {batchSetBFiles.length} file(s) — difference of {Math.abs(batchSetAFiles.length-batchSetBFiles.length)}
+                  </div>
+                )}
+                {/* Unmatched files inline */}
+                {batchUnmatchedA.length>0&&(
+                  <div style={{marginBottom:8}}>
+                    <div style={{fontSize:11,fontWeight:800,color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:4}}>ONLY IN {batchLabelA} ({batchUnmatchedA.length})</div>
+                    {batchUnmatchedA.map((f,i)=><div key={i} style={{fontSize:11,padding:"3px 8px",marginBottom:2,background:"rgba(255,59,48,0.1)",borderRadius:4,borderLeft:"2px solid #ff3b30",color:"rgba(255,255,255,0.7)"}}>{f.name}</div>)}
+                  </div>
+                )}
+                {batchUnmatchedB.length>0&&(
+                  <div>
+                    <div style={{fontSize:11,fontWeight:800,color:"#ff9500",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:4}}>ONLY IN {batchLabelB} ({batchUnmatchedB.length})</div>
+                    {batchUnmatchedB.map((f,i)=><div key={i} style={{fontSize:11,padding:"3px 8px",marginBottom:2,background:"rgba(255,149,0,0.1)",borderRadius:4,borderLeft:"2px solid #ff9500",color:"rgba(255,255,255,0.7)"}}>{f.name}</div>)}
+                  </div>
+                )}
+                {batchMatches.length>0&&batchUnmatchedA.length===0&&batchUnmatchedB.length===0&&batchSetAFiles.length===batchSetBFiles.length&&(
+                  <div style={{fontSize:11,color:"#34c759",textAlign:"center",padding:4}}>All {batchSetAFiles.length} drawing(s) from both sets are paired.</div>
+                )}
+              </div>
+            )}
+
+            {/* Paired files list */}
             {batchMatches.length>0&&(
               <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14}}>
-                <div style={lbl()}>MATCHED PAIRS ({batchMatches.length})</div>
-                {batchMatches.map((m,i)=>{
-                  const result=batchResults[i];
-                  return(
-                    <div key={i} style={{display:"flex",gap:8,alignItems:"center",padding:"8px 10px",marginBottom:6,borderRadius:10,border:"1px solid rgba(0,0,0,0.06)",background:result?(result.status==="identical"?"rgba(48,209,88,0.05)":result.status==="error"?"rgba(255,59,48,0.05)":"rgba(255,149,0,0.05)"):"#fafafa"}}>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:12,fontWeight:700,color:"#5856d6",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{m.fileA.name}</div>
-                        <div style={{fontSize:10,color:"rgba(0,0,0,0.3)"}}>↕ {Math.round(m.similarity*100)}% match</div>
-                        <div style={{fontSize:12,fontWeight:700,color:"#ff6b00",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{m.fileB.name}</div>
-                      </div>
-                      {result&&(
-                        <div style={{textAlign:"right",flexShrink:0}}>
-                          {result.status==="identical"&&<div style={{fontSize:11,fontWeight:800,color:"#34c759",fontFamily:"'Barlow Condensed',sans-serif"}}>IDENTICAL</div>}
-                          {result.status==="changed"&&<div><div style={{fontSize:11,fontWeight:800,color:"#ff9500",fontFamily:"'Barlow Condensed',sans-serif"}}>CHANGED</div><div style={{fontSize:10,color:"rgba(0,0,0,0.4)"}}>+{result.added} / -{result.removed}</div></div>}
-                          {result.status==="error"&&<div style={{fontSize:11,fontWeight:800,color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif"}}>ERROR</div>}
-                        </div>
-                      )}
+                <div style={lbl()}>PAIRED DRAWINGS ({batchMatches.length})</div>
+                {batchMatches.map((m,i)=>(
+                  <div key={i} style={{padding:"6px 10px",marginBottom:4,borderRadius:8,border:"1px solid rgba(0,0,0,0.06)",background:"#fafafa",display:"flex",alignItems:"center",gap:6}}>
+                    <div style={{fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:"#5856d6",width:20,textAlign:"center",flexShrink:0}}>{i+1}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:11,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}><span style={{color:"#5856d6",fontWeight:600}}>{m.fileA.name}</span></div>
+                      <div style={{fontSize:11,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}><span style={{color:"#ff6b00",fontWeight:600}}>{m.fileB.name}</span></div>
                     </div>
-                  );
-                })}
+                    <div style={{fontSize:10,color:"rgba(0,0,0,0.3)",flexShrink:0}}>{Math.round(m.similarity*100)}%</div>
+                  </div>
+                ))}
               </div>
             )}
 
-            {/* Unmatched files */}
-            {batchUnmatchedA.length>0&&(
-              <div style={{background:"rgba(255,59,48,0.04)",borderRadius:14,padding:16,marginBottom:14,border:"1px solid rgba(255,59,48,0.1)"}}>
-                <div style={{...lbl(),color:"#ff3b30"}}>ONLY IN {batchLabelA} ({batchUnmatchedA.length})</div>
-                <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:8}}>These {batchLabelA.toLowerCase()} drawings have no match in {batchLabelB.toLowerCase()}</div>
-                {batchUnmatchedA.map((f,i)=><div key={i} style={{fontSize:12,padding:"4px 8px",marginBottom:3,background:"rgba(255,59,48,0.06)",borderRadius:6,borderLeft:"3px solid #ff3b30"}}>{f.name}</div>)}
-              </div>
-            )}
-            {batchUnmatchedB.length>0&&(
-              <div style={{background:"rgba(255,149,0,0.04)",borderRadius:14,padding:16,marginBottom:14,border:"1px solid rgba(255,149,0,0.1)"}}>
-                <div style={{...lbl(),color:"#ff9500"}}>ONLY IN {batchLabelB} ({batchUnmatchedB.length})</div>
-                <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:8}}>These {batchLabelB.toLowerCase()} drawings have no match in {batchLabelA.toLowerCase()}</div>
-                {batchUnmatchedB.map((f,i)=><div key={i} style={{fontSize:12,padding:"4px 8px",marginBottom:3,background:"rgba(255,149,0,0.06)",borderRadius:6,borderLeft:"3px solid #ff9500"}}>{f.name}</div>)}
-              </div>
-            )}
-
-            {/* Action buttons */}
+            {/* ═══ PHASE 2: CONTENT COMPARISON ═══ */}
             {batchMatches.length>0&&(
-              <div style={{display:"flex",gap:8,marginBottom:14}}>
-                <button onClick={runBatchCompare} disabled={batchRunning} style={{flex:1,background:batchRunning?"rgba(0,0,0,0.1)":"#5856d6",border:"none",borderRadius:10,padding:14,color:batchRunning?"rgba(0,0,0,0.3)":"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-                  {batchRunning?<><Spin size={14}/> COMPARING {batchProgress.current}/{batchProgress.total}...</>:"RUN BATCH COMPARISON"}
-                </button>
-              </div>
-            )}
-
-            {/* Results summary */}
-            {batchResults.length>0&&!batchRunning&&(
               <div style={{background:"#1a1a1a",borderRadius:14,padding:16,marginBottom:14}}>
-                <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:10}}>BATCH RESULTS SUMMARY</div>
-                <div style={{display:"flex",gap:8,marginBottom:12}}>
-                  <div style={{flex:1,textAlign:"center"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#34c759"}}>{batchResults.filter(r=>r.status==="identical").length}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.4)"}}>IDENTICAL</div></div>
-                  <div style={{flex:1,textAlign:"center"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#ff9500"}}>{batchResults.filter(r=>r.status==="changed").length}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.4)"}}>CHANGED</div></div>
-                  <div style={{flex:1,textAlign:"center"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#ff3b30"}}>{batchResults.filter(r=>r.status==="error").length}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.4)"}}>ERRORS</div></div>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#fff",letterSpacing:"0.1em",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{background:"#ff6b00",color:"#fff",borderRadius:"50%",width:20,height:20,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:11,flexShrink:0}}>2</span>
+                  CONTENT COMPARISON
+                  {batchResults.length>0&&!batchRunning&&<span style={{marginLeft:"auto",fontSize:11,color:"rgba(255,255,255,0.5)",fontWeight:400}}>{batchResults.length}/{batchMatches.length} compared</span>}
                 </div>
-                <div style={{display:"flex",gap:8}}>
-                  <button onClick={exportBatchCsv} style={{flex:1,background:"rgba(52,170,220,0.2)",border:"1px solid rgba(52,170,220,0.4)",borderRadius:10,padding:"9px 10px",color:"#7fd7ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>EXPORT CSV</button>
-                  <button onClick={exportBatchPdf} style={{flex:1,background:"rgba(255,107,0,0.2)",border:"1px solid rgba(255,107,0,0.4)",borderRadius:10,padding:"9px 10px",color:"#ffb48a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>EXPORT PDF</button>
-                </div>
+                <button onClick={runBatchCompare} disabled={batchRunning} style={{width:"100%",background:batchRunning?"rgba(255,255,255,0.05)":"#ff6b00",border:"none",borderRadius:10,padding:14,color:batchRunning?"rgba(255,255,255,0.4)":"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:batchResults.length?12:0}}>
+                  {batchRunning?<><Spin size={14}/> COMPARING {batchProgress.current} OF {batchProgress.total}...</>:`COMPARE ALL ${batchMatches.length} PAIRED DRAWINGS`}
+                </button>
+
+                {/* Per-file results */}
+                {batchResults.length>0&&(
+                  <div>
+                    {/* Summary counters */}
+                    <div style={{display:"flex",gap:6,marginBottom:10}}>
+                      <div style={{flex:1,background:"rgba(48,209,88,0.12)",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#34c759"}}>{batchResults.filter(r=>r.status==="identical").length}</div>
+                        <div style={{fontSize:9,color:"rgba(255,255,255,0.5)",fontWeight:700}}>IDENTICAL</div>
+                      </div>
+                      <div style={{flex:1,background:"rgba(255,149,0,0.12)",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#ff9500"}}>{batchResults.filter(r=>r.status==="changed").length}</div>
+                        <div style={{fontSize:9,color:"rgba(255,255,255,0.5)",fontWeight:700}}>CHANGED</div>
+                      </div>
+                      <div style={{flex:1,background:"rgba(255,59,48,0.12)",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#ff3b30"}}>{batchResults.filter(r=>r.status==="error").length}</div>
+                        <div style={{fontSize:9,color:"rgba(255,255,255,0.5)",fontWeight:700}}>ERRORS</div>
+                      </div>
+                    </div>
+
+                    {/* Each file result — expandable */}
+                    {batchResults.map((r,i)=>(
+                      <div key={i} style={{marginBottom:4}}>
+                        <button onClick={()=>setBatchExpandedIdx(batchExpandedIdx===i?null:i)} style={{width:"100%",display:"flex",gap:8,alignItems:"center",padding:"8px 10px",borderRadius:r.status==="identical"?8:`8px 8px ${batchExpandedIdx===i?"0 0":"8px 8px"}`,border:"none",background:r.status==="identical"?"rgba(48,209,88,0.08)":r.status==="error"?"rgba(255,59,48,0.08)":"rgba(255,149,0,0.08)",cursor:"pointer",textAlign:"left"}}>
+                          <div style={{fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:r.status==="identical"?"#34c759":r.status==="error"?"#ff3b30":"#ff9500",width:20,textAlign:"center",flexShrink:0}}>{i+1}</div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:11,color:"rgba(255,255,255,0.8)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.nameA}</div>
+                          </div>
+                          <div style={{flexShrink:0,display:"flex",alignItems:"center",gap:6}}>
+                            {r.status==="changed"&&<span style={{fontSize:10,color:"rgba(255,255,255,0.5)"}}>+{r.added} / -{r.removed}</span>}
+                            <span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:r.status==="identical"?"#34c759":r.status==="error"?"#ff3b30":"#ff9500"}}>{r.status==="identical"?"SAME":r.status==="error"?"ERR":"DIFF"}</span>
+                            {r.status==="changed"&&<span style={{fontSize:10,color:"rgba(255,255,255,0.3)"}}>{batchExpandedIdx===i?"▲":"▼"}</span>}
+                          </div>
+                        </button>
+                        {/* Expanded detail — added/removed lines */}
+                        {batchExpandedIdx===i&&r.status==="changed"&&(
+                          <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderTop:"none",borderRadius:"0 0 8px 8px",padding:10}}>
+                            <div style={{display:"flex",gap:6,marginBottom:8,fontSize:10,color:"rgba(255,255,255,0.4)"}}>
+                              <span>Pages: {r.pagesA||"?"} vs {r.pagesB||"?"}</span>
+                              <span>·</span>
+                              <span>Text lines: {r.linesA||0} vs {r.linesB||0}</span>
+                            </div>
+                            {r.addedLines.length>0&&(
+                              <div style={{marginBottom:6}}>
+                                <div style={{fontSize:10,fontWeight:800,color:"#ff00ff",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:3}}>+ IN {batchLabelB} ONLY ({r.added})</div>
+                                {r.addedLines.slice(0,10).map((l,j)=><div key={j} style={{fontSize:10,color:"rgba(255,255,255,0.6)",padding:"2px 6px",marginBottom:1,background:"rgba(255,0,255,0.06)",borderRadius:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l.text||l}</div>)}
+                                {r.added>10&&<div style={{fontSize:10,color:"rgba(255,255,255,0.3)",paddingLeft:6}}>... and {r.added-10} more</div>}
+                              </div>
+                            )}
+                            {r.removedLines.length>0&&(
+                              <div>
+                                <div style={{fontSize:10,fontWeight:800,color:"#ddcc00",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:3}}>- IN {batchLabelA} ONLY ({r.removed})</div>
+                                {r.removedLines.slice(0,10).map((l,j)=><div key={j} style={{fontSize:10,color:"rgba(255,255,255,0.6)",padding:"2px 6px",marginBottom:1,background:"rgba(221,204,0,0.06)",borderRadius:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l.text||l}</div>)}
+                                {r.removed>10&&<div style={{fontSize:10,color:"rgba(255,255,255,0.3)",paddingLeft:6}}>... and {r.removed-10} more</div>}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Export buttons */}
+                    {!batchRunning&&(
+                      <div style={{display:"flex",gap:8,marginTop:10}}>
+                        <button onClick={exportBatchCsv} style={{flex:1,background:"rgba(52,170,220,0.2)",border:"1px solid rgba(52,170,220,0.4)",borderRadius:10,padding:"9px 10px",color:"#7fd7ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>EXPORT CSV</button>
+                        <button onClick={exportBatchPdf} style={{flex:1,background:"rgba(255,107,0,0.2)",border:"1px solid rgba(255,107,0,0.4)",borderRadius:10,padding:"9px 10px",color:"#ffb48a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>EXPORT PDF</button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
