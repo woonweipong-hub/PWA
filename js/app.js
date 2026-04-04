@@ -3188,13 +3188,14 @@ Return valid JSON only with this shape:
 
   const saveComparison=()=>{
     if(!compareRes&&!compareOverlayCanvasRef.current?.width){alert("Run a comparison first.");return;}
-    // Capture overlay as thumbnail
+    // Save compact preview thumbnail (quick offline preview)
+    // Full vector quality re-renders from source PDFs when opened
     let overlayThumb="";
     try{
       const oc=compareOverlayCanvasRef.current;
       if(oc&&oc.width){
         const tmp=document.createElement("canvas");
-        const scale=Math.min(1600/oc.width,1200/oc.height,1);
+        const scale=Math.min(1200/oc.width,900/oc.height,1);
         tmp.width=Math.round(oc.width*scale);tmp.height=Math.round(oc.height*scale);
         tmp.getContext("2d").drawImage(oc,0,0,tmp.width,tmp.height);
         overlayThumb=tmp.toDataURL("image/png");
