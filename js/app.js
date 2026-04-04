@@ -34,6 +34,7 @@ function compressPhoto(dataUrl,maxPx=1800,quality=0.8){
 const DRAWING_NOTES_KEY="drawing_notes_v1";
 const DRAWING_MARKUP_KEY="drawing_markup_v1";
 const BCA_SCDF_REVISION_COLORS={added:"#ff3b30",removed:"#34c759"};
+const fileTimestamp=()=>{const d=new Date();return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}_${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}${String(d.getSeconds()).padStart(2,"0")}`;};
 
 function loadDrawingNotesMap(){
   const raw=local.get(DRAWING_NOTES_KEY);
@@ -3343,7 +3344,7 @@ Return valid JSON only with this shape:
     compareRes.removed.forEach(line=>rows.push(["REMOVED",line,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]));
     if(rows.length===0)rows.push(["NO_DIFF","No added/removed lines detected",compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]);
     const csv=[header,...rows].map(r=>r.map(csvCell).join(",")).join("\n");
-    const fn=`drawing_compare_${(compareRes.baseName||"base").replace(/\W+/g,"_")}_to_${(compareRes.targetName||"revision").replace(/\W+/g,"_")}.csv`;
+    const fn=`${fileTimestamp()}-compare_${(compareRes.baseName||"base").replace(/\W+/g,"_")}_to_${(compareRes.targetName||"revision").replace(/\W+/g,"_")}.csv`;
     downloadTextFile(csv,fn,"text/csv;charset=utf-8");
   };
 
@@ -3358,7 +3359,7 @@ Return valid JSON only with this shape:
     const aiHtml=compareAiReport?`<h2 style="color:#5856d6">AI-Supported Analysis</h2><div style="white-space:pre-wrap;font-size:12px;line-height:1.45;background:#f5f3ff;border:1px solid #d8d2ff;border-radius:8px;padding:10px">${sanitize(compareAiReport)}</div>${aiApprovalHtml}${auditHtml}`:"";
     const w=window.open("","_blank");
     if(!w){alert("Popup blocked. Please allow popups to export PDF.");return;}
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Drawing Comparison Report</title><style>
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileTimestamp()}-Drawing Comparison Report</title><style>
       body{font-family:Arial,sans-serif;padding:22px;color:#111}
       h1{margin:0 0 4px;font-size:22px} h2{margin:20px 0 8px;font-size:16px}
       .meta{font-size:12px;color:#444;margin-bottom:6px}
@@ -4006,7 +4007,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     const csv=[header,...rows].map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\n");
     const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
     const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");a.href=url;a.download=`${drawing.name.replace(/\W+/g,"_")}_annotations.csv`;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),500);
+    const a=document.createElement("a");a.href=url;a.download=`${fileTimestamp()}-${drawing.name.replace(/\W+/g,"_")}_annotations.csv`;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),500);
   };
 
   const exportDrawingPdf=()=>{
@@ -4014,7 +4015,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     const itemsHtml=combinedItems.length?combinedItems.map((item,i)=>`<tr><td>${i+1}</td><td style="color:${item.kind==="pin"?"#ff3b30":item.kind==="note"?"#5856d6":"#ff6b00"};font-weight:700">${item.kind.toUpperCase()}</td><td>${sanitize(item.title)}</td><td>${sanitize(item.severity)}</td><td>${sanitize(item.detail||"")}</td></tr>`).join(""):`<tr><td colspan="5" style="text-align:center;color:#999">No annotations</td></tr>`;
     const w=window.open("","_blank");
     if(!w){alert("Popup blocked.");return;}
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Drawing Annotations — ${sanitize(drawing.name)}</title><style>body{font-family:Arial,sans-serif;padding:22px;color:#111}h1{margin:0 0 4px;font-size:20px}table{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px}th,td{border:1px solid #ddd;padding:6px;vertical-align:top}th{background:#f5f5f5;text-align:left}.meta{font-size:12px;color:#444;margin-bottom:4px}@media print{.no-print{display:none}}</style></head><body><h1>Drawing Annotations — ${sanitize(drawing.name)}</h1><div class="meta"><b>Project:</b> ${sanitize(currentProject?.name||"—")} | <b>Company:</b> ${sanitize(company?.companyName||"—")} | <b>Generated:</b> ${sanitize(stamp)}</div><div class="meta"><b>Total:</b> ${combinedItems.length} items (${combinedItems.filter(i=>i.kind==="pin").length} pins, ${combinedItems.filter(i=>i.kind==="note").length} notes, ${combinedItems.filter(i=>i.kind==="markup").length} markups)</div><table><tr><th>#</th><th>Type</th><th>Title / Content</th><th>Category</th><th>Detail</th></tr>${itemsHtml}</table><br><button class="no-print" onclick="window.print()">Print / Save as PDF</button></body></html>`);
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileTimestamp()}-${sanitize(drawing.name)}_annotations</title><style>body{font-family:Arial,sans-serif;padding:22px;color:#111}h1{margin:0 0 4px;font-size:20px}table{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px}th,td{border:1px solid #ddd;padding:6px;vertical-align:top}th{background:#f5f5f5;text-align:left}.meta{font-size:12px;color:#444;margin-bottom:4px}@media print{.no-print{display:none}}</style></head><body><h1>Drawing Annotations — ${sanitize(drawing.name)}</h1><div class="meta"><b>Project:</b> ${sanitize(currentProject?.name||"—")} | <b>Company:</b> ${sanitize(company?.companyName||"—")} | <b>Generated:</b> ${sanitize(stamp)}</div><div class="meta"><b>Total:</b> ${combinedItems.length} items (${combinedItems.filter(i=>i.kind==="pin").length} pins, ${combinedItems.filter(i=>i.kind==="note").length} notes, ${combinedItems.filter(i=>i.kind==="markup").length} markups)</div><table><tr><th>#</th><th>Type</th><th>Title / Content</th><th>Category</th><th>Detail</th></tr>${itemsHtml}</table><br><button class="no-print" onclick="window.print()">Print / Save as PDF</button></body></html>`);
     w.document.close();
   };
 
