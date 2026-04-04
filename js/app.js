@@ -34,7 +34,7 @@ function compressPhoto(dataUrl,maxPx=1800,quality=0.8){
 const DRAWING_NOTES_KEY="drawing_notes_v1";
 const DRAWING_MARKUP_KEY="drawing_markup_v1";
 const SAVED_COMPARISONS_KEY="saved_comparisons_v1";
-const BCA_SCDF_REVISION_COLORS={added:"#ff3b30",removed:"#34c759"};
+const BCA_SCDF_REVISION_COLORS={added:"#ff00ff",removed:"#ddcc00",existing:"#00cccc"};
 const fileTimestamp=()=>{const d=new Date();return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}_${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}${String(d.getSeconds()).padStart(2,"0")}`;};
 
 function getSavedComparisons(projectId){
@@ -3466,16 +3466,15 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         const bHas=bInk>threshold;
         const tHas=tInk>threshold;
         if(bHas&&tHas){
-          // Both have content — unchanged, show as black/dark gray
+          // Both have content — existing/unchanged — show as CYAN
           const ink=Math.max(bInk,tInk);
-          const v=255-ink;
-          od[i]=v;od[i+1]=v;od[i+2]=v;od[i+3]=255;
+          od[i]=Math.max(0,255-ink*2);od[i+1]=Math.max(0,255-ink*0.3);od[i+2]=Math.max(0,255-ink*0.3);od[i+3]=255;
         }else if(tHas&&!bHas){
-          // Only in revision — ADDED — show as RED
-          od[i]=255;od[i+1]=Math.max(0,255-tInk*2);od[i+2]=Math.max(0,255-tInk*2);od[i+3]=255;
+          // Only in revision — ADDED — show as MAGENTA
+          od[i]=255;od[i+1]=Math.max(0,255-tInk*2);od[i+2]=255;od[i+3]=255;
         }else if(bHas&&!tHas){
-          // Only in base — REMOVED — show as BLUE
-          od[i]=Math.max(0,255-bInk*2);od[i+1]=Math.max(0,255-bInk*2);od[i+2]=255;od[i+3]=255;
+          // Only in base — REMOVED/DEMOLISHED — show as YELLOW
+          od[i]=255;od[i+1]=Math.max(0,255-bInk*0.3);od[i+2]=Math.max(0,255-bInk*2);od[i+3]=255;
         }else{
           // Empty in both — white background
           od[i]=255;od[i+1]=255;od[i+2]=255;od[i+3]=255;
@@ -3821,7 +3820,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                     </div>
                     {/* Legend */}
                     <div style={{position:"absolute",left:6,top:6,zIndex:5,display:"flex",gap:4,flexWrap:"wrap",pointerEvents:"none"}}>
-                      {[{c:"#ff0000",l:"ADDED",tc:"#ff8a8a"},{c:"#0055ff",l:"REMOVED",tc:"#8ab4ff"},{c:"#000",l:"UNCHANGED",tc:"#aaa"}].map(({c,l,tc})=>(
+                      {[{c:"#ff00ff",l:"ADDED (MAGENTA)",tc:"#ff8aff"},{c:"#ddcc00",l:"REMOVED (YELLOW)",tc:"#ffe066"},{c:"#00cccc",l:"EXISTING (CYAN)",tc:"#8affff"}].map(({c,l,tc})=>(
                         <div key={l} style={{background:"rgba(0,0,0,0.75)",borderRadius:6,padding:"3px 8px",fontSize:9,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",gap:4}}>
                           <span style={{width:10,height:3,background:c,display:"inline-block"}}/><span style={{color:tc}}>{l}</span>
                         </div>
@@ -3922,11 +3921,11 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                     <button onClick={exportComparePdf} style={{flex:1,background:"rgba(255,107,0,0.22)",border:"1px solid rgba(255,107,0,0.4)",borderRadius:10,padding:"9px 10px",color:"#ffb48a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>EXPORT PDF</button>
                   </div>
                   <div style={{display:"flex",gap:8,marginBottom:8}}>
-                    <div style={{flex:1,background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:10}}>
+                    <div style={{flex:1,background:"rgba(255,0,255,0.12)",border:"1px solid rgba(255,0,255,0.3)",borderRadius:10,padding:10}}>
                       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:BCA_SCDF_REVISION_COLORS.added}}>ADDED LINES</div>
                       <div style={{fontSize:18,fontWeight:800,color:"#fff"}}>{compareRes.totalAdded}</div>
                     </div>
-                    <div style={{flex:1,background:"rgba(52,199,89,0.14)",border:"1px solid rgba(52,199,89,0.3)",borderRadius:10,padding:10}}>
+                    <div style={{flex:1,background:"rgba(221,204,0,0.12)",border:"1px solid rgba(221,204,0,0.3)",borderRadius:10,padding:10}}>
                       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:BCA_SCDF_REVISION_COLORS.removed}}>REMOVED LINES</div>
                       <div style={{fontSize:18,fontWeight:800,color:"#fff"}}>{compareRes.totalRemoved}</div>
                     </div>
@@ -3939,9 +3938,9 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
 
                   {["added","removed"].map(diffType=>{
                     const items=diffType==="added"?compareRes.added:compareRes.removed;
-                    const accentColor=diffType==="added"?"#ff3b30":"#0055ff";
+                    const accentColor=diffType==="added"?"#ff00ff":"#ddcc00";
                     const labelColor=diffType==="added"?BCA_SCDF_REVISION_COLORS.added:BCA_SCDF_REVISION_COLORS.removed;
-                    const label=diffType==="added"?"ADDED (RED)":"REMOVED (GREEN)";
+                    const label=diffType==="added"?"ADDED (MAGENTA)":"REMOVED (YELLOW)";
                     return(
                       <div key={diffType} style={{marginBottom:12}}>
                         <div style={{fontSize:11,fontWeight:700,color:labelColor,marginBottom:6,fontFamily:"'Barlow Condensed',sans-serif"}}>{label}</div>
