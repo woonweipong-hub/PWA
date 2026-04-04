@@ -2984,6 +2984,7 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[compareHighlight,setCompareHighlight]=useState(null);
   const[editingDiffItem,setEditingDiffItem]=useState(null);
   const[diffEdits,setDiffEdits]=useState({});
+  const[aiRenameBusy,setAiRenameBusy]=useState(false);
   const comparePanStart=useRef(null);
   const comparePinchDist=useRef(null);
   const compareOverlayCanvasRef=useRef();
@@ -3154,6 +3155,51 @@ Return valid JSON only with this shape:
     if(compareAiLocked){setCompareAiError("AI report is locked. Unlock before regenerating.");return;}
     setCompareAiReport("");
     await runCompareAi();
+  };
+
+  const aiRenameDiffItems=async()=>{
+    if(!compareRes||!aiReady)return;
+    const allItems=[];
+    compareRes.added.forEach((l,i)=>{if(!diffEdits[`added_${i}`]?.name)allItems.push({key:`added_${i}`,type:"added",text:l?.text||l});});
+    compareRes.removed.forEach((l,i)=>{if(!diffEdits[`removed_${i}`]?.name)allItems.push({key:`removed_${i}`,type:"removed",text:l?.text||l});});
+    if(allItems.length===0){setCompareAiError("All items already renamed.");return;}
+    setAiRenameBusy(true);setCompareAiError("");
+    try{
+      const batch=allItems.slice(0,50);
+      const prompt=`You are analyzing extracted text lines from construction/architectural PDF drawings. Each line was extracted from a floor plan and contains raw text content (numbers, labels, dimensions, room names, annotations).
+
+Identify each line as a recognizable construction object or element. Return a JSON array of objects with "key" and "name" fields.
+
+Rules:
+- Name should be a short, clear description: "Wall dimension", "Room label - Bedroom 2", "Grid line A", "Door schedule ref", "Window W1", "Column C4", "Staircase", "Dimension string", etc.
+- If the line is just numbers/coordinates, name it "Dimension" or "Grid reference"
+- If it contains a room name, include it: "Room label - Kitchen"
+- Keep names under 40 characters
+- Return ONLY valid JSON array, no other text
+
+Lines to identify:
+${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
+      const resp=await askAI(prompt);
+      let parsed;
+      try{
+        const match=resp.match(/\[[\s\S]*\]/);
+        parsed=match?JSON.parse(match[0]):[];
+      }catch{parsed=[];}
+      if(parsed.length>0){
+        const newEdits={...diffEdits};
+        parsed.forEach(item=>{
+          if(item.key&&item.name){
+            newEdits[item.key]={name:item.name,remark:newEdits[item.key]?.remark||""};
+          }
+        });
+        setDiffEdits(newEdits);
+      }else{
+        setCompareAiError("AI could not identify items. Try again.");
+      }
+    }catch(e){
+      setCompareAiError(e.message||"AI rename failed");
+    }
+    setAiRenameBusy(false);
   };
 
   const logCompareAudit=(action,details={})=>{
@@ -3875,7 +3921,7 @@ Return valid JSON only with this shape:
                     <button onClick={exportCompareCsv} style={{flex:1,background:"rgba(52,170,220,0.25)",border:"1px solid rgba(52,170,220,0.45)",borderRadius:10,padding:"9px 10px",color:"#7fd7ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>EXPORT CSV</button>
                     <button onClick={exportComparePdf} style={{flex:1,background:"rgba(255,107,0,0.22)",border:"1px solid rgba(255,107,0,0.4)",borderRadius:10,padding:"9px 10px",color:"#ffb48a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>EXPORT PDF</button>
                   </div>
-                  <div style={{display:"flex",gap:8,marginBottom:12}}>
+                  <div style={{display:"flex",gap:8,marginBottom:8}}>
                     <div style={{flex:1,background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:10}}>
                       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:BCA_SCDF_REVISION_COLORS.added}}>ADDED LINES</div>
                       <div style={{fontSize:18,fontWeight:800,color:"#fff"}}>{compareRes.totalAdded}</div>
@@ -3885,6 +3931,11 @@ Return valid JSON only with this shape:
                       <div style={{fontSize:18,fontWeight:800,color:"#fff"}}>{compareRes.totalRemoved}</div>
                     </div>
                   </div>
+                  {aiReady&&(compareRes.totalAdded+compareRes.totalRemoved)>0&&(
+                    <button onClick={aiRenameDiffItems} disabled={aiRenameBusy} style={{width:"100%",background:aiRenameBusy?"rgba(255,255,255,0.1)":"rgba(88,86,214,0.22)",border:"1px solid rgba(88,86,214,0.4)",borderRadius:10,padding:"9px 10px",color:aiRenameBusy?"rgba(255,255,255,0.35)":"#d8d2ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                      {aiRenameBusy?<><Spin size={12}/> AI IDENTIFYING OBJECTS...</>:"🤖 AI AUTO-RENAME ITEMS"}
+                    </button>
+                  )}
 
                   {["added","removed"].map(diffType=>{
                     const items=diffType==="added"?compareRes.added:compareRes.removed;
