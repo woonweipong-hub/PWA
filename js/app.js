@@ -3197,7 +3197,7 @@ Return valid JSON only with this shape:
         const scale=Math.min(1600/oc.width,1200/oc.height,1);
         tmp.width=Math.round(oc.width*scale);tmp.height=Math.round(oc.height*scale);
         tmp.getContext("2d").drawImage(oc,0,0,tmp.width,tmp.height);
-        overlayThumb=tmp.toDataURL("image/jpeg",0.85);
+        overlayThumb=tmp.toDataURL("image/png");
       }
     }catch(e){}
     const record={
