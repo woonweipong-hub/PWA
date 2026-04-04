@@ -2972,6 +2972,10 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[showUnlockPrompt,setShowUnlockPrompt]=useState(false);
   const[unlockReason,setUnlockReason]=useState("");
   const[comparePreviewLoading,setComparePreviewLoading]=useState(false);
+  const[compareZoom,setCompareZoom]=useState(1);
+  const[comparePan,setComparePan]=useState({x:0,y:0});
+  const comparePanStart=useRef(null);
+  const comparePinchDist=useRef(null);
   const compareOverlayCanvasRef=useRef();
   const[compareMarkupTool,setCompareMarkupTool]=useState("freehand");
   const[compareMarkupColor,setCompareMarkupColor]=useState("#ff3b30");
@@ -3058,7 +3062,7 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
       setCompareError("Choose 2 different PDF drawings.");
       return;
     }
-    setComparing(true);setCompareError("");setCompareRes(null);
+    setComparing(true);setCompareError("");setCompareRes(null);setCompareZoom(1);setComparePan({x:0,y:0});
     setCompareAiError("");setCompareAiReport("");
     setCompareAiLocked(false);setCompareAiApprovedBy("");setCompareAiApprovedAt(null);setCompareAuditLog([]);
     try{
@@ -3250,6 +3254,20 @@ Return valid JSON only with this shape:
   };
 
   const onCompareMarkupDown=e=>{
+    // Pinch zoom — 2 fingers
+    if(e.touches&&e.touches.length===2){
+      e.preventDefault();
+      const dx=e.touches[0].clientX-e.touches[1].clientX;
+      const dy=e.touches[0].clientY-e.touches[1].clientY;
+      comparePinchDist.current=Math.sqrt(dx*dx+dy*dy);
+      comparePanStart.current={x:(e.touches[0].clientX+e.touches[1].clientX)/2,y:(e.touches[0].clientY+e.touches[1].clientY)/2,px:comparePan.x,py:comparePan.y};
+      return;
+    }
+    // Pan mode — when zoomed in and no markup tool active, or middle click
+    if(compareZoom>1&&e.touches&&e.touches.length===1&&!compareMarkupTool){
+      comparePanStart.current={x:e.touches[0].clientX,y:e.touches[0].clientY,px:comparePan.x,py:comparePan.y};
+      return;
+    }
     const p=getCompareMarkupPos(e);if(!p)return;
     e.preventDefault();
     if(compareMarkupTool==="text"){
@@ -3262,6 +3280,30 @@ Return valid JSON only with this shape:
   };
 
   const onCompareMarkupMove=e=>{
+    // Pinch zoom move
+    if(e.touches&&e.touches.length===2&&comparePinchDist.current){
+      e.preventDefault();
+      const dx=e.touches[0].clientX-e.touches[1].clientX;
+      const dy=e.touches[0].clientY-e.touches[1].clientY;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      const scale=dist/comparePinchDist.current;
+      setCompareZoom(z=>Math.max(1,Math.min(5,z*scale)));
+      comparePinchDist.current=dist;
+      // Pan with pinch center
+      if(comparePanStart.current){
+        const cx=(e.touches[0].clientX+e.touches[1].clientX)/2;
+        const cy=(e.touches[0].clientY+e.touches[1].clientY)/2;
+        setComparePan({x:comparePanStart.current.px+(cx-comparePanStart.current.x),y:comparePanStart.current.py+(cy-comparePanStart.current.y)});
+      }
+      return;
+    }
+    // Single-finger pan when zoomed
+    if(comparePanStart.current&&!compareMarkupCurrent&&e.touches?.length===1){
+      const dx=e.touches[0].clientX-comparePanStart.current.x;
+      const dy=e.touches[0].clientY-comparePanStart.current.y;
+      setComparePan({x:comparePanStart.current.px+dx,y:comparePanStart.current.py+dy});
+      return;
+    }
     if(!compareMarkupCurrent)return;
     const p=getCompareMarkupPos(e);if(!p)return;
     e.preventDefault();
@@ -3270,6 +3312,7 @@ Return valid JSON only with this shape:
   };
 
   const onCompareMarkupUp=()=>{
+    comparePinchDist.current=null;comparePanStart.current=null;
     if(compareMarkupCurrent){setCompareMarkupStrokes(s=>[...s,compareMarkupCurrent]);setCompareMarkupCurrent(null);}
   };
 
@@ -3655,7 +3698,7 @@ Return valid JSON only with this shape:
 
       {showCompare&&(
         <div style={{position:"fixed",inset:0,zIndex:260,background:"rgba(0,0,0,0.9)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-          <div style={{width:"100%",maxWidth:960,maxHeight:"95vh",background:"#1a1a1a",borderTopLeftRadius:18,borderTopRightRadius:18,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+          <div style={{width:"100%",maxHeight:"100vh",background:"#1a1a1a",borderTopLeftRadius:0,borderTopRightRadius:0,overflow:"hidden",display:"flex",flexDirection:"column"}}>
             <div style={{padding:"14px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)",display:"flex",alignItems:"center",gap:10}}>
               <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff"}}>PDF COMPARISON{viewingSaved?` (SAVED)`:""}
               </div>
@@ -3697,30 +3740,36 @@ Return valid JSON only with this shape:
                     <canvas ref={compareTargetCanvasRef}/>
                   </div>
 
-                  {/* Overlay diff view — Autodesk Design Review style, with markup support */}
-                  <div ref={compareBoardRef} style={{position:"relative",borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.18)",background:"#fff",marginBottom:8,touchAction:"none"}}
-                    onMouseDown={onCompareMarkupDown} onMouseMove={onCompareMarkupMove} onMouseUp={onCompareMarkupUp} onMouseLeave={onCompareMarkupUp}
-                    onTouchStart={onCompareMarkupDown} onTouchMove={onCompareMarkupMove} onTouchEnd={onCompareMarkupUp}>
-                    <canvas ref={compareOverlayCanvasRef} style={{width:"100%",display:"block",background:"#fff"}}/>
-                    <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}}>
-                      {renderCompareMarkup(compareMarkupStrokes)}
-                      {compareMarkupCurrent&&renderCompareMarkup([compareMarkupCurrent])}
-                    </svg>
-                    <div style={{position:"absolute",left:6,top:6,display:"flex",gap:4,flexWrap:"wrap",pointerEvents:"none"}}>
-                      <div style={{background:"rgba(0,0,0,0.75)",borderRadius:6,padding:"3px 8px",fontSize:9,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",gap:4}}>
-                        <span style={{width:10,height:3,background:"#ff0000",display:"inline-block"}}/>
-                        <span style={{color:"#ff8a8a"}}>ADDED</span>
-                      </div>
-                      <div style={{background:"rgba(0,0,0,0.75)",borderRadius:6,padding:"3px 8px",fontSize:9,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",gap:4}}>
-                        <span style={{width:10,height:3,background:"#0055ff",display:"inline-block"}}/>
-                        <span style={{color:"#8ab4ff"}}>REMOVED</span>
-                      </div>
-                      <div style={{background:"rgba(0,0,0,0.75)",borderRadius:6,padding:"3px 8px",fontSize:9,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",gap:4}}>
-                        <span style={{width:10,height:3,background:"#000",display:"inline-block"}}/>
-                        <span style={{color:"#aaa"}}>UNCHANGED</span>
+                  {/* Overlay diff view — with zoom/pan support */}
+                  <div style={{position:"relative",borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.18)",background:"#fff",marginBottom:8}}>
+                    {/* Zoom controls */}
+                    <div style={{position:"absolute",right:8,top:8,zIndex:5,display:"flex",flexDirection:"column",gap:4}}>
+                      <button onClick={()=>setCompareZoom(z=>Math.min(5,z+0.5))} style={{width:28,height:28,borderRadius:6,background:"rgba(0,0,0,0.65)",border:"none",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                      <button onClick={()=>{setCompareZoom(1);setComparePan({x:0,y:0});}} style={{width:28,height:28,borderRadius:6,background:"rgba(0,0,0,0.65)",border:"none",color:"#fff",fontSize:9,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif"}}>{Math.round(compareZoom*100)}%</button>
+                      <button onClick={()=>{setCompareZoom(z=>{const nz=Math.max(1,z-0.5);if(nz<=1)setComparePan({x:0,y:0});return nz;});}} style={{width:28,height:28,borderRadius:6,background:"rgba(0,0,0,0.65)",border:"none",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+                    </div>
+                    {/* Legend */}
+                    <div style={{position:"absolute",left:6,top:6,zIndex:5,display:"flex",gap:4,flexWrap:"wrap",pointerEvents:"none"}}>
+                      {[{c:"#ff0000",l:"ADDED",tc:"#ff8a8a"},{c:"#0055ff",l:"REMOVED",tc:"#8ab4ff"},{c:"#000",l:"UNCHANGED",tc:"#aaa"}].map(({c,l,tc})=>(
+                        <div key={l} style={{background:"rgba(0,0,0,0.75)",borderRadius:6,padding:"3px 8px",fontSize:9,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",gap:4}}>
+                          <span style={{width:10,height:3,background:c,display:"inline-block"}}/><span style={{color:tc}}>{l}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Zoomable + pannable area */}
+                    <div ref={compareBoardRef} style={{touchAction:"none",overflow:"hidden"}}
+                      onMouseDown={onCompareMarkupDown} onMouseMove={onCompareMarkupMove} onMouseUp={onCompareMarkupUp} onMouseLeave={onCompareMarkupUp}
+                      onTouchStart={onCompareMarkupDown} onTouchMove={onCompareMarkupMove} onTouchEnd={onCompareMarkupUp}
+                      onWheel={e=>{e.preventDefault();setCompareZoom(z=>{const nz=Math.max(1,Math.min(5,z+(e.deltaY<0?0.3:-0.3)));if(nz<=1)setComparePan({x:0,y:0});return nz;});}}>
+                      <div style={{transform:`scale(${compareZoom}) translate(${comparePan.x/compareZoom}px,${comparePan.y/compareZoom}px)`,transformOrigin:"center center"}}>
+                        <canvas ref={compareOverlayCanvasRef} style={{width:"100%",display:"block",background:"#fff"}}/>
+                        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}}>
+                          {renderCompareMarkup(compareMarkupStrokes)}
+                          {compareMarkupCurrent&&renderCompareMarkup([compareMarkupCurrent])}
+                        </svg>
                       </div>
                     </div>
-                    {comparePreviewLoading&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(255,255,255,0.7)",color:"#333",fontSize:12}}><Spin size={14}/> <span style={{marginLeft:8}}>Generating overlay diff...</span></div>}
+                    {comparePreviewLoading&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(255,255,255,0.7)",color:"#333",fontSize:12,zIndex:5}}><Spin size={14}/> <span style={{marginLeft:8}}>Generating overlay diff...</span></div>}
                   </div>
                 </div>
               )}
