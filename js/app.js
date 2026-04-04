@@ -94,6 +94,8 @@ async function extractPdfLines(url,maxPages=30){
     const lines=[];
     for(let pageNum=1;pageNum<=pageLimit;pageNum++){
       const page=await doc.getPage(pageNum);
+      const vp=page.getViewport({scale:1});
+      const pw=vp.width,ph=vp.height;
       const content=await page.getTextContent();
       const rows=new Map();
       (content.items||[]).forEach(it=>{
@@ -104,9 +106,14 @@ async function extractPdfLines(url,maxPages=30){
         if(!rows.has(y))rows.set(y,[]);
         rows.get(y).push({x,txt});
       });
-      [...rows.entries()].sort((a,b)=>b[0]-a[0]).forEach(([,items])=>{
+      [...rows.entries()].sort((a,b)=>b[0]-a[0]).forEach(([rawY,items])=>{
         const line=normalizePdfLine(items.sort((a,b)=>a.x-b.x).map(i=>i.txt).join(" "));
-        if(line.length>2)lines.push(`P${pageNum} ${line}`);
+        if(line.length>2){
+          const minX=Math.min(...items.map(i=>i.x));
+          const maxX=Math.max(...items.map(i=>i.x));
+          // Convert to percentage of page (PDF Y is bottom-up)
+          lines.push({text:`P${pageNum} ${line}`,xPct:pw?(minX/pw)*100:0,yPct:ph?((ph-rawY)/ph)*100:0,wPct:pw?((maxX-minX)/pw)*100:10,pageNum});
+        }
       });
     }
     return lines;
@@ -116,10 +123,10 @@ async function extractPdfLines(url,maxPages=30){
 }
 
 function comparePdfLineSets(baseLines,revisionLines){
-  const baseSet=new Set(baseLines);
-  const revisionSet=new Set(revisionLines);
-  const added=revisionLines.filter(l=>!baseSet.has(l));
-  const removed=baseLines.filter(l=>!revisionSet.has(l));
+  const baseSet=new Set(baseLines.map(l=>l.text||l));
+  const revisionSet=new Set(revisionLines.map(l=>l.text||l));
+  const added=revisionLines.filter(l=>!baseSet.has(l.text||l));
+  const removed=baseLines.filter(l=>!revisionSet.has(l.text||l));
   return{added,removed};
 }
 
@@ -2974,6 +2981,7 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[comparePreviewLoading,setComparePreviewLoading]=useState(false);
   const[compareZoom,setCompareZoom]=useState(1);
   const[comparePan,setComparePan]=useState({x:0,y:0});
+  const[compareHighlight,setCompareHighlight]=useState(null);
   const comparePanStart=useRef(null);
   const comparePinchDist=useRef(null);
   const compareOverlayCanvasRef=useRef();
@@ -3098,8 +3106,8 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     }
     setCompareAiBusy(true);setCompareAiError("");
     try{
-      const sampleAdded=(compareRes.added||[]).slice(0,80);
-      const sampleRemoved=(compareRes.removed||[]).slice(0,80);
+      const sampleAdded=(compareRes.added||[]).slice(0,80).map(l=>l.text||l);
+      const sampleRemoved=(compareRes.removed||[]).slice(0,80).map(l=>l.text||l);
       const prompt=`You are reviewing drawing revisions for construction compliance and coordination.
 Project: ${currentProject?.name||"Unknown"}
 Company: ${company?.companyName||"Unknown"}
@@ -3467,8 +3475,8 @@ Return valid JSON only with this shape:
       if(sc.aiReport)rows.push(["COMPARISON","AI_REPORT",sc.aiReport.replace(/\n/g," | "),"","","",new Date(sc.savedAt).toISOString(),proj,comp]);
       (sc.markups||[]).filter(s=>s.type==="text"&&s.text).forEach(s=>rows.push(["COMPARISON","MARKUP",s.text,s.color||"","","",new Date(sc.savedAt).toISOString(),proj,comp]));
       (sc.auditLog||[]).forEach(e=>rows.push(["COMPARISON","AUDIT",`${e.action.toUpperCase()} by ${e.by}`,e.reason||"","","",new Date(e.at).toISOString(),proj,comp]));
-      (sc.added||[]).forEach(l=>rows.push(["COMPARISON","ADDED",l,"","",`${sc.baseName}→${sc.targetName}`,new Date(sc.savedAt).toISOString(),proj,comp]));
-      (sc.removed||[]).forEach(l=>rows.push(["COMPARISON","REMOVED",l,"","",`${sc.baseName}→${sc.targetName}`,new Date(sc.savedAt).toISOString(),proj,comp]));
+      (sc.added||[]).forEach(l=>rows.push(["COMPARISON","ADDED",l?.text||l,"","",`${sc.baseName}→${sc.targetName}`,new Date(sc.savedAt).toISOString(),proj,comp]));
+      (sc.removed||[]).forEach(l=>rows.push(["COMPARISON","REMOVED",l?.text||l,"","",`${sc.baseName}→${sc.targetName}`,new Date(sc.savedAt).toISOString(),proj,comp]));
     });
 
     if(rows.length===0){alert("No annotations or comparisons to export.");return;}
@@ -3494,8 +3502,8 @@ Return valid JSON only with this shape:
     compareAuditLog.forEach(e=>rows.push(["AUDIT",`${e.action.toUpperCase()} by ${e.by} at ${new Date(e.at).toISOString()}${e.reason?" — Reason: "+e.reason:""}`,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]));
     compareMarkupStrokes.filter(s=>s.type==="text"&&s.text).forEach(s=>rows.push(["MARKUP",s.text,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]));
     if(compareMarkupStrokes.length>0)rows.push(["MARKUP_COUNT",`${compareMarkupStrokes.length} annotation(s): ${compareMarkupStrokes.filter(s=>s.type==="text").length} text, ${compareMarkupStrokes.filter(s=>s.type==="freehand").length} freehand, ${compareMarkupStrokes.filter(s=>s.type==="arrow").length} arrow, ${compareMarkupStrokes.filter(s=>s.type==="circle").length} circle`,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]);
-    compareRes.added.forEach(line=>rows.push(["ADDED",line,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]));
-    compareRes.removed.forEach(line=>rows.push(["REMOVED",line,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]));
+    compareRes.added.forEach(line=>rows.push(["ADDED",line?.text||line,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]));
+    compareRes.removed.forEach(line=>rows.push(["REMOVED",line?.text||line,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]));
     if(rows.length===0)rows.push(["NO_DIFF","No added/removed lines detected",compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]);
     const csv=[header,...rows].map(r=>r.map(csvCell).join(",")).join("\n");
     const fn=`${fileTimestamp()}-compare_${(compareRes.baseName||"base").replace(/\W+/g,"_")}_to_${(compareRes.targetName||"revision").replace(/\W+/g,"_")}.csv`;
@@ -3504,8 +3512,8 @@ Return valid JSON only with this shape:
 
   const exportComparePdf=()=>{
     if(!compareRes)return;
-    const addedHtml=(compareRes.added.length?compareRes.added:["No added lines detected."]).map((l,i)=>`<tr><td>${i+1}</td><td>${sanitize(l)}</td></tr>`).join("");
-    const removedHtml=(compareRes.removed.length?compareRes.removed:["No removed lines detected."]).map((l,i)=>`<tr><td>${i+1}</td><td>${sanitize(l)}</td></tr>`).join("");
+    const addedHtml=(compareRes.added.length?compareRes.added:["No added lines detected."]).map((l,i)=>`<tr><td>${i+1}</td><td>${sanitize(l?.text||l)}</td></tr>`).join("");
+    const removedHtml=(compareRes.removed.length?compareRes.removed:["No removed lines detected."]).map((l,i)=>`<tr><td>${i+1}</td><td>${sanitize(l?.text||l)}</td></tr>`).join("");
     const stamp=new Date(compareRes.generatedAt||Date.now());
     const aiApprovalHtml=compareAiReport?`<div style="margin:8px 0 0;font-size:11px;color:${compareAiLocked?"#1a7a35":"#666"};background:${compareAiLocked?"#eefcf1":"#f7f7f7"};border:1px solid ${compareAiLocked?"#9cd8ad":"#ddd"};border-radius:6px;padding:8px"><b>AI Report Status:</b> ${compareAiLocked?"LOCKED":"DRAFT"}${compareAiApprovedBy?` | <b>Approved by:</b> ${sanitize(compareAiApprovedBy)}`:""}${compareAiApprovedAt?` | <b>Approved at:</b> ${sanitize(new Date(compareAiApprovedAt).toLocaleString())}`:""}</div>`:"";
     const auditHtml=compareAuditLog.length?`<div style="margin:8px 0 0;font-size:10px;border:1px solid #ddd;border-radius:6px;padding:8px;background:#fafafa"><b>Audit Trail</b>${compareAuditLog.map(e=>`<div style="margin:3px 0;color:${e.action==="lock"?"#1a7a35":"#b36b00"}"><b>${e.action.toUpperCase()}</b> by ${sanitize(e.by)} at ${sanitize(new Date(e.at).toLocaleString())}${e.reason&&e.action==="unlock"?` — <i>${sanitize(e.reason)}</i>`:""}</div>`).join("")}</div>`:"";
@@ -3779,6 +3787,12 @@ Return valid JSON only with this shape:
                         <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}}>
                           {renderCompareMarkup(compareMarkupStrokes)}
                           {compareMarkupCurrent&&renderCompareMarkup([compareMarkupCurrent])}
+                          {compareHighlight&&<>
+                            <rect x={compareHighlight.x-1} y={compareHighlight.y-1.5} width={Math.max(compareHighlight.w+2,12)} height="3" rx="0.5" fill="none" stroke={compareHighlight.color} strokeWidth="0.4" strokeDasharray="1,0.5">
+                              <animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/>
+                            </rect>
+                            <line x1={compareHighlight.x-2} y1={compareHighlight.y} x2={compareHighlight.x+compareHighlight.w+3} y2={compareHighlight.y} stroke={compareHighlight.color} strokeWidth="0.15" strokeDasharray="0.5,0.5"/>
+                          </>}
                         </svg>
                       </div>
                     </div>
@@ -3872,7 +3886,7 @@ Return valid JSON only with this shape:
                     <div style={{fontSize:11,fontWeight:700,color:BCA_SCDF_REVISION_COLORS.added,marginBottom:6,fontFamily:"'Barlow Condensed',sans-serif"}}>ADDED (RED)</div>
                     <div style={{maxHeight:180,overflowY:"auto",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:10}}>
                       {compareRes.added.length===0&&<div style={{fontSize:12,color:"rgba(255,255,255,0.45)"}}>No added lines detected.</div>}
-                      {compareRes.added.map((line,i)=><div key={i} style={{fontSize:11,color:"rgba(255,255,255,0.86)",padding:"4px 0",borderBottom:i===compareRes.added.length-1?"none":"1px solid rgba(255,255,255,0.06)",wordBreak:"break-word"}}>{line}</div>)}
+                      {compareRes.added.map((line,i)=>{const l=typeof line==="object"?line:{text:line};const active=compareHighlight?.text===l.text;return <div key={i} onClick={()=>{if(l.xPct!==undefined){setCompareHighlight({x:l.xPct,y:l.yPct,w:l.wPct||10,text:l.text,color:"#ff3b30"});setCompareZoom(2.5);setComparePan({x:-(l.xPct-50)*3,y:-(l.yPct-50)*3});}}} style={{fontSize:11,color:active?"#ff3b30":"rgba(255,255,255,0.86)",background:active?"rgba(255,59,48,0.15)":"none",padding:"4px 6px",margin:"0 -6px",borderRadius:active?6:0,borderBottom:i===compareRes.added.length-1?"none":"1px solid rgba(255,255,255,0.06)",wordBreak:"break-word",cursor:l.xPct!==undefined?"pointer":"default"}}>{l.text||line}</div>;})}
                     </div>
                   </div>
 
@@ -3880,7 +3894,7 @@ Return valid JSON only with this shape:
                     <div style={{fontSize:11,fontWeight:700,color:BCA_SCDF_REVISION_COLORS.removed,marginBottom:6,fontFamily:"'Barlow Condensed',sans-serif"}}>REMOVED (GREEN)</div>
                     <div style={{maxHeight:180,overflowY:"auto",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:10}}>
                       {compareRes.removed.length===0&&<div style={{fontSize:12,color:"rgba(255,255,255,0.45)"}}>No removed lines detected.</div>}
-                      {compareRes.removed.map((line,i)=><div key={i} style={{fontSize:11,color:"rgba(255,255,255,0.86)",padding:"4px 0",borderBottom:i===compareRes.removed.length-1?"none":"1px solid rgba(255,255,255,0.06)",wordBreak:"break-word"}}>{line}</div>)}
+                      {compareRes.removed.map((line,i)=>{const l=typeof line==="object"?line:{text:line};const active=compareHighlight?.text===l.text;return <div key={i} onClick={()=>{if(l.xPct!==undefined){setCompareHighlight({x:l.xPct,y:l.yPct,w:l.wPct||10,text:l.text,color:"#0055ff"});setCompareZoom(2.5);setComparePan({x:-(l.xPct-50)*3,y:-(l.yPct-50)*3});}}} style={{fontSize:11,color:active?"#4a90ff":"rgba(255,255,255,0.86)",background:active?"rgba(0,85,255,0.15)":"none",padding:"4px 6px",margin:"0 -6px",borderRadius:active?6:0,borderBottom:i===compareRes.removed.length-1?"none":"1px solid rgba(255,255,255,0.06)",wordBreak:"break-word",cursor:l.xPct!==undefined?"pointer":"default"}}>{l.text||line}</div>;})}
                     </div>
                   </div>
                 </div>
