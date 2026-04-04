@@ -3698,7 +3698,7 @@ Return valid JSON only with this shape:
 
       {showCompare&&(
         <div style={{position:"fixed",inset:0,zIndex:260,background:"rgba(0,0,0,0.9)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-          <div style={{width:"100%",maxHeight:"100vh",background:"#1a1a1a",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+          <div style={{width:"100%",height:"100vh",background:"#1a1a1a",overflow:"hidden",display:"flex",flexDirection:"column"}}>
             <div style={{padding:"14px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)",display:"flex",alignItems:"center",gap:10}}>
               <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff"}}>PDF COMPARISON{viewingSaved?` (SAVED)`:""}
               </div>
@@ -3706,7 +3706,7 @@ Return valid JSON only with this shape:
               <button onClick={()=>{setShowCompare(false);setViewingSaved(null);}} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:18,padding:"7px 12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CLOSE</button>
             </div>
 
-            <div style={{padding:16,overflowY:"auto"}}>
+            <div style={{padding:16,overflowY:"auto",flex:1,minHeight:0}}>
               {/* Version selectors — compact row */}
               <div style={{display:"flex",gap:8,marginBottom:10}}>
                 <div style={{flex:1}}>
@@ -3741,7 +3741,7 @@ Return valid JSON only with this shape:
                   </div>
 
                   {/* Overlay diff view — with zoom/pan support */}
-                  <div style={{position:"relative",borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.18)",background:"#fff",marginBottom:8}}>
+                  <div style={{position:"relative",borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.18)",background:"#fff",marginBottom:8,maxHeight:"calc(100vh - 260px)"}}>
                     {/* Zoom controls */}
                     <div style={{position:"absolute",right:8,top:8,zIndex:5,display:"flex",flexDirection:"column",gap:4}}>
                       <button onClick={()=>setCompareZoom(z=>Math.min(5,z+0.5))} style={{width:28,height:28,borderRadius:6,background:"rgba(0,0,0,0.65)",border:"none",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
