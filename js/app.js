@@ -4347,7 +4347,7 @@ function AdminAnalytics({defects,members,company,currentProject,projects,allDefe
 }
 
 // ── App Root ──────────────────────────────────────────────────────
-const NAV=[{id:"dashboard",icon:"⊞",label:"Dashboard"},{id:"log",icon:"+",label:"Log"},{id:"defects",icon:"≡",label:"Defects"},{id:"report",icon:"◎",label:"Report"},{id:"admin",icon:"⚡",label:"Admin"}];
+const NAV=[{id:"dashboard",icon:"⊞",label:"Dashboard"},{id:"log",icon:"+",label:"Log"},{id:"defects",icon:"≡",label:"Items"},{id:"report",icon:"◎",label:"Report"},{id:"admin",icon:"⚡",label:"Admin"}];
 
 
 function App(){
