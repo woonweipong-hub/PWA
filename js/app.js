@@ -3394,6 +3394,47 @@ Return valid JSON only with this shape:
     setTimeout(()=>URL.revokeObjectURL(url),500);
   };
 
+  // Export All — combined report of drawings + saved comparisons
+  const exportAll=()=>{
+    const stamp=fileTimestamp();
+    const cc=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+    const header=["Section","Type","Title","Detail","Severity/Status","Drawing","Timestamp","Project","Company"];
+    const rows=[];
+    const proj=currentProject?.name||"";
+    const comp=company?.companyName||"";
+
+    // Drawing annotations (notes + markups per drawing)
+    drawings.forEach(d=>{
+      const notes=getDrawingNotes(d.id);
+      const markups=getDrawingMarkup(d.id);
+      const dPins=allPins.filter(p=>p.drawingId===d.id);
+      dPins.forEach(p=>{
+        const df=defects.find(x=>x.id===p.entryId);
+        rows.push(["DRAWING",df?"PIN":"PIN",df?.title||"Linked entry",df?.location||"",df?`${df.severity} · ${df.status}`:"—",d.name,"",proj,comp]);
+      });
+      notes.forEach(n=>rows.push(["DRAWING","NOTE",n.text,`By ${n.createdBy||"—"}`,`(${Math.round(n.x)}%,${Math.round(n.y)}%)`,d.name,n.createdAt?new Date(n.createdAt).toISOString():"",proj,comp]));
+      markups.forEach(s=>rows.push(["DRAWING","MARKUP",s.type==="text"?s.text:`${s.type}`,s.color||"","",d.name,"",proj,comp]));
+    });
+
+    // Saved comparisons
+    savedComparisons.forEach(sc=>{
+      rows.push(["COMPARISON","SUMMARY",`${sc.baseName} → ${sc.targetName}`,`+${sc.totalAdded} / -${sc.totalRemoved}`,sc.aiLocked?"APPROVED":"DRAFT","",new Date(sc.savedAt).toISOString(),proj,comp]);
+      if(sc.aiReport)rows.push(["COMPARISON","AI_REPORT",sc.aiReport.replace(/\n/g," | "),"","","",new Date(sc.savedAt).toISOString(),proj,comp]);
+      (sc.markups||[]).filter(s=>s.type==="text"&&s.text).forEach(s=>rows.push(["COMPARISON","MARKUP",s.text,s.color||"","","",new Date(sc.savedAt).toISOString(),proj,comp]));
+      (sc.auditLog||[]).forEach(e=>rows.push(["COMPARISON","AUDIT",`${e.action.toUpperCase()} by ${e.by}`,e.reason||"","","",new Date(e.at).toISOString(),proj,comp]));
+      (sc.added||[]).forEach(l=>rows.push(["COMPARISON","ADDED",l,"","",`${sc.baseName}→${sc.targetName}`,new Date(sc.savedAt).toISOString(),proj,comp]));
+      (sc.removed||[]).forEach(l=>rows.push(["COMPARISON","REMOVED",l,"","",`${sc.baseName}→${sc.targetName}`,new Date(sc.savedAt).toISOString(),proj,comp]));
+    });
+
+    if(rows.length===0){alert("No annotations or comparisons to export.");return;}
+
+    const csv=[header,...rows].map(r=>r.map(cc).join(",")).join("\n");
+    const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=`${stamp}-${(proj||"export").replace(/\W+/g,"_")}_all_annotations.csv`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),500);
+  };
+
   const csvCell=v=>`"${String(v??"").replace(/"/g,'""')}"`;
 
   const exportCompareCsv=()=>{
@@ -3464,27 +3505,25 @@ Return valid JSON only with this shape:
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
       <SettingsBack onClose={onClose} title="DRAWINGS"/>
       <div style={{padding:20}}>
-        <div style={{fontSize:12,color:"rgba(0,0,0,0.4)",marginBottom:16}}>📁 {currentProject?.name} · Upload floor plans, place defect pins, markup & heatmap</div>
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf,.pdf,.tif,.tiff" onChange={uploadDrawing} style={{display:"none"}}/>
 
-        {/* Upload button */}
-        {canUpload&&(
-          <div style={{marginBottom:20}}>
-            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf,.pdf,.tif,.tiff" onChange={uploadDrawing} style={{display:"none"}}/>
-            <button onClick={()=>fileRef.current?.click()} disabled={uploading} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:14,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-              {uploading?<><Spin size={14}/><span>UPLOADING...</span></>:"📐 UPLOAD FLOOR PLAN"}
+        {/* Compact action bar */}
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+          <div style={{flex:1,fontSize:12,color:"rgba(0,0,0,0.4)"}}>📁 {currentProject?.name}</div>
+          {canUpload&&(
+            <button onClick={()=>fileRef.current?.click()} disabled={uploading} title="Upload floor plan" style={{width:40,height:40,borderRadius:10,background:"#ff6b00",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 8px rgba(255,107,0,0.3)"}}>
+              {uploading?<Spin size={14}/>:"📐"}
             </button>
-            <div style={{fontSize:11,color:"rgba(0,0,0,0.3)",marginTop:6,textAlign:"center"}}>JPG, PNG, TIF, or PDF · Max 50MB</div>
-          </div>
-        )}
-
-        {pdfDrawings.length>=2&&(
-          <div style={{marginBottom:16}}>
-            <button onClick={openCompare} style={{width:"100%",background:"#1a1a1a",border:"none",borderRadius:12,padding:13,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-              🔍 COMPARE PDF REVISIONS
+          )}
+          {pdfDrawings.length>=2&&(
+            <button onClick={openCompare} title="Compare PDF revisions" style={{width:40,height:40,borderRadius:10,background:"#1a1a1a",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.2)"}}>
+              🔍
             </button>
-            <div style={{fontSize:11,color:"rgba(0,0,0,0.35)",marginTop:6,textAlign:"center"}}>BCA/SCDF style: Added lines in red, removed lines in green</div>
-          </div>
-        )}
+          )}
+          <button onClick={exportAll} title="Export all" style={{width:40,height:40,borderRadius:10,background:"#fff",border:"1px solid rgba(0,0,0,0.12)",color:"#333",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            📤
+          </button>
+        </div>
 
         {/* Saved comparisons */}
         {savedComparisons.length>0&&(
