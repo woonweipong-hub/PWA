@@ -3508,20 +3508,20 @@ Return valid JSON only with this shape:
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf,.pdf,.tif,.tiff" onChange={uploadDrawing} style={{display:"none"}}/>
 
         {/* Compact action bar */}
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:16}}>
           <div style={{flex:1,fontSize:12,color:"rgba(0,0,0,0.4)"}}>📁 {currentProject?.name}</div>
           {canUpload&&(
-            <button onClick={()=>fileRef.current?.click()} disabled={uploading} title="Upload floor plan" style={{width:40,height:40,borderRadius:10,background:"#ff6b00",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 8px rgba(255,107,0,0.3)"}}>
-              {uploading?<Spin size={14}/>:"📐"}
+            <button onClick={()=>fileRef.current?.click()} disabled={uploading} title="Upload floor plan" style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              {uploading?<Spin size={12}/>:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 16V3m0 0L7 8m5-5l5 5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5" strokeLinecap="round"/></svg>}
             </button>
           )}
           {pdfDrawings.length>=2&&(
-            <button onClick={openCompare} title="Compare PDF revisions" style={{width:40,height:40,borderRadius:10,background:"#1a1a1a",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.2)"}}>
-              🔍
+            <button onClick={openCompare} title="Compare PDF revisions" style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="18" rx="1.5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5"/><rect x="13" y="3" width="8" height="18" rx="1.5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5"/><path d="M7 8h0M7 12h0M17 8h0M17 12h0" stroke="rgba(0,0,0,0.45)" strokeWidth="2" strokeLinecap="round"/></svg>
             </button>
           )}
-          <button onClick={exportAll} title="Export all" style={{width:40,height:40,borderRadius:10,background:"#fff",border:"1px solid rgba(0,0,0,0.12)",color:"#333",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            📤
+          <button onClick={exportAll} title="Export all" style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
         </div>
 
