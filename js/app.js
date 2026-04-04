@@ -1737,7 +1737,7 @@ function StorageSettings({onClose,companyId}){
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────
-function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentProject,member,onDrawings,onCompare,queueCount,onSyncQueue,syncing2}){
+function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentProject,member,onDrawings,queueCount,onSyncQueue,syncing2}){
   const open=defects.filter(d=>d.status==="Open").length;
   const inprog=defects.filter(d=>d.status==="In Progress").length;
   const done=defects.filter(d=>d.status==="Done").length;
@@ -1818,15 +1818,6 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
         <div style={{flex:1}}>
           <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a"}}>FLOOR PLANS & DRAWINGS</span><span style={{fontSize:9,fontWeight:700,color:"#ff9500",background:"rgba(255,149,0,0.12)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:10,padding:"2px 6px",fontFamily:"'Barlow Condensed',sans-serif"}}>BETA</span></div>
           <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>Upload drawings, tap to place defect pins</div>
-        </div>
-        <span style={{color:"rgba(0,0,0,0.2)",fontSize:14}}>→</span>
-      </button>
-
-      <button onClick={onCompare} style={{width:"100%",background:"#fff",border:"1px solid rgba(88,86,214,0.15)",borderRadius:14,padding:"14px 16px",marginBottom:16,cursor:"pointer",display:"flex",alignItems:"center",gap:12,textAlign:"left"}}>
-        <span style={{fontSize:24}}>📄</span>
-        <div style={{flex:1}}>
-          <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a"}}>PDF DRAWING COMPARISON</span></div>
-          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>Compare revisions, AI analysis & approval</div>
         </div>
         <span style={{color:"rgba(0,0,0,0.2)",fontSize:14}}>→</span>
       </button>
@@ -4791,7 +4782,7 @@ function App(){
 
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:72}}>
-        {tab==="dashboard"&&<Dashboard defects={defects} onView={setViewing} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} company={company} currentProject={currentProject} member={member} onDrawings={()=>setShowDrawings(true)} onCompare={()=>{setShowDrawingsCompare(true);setShowDrawings(true);}} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
+        {tab==="dashboard"&&<Dashboard defects={defects} onView={setViewing} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} company={company} currentProject={currentProject} member={member} onDrawings={()=>setShowDrawings(true)} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>Viewer access — defect logging disabled</div>}
         {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)}/>}
