@@ -3718,7 +3718,7 @@ Return valid JSON only with this shape:
               <button onClick={()=>{setShowCompare(false);setViewingSaved(null);}} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:18,padding:"7px 12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CLOSE</button>
             </div>
 
-            <div style={{padding:16,overflowY:"auto",flex:1,minHeight:0}}>
+            <div style={{padding:16,overflowY:"auto",flex:1,minHeight:0,display:"flex",flexDirection:"column"}}>
               {/* Version selectors — compact row */}
               <div style={{display:"flex",gap:8,marginBottom:10}}>
                 <div style={{flex:1}}>
@@ -3753,7 +3753,7 @@ Return valid JSON only with this shape:
                   </div>
 
                   {/* Overlay diff view — with zoom/pan support */}
-                  <div style={{position:"relative",borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.18)",background:"#fff",marginBottom:8,maxHeight:"calc(100vh - 260px)"}}>
+                  <div style={{position:"relative",borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.18)",background:"#fff",marginBottom:8,flex:"1 1 0",minHeight:200}}>
                     {/* Zoom controls */}
                     <div style={{position:"absolute",right:8,top:8,zIndex:5,display:"flex",flexDirection:"column",gap:4}}>
                       <button onClick={()=>setCompareZoom(z=>Math.min(5,z+0.5))} style={{width:28,height:28,borderRadius:6,background:"rgba(0,0,0,0.65)",border:"none",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
@@ -3786,7 +3786,8 @@ Return valid JSON only with this shape:
                 </div>
               )}
 
-              {/* AI analysis controls */}
+              {/* AI + markup controls — pinned at bottom */}
+              <div style={{flexShrink:0}}>
               <div style={{display:"flex",gap:8,marginBottom:10}}>
                 <button onClick={runCompareAi} disabled={compareAiBusy||!compareRes} style={{flex:1,background:(!compareRes||compareAiBusy)?"rgba(255,255,255,0.1)":"rgba(88,86,214,0.28)",border:"1px solid rgba(88,86,214,0.45)",borderRadius:10,padding:"9px 10px",color:(!compareRes||compareAiBusy)?"rgba(255,255,255,0.35)":"#d8d2ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>
                   {compareAiBusy?"AI ANALYZING...":"AI ANALYZE & SUMMARIZE"}
@@ -3844,6 +3845,7 @@ Return valid JSON only with this shape:
                   <button onClick={clearCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,59,48,0.2)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#ff8f8f":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>CLEAR</button>
                 </div>
               )}
+              </div>{/* end flexShrink:0 wrapper */}
 
               {compareRes&&(
                 <div>
