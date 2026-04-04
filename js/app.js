@@ -3284,24 +3284,27 @@ Return valid JSON only with this shape:
       const targetData=ctxT.getImageData(0,0,w,h);
       const out=ctx.createImageData(w,h);
       const bd=baseData.data,td=targetData.data,od=out.data;
+      const threshold=20;
       for(let i=0;i<bd.length;i+=4){
-        // Convert to grayscale
-        const bGray=Math.round(bd[i]*0.299+bd[i+1]*0.587+bd[i+2]*0.114);
-        const tGray=Math.round(td[i]*0.299+td[i+1]*0.587+td[i+2]*0.114);
-        const diff=Math.abs(bGray-tGray);
-        if(diff<15){
-          // Matching — show as light gray
-          const g=Math.round((bGray+tGray)/2);
-          od[i]=g;od[i+1]=g;od[i+2]=g;od[i+3]=255;
+        // Convert to grayscale (inverted: higher = more ink/content)
+        const bInk=255-Math.round(bd[i]*0.299+bd[i+1]*0.587+bd[i+2]*0.114);
+        const tInk=255-Math.round(td[i]*0.299+td[i+1]*0.587+td[i+2]*0.114);
+        const bHas=bInk>threshold;
+        const tHas=tInk>threshold;
+        if(bHas&&tHas){
+          // Both have content — unchanged, show as black/dark gray
+          const ink=Math.max(bInk,tInk);
+          const v=255-ink;
+          od[i]=v;od[i+1]=v;od[i+2]=v;od[i+3]=255;
+        }else if(tHas&&!bHas){
+          // Only in revision — ADDED — show as RED
+          od[i]=255;od[i+1]=Math.max(0,255-tInk*2);od[i+2]=Math.max(0,255-tInk*2);od[i+3]=255;
+        }else if(bHas&&!tHas){
+          // Only in base — REMOVED — show as BLUE
+          od[i]=Math.max(0,255-bInk*2);od[i+1]=Math.max(0,255-bInk*2);od[i+2]=255;od[i+3]=255;
         }else{
-          // Different — base pixels in blue, revision pixels in red
-          // Intensity based on how dark the pixel is (darker = more content)
-          const bInt=255-bGray; // base content intensity
-          const tInt=255-tGray; // revision content intensity
-          od[i]=Math.min(255,40+tInt);   // Red = revision content
-          od[i+1]=Math.min(255,40+Math.round(Math.min(bInt,tInt)*0.3)); // slight green where overlap
-          od[i+2]=Math.min(255,40+bInt); // Blue = base content
-          od[i+3]=255;
+          // Empty in both — white background
+          od[i]=255;od[i+1]=255;od[i+2]=255;od[i+3]=255;
         }
       }
       ctx.putImageData(out,0,0);
@@ -3492,31 +3495,89 @@ Return valid JSON only with this shape:
             </div>
 
             <div style={{padding:16,overflowY:"auto"}}>
-              <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:8}}>Compare two drawing PDF versions on mobile and list revision text lines.</div>
-
-              <div style={{marginBottom:10}}>
-                <div style={{fontSize:10,color:"rgba(255,255,255,0.45)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:6}}>BASE VERSION</div>
-                <select value={compareBaseId} onChange={e=>setCompareBaseId(e.target.value)} style={{width:"100%",padding:"11px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:13,fontFamily:"'Barlow Condensed',sans-serif"}}>
-                  <option value="">Select PDF</option>
-                  {pdfDrawings.map(d=><option key={d.id} value={d.id} style={{color:"#111"}}>{d.name}</option>)}
-                </select>
+              {/* Version selectors — compact row */}
+              <div style={{display:"flex",gap:8,marginBottom:10}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:9,color:"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:4}}>BASE</div>
+                  <select value={compareBaseId} onChange={e=>setCompareBaseId(e.target.value)} style={{width:"100%",padding:"9px 10px",borderRadius:8,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif"}}>
+                    <option value="">Select PDF</option>
+                    {pdfDrawings.map(d=><option key={d.id} value={d.id} style={{color:"#111"}}>{d.name}</option>)}
+                  </select>
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:9,color:"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:4}}>REVISION</div>
+                  <select value={compareTargetId} onChange={e=>setCompareTargetId(e.target.value)} style={{width:"100%",padding:"9px 10px",borderRadius:8,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif"}}>
+                    <option value="">Select PDF</option>
+                    {pdfDrawings.map(d=><option key={d.id} value={d.id} style={{color:"#111"}}>{d.name}</option>)}
+                  </select>
+                </div>
               </div>
 
-              <div style={{marginBottom:14}}>
-                <div style={{fontSize:10,color:"rgba(255,255,255,0.45)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:6}}>REVISION VERSION</div>
-                <select value={compareTargetId} onChange={e=>setCompareTargetId(e.target.value)} style={{width:"100%",padding:"11px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:13,fontFamily:"'Barlow Condensed',sans-serif"}}>
-                  <option value="">Select PDF</option>
-                  {pdfDrawings.map(d=><option key={d.id} value={d.id} style={{color:"#111"}}>{d.name}</option>)}
-                </select>
-              </div>
-
-              <button onClick={runCompare} disabled={comparing||!compareBaseId||!compareTargetId||compareBaseId===compareTargetId} style={{width:"100%",background:(!compareBaseId||!compareTargetId||compareBaseId===compareTargetId)?"rgba(255,255,255,0.1)":"#ff6b00",border:"none",borderRadius:10,padding:12,color:(!compareBaseId||!compareTargetId||compareBaseId===compareTargetId)?"rgba(255,255,255,0.35)":"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",marginBottom:12}}>
+              <button onClick={runCompare} disabled={comparing||!compareBaseId||!compareTargetId||compareBaseId===compareTargetId} style={{width:"100%",background:(!compareBaseId||!compareTargetId||compareBaseId===compareTargetId)?"rgba(255,255,255,0.1)":"#ff6b00",border:"none",borderRadius:10,padding:12,color:(!compareBaseId||!compareTargetId||compareBaseId===compareTargetId)?"rgba(255,255,255,0.35)":"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",marginBottom:10}}>
                 {comparing?"COMPARING...":"RUN COMPARISON"}
               </button>
 
-              {compareError&&<div style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"10px 12px",color:"#ff7f7f",fontSize:12,marginBottom:12}}>{compareError}</div>}
+              {compareError&&<div style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"10px 12px",color:"#ff7f7f",fontSize:12,marginBottom:10}}>{compareError}</div>}
 
-              <div style={{display:"flex",gap:8,marginBottom:12}}>
+              {/* === VISUAL OVERLAY — main output, shown immediately after comparison === */}
+              {(compareBaseId&&compareTargetId)&&(
+                <div style={{marginBottom:10}}>
+                  {/* Hidden source canvases for pixel data */}
+                  <div style={{display:"none"}}>
+                    <canvas ref={compareBaseCanvasRef}/>
+                    <canvas ref={compareTargetCanvasRef}/>
+                  </div>
+
+                  {/* View mode toggle */}
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                    {[{id:"overlay",label:"OVERLAY DIFF"},{id:"side",label:"SIDE BY SIDE"}].map(m=>(
+                      <button key={m.id} onClick={()=>setCompareViewMode(m.id)} style={{background:compareViewMode===m.id?"rgba(255,107,0,0.3)":"rgba(255,255,255,0.06)",border:`1px solid ${compareViewMode===m.id?"rgba(255,107,0,0.5)":"rgba(255,255,255,0.12)"}`,borderRadius:8,padding:"6px 12px",color:compareViewMode===m.id?"#ffb48a":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",letterSpacing:"0.04em"}}>{m.label}</button>
+                    ))}
+                  </div>
+
+                  {/* Overlay diff view — Autodesk Design Review style */}
+                  {compareViewMode==="overlay"&&(
+                    <div style={{position:"relative",borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.18)",background:"#fff",marginBottom:8}}>
+                      <canvas ref={compareOverlayCanvasRef} style={{width:"100%",display:"block",background:"#fff"}}/>
+                      <div style={{position:"absolute",left:6,top:6,display:"flex",gap:4,flexWrap:"wrap"}}>
+                        <div style={{background:"rgba(0,0,0,0.75)",borderRadius:6,padding:"3px 8px",fontSize:9,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",gap:4}}>
+                          <span style={{width:10,height:3,background:"#ff0000",display:"inline-block"}}/>
+                          <span style={{color:"#ff8a8a"}}>ADDED</span>
+                        </div>
+                        <div style={{background:"rgba(0,0,0,0.75)",borderRadius:6,padding:"3px 8px",fontSize:9,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",gap:4}}>
+                          <span style={{width:10,height:3,background:"#0055ff",display:"inline-block"}}/>
+                          <span style={{color:"#8ab4ff"}}>REMOVED</span>
+                        </div>
+                        <div style={{background:"rgba(0,0,0,0.75)",borderRadius:6,padding:"3px 8px",fontSize:9,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",gap:4}}>
+                          <span style={{width:10,height:3,background:"#000",display:"inline-block"}}/>
+                          <span style={{color:"#aaa"}}>UNCHANGED</span>
+                        </div>
+                      </div>
+                      {comparePreviewLoading&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(255,255,255,0.7)",color:"#333",fontSize:12}}><Spin size={14}/> <span style={{marginLeft:8}}>Generating overlay diff...</span></div>}
+                    </div>
+                  )}
+
+                  {/* Side-by-side view */}
+                  {compareViewMode==="side"&&(
+                    <div style={{position:"relative",height:220,borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.14)",background:"#0f0f10",marginBottom:8}}>
+                      <div style={{position:"absolute",inset:0,display:"flex"}}>
+                        <div style={{flex:1,position:"relative",borderRight:"1px solid rgba(255,255,255,0.08)"}}>
+                          <canvas ref={c=>{if(c&&compareBaseCanvasRef.current&&compareBaseCanvasRef.current.width){c.width=compareBaseCanvasRef.current.width;c.height=compareBaseCanvasRef.current.height;c.getContext("2d").drawImage(compareBaseCanvasRef.current,0,0);}}} style={{width:"100%",height:"100%",display:"block",objectFit:"contain",background:"#1a1a1a"}}/>
+                          <div style={{position:"absolute",left:6,top:6,background:"rgba(0,0,0,0.65)",borderRadius:6,padding:"2px 6px",fontSize:10,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>BASE</div>
+                        </div>
+                        <div style={{flex:1,position:"relative"}}>
+                          <canvas ref={c=>{if(c&&compareTargetCanvasRef.current&&compareTargetCanvasRef.current.width){c.width=compareTargetCanvasRef.current.width;c.height=compareTargetCanvasRef.current.height;c.getContext("2d").drawImage(compareTargetCanvasRef.current,0,0);}}} style={{width:"100%",height:"100%",display:"block",objectFit:"contain",background:"#1a1a1a"}}/>
+                          <div style={{position:"absolute",left:6,top:6,background:"rgba(0,0,0,0.65)",borderRadius:6,padding:"2px 6px",fontSize:10,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>REVISION</div>
+                        </div>
+                      </div>
+                      {comparePreviewLoading&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.35)",color:"rgba(255,255,255,0.7)",fontSize:12}}><Spin size={14}/> <span style={{marginLeft:8}}>Loading pages...</span></div>}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* AI analysis controls */}
+              <div style={{display:"flex",gap:8,marginBottom:10}}>
                 <button onClick={runCompareAi} disabled={compareAiBusy||!compareRes} style={{flex:1,background:(!compareRes||compareAiBusy)?"rgba(255,255,255,0.1)":"rgba(88,86,214,0.28)",border:"1px solid rgba(88,86,214,0.45)",borderRadius:10,padding:"9px 10px",color:(!compareRes||compareAiBusy)?"rgba(255,255,255,0.35)":"#d8d2ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>
                   {compareAiBusy?"AI ANALYZING...":"AI ANALYZE & SUMMARIZE"}
                 </button>
@@ -3524,9 +3585,9 @@ Return valid JSON only with this shape:
                   REGENERATE
                 </button>
               </div>
-              {!aiReady&&<div style={{background:"rgba(255,149,0,0.12)",border:"1px solid rgba(255,149,0,0.35)",borderRadius:10,padding:"9px 10px",color:"#ffbf66",fontSize:11,marginBottom:12}}>AI not configured. Open AI Setup to enable AI-supported comparison reporting.</div>}
-              {compareAiError&&<div style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"9px 10px",color:"#ff8f8f",fontSize:11,marginBottom:12}}>{compareAiError}</div>}
-              {compareAiReport&&<div style={{background:"rgba(88,86,214,0.12)",border:"1px solid rgba(88,86,214,0.3)",borderRadius:10,padding:"10px",whiteSpace:"pre-wrap",fontSize:11,color:"#e6e2ff",lineHeight:1.45,marginBottom:12}}>{compareAiReport}</div>}
+              {!aiReady&&<div style={{background:"rgba(255,149,0,0.12)",border:"1px solid rgba(255,149,0,0.35)",borderRadius:10,padding:"9px 10px",color:"#ffbf66",fontSize:11,marginBottom:10}}>AI not configured. Open AI Setup to enable AI-supported comparison reporting.</div>}
+              {compareAiError&&<div style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"9px 10px",color:"#ff8f8f",fontSize:11,marginBottom:10}}>{compareAiError}</div>}
+              {compareAiReport&&<div style={{background:"rgba(88,86,214,0.12)",border:"1px solid rgba(88,86,214,0.3)",borderRadius:10,padding:"10px",whiteSpace:"pre-wrap",fontSize:11,color:"#e6e2ff",lineHeight:1.45,marginBottom:10}}>{compareAiReport}</div>}
               {compareAiReport&&(
                 <div style={{background:compareAiLocked?"rgba(52,199,89,0.14)":"rgba(255,255,255,0.06)",border:`1px solid ${compareAiLocked?"rgba(52,199,89,0.35)":"rgba(255,255,255,0.18)"}`,borderRadius:10,padding:"9px 10px",marginBottom:12}}>
                   <div style={{fontSize:11,color:compareAiLocked?"#9ef0b5":"rgba(255,255,255,0.7)",marginBottom:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
@@ -3558,70 +3619,19 @@ Return valid JSON only with this shape:
                 </div>
               )}
 
+              {/* Markup tools — below overlay */}
               {(compareBaseId&&compareTargetId)&&(
-                <div style={{marginBottom:12}}>
-                  {/* View mode toggle */}
-                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-                    <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",flex:1}}>Drawing Preview</div>
-                    {[{id:"overlay",label:"OVERLAY"},{id:"side",label:"SIDE BY SIDE"}].map(m=>(
-                      <button key={m.id} onClick={()=>setCompareViewMode(m.id)} style={{background:compareViewMode===m.id?"rgba(255,107,0,0.25)":"rgba(255,255,255,0.06)",border:`1px solid ${compareViewMode===m.id?"rgba(255,107,0,0.5)":"rgba(255,255,255,0.12)"}`,borderRadius:8,padding:"5px 10px",color:compareViewMode===m.id?"#ffb48a":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,cursor:"pointer",letterSpacing:"0.04em"}}>{m.label}</button>
-                    ))}
-                  </div>
-
-                  {/* Hidden source canvases for pixel data (always rendered) */}
-                  <div style={{display:"none"}}>
-                    <canvas ref={compareBaseCanvasRef}/>
-                    <canvas ref={compareTargetCanvasRef}/>
-                  </div>
-
-                  {/* Overlay diff view */}
-                  {compareViewMode==="overlay"&&(
-                    <div style={{position:"relative",borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.14)",background:"#0f0f10",marginBottom:8}}>
-                      <canvas ref={compareOverlayCanvasRef} style={{width:"100%",display:"block",objectFit:"contain",background:"#1a1a1a"}}/>
-                      <div style={{position:"absolute",left:6,top:6,display:"flex",gap:4}}>
-                        <div style={{background:"rgba(0,0,0,0.7)",borderRadius:6,padding:"2px 8px",fontSize:9,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",gap:4}}>
-                          <span style={{width:8,height:8,borderRadius:"50%",background:"#4a90ff",display:"inline-block"}}/>
-                          <span style={{color:"#8ab4ff"}}>BASE (REMOVED)</span>
-                        </div>
-                        <div style={{background:"rgba(0,0,0,0.7)",borderRadius:6,padding:"2px 8px",fontSize:9,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",gap:4}}>
-                          <span style={{width:8,height:8,borderRadius:"50%",background:"#ff4a4a",display:"inline-block"}}/>
-                          <span style={{color:"#ff8a8a"}}>REVISION (ADDED)</span>
-                        </div>
-                      </div>
-                      {comparePreviewLoading&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.35)",color:"rgba(255,255,255,0.7)",fontSize:12}}><Spin size={14}/> <span style={{marginLeft:8}}>Generating overlay...</span></div>}
-                    </div>
-                  )}
-
-                  {/* Side-by-side view — re-draw from source canvases */}
-                  {compareViewMode==="side"&&(
-                    <div style={{position:"relative",height:220,borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.14)",background:"#0f0f10",marginBottom:8}}>
-                      <div style={{position:"absolute",inset:0,display:"flex"}}>
-                        <div style={{flex:1,position:"relative",borderRight:"1px solid rgba(255,255,255,0.08)"}}>
-                          <canvas ref={c=>{if(c&&compareBaseCanvasRef.current&&compareBaseCanvasRef.current.width){c.width=compareBaseCanvasRef.current.width;c.height=compareBaseCanvasRef.current.height;c.getContext("2d").drawImage(compareBaseCanvasRef.current,0,0);}}} style={{width:"100%",height:"100%",display:"block",objectFit:"contain",background:"#1a1a1a"}}/>
-                          <div style={{position:"absolute",left:6,top:6,background:"rgba(0,0,0,0.65)",borderRadius:6,padding:"2px 6px",fontSize:10,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>BASE</div>
-                        </div>
-                        <div style={{flex:1,position:"relative"}}>
-                          <canvas ref={c=>{if(c&&compareTargetCanvasRef.current&&compareTargetCanvasRef.current.width){c.width=compareTargetCanvasRef.current.width;c.height=compareTargetCanvasRef.current.height;c.getContext("2d").drawImage(compareTargetCanvasRef.current,0,0);}}} style={{width:"100%",height:"100%",display:"block",objectFit:"contain",background:"#1a1a1a"}}/>
-                          <div style={{position:"absolute",left:6,top:6,background:"rgba(0,0,0,0.65)",borderRadius:6,padding:"2px 6px",fontSize:10,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>REVISION</div>
-                        </div>
-                      </div>
-                      {comparePreviewLoading&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.35)",color:"rgba(255,255,255,0.7)",fontSize:12}}><Spin size={14}/> <span style={{marginLeft:8}}>Loading pages...</span></div>}
-                    </div>
-                  )}
-
-                  {/* Markup tools */}
-                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,flexWrap:"wrap"}}>
-                    {[{id:"freehand",label:"✏"},{id:"arrow",label:"↗"},{id:"circle",label:"○"},{id:"text",label:"T"}].map(t=>(
-                      <button key={t.id} onClick={()=>setCompareMarkupTool(t.id)} style={{width:34,height:34,borderRadius:8,border:compareMarkupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:compareMarkupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{t.label}</button>
-                    ))}
-                    <div style={{width:1,height:20,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
-                    {["#ff3b30","#ff9500","#ffcc00","#34c759","#fff"].map(c=>(
-                      <button key={c} onClick={()=>setCompareMarkupColor(c)} style={{width:22,height:22,borderRadius:"50%",border:compareMarkupColor===c?"3px solid #fff":"2px solid rgba(255,255,255,0.2)",background:c,cursor:"pointer"}}/>
-                    ))}
-                    <div style={{flex:1}}/>
-                    <button onClick={undoCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>UNDO</button>
-                    <button onClick={clearCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,59,48,0.2)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#ff8f8f":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>CLEAR</button>
-                  </div>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+                  {[{id:"freehand",label:"✏"},{id:"arrow",label:"↗"},{id:"circle",label:"○"},{id:"text",label:"T"}].map(t=>(
+                    <button key={t.id} onClick={()=>setCompareMarkupTool(t.id)} style={{width:34,height:34,borderRadius:8,border:compareMarkupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:compareMarkupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{t.label}</button>
+                  ))}
+                  <div style={{width:1,height:20,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
+                  {["#ff3b30","#ff9500","#ffcc00","#34c759","#fff"].map(c=>(
+                    <button key={c} onClick={()=>setCompareMarkupColor(c)} style={{width:22,height:22,borderRadius:"50%",border:compareMarkupColor===c?"3px solid #fff":"2px solid rgba(255,255,255,0.2)",background:c,cursor:"pointer"}}/>
+                  ))}
+                  <div style={{flex:1}}/>
+                  <button onClick={undoCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>UNDO</button>
+                  <button onClick={clearCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,59,48,0.2)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#ff8f8f":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>CLEAR</button>
                 </div>
               )}
 
