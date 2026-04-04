@@ -3766,7 +3766,7 @@ Return valid JSON only with this shape:
                   </div>
 
                   {/* Overlay diff view — with zoom/pan support */}
-                  <div style={{position:"relative",borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.18)",background:"#fff",marginBottom:8,flex:"1 1 0",minHeight:200}}>
+                  <div style={{position:"relative",borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.18)",background:"#fff",marginBottom:8,flex:"1 1 auto",minHeight:"min(55vh, 400px)"}}>
                     {/* Zoom controls */}
                     <div style={{position:"absolute",right:8,top:8,zIndex:5,display:"flex",flexDirection:"column",gap:4}}>
                       <button onClick={()=>setCompareZoom(z=>Math.min(5,z+0.5))} style={{width:28,height:28,borderRadius:6,background:"rgba(0,0,0,0.65)",border:"none",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
@@ -3903,12 +3903,13 @@ Return valid JSON only with this shape:
                             const displayName=edit?.name||l.text||line;
                             const remark=edit?.remark||"";
                             const active=compareHighlight?.text===l.text;
+                            const selColor="#3b82f6";
                             return(
-                              <div key={i} style={{padding:"5px 6px",margin:"0 -6px",borderRadius:active?8:0,background:active?`${accentColor}22`:"none",borderBottom:i===items.length-1?"none":"1px solid rgba(255,255,255,0.06)"}}>
+                              <div key={i} style={{padding:"5px 6px",margin:"0 -6px",borderRadius:active?8:0,background:active?"rgba(59,130,246,0.2)":"none",border:active?"1px solid rgba(59,130,246,0.5)":"1px solid transparent",borderBottom:i===items.length-1&&!active?"none":active?"1px solid rgba(59,130,246,0.5)":"1px solid rgba(255,255,255,0.06)"}}>
                                 <div style={{display:"flex",alignItems:"center",gap:6}}>
-                                  <div style={{flex:1,fontSize:11,color:active?accentColor:"rgba(255,255,255,0.86)",wordBreak:"break-word",cursor:l.xPct!==undefined?"pointer":"default"}}
-                                    onClick={()=>{if(l.xPct!==undefined){setCompareHighlight({x:l.xPct,y:l.yPct,w:l.wPct||10,text:l.text,color:accentColor});setCompareZoom(2.5);setComparePan({x:-(l.xPct-50)*3,y:-(l.yPct-50)*3});}}}
-                                  >{edit?.name?<><span style={{textDecoration:"line-through",opacity:0.4,fontSize:10}}>{l.text||line}</span> <span style={{color:accentColor}}>{edit.name}</span></>:displayName}</div>
+                                  <div style={{flex:1,fontSize:11,color:active?selColor:"rgba(255,255,255,0.86)",fontWeight:active?700:400,wordBreak:"break-word",cursor:l.xPct!==undefined?"pointer":"default"}}
+                                    onClick={()=>{if(l.xPct!==undefined){setCompareHighlight({x:l.xPct,y:l.yPct,w:l.wPct||10,text:l.text,color:selColor});setCompareZoom(2);setComparePan({x:-(l.xPct-50)*2.5,y:-(l.yPct-50)*2.5});}}}
+                                  >{edit?.name?<><span style={{textDecoration:"line-through",opacity:0.4,fontSize:10}}>{l.text||line}</span> <span style={{color:active?selColor:accentColor}}>{edit.name}</span></>:displayName}</div>
                                   <button onClick={()=>setEditingDiffItem({key,type:diffType,original:l.text||line,name:edit?.name||"",remark:edit?.remark||""})} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:6,padding:"3px 7px",color:"rgba(255,255,255,0.5)",fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",flexShrink:0}}>✎</button>
                                 </div>
                                 {remark&&<div style={{fontSize:10,color:"rgba(255,255,255,0.5)",marginTop:3,paddingLeft:2,fontStyle:"italic",borderLeft:`2px solid ${accentColor}40`}}>💬 {remark}</div>}
