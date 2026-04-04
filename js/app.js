@@ -32,6 +32,7 @@ function compressPhoto(dataUrl,maxPx=1800,quality=0.8){
 }
 
 const DRAWING_NOTES_KEY="drawing_notes_v1";
+const DRAWING_MARKUP_KEY="drawing_markup_v1";
 const BCA_SCDF_REVISION_COLORS={added:"#ff3b30",removed:"#34c759"};
 
 function loadDrawingNotesMap(){
@@ -48,6 +49,17 @@ function saveDrawingNotes(drawingId,notes){
   const map=loadDrawingNotesMap();
   map[drawingId]=notes;
   local.set(DRAWING_NOTES_KEY,map);
+}
+
+function getDrawingMarkup(drawingId){
+  const map=local.get(DRAWING_MARKUP_KEY)||{};
+  return Array.isArray(map[drawingId])?map[drawingId]:[];
+}
+
+function saveDrawingMarkup(drawingId,strokes){
+  const map=local.get(DRAWING_MARKUP_KEY)||{};
+  map[drawingId]=strokes;
+  local.set(DRAWING_MARKUP_KEY,map);
 }
 
 function normalizePdfLine(text){
@@ -3325,6 +3337,8 @@ Return valid JSON only with this shape:
       rows.push(["AI_APPROVAL",compareAiLocked?"LOCKED":"DRAFT",`By: ${compareAiApprovedBy||""} At: ${compareAiApprovedAt?new Date(compareAiApprovedAt).toISOString():""}`,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]);
     }
     compareAuditLog.forEach(e=>rows.push(["AUDIT",`${e.action.toUpperCase()} by ${e.by} at ${new Date(e.at).toISOString()}${e.reason?" — Reason: "+e.reason:""}`,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]));
+    compareMarkupStrokes.filter(s=>s.type==="text"&&s.text).forEach(s=>rows.push(["MARKUP",s.text,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]));
+    if(compareMarkupStrokes.length>0)rows.push(["MARKUP_COUNT",`${compareMarkupStrokes.length} annotation(s): ${compareMarkupStrokes.filter(s=>s.type==="text").length} text, ${compareMarkupStrokes.filter(s=>s.type==="freehand").length} freehand, ${compareMarkupStrokes.filter(s=>s.type==="arrow").length} arrow, ${compareMarkupStrokes.filter(s=>s.type==="circle").length} circle`,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]);
     compareRes.added.forEach(line=>rows.push(["ADDED",line,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]));
     compareRes.removed.forEach(line=>rows.push(["REMOVED",line,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]));
     if(rows.length===0)rows.push(["NO_DIFF","No added/removed lines detected",compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]);
@@ -3340,6 +3354,7 @@ Return valid JSON only with this shape:
     const stamp=new Date(compareRes.generatedAt||Date.now());
     const aiApprovalHtml=compareAiReport?`<div style="margin:8px 0 0;font-size:11px;color:${compareAiLocked?"#1a7a35":"#666"};background:${compareAiLocked?"#eefcf1":"#f7f7f7"};border:1px solid ${compareAiLocked?"#9cd8ad":"#ddd"};border-radius:6px;padding:8px"><b>AI Report Status:</b> ${compareAiLocked?"LOCKED":"DRAFT"}${compareAiApprovedBy?` | <b>Approved by:</b> ${sanitize(compareAiApprovedBy)}`:""}${compareAiApprovedAt?` | <b>Approved at:</b> ${sanitize(new Date(compareAiApprovedAt).toLocaleString())}`:""}</div>`:"";
     const auditHtml=compareAuditLog.length?`<div style="margin:8px 0 0;font-size:10px;border:1px solid #ddd;border-radius:6px;padding:8px;background:#fafafa"><b>Audit Trail</b>${compareAuditLog.map(e=>`<div style="margin:3px 0;color:${e.action==="lock"?"#1a7a35":"#b36b00"}"><b>${e.action.toUpperCase()}</b> by ${sanitize(e.by)} at ${sanitize(new Date(e.at).toLocaleString())}${e.reason&&e.action==="unlock"?` — <i>${sanitize(e.reason)}</i>`:""}</div>`).join("")}</div>`:"";
+    const markupHtml=compareMarkupStrokes.length?`<h2 style="color:#ff6b00">Markup Annotations (${compareMarkupStrokes.length})</h2><div style="font-size:11px;border:1px solid #ffd6b8;border-radius:6px;padding:8px;background:#fff8f3">${compareMarkupStrokes.filter(s=>s.type==="text"&&s.text).map(s=>`<div style="margin:2px 0">📝 ${sanitize(s.text)}</div>`).join("")||"<i>No text annotations</i>"}<div style="margin-top:4px;color:#999;font-size:10px">${compareMarkupStrokes.filter(s=>s.type==="freehand").length} freehand, ${compareMarkupStrokes.filter(s=>s.type==="arrow").length} arrow, ${compareMarkupStrokes.filter(s=>s.type==="circle").length} circle</div></div>`:"";
     const aiHtml=compareAiReport?`<h2 style="color:#5856d6">AI-Supported Analysis</h2><div style="white-space:pre-wrap;font-size:12px;line-height:1.45;background:#f5f3ff;border:1px solid #d8d2ff;border-radius:8px;padding:10px">${sanitize(compareAiReport)}</div>${aiApprovalHtml}${auditHtml}`:"";
     const w=window.open("","_blank");
     if(!w){alert("Popup blocked. Please allow popups to export PDF.");return;}
@@ -3367,6 +3382,7 @@ Return valid JSON only with this shape:
       <h2 style="color:#34c759">Removed Lines</h2>
       <table><thead><tr><th style="width:44px">#</th><th>Line</th></tr></thead><tbody>${removedHtml}</tbody></table>
       ${aiHtml}
+      ${markupHtml}
       <div class="no-print" style="margin-top:16px;font-size:12px;color:#444">Use your browser destination "Save as PDF" when print dialog appears.</div>
       <script>window.onload=function(){setTimeout(function(){window.print();},250);};</script>
     </body></html>`);
@@ -3416,6 +3432,7 @@ Return valid JSON only with this shape:
           const isImage=/\.(jpg|jpeg|png|gif|webp|tif|tiff)$/i.test(d.file);
           const drawingPins=allPins.filter(p=>p.drawingId===d.id);
           const drawingNotes=getDrawingNotes(d.id);
+          const drawingMarkup=getDrawingMarkup(d.id);
           const pinDefects=drawingPins.map(p=>defects.find(df=>df.id===p.entryId)).filter(Boolean);
           const sevCounts={};
           pinDefects.forEach(df=>{const s=df.severity||"Unknown";sevCounts[s]=(sevCounts[s]||0)+1;});
@@ -3424,8 +3441,27 @@ Return valid JSON only with this shape:
               <div style={{position:"relative",background:"#f8f8f6"}}>
                 {isImage&&<img src={fileUrl} alt={d.name} style={{width:"100%",maxHeight:"50vh",objectFit:"contain",display:"block",background:"#f8f8f6"}}/>}
                 {!isImage&&<PdfThumb url={fileUrl}/>}
-                {(drawingPins.length>0||drawingNotes.length>0)&&(
+                {(drawingPins.length>0||drawingNotes.length>0||drawingMarkup.length>0)&&(
                   <div style={{position:"absolute",inset:0,pointerEvents:"none"}}>
+                    {drawingMarkup.length>0&&(
+                      <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%"}}>
+                        {drawingMarkup.map((s,i)=>{
+                          if(s.type==="freehand"&&s.points?.length>1){
+                            const d="M"+s.points.map(p=>`${p.x} ${p.y}`).join("L");
+                            return <path key={i} d={d} stroke={s.color} strokeWidth="0.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/>;
+                          }
+                          if(s.type==="arrow"&&s.start&&s.end){
+                            return <line key={i} x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={s.color} strokeWidth="0.4"/>;
+                          }
+                          if(s.type==="circle"&&s.start&&s.end){
+                            const cx=(s.start.x+s.end.x)/2,cy=(s.start.y+s.end.y)/2;
+                            const rx=Math.abs(s.end.x-s.start.x)/2,ry=Math.abs(s.end.y-s.start.y)/2;
+                            return <ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry} stroke={s.color} strokeWidth="0.4" fill="none"/>;
+                          }
+                          return null;
+                        })}
+                      </svg>
+                    )}
                     {drawingPins.map(p=>{
                       const pd=defects.find(df=>df.id===p.entryId);
                       const color=pd?SEV_COLOR[pd.severity]||"#ff6b00":"#8e8e93";
@@ -3456,18 +3492,14 @@ Return valid JSON only with this shape:
                   </div>
                   {member?.role==="Admin"&&<button onClick={e=>{e.stopPropagation();deleteDrawing(d.id);}} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:"#ff3b30",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>DELETE</button>}
                 </div>
-                {drawingPins.length>0&&(
+                {(drawingPins.length>0||drawingNotes.length>0||drawingMarkup.length>0)&&(
                   <div style={{display:"flex",alignItems:"center",gap:6,marginTop:8,flexWrap:"wrap"}}>
-                    <span style={{fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif"}}>📌 {drawingPins.length} PIN{drawingPins.length>1?"S":""}</span>
+                    {drawingPins.length>0&&<span style={{fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif"}}>📌 {drawingPins.length} PIN{drawingPins.length>1?"S":""}</span>}
                     {drawingNotes.length>0&&<span style={{fontSize:11,fontWeight:700,color:"#5856d6",background:"rgba(88,86,214,0.12)",border:"1px solid rgba(88,86,214,0.25)",borderRadius:10,padding:"2px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>📝 {drawingNotes.length} NOTE{drawingNotes.length>1?"S":""}</span>}
+                    {drawingMarkup.length>0&&<span style={{fontSize:11,fontWeight:700,color:"#ff6b00",background:"rgba(255,107,0,0.12)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:10,padding:"2px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>✏ {drawingMarkup.length} MARKUP{drawingMarkup.length>1?"S":""}</span>}
                     {Object.entries(sevCounts).map(([sev,count])=>(
                       <span key={sev} style={{fontSize:10,fontWeight:700,color:SEV_COLOR[sev]||"#8e8e93",background:(SEV_COLOR[sev]||"#8e8e93")+"18",border:`1px solid ${(SEV_COLOR[sev]||"#8e8e93")}30`,borderRadius:10,padding:"2px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>{count} {sev}</span>
                     ))}
-                  </div>
-                )}
-                {drawingPins.length===0&&drawingNotes.length>0&&(
-                  <div style={{display:"flex",alignItems:"center",gap:6,marginTop:8,flexWrap:"wrap"}}>
-                    <span style={{fontSize:11,fontWeight:700,color:"#5856d6",background:"rgba(88,86,214,0.12)",border:"1px solid rgba(88,86,214,0.25)",borderRadius:10,padding:"2px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>📝 {drawingNotes.length} NOTE{drawingNotes.length>1?"S":""}</span>
                   </div>
                 )}
               </div>
@@ -3714,7 +3746,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   // Heatmap + drawing markup state
   const[showHeatmap,setShowHeatmap]=useState(false);
   const[markupMode,setMarkupMode]=useState(false);const[markupTool,setMarkupTool]=useState("freehand");
-  const[markupColor,setMarkupColor]=useState("#ff3b30");const[markupStrokes,setMarkupStrokes]=useState([]);
+  const[markupColor,setMarkupColor]=useState("#ff3b30");const[markupStrokes,setMarkupStrokes]=useState(()=>getDrawingMarkup(drawing.id));
   const[markupCurrent,setMarkupCurrent]=useState(null);
   const[notes,setNotes]=useState([]);
   const[pendingNotePos,setPendingNotePos]=useState(null);
@@ -3739,6 +3771,10 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   useEffect(()=>{
     saveDrawingNotes(drawing.id,notes);
   },[drawing.id,notes]);
+  // Persist markup strokes
+  useEffect(()=>{
+    saveDrawingMarkup(drawing.id,markupStrokes);
+  },[drawing.id,markupStrokes]);
 
   // Load PDF document
   useEffect(()=>{
@@ -3960,8 +3996,27 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       const d=getDefect(p.entryId);
       return{kind:"pin",id:p.id,x:p.x,y:p.y,pageNum:p.pageNum||1,title:d?.title||"Linked entry",severity:d?.severity||"—",status:d?.status||"—",detail:d?.location||"",createdAt:0};
     }),
-    ...pageNotes.map(n=>({kind:"note",id:n.id,x:n.x,y:n.y,pageNum:n.pageNum||1,title:n.text,severity:"NOTE",status:"",detail:n.createdBy||"",createdAt:n.createdAt||0}))
+    ...pageNotes.map(n=>({kind:"note",id:n.id,x:n.x,y:n.y,pageNum:n.pageNum||1,title:n.text,severity:"NOTE",status:"",detail:n.createdBy||"",createdAt:n.createdAt||0})),
+    ...markupStrokes.map((s,i)=>({kind:"markup",id:`markup_${i}`,x:s.start?.x||s.points?.[0]?.x||s.pos?.x||0,y:s.start?.y||s.points?.[0]?.y||s.pos?.y||0,pageNum:1,title:s.type==="text"?s.text:`${s.type} (${s.color})`,severity:"MARKUP",status:s.type,detail:s.color,createdAt:0}))
   ].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+
+  const exportDrawingCsv=()=>{
+    const header=["Type","Title","Severity/Category","Status","Location","Position","Drawing","Project"];
+    const rows=combinedItems.map(item=>[item.kind.toUpperCase(),item.title,item.severity,item.status||"",item.detail||"",`(${Math.round(item.x)},${Math.round(item.y)})`,drawing.name,currentProject?.name||""]);
+    const csv=[header,...rows].map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\n");
+    const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=`${drawing.name.replace(/\W+/g,"_")}_annotations.csv`;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),500);
+  };
+
+  const exportDrawingPdf=()=>{
+    const stamp=new Date().toLocaleString();
+    const itemsHtml=combinedItems.length?combinedItems.map((item,i)=>`<tr><td>${i+1}</td><td style="color:${item.kind==="pin"?"#ff3b30":item.kind==="note"?"#5856d6":"#ff6b00"};font-weight:700">${item.kind.toUpperCase()}</td><td>${sanitize(item.title)}</td><td>${sanitize(item.severity)}</td><td>${sanitize(item.detail||"")}</td></tr>`).join(""):`<tr><td colspan="5" style="text-align:center;color:#999">No annotations</td></tr>`;
+    const w=window.open("","_blank");
+    if(!w){alert("Popup blocked.");return;}
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Drawing Annotations — ${sanitize(drawing.name)}</title><style>body{font-family:Arial,sans-serif;padding:22px;color:#111}h1{margin:0 0 4px;font-size:20px}table{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px}th,td{border:1px solid #ddd;padding:6px;vertical-align:top}th{background:#f5f5f5;text-align:left}.meta{font-size:12px;color:#444;margin-bottom:4px}@media print{.no-print{display:none}}</style></head><body><h1>Drawing Annotations — ${sanitize(drawing.name)}</h1><div class="meta"><b>Project:</b> ${sanitize(currentProject?.name||"—")} | <b>Company:</b> ${sanitize(company?.companyName||"—")} | <b>Generated:</b> ${sanitize(stamp)}</div><div class="meta"><b>Total:</b> ${combinedItems.length} items (${combinedItems.filter(i=>i.kind==="pin").length} pins, ${combinedItems.filter(i=>i.kind==="note").length} notes, ${combinedItems.filter(i=>i.kind==="markup").length} markups)</div><table><tr><th>#</th><th>Type</th><th>Title / Content</th><th>Category</th><th>Detail</th></tr>${itemsHtml}</table><br><button class="no-print" onclick="window.print()">Print / Save as PDF</button></body></html>`);
+    w.document.close();
+  };
 
   // Shared pin overlay
   const renderPins=()=>pagePins.map(p=>{
@@ -4111,19 +4166,20 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       {/* Combined list: pins + defects + text notes */}
       {showCombinedList&&(
         <div style={{position:"absolute",left:0,right:0,bottom:0,zIndex:40,background:"linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.88))",borderTop:"1px solid rgba(255,255,255,0.12)",maxHeight:"42vh",display:"flex",flexDirection:"column"}}>
-          <div style={{padding:"9px 12px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,0.08)"}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff"}}>CONSOLIDATED LIST · {combinedItems.length}</div>
-            <div style={{fontSize:10,color:"rgba(255,255,255,0.45)"}}>{isPdf?`Page ${currentPage}`:"All notes & pins"}</div>
+          <div style={{padding:"9px 12px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,0.08)",gap:6}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff",flex:1}}>CONSOLIDATED LIST · {combinedItems.length}</div>
+            <button onClick={exportDrawingCsv} disabled={!combinedItems.length} style={{background:"rgba(52,170,220,0.2)",border:"1px solid rgba(52,170,220,0.4)",borderRadius:6,padding:"4px 8px",color:"#7fd7ff",fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>CSV</button>
+            <button onClick={exportDrawingPdf} disabled={!combinedItems.length} style={{background:"rgba(255,107,0,0.2)",border:"1px solid rgba(255,107,0,0.4)",borderRadius:6,padding:"4px 8px",color:"#ffb48a",fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>PDF</button>
           </div>
           <div style={{overflowY:"auto",padding:10}}>
             {combinedItems.length===0&&<div style={{padding:12,textAlign:"center",color:"rgba(255,255,255,0.45)",fontSize:12}}>No pins or notes on this view.</div>}
             {combinedItems.map(item=>(
               <div key={item.kind+"_"+item.id} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"8px 10px",marginBottom:7,display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontSize:12}}>{item.kind==="note"?"📝":"📌"}</span>
+                <span style={{fontSize:12}}>{item.kind==="note"?"📝":item.kind==="markup"?"✏":"📌"}</span>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:12,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.title}</div>
                   <div style={{fontSize:10,color:"rgba(255,255,255,0.5)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                    {item.kind==="note"?`By ${item.detail||"Unknown"} · (${item.x.toFixed(1)}%, ${item.y.toFixed(1)}%)`:`${item.severity} · ${item.status}${item.detail?` · ${item.detail}`:""}`}
+                    {item.kind==="note"?`By ${item.detail||"Unknown"} · (${Math.round(item.x)}%, ${Math.round(item.y)}%)`:item.kind==="markup"?`${item.status} · ${item.detail}`:`${item.severity} · ${item.status}${item.detail?` · ${item.detail}`:""}`}
                   </div>
                 </div>
                 {item.kind==="pin"&&canPin&&<button onClick={()=>deletePin(item.id)} style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:7,padding:"4px 8px",color:"#ff8f8f",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>REMOVE</button>}
