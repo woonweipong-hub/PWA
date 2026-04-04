@@ -1852,7 +1852,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
     component:"",issue:"",locationLevel:"",locationZone:"",locationSubzone:"",locationGrid:"",
     entryType:"Defect",dueDate:"",duration:"",costImpact:"",costResponsible:"",costAmount:"",costRemarks:""};
   const[form,setForm]=useState(blank);
-  const[showMore,setShowMore]=useState(false);
+
   const[saving,setSaving]=useState(false);const[analyzing,setAnalyzing]=useState(false);const[aiResult,setAiResult]=useState(null);
   const[count,setCount]=useState(0);const[last,setLast]=useState(null);const[showBatch,setShowBatch]=useState(false);
   const[showTypeManager,setShowTypeManager]=useState(false);
@@ -2150,25 +2150,22 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
 
       <VoiceField label="DESCRIPTION" value={form.description} onChange={v=>set("description",v)} placeholder="Describe the issue..." multiline/>
 
-      {/* Cost & Time — collapsible */}
-      <button onClick={()=>setShowMore(!showMore)} style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"12px",marginBottom:showMore?12:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",color:"rgba(0,0,0,0.5)",textAlign:"left"}}>{showMore?"▼":"▶"} COST & TIME (optional)</button>
-      {showMore&&(
-        <div style={{background:"rgba(0,0,0,0.02)",borderRadius:12,padding:14,marginBottom:16,border:"1px solid rgba(0,0,0,0.06)"}}>
-          <div style={{marginBottom:12}}>
-            <label style={lbl()}>TARGET DATE</label>
-            <input type="date" value={form.dueDate} onChange={e=>set("dueDate",e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
-          </div>
-          <ComboField label="ESTIMATED DURATION" value={form.duration} onChange={v=>set("duration",v)} options={DURATION_OPTIONS} placeholder="e.g. 3 days"/>
-          <ComboField label="COST IMPACT" value={form.costImpact} onChange={v=>set("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder="e.g. No change"/>
-          {form.costImpact&&form.costImpact!=="No change"&&form.costImpact!=="To be confirmed by QS"&&(
-            <>
-              <VoiceField label="COST AMOUNT" value={form.costAmount} onChange={v=>set("costAmount",v)} placeholder="e.g. $500, TBC"/>
-              <ComboField label="COST RESPONSIBLE" value={form.costResponsible} onChange={v=>set("costResponsible",v)} options={COST_RESPONSIBLE_OPTIONS} placeholder="Who bears the cost?"/>
-              <VoiceField label="COST REMARKS" value={form.costRemarks} onChange={v=>set("costRemarks",v)} placeholder="Contract clause, reference..." multiline/>
-            </>
-          )}
+      {/* Cost & Time */}
+      <div style={{background:"rgba(0,0,0,0.02)",borderRadius:12,padding:14,marginBottom:16,border:"1px solid rgba(0,0,0,0.06)"}}>
+        <div style={{marginBottom:12}}>
+          <label style={lbl()}>TARGET DATE</label>
+          <input type="date" value={form.dueDate} onChange={e=>set("dueDate",e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
         </div>
-      )}
+        <ComboField label="ESTIMATED DURATION" value={form.duration} onChange={v=>set("duration",v)} options={DURATION_OPTIONS} placeholder="e.g. 3 days"/>
+        <ComboField label="COST IMPACT" value={form.costImpact} onChange={v=>set("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder="e.g. No change"/>
+        {form.costImpact&&form.costImpact!=="No change"&&form.costImpact!=="To be confirmed by QS"&&(
+          <>
+            <VoiceField label="COST AMOUNT" value={form.costAmount} onChange={v=>set("costAmount",v)} placeholder="e.g. $500, TBC"/>
+            <ComboField label="COST RESPONSIBLE" value={form.costResponsible} onChange={v=>set("costResponsible",v)} options={COST_RESPONSIBLE_OPTIONS} placeholder="Who bears the cost?"/>
+            <VoiceField label="COST REMARKS" value={form.costRemarks} onChange={v=>set("costRemarks",v)} placeholder="Contract clause, reference..." multiline/>
+          </>
+        )}
+      </div>
 
       <div style={{marginBottom:20}}>
         <label style={lbl()}>PHOTOS ({form.photos.length}/{MAX_PHOTOS})</label>
