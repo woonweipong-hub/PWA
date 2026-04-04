@@ -2982,6 +2982,8 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[compareZoom,setCompareZoom]=useState(1);
   const[comparePan,setComparePan]=useState({x:0,y:0});
   const[compareHighlight,setCompareHighlight]=useState(null);
+  const[editingDiffItem,setEditingDiffItem]=useState(null);
+  const[diffEdits,setDiffEdits]=useState({});
   const comparePanStart=useRef(null);
   const comparePinchDist=useRef(null);
   const compareOverlayCanvasRef=useRef();
@@ -3070,7 +3072,7 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
       setCompareError("Choose 2 different PDF drawings.");
       return;
     }
-    setComparing(true);setCompareError("");setCompareRes(null);setCompareZoom(1);setComparePan({x:0,y:0});
+    setComparing(true);setCompareError("");setCompareRes(null);setCompareZoom(1);setComparePan({x:0,y:0});setDiffEdits({});
     setCompareAiError("");setCompareAiReport("");
     setCompareAiLocked(false);setCompareAiApprovedBy("");setCompareAiApprovedAt(null);setCompareAuditLog([]);
     try{
@@ -3221,6 +3223,7 @@ Return valid JSON only with this shape:
       aiApprovedBy:compareAiApprovedBy,aiApprovedAt:compareAiApprovedAt,
       auditLog:[...compareAuditLog],
       markups:[...compareMarkupStrokes],
+      diffEdits:{...diffEdits},
       overlayThumb,
       savedBy:member?.name||""
     };
@@ -3247,6 +3250,7 @@ Return valid JSON only with this shape:
     setCompareAiApprovedAt(saved.aiApprovedAt||null);
     setCompareAuditLog(saved.auditLog||[]);
     setCompareMarkupStrokes(saved.markups||[]);
+    setDiffEdits(saved.diffEdits||{});
     setViewingSaved(saved.id);
     setShowCompare(true);
   };
@@ -3493,7 +3497,7 @@ Return valid JSON only with this shape:
   const exportCompareCsv=()=>{
     if(!compareRes)return;
     const stamp=new Date(compareRes.generatedAt||Date.now()).toISOString();
-    const header=["Type","Line","Base Version","Revision Version","Generated At","Project","Company"];
+    const header=["Type","Line","Base Version","Revision Version","Generated At","Project","Remarks"];
     const rows=[];
     if(compareAiReport){
       rows.push(["AI_REPORT",compareAiReport.replace(/\n/g," | "),compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]);
@@ -3502,8 +3506,8 @@ Return valid JSON only with this shape:
     compareAuditLog.forEach(e=>rows.push(["AUDIT",`${e.action.toUpperCase()} by ${e.by} at ${new Date(e.at).toISOString()}${e.reason?" — Reason: "+e.reason:""}`,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]));
     compareMarkupStrokes.filter(s=>s.type==="text"&&s.text).forEach(s=>rows.push(["MARKUP",s.text,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]));
     if(compareMarkupStrokes.length>0)rows.push(["MARKUP_COUNT",`${compareMarkupStrokes.length} annotation(s): ${compareMarkupStrokes.filter(s=>s.type==="text").length} text, ${compareMarkupStrokes.filter(s=>s.type==="freehand").length} freehand, ${compareMarkupStrokes.filter(s=>s.type==="arrow").length} arrow, ${compareMarkupStrokes.filter(s=>s.type==="circle").length} circle`,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]);
-    compareRes.added.forEach(line=>rows.push(["ADDED",line?.text||line,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]));
-    compareRes.removed.forEach(line=>rows.push(["REMOVED",line?.text||line,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]));
+    compareRes.added.forEach((line,i)=>{const e=diffEdits[`added_${i}`];rows.push(["ADDED",e?.name||line?.text||line,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",e?.remark||""]);});
+    compareRes.removed.forEach((line,i)=>{const e=diffEdits[`removed_${i}`];rows.push(["REMOVED",e?.name||line?.text||line,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",e?.remark||""]);});
     if(rows.length===0)rows.push(["NO_DIFF","No added/removed lines detected",compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]);
     const csv=[header,...rows].map(r=>r.map(csvCell).join(",")).join("\n");
     const fn=`${fileTimestamp()}-compare_${(compareRes.baseName||"base").replace(/\W+/g,"_")}_to_${(compareRes.targetName||"revision").replace(/\W+/g,"_")}.csv`;
@@ -3512,8 +3516,8 @@ Return valid JSON only with this shape:
 
   const exportComparePdf=()=>{
     if(!compareRes)return;
-    const addedHtml=(compareRes.added.length?compareRes.added:["No added lines detected."]).map((l,i)=>`<tr><td>${i+1}</td><td>${sanitize(l?.text||l)}</td></tr>`).join("");
-    const removedHtml=(compareRes.removed.length?compareRes.removed:["No removed lines detected."]).map((l,i)=>`<tr><td>${i+1}</td><td>${sanitize(l?.text||l)}</td></tr>`).join("");
+    const addedHtml=(compareRes.added.length?compareRes.added:["No added lines detected."]).map((l,i)=>{const e=diffEdits[`added_${i}`];const txt=e?.name?`<b>${sanitize(e.name)}</b> <span style="color:#999;font-size:10px">(was: ${sanitize(l?.text||l)})</span>`:sanitize(l?.text||l);return`<tr><td>${i+1}</td><td>${txt}${e?.remark?`<div style="color:#666;font-size:10px;margin-top:2px;font-style:italic">💬 ${sanitize(e.remark)}</div>`:""}</td></tr>`;}).join("");
+    const removedHtml=(compareRes.removed.length?compareRes.removed:["No removed lines detected."]).map((l,i)=>{const e=diffEdits[`removed_${i}`];const txt=e?.name?`<b>${sanitize(e.name)}</b> <span style="color:#999;font-size:10px">(was: ${sanitize(l?.text||l)})</span>`:sanitize(l?.text||l);return`<tr><td>${i+1}</td><td>${txt}${e?.remark?`<div style="color:#666;font-size:10px;margin-top:2px;font-style:italic">💬 ${sanitize(e.remark)}</div>`:""}</td></tr>`;}).join("");
     const stamp=new Date(compareRes.generatedAt||Date.now());
     const aiApprovalHtml=compareAiReport?`<div style="margin:8px 0 0;font-size:11px;color:${compareAiLocked?"#1a7a35":"#666"};background:${compareAiLocked?"#eefcf1":"#f7f7f7"};border:1px solid ${compareAiLocked?"#9cd8ad":"#ddd"};border-radius:6px;padding:8px"><b>AI Report Status:</b> ${compareAiLocked?"LOCKED":"DRAFT"}${compareAiApprovedBy?` | <b>Approved by:</b> ${sanitize(compareAiApprovedBy)}`:""}${compareAiApprovedAt?` | <b>Approved at:</b> ${sanitize(new Date(compareAiApprovedAt).toLocaleString())}`:""}</div>`:"";
     const auditHtml=compareAuditLog.length?`<div style="margin:8px 0 0;font-size:10px;border:1px solid #ddd;border-radius:6px;padding:8px;background:#fafafa"><b>Audit Trail</b>${compareAuditLog.map(e=>`<div style="margin:3px 0;color:${e.action==="lock"?"#1a7a35":"#b36b00"}"><b>${e.action.toUpperCase()}</b> by ${sanitize(e.by)} at ${sanitize(new Date(e.at).toLocaleString())}${e.reason&&e.action==="unlock"?` — <i>${sanitize(e.reason)}</i>`:""}</div>`).join("")}</div>`:"";
@@ -3882,21 +3886,39 @@ Return valid JSON only with this shape:
                     </div>
                   </div>
 
-                  <div style={{marginBottom:12}}>
-                    <div style={{fontSize:11,fontWeight:700,color:BCA_SCDF_REVISION_COLORS.added,marginBottom:6,fontFamily:"'Barlow Condensed',sans-serif"}}>ADDED (RED)</div>
-                    <div style={{maxHeight:180,overflowY:"auto",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:10}}>
-                      {compareRes.added.length===0&&<div style={{fontSize:12,color:"rgba(255,255,255,0.45)"}}>No added lines detected.</div>}
-                      {compareRes.added.map((line,i)=>{const l=typeof line==="object"?line:{text:line};const active=compareHighlight?.text===l.text;return <div key={i} onClick={()=>{if(l.xPct!==undefined){setCompareHighlight({x:l.xPct,y:l.yPct,w:l.wPct||10,text:l.text,color:"#ff3b30"});setCompareZoom(2.5);setComparePan({x:-(l.xPct-50)*3,y:-(l.yPct-50)*3});}}} style={{fontSize:11,color:active?"#ff3b30":"rgba(255,255,255,0.86)",background:active?"rgba(255,59,48,0.15)":"none",padding:"4px 6px",margin:"0 -6px",borderRadius:active?6:0,borderBottom:i===compareRes.added.length-1?"none":"1px solid rgba(255,255,255,0.06)",wordBreak:"break-word",cursor:l.xPct!==undefined?"pointer":"default"}}>{l.text||line}</div>;})}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{fontSize:11,fontWeight:700,color:BCA_SCDF_REVISION_COLORS.removed,marginBottom:6,fontFamily:"'Barlow Condensed',sans-serif"}}>REMOVED (GREEN)</div>
-                    <div style={{maxHeight:180,overflowY:"auto",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:10}}>
-                      {compareRes.removed.length===0&&<div style={{fontSize:12,color:"rgba(255,255,255,0.45)"}}>No removed lines detected.</div>}
-                      {compareRes.removed.map((line,i)=>{const l=typeof line==="object"?line:{text:line};const active=compareHighlight?.text===l.text;return <div key={i} onClick={()=>{if(l.xPct!==undefined){setCompareHighlight({x:l.xPct,y:l.yPct,w:l.wPct||10,text:l.text,color:"#0055ff"});setCompareZoom(2.5);setComparePan({x:-(l.xPct-50)*3,y:-(l.yPct-50)*3});}}} style={{fontSize:11,color:active?"#4a90ff":"rgba(255,255,255,0.86)",background:active?"rgba(0,85,255,0.15)":"none",padding:"4px 6px",margin:"0 -6px",borderRadius:active?6:0,borderBottom:i===compareRes.removed.length-1?"none":"1px solid rgba(255,255,255,0.06)",wordBreak:"break-word",cursor:l.xPct!==undefined?"pointer":"default"}}>{l.text||line}</div>;})}
-                    </div>
-                  </div>
+                  {["added","removed"].map(diffType=>{
+                    const items=diffType==="added"?compareRes.added:compareRes.removed;
+                    const accentColor=diffType==="added"?"#ff3b30":"#0055ff";
+                    const labelColor=diffType==="added"?BCA_SCDF_REVISION_COLORS.added:BCA_SCDF_REVISION_COLORS.removed;
+                    const label=diffType==="added"?"ADDED (RED)":"REMOVED (GREEN)";
+                    return(
+                      <div key={diffType} style={{marginBottom:12}}>
+                        <div style={{fontSize:11,fontWeight:700,color:labelColor,marginBottom:6,fontFamily:"'Barlow Condensed',sans-serif"}}>{label}</div>
+                        <div style={{maxHeight:220,overflowY:"auto",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:10}}>
+                          {items.length===0&&<div style={{fontSize:12,color:"rgba(255,255,255,0.45)"}}>No {diffType} lines detected.</div>}
+                          {items.map((line,i)=>{
+                            const l=typeof line==="object"?line:{text:line};
+                            const key=`${diffType}_${i}`;
+                            const edit=diffEdits[key];
+                            const displayName=edit?.name||l.text||line;
+                            const remark=edit?.remark||"";
+                            const active=compareHighlight?.text===l.text;
+                            return(
+                              <div key={i} style={{padding:"5px 6px",margin:"0 -6px",borderRadius:active?8:0,background:active?`${accentColor}22`:"none",borderBottom:i===items.length-1?"none":"1px solid rgba(255,255,255,0.06)"}}>
+                                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                                  <div style={{flex:1,fontSize:11,color:active?accentColor:"rgba(255,255,255,0.86)",wordBreak:"break-word",cursor:l.xPct!==undefined?"pointer":"default"}}
+                                    onClick={()=>{if(l.xPct!==undefined){setCompareHighlight({x:l.xPct,y:l.yPct,w:l.wPct||10,text:l.text,color:accentColor});setCompareZoom(2.5);setComparePan({x:-(l.xPct-50)*3,y:-(l.yPct-50)*3});}}}
+                                  >{edit?.name?<><span style={{textDecoration:"line-through",opacity:0.4,fontSize:10}}>{l.text||line}</span> <span style={{color:accentColor}}>{edit.name}</span></>:displayName}</div>
+                                  <button onClick={()=>setEditingDiffItem({key,type:diffType,original:l.text||line,name:edit?.name||"",remark:edit?.remark||""})} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:6,padding:"3px 7px",color:"rgba(255,255,255,0.5)",fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",flexShrink:0}}>✎</button>
+                                </div>
+                                {remark&&<div style={{fontSize:10,color:"rgba(255,255,255,0.5)",marginTop:3,paddingLeft:2,fontStyle:"italic",borderLeft:`2px solid ${accentColor}40`}}>💬 {remark}</div>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -3925,6 +3947,23 @@ Return valid JSON only with this shape:
                     <div style={{display:"flex",gap:8,marginTop:12}}>
                       <button onClick={()=>{setShowUnlockPrompt(false);setUnlockReason("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CANCEL</button>
                       <button onClick={()=>confirmUnlock(unlockReason.trim())} disabled={!unlockReason.trim()} style={{flex:1,padding:10,borderRadius:10,border:"none",background:unlockReason.trim()?"rgba(255,149,0,0.35)":"rgba(255,255,255,0.1)",color:unlockReason.trim()?"#ffd08a":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>CONFIRM UNLOCK</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {editingDiffItem&&(
+                <div style={{position:"fixed",inset:0,zIndex:280,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+                  <div style={{width:"100%",maxWidth:400,background:"#1a1a1a",borderRadius:14,padding:16,border:`1px solid ${editingDiffItem.type==="added"?"rgba(255,59,48,0.35)":"rgba(0,85,255,0.35)"}`}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:editingDiffItem.type==="added"?"#ff8a8a":"#8ab4ff",marginBottom:4}}>EDIT {editingDiffItem.type.toUpperCase()} ITEM</div>
+                    <div style={{fontSize:10,color:"rgba(255,255,255,0.4)",marginBottom:12,wordBreak:"break-word"}}>Original: {editingDiffItem.original}</div>
+                    <div style={{fontSize:10,color:"rgba(255,255,255,0.45)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:4}}>RENAME</div>
+                    <input value={editingDiffItem.name} onChange={e=>setEditingDiffItem(prev=>({...prev,name:e.target.value}))} placeholder="Custom name (leave blank to keep original)" style={{width:"100%",padding:10,borderRadius:8,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box",marginBottom:10}}/>
+                    <div style={{fontSize:10,color:"rgba(255,255,255,0.45)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:4}}>REMARKS / NOTES</div>
+                    <textarea value={editingDiffItem.remark} onChange={e=>setEditingDiffItem(prev=>({...prev,remark:e.target.value}))} placeholder="Add follow-up notes, comments, or instructions..." rows={3} style={{width:"100%",padding:10,borderRadius:8,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box",resize:"vertical"}}/>
+                    <div style={{display:"flex",gap:8,marginTop:12}}>
+                      <button onClick={()=>setEditingDiffItem(null)} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CANCEL</button>
+                      <button onClick={()=>{const e={...diffEdits};if(editingDiffItem.name.trim()||editingDiffItem.remark.trim()){e[editingDiffItem.key]={name:editingDiffItem.name.trim(),remark:editingDiffItem.remark.trim()};}else{delete e[editingDiffItem.key];}setDiffEdits(e);setEditingDiffItem(null);}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>SAVE</button>
                     </div>
                   </div>
                 </div>
