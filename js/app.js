@@ -165,8 +165,11 @@ function PhotoMarkup({src,onSave,onCancel}){
     [...strokes,current].filter(Boolean).forEach(s=>drawStroke(ctx,s));
   },[imgLoaded,strokes,current]);
 
-  const drawStroke=(ctx,s)=>{
-    ctx.strokeStyle=s.color;ctx.fillStyle=s.color;ctx.lineWidth=3;ctx.lineCap="round";ctx.lineJoin="round";
+  const drawStroke=(ctx,s,scale=1)=>{
+    const lw=3*scale;
+    const fontSize=Math.round(16*scale);
+    const hl=14*scale;
+    ctx.strokeStyle=s.color;ctx.fillStyle=s.color;ctx.lineWidth=lw;ctx.lineCap="round";ctx.lineJoin="round";
     if(s.type==="freehand"&&s.points.length>1){
       ctx.beginPath();ctx.moveTo(s.points[0].x,s.points[0].y);
       for(let i=1;i<s.points.length;i++)ctx.lineTo(s.points[i].x,s.points[i].y);
@@ -174,10 +177,10 @@ function PhotoMarkup({src,onSave,onCancel}){
     }else if(s.type==="arrow"&&s.start&&s.end){
       const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y;
       const len=Math.sqrt(dx*dx+dy*dy);
-      if(len<5)return;
+      if(len<5*scale)return;
       ctx.beginPath();ctx.moveTo(s.start.x,s.start.y);ctx.lineTo(s.end.x,s.end.y);ctx.stroke();
       // Arrowhead
-      const angle=Math.atan2(dy,dx);const hl=14;
+      const angle=Math.atan2(dy,dx);
       ctx.beginPath();
       ctx.moveTo(s.end.x,s.end.y);
       ctx.lineTo(s.end.x-hl*Math.cos(angle-0.4),s.end.y-hl*Math.sin(angle-0.4));
@@ -187,17 +190,18 @@ function PhotoMarkup({src,onSave,onCancel}){
     }else if(s.type==="circle"&&s.start&&s.end){
       const rx=Math.abs(s.end.x-s.start.x)/2,ry=Math.abs(s.end.y-s.start.y)/2;
       const cx=Math.min(s.start.x,s.end.x)+rx,cy=Math.min(s.start.y,s.end.y)+ry;
-      if(rx<3&&ry<3)return;
+      if(rx<3*scale&&ry<3*scale)return;
       ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();
     }else if(s.type==="text"&&s.pos&&s.text){
-      ctx.font="bold 16px 'Barlow Condensed',sans-serif";
+      ctx.font=`bold ${fontSize}px 'Barlow Condensed',sans-serif`;
       ctx.fillStyle=s.color;
       // Background
       const metrics=ctx.measureText(s.text);
+      const pad=4*scale;
       ctx.fillStyle="rgba(0,0,0,0.6)";
-      ctx.fillRect(s.pos.x-2,s.pos.y-16,metrics.width+8,22);
+      ctx.fillRect(s.pos.x-pad/2,s.pos.y-fontSize,metrics.width+pad*2,fontSize*1.4);
       ctx.fillStyle=s.color;
-      ctx.fillText(s.text,s.pos.x+2,s.pos.y);
+      ctx.fillText(s.text,s.pos.x+pad/2,s.pos.y);
     }
   };
 
@@ -207,10 +211,31 @@ function PhotoMarkup({src,onSave,onCancel}){
     return{x:t.clientX-rect.left,y:t.clientY-rect.top};
   };
 
+  const[editingTextIdx,setEditingTextIdx]=useState(null);
+
+  const hitTestText=(p)=>{
+    // Check if tap is on an existing text annotation (search in reverse for top-most)
+    const canvas=canvasRef.current;if(!canvas)return -1;
+    const ctx=canvas.getContext("2d");
+    for(let i=strokes.length-1;i>=0;i--){
+      const s=strokes[i];
+      if(s.type!=="text"||!s.pos||!s.text)continue;
+      ctx.font="bold 16px 'Barlow Condensed',sans-serif";
+      const metrics=ctx.measureText(s.text);
+      const x1=s.pos.x-2,y1=s.pos.y-16,w=metrics.width+8,h=22;
+      if(p.x>=x1&&p.x<=x1+w&&p.y>=y1&&p.y<=y1+h)return i;
+    }
+    return -1;
+  };
+
   const onDown=e=>{
     e.preventDefault();
-    if(tool==="text"){setTextInput(getPos(e));return;}
     const p=getPos(e);
+    if(tool==="text"){
+      const hitIdx=hitTestText(p);
+      if(hitIdx>=0){setEditingTextIdx(hitIdx);setTextInput(strokes[hitIdx].pos);return;}
+      setTextInput(p);return;
+    }
     if(tool==="freehand")setCurrent({type:"freehand",color,points:[p]});
     else setCurrent({type:tool,color,start:p,end:p});
   };
@@ -227,8 +252,17 @@ function PhotoMarkup({src,onSave,onCancel}){
 
   const submitText=(text)=>{
     if(text&&textInput){
-      setStrokes(s=>[...s,{type:"text",color,pos:textInput,text}]);
+      if(editingTextIdx!==null){
+        // Update existing text annotation
+        setStrokes(s=>s.map((st,i)=>i===editingTextIdx?{...st,text,color}:st));
+      }else{
+        setStrokes(s=>[...s,{type:"text",color,pos:textInput,text}]);
+      }
+    }else if(!text&&editingTextIdx!==null){
+      // Empty text = delete the annotation
+      setStrokes(s=>s.filter((_,i)=>i!==editingTextIdx));
     }
+    setEditingTextIdx(null);
     setTextInput(null);
   };
 
@@ -249,14 +283,9 @@ function PhotoMarkup({src,onSave,onCancel}){
       if(s.type==="text")return{...s,pos:{x:s.pos.x*sx,y:s.pos.y*sy}};
       return{...s,start:{x:s.start.x*sx,y:s.start.y*sy},end:{x:s.end.x*sx,y:s.end.y*sy}};
     };
-    fctx.lineWidth=3*sx;fctx.lineCap="round";fctx.lineJoin="round";
     strokes.forEach(s=>{
       const scaled=scaleStroke(s);
-      // Scale font for text
-      if(scaled.type==="text"){
-        fctx.font=`bold ${Math.round(16*sx)}px 'Barlow Condensed',sans-serif`;
-      }
-      drawStroke(fctx,scaled);
+      drawStroke(fctx,scaled,sx);
     });
     onSave(fc.toDataURL("image/jpeg",0.92));
   };
@@ -306,12 +335,13 @@ function PhotoMarkup({src,onSave,onCancel}){
       {textInput&&(
         <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.85)",zIndex:310,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
           <div style={{background:"#1a1a1a",borderRadius:16,padding:20,width:"100%",maxWidth:360}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",marginBottom:12}}>ADD TEXT ANNOTATION</div>
-            <input autoFocus type="text" placeholder="Type annotation..." onKeyDown={e=>{if(e.key==="Enter")submitText(e.target.value);}}
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",marginBottom:12}}>{editingTextIdx!==null?"EDIT TEXT ANNOTATION":"ADD TEXT ANNOTATION"}</div>
+            <input autoFocus type="text" placeholder="Type annotation..." defaultValue={editingTextIdx!==null?strokes[editingTextIdx].text:""} onKeyDown={e=>{if(e.key==="Enter")submitText(e.target.value);}}
               style={{width:"100%",padding:12,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
             <div style={{display:"flex",gap:8,marginTop:12}}>
-              <button onClick={()=>setTextInput(null)} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>CANCEL</button>
-              <button onClick={e=>{const inp=e.target.closest("div").parentElement.querySelector("input");submitText(inp.value);}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>ADD</button>
+              <button onClick={()=>{setEditingTextIdx(null);setTextInput(null);}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>CANCEL</button>
+              {editingTextIdx!==null&&<button onClick={()=>submitText("")} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff3b30",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>DELETE</button>}
+              <button onClick={e=>{const inp=e.target.closest("div").parentElement.querySelector("input");submitText(inp.value);}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{editingTextIdx!==null?"UPDATE":"ADD"}</button>
             </div>
           </div>
         </div>
@@ -514,7 +544,7 @@ async function sendTelegramPhoto(token,chatId,base64DataUrl,caption){
   }catch{return false;}
 }
 
-function generateEmailHTML(defects,projectName,companyName){
+function generateEmailHTML(defects,projectName,companyName,opts={}){
   const total=defects.length;
   const open=defects.filter(d=>d.status==="Open").length;
   const inProg=defects.filter(d=>d.status==="In Progress").length;
@@ -582,8 +612,43 @@ function generateEmailHTML(defects,projectName,companyName){
       <div style="font-size:10px;font-weight:bold;color:#999;letter-spacing:2px;margin-bottom:12px">ALL ENTRIES (${total})</div>
       ${defectRows||'<div style="color:#999;text-align:center;padding:16px">No entries found.</div>'}
     </div>
+    ${opts.drawingsHtml||""}
+    ${opts.comparisonsHtml||""}
     <div style="text-align:center;color:#aaa;font-size:11px;padding:12px">SiteShrimp v2 · ${date}</div>
   </body></html>`;
+}
+
+function generateDrawingsEmailHTML(drawings){
+  if(!drawings||!drawings.length)return"";
+  let html=`<div style="background:#fff;padding:18px;border-radius:12px;margin-bottom:14px"><div style="font-size:10px;font-weight:bold;color:#999;letter-spacing:2px;margin-bottom:12px">📐 DRAWING ANNOTATIONS</div>`;
+  drawings.forEach(d=>{
+    const notes=getDrawingNotes(d.id);
+    const markups=getDrawingMarkup(d.id);
+    const total=notes.length+markups.length;
+    if(total===0)return;
+    html+=`<div style="margin-bottom:12px;padding:12px;border:1px solid #e5e5e5;border-radius:8px;border-left:4px solid #ff6b00"><div style="font-weight:bold;font-size:13px;margin-bottom:6px">${sanitize(d.name)} <span style="color:#999;font-weight:normal;font-size:11px">(${total} annotation${total>1?"s":""})</span></div>`;
+    notes.forEach(n=>{html+=`<div style="font-size:12px;padding:4px 8px;margin:3px 0;background:#f5f3ff;border-radius:4px"><span style="color:#5856d6;font-weight:bold">NOTE:</span> ${sanitize(n.text)} <span style="color:#999;font-size:10px">— ${sanitize(n.createdBy||"")}</span></div>`;});
+    markups.filter(s=>s.type==="text"&&s.text).forEach(s=>{html+=`<div style="font-size:12px;padding:4px 8px;margin:3px 0;background:#fff8f3;border-radius:4px"><span style="color:#ff6b00;font-weight:bold">MARKUP:</span> ${sanitize(s.text)}</div>`;});
+    const nonText=markups.filter(s=>s.type!=="text");
+    if(nonText.length)html+=`<div style="font-size:11px;color:#999;margin-top:4px">${nonText.length} graphical annotation(s): ${nonText.filter(s=>s.type==="freehand").length} freehand, ${nonText.filter(s=>s.type==="arrow").length} arrow, ${nonText.filter(s=>s.type==="circle").length} circle</div>`;
+    html+=`</div>`;
+  });
+  html+=`</div>`;
+  return html;
+}
+
+function generateComparisonsEmailHTML(comparisons){
+  if(!comparisons||!comparisons.length)return"";
+  let html=`<div style="background:#fff;padding:18px;border-radius:12px;margin-bottom:14px"><div style="font-size:10px;font-weight:bold;color:#999;letter-spacing:2px;margin-bottom:12px">🔍 SAVED COMPARISONS</div>`;
+  comparisons.forEach(sc=>{
+    html+=`<div style="margin-bottom:12px;padding:12px;border:1px solid #e5e5e5;border-radius:8px;border-left:4px solid #5856d6"><div style="font-weight:bold;font-size:13px;margin-bottom:6px">${sanitize(sc.baseName)} → ${sanitize(sc.targetName)}</div>`;
+    html+=`<div style="display:flex;gap:10px;margin-bottom:6px"><span style="color:#ff3b30;font-weight:bold;font-size:12px">+${sc.totalAdded||0} added</span><span style="color:#34c759;font-weight:bold;font-size:12px">-${sc.totalRemoved||0} removed</span></div>`;
+    if(sc.aiReport)html+=`<div style="font-size:11px;background:#f5f3ff;border:1px solid #d8d2ff;border-radius:6px;padding:8px;margin:6px 0;white-space:pre-wrap">${sanitize(sc.aiReport)}</div><div style="font-size:10px;color:${sc.aiLocked?"#1a7a35":"#888"};margin-bottom:4px">Status: ${sc.aiLocked?"APPROVED":"DRAFT"}</div>`;
+    (sc.markups||[]).filter(s=>s.type==="text"&&s.text).forEach(s=>{html+=`<div style="font-size:11px;padding:3px 8px;margin:2px 0;background:#fff8f3;border-radius:4px"><span style="color:#ff6b00;font-weight:bold">📝</span> ${sanitize(s.text)}</div>`;});
+    html+=`</div>`;
+  });
+  html+=`</div>`;
+  return html;
 }
 
 // ── UI Helpers ────────────────────────────────────────────────────
@@ -2503,6 +2568,11 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
   const tgCfg=local.get(TG_KEY);
   const canUpdate=["Admin","Manager","Inspector"].includes(member?.role);
   const canDelete=member?.role==="Admin";
+  // Comment editing state
+  const[editingCommentIdx,setEditingCommentIdx]=useState(null);
+  const[editingCommentText,setEditingCommentText]=useState("");
+  // Comment photo markup state
+  const[markupCommentIdx,setMarkupCommentIdx]=useState(null);
 
   // Capture photo for comment
   const handleCommentPhoto=e=>{
@@ -2567,6 +2637,32 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
       setComment("");setCommentPhoto(null);
     }catch(e){alert("Failed to add comment: "+e.message);}
     setSaving(false);
+  };
+
+  // Edit an existing comment
+  const saveCommentEdit=async(idx)=>{
+    if(!editingCommentText.trim())return;
+    const comments=[...(latestRef.current.comments||[])];
+    comments[idx]={...comments[idx],text:editingCommentText,editedAt:Date.now()};
+    try{
+      await DB.defects.update(defect.id,{comments});
+      latestRef.current={...latestRef.current,comments};
+      onUpdate({...latestRef.current});
+    }catch(e){alert("Failed to edit comment: "+e.message);}
+    setEditingCommentIdx(null);setEditingCommentText("");
+  };
+
+  // Save markup on a comment photo
+  const saveCommentMarkup=async(dataUrl)=>{
+    if(markupCommentIdx===null)return;
+    const comments=[...(latestRef.current.comments||[])];
+    comments[markupCommentIdx]={...comments[markupCommentIdx],photo:dataUrl,editedAt:Date.now()};
+    try{
+      await DB.defects.update(defect.id,{comments});
+      latestRef.current={...latestRef.current,comments};
+      onUpdate({...latestRef.current});
+    }catch(e){alert("Failed to save markup: "+e.message);}
+    setMarkupCommentIdx(null);
   };
 
   const deleteDefect=async()=>{
@@ -2666,8 +2762,24 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
                     {c.role&&<RoleChip r={c.role}/>}
                     <span style={{fontSize:10,color:"rgba(0,0,0,0.3)"}}>{new Date(c.at).toLocaleDateString()}{" "}{new Date(c.at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</span>
                   </div>
-                  {c.text&&<div style={{fontSize:13,color:"#333"}}>{c.text}</div>}
-                  {c.photo&&<img src={c.photo} alt="" style={{width:"100%",maxHeight:200,objectFit:"contain",borderRadius:8,marginTop:6,background:"#f8f8f6"}}/>}
+                  {editingCommentIdx===i?(
+                    <div style={{display:"flex",gap:6,alignItems:"center",marginTop:4}}>
+                      <input autoFocus value={editingCommentText} onChange={e=>setEditingCommentText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveCommentEdit(i)} style={{...inp,flex:1,fontSize:13}}/>
+                      <button onClick={()=>saveCommentEdit(i)} style={{background:"#ff6b00",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>SAVE</button>
+                      <button onClick={()=>{setEditingCommentIdx(null);setEditingCommentText("");}} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"6px 10px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",color:"rgba(0,0,0,0.5)"}}>CANCEL</button>
+                    </div>
+                  ):(
+                    <div style={{display:"flex",alignItems:"flex-start",gap:6}}>
+                      {c.text&&<div style={{fontSize:13,color:"#333",flex:1}}>{c.text}{c.editedAt&&<span style={{fontSize:9,color:"rgba(0,0,0,0.25)",marginLeft:6}}>(edited)</span>}</div>}
+                      {canUpdate&&c.by===(member?.name||"")&&c.text&&!isStatus&&<button onClick={()=>{setEditingCommentIdx(i);setEditingCommentText(c.text);}} title="Edit comment" style={{background:"none",border:"none",cursor:"pointer",fontSize:11,color:"rgba(0,0,0,0.25)",padding:2,flexShrink:0}}>✏️</button>}
+                    </div>
+                  )}
+                  {c.photo&&(
+                    <div style={{position:"relative",marginTop:6,cursor:canUpdate?"pointer":"default"}} onClick={()=>{if(canUpdate)setMarkupCommentIdx(i);}} title={canUpdate?"Tap to markup photo":""}>
+                      <img src={c.photo} alt="" style={{width:"100%",maxHeight:200,objectFit:"contain",borderRadius:8,background:"#f8f8f6"}}/>
+                      {canUpdate&&<div style={{position:"absolute",bottom:6,right:6,background:"rgba(0,0,0,0.6)",borderRadius:6,padding:"3px 8px",fontSize:10,color:"#fff",fontWeight:700}}>✏ MARKUP</div>}
+                    </div>
+                  )}
                   {/* Reactions */}
                   <div style={{display:"flex",gap:4,marginTop:6,flexWrap:"wrap",alignItems:"center"}}>
                     {Object.entries(reactions).map(([emoji,users])=>(
@@ -2705,6 +2817,10 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
           )}
         </div>
       </div>
+      {/* Comment photo markup modal */}
+      {markupCommentIdx!==null&&(latestRef.current.comments||[])[markupCommentIdx]?.photo&&(
+        <PhotoMarkup src={(latestRef.current.comments||[])[markupCommentIdx].photo} onSave={saveCommentMarkup} onCancel={()=>setMarkupCommentIdx(null)}/>
+      )}
     </div>
   );
 }
@@ -2823,6 +2939,19 @@ function Report({defects,onEmailSetup,currentProject,company}){
   const[showFilters,setShowFilters]=useState(false);
   const[sevFilter,setSevFilter]=useState([]);const[statusFilter,setStatusFilter]=useState([]);
   const[assigneeFilter,setAssigneeFilter]=useState([]);const[dateFrom,setDateFrom]=useState("");const[dateTo,setDateTo]=useState("");
+  const[showPreview,setShowPreview]=useState(false);
+  // Section toggles for email content
+  const[incDefects,setIncDefects]=useState(true);
+  const[incDrawings,setIncDrawings]=useState(true);
+  const[incComparisons,setIncComparisons]=useState(true);
+  // Load drawings list from DB for preview
+  const[reportDrawings,setReportDrawings]=useState([]);
+  useEffect(()=>{
+    if(!company?.companyId||!currentProject?.id)return;
+    DB.drawings.list(`companyId="${company.companyId}" && projectId="${currentProject.id}"`).then(items=>setReportDrawings(items)).catch(()=>{});
+  },[company?.companyId,currentProject?.id]);
+  const savedComparisons=getSavedComparisons(currentProject?.id);
+  const drawingsWithAnnotations=reportDrawings.filter(d=>getDrawingMarkup(d.id).length>0||getDrawingNotes(d.id).length>0);
 
   const emailCfg=local.get(EMAIL_KEY);
   const emailReady=!!(emailCfg?.publicKey&&emailCfg?.serviceId&&emailCfg?.templateId&&emailCfg?.recipients?.length);
@@ -2845,12 +2974,18 @@ function Report({defects,onEmailSetup,currentProject,company}){
     return true;
   });
 
+  const buildEmailOpts=()=>({
+    drawingsHtml:incDrawings?generateDrawingsEmailHTML(reportDrawings):"",
+    comparisonsHtml:incComparisons?generateComparisonsEmailHTML(savedComparisons):""
+  });
+
   const sendReport=async()=>{
     if(!emailReady)return;
     setSending(true);setSendRes(null);
     try{
       emailjs.init(emailCfg.publicKey);
-      const html=generateEmailHTML(filtered,currentProject?.name,company?.companyName);
+      const opts=buildEmailOpts();
+      const html=generateEmailHTML(incDefects?filtered:[],currentProject?.name,company?.companyName,opts);
       const date=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
       for(const email of emailCfg.recipients.filter(r=>r.trim())){
         await emailjs.send(emailCfg.serviceId,emailCfg.templateId,{to_email:email,subject:`SiteShrimp Report – ${currentProject?.name||""} – ${date}`,html_content:html});
@@ -2897,9 +3032,74 @@ function Report({defects,onEmailSetup,currentProject,company}){
         <button onClick={emailReady?sendReport:onEmailSetup} disabled={sending} style={{flex:1,background:"#ff6b00",border:"none",borderRadius:10,padding:"12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",opacity:sending?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
           {sending?<><Spin size={14}/><span>SENDING...</span></>:emailReady?"📧 EMAIL REPORT":"⚙️ SETUP EMAIL"}
         </button>
+        <button onClick={()=>setShowPreview(p=>!p)} style={{background:showPreview?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 14px",color:showPreview?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>👁 PREVIEW</button>
         <button onClick={()=>exportCSV(filtered,currentProject?.name)} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>📊 CSV</button>
         {emailReady&&<button onClick={onEmailSetup} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>EDIT</button>}
       </div>
+
+      {/* Email content sections — opt in/out */}
+      <div style={{background:"#fff",borderRadius:14,padding:14,marginBottom:14}}>
+        <div style={lbl()}>EMAIL CONTENT SECTIONS</div>
+        {[
+          {key:"defects",val:incDefects,set:setIncDefects,icon:"📋",label:"Defect Entries",count:filtered.length,color:"#ff3b30"},
+          {key:"drawings",val:incDrawings,set:setIncDrawings,icon:"📐",label:"Drawing Annotations",count:drawingsWithAnnotations.length,color:"#ff6b00"},
+          {key:"comparisons",val:incComparisons,set:setIncComparisons,icon:"🔍",label:"Saved Comparisons",count:savedComparisons.length,color:"#5856d6"}
+        ].map(sec=>(
+          <button key={sec.key} onClick={()=>sec.set(v=>!v)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",marginBottom:6,borderRadius:10,border:`1.5px solid ${sec.val?sec.color+"40":"rgba(0,0,0,0.08)"}`,background:sec.val?sec.color+"0a":"#fafafa",cursor:"pointer",textAlign:"left"}}>
+            <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${sec.val?sec.color:"rgba(0,0,0,0.15)"}`,background:sec.val?sec.color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#fff",flexShrink:0}}>{sec.val?"✓":""}</div>
+            <span style={{fontSize:13,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:"#1a1a1a",flex:1}}>{sec.icon} {sec.label}</span>
+            <span style={{fontSize:12,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:sec.count>0?sec.color:"rgba(0,0,0,0.25)"}}>{sec.count}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Preview panel */}
+      {showPreview&&(
+        <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,border:"2px solid rgba(255,107,0,0.2)"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+            <div style={lbl()}>EMAIL PREVIEW</div>
+            {emailReady&&<div style={{fontSize:10,color:"rgba(0,0,0,0.35)"}}>Recipients: {emailCfg.recipients.filter(r=>r.trim()).join(", ")}</div>}
+          </div>
+          {incDefects&&filtered.length>0&&(
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:11,fontWeight:800,color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>📋 DEFECTS ({filtered.length})</div>
+              {filtered.slice(0,5).map(d=>(
+                <div key={d.id} style={{padding:"6px 10px",marginBottom:4,background:"#fafafa",borderRadius:6,borderLeft:`3px solid ${SEV_COLOR[d.severity]||"#999"}`,fontSize:12}}>
+                  <span style={{fontWeight:700}}>{d.title||"—"}</span>
+                  <span style={{color:"#999",marginLeft:8,fontSize:11}}>{d.severity} · {d.status}</span>
+                </div>
+              ))}
+              {filtered.length>5&&<div style={{fontSize:11,color:"rgba(0,0,0,0.35)",paddingLeft:10}}>... and {filtered.length-5} more</div>}
+            </div>
+          )}
+          {incDrawings&&drawingsWithAnnotations.length>0&&(
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:11,fontWeight:800,color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>📐 DRAWING ANNOTATIONS ({drawingsWithAnnotations.length} drawing{drawingsWithAnnotations.length>1?"s":""})</div>
+              {drawingsWithAnnotations.map(d=>{
+                const notes=getDrawingNotes(d.id);const markups=getDrawingMarkup(d.id);
+                return(
+                  <div key={d.id} style={{padding:"6px 10px",marginBottom:4,background:"#fff8f3",borderRadius:6,borderLeft:"3px solid #ff6b00",fontSize:12}}>
+                    <span style={{fontWeight:700}}>{d.name}</span>
+                    <span style={{color:"#999",marginLeft:8,fontSize:11}}>{notes.length} note(s), {markups.length} markup(s)</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {incComparisons&&savedComparisons.length>0&&(
+            <div style={{marginBottom:4}}>
+              <div style={{fontSize:11,fontWeight:800,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>🔍 COMPARISONS ({savedComparisons.length})</div>
+              {savedComparisons.map((sc,i)=>(
+                <div key={i} style={{padding:"6px 10px",marginBottom:4,background:"#f5f3ff",borderRadius:6,borderLeft:"3px solid #5856d6",fontSize:12}}>
+                  <span style={{fontWeight:700}}>{sc.baseName} → {sc.targetName}</span>
+                  <span style={{color:"#999",marginLeft:8,fontSize:11}}>+{sc.totalAdded||0} / -{sc.totalRemoved||0}{sc.aiReport?" · AI report":""}  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {!incDefects&&!incDrawings&&!incComparisons&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",fontSize:12,padding:10}}>No sections selected. Toggle at least one section above.</div>}
+        </div>
+      )}
 
       {sendRes&&(
         <div style={{background:sendRes==="success"?"rgba(48,209,88,0.1)":"rgba(255,59,48,0.1)",border:`1px solid ${sendRes==="success"?"rgba(48,209,88,0.3)":"rgba(255,59,48,0.3)"}`,borderRadius:10,padding:"12px 16px",marginBottom:14,color:sendRes==="success"?"#1a7a35":"#cc0000",fontSize:13,fontWeight:600}}>
@@ -3537,6 +3737,66 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),500);
   };
 
+  // Export All PDF — combined printable report of drawings + saved comparisons
+  const exportAllPdf=()=>{
+    const stamp=new Date().toLocaleString();
+    const proj=sanitize(currentProject?.name||"—");
+    const comp=sanitize(company?.companyName||"—");
+
+    // Build drawing sections
+    let drawingSections="";
+    drawings.forEach(d=>{
+      const notes=getDrawingNotes(d.id);
+      const markups=getDrawingMarkup(d.id);
+      const dPins=allPins.filter(p=>p.drawingId===d.id);
+      const pinRows=dPins.map((p,i)=>{
+        const df=defects.find(x=>x.id===p.entryId);
+        return`<tr><td>${i+1}</td><td style="color:#ff3b30;font-weight:700">PIN</td><td>${sanitize(df?.title||"Linked entry")}</td><td>${sanitize(df?.severity||"—")}</td><td>${sanitize(df?.status||"—")}</td></tr>`;
+      }).join("");
+      const noteRows=notes.map((n,i)=>`<tr><td>${dPins.length+i+1}</td><td style="color:#5856d6;font-weight:700">NOTE</td><td>${sanitize(n.text)}</td><td>By ${sanitize(n.createdBy||"—")}</td><td>(${Math.round(n.x)}%, ${Math.round(n.y)}%)</td></tr>`).join("");
+      const markupRows=markups.map((s,i)=>`<tr><td>${dPins.length+notes.length+i+1}</td><td style="color:#ff6b00;font-weight:700">MARKUP</td><td>${sanitize(s.type==="text"?s.text:s.type)}</td><td>${sanitize(s.color||"")}</td><td>—</td></tr>`).join("");
+      const total=dPins.length+notes.length+markups.length;
+      if(total>0){
+        drawingSections+=`<div style="margin-bottom:18px"><h3 style="margin:0 0 6px;font-size:14px;color:#ff6b00">📐 ${sanitize(d.name)} <span style="font-weight:400;color:#888;font-size:11px">(${total} item${total>1?"s":""})</span></h3><table><thead><tr><th style="width:36px">#</th><th>Type</th><th>Title / Content</th><th>Category</th><th>Status / Location</th></tr></thead><tbody>${pinRows}${noteRows}${markupRows}</tbody></table></div>`;
+      }
+    });
+
+    // Build comparison sections
+    let compareSections="";
+    savedComparisons.forEach(sc=>{
+      const scStamp=new Date(sc.savedAt).toLocaleString();
+      const addedRows=(sc.added||[]).map((l,i)=>`<tr><td>${i+1}</td><td>${sanitize(l?.text||l)}</td></tr>`).join("")||`<tr><td colspan="2" style="color:#999;text-align:center">No added lines</td></tr>`;
+      const removedRows=(sc.removed||[]).map((l,i)=>`<tr><td>${i+1}</td><td>${sanitize(l?.text||l)}</td></tr>`).join("")||`<tr><td colspan="2" style="color:#999;text-align:center">No removed lines</td></tr>`;
+      const aiSection=sc.aiReport?`<div style="margin:8px 0;background:#f5f3ff;border:1px solid #d8d2ff;border-radius:6px;padding:8px;font-size:11px;white-space:pre-wrap">${sanitize(sc.aiReport)}</div><div style="font-size:10px;color:${sc.aiLocked?"#1a7a35":"#666"};margin-bottom:6px"><b>Status:</b> ${sc.aiLocked?"LOCKED / APPROVED":"DRAFT"}</div>`:"";
+      const auditSection=(sc.auditLog||[]).length?`<div style="font-size:10px;border:1px solid #ddd;border-radius:6px;padding:6px;background:#fafafa;margin:6px 0"><b>Audit Trail</b>${(sc.auditLog||[]).map(e=>`<div style="margin:2px 0;color:${e.action==="lock"?"#1a7a35":"#b36b00"}"><b>${e.action.toUpperCase()}</b> by ${sanitize(e.by)} at ${sanitize(new Date(e.at).toLocaleString())}${e.reason?` — <i>${sanitize(e.reason)}</i>`:""}</div>`).join("")}</div>`:"";
+      const markupSection=(sc.markups||[]).length?`<div style="font-size:10px;color:#ff6b00;margin:4px 0">✏ ${(sc.markups||[]).length} markup annotation(s): ${(sc.markups||[]).filter(s=>s.type==="text").map(s=>`"${sanitize(s.text)}"`).join(", ")||"(no text)"}</div>`:"";
+      compareSections+=`<div style="margin-bottom:18px;page-break-inside:avoid"><h3 style="margin:0 0 6px;font-size:14px;color:#5856d6">🔍 ${sanitize(sc.baseName)} → ${sanitize(sc.targetName)} <span style="font-weight:400;color:#888;font-size:11px">(${scStamp})</span></h3><div style="display:flex;gap:8px;margin:6px 0"><div style="flex:1;border:1px solid #ff3b30;border-radius:6px;padding:6px;background:#fff3f2"><b>Added</b><div style="font-size:18px;font-weight:bold">${sc.totalAdded||0}</div></div><div style="flex:1;border:1px solid #34c759;border-radius:6px;padding:6px;background:#f0fff5"><b>Removed</b><div style="font-size:18px;font-weight:bold">${sc.totalRemoved||0}</div></div></div>${aiSection}${auditSection}${markupSection}<h4 style="color:#ff3b30;margin:8px 0 4px;font-size:12px">Added Lines</h4><table><thead><tr><th style="width:36px">#</th><th>Line</th></tr></thead><tbody>${addedRows}</tbody></table><h4 style="color:#34c759;margin:8px 0 4px;font-size:12px">Removed Lines</h4><table><thead><tr><th style="width:36px">#</th><th>Line</th></tr></thead><tbody>${removedRows}</tbody></table></div>`;
+    });
+
+    if(!drawingSections&&!compareSections){alert("No annotations or comparisons to export.");return;}
+
+    const w=window.open("","_blank");
+    if(!w){alert("Popup blocked. Please allow popups to export PDF.");return;}
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileTimestamp()}-${sanitize(currentProject?.name||"export")}_all_annotations</title><style>
+      body{font-family:Arial,sans-serif;padding:22px;color:#111;max-width:900px;margin:0 auto}
+      h1{margin:0 0 4px;font-size:22px} h2{margin:22px 0 10px;font-size:17px;border-bottom:2px solid #ddd;padding-bottom:4px}
+      h3{page-break-after:avoid} h4{page-break-after:avoid}
+      .meta{font-size:12px;color:#444;margin-bottom:4px}
+      table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:6px}th,td{border:1px solid #ddd;padding:6px;vertical-align:top}
+      th{background:#f5f5f5;text-align:left}
+      @media print{.no-print{display:none}}
+    </style></head><body>
+      <h1>Project Annotations Report</h1>
+      <div class="meta"><b>Project:</b> ${proj} | <b>Company:</b> ${comp} | <b>Generated:</b> ${sanitize(stamp)}</div>
+      <div class="meta"><b>Drawings:</b> ${drawings.length} | <b>Saved Comparisons:</b> ${savedComparisons.length}</div>
+      ${drawingSections?`<h2>📐 Drawing Annotations</h2>${drawingSections}`:""}
+      ${compareSections?`<h2>🔍 Saved Comparisons</h2>${compareSections}`:""}
+      <div class="no-print" style="margin-top:16px;font-size:12px;color:#444">Use your browser destination "Save as PDF" when print dialog appears.</div>
+      <script>window.onload=function(){setTimeout(function(){window.print();},250);};</script>
+    </body></html>`);
+    w.document.close();
+  };
+
   const csvCell=v=>`"${String(v??"").replace(/"/g,'""')}"`;
 
   const exportCompareCsv=()=>{
@@ -3622,8 +3882,13 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="18" rx="1.5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5"/><rect x="13" y="3" width="8" height="18" rx="1.5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5"/><path d="M7 8h0M7 12h0M17 8h0M17 12h0" stroke="rgba(0,0,0,0.45)" strokeWidth="2" strokeLinecap="round"/></svg>
             </button>
           )}
-          <button onClick={exportAll} title="Export all" style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <button onClick={exportAll} title="Export all CSV" style={{borderRadius:10,background:"rgba(52,170,220,0.12)",border:"1px solid rgba(52,170,220,0.3)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 10px",gap:4}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(52,170,220,0.8)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(52,170,220,0.8)" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            <span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(52,170,220,0.9)"}}>CSV</span>
+          </button>
+          <button onClick={exportAllPdf} title="Export all PDF" style={{borderRadius:10,background:"rgba(255,107,0,0.12)",border:"1px solid rgba(255,107,0,0.3)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 10px",gap:4}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(255,107,0,0.8)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(255,107,0,0.8)" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            <span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(255,107,0,0.9)"}}>PDF</span>
           </button>
         </div>
 
@@ -4807,7 +5072,7 @@ function App(){
   const[showTg,setShowTg]=useState(false);
   const[showEmail,setShowEmail]=useState(false);
   const[showGemini,setShowGemini]=useState(false);
-  const[showHeaderMenu,setShowHeaderMenu]=useState(false);
+  const[showHeaderMenu,setShowHeaderMenu]=useState(false);const headerMenuTimer=useRef(null);
   const[showUsers,setShowUsers]=useState(false);
   const[showProjects,setShowProjects]=useState(false);
   const[showProfile,setShowProfile]=useState(false);
@@ -5133,9 +5398,9 @@ function App(){
           <button onClick={()=>setShowTg(true)} title="Telegram" style={{width:26,height:26,borderRadius:8,background:tgEnabled?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${tgEnabled?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21.5 4.5L2.5 11.5L9 13.5L11 20.5L15 15.5L20 18.5L21.5 4.5Z" stroke={tgEnabled?"#ff6b00":"rgba(255,255,255,0.4)"} strokeWidth="1.5" strokeLinejoin="round"/></svg>
           </button>
-          <div style={{position:"relative"}}>
+          <div style={{position:"relative"}} onMouseEnter={()=>setShowHeaderMenu(true)} onMouseLeave={()=>{headerMenuTimer.current=setTimeout(()=>setShowHeaderMenu(false),250);}}>
             <button onClick={()=>setShowHeaderMenu(!showHeaderMenu)} title="More" style={{width:26,height:26,borderRadius:8,background:showHeaderMenu?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showHeaderMenu?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:14,color:showHeaderMenu?"#ff6b00":"rgba(255,255,255,0.65)",flexShrink:0}}>⋯</button>
-            {showHeaderMenu&&<div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,overflow:"hidden",zIndex:100,minWidth:170}}>
+            {showHeaderMenu&&<div onMouseEnter={()=>clearTimeout(headerMenuTimer.current)} onMouseLeave={()=>{headerMenuTimer.current=setTimeout(()=>setShowHeaderMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,overflow:"hidden",zIndex:100,minWidth:170}}>
               <button onClick={()=>{setShowStorage(true);setShowHeaderMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Storage Settings</button>
               {isAdmin&&<button onClick={()=>{setShowUsers(true);setShowHeaderMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Team Management</button>}
               <button onClick={()=>{setShowHelp(true);setShowHeaderMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Help</button>
