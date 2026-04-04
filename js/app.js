@@ -4031,13 +4031,14 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:16}}>
           <div style={{flex:1,fontSize:12,color:"rgba(0,0,0,0.4)"}}>📁 {currentProject?.name}</div>
           {canUpload&&(
-            <button onClick={()=>fileRef.current?.click()} disabled={uploading} title="Upload floor plan" style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              {uploading?<Spin size={12}/>:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 16V3m0 0L7 8m5-5l5 5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5" strokeLinecap="round"/></svg>}
+            <button onClick={()=>fileRef.current?.click()} disabled={uploading} title="Upload floor plan" style={{borderRadius:10,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 10px",gap:4}}>
+              {uploading?<Spin size={12}/>:<><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 16V3m0 0L7 8m5-5l5 5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5" strokeLinecap="round"/></svg><span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.45)"}}>UPLOAD</span></>}
             </button>
           )}
           {pdfDrawings.length>=2&&(
-            <button onClick={openCompare} title="Compare PDF revisions" style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="18" rx="1.5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5"/><rect x="13" y="3" width="8" height="18" rx="1.5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5"/><path d="M7 8h0M7 12h0M17 8h0M17 12h0" stroke="rgba(0,0,0,0.45)" strokeWidth="2" strokeLinecap="round"/></svg>
+            <button onClick={openCompare} title="Compare PDF revisions" style={{borderRadius:10,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 10px",gap:4}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="18" rx="1.5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5"/><rect x="13" y="3" width="8" height="18" rx="1.5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5"/><path d="M7 8h0M7 12h0M17 8h0M17 12h0" stroke="rgba(0,0,0,0.45)" strokeWidth="2" strokeLinecap="round"/></svg>
+              <span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.45)"}}>COMPARE</span>
             </button>
           )}
           <button onClick={()=>setShowBatchCompare(true)} title="Batch PDFs Comparison" style={{borderRadius:10,background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 10px",gap:4}}>
