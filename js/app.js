@@ -4104,7 +4104,8 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
               <button onClick={()=>{exportSavedComparisonsPdf();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#d8d2ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Compare PDF</button>
               <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>ALL</div>
               <button onClick={()=>{exportAll();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#7fd7ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>All CSV</button>
-              <button onClick={()=>{exportAllPdf();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#7fd7ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>All PDF</button>
+              <button onClick={()=>{exportAllPdf();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#7fd7ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>All PDF</button>
+              <button onClick={()=>{exportAll();exportAllPdf();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"rgba(48,209,88,0.08)",border:"none",cursor:"pointer",color:"#6ee7a0",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800}}>All-in-One (CSV + PDF)</button>
             </div>}
           </div>
         </div>
