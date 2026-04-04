@@ -3855,6 +3855,50 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     setTimeout(()=>URL.revokeObjectURL(url),500);
   };
 
+  // Export Markups only
+  const exportMarkupsCsv=()=>{
+    const cc=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+    const header=["Drawing","Type","Content","Color/Author","Position"];
+    const rows=[];
+    drawings.forEach(d=>{
+      const notes=getDrawingNotes(d.id);const markups=getDrawingMarkup(d.id);
+      notes.forEach(n=>rows.push([d.name,"NOTE",n.text,n.createdBy||"—",`(${Math.round(n.x)}%,${Math.round(n.y)}%)`]));
+      markups.forEach(s=>rows.push([d.name,"MARKUP",s.type==="text"?s.text:s.type,s.color||"",""]));
+    });
+    if(!rows.length){alert("No markup annotations to export.");return;}
+    const csv=[header,...rows].map(r=>r.map(cc).join(",")).join("\n");
+    downloadTextFile(csv,`${fileTimestamp()}-markup_annotations.csv`,"text/csv;charset=utf-8");
+  };
+
+  const exportMarkupsPdf=()=>{
+    const markedUp=drawings.filter(d=>getDrawingMarkup(d.id).length>0||getDrawingNotes(d.id).length>0);
+    if(!markedUp.length){alert("No markup annotations to export.");return;}
+    const html=generateDrawingsEmailHTML(drawings);
+    if(!html){alert("No markup annotations to export.");return;}
+    const w=window.open("","_blank");if(!w){alert("Popup blocked.");return;}
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileTimestamp()}-Markup Annotations</title><style>body{font-family:Arial,sans-serif;padding:22px;color:#111;max-width:900px;margin:0 auto}h1{margin:0 0 4px;font-size:20px}.meta{font-size:12px;color:#444;margin-bottom:10px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ddd;padding:6px;vertical-align:top}th{background:#f5f5f5;text-align:left}@media print{.no-print{display:none}}</style></head><body><h1>Markup Annotations Report</h1><div class="meta"><b>Project:</b> ${sanitize(currentProject?.name||"—")} | <b>Company:</b> ${sanitize(company?.companyName||"—")} | <b>Generated:</b> ${sanitize(new Date().toLocaleString())}</div>${html}<button class="no-print" onclick="window.print()">Print / Save as PDF</button></body></html>`);
+    w.document.close();
+  };
+
+  // Export Comparisons only
+  const exportSavedComparisonsCsv=()=>{
+    if(!savedComparisons.length){alert("No saved comparisons to export.");return;}
+    const cc=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+    const header=["Base","Revision","Added","Removed","AI Status","AI Report","Saved At","Saved By"];
+    const rows=savedComparisons.map(sc=>[sc.baseName,sc.targetName,sc.totalAdded||0,sc.totalRemoved||0,sc.aiLocked?"APPROVED":"DRAFT",sc.aiReport?.replace(/\n/g," | ")||"",new Date(sc.savedAt).toLocaleString(),sc.savedBy||""]);
+    const csv=[header,...rows].map(r=>r.map(cc).join(",")).join("\n");
+    downloadTextFile(csv,`${fileTimestamp()}-saved_comparisons.csv`,"text/csv;charset=utf-8");
+  };
+
+  const exportSavedComparisonsPdf=()=>{
+    if(!savedComparisons.length){alert("No saved comparisons to export.");return;}
+    const html=generateComparisonsEmailHTML(savedComparisons);
+    if(!html){alert("No saved comparisons to export.");return;}
+    const w=window.open("","_blank");if(!w){alert("Popup blocked.");return;}
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileTimestamp()}-Saved Comparisons</title><style>body{font-family:Arial,sans-serif;padding:22px;color:#111;max-width:900px;margin:0 auto}h1{margin:0 0 4px;font-size:20px}.meta{font-size:12px;color:#444;margin-bottom:10px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ddd;padding:6px;vertical-align:top}th{background:#f5f5f5;text-align:left}@media print{.no-print{display:none}}</style></head><body><h1>Saved Comparisons Report</h1><div class="meta"><b>Project:</b> ${sanitize(currentProject?.name||"—")} | <b>Company:</b> ${sanitize(company?.companyName||"—")} | <b>Generated:</b> ${sanitize(new Date().toLocaleString())}</div>${html}<button class="no-print" onclick="window.print()">Print / Save as PDF</button></body></html>`);
+    w.document.close();
+  };
+
   // Export All — combined report of drawings + saved comparisons
   const exportAll=()=>{
     const stamp=fileTimestamp();
@@ -4051,9 +4095,16 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(52,170,220,0.8)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(52,170,220,0.8)" strokeWidth="1.5" strokeLinecap="round"/></svg>
               <span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(52,170,220,0.85)"}}>Dn</span>
             </button>
-            {showDnMenu&&<div onMouseEnter={()=>clearTimeout(dnMenuTimer.current)} onMouseLeave={()=>{dnMenuTimer.current=setTimeout(()=>setShowDnMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,overflow:"hidden",zIndex:100,minWidth:130}}>
-              <button onClick={()=>{exportAll();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#7fd7ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Export CSV</button>
-              <button onClick={()=>{exportAllPdf();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#ffb48a",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>Export PDF</button>
+            {showDnMenu&&<div onMouseEnter={()=>clearTimeout(dnMenuTimer.current)} onMouseLeave={()=>{dnMenuTimer.current=setTimeout(()=>setShowDnMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,overflow:"hidden",zIndex:100,minWidth:180}}>
+              <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>MARKUPS</div>
+              <button onClick={()=>{exportMarkupsCsv();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#ffb48a",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>Markup CSV</button>
+              <button onClick={()=>{exportMarkupsPdf();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#ffb48a",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Markup PDF</button>
+              <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>COMPARISONS</div>
+              <button onClick={()=>{exportSavedComparisonsCsv();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#d8d2ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>Compare CSV</button>
+              <button onClick={()=>{exportSavedComparisonsPdf();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#d8d2ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Compare PDF</button>
+              <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>ALL</div>
+              <button onClick={()=>{exportAll();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#7fd7ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>All CSV</button>
+              <button onClick={()=>{exportAllPdf();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#7fd7ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>All PDF</button>
             </div>}
           </div>
         </div>
