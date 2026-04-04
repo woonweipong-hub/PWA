@@ -2957,7 +2957,6 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[showUnlockPrompt,setShowUnlockPrompt]=useState(false);
   const[unlockReason,setUnlockReason]=useState("");
   const[comparePreviewLoading,setComparePreviewLoading]=useState(false);
-  const[compareViewMode,setCompareViewMode]=useState("overlay");
   const compareOverlayCanvasRef=useRef();
   const[compareMarkupTool,setCompareMarkupTool]=useState("freehand");
   const[compareMarkupColor,setCompareMarkupColor]=useState("#ff3b30");
@@ -3528,51 +3527,31 @@ Return valid JSON only with this shape:
                     <canvas ref={compareTargetCanvasRef}/>
                   </div>
 
-                  {/* View mode toggle */}
-                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
-                    {[{id:"overlay",label:"OVERLAY DIFF"},{id:"side",label:"SIDE BY SIDE"}].map(m=>(
-                      <button key={m.id} onClick={()=>setCompareViewMode(m.id)} style={{background:compareViewMode===m.id?"rgba(255,107,0,0.3)":"rgba(255,255,255,0.06)",border:`1px solid ${compareViewMode===m.id?"rgba(255,107,0,0.5)":"rgba(255,255,255,0.12)"}`,borderRadius:8,padding:"6px 12px",color:compareViewMode===m.id?"#ffb48a":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",letterSpacing:"0.04em"}}>{m.label}</button>
-                    ))}
+                  {/* Overlay diff view — Autodesk Design Review style, with markup support */}
+                  <div ref={compareBoardRef} style={{position:"relative",borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.18)",background:"#fff",marginBottom:8,touchAction:"none"}}
+                    onMouseDown={onCompareMarkupDown} onMouseMove={onCompareMarkupMove} onMouseUp={onCompareMarkupUp} onMouseLeave={onCompareMarkupUp}
+                    onTouchStart={onCompareMarkupDown} onTouchMove={onCompareMarkupMove} onTouchEnd={onCompareMarkupUp}>
+                    <canvas ref={compareOverlayCanvasRef} style={{width:"100%",display:"block",background:"#fff"}}/>
+                    <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}}>
+                      {renderCompareMarkup(compareMarkupStrokes)}
+                      {compareMarkupCurrent&&renderCompareMarkup([compareMarkupCurrent])}
+                    </svg>
+                    <div style={{position:"absolute",left:6,top:6,display:"flex",gap:4,flexWrap:"wrap",pointerEvents:"none"}}>
+                      <div style={{background:"rgba(0,0,0,0.75)",borderRadius:6,padding:"3px 8px",fontSize:9,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",gap:4}}>
+                        <span style={{width:10,height:3,background:"#ff0000",display:"inline-block"}}/>
+                        <span style={{color:"#ff8a8a"}}>ADDED</span>
+                      </div>
+                      <div style={{background:"rgba(0,0,0,0.75)",borderRadius:6,padding:"3px 8px",fontSize:9,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",gap:4}}>
+                        <span style={{width:10,height:3,background:"#0055ff",display:"inline-block"}}/>
+                        <span style={{color:"#8ab4ff"}}>REMOVED</span>
+                      </div>
+                      <div style={{background:"rgba(0,0,0,0.75)",borderRadius:6,padding:"3px 8px",fontSize:9,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",gap:4}}>
+                        <span style={{width:10,height:3,background:"#000",display:"inline-block"}}/>
+                        <span style={{color:"#aaa"}}>UNCHANGED</span>
+                      </div>
+                    </div>
+                    {comparePreviewLoading&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(255,255,255,0.7)",color:"#333",fontSize:12}}><Spin size={14}/> <span style={{marginLeft:8}}>Generating overlay diff...</span></div>}
                   </div>
-
-                  {/* Overlay diff view — Autodesk Design Review style */}
-                  {compareViewMode==="overlay"&&(
-                    <div style={{position:"relative",borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.18)",background:"#fff",marginBottom:8}}>
-                      <canvas ref={compareOverlayCanvasRef} style={{width:"100%",display:"block",background:"#fff"}}/>
-                      <div style={{position:"absolute",left:6,top:6,display:"flex",gap:4,flexWrap:"wrap"}}>
-                        <div style={{background:"rgba(0,0,0,0.75)",borderRadius:6,padding:"3px 8px",fontSize:9,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",gap:4}}>
-                          <span style={{width:10,height:3,background:"#ff0000",display:"inline-block"}}/>
-                          <span style={{color:"#ff8a8a"}}>ADDED</span>
-                        </div>
-                        <div style={{background:"rgba(0,0,0,0.75)",borderRadius:6,padding:"3px 8px",fontSize:9,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",gap:4}}>
-                          <span style={{width:10,height:3,background:"#0055ff",display:"inline-block"}}/>
-                          <span style={{color:"#8ab4ff"}}>REMOVED</span>
-                        </div>
-                        <div style={{background:"rgba(0,0,0,0.75)",borderRadius:6,padding:"3px 8px",fontSize:9,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",gap:4}}>
-                          <span style={{width:10,height:3,background:"#000",display:"inline-block"}}/>
-                          <span style={{color:"#aaa"}}>UNCHANGED</span>
-                        </div>
-                      </div>
-                      {comparePreviewLoading&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(255,255,255,0.7)",color:"#333",fontSize:12}}><Spin size={14}/> <span style={{marginLeft:8}}>Generating overlay diff...</span></div>}
-                    </div>
-                  )}
-
-                  {/* Side-by-side view */}
-                  {compareViewMode==="side"&&(
-                    <div style={{position:"relative",height:220,borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.14)",background:"#0f0f10",marginBottom:8}}>
-                      <div style={{position:"absolute",inset:0,display:"flex"}}>
-                        <div style={{flex:1,position:"relative",borderRight:"1px solid rgba(255,255,255,0.08)"}}>
-                          <canvas ref={c=>{if(c&&compareBaseCanvasRef.current&&compareBaseCanvasRef.current.width){c.width=compareBaseCanvasRef.current.width;c.height=compareBaseCanvasRef.current.height;c.getContext("2d").drawImage(compareBaseCanvasRef.current,0,0);}}} style={{width:"100%",height:"100%",display:"block",objectFit:"contain",background:"#1a1a1a"}}/>
-                          <div style={{position:"absolute",left:6,top:6,background:"rgba(0,0,0,0.65)",borderRadius:6,padding:"2px 6px",fontSize:10,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>BASE</div>
-                        </div>
-                        <div style={{flex:1,position:"relative"}}>
-                          <canvas ref={c=>{if(c&&compareTargetCanvasRef.current&&compareTargetCanvasRef.current.width){c.width=compareTargetCanvasRef.current.width;c.height=compareTargetCanvasRef.current.height;c.getContext("2d").drawImage(compareTargetCanvasRef.current,0,0);}}} style={{width:"100%",height:"100%",display:"block",objectFit:"contain",background:"#1a1a1a"}}/>
-                          <div style={{position:"absolute",left:6,top:6,background:"rgba(0,0,0,0.65)",borderRadius:6,padding:"2px 6px",fontSize:10,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>REVISION</div>
-                        </div>
-                      </div>
-                      {comparePreviewLoading&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.35)",color:"rgba(255,255,255,0.7)",fontSize:12}}><Spin size={14}/> <span style={{marginLeft:8}}>Loading pages...</span></div>}
-                    </div>
-                  )}
                 </div>
               )}
 
