@@ -3199,6 +3199,7 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const fileRef=useRef();
   // Batch compare state
   const[showBatchCompare,setShowBatchCompare]=useState(false);
+  const[showDnMenu,setShowDnMenu]=useState(false);const dnMenuTimer=useRef(null);
   const[batchLabelA,setBatchLabelA]=useState("SET A");
   const[batchLabelB,setBatchLabelB]=useState("SET B");
   const[batchSetAFiles,setBatchSetAFiles]=useState([]);
@@ -4031,28 +4032,30 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:16}}>
           <div style={{flex:1,fontSize:12,color:"rgba(0,0,0,0.4)"}}>📁 {currentProject?.name}</div>
           {canUpload&&(
-            <button onClick={()=>fileRef.current?.click()} disabled={uploading} title="Upload floor plan" style={{borderRadius:10,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 10px",gap:4}}>
-              {uploading?<Spin size={12}/>:<><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 16V3m0 0L7 8m5-5l5 5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5" strokeLinecap="round"/></svg><span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.45)"}}>UPLOAD</span></>}
+            <button onClick={()=>fileRef.current?.click()} disabled={uploading} title="Upload" style={{borderRadius:8,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 7px",gap:3}}>
+              {uploading?<Spin size={12}/>:<><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 16V3m0 0L7 8m5-5l5 5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5" strokeLinecap="round"/></svg><span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.45)"}}>Up</span></>}
             </button>
           )}
           {pdfDrawings.length>=2&&(
-            <button onClick={openCompare} title="Compare PDF revisions" style={{borderRadius:10,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 10px",gap:4}}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="18" rx="1.5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5"/><rect x="13" y="3" width="8" height="18" rx="1.5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5"/><path d="M7 8h0M7 12h0M17 8h0M17 12h0" stroke="rgba(0,0,0,0.45)" strokeWidth="2" strokeLinecap="round"/></svg>
-              <span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.45)"}}>COMPARE</span>
+            <button onClick={openCompare} title="Compare" style={{borderRadius:8,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 7px",gap:3}}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="18" rx="1.5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5"/><rect x="13" y="3" width="8" height="18" rx="1.5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5"/><path d="M7 8h0M7 12h0M17 8h0M17 12h0" stroke="rgba(0,0,0,0.45)" strokeWidth="2" strokeLinecap="round"/></svg>
+              <span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.45)"}}>Diff</span>
             </button>
           )}
-          <button onClick={()=>setShowBatchCompare(true)} title="Batch PDFs Comparison" style={{borderRadius:10,background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 10px",gap:4}}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 7h4v14H3zM10 3h4v18h-4zM17 10h4v11h-4z" stroke="rgba(88,86,214,0.7)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            <span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(88,86,214,0.8)"}}>BATCH</span>
+          <button onClick={()=>setShowBatchCompare(true)} title="Batch PDFs Comparison" style={{borderRadius:8,background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 7px",gap:3}}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 7h4v14H3zM10 3h4v18h-4zM17 10h4v11h-4z" stroke="rgba(88,86,214,0.7)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(88,86,214,0.8)"}}>Batch</span>
           </button>
-          <button onClick={exportAll} title="Export all CSV" style={{borderRadius:10,background:"rgba(52,170,220,0.12)",border:"1px solid rgba(52,170,220,0.3)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 10px",gap:4}}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(52,170,220,0.8)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(52,170,220,0.8)" strokeWidth="1.5" strokeLinecap="round"/></svg>
-            <span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(52,170,220,0.9)"}}>CSV</span>
-          </button>
-          <button onClick={exportAllPdf} title="Export all PDF" style={{borderRadius:10,background:"rgba(255,107,0,0.12)",border:"1px solid rgba(255,107,0,0.3)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 10px",gap:4}}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(255,107,0,0.8)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(255,107,0,0.8)" strokeWidth="1.5" strokeLinecap="round"/></svg>
-            <span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(255,107,0,0.9)"}}>PDF</span>
-          </button>
+          <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(dnMenuTimer.current);setShowDnMenu(true);}} onMouseLeave={()=>{dnMenuTimer.current=setTimeout(()=>setShowDnMenu(false),250);}}>
+            <button onClick={()=>setShowDnMenu(v=>!v)} title="Download" style={{borderRadius:8,background:"rgba(52,170,220,0.1)",border:"1px solid rgba(52,170,220,0.25)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 7px",gap:3}}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(52,170,220,0.8)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(52,170,220,0.8)" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              <span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(52,170,220,0.85)"}}>Dn</span>
+            </button>
+            {showDnMenu&&<div onMouseEnter={()=>clearTimeout(dnMenuTimer.current)} onMouseLeave={()=>{dnMenuTimer.current=setTimeout(()=>setShowDnMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,overflow:"hidden",zIndex:100,minWidth:130}}>
+              <button onClick={()=>{exportAll();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#7fd7ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Export CSV</button>
+              <button onClick={()=>{exportAllPdf();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#ffb48a",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>Export PDF</button>
+            </div>}
+          </div>
         </div>
 
         {/* Section counters bar */}
