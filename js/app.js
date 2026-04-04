@@ -33,8 +33,19 @@ function compressPhoto(dataUrl,maxPx=1800,quality=0.8){
 
 const DRAWING_NOTES_KEY="drawing_notes_v1";
 const DRAWING_MARKUP_KEY="drawing_markup_v1";
+const SAVED_COMPARISONS_KEY="saved_comparisons_v1";
 const BCA_SCDF_REVISION_COLORS={added:"#ff3b30",removed:"#34c759"};
 const fileTimestamp=()=>{const d=new Date();return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}_${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}${String(d.getSeconds()).padStart(2,"0")}`;};
+
+function getSavedComparisons(projectId){
+  const all=local.get(SAVED_COMPARISONS_KEY)||{};
+  return Array.isArray(all[projectId])?all[projectId]:[];
+}
+function setSavedComparisons(projectId,list){
+  const all=local.get(SAVED_COMPARISONS_KEY)||{};
+  all[projectId]=list;
+  local.set(SAVED_COMPARISONS_KEY,all);
+}
 
 function loadDrawingNotesMap(){
   const raw=local.get(DRAWING_NOTES_KEY);
@@ -2968,6 +2979,8 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[compareMarkupCurrent,setCompareMarkupCurrent]=useState(null);
   const[compareTextPoint,setCompareTextPoint]=useState(null);
   const[compareTextValue,setCompareTextValue]=useState("");
+  const[savedComparisons,setSavedComparisons]=useState(()=>getSavedComparisons(currentProject?.id||""));
+  const[viewingSaved,setViewingSaved]=useState(null);
   const fileRef=useRef();
   const compareBoardRef=useRef();
   const compareBaseCanvasRef=useRef();
@@ -3167,6 +3180,61 @@ Return valid JSON only with this shape:
     setShowUnlockPrompt(false);
     logCompareAudit("unlock",{reason:reason||"No reason provided"});
     setUnlockReason("");
+  };
+
+  const saveComparison=()=>{
+    if(!compareRes)return;
+    // Capture overlay as thumbnail
+    let overlayThumb="";
+    try{
+      const oc=compareOverlayCanvasRef.current;
+      if(oc&&oc.width){
+        const tmp=document.createElement("canvas");
+        const scale=Math.min(400/oc.width,300/oc.height,1);
+        tmp.width=Math.round(oc.width*scale);tmp.height=Math.round(oc.height*scale);
+        tmp.getContext("2d").drawImage(oc,0,0,tmp.width,tmp.height);
+        overlayThumb=tmp.toDataURL("image/jpeg",0.6);
+      }
+    }catch(e){}
+    const record={
+      id:`cmp_${Date.now()}`,
+      savedAt:Date.now(),
+      baseName:compareRes.baseName,targetName:compareRes.targetName,
+      baseId:compareBaseId,targetId:compareTargetId,
+      totalAdded:compareRes.totalAdded,totalRemoved:compareRes.totalRemoved,
+      added:compareRes.added,removed:compareRes.removed,
+      aiReport:compareAiReport||"",aiLocked:compareAiLocked,
+      aiApprovedBy:compareAiApprovedBy,aiApprovedAt:compareAiApprovedAt,
+      auditLog:[...compareAuditLog],
+      markups:[...compareMarkupStrokes],
+      overlayThumb,
+      savedBy:member?.name||""
+    };
+    const list=[record,...savedComparisons];
+    setSavedComparisons(list);
+    if(currentProject?.id){const all=local.get(SAVED_COMPARISONS_KEY)||{};all[currentProject.id]=list;local.set(SAVED_COMPARISONS_KEY,all);}
+    setShowCompare(false);
+  };
+
+  const deleteSavedComparison=(id)=>{
+    if(!confirm("Delete this saved comparison?"))return;
+    const list=savedComparisons.filter(c=>c.id!==id);
+    setSavedComparisons(list);
+    if(currentProject?.id){const all=local.get(SAVED_COMPARISONS_KEY)||{};all[currentProject.id]=list;local.set(SAVED_COMPARISONS_KEY,all);}
+  };
+
+  const loadSavedComparison=(saved)=>{
+    setCompareBaseId(saved.baseId||"");
+    setCompareTargetId(saved.targetId||"");
+    setCompareRes({baseName:saved.baseName,targetName:saved.targetName,added:saved.added||[],removed:saved.removed||[],totalAdded:saved.totalAdded,totalRemoved:saved.totalRemoved,generatedAt:saved.savedAt});
+    setCompareAiReport(saved.aiReport||"");
+    setCompareAiLocked(saved.aiLocked||false);
+    setCompareAiApprovedBy(saved.aiApprovedBy||"");
+    setCompareAiApprovedAt(saved.aiApprovedAt||null);
+    setCompareAuditLog(saved.auditLog||[]);
+    setCompareMarkupStrokes(saved.markups||[]);
+    setViewingSaved(saved.id);
+    setShowCompare(true);
   };
 
   const getCompareMarkupPos=e=>{
@@ -3418,6 +3486,42 @@ Return valid JSON only with this shape:
           </div>
         )}
 
+        {/* Saved comparisons */}
+        {savedComparisons.length>0&&(
+          <div style={{marginBottom:16}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:8}}>SAVED COMPARISONS ({savedComparisons.length})</div>
+            {savedComparisons.map(sc=>(
+              <div key={sc.id} style={{background:"#fff",borderRadius:12,padding:0,marginBottom:10,overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)"}}>
+                {sc.overlayThumb&&(
+                  <div style={{position:"relative",cursor:"pointer"}} onClick={()=>loadSavedComparison(sc)}>
+                    <img src={sc.overlayThumb} alt="Comparison overlay" style={{width:"100%",display:"block",maxHeight:200,objectFit:"contain",background:"#f8f8f6"}}/>
+                    <div style={{position:"absolute",left:6,top:6,display:"flex",gap:4}}>
+                      <div style={{background:"rgba(0,0,0,0.7)",borderRadius:6,padding:"2px 8px",fontSize:9,fontWeight:700,color:"#ff8a8a",fontFamily:"'Barlow Condensed',sans-serif"}}>+{sc.totalAdded}</div>
+                      <div style={{background:"rgba(0,0,0,0.7)",borderRadius:6,padding:"2px 8px",fontSize:9,fontWeight:700,color:"#8ab4ff",fontFamily:"'Barlow Condensed',sans-serif"}}>-{sc.totalRemoved}</div>
+                    </div>
+                    {sc.aiLocked&&<div style={{position:"absolute",right:6,top:6,background:"rgba(52,199,89,0.85)",borderRadius:6,padding:"2px 8px",fontSize:9,fontWeight:700,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif"}}>APPROVED</div>}
+                  </div>
+                )}
+                <div style={{padding:"10px 12px"}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#1a1a1a",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{sc.baseName} → {sc.targetName}</div>
+                      <div style={{fontSize:10,color:"rgba(0,0,0,0.4)"}}>{new Date(sc.savedAt).toLocaleString()} · By {sc.savedBy||"—"}</div>
+                    </div>
+                    <button onClick={()=>loadSavedComparison(sc)} style={{background:"rgba(88,86,214,0.12)",border:"1px solid rgba(88,86,214,0.25)",borderRadius:8,padding:"5px 10px",color:"#5856d6",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>OPEN</button>
+                    <button onClick={()=>deleteSavedComparison(sc.id)} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:8,padding:"5px 10px",color:"#ff3b30",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>DELETE</button>
+                  </div>
+                  <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap"}}>
+                    {sc.markups?.length>0&&<span style={{fontSize:9,fontWeight:700,color:"#ff6b00",background:"rgba(255,107,0,0.12)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:8,padding:"2px 6px",fontFamily:"'Barlow Condensed',sans-serif"}}>✏ {sc.markups.length}</span>}
+                    {sc.aiReport&&<span style={{fontSize:9,fontWeight:700,color:"#5856d6",background:"rgba(88,86,214,0.12)",border:"1px solid rgba(88,86,214,0.25)",borderRadius:8,padding:"2px 6px",fontFamily:"'Barlow Condensed',sans-serif"}}>AI Report</span>}
+                    {sc.auditLog?.length>0&&<span style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.4)",background:"rgba(0,0,0,0.05)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"2px 6px",fontFamily:"'Barlow Condensed',sans-serif"}}>{sc.auditLog.length} audit</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {loading&&<div style={{textAlign:"center",padding:40}}><Spin size={20}/></div>}
 
         {!loading&&drawings.length===0&&(
@@ -3513,8 +3617,10 @@ Return valid JSON only with this shape:
         <div style={{position:"fixed",inset:0,zIndex:260,background:"rgba(0,0,0,0.9)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
           <div style={{width:"100%",maxWidth:430,maxHeight:"92vh",background:"#1a1a1a",borderTopLeftRadius:18,borderTopRightRadius:18,overflow:"hidden",display:"flex",flexDirection:"column"}}>
             <div style={{padding:"14px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)",display:"flex",alignItems:"center",gap:10}}>
-              <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff"}}>PDF COMPARISON</div>
-              <button onClick={()=>setShowCompare(false)} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:18,padding:"7px 12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CLOSE</button>
+              <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff"}}>PDF COMPARISON{viewingSaved?` (SAVED)`:""}
+              </div>
+              {compareRes&&<button onClick={saveComparison} style={{background:"rgba(52,199,89,0.25)",border:"1px solid rgba(52,199,89,0.5)",borderRadius:18,padding:"7px 14px",color:"#9ef0b5",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>DONE</button>}
+              <button onClick={()=>{setShowCompare(false);setViewingSaved(null);}} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:18,padding:"7px 12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CLOSE</button>
             </div>
 
             <div style={{padding:16,overflowY:"auto"}}>
