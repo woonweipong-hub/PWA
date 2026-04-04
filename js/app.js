@@ -3197,6 +3197,20 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[savedComparisons,setSavedComparisons]=useState(()=>getSavedComparisons(currentProject?.id||""));
   const[viewingSaved,setViewingSaved]=useState(null);
   const fileRef=useRef();
+  // Batch compare state
+  const[showBatchCompare,setShowBatchCompare]=useState(false);
+  const[batchLabelA,setBatchLabelA]=useState("SET A");
+  const[batchLabelB,setBatchLabelB]=useState("SET B");
+  const[batchSetAFiles,setBatchSetAFiles]=useState([]);
+  const[batchSetBFiles,setBatchSetBFiles]=useState([]);
+  const[batchMatches,setBatchMatches]=useState([]);// [{fileA,fileB,similarity}]
+  const[batchUnmatchedA,setBatchUnmatchedA]=useState([]);
+  const[batchUnmatchedB,setBatchUnmatchedB]=useState([]);
+  const[batchRunning,setBatchRunning]=useState(false);
+  const[batchResults,setBatchResults]=useState([]);// [{nameA,nameB,added,removed,status}]
+  const[batchProgress,setBatchProgress]=useState({current:0,total:0});
+  const batchSetARef=useRef();
+  const batchSetBRef=useRef();
   const compareBoardRef=useRef();
   const compareBaseCanvasRef=useRef();
   const compareTargetCanvasRef=useRef();
@@ -3264,6 +3278,118 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     setCompareBaseId(prev=>prev||first);
     setCompareTargetId(prev=>prev||(second===first?"":second));
     setShowCompare(true);
+  };
+
+  // ── Batch Compare ────────────────────────────────────────────────
+  const handleBatchFolder=(e,setter)=>{
+    const files=Array.from(e.target.files||[]).filter(f=>/\.pdf$/i.test(f.name));
+    setter(files);
+    e.target.value="";
+  };
+
+  // Fuzzy filename matching — strips common suffixes/prefixes and compares core name
+  const normalizeName=(name)=>{
+    return name.replace(/\.pdf$/i,"")
+      .replace(/[\s_-]+/g," ").trim().toUpperCase()
+      .replace(/\b(REV|REVISION|AS[- ]?BUILT|TENDER|DRAFT|FINAL|V\d+|R\d+)\b/gi,"")
+      .replace(/\s+/g," ").trim();
+  };
+
+  const similarityScore=(a,b)=>{
+    if(a===b)return 1;
+    const shorter=a.length<b.length?a:b;
+    const longer=a.length>=b.length?a:b;
+    if(longer.length===0)return 0;
+    // Check if one contains the other
+    if(longer.includes(shorter))return shorter.length/longer.length;
+    // Simple word overlap
+    const wordsA=new Set(a.split(" "));const wordsB=new Set(b.split(" "));
+    let overlap=0;wordsA.forEach(w=>{if(wordsB.has(w))overlap++;});
+    return overlap/Math.max(wordsA.size,wordsB.size);
+  };
+
+  const runBatchMatch=()=>{
+    if(!batchSetAFiles.length||!batchSetBFiles.length)return;
+    const setANorms=batchSetAFiles.map(f=>({file:f,norm:normalizeName(f.name)}));
+    const setBNorms=batchSetBFiles.map(f=>({file:f,norm:normalizeName(f.name)}));
+    const matched=[];const usedA=new Set();const usedB=new Set();
+    const pairs=[];
+    setANorms.forEach((a,ai)=>{
+      setBNorms.forEach((b,bi)=>{
+        const score=similarityScore(a.norm,b.norm);
+        if(score>0.3)pairs.push({ai,bi,score,fileA:a.file,fileB:b.file});
+      });
+    });
+    pairs.sort((a,b)=>b.score-a.score);
+    pairs.forEach(p=>{
+      if(usedA.has(p.ai)||usedB.has(p.bi))return;
+      matched.push({fileA:p.fileA,fileB:p.fileB,similarity:p.score});
+      usedA.add(p.ai);usedB.add(p.bi);
+    });
+    setBatchMatches(matched);
+    setBatchUnmatchedA(batchSetAFiles.filter((_,i)=>!usedA.has(i)));
+    setBatchUnmatchedB(batchSetBFiles.filter((_,i)=>!usedB.has(i)));
+    setBatchResults([]);
+  };
+
+  useEffect(()=>{
+    if(batchSetAFiles.length&&batchSetBFiles.length)runBatchMatch();
+  },[batchSetAFiles,batchSetBFiles]);
+
+  const readFileAsDataUrl=(file)=>new Promise((res,rej)=>{
+    const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(file);
+  });
+
+  const extractPdfLinesFromBlob=async(file)=>{
+    const url=URL.createObjectURL(file);
+    try{return await extractPdfLines(url);}finally{URL.revokeObjectURL(url);}
+  };
+
+  const runBatchCompare=async()=>{
+    if(!batchMatches.length)return;
+    setBatchRunning(true);setBatchResults([]);
+    setBatchProgress({current:0,total:batchMatches.length});
+    const results=[];
+    for(let i=0;i<batchMatches.length;i++){
+      const m=batchMatches[i];
+      setBatchProgress({current:i+1,total:batchMatches.length});
+      try{
+        const[linesA,linesB]=await Promise.all([extractPdfLinesFromBlob(m.fileA),extractPdfLinesFromBlob(m.fileB)]);
+        const diff=comparePdfLineSets(linesA,linesB);
+        results.push({nameA:m.fileA.name,nameB:m.fileB.name,added:diff.added.length,removed:diff.removed.length,status:diff.added.length===0&&diff.removed.length===0?"identical":"changed",similarity:m.similarity});
+      }catch(e){
+        results.push({nameA:m.fileA.name,nameB:m.fileB.name,added:0,removed:0,status:"error",error:e.message,similarity:m.similarity});
+      }
+      setBatchResults([...results]);
+    }
+    setBatchRunning(false);
+  };
+
+  const exportBatchCsv=()=>{
+    if(!batchResults.length&&!batchUnmatchedA.length&&!batchUnmatchedB.length)return;
+    const cc=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+    const header=["Status",batchLabelA+" Drawing",batchLabelB+" Drawing","Match %","Lines Added","Lines Removed"];
+    const rows=batchResults.map(r=>[r.status.toUpperCase(),r.nameA,r.nameB,Math.round((r.similarity||0)*100)+"%",r.added,r.removed]);
+    batchUnmatchedA.forEach(f=>rows.push(["ONLY_IN_"+batchLabelA.replace(/\s/g,"_"),f.name,"—","—","—","—"]));
+    batchUnmatchedB.forEach(f=>rows.push(["ONLY_IN_"+batchLabelB.replace(/\s/g,"_"),"—",f.name,"—","—","—"]));
+    const csv=[header,...rows].map(r=>r.map(cc).join(",")).join("\n");
+    const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=`${fileTimestamp()}-batch_compare_report.csv`;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),500);
+  };
+
+  const exportBatchPdf=()=>{
+    const stamp=new Date().toLocaleString();
+    const lblA=sanitize(batchLabelA);const lblB=sanitize(batchLabelB);
+    const identical=batchResults.filter(r=>r.status==="identical").length;
+    const changed=batchResults.filter(r=>r.status==="changed").length;
+    const errors=batchResults.filter(r=>r.status==="error").length;
+    const resultRows=batchResults.map((r,i)=>`<tr style="background:${r.status==="identical"?"#f0fff5":r.status==="error"?"#fff3f2":"#fffbe6"}"><td>${i+1}</td><td>${sanitize(r.nameA)}</td><td>${sanitize(r.nameB)}</td><td>${Math.round((r.similarity||0)*100)}%</td><td style="color:#ff3b30;font-weight:bold">${r.status==="error"?"ERR":"+"+r.added}</td><td style="color:#34c759;font-weight:bold">${r.status==="error"?"ERR":"-"+r.removed}</td><td style="font-weight:bold;color:${r.status==="identical"?"#34c759":r.status==="error"?"#ff3b30":"#ff9500"}">${r.status.toUpperCase()}</td></tr>`).join("");
+    const unmatchedRows=[...batchUnmatchedA.map(f=>`<tr style="background:#fff3f2"><td>—</td><td>${sanitize(f.name)}</td><td style="color:#ff3b30;font-style:italic">No match in ${lblB}</td><td colspan="4" style="color:#ff3b30;font-weight:bold">MISSING</td></tr>`),...batchUnmatchedB.map(f=>`<tr style="background:#fffbe6"><td>—</td><td style="color:#ff9500;font-style:italic">No match in ${lblA}</td><td>${sanitize(f.name)}</td><td colspan="4" style="color:#ff9500;font-weight:bold">EXTRA</td></tr>`)].join("");
+    const w=window.open("","_blank");
+    if(!w){alert("Popup blocked.");return;}
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileTimestamp()}-Batch Comparison Report</title><style>body{font-family:Arial,sans-serif;padding:22px;color:#111;max-width:1000px;margin:0 auto}h1{margin:0 0 4px;font-size:22px}.meta{font-size:12px;color:#444;margin-bottom:6px}.cards{display:flex;gap:10px;margin:12px 0}.card{flex:1;border-radius:8px;padding:12px;border:1px solid #ddd;text-align:center}.card b{display:block;font-size:22px}table{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px}th,td{border:1px solid #ddd;padding:6px;vertical-align:top}th{background:#f5f5f5;text-align:left}@media print{.no-print{display:none}}</style></head><body><h1>Batch Drawing Comparison Report</h1><div class="meta"><b>Project:</b> ${sanitize(currentProject?.name||"—")} | <b>Company:</b> ${sanitize(company?.companyName||"—")} | <b>Generated:</b> ${sanitize(stamp)}</div><div class="cards"><div class="card" style="border-color:#5856d6;background:#f5f3ff"><b>${batchSetAFiles.length}</b><span style="font-size:11px;color:#5856d6">${lblA}</span></div><div class="card" style="border-color:#ff6b00;background:#fff8f3"><b>${batchSetBFiles.length}</b><span style="font-size:11px;color:#ff6b00">${lblB}</span></div><div class="card" style="border-color:#34c759;background:#f0fff5"><b>${batchMatches.length}</b><span style="font-size:11px;color:#34c759">Matched</span></div><div class="card" style="border-color:#34c759"><b>${identical}</b><span style="font-size:11px;color:#34c759">Identical</span></div><div class="card" style="border-color:#ff9500;background:#fffbe6"><b>${changed}</b><span style="font-size:11px;color:#ff9500">Changed</span></div><div class="card" style="border-color:#ff3b30;background:#fff3f2"><b>${batchUnmatchedA.length+batchUnmatchedB.length}</b><span style="font-size:11px;color:#ff3b30">Unmatched</span></div></div><h2>Comparison Results</h2><table><thead><tr><th>#</th><th>${lblA}</th><th>${lblB}</th><th>Match</th><th>Added</th><th>Removed</th><th>Status</th></tr></thead><tbody>${resultRows}${unmatchedRows}</tbody></table><br><button class="no-print" onclick="window.print()">Print / Save as PDF</button></body></html>`);
+    w.document.close();
   };
 
   const runCompare=async()=>{
@@ -3882,6 +4008,10 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="18" rx="1.5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5"/><rect x="13" y="3" width="8" height="18" rx="1.5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5"/><path d="M7 8h0M7 12h0M17 8h0M17 12h0" stroke="rgba(0,0,0,0.45)" strokeWidth="2" strokeLinecap="round"/></svg>
             </button>
           )}
+          <button onClick={()=>setShowBatchCompare(true)} title="Batch PDFs Comparison" style={{borderRadius:10,background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 10px",gap:4}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 7h4v14H3zM10 3h4v18h-4zM17 10h4v11h-4z" stroke="rgba(88,86,214,0.7)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(88,86,214,0.8)"}}>BATCH</span>
+          </button>
           <button onClick={exportAll} title="Export all CSV" style={{borderRadius:10,background:"rgba(52,170,220,0.12)",border:"1px solid rgba(52,170,220,0.3)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 10px",gap:4}}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(52,170,220,0.8)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(52,170,220,0.8)" strokeWidth="1.5" strokeLinecap="round"/></svg>
             <span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(52,170,220,0.9)"}}>CSV</span>
@@ -4030,6 +4160,140 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           );
         })}
       </div>
+
+      {/* Batch Compare Modal */}
+      {showBatchCompare&&(
+        <div style={{position:"fixed",inset:0,zIndex:260,background:"#f0ede8",overflowY:"auto",animation:"slideUp 0.25s ease"}}>
+          <SettingsBack onClose={()=>{setShowBatchCompare(false);setBatchSetAFiles([]);setBatchSetBFiles([]);setBatchMatches([]);setBatchResults([]);setBatchUnmatchedA([]);setBatchUnmatchedB([]);setBatchLabelA("SET A");setBatchLabelB("SET B");}} title="BATCH PDFs COMPARISON"/>
+          <div style={{padding:20}}>
+            {/* Hidden folder inputs */}
+            <input ref={batchSetARef} type="file" accept=".pdf" multiple onChange={e=>handleBatchFolder(e,setBatchSetAFiles)} style={{display:"none"}}/>
+            <input ref={batchSetBRef} type="file" accept=".pdf" multiple onChange={e=>handleBatchFolder(e,setBatchSetBFiles)} style={{display:"none"}}/>
+
+            {/* Instructions */}
+            <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:16}}>
+              {[["1","Select your first set of PDFs (baseline / original drawings)"],["2","Select your second set of PDFs (revised / updated drawings)"],["3","System auto-matches by filename similarity, then compares content"],["4","Review: check drawing count, matched pairs, and content differences"]].map(([n,t])=>(
+                <div key={n} style={{display:"flex",gap:10,marginBottom:8,alignItems:"flex-start"}}>
+                  <div style={{width:22,height:22,borderRadius:"50%",background:"#5856d6",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff"}}>{n}</div>
+                  <div style={{fontSize:13,color:"#444",lineHeight:1.5,paddingTop:2}}>{t}</div>
+                </div>
+              ))}
+              <div style={{fontSize:11,color:"rgba(0,0,0,0.35)",marginTop:8,borderTop:"1px solid rgba(0,0,0,0.06)",paddingTop:8}}>Use cases: Tender vs As-Built, M&E quantities, furniture layouts, landscape/tree species, structural revisions, and more.</div>
+            </div>
+
+            {/* Set label editors + folder selectors */}
+            <div style={{display:"flex",gap:10,marginBottom:16}}>
+              <div style={{flex:1}}>
+                <input value={batchLabelA} onChange={e=>setBatchLabelA(e.target.value.toUpperCase())} maxLength={20} style={{width:"100%",border:"none",background:"transparent",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#5856d6",textAlign:"center",marginBottom:6,padding:4,borderBottom:"2px solid rgba(88,86,214,0.2)",boxSizing:"border-box",outline:"none"}}/>
+                <button onClick={()=>batchSetARef.current?.click()} style={{width:"100%",background:batchSetAFiles.length?"rgba(88,86,214,0.08)":"#fff",border:`2px dashed ${batchSetAFiles.length?"#5856d6":"rgba(0,0,0,0.15)"}`,borderRadius:14,padding:20,cursor:"pointer",textAlign:"center"}}>
+                  <div style={{fontSize:24,marginBottom:4}}>📂</div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:batchSetAFiles.length?"#5856d6":"#1a1a1a"}}>{batchLabelA}</div>
+                  <div style={{fontSize:12,color:batchSetAFiles.length?"#5856d6":"rgba(0,0,0,0.4)",marginTop:4}}>{batchSetAFiles.length?`${batchSetAFiles.length} PDF(s) selected`:"Select PDF files..."}</div>
+                </button>
+              </div>
+              <div style={{flex:1}}>
+                <input value={batchLabelB} onChange={e=>setBatchLabelB(e.target.value.toUpperCase())} maxLength={20} style={{width:"100%",border:"none",background:"transparent",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#ff6b00",textAlign:"center",marginBottom:6,padding:4,borderBottom:"2px solid rgba(255,107,0,0.2)",boxSizing:"border-box",outline:"none"}}/>
+                <button onClick={()=>batchSetBRef.current?.click()} style={{width:"100%",background:batchSetBFiles.length?"rgba(255,107,0,0.08)":"#fff",border:`2px dashed ${batchSetBFiles.length?"#ff6b00":"rgba(0,0,0,0.15)"}`,borderRadius:14,padding:20,cursor:"pointer",textAlign:"center"}}>
+                  <div style={{fontSize:24,marginBottom:4}}>📂</div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:batchSetBFiles.length?"#ff6b00":"#1a1a1a"}}>{batchLabelB}</div>
+                  <div style={{fontSize:12,color:batchSetBFiles.length?"#ff6b00":"rgba(0,0,0,0.4)",marginTop:4}}>{batchSetBFiles.length?`${batchSetBFiles.length} PDF(s) selected`:"Select PDF files..."}</div>
+                </button>
+              </div>
+            </div>
+
+            {/* Count summary */}
+            {(batchSetAFiles.length>0||batchSetBFiles.length>0)&&(
+              <div style={{display:"flex",gap:8,marginBottom:16}}>
+                <div style={{flex:1,background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:10,padding:12,textAlign:"center"}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#5856d6"}}>{batchSetAFiles.length}</div>
+                  <div style={{fontSize:10,fontWeight:700,color:"rgba(88,86,214,0.6)",fontFamily:"'Barlow Condensed',sans-serif"}}>{batchLabelA}</div>
+                </div>
+                <div style={{flex:1,background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:10,padding:12,textAlign:"center"}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#ff6b00"}}>{batchSetBFiles.length}</div>
+                  <div style={{fontSize:10,fontWeight:700,color:"rgba(255,107,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif"}}>{batchLabelB}</div>
+                </div>
+                <div style={{flex:1,background:batchMatches.length?"rgba(48,209,88,0.08)":"rgba(255,59,48,0.08)",border:`1px solid ${batchMatches.length?"rgba(48,209,88,0.2)":"rgba(255,59,48,0.2)"}`,borderRadius:10,padding:12,textAlign:"center"}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:batchMatches.length?"#34c759":"#ff3b30"}}>{batchMatches.length}</div>
+                  <div style={{fontSize:10,fontWeight:700,color:batchMatches.length?"rgba(48,209,88,0.6)":"rgba(255,59,48,0.6)",fontFamily:"'Barlow Condensed',sans-serif"}}>MATCHED</div>
+                </div>
+                {(batchUnmatchedA.length>0||batchUnmatchedB.length>0)&&(
+                  <div style={{flex:1,background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:10,padding:12,textAlign:"center"}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#ff3b30"}}>{batchUnmatchedA.length+batchUnmatchedB.length}</div>
+                    <div style={{fontSize:10,fontWeight:700,color:"rgba(255,59,48,0.6)",fontFamily:"'Barlow Condensed',sans-serif"}}>UNMATCHED</div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Matched pairs */}
+            {batchMatches.length>0&&(
+              <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14}}>
+                <div style={lbl()}>MATCHED PAIRS ({batchMatches.length})</div>
+                {batchMatches.map((m,i)=>{
+                  const result=batchResults[i];
+                  return(
+                    <div key={i} style={{display:"flex",gap:8,alignItems:"center",padding:"8px 10px",marginBottom:6,borderRadius:10,border:"1px solid rgba(0,0,0,0.06)",background:result?(result.status==="identical"?"rgba(48,209,88,0.05)":result.status==="error"?"rgba(255,59,48,0.05)":"rgba(255,149,0,0.05)"):"#fafafa"}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:12,fontWeight:700,color:"#5856d6",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{m.fileA.name}</div>
+                        <div style={{fontSize:10,color:"rgba(0,0,0,0.3)"}}>↕ {Math.round(m.similarity*100)}% match</div>
+                        <div style={{fontSize:12,fontWeight:700,color:"#ff6b00",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{m.fileB.name}</div>
+                      </div>
+                      {result&&(
+                        <div style={{textAlign:"right",flexShrink:0}}>
+                          {result.status==="identical"&&<div style={{fontSize:11,fontWeight:800,color:"#34c759",fontFamily:"'Barlow Condensed',sans-serif"}}>IDENTICAL</div>}
+                          {result.status==="changed"&&<div><div style={{fontSize:11,fontWeight:800,color:"#ff9500",fontFamily:"'Barlow Condensed',sans-serif"}}>CHANGED</div><div style={{fontSize:10,color:"rgba(0,0,0,0.4)"}}>+{result.added} / -{result.removed}</div></div>}
+                          {result.status==="error"&&<div style={{fontSize:11,fontWeight:800,color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif"}}>ERROR</div>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Unmatched files */}
+            {batchUnmatchedA.length>0&&(
+              <div style={{background:"rgba(255,59,48,0.04)",borderRadius:14,padding:16,marginBottom:14,border:"1px solid rgba(255,59,48,0.1)"}}>
+                <div style={{...lbl(),color:"#ff3b30"}}>ONLY IN {batchLabelA} ({batchUnmatchedA.length})</div>
+                <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:8}}>These {batchLabelA.toLowerCase()} drawings have no match in {batchLabelB.toLowerCase()}</div>
+                {batchUnmatchedA.map((f,i)=><div key={i} style={{fontSize:12,padding:"4px 8px",marginBottom:3,background:"rgba(255,59,48,0.06)",borderRadius:6,borderLeft:"3px solid #ff3b30"}}>{f.name}</div>)}
+              </div>
+            )}
+            {batchUnmatchedB.length>0&&(
+              <div style={{background:"rgba(255,149,0,0.04)",borderRadius:14,padding:16,marginBottom:14,border:"1px solid rgba(255,149,0,0.1)"}}>
+                <div style={{...lbl(),color:"#ff9500"}}>ONLY IN {batchLabelB} ({batchUnmatchedB.length})</div>
+                <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:8}}>These {batchLabelB.toLowerCase()} drawings have no match in {batchLabelA.toLowerCase()}</div>
+                {batchUnmatchedB.map((f,i)=><div key={i} style={{fontSize:12,padding:"4px 8px",marginBottom:3,background:"rgba(255,149,0,0.06)",borderRadius:6,borderLeft:"3px solid #ff9500"}}>{f.name}</div>)}
+              </div>
+            )}
+
+            {/* Action buttons */}
+            {batchMatches.length>0&&(
+              <div style={{display:"flex",gap:8,marginBottom:14}}>
+                <button onClick={runBatchCompare} disabled={batchRunning} style={{flex:1,background:batchRunning?"rgba(0,0,0,0.1)":"#5856d6",border:"none",borderRadius:10,padding:14,color:batchRunning?"rgba(0,0,0,0.3)":"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                  {batchRunning?<><Spin size={14}/> COMPARING {batchProgress.current}/{batchProgress.total}...</>:"RUN BATCH COMPARISON"}
+                </button>
+              </div>
+            )}
+
+            {/* Results summary */}
+            {batchResults.length>0&&!batchRunning&&(
+              <div style={{background:"#1a1a1a",borderRadius:14,padding:16,marginBottom:14}}>
+                <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:10}}>BATCH RESULTS SUMMARY</div>
+                <div style={{display:"flex",gap:8,marginBottom:12}}>
+                  <div style={{flex:1,textAlign:"center"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#34c759"}}>{batchResults.filter(r=>r.status==="identical").length}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.4)"}}>IDENTICAL</div></div>
+                  <div style={{flex:1,textAlign:"center"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#ff9500"}}>{batchResults.filter(r=>r.status==="changed").length}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.4)"}}>CHANGED</div></div>
+                  <div style={{flex:1,textAlign:"center"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#ff3b30"}}>{batchResults.filter(r=>r.status==="error").length}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.4)"}}>ERRORS</div></div>
+                </div>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={exportBatchCsv} style={{flex:1,background:"rgba(52,170,220,0.2)",border:"1px solid rgba(52,170,220,0.4)",borderRadius:10,padding:"9px 10px",color:"#7fd7ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>EXPORT CSV</button>
+                  <button onClick={exportBatchPdf} style={{flex:1,background:"rgba(255,107,0,0.2)",border:"1px solid rgba(255,107,0,0.4)",borderRadius:10,padding:"9px 10px",color:"#ffb48a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>EXPORT PDF</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {showCompare&&(
         <div style={{position:"fixed",inset:0,zIndex:260,background:"rgba(0,0,0,0.9)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
