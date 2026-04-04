@@ -3368,8 +3368,33 @@ Return valid JSON only with this shape:
           pinDefects.forEach(df=>{const s=df.severity||"Unknown";sevCounts[s]=(sevCounts[s]||0)+1;});
           return(
             <div key={d.id} onClick={()=>setViewing(d)} style={{background:"#fff",borderRadius:14,padding:0,marginBottom:12,cursor:"pointer",overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)"}}>
-              {isImage&&<img src={fileUrl} alt={d.name} style={{width:"100%",maxHeight:"50vh",objectFit:"contain",display:"block",background:"#f8f8f6"}}/>}
-              {!isImage&&<PdfThumb url={fileUrl}/>}
+              <div style={{position:"relative",background:"#f8f8f6"}}>
+                {isImage&&<img src={fileUrl} alt={d.name} style={{width:"100%",maxHeight:"50vh",objectFit:"contain",display:"block",background:"#f8f8f6"}}/>}
+                {!isImage&&<PdfThumb url={fileUrl}/>}
+                {(drawingPins.length>0||drawingNotes.length>0)&&(
+                  <div style={{position:"absolute",inset:0,pointerEvents:"none"}}>
+                    {drawingPins.map(p=>{
+                      const pd=defects.find(df=>df.id===p.entryId);
+                      const color=pd?SEV_COLOR[pd.severity]||"#ff6b00":"#8e8e93";
+                      const isCritical=pd?.severity==="Critical"&&pd?.status==="Open";
+                      return(
+                        <div key={p.id} style={{position:"absolute",left:`${p.x}%`,top:`${p.y}%`,transform:"translate(-50%,-50%)"}}>
+                          <div style={{width:20,height:20,borderRadius:"50%",border:`2px solid ${color}`,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 1px 4px rgba(0,0,0,0.35)${isCritical?`,0 0 8px ${color}`:""}`}}>
+                            <div style={{width:7,height:7,borderRadius:"50%",background:color}}/>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {drawingNotes.map(n=>(
+                      <div key={n.id} style={{position:"absolute",left:`${n.x}%`,top:`${n.y}%`,transform:"translate(-50%,-50%)"}}>
+                        <div style={{background:"rgba(88,86,214,0.85)",borderRadius:6,padding:"1px 5px",boxShadow:"0 1px 4px rgba(0,0,0,0.3)"}}>
+                          <span style={{fontSize:8,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",whiteSpace:"nowrap"}}>📝</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div style={{padding:"12px 14px"}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                   <div>
