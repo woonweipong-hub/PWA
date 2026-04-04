@@ -3577,7 +3577,7 @@ Return valid JSON only with this shape:
               <div key={sc.id} style={{background:"#fff",borderRadius:12,padding:0,marginBottom:10,overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)"}}>
                 {sc.overlayThumb&&(
                   <div style={{position:"relative",cursor:"pointer"}} onClick={()=>loadSavedComparison(sc)}>
-                    <img src={sc.overlayThumb} alt="Comparison overlay" style={{width:"100%",display:"block",objectFit:"contain",background:"#f8f8f6"}}/>
+                    <img src={sc.overlayThumb} alt="Comparison overlay" style={{width:"100%",display:"block",maxHeight:280,objectFit:"contain",background:"#f8f8f6"}}/>
                     <div style={{position:"absolute",left:6,top:6,display:"flex",gap:4}}>
                       <div style={{background:"rgba(0,0,0,0.7)",borderRadius:6,padding:"2px 8px",fontSize:9,fontWeight:700,color:"#ff8a8a",fontFamily:"'Barlow Condensed',sans-serif"}}>+{sc.totalAdded}</div>
                       <div style={{background:"rgba(0,0,0,0.7)",borderRadius:6,padding:"2px 8px",fontSize:9,fontWeight:700,color:"#8ab4ff",fontFamily:"'Barlow Condensed',sans-serif"}}>-{sc.totalRemoved}</div>
@@ -3698,7 +3698,7 @@ Return valid JSON only with this shape:
 
       {showCompare&&(
         <div style={{position:"fixed",inset:0,zIndex:260,background:"rgba(0,0,0,0.9)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-          <div style={{width:"100%",maxHeight:"100vh",background:"#1a1a1a",borderTopLeftRadius:0,borderTopRightRadius:0,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+          <div style={{width:"100%",maxWidth:1080,maxHeight:"92vh",background:"#1a1a1a",borderTopLeftRadius:18,borderTopRightRadius:18,overflow:"hidden",display:"flex",flexDirection:"column"}}>
             <div style={{padding:"14px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)",display:"flex",alignItems:"center",gap:10}}>
               <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff"}}>PDF COMPARISON{viewingSaved?` (SAVED)`:""}
               </div>
