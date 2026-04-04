@@ -31,6 +31,74 @@ function compressPhoto(dataUrl,maxPx=1800,quality=0.8){
   });
 }
 
+const DRAWING_NOTES_KEY="drawing_notes_v1";
+const BCA_SCDF_REVISION_COLORS={added:"#ff3b30",removed:"#34c759"};
+
+function loadDrawingNotesMap(){
+  const raw=local.get(DRAWING_NOTES_KEY);
+  return raw&&typeof raw==="object"?raw:{};
+}
+
+function getDrawingNotes(drawingId){
+  const map=loadDrawingNotesMap();
+  return Array.isArray(map[drawingId])?map[drawingId]:[];
+}
+
+function saveDrawingNotes(drawingId,notes){
+  const map=loadDrawingNotesMap();
+  map[drawingId]=notes;
+  local.set(DRAWING_NOTES_KEY,map);
+}
+
+function normalizePdfLine(text){
+  return String(text||"")
+    .replace(/\s+/g," ")
+    .replace(/[•·]/g," ")
+    .trim()
+    .toUpperCase();
+}
+
+async function extractPdfLines(url,maxPages=30){
+  if(!window.pdfjsLib)throw new Error("PDF comparison engine not available");
+  const pdfjsLib=window.pdfjsLib;
+  if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  const doc=await pdfjsLib.getDocument(url).promise;
+  try{
+    const pageLimit=Math.min(doc.numPages,maxPages);
+    const lines=[];
+    for(let pageNum=1;pageNum<=pageLimit;pageNum++){
+      const page=await doc.getPage(pageNum);
+      const content=await page.getTextContent();
+      const rows=new Map();
+      (content.items||[]).forEach(it=>{
+        const txt=(it.str||"").trim();
+        if(!txt)return;
+        const y=Math.round((it.transform?.[5]||0)/2)*2;
+        const x=it.transform?.[4]||0;
+        if(!rows.has(y))rows.set(y,[]);
+        rows.get(y).push({x,txt});
+      });
+      [...rows.entries()].sort((a,b)=>b[0]-a[0]).forEach(([,items])=>{
+        const line=normalizePdfLine(items.sort((a,b)=>a.x-b.x).map(i=>i.txt).join(" "));
+        if(line.length>2)lines.push(`P${pageNum} ${line}`);
+      });
+    }
+    return lines;
+  }finally{
+    try{await doc.destroy();}catch{}
+  }
+}
+
+function comparePdfLineSets(baseLines,revisionLines){
+  const baseSet=new Set(baseLines);
+  const revisionSet=new Set(revisionLines);
+  const added=revisionLines.filter(l=>!baseSet.has(l));
+  const removed=baseLines.filter(l=>!revisionSet.has(l));
+  return{added,removed};
+}
+
 // ── Photo Markup Editor ──────────────────────────────────────────
 function PhotoMarkup({src,onSave,onCancel}){
   const canvasRef=useRef();const overlayRef=useRef();
@@ -2867,8 +2935,36 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[viewing,setViewing]=useState(null);
   const[uploading,setUploading]=useState(false);
   const[allPins,setAllPins]=useState([]);
+  const[showCompare,setShowCompare]=useState(false);
+  const[compareBaseId,setCompareBaseId]=useState("");
+  const[compareTargetId,setCompareTargetId]=useState("");
+  const[comparing,setComparing]=useState(false);
+  const[compareError,setCompareError]=useState("");
+  const[compareRes,setCompareRes]=useState(null);
+  const[compareAiBusy,setCompareAiBusy]=useState(false);
+  const[compareAiError,setCompareAiError]=useState("");
+  const[compareAiReport,setCompareAiReport]=useState("");
+  const[compareAiLocked,setCompareAiLocked]=useState(false);
+  const[compareAiApprovedBy,setCompareAiApprovedBy]=useState("");
+  const[compareAiApprovedAt,setCompareAiApprovedAt]=useState(null);
+  const[compareAuditLog,setCompareAuditLog]=useState([]);
+  const[showUnlockPrompt,setShowUnlockPrompt]=useState(false);
+  const[unlockReason,setUnlockReason]=useState("");
+  const[comparePreviewLoading,setComparePreviewLoading]=useState(false);
+  const[compareMarkupTool,setCompareMarkupTool]=useState("freehand");
+  const[compareMarkupColor,setCompareMarkupColor]=useState("#ff3b30");
+  const[compareMarkupStrokes,setCompareMarkupStrokes]=useState([]);
+  const[compareMarkupCurrent,setCompareMarkupCurrent]=useState(null);
+  const[compareTextPoint,setCompareTextPoint]=useState(null);
+  const[compareTextValue,setCompareTextValue]=useState("");
   const fileRef=useRef();
+  const compareBoardRef=useRef();
+  const compareBaseCanvasRef=useRef();
+  const compareTargetCanvasRef=useRef();
   const canUpload=["Admin","Manager"].includes(member?.role);
+  const canApproveAi=["Admin","Manager"].includes(member?.role);
+  const aiReady=isAiConfigured();
+  const pdfDrawings=drawings.filter(d=>/\.pdf$/i.test(d.file||""));
 
   // Load drawings and all pins for current project
   useEffect(()=>{
@@ -2912,6 +3008,318 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     }catch(e){alert("Delete failed: "+e.message);}
   };
 
+  const openCompare=()=>{
+    if(pdfDrawings.length<2)return;
+    setCompareError("");setCompareRes(null);
+    const first=pdfDrawings[0]?.id||"";
+    const second=pdfDrawings[1]?.id||first;
+    setCompareBaseId(prev=>prev||first);
+    setCompareTargetId(prev=>prev||(second===first?"":second));
+    setShowCompare(true);
+  };
+
+  const runCompare=async()=>{
+    const base=drawings.find(d=>d.id===compareBaseId);
+    const target=drawings.find(d=>d.id===compareTargetId);
+    if(!base||!target||base.id===target.id){
+      setCompareError("Choose 2 different PDF drawings.");
+      return;
+    }
+    setComparing(true);setCompareError("");setCompareRes(null);
+    setCompareAiError("");setCompareAiReport("");
+    setCompareAiLocked(false);setCompareAiApprovedBy("");setCompareAiApprovedAt(null);setCompareAuditLog([]);
+    try{
+      const baseUrl=DB.fileUrl("drawings",base.id,base.file);
+      const targetUrl=DB.fileUrl("drawings",target.id,target.file);
+      const[baseLines,targetLines]=await Promise.all([extractPdfLines(baseUrl),extractPdfLines(targetUrl)]);
+      const diff=comparePdfLineSets(baseLines,targetLines);
+      setCompareRes({
+        baseName:base.name,
+        targetName:target.name,
+        added:diff.added.slice(0,250),
+        removed:diff.removed.slice(0,250),
+        totalAdded:diff.added.length,
+        totalRemoved:diff.removed.length,
+        generatedAt:Date.now()
+      });
+    }catch(e){
+      setCompareError(e.message||"Comparison failed");
+    }
+    setComparing(false);
+  };
+
+  const runCompareAi=async()=>{
+    if(!compareRes)return;
+    if(compareAiLocked){setCompareAiError("AI report is locked. Unlock before regenerating.");return;}
+    if(!aiReady){setCompareAiError("AI is not configured. Set up AI provider in AI Setup first.");return;}
+    const today=new Date().toISOString().slice(0,10);
+    const aiUsage=local.get(AI_LIMIT_KEY)||{date:"",count:0};
+    const todayCount=aiUsage.date===today?aiUsage.count:0;
+    if(todayCount>=AI_DAILY_LIMIT){
+      setCompareAiError(`AI analysis limit reached (${AI_DAILY_LIMIT}/day).`);
+      return;
+    }
+    setCompareAiBusy(true);setCompareAiError("");
+    try{
+      const sampleAdded=(compareRes.added||[]).slice(0,80);
+      const sampleRemoved=(compareRes.removed||[]).slice(0,80);
+      const prompt=`You are reviewing drawing revisions for construction compliance and coordination.
+Project: ${currentProject?.name||"Unknown"}
+Company: ${company?.companyName||"Unknown"}
+Base drawing: ${compareRes.baseName}
+Revision drawing: ${compareRes.targetName}
+Detected changes: ${compareRes.totalAdded} added lines, ${compareRes.totalRemoved} removed lines.
+
+Added lines sample:\n${sampleAdded.join("\n")||"(none)"}
+
+Removed lines sample:\n${sampleRemoved.join("\n")||"(none)"}
+
+Return valid JSON only with this shape:
+{
+  "executive_summary": "3-5 sentence summary",
+  "key_impacts": ["max 8 bullets"],
+  "risks": ["max 8 bullets"],
+  "recommended_actions": ["max 10 actions with owner/trade hints"],
+  "submission_notes_bca_scdf": ["max 6 bullets for submission/audit context"]
+}`;
+      const raw=await askAI(prompt);
+      if(!raw)throw new Error("AI returned no response");
+      let parsed;
+      try{parsed=JSON.parse(String(raw).replace(/```json|```/g,"").trim());}
+      catch{throw new Error("AI response could not be parsed");}
+      const section=(title,arr)=>`${title}:\n${(arr||[]).length?(arr||[]).map((x,i)=>`${i+1}. ${x}`).join("\n"):"-"}`;
+      const report=[
+        `Executive Summary:\n${parsed.executive_summary||"-"}`,
+        section("Key Impacts",parsed.key_impacts),
+        section("Risks",parsed.risks),
+        section("Recommended Actions",parsed.recommended_actions),
+        section("Submission Notes (BCA/SCDF)",parsed.submission_notes_bca_scdf)
+      ].join("\n\n");
+      setCompareAiReport(report);
+      local.set(AI_LIMIT_KEY,{date:today,count:todayCount+1});
+    }catch(e){
+      setCompareAiError(e.message||"AI analysis failed");
+    }
+    setCompareAiBusy(false);
+  };
+
+  const regenerateCompareAi=async()=>{
+    if(compareAiLocked){setCompareAiError("AI report is locked. Unlock before regenerating.");return;}
+    setCompareAiReport("");
+    await runCompareAi();
+  };
+
+  const logCompareAudit=(action,details={})=>{
+    const entry={action,by:member?.name||"Unknown",at:Date.now(),...details};
+    setCompareAuditLog(prev=>[entry,...prev]);
+    DB.activity.create({
+      companyId:company?.companyId||"",
+      projectId:currentProject?.id||"",
+      type:"compare_audit",
+      action,
+      userName:member?.name||"",
+      userId:authUser?.id||"",
+      baseName:compareRes?.baseName||"",
+      targetName:compareRes?.targetName||"",
+      reason:details.reason||"",
+      createdAt:new Date().toISOString()
+    }).catch(e=>console.warn("Audit log save failed:",e));
+  };
+
+  const approveAndLockCompareAi=()=>{
+    if(!compareAiReport)return;
+    setCompareAiLocked(true);
+    setCompareAiApprovedBy(member?.name||"Unknown");
+    setCompareAiApprovedAt(Date.now());
+    setCompareAiError("");
+    logCompareAudit("lock",{reason:"Approved AI report"});
+  };
+
+  const unlockCompareAi=()=>{
+    setShowUnlockPrompt(true);
+    setUnlockReason("");
+  };
+
+  const confirmUnlock=(reason)=>{
+    setCompareAiLocked(false);
+    setCompareAiApprovedBy("");
+    setCompareAiApprovedAt(null);
+    setShowUnlockPrompt(false);
+    logCompareAudit("unlock",{reason:reason||"No reason provided"});
+    setUnlockReason("");
+  };
+
+  const getCompareMarkupPos=e=>{
+    const board=compareBoardRef.current;
+    if(!board)return null;
+    const rect=board.getBoundingClientRect();
+    const t=e.touches?e.touches[0]:e;
+    return{
+      x:Math.max(0,Math.min(100,((t.clientX-rect.left)/rect.width)*100)),
+      y:Math.max(0,Math.min(100,((t.clientY-rect.top)/rect.height)*100))
+    };
+  };
+
+  const onCompareMarkupDown=e=>{
+    const p=getCompareMarkupPos(e);if(!p)return;
+    e.preventDefault();
+    if(compareMarkupTool==="text"){
+      setCompareTextPoint(p);
+      setCompareTextValue("");
+      return;
+    }
+    if(compareMarkupTool==="freehand")setCompareMarkupCurrent({type:"freehand",color:compareMarkupColor,points:[p]});
+    else setCompareMarkupCurrent({type:compareMarkupTool,color:compareMarkupColor,start:p,end:p});
+  };
+
+  const onCompareMarkupMove=e=>{
+    if(!compareMarkupCurrent)return;
+    const p=getCompareMarkupPos(e);if(!p)return;
+    e.preventDefault();
+    if(compareMarkupCurrent.type==="freehand")setCompareMarkupCurrent(c=>({...c,points:[...c.points,p]}));
+    else setCompareMarkupCurrent(c=>({...c,end:p}));
+  };
+
+  const onCompareMarkupUp=()=>{
+    if(compareMarkupCurrent){setCompareMarkupStrokes(s=>[...s,compareMarkupCurrent]);setCompareMarkupCurrent(null);}
+  };
+
+  const undoCompareMarkup=()=>setCompareMarkupStrokes(s=>s.slice(0,-1));
+  const clearCompareMarkup=()=>{if(compareMarkupStrokes.length&&confirm("Clear compare markup?"))setCompareMarkupStrokes([]);};
+
+  const addCompareText=()=>{
+    if(!compareTextPoint||!compareTextValue.trim())return;
+    setCompareMarkupStrokes(s=>[...s,{type:"text",color:compareMarkupColor,pos:compareTextPoint,text:compareTextValue.trim()}]);
+    setCompareTextPoint(null);setCompareTextValue("");
+  };
+
+  const renderCompareMarkup=(strokes)=>strokes.map((s,i)=>{
+    if(s.type==="freehand"&&s.points.length>1){
+      const d="M"+s.points.map(p=>`${p.x} ${p.y}`).join("L");
+      return <path key={i} d={d} stroke={s.color} strokeWidth="0.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>;
+    }
+    if(s.type==="arrow"&&s.start&&s.end){
+      const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y,len=Math.sqrt(dx*dx+dy*dy);
+      if(len<0.5)return null;
+      const angle=Math.atan2(dy,dx),hl=1.8;
+      return <g key={i}><line x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={s.color} strokeWidth="0.5"/>
+        <line x1={s.end.x} y1={s.end.y} x2={s.end.x-hl*Math.cos(angle-0.45)} y2={s.end.y-hl*Math.sin(angle-0.45)} stroke={s.color} strokeWidth="0.5"/>
+        <line x1={s.end.x} y1={s.end.y} x2={s.end.x-hl*Math.cos(angle+0.45)} y2={s.end.y-hl*Math.sin(angle+0.45)} stroke={s.color} strokeWidth="0.5"/></g>;
+    }
+    if(s.type==="circle"&&s.start&&s.end){
+      const cx=(s.start.x+s.end.x)/2,cy=(s.start.y+s.end.y)/2;
+      const rx=Math.abs(s.end.x-s.start.x)/2,ry=Math.abs(s.end.y-s.start.y)/2;
+      if(rx<0.3&&ry<0.3)return null;
+      return <ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry} stroke={s.color} strokeWidth="0.5" fill="none"/>;
+    }
+    if(s.type==="text"&&s.pos&&s.text){
+      return <g key={i}>
+        <rect x={s.pos.x-0.2} y={s.pos.y-3.2} width={Math.max(8,s.text.length*1.3)} height="4" rx="0.6" fill="rgba(0,0,0,0.65)"/>
+        <text x={s.pos.x+0.4} y={s.pos.y-0.6} fontSize="2.4" fontWeight="700" fill={s.color} fontFamily="Barlow Condensed, sans-serif">{s.text}</text>
+      </g>;
+    }
+    return null;
+  });
+
+  useEffect(()=>{
+    if(!showCompare)return;
+    const base=drawings.find(d=>d.id===compareBaseId);
+    const target=drawings.find(d=>d.id===compareTargetId);
+    if(!base||!target)return;
+    if(!window.pdfjsLib||!compareBaseCanvasRef.current||!compareTargetCanvasRef.current)return;
+    const pdfjsLib=window.pdfjsLib;
+    if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    let cancelled=false;
+    const renderPage=async(url,canvas)=>{
+      const doc=await pdfjsLib.getDocument(url).promise;
+      try{
+        const page=await doc.getPage(1);
+        const viewport=page.getViewport({scale:1.2});
+        canvas.width=viewport.width;canvas.height=viewport.height;
+        await page.render({canvasContext:canvas.getContext("2d"),viewport}).promise;
+      }finally{try{await doc.destroy();}catch{}}
+    };
+    setComparePreviewLoading(true);
+    Promise.all([
+      renderPage(DB.fileUrl("drawings",base.id,base.file),compareBaseCanvasRef.current),
+      renderPage(DB.fileUrl("drawings",target.id,target.file),compareTargetCanvasRef.current)
+    ]).catch(()=>{}).finally(()=>{if(!cancelled)setComparePreviewLoading(false);});
+    return()=>{cancelled=true;};
+  },[showCompare,compareBaseId,compareTargetId,drawings]);
+
+  const downloadTextFile=(content,fileName,mime="text/plain;charset=utf-8")=>{
+    const blob=new Blob([content],{type:mime});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download=fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),500);
+  };
+
+  const csvCell=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+
+  const exportCompareCsv=()=>{
+    if(!compareRes)return;
+    const stamp=new Date(compareRes.generatedAt||Date.now()).toISOString();
+    const header=["Type","Line","Base Version","Revision Version","Generated At","Project","Company"];
+    const rows=[];
+    if(compareAiReport){
+      rows.push(["AI_REPORT",compareAiReport.replace(/\n/g," | "),compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]);
+      rows.push(["AI_APPROVAL",compareAiLocked?"LOCKED":"DRAFT",`By: ${compareAiApprovedBy||""} At: ${compareAiApprovedAt?new Date(compareAiApprovedAt).toISOString():""}`,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]);
+    }
+    compareAuditLog.forEach(e=>rows.push(["AUDIT",`${e.action.toUpperCase()} by ${e.by} at ${new Date(e.at).toISOString()}${e.reason?" — Reason: "+e.reason:""}`,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]));
+    compareRes.added.forEach(line=>rows.push(["ADDED",line,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]));
+    compareRes.removed.forEach(line=>rows.push(["REMOVED",line,compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]));
+    if(rows.length===0)rows.push(["NO_DIFF","No added/removed lines detected",compareRes.baseName,compareRes.targetName,stamp,currentProject?.name||"",company?.companyName||""]);
+    const csv=[header,...rows].map(r=>r.map(csvCell).join(",")).join("\n");
+    const fn=`drawing_compare_${(compareRes.baseName||"base").replace(/\W+/g,"_")}_to_${(compareRes.targetName||"revision").replace(/\W+/g,"_")}.csv`;
+    downloadTextFile(csv,fn,"text/csv;charset=utf-8");
+  };
+
+  const exportComparePdf=()=>{
+    if(!compareRes)return;
+    const addedHtml=(compareRes.added.length?compareRes.added:["No added lines detected."]).map((l,i)=>`<tr><td>${i+1}</td><td>${sanitize(l)}</td></tr>`).join("");
+    const removedHtml=(compareRes.removed.length?compareRes.removed:["No removed lines detected."]).map((l,i)=>`<tr><td>${i+1}</td><td>${sanitize(l)}</td></tr>`).join("");
+    const stamp=new Date(compareRes.generatedAt||Date.now());
+    const aiApprovalHtml=compareAiReport?`<div style="margin:8px 0 0;font-size:11px;color:${compareAiLocked?"#1a7a35":"#666"};background:${compareAiLocked?"#eefcf1":"#f7f7f7"};border:1px solid ${compareAiLocked?"#9cd8ad":"#ddd"};border-radius:6px;padding:8px"><b>AI Report Status:</b> ${compareAiLocked?"LOCKED":"DRAFT"}${compareAiApprovedBy?` | <b>Approved by:</b> ${sanitize(compareAiApprovedBy)}`:""}${compareAiApprovedAt?` | <b>Approved at:</b> ${sanitize(new Date(compareAiApprovedAt).toLocaleString())}`:""}</div>`:"";
+    const auditHtml=compareAuditLog.length?`<div style="margin:8px 0 0;font-size:10px;border:1px solid #ddd;border-radius:6px;padding:8px;background:#fafafa"><b>Audit Trail</b>${compareAuditLog.map(e=>`<div style="margin:3px 0;color:${e.action==="lock"?"#1a7a35":"#b36b00"}"><b>${e.action.toUpperCase()}</b> by ${sanitize(e.by)} at ${sanitize(new Date(e.at).toLocaleString())}${e.reason&&e.action==="unlock"?` — <i>${sanitize(e.reason)}</i>`:""}</div>`).join("")}</div>`:"";
+    const aiHtml=compareAiReport?`<h2 style="color:#5856d6">AI-Supported Analysis</h2><div style="white-space:pre-wrap;font-size:12px;line-height:1.45;background:#f5f3ff;border:1px solid #d8d2ff;border-radius:8px;padding:10px">${sanitize(compareAiReport)}</div>${aiApprovalHtml}${auditHtml}`:"";
+    const w=window.open("","_blank");
+    if(!w){alert("Popup blocked. Please allow popups to export PDF.");return;}
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Drawing Comparison Report</title><style>
+      body{font-family:Arial,sans-serif;padding:22px;color:#111}
+      h1{margin:0 0 4px;font-size:22px} h2{margin:20px 0 8px;font-size:16px}
+      .meta{font-size:12px;color:#444;margin-bottom:6px}
+      .cards{display:flex;gap:10px;margin:10px 0 14px}
+      .card{flex:1;border-radius:8px;padding:10px;border:1px solid #ddd}
+      .add{border-color:#ff3b30;background:#fff3f2}.rem{border-color:#34c759;background:#f0fff5}
+      table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ddd;padding:6px;vertical-align:top}
+      th{background:#f5f5f5;text-align:left}
+      @media print {.no-print{display:none}}
+    </style></head><body>
+      <h1>Drawing Revision Comparison</h1>
+      <div class="meta"><b>Project:</b> ${sanitize(currentProject?.name||"—")} | <b>Company:</b> ${sanitize(company?.companyName||"—")}</div>
+      <div class="meta"><b>Base:</b> ${sanitize(compareRes.baseName)} | <b>Revision:</b> ${sanitize(compareRes.targetName)}</div>
+      <div class="meta"><b>Generated:</b> ${sanitize(stamp.toLocaleString())}</div>
+      <div class="cards">
+        <div class="card add"><div><b>Added lines (Red)</b></div><div style="font-size:22px;font-weight:bold">${compareRes.totalAdded}</div></div>
+        <div class="card rem"><div><b>Removed lines (Green)</b></div><div style="font-size:22px;font-weight:bold">${compareRes.totalRemoved}</div></div>
+      </div>
+      <h2 style="color:#ff3b30">Added Lines</h2>
+      <table><thead><tr><th style="width:44px">#</th><th>Line</th></tr></thead><tbody>${addedHtml}</tbody></table>
+      <h2 style="color:#34c759">Removed Lines</h2>
+      <table><thead><tr><th style="width:44px">#</th><th>Line</th></tr></thead><tbody>${removedHtml}</tbody></table>
+      ${aiHtml}
+      <div class="no-print" style="margin-top:16px;font-size:12px;color:#444">Use your browser destination "Save as PDF" when print dialog appears.</div>
+      <script>window.onload=function(){setTimeout(function(){window.print();},250);};</script>
+    </body></html>`);
+    w.document.close();
+  };
+
   if(viewing)return <DrawingViewer drawing={viewing} onClose={()=>setViewing(null)} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry}/>;
 
   return(
@@ -2931,6 +3339,15 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
           </div>
         )}
 
+        {pdfDrawings.length>=2&&(
+          <div style={{marginBottom:16}}>
+            <button onClick={openCompare} style={{width:"100%",background:"#1a1a1a",border:"none",borderRadius:12,padding:13,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+              🔍 COMPARE PDF REVISIONS
+            </button>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.35)",marginTop:6,textAlign:"center"}}>BCA/SCDF style: Added lines in red, removed lines in green</div>
+          </div>
+        )}
+
         {loading&&<div style={{textAlign:"center",padding:40}}><Spin size={20}/></div>}
 
         {!loading&&drawings.length===0&&(
@@ -2945,6 +3362,7 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
           const fileUrl=DB.fileUrl("drawings",d.id,d.file);
           const isImage=/\.(jpg|jpeg|png|gif|webp|tif|tiff)$/i.test(d.file);
           const drawingPins=allPins.filter(p=>p.drawingId===d.id);
+          const drawingNotes=getDrawingNotes(d.id);
           const pinDefects=drawingPins.map(p=>defects.find(df=>df.id===p.entryId)).filter(Boolean);
           const sevCounts={};
           pinDefects.forEach(df=>{const s=df.severity||"Unknown";sevCounts[s]=(sevCounts[s]||0)+1;});
@@ -2963,9 +3381,15 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
                 {drawingPins.length>0&&(
                   <div style={{display:"flex",alignItems:"center",gap:6,marginTop:8,flexWrap:"wrap"}}>
                     <span style={{fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif"}}>📌 {drawingPins.length} PIN{drawingPins.length>1?"S":""}</span>
+                    {drawingNotes.length>0&&<span style={{fontSize:11,fontWeight:700,color:"#5856d6",background:"rgba(88,86,214,0.12)",border:"1px solid rgba(88,86,214,0.25)",borderRadius:10,padding:"2px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>📝 {drawingNotes.length} NOTE{drawingNotes.length>1?"S":""}</span>}
                     {Object.entries(sevCounts).map(([sev,count])=>(
                       <span key={sev} style={{fontSize:10,fontWeight:700,color:SEV_COLOR[sev]||"#8e8e93",background:(SEV_COLOR[sev]||"#8e8e93")+"18",border:`1px solid ${(SEV_COLOR[sev]||"#8e8e93")}30`,borderRadius:10,padding:"2px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>{count} {sev}</span>
                     ))}
+                  </div>
+                )}
+                {drawingPins.length===0&&drawingNotes.length>0&&(
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginTop:8,flexWrap:"wrap"}}>
+                    <span style={{fontSize:11,fontWeight:700,color:"#5856d6",background:"rgba(88,86,214,0.12)",border:"1px solid rgba(88,86,214,0.25)",borderRadius:10,padding:"2px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>📝 {drawingNotes.length} NOTE{drawingNotes.length>1?"S":""}</span>
                   </div>
                 )}
               </div>
@@ -2973,6 +3397,191 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
           );
         })}
       </div>
+
+      {showCompare&&(
+        <div style={{position:"fixed",inset:0,zIndex:260,background:"rgba(0,0,0,0.9)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+          <div style={{width:"100%",maxWidth:430,maxHeight:"92vh",background:"#1a1a1a",borderTopLeftRadius:18,borderTopRightRadius:18,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+            <div style={{padding:"14px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)",display:"flex",alignItems:"center",gap:10}}>
+              <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff"}}>PDF COMPARISON</div>
+              <button onClick={()=>setShowCompare(false)} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:18,padding:"7px 12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CLOSE</button>
+            </div>
+
+            <div style={{padding:16,overflowY:"auto"}}>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:8}}>Compare two drawing PDF versions on mobile and list revision text lines.</div>
+
+              <div style={{marginBottom:10}}>
+                <div style={{fontSize:10,color:"rgba(255,255,255,0.45)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:6}}>BASE VERSION</div>
+                <select value={compareBaseId} onChange={e=>setCompareBaseId(e.target.value)} style={{width:"100%",padding:"11px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:13,fontFamily:"'Barlow Condensed',sans-serif"}}>
+                  <option value="">Select PDF</option>
+                  {pdfDrawings.map(d=><option key={d.id} value={d.id} style={{color:"#111"}}>{d.name}</option>)}
+                </select>
+              </div>
+
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:10,color:"rgba(255,255,255,0.45)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:6}}>REVISION VERSION</div>
+                <select value={compareTargetId} onChange={e=>setCompareTargetId(e.target.value)} style={{width:"100%",padding:"11px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:13,fontFamily:"'Barlow Condensed',sans-serif"}}>
+                  <option value="">Select PDF</option>
+                  {pdfDrawings.map(d=><option key={d.id} value={d.id} style={{color:"#111"}}>{d.name}</option>)}
+                </select>
+              </div>
+
+              <button onClick={runCompare} disabled={comparing||!compareBaseId||!compareTargetId||compareBaseId===compareTargetId} style={{width:"100%",background:(!compareBaseId||!compareTargetId||compareBaseId===compareTargetId)?"rgba(255,255,255,0.1)":"#ff6b00",border:"none",borderRadius:10,padding:12,color:(!compareBaseId||!compareTargetId||compareBaseId===compareTargetId)?"rgba(255,255,255,0.35)":"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",marginBottom:12}}>
+                {comparing?"COMPARING...":"RUN COMPARISON"}
+              </button>
+
+              {compareError&&<div style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"10px 12px",color:"#ff7f7f",fontSize:12,marginBottom:12}}>{compareError}</div>}
+
+              <div style={{display:"flex",gap:8,marginBottom:12}}>
+                <button onClick={runCompareAi} disabled={compareAiBusy||!compareRes} style={{flex:1,background:(!compareRes||compareAiBusy)?"rgba(255,255,255,0.1)":"rgba(88,86,214,0.28)",border:"1px solid rgba(88,86,214,0.45)",borderRadius:10,padding:"9px 10px",color:(!compareRes||compareAiBusy)?"rgba(255,255,255,0.35)":"#d8d2ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>
+                  {compareAiBusy?"AI ANALYZING...":"AI ANALYZE & SUMMARIZE"}
+                </button>
+                <button onClick={regenerateCompareAi} disabled={compareAiBusy||!compareRes||compareAiLocked} style={{flex:1,background:(!compareRes||compareAiBusy||compareAiLocked)?"rgba(255,255,255,0.1)":"rgba(52,170,220,0.22)",border:"1px solid rgba(52,170,220,0.4)",borderRadius:10,padding:"9px 10px",color:(!compareRes||compareAiBusy||compareAiLocked)?"rgba(255,255,255,0.35)":"#9adfff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>
+                  REGENERATE
+                </button>
+              </div>
+              {!aiReady&&<div style={{background:"rgba(255,149,0,0.12)",border:"1px solid rgba(255,149,0,0.35)",borderRadius:10,padding:"9px 10px",color:"#ffbf66",fontSize:11,marginBottom:12}}>AI not configured. Open AI Setup to enable AI-supported comparison reporting.</div>}
+              {compareAiError&&<div style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"9px 10px",color:"#ff8f8f",fontSize:11,marginBottom:12}}>{compareAiError}</div>}
+              {compareAiReport&&<div style={{background:"rgba(88,86,214,0.12)",border:"1px solid rgba(88,86,214,0.3)",borderRadius:10,padding:"10px",whiteSpace:"pre-wrap",fontSize:11,color:"#e6e2ff",lineHeight:1.45,marginBottom:12}}>{compareAiReport}</div>}
+              {compareAiReport&&(
+                <div style={{background:compareAiLocked?"rgba(52,199,89,0.14)":"rgba(255,255,255,0.06)",border:`1px solid ${compareAiLocked?"rgba(52,199,89,0.35)":"rgba(255,255,255,0.18)"}`,borderRadius:10,padding:"9px 10px",marginBottom:12}}>
+                  <div style={{fontSize:11,color:compareAiLocked?"#9ef0b5":"rgba(255,255,255,0.7)",marginBottom:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
+                    {compareAiLocked?"AI REPORT LOCKED":"AI REPORT DRAFT"}
+                    {compareAiApprovedBy?` · ${compareAiApprovedBy}`:""}
+                    {compareAiApprovedAt?` · ${new Date(compareAiApprovedAt).toLocaleString()}`:""}
+                  </div>
+                  {canApproveAi&&(
+                    <div style={{display:"flex",gap:8}}>
+                      {!compareAiLocked&&<button onClick={approveAndLockCompareAi} style={{flex:1,background:"rgba(52,199,89,0.2)",border:"1px solid rgba(52,199,89,0.4)",borderRadius:8,padding:"8px 10px",color:"#9ef0b5",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>APPROVE & LOCK</button>}
+                      {compareAiLocked&&<button onClick={unlockCompareAi} style={{flex:1,background:"rgba(255,149,0,0.18)",border:"1px solid rgba(255,149,0,0.4)",borderRadius:8,padding:"8px 10px",color:"#ffd08a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>UNLOCK</button>}
+                    </div>
+                  )}
+                  {compareAuditLog.length>0&&(
+                    <div style={{marginTop:8}}>
+                      <div style={{fontSize:10,color:"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:4}}>AUDIT TRAIL</div>
+                      <div style={{maxHeight:120,overflowY:"auto"}}>
+                        {compareAuditLog.map((e,i)=>(
+                          <div key={i} style={{fontSize:10,color:e.action==="lock"?"#9ef0b5":"#ffd08a",padding:"3px 0",borderBottom:i<compareAuditLog.length-1?"1px solid rgba(255,255,255,0.06)":"none",display:"flex",gap:6,alignItems:"baseline"}}>
+                            <span style={{fontWeight:700,textTransform:"uppercase",minWidth:42}}>{e.action==="lock"?"LOCKED":"UNLOCKED"}</span>
+                            <span style={{color:"rgba(255,255,255,0.6)"}}>{e.by}</span>
+                            <span style={{color:"rgba(255,255,255,0.35)"}}>{new Date(e.at).toLocaleString()}</span>
+                            {e.reason&&e.action==="unlock"&&<span style={{color:"rgba(255,255,255,0.5)",fontStyle:"italic"}}>— {e.reason}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {(compareBaseId&&compareTargetId)&&(
+                <div style={{marginBottom:12}}>
+                  <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:6}}>Comparison Markup</div>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+                    {[{id:"freehand",label:"✏"},{id:"arrow",label:"↗"},{id:"circle",label:"○"},{id:"text",label:"T"}].map(t=>(
+                      <button key={t.id} onClick={()=>setCompareMarkupTool(t.id)} style={{width:34,height:34,borderRadius:8,border:compareMarkupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:compareMarkupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{t.label}</button>
+                    ))}
+                    <div style={{width:1,height:20,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
+                    {["#ff3b30","#ff9500","#ffcc00","#34c759","#fff"].map(c=>(
+                      <button key={c} onClick={()=>setCompareMarkupColor(c)} style={{width:22,height:22,borderRadius:"50%",border:compareMarkupColor===c?"3px solid #fff":"2px solid rgba(255,255,255,0.2)",background:c,cursor:"pointer"}}/>
+                    ))}
+                    <div style={{flex:1}}/>
+                    <button onClick={undoCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>UNDO</button>
+                    <button onClick={clearCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,59,48,0.2)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#ff8f8f":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>CLEAR</button>
+                  </div>
+
+                  <div ref={compareBoardRef} style={{position:"relative",height:220,borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,0.14)",background:"#0f0f10",touchAction:"none"}}
+                    onMouseDown={onCompareMarkupDown} onMouseMove={onCompareMarkupMove} onMouseUp={onCompareMarkupUp} onMouseLeave={onCompareMarkupUp}
+                    onTouchStart={onCompareMarkupDown} onTouchMove={onCompareMarkupMove} onTouchEnd={onCompareMarkupUp}>
+                    <div style={{position:"absolute",inset:0,display:"flex"}}>
+                      <div style={{flex:1,position:"relative",borderRight:"1px solid rgba(255,255,255,0.08)"}}>
+                        <canvas ref={compareBaseCanvasRef} style={{width:"100%",height:"100%",display:"block",objectFit:"contain",background:"#1a1a1a"}}/>
+                        <div style={{position:"absolute",left:6,top:6,background:"rgba(0,0,0,0.65)",borderRadius:6,padding:"2px 6px",fontSize:10,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>BASE</div>
+                      </div>
+                      <div style={{flex:1,position:"relative"}}>
+                        <canvas ref={compareTargetCanvasRef} style={{width:"100%",height:"100%",display:"block",objectFit:"contain",background:"#1a1a1a"}}/>
+                        <div style={{position:"absolute",left:6,top:6,background:"rgba(0,0,0,0.65)",borderRadius:6,padding:"2px 6px",fontSize:10,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>REVISION</div>
+                      </div>
+                    </div>
+                    <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}}>
+                      {renderCompareMarkup(compareMarkupStrokes)}
+                      {compareMarkupCurrent&&renderCompareMarkup([compareMarkupCurrent])}
+                    </svg>
+                    {comparePreviewLoading&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.35)",color:"rgba(255,255,255,0.7)",fontSize:12}}><Spin size={14}/> <span style={{marginLeft:8}}>Loading pages...</span></div>}
+                  </div>
+                </div>
+              )}
+
+              {compareRes&&(
+                <div>
+                  <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:10}}>
+                    {compareRes.baseName} → {compareRes.targetName} · {new Date(compareRes.generatedAt).toLocaleString()}
+                  </div>
+                  <div style={{display:"flex",gap:8,marginBottom:12}}>
+                    <button onClick={exportCompareCsv} style={{flex:1,background:"rgba(52,170,220,0.25)",border:"1px solid rgba(52,170,220,0.45)",borderRadius:10,padding:"9px 10px",color:"#7fd7ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>EXPORT CSV</button>
+                    <button onClick={exportComparePdf} style={{flex:1,background:"rgba(255,107,0,0.22)",border:"1px solid rgba(255,107,0,0.4)",borderRadius:10,padding:"9px 10px",color:"#ffb48a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>EXPORT PDF</button>
+                  </div>
+                  <div style={{display:"flex",gap:8,marginBottom:12}}>
+                    <div style={{flex:1,background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:10}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:BCA_SCDF_REVISION_COLORS.added}}>ADDED LINES</div>
+                      <div style={{fontSize:18,fontWeight:800,color:"#fff"}}>{compareRes.totalAdded}</div>
+                    </div>
+                    <div style={{flex:1,background:"rgba(52,199,89,0.14)",border:"1px solid rgba(52,199,89,0.3)",borderRadius:10,padding:10}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:BCA_SCDF_REVISION_COLORS.removed}}>REMOVED LINES</div>
+                      <div style={{fontSize:18,fontWeight:800,color:"#fff"}}>{compareRes.totalRemoved}</div>
+                    </div>
+                  </div>
+
+                  <div style={{marginBottom:12}}>
+                    <div style={{fontSize:11,fontWeight:700,color:BCA_SCDF_REVISION_COLORS.added,marginBottom:6,fontFamily:"'Barlow Condensed',sans-serif"}}>ADDED (RED)</div>
+                    <div style={{maxHeight:180,overflowY:"auto",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:10}}>
+                      {compareRes.added.length===0&&<div style={{fontSize:12,color:"rgba(255,255,255,0.45)"}}>No added lines detected.</div>}
+                      {compareRes.added.map((line,i)=><div key={i} style={{fontSize:11,color:"rgba(255,255,255,0.86)",padding:"4px 0",borderBottom:i===compareRes.added.length-1?"none":"1px solid rgba(255,255,255,0.06)",wordBreak:"break-word"}}>{line}</div>)}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{fontSize:11,fontWeight:700,color:BCA_SCDF_REVISION_COLORS.removed,marginBottom:6,fontFamily:"'Barlow Condensed',sans-serif"}}>REMOVED (GREEN)</div>
+                    <div style={{maxHeight:180,overflowY:"auto",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:10}}>
+                      {compareRes.removed.length===0&&<div style={{fontSize:12,color:"rgba(255,255,255,0.45)"}}>No removed lines detected.</div>}
+                      {compareRes.removed.map((line,i)=><div key={i} style={{fontSize:11,color:"rgba(255,255,255,0.86)",padding:"4px 0",borderBottom:i===compareRes.removed.length-1?"none":"1px solid rgba(255,255,255,0.06)",wordBreak:"break-word"}}>{line}</div>)}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {compareTextPoint&&(
+                <div style={{position:"fixed",inset:0,zIndex:280,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+                  <div style={{width:"100%",maxWidth:340,background:"#1a1a1a",borderRadius:14,padding:16,border:"1px solid rgba(255,255,255,0.15)"}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",marginBottom:10}}>ADD TEXT ANNOTATION</div>
+                    <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                      <input autoFocus value={compareTextValue} onChange={e=>setCompareTextValue(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addCompareText()} placeholder="Type or dictate annotation..." style={{flex:1,padding:11,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
+                      <MicBtn onResult={t=>setCompareTextValue(v=>v?(v+" "+t):t)} append currentValue={compareTextValue}/>
+                    </div>
+                    <div style={{display:"flex",gap:8,marginTop:12}}>
+                      <button onClick={()=>{setCompareTextPoint(null);setCompareTextValue("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CANCEL</button>
+                      <button onClick={addCompareText} disabled={!compareTextValue.trim()} style={{flex:1,padding:10,borderRadius:10,border:"none",background:compareTextValue.trim()?"#5856d6":"rgba(255,255,255,0.1)",color:compareTextValue.trim()?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {showUnlockPrompt&&(
+                <div style={{position:"fixed",inset:0,zIndex:280,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+                  <div style={{width:"100%",maxWidth:380,background:"#1a1a1a",borderRadius:14,padding:16,border:"1px solid rgba(255,149,0,0.35)"}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#ffd08a",marginBottom:4}}>UNLOCK AI REPORT</div>
+                    <div style={{fontSize:11,color:"rgba(255,255,255,0.55)",marginBottom:12}}>Provide a reason for unlocking this approved report. This will be recorded in the audit trail.</div>
+                    <textarea autoFocus value={unlockReason} onChange={e=>setUnlockReason(e.target.value)} placeholder="e.g. Client requested revision after site walkthrough..." rows={3} style={{width:"100%",padding:11,borderRadius:10,border:"1px solid rgba(255,149,0,0.3)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box",resize:"vertical"}}/>
+                    <div style={{display:"flex",gap:8,marginTop:12}}>
+                      <button onClick={()=>{setShowUnlockPrompt(false);setUnlockReason("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CANCEL</button>
+                      <button onClick={()=>confirmUnlock(unlockReason.trim())} disabled={!unlockReason.trim()} style={{flex:1,padding:10,borderRadius:10,border:"none",background:unlockReason.trim()?"rgba(255,149,0,0.35)":"rgba(255,255,255,0.1)",color:unlockReason.trim()?"#ffd08a":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>CONFIRM UNLOCK</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -3013,6 +3622,10 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   const[markupMode,setMarkupMode]=useState(false);const[markupTool,setMarkupTool]=useState("freehand");
   const[markupColor,setMarkupColor]=useState("#ff3b30");const[markupStrokes,setMarkupStrokes]=useState([]);
   const[markupCurrent,setMarkupCurrent]=useState(null);
+  const[notes,setNotes]=useState([]);
+  const[pendingNotePos,setPendingNotePos]=useState(null);
+  const[noteText,setNoteText]=useState("");
+  const[showCombinedList,setShowCombinedList]=useState(true);
   const markupSvgRef=useRef();
   const imgRef=useRef();const containerRef=useRef();const canvasRef=useRef();const pdfDocRef=useRef(null);
   const canPin=["Admin","Manager","Inspector"].includes(member?.role);
@@ -3024,6 +3637,14 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   useEffect(()=>{
     DB.pins.list(`drawingId="${drawing.id}"`).then(items=>{setPins(items);setLoading(false);}).catch(()=>setLoading(false));
   },[drawing.id]);
+
+  // Load and persist text notes per drawing
+  useEffect(()=>{
+    setNotes(getDrawingNotes(drawing.id));
+  },[drawing.id]);
+  useEffect(()=>{
+    saveDrawingNotes(drawing.id,notes);
+  },[drawing.id,notes]);
 
   // Load PDF document
   useEffect(()=>{
@@ -3061,6 +3682,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
 
   // Filter pins for current page
   const pagePins=isPdf?pins.filter(p=>(p.pageNum||1)===currentPage):pins;
+  const pageNotes=isPdf?notes.filter(n=>(n.pageNum||1)===currentPage):notes;
 
   // Handle tap on drawing to place pin or dismiss tooltip
   const handleDrawingClick=e=>{
@@ -3142,6 +3764,11 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   const onMarkupDown=e=>{
     if(!markupMode)return;e.preventDefault();e.stopPropagation();
     const p=getMarkupPos(e);if(!p)return;
+    if(markupTool==="text"){
+      setPendingNotePos({...p,pageNum:isPdf?currentPage:1});
+      setNoteText("");
+      return;
+    }
     if(markupTool==="freehand")setMarkupCurrent({type:"freehand",color:markupColor,points:[p]});
     else setMarkupCurrent({type:markupTool,color:markupColor,start:p,end:p});
   };
@@ -3156,6 +3783,24 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   };
   const undoMarkup=()=>setMarkupStrokes(s=>s.slice(0,-1));
   const clearMarkup=()=>{if(markupStrokes.length&&confirm("Clear all markup?"))setMarkupStrokes([]);};
+
+  const addNote=()=>{
+    if(!pendingNotePos||!noteText.trim())return;
+    const note={
+      id:`note_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
+      drawingId:drawing.id,
+      pageNum:isPdf?(pendingNotePos.pageNum||currentPage):1,
+      x:pendingNotePos.x,
+      y:pendingNotePos.y,
+      text:noteText.trim(),
+      createdBy:member?.name||"",
+      createdAt:Date.now()
+    };
+    setNotes(prev=>[note,...prev]);
+    setPendingNotePos(null);setNoteText("");
+  };
+
+  const deleteNote=id=>setNotes(prev=>prev.filter(n=>n.id!==id));
 
   // Render SVG markup strokes
   const renderMarkupSvg=(strokes)=>strokes.map((s,i)=>{
@@ -3206,6 +3851,23 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
 
   // Active pin tooltip (tap to show/hide)
   const[activePin,setActivePin]=useState(null);
+
+  const renderNotes=()=>pageNotes.map(n=>(
+    <div key={n.id} style={{position:"absolute",left:`${n.x}%`,top:`${n.y}%`,transform:"translate(-50%,-50%)",zIndex:8,pointerEvents:"none"}}>
+      <div style={{display:"flex",alignItems:"center",gap:4,background:"rgba(88,86,214,0.9)",border:"1px solid rgba(255,255,255,0.35)",borderRadius:8,padding:"2px 6px",maxWidth:170,boxShadow:"0 2px 8px rgba(0,0,0,0.35)"}}>
+        <span style={{fontSize:10}}>📝</span>
+        <span style={{fontSize:10,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{n.text}</span>
+      </div>
+    </div>
+  ));
+
+  const combinedItems=[
+    ...pagePins.map(p=>{
+      const d=getDefect(p.entryId);
+      return{kind:"pin",id:p.id,x:p.x,y:p.y,pageNum:p.pageNum||1,title:d?.title||"Linked entry",severity:d?.severity||"—",status:d?.status||"—",detail:d?.location||"",createdAt:0};
+    }),
+    ...pageNotes.map(n=>({kind:"note",id:n.id,x:n.x,y:n.y,pageNum:n.pageNum||1,title:n.text,severity:"NOTE",status:"",detail:n.createdBy||"",createdAt:n.createdAt||0}))
+  ].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
 
   // Shared pin overlay
   const renderPins=()=>pagePins.map(p=>{
@@ -3262,6 +3924,9 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
             {markupMode?"DONE":"✏ MARKUP"}
           </button>
         )}
+        <button onClick={()=>setShowCombinedList(v=>!v)} style={{background:showCombinedList?"rgba(255,107,0,0.22)":"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>
+          LIST ({combinedItems.length})
+        </button>
       </div>
 
       {/* Zoom controls */}
@@ -3287,7 +3952,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       {/* Markup toolbar */}
       {markupMode&&(
         <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:6,background:"#1a1a1a",borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0}}>
-          {[{id:"freehand",label:"✏"},{id:"arrow",label:"↗"},{id:"circle",label:"○"}].map(t=>(
+          {[{id:"freehand",label:"✏"},{id:"arrow",label:"↗"},{id:"circle",label:"○"},{id:"text",label:"T"}].map(t=>(
             <button key={t.id} onClick={()=>setMarkupTool(t.id)} style={{width:36,height:36,borderRadius:8,border:markupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:markupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{t.label}</button>
           ))}
           <div style={{width:1,height:24,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
@@ -3317,6 +3982,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
               {markupCurrent&&renderMarkupSvg([markupCurrent])}
             </svg>
             {renderHeatmap()}
+            {renderNotes()}
             {!markupMode&&renderPins()}
           </div>
         ):isPdf?(
@@ -3334,6 +4000,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
               </svg>
             )}
             {!pdfLoading&&!pdfError&&renderHeatmap()}
+            {!pdfLoading&&!pdfError&&renderNotes()}
             {!markupMode&&!pdfLoading&&!pdfError&&renderPins()}
           </div>
         ):(
@@ -3346,6 +4013,50 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
           </div>
         )}
       </div>
+
+      {/* Combined list: pins + defects + text notes */}
+      {showCombinedList&&(
+        <div style={{position:"absolute",left:0,right:0,bottom:0,zIndex:40,background:"linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.88))",borderTop:"1px solid rgba(255,255,255,0.12)",maxHeight:"42vh",display:"flex",flexDirection:"column"}}>
+          <div style={{padding:"9px 12px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,0.08)"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff"}}>CONSOLIDATED LIST · {combinedItems.length}</div>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.45)"}}>{isPdf?`Page ${currentPage}`:"All notes & pins"}</div>
+          </div>
+          <div style={{overflowY:"auto",padding:10}}>
+            {combinedItems.length===0&&<div style={{padding:12,textAlign:"center",color:"rgba(255,255,255,0.45)",fontSize:12}}>No pins or notes on this view.</div>}
+            {combinedItems.map(item=>(
+              <div key={item.kind+"_"+item.id} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"8px 10px",marginBottom:7,display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:12}}>{item.kind==="note"?"📝":"📌"}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.title}</div>
+                  <div style={{fontSize:10,color:"rgba(255,255,255,0.5)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                    {item.kind==="note"?`By ${item.detail||"Unknown"} · (${item.x.toFixed(1)}%, ${item.y.toFixed(1)}%)`:`${item.severity} · ${item.status}${item.detail?` · ${item.detail}`:""}`}
+                  </div>
+                </div>
+                {item.kind==="pin"&&canPin&&<button onClick={()=>deletePin(item.id)} style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:7,padding:"4px 8px",color:"#ff8f8f",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>REMOVE</button>}
+                {item.kind==="note"&&canPin&&<button onClick={()=>deleteNote(item.id)} style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:7,padding:"4px 8px",color:"#ff8f8f",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>DELETE</button>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Text note modal for markup text tool */}
+      {pendingNotePos&&(
+        <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.84)",zIndex:320,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <div style={{width:"100%",maxWidth:360,background:"#1a1a1a",borderRadius:16,padding:18,border:"1px solid rgba(255,255,255,0.12)"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff",marginBottom:6}}>ADD DRAWING NOTE</div>
+            <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:12}}>Type or dictate a note. This appears in the consolidated list with pins and defects.</div>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <input autoFocus value={noteText} onChange={e=>setNoteText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addNote()} placeholder="Type note or annotation..." style={{flex:1,padding:"12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
+              <MicBtn onResult={t=>setNoteText(v=>v?(v+" "+t):t)} append currentValue={noteText}/>
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:12}}>
+              <button onClick={()=>{setPendingNotePos(null);setNoteText("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CANCEL</button>
+              <button onClick={addNote} disabled={!noteText.trim()} style={{flex:1,padding:10,borderRadius:10,border:"none",background:noteText.trim()?"#5856d6":"rgba(255,255,255,0.1)",color:noteText.trim()?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD NOTE</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Entry picker modal */}
       {linkEntry&&!quickCreate&&(
@@ -3631,7 +4342,6 @@ function App(){
   const[showTg,setShowTg]=useState(false);
   const[showEmail,setShowEmail]=useState(false);
   const[showGemini,setShowGemini]=useState(false);
-  const[showAiMenu,setShowAiMenu]=useState(false);
   const[showHeaderMenu,setShowHeaderMenu]=useState(false);
   const[showUsers,setShowUsers]=useState(false);
   const[showProjects,setShowProjects]=useState(false);
@@ -3952,20 +4662,13 @@ function App(){
                 <span style={{position:"absolute",top:-5,right:-4,minWidth:14,height:14,borderRadius:999,background:"#ff9500",color:"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,lineHeight:"14px",padding:"0 3px",textAlign:"center"}}>{queueCount}</span>
             </button>
           )}
-          <button onClick={()=>{setShowAiSearch(true);setTab("defects");setShowHeaderMenu(false);setShowAiMenu(false);}} title="AI Search" style={{width:26,height:26,borderRadius:8,background:"rgba(255,107,0,0.15)",border:"1px solid rgba(255,107,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:12,flexShrink:0}}>💬</button>
-          <div style={{position:"relative"}}>
-            <button onClick={()=>{setShowAiMenu(!showAiMenu);setShowHeaderMenu(false);}} title="AI Tools" style={{width:26,height:26,borderRadius:8,background:aiEnabled?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${aiEnabled?"rgba(88,86,214,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:12,flexShrink:0}}>🤖</button>
-            {showAiMenu&&<div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,overflow:"hidden",zIndex:100,minWidth:180}}>
-              <button onClick={()=>{setShowGemini(true);setShowAiMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
-                🧠 AI Setup
-              </button>
-            </div>}
-          </div>
+          <button onClick={()=>{setShowAiSearch(true);setTab("defects");setShowHeaderMenu(false);}} title="AI Search" style={{width:26,height:26,borderRadius:8,background:"rgba(255,107,0,0.15)",border:"1px solid rgba(255,107,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:12,flexShrink:0}}>💬</button>
+          <button onClick={()=>{setShowGemini(true);setShowHeaderMenu(false);}} title="AI Setup" style={{width:26,height:26,borderRadius:8,background:aiEnabled?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${aiEnabled?"rgba(88,86,214,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:12,flexShrink:0}}>🤖</button>
           <button onClick={()=>setShowTg(true)} title="Telegram" style={{width:26,height:26,borderRadius:8,background:tgEnabled?"rgba(0,136,204,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${tgEnabled?"rgba(0,136,204,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21.5 4.5L2.5 11.5L9 13.5L11 20.5L15 15.5L20 18.5L21.5 4.5Z" stroke={tgEnabled?"#0088cc":"rgba(255,255,255,0.4)"} strokeWidth="1.5" strokeLinejoin="round"/></svg>
           </button>
           <div style={{position:"relative"}}>
-            <button onClick={()=>{setShowHeaderMenu(!showHeaderMenu);setShowAiMenu(false);}} title="More" style={{width:26,height:26,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:14,color:"rgba(255,255,255,0.65)",flexShrink:0}}>⋯</button>
+            <button onClick={()=>setShowHeaderMenu(!showHeaderMenu)} title="More" style={{width:26,height:26,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:14,color:"rgba(255,255,255,0.65)",flexShrink:0}}>⋯</button>
             {showHeaderMenu&&<div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,overflow:"hidden",zIndex:100,minWidth:170}}>
               <button onClick={()=>{setShowStorage(true);setShowHeaderMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Storage Settings</button>
               {isAdmin&&<button onClick={()=>{setShowUsers(true);setShowHeaderMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Team Management</button>}
