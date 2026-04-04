@@ -3183,7 +3183,7 @@ Return valid JSON only with this shape:
   };
 
   const saveComparison=()=>{
-    if(!compareRes)return;
+    if(!compareRes&&!compareOverlayCanvasRef.current?.width){alert("Run a comparison first.");return;}
     // Capture overlay as thumbnail
     let overlayThumb="";
     try{
@@ -3199,10 +3199,11 @@ Return valid JSON only with this shape:
     const record={
       id:`cmp_${Date.now()}`,
       savedAt:Date.now(),
-      baseName:compareRes.baseName,targetName:compareRes.targetName,
+      baseName:compareRes?.baseName||drawings.find(d=>d.id===compareBaseId)?.name||"Base",
+      targetName:compareRes?.targetName||drawings.find(d=>d.id===compareTargetId)?.name||"Revision",
       baseId:compareBaseId,targetId:compareTargetId,
-      totalAdded:compareRes.totalAdded,totalRemoved:compareRes.totalRemoved,
-      added:compareRes.added,removed:compareRes.removed,
+      totalAdded:compareRes?.totalAdded||0,totalRemoved:compareRes?.totalRemoved||0,
+      added:compareRes?.added||[],removed:compareRes?.removed||[],
       aiReport:compareAiReport||"",aiLocked:compareAiLocked,
       aiApprovedBy:compareAiApprovedBy,aiApprovedAt:compareAiApprovedAt,
       auditLog:[...compareAuditLog],
@@ -3658,7 +3659,7 @@ Return valid JSON only with this shape:
             <div style={{padding:"14px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)",display:"flex",alignItems:"center",gap:10}}>
               <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff"}}>PDF COMPARISON{viewingSaved?` (SAVED)`:""}
               </div>
-              {compareRes&&<button onClick={saveComparison} style={{background:"rgba(52,199,89,0.25)",border:"1px solid rgba(52,199,89,0.5)",borderRadius:18,padding:"7px 14px",color:"#9ef0b5",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>DONE</button>}
+              <button onClick={saveComparison} disabled={!compareRes&&!compareOverlayCanvasRef.current?.width} style={{background:"rgba(52,199,89,0.25)",border:"1px solid rgba(52,199,89,0.5)",borderRadius:18,padding:"7px 14px",color:"#9ef0b5",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",opacity:(!compareRes&&!compareOverlayCanvasRef.current?.width)?0.4:1}}>SAVE</button>
               <button onClick={()=>{setShowCompare(false);setViewingSaved(null);}} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:18,padding:"7px 12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CLOSE</button>
             </div>
 
