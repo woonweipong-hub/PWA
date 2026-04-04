@@ -1737,7 +1737,7 @@ function StorageSettings({onClose,companyId}){
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────
-function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentProject,member,onDrawings,queueCount,onSyncQueue,syncing2}){
+function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentProject,member,onDrawings,onCompare,queueCount,onSyncQueue,syncing2}){
   const open=defects.filter(d=>d.status==="Open").length;
   const inprog=defects.filter(d=>d.status==="In Progress").length;
   const done=defects.filter(d=>d.status==="Done").length;
@@ -1818,6 +1818,15 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
         <div style={{flex:1}}>
           <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a"}}>FLOOR PLANS & DRAWINGS</span><span style={{fontSize:9,fontWeight:700,color:"#ff9500",background:"rgba(255,149,0,0.12)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:10,padding:"2px 6px",fontFamily:"'Barlow Condensed',sans-serif"}}>BETA</span></div>
           <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>Upload drawings, tap to place defect pins</div>
+        </div>
+        <span style={{color:"rgba(0,0,0,0.2)",fontSize:14}}>→</span>
+      </button>
+
+      <button onClick={onCompare} style={{width:"100%",background:"#fff",border:"1px solid rgba(88,86,214,0.15)",borderRadius:14,padding:"14px 16px",marginBottom:16,cursor:"pointer",display:"flex",alignItems:"center",gap:12,textAlign:"left"}}>
+        <span style={{fontSize:24}}>📄</span>
+        <div style={{flex:1}}>
+          <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a"}}>PDF DRAWING COMPARISON</span></div>
+          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>Compare revisions, AI analysis & approval</div>
         </div>
         <span style={{color:"rgba(0,0,0,0.2)",fontSize:14}}>→</span>
       </button>
@@ -2927,7 +2936,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
 }
 
 // ── Drawings & Floor Plan Pins ────────────────────────────────────
-function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntry}){
+function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntry,initialCompare}){
   const[drawings,setDrawings]=useState([]);const[loading,setLoading]=useState(true);
   const[viewing,setViewing]=useState(null);
   const[uploading,setUploading]=useState(false);
@@ -2973,6 +2982,15 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
       Promise.all(items.map(d=>DB.pins.list(`drawingId="${d.id}"`))).then(results=>{
         setAllPins(results.flat());
       }).catch(()=>{});
+      // Auto-open compare if launched from dashboard shortcut
+      if(initialCompare){
+        const pdfs=items.filter(d=>/\.pdf$/i.test(d.file||""));
+        if(pdfs.length>=2){
+          setCompareBaseId(pdfs[0].id);
+          setCompareTargetId(pdfs[1].id);
+          setShowCompare(true);
+        }
+      }
     }).catch(()=>setLoading(false));
   },[company?.companyId,currentProject?.id]);
 
@@ -4372,6 +4390,7 @@ function App(){
   const[showFeedback,setShowFeedback]=useState(false);
   const[showStorage,setShowStorage]=useState(false);
   const[showDrawings,setShowDrawings]=useState(false);
+  const[showDrawingsCompare,setShowDrawingsCompare]=useState(false);
   const[showAiSearch,setShowAiSearch]=useState(false);
   const[nlFilters,setNlFilters]=useState(null);
   const[queueCount,setQueueCount]=useState(0);
@@ -4709,7 +4728,7 @@ function App(){
 
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:72}}>
-        {tab==="dashboard"&&<Dashboard defects={defects} onView={setViewing} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} company={company} currentProject={currentProject} member={member} onDrawings={()=>setShowDrawings(true)} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
+        {tab==="dashboard"&&<Dashboard defects={defects} onView={setViewing} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} company={company} currentProject={currentProject} member={member} onDrawings={()=>setShowDrawings(true)} onCompare={()=>{setShowDrawingsCompare(true);setShowDrawings(true);}} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>Viewer access — defect logging disabled</div>}
         {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)}/>}
@@ -4904,7 +4923,7 @@ function App(){
       {showEmail&&<EmailSettings onClose={()=>setShowEmail(false)} companyId={company?.companyId}/>}
       {showGemini&&<GeminiSettings onClose={()=>setShowGemini(false)} companyId={company?.companyId}/>}
       {showStorage&&<StorageSettings onClose={()=>setShowStorage(false)} companyId={company?.companyId}/>}
-      {showDrawings&&<DrawingsPanel onClose={()=>setShowDrawings(false)} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect}/>}
+      {showDrawings&&<DrawingsPanel onClose={()=>{setShowDrawings(false);setShowDrawingsCompare(false);}} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} initialCompare={showDrawingsCompare}/>}
       {showUsers&&<UserManagement onClose={()=>setShowUsers(false)} company={company} member={member} members={members}/>}
       {showProjects&&<ProjectManagement onClose={()=>setShowProjects(false)} company={company} member={member} projects={projects} currentProject={currentProject} onSelect={p=>{selectProject(p);setShowProjects(false);}}/>}
     </div>
