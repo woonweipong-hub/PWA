@@ -3569,6 +3569,18 @@ Return valid JSON only with this shape:
           </button>
         </div>
 
+        {/* Section counters bar */}
+        {(()=>{
+          const markedUpDrawings=drawings.filter(d=>getDrawingMarkup(d.id).length>0||getDrawingNotes(d.id).length>0);
+          return(
+            <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+              <div style={{background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"6px 12px",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.5)"}}>📐 UPLOADED DRAWINGS ({drawings.length})</div>
+              {markedUpDrawings.length>0&&<div style={{background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:10,padding:"6px 12px",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:"#ff6b00"}}>✏ SAVED MARKUP DRAWINGS ({markedUpDrawings.length})</div>}
+              {savedComparisons.length>0&&<div style={{background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:10,padding:"6px 12px",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:"#5856d6"}}>🔍 SAVED COMPARISONS ({savedComparisons.length})</div>}
+            </div>
+          );
+        })()}
+
         {/* Saved comparisons */}
         {savedComparisons.length>0&&(
           <div style={{marginBottom:16}}>
