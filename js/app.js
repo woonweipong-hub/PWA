@@ -3042,7 +3042,7 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
 
 // ── Report ────────────────────────────────────────────────────────
 // ── Profile Panel (edit name, email, password) ──────────────────
-function ProfilePanel({member,authUser,company,onClose,onEmailSettings,onSignOut}){
+function ProfilePanel({member,authUser,company,onClose,onSignOut}){
   const[editName,setEditName]=useState(member?.name||"");
   const[editEmail,setEditEmail]=useState(member?.email||authUser?.email||"");
   const[editJobTitle,setEditJobTitle]=useState(member?.jobTitle||"");
@@ -6031,8 +6031,6 @@ function App(){
   const[showHelp,setShowHelp]=useState(false);const[helpTab,setHelpTab]=useState("help");
   const[showFeedback,setShowFeedback]=useState(false);
   const[showStorage,setShowStorage]=useState(false);
-  const[showDrawings,setShowDrawings]=useState(false);
-  const[showDrawingsCompare,setShowDrawingsCompare]=useState(false);
   const[showAdminAnalytics,setShowAdminAnalytics]=useState(false);
   const[showSettingsMenu,setShowSettingsMenu]=useState(false);const settingsMenuTimer=useRef(null);
   const[showAvatarMenu,setShowAvatarMenu]=useState(false);const avatarMenuTimer=useRef(null);
@@ -6393,14 +6391,14 @@ function App(){
       </div>
 
       {/* Profile panel */}
-      {showProfile&&<ProfilePanel member={member} authUser={authUser} company={company} onClose={()=>setShowProfile(false)} onEmailSettings={()=>{setShowEmail(true);setShowProfile(false);}} onSignOut={signOut}/>}
+      {showProfile&&<ProfilePanel member={member} authUser={authUser} company={company} onClose={()=>setShowProfile(false)} onSignOut={signOut}/>}
 
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:84}}>
         {tab==="dashboard"&&<Dashboard defects={defects} onView={setViewing} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} company={company} currentProject={currentProject} member={member} onDrawings={()=>setTab("drawings")} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>Viewer access — defect logging disabled</div>}
-        {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("dashboard")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} initialCompare={showDrawingsCompare}/>}
+        {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("dashboard")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect}/>}
         {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled}/>}
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company}/>}
       </div>
@@ -6507,6 +6505,7 @@ function App(){
               {helpTab==="features"&&(
                 <div>
                   {(()=>{const fc=[
+                    ["Navigation",["Minimal top bar: Project selector, Settings dropdown, Avatar dropdown","Bottom nav: Dashboard → Log → Drawings → Review → Report","Operational flow order: see state → capture → tag → act → share","Settings dropdown with setup-progress badge (N/4 configured)","Settings menu groups: PROJECT (Projects, Team) + ENHANCE (AI, Telegram, Storage)","Avatar menu: Profile, Admin Analytics (admin), Help, Feedback, Sign Out","Setup progress ✓ / — indicators on each Settings item","Inline AI Search 💬 button next to the Review search bar"]],
                     ["Auth & Onboarding",["Login / Sign up","Password reset","Password visibility toggle","One-step registration + company setup","Auto-recover session","Install as app","Server URL config"]],
                     ["Team",["Invite members (link + code)","Role-based access (Admin, Manager, Inspector, Viewer)","Edit roles / remove members","Permission matrix display"]],
                     ["Projects",["Create / rename projects","Switch active project","Archive / restore projects"]],
@@ -6517,10 +6516,10 @@ function App(){
                     ["Admin Analytics",["Entries today / week / month / all time","Active users — who submitted today & this week","Per-user ranking bar chart","Photos stats (total & avg per entry)","Entries by entry type breakdown","Entries by project breakdown","AI usage stats (daily limit, coverage, provider)"]],
                     ["Reports & Exports",["Site report with charts + entry list","Filter by severity / status / assignee / date","Email content sections (defects, drawings, comparisons)","Email preview with opt-in/out per section","Email report via EmailJS","Dn menu: Markup CSV / PDF export","Dn menu: Compare CSV / PDF export","Dn menu: All CSV / PDF export","Dn menu: All-in-One (CSV + PDF in one tap)","Annotated drawings embedded in PDF exports (pins, notes, markup burned in)","Per-drawing PDF export from the viewer"]],
                     ["Storage",["PocketBase (default server)","Local path (self-hosted server / machine)","Google Drive (OAuth, personal cloud)"]],
-                    ["Settings",["Telegram bot setup + test","AI multi-provider setup + test","Email report config","Daily AI usage limit","Storage mode selector"]],
+                    ["Setup & Integrations",["Single Settings dropdown for all one-time setup","AI multi-provider setup + test (Gemini, Ollama, OpenAI)","Telegram bot setup + test","Storage mode selector (PocketBase, local path, Google Drive)","Daily AI usage limit","Email report config (inside Report tab)","Green ✓ check per configured integration"]],
                     ["Offline",["Save entries to IndexedDB when offline","Queued badge in header + Dashboard","Auto-sync when back online","Manual sync tap","Queued / synced status indicator"]],
                     ["Account",["Edit display name + job title","Change email","Change password"]],
-                    ["Other",["Comprehensive help guide","Feedback form (suggestion, bug, praise)","Cached app shell (service worker)","Photo compression (auto-resize)","Hover menu (desktop) for header actions"]],
+                    ["Other",["Comprehensive help guide","Feedback form (suggestion, bug, praise)","Cached app shell (service worker)","Photo compression (auto-resize)","Hover-to-open dropdowns (desktop) + tap-to-open (mobile)"]],
                   ];const total=fc.reduce((n,c)=>n+c[1].length,0);return React.createElement(React.Fragment,null,
                     React.createElement("div",{style:{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:12,padding:16,marginBottom:20,textAlign:"center"}},
                       React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#30d158",lineHeight:1,marginBottom:4}},total),
@@ -6592,7 +6591,6 @@ function App(){
       {showEmail&&<EmailSettings onClose={()=>setShowEmail(false)} companyId={company?.companyId}/>}
       {showGemini&&<GeminiSettings onClose={()=>setShowGemini(false)} companyId={company?.companyId}/>}
       {showStorage&&<StorageSettings onClose={()=>setShowStorage(false)} companyId={company?.companyId}/>}
-      {showDrawings&&<DrawingsPanel onClose={()=>{setShowDrawings(false);setShowDrawingsCompare(false);}} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} initialCompare={showDrawingsCompare}/>}
       {showUsers&&<UserManagement onClose={()=>setShowUsers(false)} company={company} member={member} members={members}/>}
       {showAdminAnalytics&&isAdmin&&(
         <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:300,overflowY:"auto",animation:"slideUp 0.25s ease"}}>

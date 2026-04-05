@@ -26,12 +26,35 @@
 ### For admins (5 minutes)
 
 1. Sign up and create a company
-2. Set up integrations:
-   - **AI** (robot icon in header) — choose Gemini, Ollama, or OpenAI for photo analysis
-   - **Telegram** (plane icon in header) — bot token + chat ID for team notifications
-   - **Storage** (⋯ more menu → Storage Settings) — PocketBase (default), local path, or Google Drive
-   - **Email** (Profile → Email Report Settings) — EmailJS for HTML reports
-3. Create projects, invite team members via invite link
+2. Tap the **⚙ Settings** dropdown in the top bar — it shows a progress badge (e.g. `0/4`) so you know what's still to configure
+3. Under **PROJECT**: create a project, invite team members
+4. Under **ENHANCE** (all optional):
+   - **AI Setup** — choose Gemini, Ollama, or OpenAI for photo analysis and natural-language search
+   - **Telegram Alerts** — bot token + chat ID for team notifications
+   - **Storage** — PocketBase (default), local path, or Google Drive
+5. **Email reports** are configured from the **Report** tab (click EMAIL REPORT → Setup)
+
+When every item shows a green ✓, the setup badge disappears.
+
+---
+
+## Navigation
+
+**Top bar (3 controls):**
+
+- **Project selector** — tap to switch active project
+- **⚙ Settings** — all one-time setup in one dropdown (Projects, Team, AI, Telegram, Storage). Shows a setup-progress badge.
+- **W Avatar** — Profile, Admin Analytics (admin only), Help, Feedback, Sign Out
+
+**Bottom nav (5 tabs) — operational flow:**
+
+`Dashboard → Log → 📐 Drawings → Review → Report`
+
+1. **Dashboard** — see project state at a glance
+2. **Log** — capture a new entry (defect, observation, update, instruction)
+3. **Drawings** — upload PDFs/images, tag pins, overlay photos, compare revisions
+4. **Review** — triage, update status, verify, close. AI natural-language search lives here.
+5. **Report** — filtered stats, charts, CSV/PDF exports, email report
 
 ---
 
@@ -225,18 +248,20 @@ OpenAI requires a paid API key. Gemini and Ollama are free.
 
 ### AI Photo Analysis (choose one)
 
+All AI, Telegram, and Storage setup lives under the **⚙ Settings** dropdown in the top bar.
+
 **Google Gemini (free, cloud)**
 1. Go to **https://aistudio.google.com/apikey** → Create API key
-2. In the app: tap AI icon (header) → select Gemini → paste key → Save
+2. In the app: ⚙ Settings → AI Setup → select Gemini → paste key → Save
 
 **Ollama (free, local/private)**
 1. Install Ollama from **https://ollama.com**
 2. Pull a vision model: `ollama pull llava` (or `qwen2.5-vl`, `llama3.2-vision`)
-3. In the app: tap AI icon → select Ollama → enter server URL → Save
+3. In the app: ⚙ Settings → AI Setup → select Ollama → enter server URL → Save
 
 **OpenAI / GPT (paid)**
 1. Get API key from **https://platform.openai.com**
-2. In the app: tap AI icon → select OpenAI → enter API key + model → Save
+2. In the app: ⚙ Settings → AI Setup → select OpenAI → enter API key + model → Save
 3. Also works with LM Studio, Azure OpenAI, Together AI, or any OpenAI-compatible endpoint
 
 ### Storage (choose one)
@@ -244,25 +269,29 @@ OpenAI requires a paid API key. Gemini and Ollama are free.
 **PocketBase (default)** — no setup needed, photos stored on your server
 
 **Local Path** — for self-hosted setups:
-1. Header ⋯ menu → Storage Settings → select Local Path
+
+1. ⚙ Settings → Storage → select Local Path
 2. Enter folder path (e.g. `/opt/siteshrimp/photos`)
 3. Test path → Save
 
 **Google Drive** — for mobile users:
+
 1. Create OAuth Client ID at **https://console.cloud.google.com**
-2. Header ⋯ menu → Storage Settings → select Google Drive → paste Client ID → Connect
+2. ⚙ Settings → Storage → select Google Drive → paste Client ID → Connect
 
 ### Telegram Notifications
 
 1. Create a bot via **@BotFather** on Telegram
 2. Get your group's Chat ID (add @userinfobot to group)
-3. In the app: tap Telegram icon (header) → enter Bot Token + Chat ID → Save
+3. In the app: ⚙ Settings → Telegram Alerts → enter Bot Token + Chat ID → Save
 
 ### EmailJS (reports)
 
+Email reports are configured from the **Report** tab (keeps sending and configuration in one place).
+
 1. Sign up at **https://www.emailjs.com/**
 2. Create a service + template (set body to `{{{html_content}}}`)
-3. In the app: Profile → Email Report Settings → enter IDs → Save
+3. In the app: Report tab → EMAIL REPORT button → Setup → enter IDs → Save
 
 ---
 
