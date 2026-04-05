@@ -188,18 +188,25 @@ function _drawMarkupStroke(ctx,W,H,s){
     const tw=ctx.measureText(s.text).width;
     const pad=fs*0.35;
     const align=s.align||"left";
-    let bgX=p.x-pad,textX=p.x;
-    if(align==="center"){bgX=p.x-tw/2-pad;textX=p.x;}
-    else if(align==="right"){bgX=p.x-tw-pad;textX=p.x;}
+    const valign=s.valign||"bottom";
+    const bw=tw+pad*2,bh=fs+pad*1.2;
+    let bgX=p.x-pad;
+    if(align==="center")bgX=p.x-tw/2-pad;
+    else if(align==="right")bgX=p.x-tw-pad;
+    let bgY;
+    if(valign==="top")bgY=p.y;
+    else if(valign==="middle")bgY=p.y-bh/2;
+    else bgY=p.y-fs-pad*0.2;
+    const textY=bgY+bh-pad*0.6;
     ctx.fillStyle="rgba(255,255,255,0.92)";
     ctx.strokeStyle=s.color||"#ff6b00";
     ctx.lineWidth=2;
-    _roundRectPath(ctx,bgX,p.y-fs-pad*0.2,tw+pad*2,fs+pad*1.2,4);
+    _roundRectPath(ctx,bgX,bgY,bw,bh,4);
     ctx.fill();ctx.stroke();
     ctx.fillStyle=s.color||"#ff6b00";
     ctx.textBaseline="alphabetic";
     ctx.textAlign=align==="center"?"center":(align==="right"?"right":"left");
-    ctx.fillText(s.text,textX,p.y);
+    ctx.fillText(s.text,p.x,textY);
     ctx.textAlign="left";
   }
   ctx.restore();
@@ -3370,6 +3377,8 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const compareDragRef=useRef(null);
   const[compareTextSize,setCompareTextSize]=useState(2.4);
   const[compareTextAlign,setCompareTextAlign]=useState("left");
+  const[compareTextValign,setCompareTextValign]=useState("bottom");
+  const[showAlignMenu,setShowAlignMenu]=useState(false);const alignMenuTimer=useRef(null);
   const[compareTextPoint,setCompareTextPoint]=useState(null);
   const[compareTextValue,setCompareTextValue]=useState("");
   const[savedComparisons,setSavedComparisons]=useState(()=>getSavedComparisons(currentProject?.id||""));
@@ -3953,7 +3962,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
 
   const addCompareText=()=>{
     if(!compareTextPoint||!compareTextValue.trim())return;
-    setCompareMarkupStrokes(s=>[...s,{type:"text",color:compareMarkupColor,pos:compareTextPoint,text:compareTextValue.trim(),fontSize:compareTextSize,align:compareTextAlign}]);
+    setCompareMarkupStrokes(s=>[...s,{type:"text",color:compareMarkupColor,pos:compareTextPoint,text:compareTextValue.trim(),fontSize:compareTextSize,align:compareTextAlign,valign:compareTextValign}]);
     setCompareTextPoint(null);setCompareTextValue("");
   };
 
@@ -3965,11 +3974,12 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     }
   };
 
-  // Update alignment of the currently selected text stroke (and the default for new text)
-  const setCompareTextAlignBoth=(align)=>{
+  // Update horizontal+vertical alignment of the currently selected text stroke (and defaults for new text)
+  const setCompareTextAnchor=(valign,align)=>{
+    setCompareTextValign(valign);
     setCompareTextAlign(align);
     if(compareSelectedIdx!=null){
-      setCompareMarkupStrokes(strokes=>strokes.map((s,i)=>(i===compareSelectedIdx&&s.type==="text")?{...s,align}:s));
+      setCompareMarkupStrokes(strokes=>strokes.map((s,i)=>(i===compareSelectedIdx&&s.type==="text")?{...s,align,valign}:s));
     }
   };
 
@@ -4007,12 +4017,19 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       const bw=Math.max(fs*3.3,s.text.length*fs*0.54);
       const bh=fs*1.67;
       const align=s.align||"left";
-      let rectX=s.pos.x-0.2,textX=s.pos.x+0.4,textAnchor="start";
-      if(align==="center"){rectX=s.pos.x-bw/2;textX=s.pos.x;textAnchor="middle";}
-      else if(align==="right"){rectX=s.pos.x-bw+0.2;textX=s.pos.x-0.4;textAnchor="end";}
+      const valign=s.valign||"bottom";
+      let rectX=s.pos.x-0.2,textAnchor="start";
+      if(align==="center"){rectX=s.pos.x-bw/2;textAnchor="middle";}
+      else if(align==="right"){rectX=s.pos.x-bw+0.2;textAnchor="end";}
+      const textX=align==="center"?s.pos.x:(align==="right"?s.pos.x-0.4:s.pos.x+0.4);
+      let rectY;
+      if(valign==="top")rectY=s.pos.y;
+      else if(valign==="middle")rectY=s.pos.y-bh/2;
+      else rectY=s.pos.y-bh+0.4;
+      const textY=rectY+bh-0.6;
       return <g key={i} {...hit}>
-        <rect x={rectX} y={s.pos.y-bh+0.4} width={bw} height={bh} rx={fs*0.25} fill="rgba(0,0,0,0.65)" stroke={isSel?"#5856d6":"none"} strokeWidth={isSel?"0.3":"0"}/>
-        <text x={textX} y={s.pos.y-0.6} fontSize={fs} fontWeight="700" fill={s.color} fontFamily="Barlow Condensed, sans-serif" textAnchor={textAnchor}>{s.text}</text>
+        <rect x={rectX} y={rectY} width={bw} height={bh} rx={fs*0.25} fill="rgba(0,0,0,0.65)" stroke={isSel?"#5856d6":"none"} strokeWidth={isSel?"0.3":"0"}/>
+        <text x={textX} y={textY} fontSize={fs} fontWeight="700" fill={s.color} fontFamily="Barlow Condensed, sans-serif" textAnchor={textAnchor}>{s.text}</text>
       </g>;
     }
     return null;
@@ -4516,12 +4533,19 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                             const bw=Math.max(fs*3.3,s.text.length*fs*0.54);
                             const bh=fs*1.67;
                             const align=s.align||"left";
-                            let rectX=s.pos.x-0.2,textX=s.pos.x+0.4,textAnchor="start";
-                            if(align==="center"){rectX=s.pos.x-bw/2;textX=s.pos.x;textAnchor="middle";}
-                            else if(align==="right"){rectX=s.pos.x-bw+0.2;textX=s.pos.x-0.4;textAnchor="end";}
+                            const valign=s.valign||"bottom";
+                            let rectX=s.pos.x-0.2,textAnchor="start";
+                            if(align==="center"){rectX=s.pos.x-bw/2;textAnchor="middle";}
+                            else if(align==="right"){rectX=s.pos.x-bw+0.2;textAnchor="end";}
+                            const textX=align==="center"?s.pos.x:(align==="right"?s.pos.x-0.4:s.pos.x+0.4);
+                            let rectY;
+                            if(valign==="top")rectY=s.pos.y;
+                            else if(valign==="middle")rectY=s.pos.y-bh/2;
+                            else rectY=s.pos.y-bh+0.4;
+                            const textY=rectY+bh-0.6;
                             return <g key={i}>
-                              <rect x={rectX} y={s.pos.y-bh+0.4} width={bw} height={bh} rx={fs*0.25} fill="rgba(0,0,0,0.65)"/>
-                              <text x={textX} y={s.pos.y-0.6} fontSize={fs} fontWeight="700" fill={s.color} fontFamily="Barlow Condensed, sans-serif" textAnchor={textAnchor}>{s.text}</text>
+                              <rect x={rectX} y={rectY} width={bw} height={bh} rx={fs*0.25} fill="rgba(0,0,0,0.65)"/>
+                              <text x={textX} y={textY} fontSize={fs} fontWeight="700" fill={s.color} fontFamily="Barlow Condensed, sans-serif" textAnchor={textAnchor}>{s.text}</text>
                             </g>;
                           }
                           return null;
@@ -4942,13 +4966,38 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                     return <button key={sz.id} onClick={()=>setCompareTextSizeBoth(sz.v)} title={`Text size ${sz.id}`} style={{minWidth:24,height:28,padding:"0 6px",borderRadius:6,border:isActive?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:isActive?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>{sz.id}</button>;
                   })}
                   <div style={{width:1,height:20,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
-                  {/* Text alignment presets */}
-                  {[{id:"left",label:"⯇"},{id:"center",label:"≡"},{id:"right",label:"⯈"}].map(al=>{
+                  {/* Text alignment (9-way) — consolidated dropdown */}
+                  {(()=>{
                     const sel=compareMarkupStrokes[compareSelectedIdx];
-                    const activeAlign=(sel&&sel.type==="text")?(sel.align||"left"):compareTextAlign;
-                    const isActive=activeAlign===al.id;
-                    return <button key={al.id} onClick={()=>setCompareTextAlignBoth(al.id)} title={`Align ${al.id}`} style={{width:28,height:28,borderRadius:6,border:isActive?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:isActive?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{al.label}</button>;
-                  })}
+                    const curH=(sel&&sel.type==="text")?(sel.align||"left"):compareTextAlign;
+                    const curV=(sel&&sel.type==="text")?(sel.valign||"bottom"):compareTextValign;
+                    const HS=["left","center","right"],VS=["top","middle","bottom"];
+                    const hIdx=HS.indexOf(curH),vIdx=VS.indexOf(curV);
+                    return <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(alignMenuTimer.current);setShowAlignMenu(true);}} onMouseLeave={()=>{alignMenuTimer.current=setTimeout(()=>setShowAlignMenu(false),250);}}>
+                      <button onClick={()=>setShowAlignMenu(v=>!v)} title={`Text align: ${curV}-${curH}`} style={{width:30,height:28,borderRadius:6,border:"2px solid rgba(88,86,214,0.35)",background:"rgba(88,86,214,0.1)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+                        <svg width="14" height="14" viewBox="-0.1 -0.1 3.2 3.2">
+                          {[0,1,2].map(r=>[0,1,2].map(c=>(
+                            <rect key={`${r}-${c}`} x={c} y={r} width="0.9" height="0.9" fill={(r===vIdx&&c===hIdx)?"#5856d6":"rgba(255,255,255,0.25)"} stroke="rgba(0,0,0,0.4)" strokeWidth="0.05"/>
+                          )))}
+                        </svg>
+                      </button>
+                      {showAlignMenu&&<div onMouseEnter={()=>clearTimeout(alignMenuTimer.current)} onMouseLeave={()=>{alignMenuTimer.current=setTimeout(()=>setShowAlignMenu(false),250);}} style={{position:"absolute",top:"100%",left:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:8,zIndex:100,boxShadow:"0 4px 12px rgba(0,0,0,0.4)"}}>
+                        <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6,whiteSpace:"nowrap"}}>TEXT ALIGNMENT</div>
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(3,26px)",gap:3}}>
+                          {VS.map(v=>HS.map(h=>{
+                            const isActive=curH===h&&curV===v;
+                            return <button key={`${v}-${h}`} onClick={()=>{setCompareTextAnchor(v,h);setShowAlignMenu(false);}} title={`${v}-${h}`} style={{width:26,height:26,borderRadius:4,border:isActive?"1.5px solid #5856d6":"1.5px solid rgba(255,255,255,0.15)",background:isActive?"rgba(88,86,214,0.25)":"rgba(255,255,255,0.05)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                              <svg width="14" height="14" viewBox="-0.1 -0.1 3.2 3.2">
+                                {[0,1,2].map(r=>[0,1,2].map(c=>(
+                                  <rect key={`${r}-${c}`} x={c} y={r} width="0.9" height="0.9" fill={(VS[r]===v&&HS[c]===h)?"#5856d6":"rgba(255,255,255,0.2)"} stroke="rgba(0,0,0,0.4)" strokeWidth="0.05"/>
+                                )))}
+                              </svg>
+                            </button>;
+                          }))}
+                        </div>
+                      </div>}
+                    </div>;
+                  })()}
                   <div style={{flex:1}}/>
                   {compareSelectedIdx!=null&&<button onClick={deleteCompareSelected} title="Delete selected" style={{background:"rgba(255,59,48,0.2)",border:"1px solid rgba(255,59,48,0.35)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>DEL</button>}
                   <button onClick={undoCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>UNDO</button>
