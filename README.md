@@ -75,7 +75,7 @@
 | **Quick Reactions** | Thumbs, check, warn, fix emoji reactions |
 | **Telegram Alerts** | New entries, status changes, comments sent to team group |
 
-### Drawings & Floor Plans
+### Drawings Tagging
 
 | Feature | Description |
 |---------|-------------|
@@ -89,6 +89,7 @@
 | **Color Picker + Undo/Clear** | Full markup control |
 | **Drawing Notes** | Pinned text notes with author + timestamp |
 | **PDF Thumbnails** | Preview cards with pin counts and severity badges |
+| **Photo Overlay (Compare)** | Capture or pick a site photo and overlay it on the PDF diff — drag to reposition, ± to resize, markup on top |
 
 ### PDF Diff & Batch Comparison
 

@@ -153,7 +153,19 @@ function _roundRectPath(ctx,x,y,w,h,r){
   ctx.arcTo(x,y,x+w,y,rr);
   ctx.closePath();
 }
-function _drawMarkupStroke(ctx,W,H,s){
+async function _preloadStrokePhotos(strokes){
+  const cache={};
+  const photos=(strokes||[]).filter(s=>s&&s.type==="photo"&&s.dataUrl);
+  await Promise.all(photos.map(s=>new Promise(resolve=>{
+    if(cache[s.dataUrl])return resolve();
+    const img=new Image();
+    img.onload=()=>{cache[s.dataUrl]=img;resolve();};
+    img.onerror=()=>resolve();
+    img.src=s.dataUrl;
+  })));
+  return cache;
+}
+function _drawMarkupStroke(ctx,W,H,s,imageCache){
   const px=p=>({x:(p.x/100)*W,y:(p.y/100)*H});
   ctx.save();
   ctx.strokeStyle=s.color||"#ff6b00";
@@ -208,6 +220,21 @@ function _drawMarkupStroke(ctx,W,H,s){
     ctx.textAlign=align==="center"?"center":(align==="right"?"right":"left");
     ctx.fillText(s.text,p.x,textY);
     ctx.textAlign="left";
+  }else if(s.type==="photo"&&s.pos&&s.dataUrl){
+    const x=(s.pos.x/100)*W;
+    const y=(s.pos.y/100)*H;
+    const w=(s.w/100)*W;
+    const h=(s.h/100)*H;
+    const img=imageCache&&imageCache[s.dataUrl];
+    if(img){
+      try{ctx.drawImage(img,x,y,w,h);}catch(e){}
+    }else{
+      ctx.fillStyle="rgba(255,107,0,0.15)";
+      ctx.fillRect(x,y,w,h);
+    }
+    ctx.strokeStyle="rgba(255,255,255,0.85)";
+    ctx.lineWidth=Math.max(1,W*0.0015);
+    ctx.strokeRect(x,y,w,h);
   }
   ctx.restore();
 }
@@ -261,8 +288,9 @@ async function renderDrawingAnnotatedPages(drawing,defects,allPins){
   if(pageSet.size===0&&markups.length>0)pageSet.add(1);
   if(pageSet.size===0)return[];
   const pages=[...pageSet].sort((a,b)=>a-b);
+  const imgCache=await _preloadStrokePhotos(markups);
   const applyOverlays=(ctx,W,H,pageNum)=>{
-    markups.forEach(s=>_drawMarkupStroke(ctx,W,H,s));
+    markups.forEach(s=>_drawMarkupStroke(ctx,W,H,s,imgCache));
     notes.filter(n=>(n.pageNum||1)===pageNum).forEach(n=>_drawNoteMarker(ctx,W,H,n));
     pins.filter(p=>(p.pageNum||1)===pageNum).forEach(p=>{
       const def=(defects||[]).find(x=>x.id===p.entryId);
@@ -2093,8 +2121,8 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
       <button onClick={onDrawings} style={{width:"100%",background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:14,padding:"14px 16px",marginBottom:16,cursor:"pointer",display:"flex",alignItems:"center",gap:12,textAlign:"left"}}>
         <span style={{fontSize:24}}>📐</span>
         <div style={{flex:1}}>
-          <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a"}}>FLOOR PLANS & DRAWINGS</span><span style={{fontSize:9,fontWeight:700,color:"#ff9500",background:"rgba(255,149,0,0.12)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:10,padding:"2px 6px",fontFamily:"'Barlow Condensed',sans-serif"}}>BETA</span></div>
-          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>Upload drawings, tap to place defect pins</div>
+          <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a"}}>DRAWINGS TAGGING</span><span style={{fontSize:9,fontWeight:700,color:"#ff9500",background:"rgba(255,149,0,0.12)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:10,padding:"2px 6px",fontFamily:"'Barlow Condensed',sans-serif"}}>BETA</span></div>
+          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>Upload drawings, tap to place defect pins, overlay photos</div>
         </div>
         <span style={{color:"rgba(0,0,0,0.2)",fontSize:14}}>→</span>
       </button>
@@ -3789,7 +3817,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     setUnlockReason("");
   };
 
-  const saveComparison=()=>{
+  const saveComparison=async()=>{
     if(!compareRes&&!compareOverlayCanvasRef.current?.width){alert("Run a comparison first.");return;}
     // Save compact preview thumbnail (quick offline preview)
     // Full vector quality re-renders from source PDFs when opened
@@ -3802,9 +3830,11 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         tmp.width=Math.round(oc.width*scale);tmp.height=Math.round(oc.height*scale);
         const tctx=tmp.getContext("2d");
         tctx.drawImage(oc,0,0,tmp.width,tmp.height);
+        // Preload photo strokes so images are available during sync composite
+        const imgCache=await _preloadStrokePhotos(compareMarkupStrokes);
         // Composite compare markup strokes on top so the saved thumb shows annotations
-        (compareMarkupStrokes||[]).forEach(s=>_drawMarkupStroke(tctx,tmp.width,tmp.height,s));
-        overlayThumb=tmp.toDataURL("image/png");
+        (compareMarkupStrokes||[]).forEach(s=>_drawMarkupStroke(tctx,tmp.width,tmp.height,s,imgCache));
+        overlayThumb=tmp.toDataURL("image/jpeg",0.85);
       }
     }catch(e){console.warn("Overlay thumbnail with markup failed",e);}
     const record={
@@ -3898,7 +3928,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     const clamp=v=>Math.max(0,Math.min(100,v));
     if(s.type==="freehand"&&Array.isArray(s.points))return{...s,points:s.points.map(pt=>({x:clamp(pt.x+dx),y:clamp(pt.y+dy)}))};
     if((s.type==="arrow"||s.type==="circle")&&s.start&&s.end)return{...s,start:{x:clamp(s.start.x+dx),y:clamp(s.start.y+dy)},end:{x:clamp(s.end.x+dx),y:clamp(s.end.y+dy)}};
-    if(s.type==="text"&&s.pos)return{...s,pos:{x:clamp(s.pos.x+dx),y:clamp(s.pos.y+dy)}};
+    if((s.type==="text"||s.type==="photo")&&s.pos)return{...s,pos:{x:clamp(s.pos.x+dx),y:clamp(s.pos.y+dy)}};
     return s;
   };
 
@@ -3989,6 +4019,51 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     setCompareSelectedIdx(null);
   };
 
+  // Photo overlay: capture/select an image and add it as a "photo" stroke
+  const comparePhotoInputRef=useRef();
+  const handleComparePhotoFile=e=>{
+    const file=e.target.files?.[0];
+    if(!file)return;
+    e.target.value="";
+    const img=new Image();
+    img.onload=()=>{
+      // Compress & scale to a reasonable size (max 1200px on the longest edge)
+      const maxDim=1200;
+      const scale=Math.min(1,maxDim/Math.max(img.width,img.height));
+      const cw=Math.round(img.width*scale),ch=Math.round(img.height*scale);
+      const canvas=document.createElement("canvas");
+      canvas.width=cw;canvas.height=ch;
+      const ctx=canvas.getContext("2d");
+      ctx.drawImage(img,0,0,cw,ch);
+      const dataUrl=canvas.toDataURL("image/jpeg",0.82);
+      // Default size: 30% wide, preserve aspect, centered
+      const w=30;
+      const h=(ch/cw)*30;
+      const stroke={type:"photo",dataUrl,pos:{x:50-w/2,y:50-h/2},w,h};
+      setCompareMarkupStrokes(s=>{
+        setCompareSelectedIdx(s.length);
+        return[...s,stroke];
+      });
+      setCompareMarkupTool("select");
+    };
+    img.onerror=()=>alert("Could not load image.");
+    const reader=new FileReader();
+    reader.onload=ev=>{img.src=ev.target.result;};
+    reader.readAsDataURL(file);
+  };
+
+  // Resize the currently selected photo by a multiplier (clamped)
+  const scaleComparePhoto=(mult)=>{
+    if(compareSelectedIdx==null)return;
+    setCompareMarkupStrokes(strokes=>strokes.map((s,i)=>{
+      if(i!==compareSelectedIdx||s.type!=="photo")return s;
+      const nw=Math.max(5,Math.min(100,s.w*mult));
+      const nh=(s.h/s.w)*nw;
+      // Keep top-left pinned — user can drag to recenter
+      return{...s,w:nw,h:nh};
+    }));
+  };
+
   const renderCompareMarkup=(strokes,interactive)=>strokes.map((s,i)=>{
     const isSel=interactive&&compareSelectedIdx===i;
     const hit=interactive?{style:{cursor:"move",pointerEvents:"visiblePainted"},onMouseDown:e=>onCompareStrokeDown(i,e),onTouchStart:e=>onCompareStrokeDown(i,e)}:{};
@@ -4030,6 +4105,12 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       return <g key={i} {...hit}>
         <rect x={rectX} y={rectY} width={bw} height={bh} rx={fs*0.25} fill="rgba(0,0,0,0.65)" stroke={isSel?"#5856d6":"none"} strokeWidth={isSel?"0.3":"0"}/>
         <text x={textX} y={textY} fontSize={fs} fontWeight="700" fill={s.color} fontFamily="Barlow Condensed, sans-serif" textAnchor={textAnchor}>{s.text}</text>
+      </g>;
+    }
+    if(s.type==="photo"&&s.pos&&s.dataUrl){
+      return <g key={i} {...hit}>
+        <image href={s.dataUrl} x={s.pos.x} y={s.pos.y} width={s.w} height={s.h} preserveAspectRatio="xMidYMid meet"/>
+        <rect x={s.pos.x} y={s.pos.y} width={s.w} height={s.h} fill="none" stroke={isSel?"#5856d6":"rgba(255,255,255,0.85)"} strokeWidth={isSel?"0.5":"0.25"}/>
       </g>;
     }
     return null;
@@ -4389,7 +4470,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
 
   return(
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
-      <SettingsBack onClose={onClose} title="DRAWINGS"/>
+      <SettingsBack onClose={onClose} title="DRAWINGS TAGGING"/>
       <div style={{padding:20}}>
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf,.pdf,.tif,.tiff" onChange={uploadDrawing} style={{display:"none"}}/>
 
@@ -4486,7 +4567,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           <div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0"}}>
             <div style={{fontSize:32,marginBottom:8}}>📐</div>
             <div style={{fontSize:14}}>No drawings yet</div>
-            {canUpload&&<div style={{fontSize:12,marginTop:4}}>Upload a floor plan to get started</div>}
+            {canUpload&&<div style={{fontSize:12,marginTop:4}}>Upload a drawing to get started</div>}
           </div>
         )}
 
@@ -4546,6 +4627,12 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                             return <g key={i}>
                               <rect x={rectX} y={rectY} width={bw} height={bh} rx={fs*0.25} fill="rgba(0,0,0,0.65)"/>
                               <text x={textX} y={textY} fontSize={fs} fontWeight="700" fill={s.color} fontFamily="Barlow Condensed, sans-serif" textAnchor={textAnchor}>{s.text}</text>
+                            </g>;
+                          }
+                          if(s.type==="photo"&&s.pos&&s.dataUrl){
+                            return <g key={i}>
+                              <image href={s.dataUrl} x={s.pos.x} y={s.pos.y} width={s.w} height={s.h} preserveAspectRatio="xMidYMid meet"/>
+                              <rect x={s.pos.x} y={s.pos.y} width={s.w} height={s.h} fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="0.25"/>
                             </g>;
                           }
                           return null;
@@ -4950,9 +5037,11 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
               {/* Markup tools — below overlay */}
               {(compareBaseId&&compareTargetId)&&(
                 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+                  <input ref={comparePhotoInputRef} type="file" accept="image/*" capture="environment" onChange={handleComparePhotoFile} style={{display:"none"}}/>
                   {[{id:"select",label:"✥"},{id:"freehand",label:"✏"},{id:"arrow",label:"↗"},{id:"circle",label:"○"},{id:"text",label:"T"}].map(t=>(
                     <button key={t.id} onClick={()=>{setCompareMarkupTool(t.id);if(t.id!=="select")setCompareSelectedIdx(null);}} title={t.id==="select"?"Select / Move":t.id} style={{width:34,height:34,borderRadius:8,border:compareMarkupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:compareMarkupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{t.label}</button>
                   ))}
+                  <button onClick={()=>comparePhotoInputRef.current?.click()} title="Add / capture photo overlay" style={{width:34,height:34,borderRadius:8,border:"2px solid rgba(255,107,0,0.35)",background:"rgba(255,107,0,0.1)",color:"#ffb48a",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>📷</button>
                   <div style={{width:1,height:20,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
                   {(()=>{
                     const sel=compareMarkupStrokes[compareSelectedIdx];
@@ -5008,6 +5097,14 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                     </div>;
                   })()}
                   <div style={{flex:1}}/>
+                  {(()=>{
+                    const sel=compareMarkupStrokes[compareSelectedIdx];
+                    if(sel?.type!=="photo")return null;
+                    return <>
+                      <button onClick={()=>scaleComparePhoto(0.85)} title="Shrink photo" style={{width:26,height:28,borderRadius:6,border:"1px solid rgba(255,107,0,0.35)",background:"rgba(255,107,0,0.1)",color:"#ffb48a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>−</button>
+                      <button onClick={()=>scaleComparePhoto(1.18)} title="Enlarge photo" style={{width:26,height:28,borderRadius:6,border:"1px solid rgba(255,107,0,0.35)",background:"rgba(255,107,0,0.1)",color:"#ffb48a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>+</button>
+                    </>;
+                  })()}
                   {compareSelectedIdx!=null&&<button onClick={deleteCompareSelected} title="Delete selected" style={{background:"rgba(255,59,48,0.2)",border:"1px solid rgba(255,59,48,0.35)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>DEL</button>}
                   <button onClick={undoCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>UNDO</button>
                   <button onClick={clearCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,59,48,0.2)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#ff8f8f":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>CLEAR</button>
@@ -6329,7 +6426,7 @@ function App(){
                       ["","5. Submit the entry, or continue in batch mode if logging multiple items in the same area."],
                     ]],
                     ["Drawings",[
-                      ["","Open Floor Plans & Drawings from the Dashboard to upload or view drawings. You can place pins on plans, link them to existing entries, create entries directly from a drawing, and use the heatmap to spot problem areas quickly."],
+                      ["","Open Drawings Tagging from the Dashboard to upload or view drawings. You can place pins on plans, link them to existing entries, create entries directly from a drawing, use the heatmap to spot problem areas, and overlay site photos onto PDF comparisons with markup on top."],
                     ]],
                     ["Entry Status Flow",[
                       ["Open","New item logged and awaiting action."],
@@ -6380,7 +6477,7 @@ function App(){
                     ["Projects",["Create / rename projects","Switch active project","Archive / restore projects"]],
                     ["Entry Logging",["Log with title, severity, location","4 default types + custom entry types","Custom type manager (icon & color picker)","Multi-level location (Level > Zone > Room > Grid)","Snap / upload up to 10 photos","Photo markup editor (arrows, circles, freehand, text)","Markup scales correctly on save (pen, text, arrows)","Edit / delete text annotations on markup","AI photo analysis (Gemini, Ollama, GPT)","AI auto-assign trade + suggested assignee","AI safety risk scoring (auto-escalate Critical)","Duplicate detection (similarity check on submit)","Voice-to-text input (title, description, search)","Component + issue selector (93 / 517)","Assign to team member","Cost & time tracking fields","Batch logging mode (same location)"]],
                     ["Entry Management",["Full-text search with highlighting","AI natural language search (voice + text)","Filter by status, severity, entry type","Collapsible filters with clear button","Entry type badges on list & detail","Detail view with all fields + photos","Update status workflow (5 stages)","Verification photo on Close / Verify","Before / after photo comparison slider","Resolution timeline (visual, color-coded)","Photo comments in timeline","Markup on comment photos (tap to annotate)","Edit own comments inline (with edited indicator)","Quick reactions (thumbs, check, warn, fix)","Delete entry (Admin only)","Telegram alerts on new entry & status change"]],
-                    ["Drawings & Floor Plans",["Upload floor plans (JPG, PNG, TIF, PDF)","PDF rendering via PDF.js with page navigation","Zoom, pan & pinch-to-zoom (mobile)","Ring-style defect pins with severity initial","Critical pin pulse animation","Pin tooltip with entry details + remove","Quick-pin: create entry directly from drawing","Defect heatmap overlay (severity-weighted)","Drawing-level markup (freehand, arrows, circles, text)","Drawing notes — pinned text with author + timestamp","Markup color picker + undo / clear","Pin count & severity badges on cards","PDF thumbnail preview in list","Diff dropdown: Single (PDFs) and Batch (Folders) in one menu","Single PDF diff with visual overlay of changes","Compare markup — draw on top of the diff (freehand, arrow, circle, text)","Compare markup: select and drag to reposition any stroke","Compare markup: 4 text size presets (S/M/L/XL)","Compare markup: 9-way text alignment via 3x3 grid menu","Compare markup: color picker retargets selected stroke","Compare markup: delete individual strokes without clearing all","AI diff report with lock / approve audit trail","Saved comparisons with overlay thumbnails (markup composited in)","Batch PDFs Comparison (folder vs folder)","Batch completeness check (missing / extra files)","Batch content comparison (per-file diff with detail)","Batch export (CSV + PDF with per-file changes)","Editable set labels (Tender, As-Built, M&E, etc.)"]],
+                    ["Drawings Tagging",["Upload floor plans (JPG, PNG, TIF, PDF)","PDF rendering via PDF.js with page navigation","Zoom, pan & pinch-to-zoom (mobile)","Ring-style defect pins with severity initial","Critical pin pulse animation","Pin tooltip with entry details + remove","Quick-pin: create entry directly from drawing","Defect heatmap overlay (severity-weighted)","Drawing-level markup (freehand, arrows, circles, text)","Drawing notes — pinned text with author + timestamp","Markup color picker + undo / clear","Pin count & severity badges on cards","PDF thumbnail preview in list","Diff dropdown: Single (PDFs) and Batch (Folders) in one menu","Single PDF diff with visual overlay of changes","Compare markup — draw on top of the diff (freehand, arrow, circle, text)","Compare markup: select and drag to reposition any stroke","Compare markup: 4 text size presets (S/M/L/XL)","Compare markup: 9-way text alignment via 3x3 grid menu","Compare markup: color picker retargets selected stroke","Compare markup: delete individual strokes without clearing all","Compare markup: overlay site photos onto the diff (capture or pick from device)","Compare markup: drag photos to reposition, +/− to resize, markup on top","AI diff report with lock / approve audit trail","Saved comparisons with overlay thumbnails (markup composited in)","Batch PDFs Comparison (folder vs folder)","Batch completeness check (missing / extra files)","Batch content comparison (per-file diff with detail)","Batch export (CSV + PDF with per-file changes)","Editable set labels (Tender, As-Built, M&E, etc.)"]],
                     ["Dashboard",["Real-time status counts (5 stages)","Critical alerts banner","Severity breakdown chart","Recent entries with type badges","Live sync indicator + queue count"]],
                     ["Admin Analytics",["Entries today / week / month / all time","Active users — who submitted today & this week","Per-user ranking bar chart","Photos stats (total & avg per entry)","Entries by entry type breakdown","Entries by project breakdown","AI usage stats (daily limit, coverage, provider)"]],
                     ["Reports & Exports",["Site report with charts + entry list","Filter by severity / status / assignee / date","Email content sections (defects, drawings, comparisons)","Email preview with opt-in/out per section","Email report via EmailJS","Dn menu: Markup CSV / PDF export","Dn menu: Compare CSV / PDF export","Dn menu: All CSV / PDF export","Dn menu: All-in-One (CSV + PDF in one tap)","Annotated drawings embedded in PDF exports (pins, notes, markup burned in)","Per-drawing PDF export from the viewer"]],
