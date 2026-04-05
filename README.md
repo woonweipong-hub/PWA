@@ -96,10 +96,14 @@
 |---------|-------------|
 | **Single PDF Diff** | Compare two drawings revision-to-revision with added/removed line detection |
 | **Diff Overlay** | Visual color overlay showing what changed between base and revision |
-| **Compare Markup** | Draw and annotate on top of the diff |
+| **Compare Markup** | Draw on top of the diff — freehand, arrow, circle, text |
+| **Select / Move / Delete** | Grab any stroke with the Select tool, drag to reposition, delete individually |
+| **Text Size Presets** | Four sizes (S / M / L / XL) apply to new text or retarget the selected stroke |
+| **9-Way Text Alignment** | Horizontal + vertical alignment via a single 3×3 grid menu (top-left … bottom-right) |
+| **Color Retarget** | Color picker also recolors the selected stroke, not just new ones |
 | **AI Diff Report** | Generate a written compliance/coordination summary of the changes |
 | **Lock / Approve AI Report** | Audit trail of lock/unlock with reason + user |
-| **Save Comparisons** | Comparisons persist per-project with overlay thumbnails |
+| **Save Comparisons** | Comparisons persist per-project with overlay thumbnails (markup composited in) |
 | **Batch Folder Comparison** | Diff two folders of PDFs (Tender vs As-Built, M&E vs Arch, etc.) |
 | **Completeness Check** | Flags missing / extra files between sets |
 | **Editable Set Labels** | Name each set (Tender, As-Built, M&E, Revision A, etc.) |
