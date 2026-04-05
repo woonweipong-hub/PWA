@@ -731,6 +731,69 @@ function exportCSV(defects,projectName){
   a.click();
 }
 
+// Full report export — defects + drawing annotations + saved comparisons in one CSV
+function exportReportAll(defects,drawings,savedComparisons,projectName){
+  const esc=v=>`"${String(v==null?"":v).replace(/"/g,'""')}"`;
+  const lines=[];
+  // Section 1: Defect entries
+  lines.push("# DEFECT ENTRIES");
+  const defectHeaders=["ID","Entry Type","Title","Component","Issue","Location","Severity","Status","Assignee","Trade","Logged By","Role","Date","Due Date","Duration","Cost Impact","Cost Responsible","Cost Amount","Description","Comments"];
+  lines.push(defectHeaders.join(","));
+  (defects||[]).forEach(d=>{
+    lines.push([
+      d.defect_id||d.id||"",
+      d.entryType||"Defect",
+      esc(d.title),esc(d.component),esc(d.issue),esc(d.location),
+      d.severity||"",d.status||"",
+      esc(d.assignee),esc(d.trade),esc(d.loggedBy),
+      d.loggedByRole||"",
+      (d.createdAt||d.created)?new Date(d.createdAt||d.created).toLocaleDateString("en-GB"):"",
+      d.dueDate||"",d.duration||"",
+      esc(d.costImpact),esc(d.costResponsible),d.costAmount||"",
+      esc(d.description),
+      esc((d.comments||[]).map(c=>`${c.by}: ${c.text}`).join(" | "))
+    ].join(","));
+  });
+  // Section 2: Drawing annotations (notes + markup counts)
+  lines.push("");
+  lines.push("# DRAWING ANNOTATIONS");
+  lines.push(["Drawing","File","Notes Count","Markup Count","Note #","Note Text","Author","Date"].join(","));
+  (drawings||[]).forEach(dr=>{
+    const notes=getDrawingNotes(dr.id)||[];
+    const markups=getDrawingMarkup(dr.id)||[];
+    if(!notes.length&&!markups.length){
+      lines.push([esc(dr.name),esc(dr.file),0,0,"","","",""].join(","));
+    }else if(!notes.length){
+      lines.push([esc(dr.name),esc(dr.file),0,markups.length,"","","",""].join(","));
+    }else{
+      notes.forEach((n,i)=>{
+        lines.push([
+          esc(dr.name),esc(dr.file),notes.length,markups.length,
+          i+1,esc(n.text||n.note||""),esc(n.by||n.author||""),
+          n.at?new Date(n.at).toLocaleDateString("en-GB"):""
+        ].join(","));
+      });
+    }
+  });
+  // Section 3: Saved comparisons
+  lines.push("");
+  lines.push("# SAVED COMPARISONS");
+  lines.push(["Base","Target","Added","Removed","Date","AI Report"].join(","));
+  (savedComparisons||[]).forEach(sc=>{
+    lines.push([
+      esc(sc.baseName),esc(sc.targetName),
+      sc.totalAdded||0,sc.totalRemoved||0,
+      sc.savedAt?new Date(sc.savedAt).toLocaleDateString("en-GB"):"",
+      sc.aiReport?"Yes":"No"
+    ].join(","));
+  });
+  const csv="\uFEFF"+lines.join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  a.download=`SiteShrimp_Report_${(projectName||"Export").replace(/\s/g,"_")}_${new Date().toLocaleDateString("en-GB").replace(/\//g,"-")}.csv`;
+  a.click();
+}
+
 async function sendTelegram(token,chatId,text){
   try{
     const r=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
@@ -2117,17 +2180,7 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
         </div>
       )}
 
-      {/* Drawings shortcut */}
-      <button onClick={onDrawings} style={{width:"100%",background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:14,padding:"14px 16px",marginBottom:16,cursor:"pointer",display:"flex",alignItems:"center",gap:12,textAlign:"left"}}>
-        <span style={{fontSize:24}}>📐</span>
-        <div style={{flex:1}}>
-          <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a"}}>DRAWINGS TAGGING</span><span style={{fontSize:9,fontWeight:700,color:"#ff9500",background:"rgba(255,149,0,0.12)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:10,padding:"2px 6px",fontFamily:"'Barlow Condensed',sans-serif"}}>BETA</span></div>
-          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>Upload drawings, tap to place defect pins, overlay photos</div>
-        </div>
-        <span style={{color:"rgba(0,0,0,0.2)",fontSize:14}}>→</span>
-      </button>
-
-      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:10}}>RECENT ENTRIES</div>
+<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:10}}>RECENT ENTRIES</div>
       {defects.length===0&&(
         <div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"40px 0",fontSize:14}}>
           No defects yet.{["Admin","Manager","Inspector"].includes(member?.role)?" Tap + Log to start.":""}
@@ -3247,7 +3300,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
           {sending?<><Spin size={14}/><span>SENDING...</span></>:emailReady?"📧 EMAIL REPORT":"⚙️ SETUP EMAIL"}
         </button>
         <button onClick={()=>setShowPreview(p=>!p)} style={{background:showPreview?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 14px",color:showPreview?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>👁 PREVIEW</button>
-        <button onClick={()=>exportCSV(filtered,currentProject?.name)} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>📊 CSV</button>
+        <button onClick={()=>exportReportAll(filtered,reportDrawings,savedComparisons,currentProject?.name)} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>📊 EXPORT</button>
         {emailReady&&<button onClick={onEmailSetup} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>EDIT</button>}
       </div>
 
@@ -4475,10 +4528,10 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
 
   return(
     <div style={embedded?{background:"#f0ede8",minHeight:"100%"}:{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
-      {!embedded&&<SettingsBack onClose={onClose} title="DRAWINGS TAGGING"/>}
+      {!embedded&&<SettingsBack onClose={onClose} title="TAG & COMPARE"/>}
       <div style={{padding:20}}>
         {embedded&&<div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:14}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>DRAWINGS TAGGING</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>TAG & COMPARE</div>
           <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>Upload, pin, overlay photos and compare</div>
         </div>}
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf,.pdf,.tif,.tiff" onChange={uploadDrawing} style={{display:"none"}}/>
@@ -6005,7 +6058,7 @@ function AdminAnalytics({defects,members,company,currentProject,projects,allDefe
 }
 
 // ── App Root ──────────────────────────────────────────────────────
-const NAV=[{id:"dashboard",icon:"⊞",label:"Dashboard"},{id:"log",icon:"+",label:"Log"},{id:"drawings",icon:"📐",label:"Drawings"},{id:"defects",icon:"≡",label:"Review"},{id:"report",icon:"◎",label:"Report"}];
+const NAV=[{id:"dashboard",icon:"⊞",label:"Dashboard"},{id:"log",icon:"+",label:"Log"},{id:"drawings",icon:"📐",label:"Tag"},{id:"defects",icon:"≡",label:"Review"},{id:"report",icon:"◎",label:"Report"}];
 
 
 function App(){
@@ -6356,39 +6409,115 @@ function App(){
             <button onClick={()=>setShowSettingsMenu(v=>!v)} title={setupComplete?"Settings (all configured)":`Settings — ${setupDone}/${setupTotal} configured`} style={{position:"relative",width:34,height:34,borderRadius:9,background:showSettingsMenu?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showSettingsMenu?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:17,color:showSettingsMenu?"#ff6b00":"rgba(255,255,255,0.75)",flexShrink:0}}>⚙
               {!setupComplete&&<span style={{position:"absolute",top:-4,right:-4,minWidth:16,height:16,borderRadius:999,background:"#ff9500",color:"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,lineHeight:"16px",padding:"0 4px",textAlign:"center",border:"1.5px solid #1a1a1a"}}>{setupDone}/{setupTotal}</span>}
             </button>
-            {showSettingsMenu&&<div onMouseEnter={()=>clearTimeout(settingsMenuTimer.current)} onMouseLeave={()=>{settingsMenuTimer.current=setTimeout(()=>setShowSettingsMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,overflow:"hidden",zIndex:100,minWidth:220,boxShadow:"0 6px 20px rgba(0,0,0,0.4)"}}>
-              <div style={{padding:"10px 14px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <span style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.5)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>SETUP</span>
-                <span style={{fontSize:10,fontWeight:800,color:setupComplete?"#30d158":"#ff9500",fontFamily:"'Barlow Condensed',sans-serif"}}>{setupDone}/{setupTotal} {setupComplete?"· COMPLETE":"· CONFIGURED"}</span>
+            {showSettingsMenu&&(()=>{
+              const donePill={background:"rgba(48,209,88,0.15)",color:"#30d158",border:"1px solid rgba(48,209,88,0.3)"};
+              const todoPill={background:"rgba(255,149,0,0.12)",color:"#ff9500",border:"1px solid rgba(255,149,0,0.28)"};
+              const optPill={background:"rgba(255,255,255,0.06)",color:"rgba(255,255,255,0.4)",border:"1px solid rgba(255,255,255,0.1)"};
+              const headerPct=Math.round((setupDone/setupTotal)*100);
+              const items=[
+                {section:"PROJECT"},
+                {label:"Projects",desc:"Create or switch projects",icon:"📁",tint:"rgba(255,107,0,0.15)",done:setupChecks.project,onClick:()=>{setShowProjects(true);setShowSettingsMenu(false);}},
+                ...(isAdmin?[{label:"Team Management",desc:"Invite and manage members",icon:"👥",tint:"rgba(88,86,214,0.18)",done:setupChecks.team,onClick:()=>{setShowUsers(true);setShowSettingsMenu(false);}}]:[]),
+                {section:"ENHANCE"},
+                {label:"AI Setup",desc:"Vision, voice and AI search",icon:"🤖",tint:"rgba(255,107,0,0.15)",done:setupChecks.ai,onClick:()=>{setShowGemini(true);setShowSettingsMenu(false);}},
+                {label:"Telegram Alerts",desc:"Real-time defect pings",icon:"✈",tint:"rgba(52,170,220,0.18)",done:setupChecks.telegram,onClick:()=>{setShowTg(true);setShowSettingsMenu(false);}},
+                {label:"Storage",desc:"Backend and file hosting",icon:"💾",tint:"rgba(255,255,255,0.08)",optional:true,onClick:()=>{setShowStorage(true);setShowSettingsMenu(false);}},
+              ];
+              return(
+              <div className="dd-panel" onMouseEnter={()=>clearTimeout(settingsMenuTimer.current)} onMouseLeave={()=>{settingsMenuTimer.current=setTimeout(()=>setShowSettingsMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:8,background:"linear-gradient(180deg,#2e2e32 0%,#1f1f22 100%)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,overflow:"hidden",zIndex:100,minWidth:278,boxShadow:"0 16px 48px rgba(0,0,0,0.55),0 2px 10px rgba(0,0,0,0.35)"}}>
+                {/* Header with progress bar */}
+                <div style={{padding:"13px 16px 12px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"linear-gradient(180deg,rgba(255,107,0,0.06),rgba(255,107,0,0))"}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                    <div>
+                      <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.14em",fontFamily:"'Barlow Condensed',sans-serif"}}>SETTINGS</div>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff",marginTop:2,lineHeight:1}}>{setupComplete?"All set up":"Finish setup"}</div>
+                    </div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:setupComplete?"#30d158":"#ff9500"}}>{setupDone}/{setupTotal}</div>
+                  </div>
+                  <div style={{height:4,background:"rgba(255,255,255,0.08)",borderRadius:4,overflow:"hidden"}}>
+                    <div style={{width:`${headerPct}%`,height:"100%",background:setupComplete?"#30d158":"#ff9500",borderRadius:4,transition:"width 0.4s ease"}}/>
+                  </div>
+                </div>
+                {/* Rows */}
+                <div style={{padding:"6px 0 8px"}}>
+                  {items.map((it,i)=>it.section?(
+                    <div key={`s${i}`} style={{padding:"10px 16px 4px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.35)",letterSpacing:"0.14em",fontFamily:"'Barlow Condensed',sans-serif"}}>{it.section}</div>
+                  ):(
+                    <button key={it.label} className="dd-row" onClick={it.onClick}>
+                      <div className="dd-ico" style={{background:it.tint,border:`1px solid ${it.tint.replace(/[\d.]+\)$/,"0.3)")}`}}>{it.icon}</div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div className="dd-label">{it.label}</div>
+                        <div className="dd-sub">{it.desc}</div>
+                      </div>
+                      <span className="dd-pill" style={it.optional?optPill:(it.done?donePill:todoPill)}>{it.optional?"OPT":(it.done?"DONE":"TODO")}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div style={{padding:"8px 14px 4px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>PROJECT</div>
-              <button onClick={()=>{setShowProjects(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span>📁 Projects</span><span style={{color:setupChecks.project?"#30d158":"rgba(255,255,255,0.25)",fontSize:12}}>{setupChecks.project?"✓":"—"}</span></button>
-              {isAdmin&&<button onClick={()=>{setShowUsers(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span>👥 Team Management</span><span style={{color:setupChecks.team?"#30d158":"rgba(255,255,255,0.25)",fontSize:12}}>{setupChecks.team?"✓":"—"}</span></button>}
-              <div style={{padding:"8px 14px 4px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif",borderTop:"1px solid rgba(255,255,255,0.06)",marginTop:2}}>ENHANCE</div>
-              <button onClick={()=>{setShowGemini(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span>🤖 AI Setup</span><span style={{color:setupChecks.ai?"#30d158":"rgba(255,255,255,0.25)",fontSize:12}}>{setupChecks.ai?"✓":"—"}</span></button>
-              <button onClick={()=>{setShowTg(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span>✈ Telegram Alerts</span><span style={{color:setupChecks.telegram?"#30d158":"rgba(255,255,255,0.25)",fontSize:12}}>{setupChecks.telegram?"✓":"—"}</span></button>
-              <button onClick={()=>{setShowStorage(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span>💾 Storage</span><span style={{color:"rgba(255,255,255,0.4)",fontSize:10}}>optional</span></button>
-            </div>}
+              );
+            })()}
           </div>
           {/* Avatar dropdown — profile, admin analytics, help, feedback, sign out */}
           <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(avatarMenuTimer.current);setShowAvatarMenu(true);}} onMouseLeave={()=>{avatarMenuTimer.current=setTimeout(()=>setShowAvatarMenu(false),250);}}>
             <button onClick={()=>setShowAvatarMenu(v=>!v)} style={{width:34,height:34,borderRadius:"50%",background:"#ff6b00",border:showAvatarMenu?"2px solid #fff":"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",flexShrink:0}}>
               {(member?.name||"?")[0].toUpperCase()}
             </button>
-            {showAvatarMenu&&<div onMouseEnter={()=>clearTimeout(avatarMenuTimer.current)} onMouseLeave={()=>{avatarMenuTimer.current=setTimeout(()=>setShowAvatarMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,overflow:"hidden",zIndex:100,minWidth:200,boxShadow:"0 6px 20px rgba(0,0,0,0.4)"}}>
-              <div style={{padding:"10px 14px 8px",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#fff"}}>{member?.name||"—"}</div>
-                <div style={{fontSize:10,color:"rgba(255,255,255,0.4)"}}>{member?.role||""}{member?.jobTitle?` · ${member.jobTitle}`:""}</div>
+            {showAvatarMenu&&(
+              <div className="dd-panel" onMouseEnter={()=>clearTimeout(avatarMenuTimer.current)} onMouseLeave={()=>{avatarMenuTimer.current=setTimeout(()=>setShowAvatarMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:8,background:"linear-gradient(180deg,#2e2e32 0%,#1f1f22 100%)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,overflow:"hidden",zIndex:100,minWidth:258,boxShadow:"0 16px 48px rgba(0,0,0,0.55),0 2px 10px rgba(0,0,0,0.35)"}}>
+                {/* Profile header */}
+                <div style={{padding:"14px 16px 12px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",gap:12,background:"linear-gradient(180deg,rgba(255,107,0,0.08),rgba(255,107,0,0))"}}>
+                  <div style={{width:42,height:42,borderRadius:"50%",background:"linear-gradient(135deg,#ff8a3d,#ff6b00)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:18,color:"#fff",boxShadow:"0 4px 12px rgba(255,107,0,0.35)",flexShrink:0}}>
+                    {(member?.name||"?")[0].toUpperCase()}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{member?.name||"—"}</div>
+                    <div style={{fontSize:10,color:"rgba(255,255,255,0.5)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginTop:1}}>{member?.role||""}{member?.jobTitle?` · ${member.jobTitle}`:""}</div>
+                  </div>
+                </div>
+                {/* Rows */}
+                <div style={{padding:"6px 0"}}>
+                  <button className="dd-row" onClick={()=>{setShowProfile(true);setShowAvatarMenu(false);}}>
+                    <div className="dd-ico" style={{background:"rgba(88,86,214,0.18)",border:"1px solid rgba(88,86,214,0.3)"}}>👤</div>
+                    <div style={{flex:1,minWidth:0}}><div className="dd-label">My Profile</div><div className="dd-sub">Account details</div></div>
+                  </button>
+                  {isAdmin&&(
+                    <button className="dd-row" onClick={()=>{setShowAdminAnalytics(true);setShowAvatarMenu(false);}}>
+                      <div className="dd-ico" style={{background:"rgba(255,107,0,0.15)",border:"1px solid rgba(255,107,0,0.3)"}}>📊</div>
+                      <div style={{flex:1,minWidth:0}}><div className="dd-label">Admin Analytics</div><div className="dd-sub">Usage and insights</div></div>
+                    </button>
+                  )}
+                  <button className="dd-row" onClick={()=>{setShowHelp(true);setShowAvatarMenu(false);}}>
+                    <div className="dd-ico" style={{background:"rgba(52,170,220,0.18)",border:"1px solid rgba(52,170,220,0.3)"}}>❓</div>
+                    <div style={{flex:1,minWidth:0}}><div className="dd-label">Help & Features</div><div className="dd-sub">Guides and tips</div></div>
+                  </button>
+                  <button className="dd-row" onClick={()=>{setShowFeedback(true);setFbSent(false);setFbText("");setShowAvatarMenu(false);}}>
+                    <div className="dd-ico" style={{background:"rgba(48,209,88,0.15)",border:"1px solid rgba(48,209,88,0.3)"}}>💬</div>
+                    <div style={{flex:1,minWidth:0}}><div className="dd-label">Feedback</div><div className="dd-sub">Send us a note</div></div>
+                  </button>
+                </div>
+                {/* Sign out footer */}
+                <div style={{borderTop:"1px solid rgba(255,255,255,0.06)",padding:"6px 0"}}>
+                  <button className="dd-row danger" onClick={()=>{setShowAvatarMenu(false);signOut();}}>
+                    <div className="dd-ico" style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)"}}>↩</div>
+                    <div style={{flex:1,minWidth:0}}><div className="dd-label" style={{color:"#ff8f8f"}}>Sign Out</div><div className="dd-sub">End this session</div></div>
+                  </button>
+                </div>
               </div>
-              <button onClick={()=>{setShowProfile(true);setShowAvatarMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13}}>👤 My Profile</button>
-              {isAdmin&&<button onClick={()=>{setShowAdminAnalytics(true);setShowAvatarMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13}}>📊 Admin Analytics</button>}
-              <button onClick={()=>{setShowHelp(true);setShowAvatarMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13}}>❓ Help</button>
-              <button onClick={()=>{setShowFeedback(true);setFbSent(false);setFbText("");setShowAvatarMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13}}>💬 Feedback</button>
-              <button onClick={()=>{setShowAvatarMenu(false);signOut();}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#ff8f8f",fontSize:13,borderTop:"1px solid rgba(255,255,255,0.06)"}}>↩ Sign Out</button>
-            </div>}
+            )}
           </div>
         </div>
       </div>
+
+      {/* AI Query bar — shown on Dashboard and Report tabs */}
+      {(tab==="dashboard"||tab==="report")&&(
+        <div style={{background:"#1a1a1a",padding:"0 12px 10px"}}>
+          <button onClick={()=>{if(aiEnabled)setShowAiSearch(true);}} title={aiEnabled?"AI natural-language query across your entries":"Configure AI in Settings to enable"} style={{width:"100%",display:"flex",alignItems:"center",gap:10,background:aiEnabled?"rgba(255,255,255,0.07)":"rgba(255,255,255,0.04)",border:`1px solid ${aiEnabled?"rgba(255,107,0,0.35)":"rgba(255,255,255,0.08)"}`,borderRadius:10,padding:"9px 12px",cursor:aiEnabled?"pointer":"not-allowed",textAlign:"left"}}>
+            <span style={{fontSize:14,color:aiEnabled?"#ff6b00":"rgba(255,255,255,0.3)"}}>💬</span>
+            <span style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:aiEnabled?"rgba(255,255,255,0.75)":"rgba(255,255,255,0.35)",letterSpacing:"0.04em"}}>{aiEnabled?"AI QUERY — ask in plain English…":"AI QUERY — configure AI in Settings"}</span>
+            {aiEnabled&&<span style={{fontSize:10,fontWeight:800,color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",background:"rgba(255,107,0,0.12)",border:"1px solid rgba(255,107,0,0.3)",borderRadius:8,padding:"2px 7px"}}>ASK</span>}
+          </button>
+        </div>
+      )}
 
       {/* Profile panel */}
       {showProfile&&<ProfilePanel member={member} authUser={authUser} company={company} onClose={()=>setShowProfile(false)} onSignOut={signOut}/>}
@@ -6407,8 +6536,8 @@ function App(){
       <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:"#1a1a1a",borderTop:"1px solid rgba(255,255,255,0.06)",display:"flex",padding:"10px 0 14px",zIndex:50}}>
         {navItems.map(n=>(
           <button key={n.id} onClick={()=>setTab(n.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"4px 0"}}>
-            <div style={{fontSize:n.id==="log"?28:24,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.55)",fontWeight:700,lineHeight:1,fontFamily:n.id==="log"?"'Barlow Condensed',sans-serif":"inherit"}}>{n.icon}</div>
-            <div style={{fontSize:11,fontWeight:700,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em"}}>{n.label.toUpperCase()}</div>
+            <div style={{height:26,display:"flex",alignItems:"center",justifyContent:"center",fontSize:n.id==="log"?28:22,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.55)",fontWeight:700,lineHeight:1,fontFamily:n.id==="log"?"'Barlow Condensed',sans-serif":"inherit"}}>{n.icon}</div>
+            <div style={{fontSize:11,fontWeight:700,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",lineHeight:1}}>{n.label.toUpperCase()}</div>
           </button>
         ))}
       </div>
