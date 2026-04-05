@@ -183,18 +183,24 @@ function _drawMarkupStroke(ctx,W,H,s){
     if(rx>1||ry>1){ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();}
   }else if(s.type==="text"&&s.pos&&s.text){
     const p=px(s.pos);
-    const fs=Math.max(14,W*0.018);
+    const fs=(s.fontSize?Math.max(8,W*s.fontSize*0.0075):Math.max(14,W*0.018));
     ctx.font=`bold ${fs}px Arial`;
     const tw=ctx.measureText(s.text).width;
     const pad=fs*0.35;
+    const align=s.align||"left";
+    let bgX=p.x-pad,textX=p.x;
+    if(align==="center"){bgX=p.x-tw/2-pad;textX=p.x;}
+    else if(align==="right"){bgX=p.x-tw-pad;textX=p.x;}
     ctx.fillStyle="rgba(255,255,255,0.92)";
     ctx.strokeStyle=s.color||"#ff6b00";
     ctx.lineWidth=2;
-    _roundRectPath(ctx,p.x-pad,p.y-fs-pad*0.2,tw+pad*2,fs+pad*1.2,4);
+    _roundRectPath(ctx,bgX,p.y-fs-pad*0.2,tw+pad*2,fs+pad*1.2,4);
     ctx.fill();ctx.stroke();
     ctx.fillStyle=s.color||"#ff6b00";
     ctx.textBaseline="alphabetic";
-    ctx.fillText(s.text,p.x,p.y);
+    ctx.textAlign=align==="center"?"center":(align==="right"?"right":"left");
+    ctx.fillText(s.text,textX,p.y);
+    ctx.textAlign="left";
   }
   ctx.restore();
 }
@@ -3363,6 +3369,7 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[compareSelectedIdx,setCompareSelectedIdx]=useState(null);
   const compareDragRef=useRef(null);
   const[compareTextSize,setCompareTextSize]=useState(2.4);
+  const[compareTextAlign,setCompareTextAlign]=useState("left");
   const[compareTextPoint,setCompareTextPoint]=useState(null);
   const[compareTextValue,setCompareTextValue]=useState("");
   const[savedComparisons,setSavedComparisons]=useState(()=>getSavedComparisons(currentProject?.id||""));
@@ -3943,7 +3950,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
 
   const addCompareText=()=>{
     if(!compareTextPoint||!compareTextValue.trim())return;
-    setCompareMarkupStrokes(s=>[...s,{type:"text",color:compareMarkupColor,pos:compareTextPoint,text:compareTextValue.trim(),fontSize:compareTextSize}]);
+    setCompareMarkupStrokes(s=>[...s,{type:"text",color:compareMarkupColor,pos:compareTextPoint,text:compareTextValue.trim(),fontSize:compareTextSize,align:compareTextAlign}]);
     setCompareTextPoint(null);setCompareTextValue("");
   };
 
@@ -3952,6 +3959,14 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     setCompareTextSize(size);
     if(compareSelectedIdx!=null){
       setCompareMarkupStrokes(strokes=>strokes.map((s,i)=>(i===compareSelectedIdx&&s.type==="text")?{...s,fontSize:size}:s));
+    }
+  };
+
+  // Update alignment of the currently selected text stroke (and the default for new text)
+  const setCompareTextAlignBoth=(align)=>{
+    setCompareTextAlign(align);
+    if(compareSelectedIdx!=null){
+      setCompareMarkupStrokes(strokes=>strokes.map((s,i)=>(i===compareSelectedIdx&&s.type==="text")?{...s,align}:s));
     }
   };
 
@@ -3988,9 +4003,13 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       const fs=s.fontSize||2.4;
       const bw=Math.max(fs*3.3,s.text.length*fs*0.54);
       const bh=fs*1.67;
+      const align=s.align||"left";
+      let rectX=s.pos.x-0.2,textX=s.pos.x+0.4,textAnchor="start";
+      if(align==="center"){rectX=s.pos.x-bw/2;textX=s.pos.x;textAnchor="middle";}
+      else if(align==="right"){rectX=s.pos.x-bw+0.2;textX=s.pos.x-0.4;textAnchor="end";}
       return <g key={i} {...hit}>
-        <rect x={s.pos.x-0.2} y={s.pos.y-bh+0.4} width={bw} height={bh} rx={fs*0.25} fill="rgba(0,0,0,0.65)" stroke={isSel?"#5856d6":"none"} strokeWidth={isSel?"0.3":"0"}/>
-        <text x={s.pos.x+0.4} y={s.pos.y-0.6} fontSize={fs} fontWeight="700" fill={s.color} fontFamily="Barlow Condensed, sans-serif">{s.text}</text>
+        <rect x={rectX} y={s.pos.y-bh+0.4} width={bw} height={bh} rx={fs*0.25} fill="rgba(0,0,0,0.65)" stroke={isSel?"#5856d6":"none"} strokeWidth={isSel?"0.3":"0"}/>
+        <text x={textX} y={s.pos.y-0.6} fontSize={fs} fontWeight="700" fill={s.color} fontFamily="Barlow Condensed, sans-serif" textAnchor={textAnchor}>{s.text}</text>
       </g>;
     }
     return null;
@@ -4897,6 +4916,14 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                     const activeSize=(sel&&sel.type==="text")?(sel.fontSize||2.4):compareTextSize;
                     const isActive=Math.abs(activeSize-sz.v)<0.01;
                     return <button key={sz.id} onClick={()=>setCompareTextSizeBoth(sz.v)} title={`Text size ${sz.id}`} style={{minWidth:24,height:28,padding:"0 6px",borderRadius:6,border:isActive?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:isActive?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>{sz.id}</button>;
+                  })}
+                  <div style={{width:1,height:20,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
+                  {/* Text alignment presets */}
+                  {[{id:"left",label:"⯇"},{id:"center",label:"≡"},{id:"right",label:"⯈"}].map(al=>{
+                    const sel=compareMarkupStrokes[compareSelectedIdx];
+                    const activeAlign=(sel&&sel.type==="text")?(sel.align||"left"):compareTextAlign;
+                    const isActive=activeAlign===al.id;
+                    return <button key={al.id} onClick={()=>setCompareTextAlignBoth(al.id)} title={`Align ${al.id}`} style={{width:28,height:28,borderRadius:6,border:isActive?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:isActive?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{al.label}</button>;
                   })}
                   <div style={{flex:1}}/>
                   {compareSelectedIdx!=null&&<button onClick={deleteCompareSelected} title="Delete selected" style={{background:"rgba(255,59,48,0.2)",border:"1px solid rgba(255,59,48,0.35)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>DEL</button>}
