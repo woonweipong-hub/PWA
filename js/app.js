@@ -6060,6 +6060,24 @@ function AdminAnalytics({defects,members,company,currentProject,projects,allDefe
 // ── App Root ──────────────────────────────────────────────────────
 const NAV=[{id:"dashboard",icon:"⊞",label:"Dashboard"},{id:"log",icon:"+",label:"Log"},{id:"drawings",icon:"📐",label:"Tag"},{id:"defects",icon:"≡",label:"Review"},{id:"report",icon:"◎",label:"Report"}];
 
+// Dropdown line icons — stroke-only, single color
+const DdIcon=({name,size=16})=>{
+  const p={width:size,height:size,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.8,strokeLinecap:"round",strokeLinejoin:"round"};
+  switch(name){
+    case"folder":return <svg {...p}><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>;
+    case"users":return <svg {...p}><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3 2.7-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.3c2.8.3 5 2.3 5 4.7"/></svg>;
+    case"ai":return <svg {...p}><rect x="4" y="7" width="16" height="12" rx="2"/><path d="M12 3v4M8 12h.01M16 12h.01M9 16h6"/></svg>;
+    case"plane":return <svg {...p}><path d="M21 3L3 10l7 3 3 7 8-17z"/><path d="M10 13l4-4"/></svg>;
+    case"disk":return <svg {...p}><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 4v6h8V4M9 15h6"/></svg>;
+    case"user":return <svg {...p}><circle cx="12" cy="8" r="3.5"/><path d="M4 20c0-4 3.6-6 8-6s8 2 8 6"/></svg>;
+    case"chart":return <svg {...p}><path d="M4 20h16"/><rect x="6" y="11" width="3" height="8"/><rect x="11" y="6" width="3" height="13"/><rect x="16" y="13" width="3" height="6"/></svg>;
+    case"help":return <svg {...p}><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5c.5-1.5 1.5-2 2.5-2 1.5 0 2.5 1 2.5 2.3 0 1.2-.8 1.7-1.5 2.2-.8.5-1 1-1 2"/><circle cx="12" cy="17" r="0.6" fill="currentColor"/></svg>;
+    case"chat":return <svg {...p}><path d="M4 5h16v10H8l-4 4V5z"/></svg>;
+    case"logout":return <svg {...p}><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 8l-4 4 4 4"/><path d="M6 12h10"/></svg>;
+    default:return null;
+  }
+};
+
 
 function App(){
   const[authUser,setAuthUser]=useState(null);
@@ -6416,12 +6434,12 @@ function App(){
               const headerPct=Math.round((setupDone/setupTotal)*100);
               const items=[
                 {section:"PROJECT"},
-                {label:"Projects",desc:"Create or switch projects",icon:"📁",tint:"rgba(255,107,0,0.15)",done:setupChecks.project,onClick:()=>{setShowProjects(true);setShowSettingsMenu(false);}},
-                ...(isAdmin?[{label:"Team Management",desc:"Invite and manage members",icon:"👥",tint:"rgba(88,86,214,0.18)",done:setupChecks.team,onClick:()=>{setShowUsers(true);setShowSettingsMenu(false);}}]:[]),
+                {label:"Projects",desc:"Create or switch projects",icon:"folder",done:setupChecks.project,onClick:()=>{setShowProjects(true);setShowSettingsMenu(false);}},
+                ...(isAdmin?[{label:"Team Management",desc:"Invite and manage members",icon:"users",done:setupChecks.team,onClick:()=>{setShowUsers(true);setShowSettingsMenu(false);}}]:[]),
                 {section:"ENHANCE"},
-                {label:"AI Setup",desc:"Vision, voice and AI search",icon:"🤖",tint:"rgba(255,107,0,0.15)",done:setupChecks.ai,onClick:()=>{setShowGemini(true);setShowSettingsMenu(false);}},
-                {label:"Telegram Alerts",desc:"Real-time defect pings",icon:"✈",tint:"rgba(52,170,220,0.18)",done:setupChecks.telegram,onClick:()=>{setShowTg(true);setShowSettingsMenu(false);}},
-                {label:"Storage",desc:"Backend and file hosting",icon:"💾",tint:"rgba(255,255,255,0.08)",optional:true,onClick:()=>{setShowStorage(true);setShowSettingsMenu(false);}},
+                {label:"AI Setup",desc:"Vision, voice and AI search",icon:"ai",done:setupChecks.ai,onClick:()=>{setShowGemini(true);setShowSettingsMenu(false);}},
+                {label:"Telegram Alerts",desc:"Real-time defect pings",icon:"plane",done:setupChecks.telegram,onClick:()=>{setShowTg(true);setShowSettingsMenu(false);}},
+                {label:"Storage",desc:"Backend and file hosting",icon:"disk",optional:true,onClick:()=>{setShowStorage(true);setShowSettingsMenu(false);}},
               ];
               return(
               <div className="dd-panel" onMouseEnter={()=>clearTimeout(settingsMenuTimer.current)} onMouseLeave={()=>{settingsMenuTimer.current=setTimeout(()=>setShowSettingsMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:8,background:"linear-gradient(180deg,#2e2e32 0%,#1f1f22 100%)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,overflow:"hidden",zIndex:100,minWidth:278,boxShadow:"0 16px 48px rgba(0,0,0,0.55),0 2px 10px rgba(0,0,0,0.35)"}}>
@@ -6444,7 +6462,7 @@ function App(){
                     <div key={`s${i}`} style={{padding:"10px 16px 4px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.35)",letterSpacing:"0.14em",fontFamily:"'Barlow Condensed',sans-serif"}}>{it.section}</div>
                   ):(
                     <button key={it.label} className="dd-row" onClick={it.onClick}>
-                      <div className="dd-ico" style={{background:it.tint,border:`1px solid ${it.tint.replace(/[\d.]+\)$/,"0.3)")}`}}>{it.icon}</div>
+                      <div className="dd-ico"><DdIcon name={it.icon}/></div>
                       <div style={{flex:1,minWidth:0}}>
                         <div className="dd-label">{it.label}</div>
                         <div className="dd-sub">{it.desc}</div>
@@ -6477,28 +6495,28 @@ function App(){
                 {/* Rows */}
                 <div style={{padding:"6px 0"}}>
                   <button className="dd-row" onClick={()=>{setShowProfile(true);setShowAvatarMenu(false);}}>
-                    <div className="dd-ico" style={{background:"rgba(88,86,214,0.18)",border:"1px solid rgba(88,86,214,0.3)"}}>👤</div>
+                    <div className="dd-ico"><DdIcon name="user"/></div>
                     <div style={{flex:1,minWidth:0}}><div className="dd-label">My Profile</div><div className="dd-sub">Account details</div></div>
                   </button>
                   {isAdmin&&(
                     <button className="dd-row" onClick={()=>{setShowAdminAnalytics(true);setShowAvatarMenu(false);}}>
-                      <div className="dd-ico" style={{background:"rgba(255,107,0,0.15)",border:"1px solid rgba(255,107,0,0.3)"}}>📊</div>
+                      <div className="dd-ico"><DdIcon name="chart"/></div>
                       <div style={{flex:1,minWidth:0}}><div className="dd-label">Admin Analytics</div><div className="dd-sub">Usage and insights</div></div>
                     </button>
                   )}
                   <button className="dd-row" onClick={()=>{setShowHelp(true);setShowAvatarMenu(false);}}>
-                    <div className="dd-ico" style={{background:"rgba(52,170,220,0.18)",border:"1px solid rgba(52,170,220,0.3)"}}>❓</div>
+                    <div className="dd-ico"><DdIcon name="help"/></div>
                     <div style={{flex:1,minWidth:0}}><div className="dd-label">Help & Features</div><div className="dd-sub">Guides and tips</div></div>
                   </button>
                   <button className="dd-row" onClick={()=>{setShowFeedback(true);setFbSent(false);setFbText("");setShowAvatarMenu(false);}}>
-                    <div className="dd-ico" style={{background:"rgba(48,209,88,0.15)",border:"1px solid rgba(48,209,88,0.3)"}}>💬</div>
+                    <div className="dd-ico"><DdIcon name="chat"/></div>
                     <div style={{flex:1,minWidth:0}}><div className="dd-label">Feedback</div><div className="dd-sub">Send us a note</div></div>
                   </button>
                 </div>
                 {/* Sign out footer */}
                 <div style={{borderTop:"1px solid rgba(255,255,255,0.06)",padding:"6px 0"}}>
                   <button className="dd-row danger" onClick={()=>{setShowAvatarMenu(false);signOut();}}>
-                    <div className="dd-ico" style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)"}}>↩</div>
+                    <div className="dd-ico" style={{color:"#ff8f8f",borderColor:"rgba(255,143,143,0.3)"}}><DdIcon name="logout"/></div>
                     <div style={{flex:1,minWidth:0}}><div className="dd-label" style={{color:"#ff8f8f"}}>Sign Out</div><div className="dd-sub">End this session</div></div>
                   </button>
                 </div>
