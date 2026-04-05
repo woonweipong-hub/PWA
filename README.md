@@ -60,7 +60,7 @@ When every item shows a green ✓, the setup badge disappears.
 
 ---
 
-## Features (120+)
+## Features (125+)
 
 ### Entry Logging
 
@@ -92,6 +92,7 @@ When every item shows a green ✓, the setup badge disappears.
 | **Full-text Search** | Search entries with keyword highlighting |
 | **AI Natural Language Search** | Voice or text — "show me all critical plumbing open this week" |
 | **Filters** | Status, severity, entry type (with clear button) |
+| **Batch Update** | Select multiple entries after filtering and update Status, Severity, Assignee, Duration or Target Date in one go — blank fields are left untouched, Telegram sends a single batch alert |
 | **Entry Type Badges** | Color-coded type badges on list and detail views |
 | **Verification Photo** | Required photo when closing / verifying an entry |
 | **Before / After Slider** | Compare the original photo with the verification photo |

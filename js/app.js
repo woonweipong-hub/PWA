@@ -1273,10 +1273,11 @@ function AuthScreen({onAuth,onFullSetup}){
     <div style={{minHeight:"100dvh",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center",padding:"18px 16px",overflowY:"auto"}}>
       <div style={{width:"100%",maxWidth:420}}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
-          <button onClick={()=>setPage("intro")} style={{background:"rgba(255,255,255,0.07)",border:"none",borderRadius:20,padding:"6px 12px",color:"rgba(255,255,255,0.5)",fontSize:12,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>←</button>
+          <button onClick={()=>setPage("intro")} style={{background:"rgba(255,255,255,0.07)",border:"none",borderRadius:20,padding:"6px 12px",color:"rgba(255,255,255,0.5)",fontSize:12,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,flexShrink:0}}>←</button>
+          <img src="icons/icon-192.png" alt="SiteShrimp" style={{width:44,height:44,borderRadius:8,boxShadow:"0 4px 14px rgba(255,107,0,0.3)",flexShrink:0}}/>
           <div>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:31,fontWeight:800,color:"#fff",lineHeight:1}}>SITESHRIMP</div>
-            <div style={{color:"rgba(255,255,255,0.45)",fontSize:13}}>Construction Site Tracker</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#fff",lineHeight:1}}>SITESHRIMP</div>
+            <div style={{color:"rgba(255,255,255,0.45)",fontSize:12}}>Construction Site Tracker</div>
           </div>
         </div>
 
@@ -2731,10 +2732,39 @@ function AiSearch({defects,onApplyFilters,onClose}){
   );
 }
 
-function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled}){
+function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,member,members,onBulkUpdate}){
   const[filter,setFilter]=useState("All");const[sevF,setSevF]=useState("All");const[typeF,setTypeF]=useState("All");
   const[search,setSearch]=useState("");const[showFilters,setShowFilters]=useState(false);
   const searchRef=useRef(null);
+  // Batch select / update
+  const canBulk=["Admin","Manager","Inspector"].includes(member?.role);
+  const[selectMode,setSelectMode]=useState(false);
+  const[selectedIds,setSelectedIds]=useState(()=>new Set());
+  const[showBulkPanel,setShowBulkPanel]=useState(false);
+  const[bulkStatus,setBulkStatus]=useState("");
+  const[bulkSeverity,setBulkSeverity]=useState("");
+  const[bulkAssignee,setBulkAssignee]=useState("");
+  const[bulkDuration,setBulkDuration]=useState("");
+  const[bulkDueDate,setBulkDueDate]=useState("");
+  const[bulkSaving,setBulkSaving]=useState(false);
+  const exitSelect=()=>{setSelectMode(false);setSelectedIds(new Set());setShowBulkPanel(false);setBulkStatus("");setBulkSeverity("");setBulkAssignee("");setBulkDuration("");setBulkDueDate("");};
+  const toggleId=id=>setSelectedIds(prev=>{const n=new Set(prev);if(n.has(id))n.delete(id);else n.add(id);return n;});
+  const applyBulk=async()=>{
+    const patch={};
+    if(bulkStatus)patch.status=bulkStatus;
+    if(bulkSeverity)patch.severity=bulkSeverity;
+    if(bulkAssignee.trim())patch.assignee=bulkAssignee.trim();
+    if(bulkDuration)patch.duration=bulkDuration;
+    if(bulkDueDate)patch.dueDate=bulkDueDate;
+    if(!Object.keys(patch).length){alert("Pick at least one field to update.");return;}
+    setBulkSaving(true);
+    try{
+      const res=await onBulkUpdate(Array.from(selectedIds),patch);
+      alert(`Updated ${res.ok} entr${res.ok===1?"y":"ies"}${res.failed?` · ${res.failed} failed`:""}.`);
+      exitSelect();
+    }catch(e){alert("Bulk update failed: "+e.message);}
+    setBulkSaving(false);
+  };
 
   // Apply NL filters from AI search
   useEffect(()=>{
@@ -2762,12 +2792,21 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled}){
   const clearAll=()=>{setFilter("All");setSevF("All");setTypeF("All");setSearch("");if(onClearNl)onClearNl();};
   return(
     <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,gap:8}}>
         <div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>REVIEW <span style={{color:"rgba(0,0,0,0.3)",fontSize:18}}>({filtered.length})</span></div>
-          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginTop:1}}>Triage, update status, verify and close entries</div>
+          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginTop:1}}>{selectMode?`${selectedIds.size} selected · tap rows to select`:"Triage, update status, verify and close entries"}</div>
         </div>
-        {(activeFilters>0||q)&&<button onClick={clearAll} style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:20,padding:"4px 10px",color:"#ff3b30",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>CLEAR ({activeFilters+(q?1:0)})</button>}
+        <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
+          {(activeFilters>0||q)&&!selectMode&&<button onClick={clearAll} style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:20,padding:"4px 10px",color:"#ff3b30",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>CLEAR ({activeFilters+(q?1:0)})</button>}
+          {canBulk&&onBulkUpdate&&(
+            selectMode?(
+              <button onClick={exitSelect} style={{background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:20,padding:"4px 10px",color:"rgba(0,0,0,0.55)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>DONE</button>
+            ):(
+              <button onClick={()=>setSelectMode(true)} style={{background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:20,padding:"4px 10px",color:"#ff6b00",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>✓ SELECT</button>
+            )
+          )}
+        </div>
       </div>
 
       {/* Search bar + AI Search */}
@@ -2818,27 +2857,109 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled}){
         </div>
       )}
 
+      {/* Select-all helper when in select mode */}
+      {selectMode&&filtered.length>0&&(
+        <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10,padding:"8px 12px",background:"rgba(255,107,0,0.06)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:10}}>
+          <button onClick={()=>setSelectedIds(new Set(filtered.map(d=>d.id)))} style={{background:"none",border:"none",color:"#ff6b00",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>SELECT ALL ({filtered.length})</button>
+          <span style={{color:"rgba(0,0,0,0.15)"}}>|</span>
+          <button onClick={()=>setSelectedIds(new Set())} style={{background:"none",border:"none",color:"rgba(0,0,0,0.5)",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>CLEAR</button>
+        </div>
+      )}
+
       {filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>{q?"No entries matching \""+search+"\"":"No entries found"}</div>}
-      {filtered.map((d,i)=>(
-        <div key={d.id} className="anim" style={{animationDelay:`${i*0.04}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:`4px solid ${SEV_COLOR[d.severity]}`}} onClick={()=>onView(d)}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,color:"#1a1a1a",flex:1,paddingRight:8}}><Highlight text={d.title} query={q}/></div>
-            <StatusChip s={d.status}/>
-          </div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:4}}>
-            {d.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(d.entryType),background:typeBg(d.entryType),padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(d.entryType)} {d.entryType.toUpperCase()}</span>}
-            <SevChip s={d.severity}/>
-            <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>📍 <Highlight text={d.location} query={q}/></span>
-          </div>
-          {q&&d.description&&d.description.toLowerCase().includes(q)&&(
-            <div style={{fontSize:11,color:"rgba(0,0,0,0.45)",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}><Highlight text={d.description.slice(0,100)} query={q}/></div>
+      {filtered.map((d,i)=>{
+        const checked=selectedIds.has(d.id);
+        return(
+        <div key={d.id} className="anim" style={{animationDelay:`${i*0.04}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:`4px solid ${SEV_COLOR[d.severity]}`,display:"flex",gap:12,alignItems:"flex-start",outline:selectMode&&checked?"2px solid #ff6b00":"none"}} onClick={()=>selectMode?toggleId(d.id):onView(d)}>
+          {selectMode&&(
+            <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${checked?"#ff6b00":"rgba(0,0,0,0.2)"}`,background:checked?"#ff6b00":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2,color:"#fff",fontSize:13,fontWeight:800}}>{checked?"✓":""}</div>
           )}
-          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",display:"flex",justifyContent:"space-between"}}>
-            <span>→ <Highlight text={d.assignee} query={q}/></span>
-            <span>{d.created?new Date(d.created).toLocaleDateString():"Just now"}</span>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,color:"#1a1a1a",flex:1,paddingRight:8}}><Highlight text={d.title} query={q}/></div>
+              <StatusChip s={d.status}/>
+            </div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:4}}>
+              {d.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(d.entryType),background:typeBg(d.entryType),padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(d.entryType)} {d.entryType.toUpperCase()}</span>}
+              <SevChip s={d.severity}/>
+              <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>📍 <Highlight text={d.location} query={q}/></span>
+            </div>
+            {q&&d.description&&d.description.toLowerCase().includes(q)&&(
+              <div style={{fontSize:11,color:"rgba(0,0,0,0.45)",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}><Highlight text={d.description.slice(0,100)} query={q}/></div>
+            )}
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",display:"flex",justifyContent:"space-between"}}>
+              <span>→ <Highlight text={d.assignee} query={q}/></span>
+              <span>{d.created?new Date(d.created).toLocaleDateString():"Just now"}</span>
+            </div>
           </div>
         </div>
-      ))}
+        );
+      })}
+
+      {/* Bulk edit panel */}
+      {selectMode&&showBulkPanel&&selectedIds.size>0&&(
+        <div style={{position:"fixed",bottom:64,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 24px)",maxWidth:406,background:"#fff",border:"1px solid rgba(0,0,0,0.1)",borderRadius:14,padding:14,zIndex:60,boxShadow:"0 12px 40px rgba(0,0,0,0.25)",maxHeight:"60vh",overflowY:"auto"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a1a1a"}}>UPDATE {selectedIds.size} ENTR{selectedIds.size>1?"IES":"Y"}</div>
+            <button onClick={()=>setShowBulkPanel(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:"50%",width:24,height:24,cursor:"pointer",fontSize:14,color:"rgba(0,0,0,0.5)"}}>×</button>
+          </div>
+          <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",marginBottom:10,fontStyle:"italic"}}>Blank fields are not changed. Picked values overwrite all selected entries.</div>
+
+          <div style={{marginBottom:10}}>
+            <div style={lbl()}>STATUS</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {["",...STATUS].map(s=>(
+                <button key={s||"_none"} onClick={()=>setBulkStatus(s)} style={{padding:"6px 10px",borderRadius:18,border:`1.5px solid ${bulkStatus===s?(s?STATUS_COLOR[s]:"rgba(0,0,0,0.3)"):"rgba(0,0,0,0.12)"}`,background:bulkStatus===s?(s?STATUS_COLOR[s]:"rgba(0,0,0,0.08)"):"#fff",color:bulkStatus===s?(s?"#fff":"rgba(0,0,0,0.6)"):"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{s?s.toUpperCase():"— KEEP"}</button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{marginBottom:10}}>
+            <div style={lbl()}>SEVERITY</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {["",...SEVERITY].map(s=>(
+                <button key={s||"_none"} onClick={()=>setBulkSeverity(s)} style={{padding:"6px 10px",borderRadius:18,border:`1.5px solid ${bulkSeverity===s?(s?SEV_COLOR[s]:"rgba(0,0,0,0.3)"):"rgba(0,0,0,0.12)"}`,background:bulkSeverity===s?(s?SEV_COLOR[s]:"rgba(0,0,0,0.08)"):"#fff",color:bulkSeverity===s?(s?"#fff":"rgba(0,0,0,0.6)"):"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{s?s.toUpperCase():"— KEEP"}</button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{marginBottom:10}}>
+            <div style={lbl()}>DURATION</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              <button onClick={()=>setBulkDuration("")} style={{padding:"6px 10px",borderRadius:18,border:`1.5px solid ${bulkDuration===""?"rgba(0,0,0,0.3)":"rgba(0,0,0,0.12)"}`,background:bulkDuration===""?"rgba(0,0,0,0.08)":"#fff",color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>— KEEP</button>
+              {DURATION_OPTIONS.map(d=>(
+                <button key={d} onClick={()=>setBulkDuration(d)} style={{padding:"6px 10px",borderRadius:18,border:`1.5px solid ${bulkDuration===d?"#ff6b00":"rgba(0,0,0,0.12)"}`,background:bulkDuration===d?"rgba(255,107,0,0.08)":"#fff",color:bulkDuration===d?"#ff6b00":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{d}</button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{marginBottom:10}}>
+            <div style={lbl()}>ASSIGNEE</div>
+            <input list="bulk-assignees" value={bulkAssignee} onChange={e=>setBulkAssignee(e.target.value)} placeholder="Keep existing (blank = no change)" style={{...inp,width:"100%",flex:"unset"}}/>
+            <datalist id="bulk-assignees">
+              {(members||[]).map(m=><option key={m.id||m.name} value={m.name}/>)}
+            </datalist>
+          </div>
+
+          <div style={{marginBottom:14}}>
+            <div style={lbl()}>TARGET DATE</div>
+            <input type="date" value={bulkDueDate} onChange={e=>setBulkDueDate(e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
+          </div>
+
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setShowBulkPanel(false)} disabled={bulkSaving} style={{flex:1,background:"rgba(0,0,0,0.06)",border:"none",borderRadius:10,padding:"12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>CANCEL</button>
+            <button onClick={applyBulk} disabled={bulkSaving} style={{flex:2,background:"#ff6b00",border:"none",borderRadius:10,padding:"12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>{bulkSaving?<><Spin size={14}/> APPLYING…</>:`APPLY TO ${selectedIds.size}`}</button>
+          </div>
+        </div>
+      )}
+
+      {/* Sticky action bar when items selected */}
+      {selectMode&&selectedIds.size>0&&!showBulkPanel&&(
+        <div style={{position:"fixed",bottom:72,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 24px)",maxWidth:406,background:"#1a1a1a",borderRadius:14,padding:"12px 14px",zIndex:60,boxShadow:"0 12px 40px rgba(0,0,0,0.4)",display:"flex",alignItems:"center",gap:10}}>
+          <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff"}}>{selectedIds.size} SELECTED</div>
+          <button onClick={()=>setShowBulkPanel(true)} style={{background:"#ff6b00",border:"none",borderRadius:10,padding:"9px 16px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>UPDATE ▸</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -6394,6 +6515,35 @@ function App(){
     setDefects(prev=>prev.map(d=>d.id===updated.id?updated:d));
   };
 
+  // Bulk update — applies a patch to many defects. Returns {ok,failed}.
+  const bulkUpdate=async(ids,patch)=>{
+    if(!ids||!ids.length||!patch||!Object.keys(patch).length)return{ok:0,failed:0};
+    const now=new Date().toISOString();
+    const extra={};
+    if(patch.status==="Closed")extra.closedAt=now;
+    if(patch.status==="Verified"){extra.verifiedAt=now;extra.verifiedBy=member?.name||"";}
+    const full={...patch,...extra,updatedAt:now};
+    let ok=0,failed=0;
+    const updatedMap={};
+    for(const id of ids){
+      try{
+        await DB.defects.update(id,full);
+        updatedMap[id]=full;
+        ok++;
+      }catch(e){console.warn("bulk update failed for",id,e);failed++;}
+    }
+    setDefects(prev=>prev.map(d=>updatedMap[d.id]?{...d,...updatedMap[d.id]}:d));
+    // Telegram alert once for the batch
+    if(patch.status&&ok>0){
+      const tg=local.get(TG_KEY);
+      if(tg?.token&&tg?.chatId){
+        const e=STATUS_ICON[patch.status]||"⚪";
+        sendTelegram(tg.token,tg.chatId,`${e} <b>Bulk Status Update</b>\n${ok} entr${ok>1?"ies":"y"} → <b>${patch.status}</b>\nBy: ${sanitize(member?.name||"")}`).catch(()=>{});
+      }
+    }
+    return{ok,failed};
+  };
+
   const signOut=()=>{
     DB.auth.signOut();
     GDrive.disconnect();
@@ -6597,7 +6747,7 @@ function App(){
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>Viewer access — defect logging disabled</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("dashboard")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect}/>}
-        {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled}/>}
+        {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate}/>}
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company}/>}
       </div>
 
