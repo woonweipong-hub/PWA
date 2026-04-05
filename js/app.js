@@ -3791,10 +3791,13 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         const tmp=document.createElement("canvas");
         const scale=Math.min(1200/oc.width,900/oc.height,1);
         tmp.width=Math.round(oc.width*scale);tmp.height=Math.round(oc.height*scale);
-        tmp.getContext("2d").drawImage(oc,0,0,tmp.width,tmp.height);
+        const tctx=tmp.getContext("2d");
+        tctx.drawImage(oc,0,0,tmp.width,tmp.height);
+        // Composite compare markup strokes on top so the saved thumb shows annotations
+        (compareMarkupStrokes||[]).forEach(s=>_drawMarkupStroke(tctx,tmp.width,tmp.height,s));
         overlayThumb=tmp.toDataURL("image/png");
       }
-    }catch(e){}
+    }catch(e){console.warn("Overlay thumbnail with markup failed",e);}
     const record={
       id:`cmp_${Date.now()}`,
       savedAt:Date.now(),
@@ -4490,16 +4493,36 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                       <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%"}}>
                         {drawingMarkup.map((s,i)=>{
                           if(s.type==="freehand"&&s.points?.length>1){
-                            const d="M"+s.points.map(p=>`${p.x} ${p.y}`).join("L");
-                            return <path key={i} d={d} stroke={s.color} strokeWidth="0.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/>;
+                            const dPath="M"+s.points.map(p=>`${p.x} ${p.y}`).join("L");
+                            return <path key={i} d={dPath} stroke={s.color} strokeWidth="0.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/>;
                           }
                           if(s.type==="arrow"&&s.start&&s.end){
-                            return <line key={i} x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={s.color} strokeWidth="0.4"/>;
+                            const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y,len=Math.sqrt(dx*dx+dy*dy);
+                            if(len<0.5)return null;
+                            const angle=Math.atan2(dy,dx),hl=1.5;
+                            return <g key={i}>
+                              <line x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={s.color} strokeWidth="0.4"/>
+                              <line x1={s.end.x} y1={s.end.y} x2={s.end.x-hl*Math.cos(angle-0.45)} y2={s.end.y-hl*Math.sin(angle-0.45)} stroke={s.color} strokeWidth="0.4"/>
+                              <line x1={s.end.x} y1={s.end.y} x2={s.end.x-hl*Math.cos(angle+0.45)} y2={s.end.y-hl*Math.sin(angle+0.45)} stroke={s.color} strokeWidth="0.4"/>
+                            </g>;
                           }
                           if(s.type==="circle"&&s.start&&s.end){
                             const cx=(s.start.x+s.end.x)/2,cy=(s.start.y+s.end.y)/2;
                             const rx=Math.abs(s.end.x-s.start.x)/2,ry=Math.abs(s.end.y-s.start.y)/2;
                             return <ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry} stroke={s.color} strokeWidth="0.4" fill="none"/>;
+                          }
+                          if(s.type==="text"&&s.pos&&s.text){
+                            const fs=s.fontSize||2.4;
+                            const bw=Math.max(fs*3.3,s.text.length*fs*0.54);
+                            const bh=fs*1.67;
+                            const align=s.align||"left";
+                            let rectX=s.pos.x-0.2,textX=s.pos.x+0.4,textAnchor="start";
+                            if(align==="center"){rectX=s.pos.x-bw/2;textX=s.pos.x;textAnchor="middle";}
+                            else if(align==="right"){rectX=s.pos.x-bw+0.2;textX=s.pos.x-0.4;textAnchor="end";}
+                            return <g key={i}>
+                              <rect x={rectX} y={s.pos.y-bh+0.4} width={bw} height={bh} rx={fs*0.25} fill="rgba(0,0,0,0.65)"/>
+                              <text x={textX} y={s.pos.y-0.6} fontSize={fs} fontWeight="700" fill={s.color} fontFamily="Barlow Condensed, sans-serif" textAnchor={textAnchor}>{s.text}</text>
+                            </g>;
                           }
                           return null;
                         })}
@@ -4518,9 +4541,10 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                       );
                     })}
                     {drawingNotes.map(n=>(
-                      <div key={n.id} style={{position:"absolute",left:`${n.x}%`,top:`${n.y}%`,transform:"translate(-50%,-50%)"}}>
-                        <div style={{background:"rgba(88,86,214,0.85)",borderRadius:6,padding:"1px 5px",boxShadow:"0 1px 4px rgba(0,0,0,0.3)"}}>
-                          <span style={{fontSize:8,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",whiteSpace:"nowrap"}}>📝</span>
+                      <div key={n.id} style={{position:"absolute",left:`${n.x}%`,top:`${n.y}%`,transform:"translate(-50%,-50%)",maxWidth:"40%"}}>
+                        <div style={{background:"rgba(88,86,214,0.92)",border:"1px solid rgba(255,255,255,0.4)",borderRadius:6,padding:"1px 5px",boxShadow:"0 1px 4px rgba(0,0,0,0.35)",display:"flex",alignItems:"center",gap:3}}>
+                          <span style={{fontSize:8}}>📝</span>
+                          <span style={{fontSize:8,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:110}}>{n.text}</span>
                         </div>
                       </div>
                     ))}
