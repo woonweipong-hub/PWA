@@ -86,6 +86,12 @@ const COMPONENT_GROUPS = {
   "Carpentry": ["Cabinet", "Wardrobe", "Countertop", "Shelf", "Vanity", "Door Frame", "Window Frame", "Timber Deck"],
   "Sanitary": ["Toilet Bowl", "Urinal", "Basin", "Bidet", "Mirror", "Toilet Accessories", "Towel Rail"],
   "External/Landscape": ["External Wall", "Driveway", "Walkway", "Drain/Gutter", "Garden/Planting", "Fence/Gate", "Car Park", "Swimming Pool", "Playground", "Retaining Wall"],
+  // Infrastructure works
+  "Roads": ["Asphalt Pavement", "Concrete Pavement", "Kerb", "Road Marking", "Road Sign", "Pothole", "Speed Hump", "Manhole Cover", "Catch Pit", "Shoulder", "Expansion Joint"],
+  "Drainage": ["Box Drain", "Open Drain", "Slot Drain", "Sump Pit", "Gully", "Culvert", "Drainage Manhole", "Pipe Crossing", "Silt Trap", "Grating", "Headwall"],
+  "Linkway": ["Linkway Roof", "Linkway Column", "Linkway Beam", "Linkway Paving", "Handrail", "Drip Line", "Fascia Board", "Gutter", "Downpipe", "Lighting"],
+  // Construction site condition & safety
+  "Site & Safety": ["Hoarding", "Scaffold", "Temporary Access", "Formwork", "Rebar", "Signage", "Storage Area", "PPE", "Housekeeping", "Spill", "Edge Protection", "Ladder"],
   "General": ["General", "Other"],
 };
 
@@ -208,6 +214,54 @@ const COMPONENT_ISSUES = {
   "Swimming Pool":    ["Leak", "Cracked tile", "Faulty pump", "Discolouration", "Uneven deck"],
   "Playground":       ["Damaged equipment", "Loose bolt", "Rust", "Worn surface", "Sharp edge"],
 
+  // Roads
+  "Asphalt Pavement": ["Crack", "Pothole", "Rutting", "Ravelling", "Bleeding", "Depression", "Settlement", "Edge break"],
+  "Concrete Pavement":["Crack", "Spalling", "Joint failure", "Popout", "Scaling", "Settlement", "Faulting"],
+  "Kerb":             ["Crack", "Misaligned", "Spalling", "Broken section", "Height issue", "Stain"],
+  "Road Marking":     ["Faded", "Missing", "Incorrect", "Peeling", "Misaligned"],
+  "Road Sign":        ["Missing", "Faded", "Damaged", "Loose post", "Wrong position", "Obstructed"],
+  "Pothole":          ["Needs patching", "Water ponding", "Hazard", "Recurring"],
+  "Speed Hump":       ["Worn", "Faded marking", "Crack", "Misaligned", "Wrong height"],
+  "Manhole Cover":    ["Sunken", "Broken", "Missing", "Noisy", "Rust", "Wrong level"],
+  "Catch Pit":        ["Silted", "Blocked", "Crack", "Missing grate", "Damaged"],
+  "Shoulder":         ["Erosion", "Settlement", "Vegetation", "Crack", "Edge drop"],
+  "Expansion Joint":  ["Damaged sealant", "Debris", "Water ingress", "Noisy", "Uneven"],
+  // Drainage
+  "Box Drain":        ["Blocked", "Silted", "Crack", "Broken cover", "Overflow", "Bad smell", "Collapsed"],
+  "Open Drain":       ["Blocked", "Silted", "Overflow", "Vegetation", "Crack", "Erosion"],
+  "Slot Drain":       ["Blocked", "Damaged slot", "Missing cover", "Uneven"],
+  "Sump Pit":         ["Silted", "Blocked", "Pump fault", "Overflow", "Crack"],
+  "Gully":            ["Silted", "Blocked", "Broken grate", "Sunken", "Bad smell"],
+  "Culvert":          ["Silted", "Crack", "Headwall damage", "Scour", "Collapsed"],
+  "Drainage Manhole": ["Silted", "Blocked", "Broken cover", "Bad smell", "Step iron loose"],
+  "Pipe Crossing":    ["Exposed", "Damaged", "Leaking", "Misaligned"],
+  "Silt Trap":        ["Full of silt", "Damaged", "Not maintained", "Overflow"],
+  "Grating":          ["Missing", "Broken", "Rusted", "Wrong size", "Noisy"],
+  "Headwall":         ["Crack", "Scour", "Settlement", "Vegetation", "Damaged apron"],
+  // Linkway
+  "Linkway Roof":     ["Leak", "Sagging", "Rust", "Damaged sheet", "Fixing loose", "Stain"],
+  "Linkway Column":   ["Crack", "Spalling", "Rust", "Misaligned", "Paint defect"],
+  "Linkway Beam":     ["Crack", "Spalling", "Rust", "Sagging", "Paint defect"],
+  "Linkway Paving":   ["Uneven", "Trip hazard", "Crack", "Loose paver", "Ponding", "Stain"],
+  "Handrail":         ["Loose", "Rust", "Broken", "Missing section", "Sharp edge"],
+  "Drip Line":        ["Clogged", "Crack", "Missing", "Stain trail"],
+  "Fascia Board":     ["Loose", "Stain", "Damaged", "Colour mismatch", "Paint defect"],
+  "Gutter":           ["Blocked", "Leak", "Sagging", "Misaligned", "Rust"],
+  "Downpipe":         ["Blocked", "Leak", "Loose bracket", "Rust", "Broken"],
+  "Lighting":         ["Not working", "Broken lens", "Missing", "Wrong position", "Flickering"],
+  // Site & Safety
+  "Hoarding":         ["Damaged", "Missing section", "Signage missing", "Graffiti", "Leaning"],
+  "Scaffold":         ["Loose tie", "Missing plank", "No toe board", "Incomplete tag", "Overloaded", "No guardrail"],
+  "Temporary Access": ["Blocked", "Unsafe", "No signage", "Slippery", "Uneven"],
+  "Formwork":         ["Misaligned", "Loose tie", "Not clean", "Damaged panel", "Leaking"],
+  "Rebar":            ["Wrong spacing", "Missing tie", "Rust", "Wrong size", "Not as drawing"],
+  "Signage":          ["Missing", "Faded", "Damaged", "Wrong position", "Obstructed"],
+  "Storage Area":     ["Disorganised", "Unsafe stacking", "No labelling", "Blocking access", "Fire risk"],
+  "PPE":              ["Not worn", "Missing", "Damaged", "Wrong type"],
+  "Housekeeping":     ["Debris", "Spill", "Dust", "Blocked walkway", "No bins"],
+  "Spill":            ["Oil", "Chemical", "Water", "Concrete", "Paint"],
+  "Edge Protection":  ["Missing", "Loose", "Damaged", "Wrong height", "Gap"],
+  "Ladder":           ["Damaged", "Not secured", "Wrong height", "Slippery step", "Missing foot"],
   // General
   "General":          ["Damage", "Missing item", "Wrong spec", "Incomplete work", "Safety hazard", "Housekeeping", "Other"],
   "Other":            ["Damage", "Missing item", "Wrong spec", "Incomplete work", "Safety hazard", "Housekeeping", "Other"],
@@ -228,6 +282,10 @@ const COMPONENT_TRADE = {};
     "Carpentry": "Carpenter",
     "Sanitary": "Plumber",
     "External/Landscape": "Landscape Contractor",
+    "Roads": "Road Contractor",
+    "Drainage": "Civil/Drainage Contractor",
+    "Linkway": "General Contractor",
+    "Site & Safety": "Safety Officer",
     "General": "TBD",
   };
   for (const [group, components] of Object.entries(COMPONENT_GROUPS)) {
@@ -244,6 +302,45 @@ const COMPONENT_TRADE = {};
     "Waterproofing": "Waterproofing Contractor",
   });
 })();
+
+// ── Work Categories ──────────────────────────────────────────────
+// Top-level category a user picks before logging. Each category narrows
+// the COMPONENT dropdown to only the relevant groups so users are not
+// overwhelmed by unrelated items.
+const WORK_CATEGORIES = {
+  "Building Defects (Landed)": {
+    icon: "\u{1F3E0}", // 🏠
+    desc: "Houses, bungalows, terrace, cluster",
+    groups: ["Structural","Architectural","M&E – Plumbing","M&E – Electrical","M&E – ACMV","Finishes","Carpentry","Sanitary","External/Landscape","General"],
+  },
+  "Building Defects (Highrise)": {
+    icon: "\u{1F3E2}", // 🏢
+    desc: "Condo, apartment, tower, mixed-use",
+    groups: ["Structural","Architectural","M&E – Plumbing","M&E – Electrical","M&E – ACMV","M&E – Fire","M&E – Lift","Finishes","Carpentry","Sanitary","External/Landscape","General"],
+  },
+  "Construction Site": {
+    icon: "\u{1F3D7}\uFE0F", // 🏗️
+    desc: "Active construction, workmanship, site condition",
+    groups: ["Structural","Architectural","M&E – Plumbing","M&E – Electrical","M&E – ACMV","M&E – Fire","Finishes","Carpentry","Site & Safety","General"],
+  },
+  "Interior Works": {
+    icon: "\u{1F6CB}\uFE0F", // 🛋️
+    desc: "Fit-out, renovation, ID works",
+    groups: ["Architectural","Finishes","Carpentry","Sanitary","M&E – Electrical","M&E – Plumbing","M&E – ACMV","General"],
+  },
+  "Infrastructure Works": {
+    icon: "\u{1F6E3}\uFE0F", // 🛣️
+    desc: "Roads, drainage, linkway, external works",
+    groups: ["Roads","Drainage","Linkway","External/Landscape","Structural","General"],
+  },
+  "Others": {
+    icon: "\u{1F4CB}", // 📋
+    desc: "Custom — all components available, free-text allowed",
+    groups: Object.keys(COMPONENT_GROUPS),
+    userDefined: true,
+  },
+};
+const WORK_CATEGORY_KEY = "sdt-work-category-v1";
 
 // ── Default Location Hierarchy ───────────────────────────────────
 const DEFAULT_LEVELS = [

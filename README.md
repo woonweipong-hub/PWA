@@ -48,25 +48,29 @@ When every item shows a green ✓, the setup badge disappears.
 
 **Bottom nav (5 tabs) — operational flow:**
 
-`Dashboard → Log → 📐 Drawings → Review → Report`
+`Dashboard → Log → 📐 Tag → Review → Report`
 
 1. **Dashboard** — see project state at a glance
 2. **Log** — capture a new entry (defect, observation, update, instruction)
-3. **Drawings** — upload PDFs/images, tag pins, overlay photos, compare revisions
+3. **Tag** (Tag & Compare) — upload PDFs/images, tag pins, overlay photos, compare revisions
 4. **Review** — triage, update status, verify, close. AI natural-language search lives here.
-5. **Report** — filtered stats, charts, CSV/PDF exports, email report
+5. **Report** — filtered stats, charts, EXPORT and email report
+
+**Inline AI Query bar** — a one-tap query row shown under the header on Dashboard and Report, opening natural-language search across all entries (disabled with a hint when AI isn't configured).
 
 ---
 
-## Features (100+)
+## Features (120+)
 
 ### Entry Logging
 
 | Feature | Description |
 |---------|-------------|
+| **6 Work Categories** | Building Defects (Landed), Building Defects (Highrise), Construction Site, Interior Works, Infrastructure Works (Roads/Drainage/Linkway), Others — each filters the Component dropdown to just the relevant groups so users aren't flooded with irrelevant items. Last-used category is remembered per device. |
 | **4 Default Entry Types** | Defect, Observation, Update, Instruction |
 | **Custom Entry Types** | Create your own (Site Checks, Safety Audit, Snag List, etc.) — icon + color picker, shared across team |
-| **Component + Issue Selector** | 93 building components, 517 predefined issues — tap to select, minimal typing |
+| **Component + Issue Selector** | 130+ building/infra components, 600+ predefined issues — tap to select, minimal typing. Includes Roads (asphalt, kerb, pothole), Drainage (box drain, gully, manhole), Linkway (roof, column, paving) and Site & Safety (scaffold, PPE, formwork) |
+| **Low-friction Submit** | A description **or** a photo is enough — title and location are auto-generated so field users can capture first and fill the rest later via Review comments |
 | **AI Photo Analysis** | Snap a photo, AI auto-fills title, severity, description |
 | **AI Trade + Assignee Suggestion** | Auto-assigns a trade and suggested assignee from the analyzed photo |
 | **AI Safety Risk Scoring** | Auto-escalates entries to Critical when safety risk is detected |
@@ -98,7 +102,7 @@ When every item shows a green ✓, the setup badge disappears.
 | **Quick Reactions** | Thumbs, check, warn, fix emoji reactions |
 | **Telegram Alerts** | New entries, status changes, comments sent to team group |
 
-### Drawings Tagging
+### Tag & Compare (Drawings)
 
 | Feature | Description |
 |---------|-------------|
@@ -150,7 +154,7 @@ When every item shows a green ✓, the setup badge disappears.
 | **Filters** | Severity, status, assignee, and date range |
 | **Email Reports** | HTML report via EmailJS with per-section opt-in (Defects / Drawings / Comparisons) |
 | **Email Preview** | See exactly what will go out before sending |
-| **CSV Export** | Download filtered entries for Excel / Google Sheets |
+| **EXPORT (all-in-one CSV)** | Single tap from Report — combined CSV with defect entries, drawing annotations (notes + markup counts), and saved PDF comparisons |
 | **Dn Menu — Markup CSV / PDF** | Export all drawing annotations |
 | **Dn Menu — Compare CSV / PDF** | Export saved PDF comparisons |
 | **Dn Menu — All CSV / PDF** | Combined drawings + comparisons export |

@@ -1,7 +1,7 @@
 // SiteShrimp v2 — Multi-tenant Construction Site Tracker
 // Features: Auth, Companies, Projects, Roles, AI, Telegram, Email
 // Constants loaded from js/constants.js (SEVERITY, STATUS, ROLES, ENTRY_TYPES, etc.)
-const {useState,useEffect,useRef,useCallback}=React;
+const {useState,useEffect,useRef,useCallback,useMemo}=React;
 
 // ── Local Storage ─────────────────────────────────────────────────
 const local={
@@ -2206,10 +2206,20 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
 
 // ── Log Entry (with AI + Batch + Multi-photo) ────────────────────
 function LogDefect({member,company,currentProject,members,onSave,existingDefects=[]}){
+  const savedWorkCat=local.get(WORK_CATEGORY_KEY)||"Building Defects (Landed)";
   const blank={title:"",location:"",severity:"Major",description:"",assignee:member?.name||"",photos:[],
     component:"",issue:"",locationLevel:"",locationZone:"",locationSubzone:"",locationGrid:"",
+    workCategory:savedWorkCat,
     entryType:"Defect",dueDate:"",duration:"",costImpact:"",costResponsible:"",costAmount:"",costRemarks:""};
   const[form,setForm]=useState(blank);
+  // Component groups shown — narrowed by the selected work category
+  const activeComponentGroups=useMemo(()=>{
+    const cat=WORK_CATEGORIES[form.workCategory];
+    if(!cat)return COMPONENT_GROUPS;
+    const out={};
+    cat.groups.forEach(g=>{if(COMPONENT_GROUPS[g])out[g]=COMPONENT_GROUPS[g];});
+    return out;
+  },[form.workCategory]);
 
   const[saving,setSaving]=useState(false);const[analyzing,setAnalyzing]=useState(false);const[aiResult,setAiResult]=useState(null);
   const[count,setCount]=useState(0);const[last,setLast]=useState(null);const[showBatch,setShowBatch]=useState(false);
@@ -2301,15 +2311,32 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   };
 
   const submit=async()=>{
-    if(!form.title.trim())return;
-    // Build location display from hierarchy
+    // Minimum: a description OR a photo OR a title — anything else can be filled in later via Review comments.
+    const hasDesc=!!form.description.trim();
+    const hasPhoto=(form.photos||[]).length>0;
+    const hasTitle=!!form.title.trim();
+    if(!hasTitle&&!hasDesc&&!hasPhoto){alert("Add a description or a photo to submit.");return;}
+
+    // Build location display from hierarchy (may be empty — location is now optional)
     const locParts=[form.locationLevel,form.locationZone,form.locationSubzone,form.locationGrid].filter(Boolean);
     const locationDisplay=locParts.join(" > ")||form.location||"";
-    if(!locationDisplay&&!form.location){alert("Please select a location.");return;}
 
-    // Check for duplicates
-    const dup=findDuplicate(form.title,locationDisplay);
-    if(dup&&!confirm(`⚠️ Similar entry found:\n\n"${dup.title}"\n${dup.severity} · ${dup.status} · ${dup.location}\n${dup.defect_id||""}\n\nSubmit anyway?`))return;
+    // Auto-generate a title when user only supplied a description or photo
+    let effectiveTitle=form.title.trim();
+    if(!effectiveTitle){
+      if(hasDesc){
+        effectiveTitle=form.description.trim().split(/\s+/).slice(0,10).join(" ");
+        if(form.description.trim().length>effectiveTitle.length)effectiveTitle+="…";
+      }else if(hasPhoto){
+        effectiveTitle=`Photo entry — ${new Date().toLocaleDateString("en-GB")}`;
+      }
+    }
+
+    // Check for duplicates (only when we have a real title to compare)
+    if(hasTitle){
+      const dup=findDuplicate(form.title,locationDisplay);
+      if(dup&&!confirm(`⚠️ Similar entry found:\n\n"${dup.title}"\n${dup.severity} · ${dup.status} · ${dup.location}\n${dup.defect_id||""}\n\nSubmit anyway?`))return;
+    }
 
     setSaving(true);
     try{
@@ -2321,6 +2348,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       const trade=COMPONENT_TRADE[form.component]||"";
       const saveResult=await onSave({
         ...form,
+        title:effectiveTitle,
         location:locationDisplay||form.location,
         locationDisplay,
         photo:compressed[0]||null,
@@ -2337,7 +2365,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       });
       setLast({location:locationDisplay,assignee:form.assignee,severity:form.severity,
         locationLevel:form.locationLevel,locationZone:form.locationZone,component:form.component,
-        queued:saveResult==="queued"});
+        workCategory:form.workCategory,queued:saveResult==="queued"});
       setCount(c=>c+1);setShowBatch(true);setForm(blank);setAiResult(null);setShowMore(false);
     }catch(e){alert("Error saving: "+e.message);}
     setSaving(false);
@@ -2445,6 +2473,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         <div style={{fontSize:12,color:"rgba(0,0,0,0.4)"}}>📍 {last?.location} · → {last?.assignee}</div>
       </div>
       <button onClick={()=>{setForm({...blank,
+        workCategory:last?.workCategory||blank.workCategory,
         location:last?.location||"",assignee:last?.assignee||member?.name||"",severity:last?.severity||"Major",
         locationLevel:last?.locationLevel||"",locationZone:last?.locationZone||"",component:last?.component||""
       });setShowBatch(false);}} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:16,color:"#fff",fontSize:15,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:10}}>+ LOG ANOTHER HERE</button>
@@ -2461,6 +2490,23 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       </div>
       <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:20}}>📁 {currentProject?.name||"—"} · Tap 🎙 to dictate</div>
 
+      {/* Work Category — narrows the Component dropdown to relevant groups */}
+      <div style={{marginBottom:16}}>
+        <label style={lbl()}>WORK CATEGORY</label>
+        <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4,scrollbarWidth:"thin"}}>
+          {Object.entries(WORK_CATEGORIES).map(([name,cat])=>{
+            const active=form.workCategory===name;
+            return(
+              <button key={name} onClick={()=>{setForm(f=>({...f,workCategory:name,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,name);}} title={cat.desc} style={{flexShrink:0,padding:"9px 12px",borderRadius:12,border:`2px solid ${active?"#ff6b00":"rgba(0,0,0,0.1)"}`,background:active?"rgba(255,107,0,0.08)":"#fff",color:active?"#ff6b00":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}>
+                <span style={{fontSize:14}}>{cat.icon}</span>
+                <span>{name.replace(" Defects","").replace(" Works","").toUpperCase()}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",marginTop:6,fontStyle:"italic"}}>{WORK_CATEGORIES[form.workCategory]?.desc||""}</div>
+      </div>
+
       {/* Entry Type */}
       <div style={{marginBottom:16}}>
         <label style={lbl()}>ENTRY TYPE</label>
@@ -2473,7 +2519,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       </div>
 
       {/* Component (grouped dropdown) */}
-      <ComboField label="COMPONENT" value={form.component} onChange={v=>{set("component",v);set("issue","");}} grouped={COMPONENT_GROUPS} placeholder="e.g. Wall, Pipe, Tile..."/>
+      <ComboField label="COMPONENT" value={form.component} onChange={v=>{set("component",v);set("issue","");}} grouped={activeComponentGroups} placeholder="e.g. Wall, Pipe, Tile..."/>
 
       {/* Issue (filtered by selected component) */}
       {form.component&&(
@@ -2566,9 +2612,14 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         )}
       </div>
 
-      <button onClick={submit} disabled={saving||!form.title.trim()||(!form.locationLevel&&!form.location)} style={{width:"100%",background:form.title.trim()&&(form.locationLevel||form.location)&&!saving?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:12,padding:16,color:form.title.trim()&&(form.locationLevel||form.location)?"#fff":"rgba(0,0,0,0.3)",fontSize:16,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-        {saving?<><Spin size={16}/><span>SAVING...</span></>:"SUBMIT ENTRY"}
-      </button>
+      {(()=>{
+        const canSubmit=!!(form.title.trim()||form.description.trim()||(form.photos||[]).length>0);
+        return(
+          <button onClick={submit} disabled={saving||!canSubmit} style={{width:"100%",background:canSubmit&&!saving?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:12,padding:16,color:canSubmit?"#fff":"rgba(0,0,0,0.3)",fontSize:16,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",cursor:canSubmit&&!saving?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            {saving?<><Spin size={16}/><span>SAVING...</span></>:"SUBMIT ENTRY"}
+          </button>
+        );
+      })()}
 
       {/* Photo Markup Editor */}
       {markupIdx!==null&&form.photos[markupIdx]&&(
