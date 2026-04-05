@@ -3370,7 +3370,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
 }
 
 // ── Drawings & Floor Plan Pins ────────────────────────────────────
-function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntry,initialCompare}){
+function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntry,initialCompare,embedded}){
   const[drawings,setDrawings]=useState([]);const[loading,setLoading]=useState(true);
   const[viewing,setViewing]=useState(null);
   const[uploading,setUploading]=useState(false);
@@ -4472,9 +4472,13 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
   if(viewing)return <DrawingViewer drawing={viewing} onClose={()=>setViewing(null)} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry}/>;
 
   return(
-    <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
-      <SettingsBack onClose={onClose} title="DRAWINGS TAGGING"/>
+    <div style={embedded?{background:"#f0ede8",minHeight:"100%"}:{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
+      {!embedded&&<SettingsBack onClose={onClose} title="DRAWINGS TAGGING"/>}
       <div style={{padding:20}}>
+        {embedded&&<div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:14}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>DRAWINGS TAGGING</div>
+          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>Upload, pin, overlay photos and compare</div>
+        </div>}
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf,.pdf,.tif,.tiff" onChange={uploadDrawing} style={{display:"none"}}/>
 
         {/* Action bar */}
@@ -5999,7 +6003,7 @@ function AdminAnalytics({defects,members,company,currentProject,projects,allDefe
 }
 
 // ── App Root ──────────────────────────────────────────────────────
-const NAV=[{id:"dashboard",icon:"⊞",label:"Dashboard"},{id:"log",icon:"+",label:"Log"},{id:"defects",icon:"≡",label:"Review"},{id:"report",icon:"◎",label:"Report"},{id:"admin",icon:"⚡",label:"Admin"}];
+const NAV=[{id:"dashboard",icon:"⊞",label:"Dashboard"},{id:"log",icon:"+",label:"Log"},{id:"drawings",icon:"📐",label:"Drawings"},{id:"defects",icon:"≡",label:"Review"},{id:"report",icon:"◎",label:"Report"}];
 
 
 function App(){
@@ -6028,6 +6032,7 @@ function App(){
   const[showStorage,setShowStorage]=useState(false);
   const[showDrawings,setShowDrawings]=useState(false);
   const[showDrawingsCompare,setShowDrawingsCompare]=useState(false);
+  const[showAdminAnalytics,setShowAdminAnalytics]=useState(false);
   const[showAiSearch,setShowAiSearch]=useState(false);
   const[nlFilters,setNlFilters]=useState(null);
   const[queueCount,setQueueCount]=useState(0);
@@ -6319,7 +6324,6 @@ function App(){
 
   const navItems=NAV.filter(n=>{
     if(n.id==="log"&&!canLog)return false;
-    if(n.id==="admin"&&!isAdmin)return false;
     return true;
   });
 
@@ -6350,6 +6354,7 @@ function App(){
             {showHeaderMenu&&<div onMouseEnter={()=>clearTimeout(headerMenuTimer.current)} onMouseLeave={()=>{headerMenuTimer.current=setTimeout(()=>setShowHeaderMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,overflow:"hidden",zIndex:100,minWidth:170}}>
               <button onClick={()=>{setShowStorage(true);setShowHeaderMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Storage Settings</button>
               {isAdmin&&<button onClick={()=>{setShowUsers(true);setShowHeaderMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Team Management</button>}
+              {isAdmin&&<button onClick={()=>{setShowAdminAnalytics(true);setShowHeaderMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Admin Analytics</button>}
               <button onClick={()=>{setShowHelp(true);setShowHeaderMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Help</button>
               <button onClick={()=>{setShowFeedback(true);setFbSent(false);setFbText("");setShowHeaderMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13}}>Feedback</button>
             </div>}
@@ -6365,12 +6370,12 @@ function App(){
 
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:84}}>
-        {tab==="dashboard"&&<Dashboard defects={defects} onView={setViewing} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} company={company} currentProject={currentProject} member={member} onDrawings={()=>setShowDrawings(true)} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
+        {tab==="dashboard"&&<Dashboard defects={defects} onView={setViewing} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} company={company} currentProject={currentProject} member={member} onDrawings={()=>setTab("drawings")} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>Viewer access — defect logging disabled</div>}
+        {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("dashboard")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} initialCompare={showDrawingsCompare}/>}
         {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)}/>}
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company}/>}
-        {tab==="admin"&&isAdmin&&<AdminAnalytics defects={defects} members={members} company={company} currentProject={currentProject} projects={projects}/>}
       </div>
 
       {/* Bottom Nav */}
@@ -6562,6 +6567,12 @@ function App(){
       {showStorage&&<StorageSettings onClose={()=>setShowStorage(false)} companyId={company?.companyId}/>}
       {showDrawings&&<DrawingsPanel onClose={()=>{setShowDrawings(false);setShowDrawingsCompare(false);}} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} initialCompare={showDrawingsCompare}/>}
       {showUsers&&<UserManagement onClose={()=>setShowUsers(false)} company={company} member={member} members={members}/>}
+      {showAdminAnalytics&&isAdmin&&(
+        <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:300,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
+          <SettingsBack onClose={()=>setShowAdminAnalytics(false)} title="ADMIN ANALYTICS"/>
+          <AdminAnalytics defects={defects} members={members} company={company} currentProject={currentProject} projects={projects}/>
+        </div>
+      )}
       {showProjects&&<ProjectManagement onClose={()=>setShowProjects(false)} company={company} member={member} projects={projects} currentProject={currentProject} onSelect={p=>{selectProject(p);setShowProjects(false);}}/>}
     </div>
   );
