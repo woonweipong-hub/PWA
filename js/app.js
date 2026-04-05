@@ -4954,9 +4954,18 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                     <button key={t.id} onClick={()=>{setCompareMarkupTool(t.id);if(t.id!=="select")setCompareSelectedIdx(null);}} title={t.id==="select"?"Select / Move":t.id} style={{width:34,height:34,borderRadius:8,border:compareMarkupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:compareMarkupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{t.label}</button>
                   ))}
                   <div style={{width:1,height:20,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
-                  {["#ff3b30","#ff9500","#ffcc00","#34c759","#fff"].map(c=>(
-                    <button key={c} onClick={()=>setCompareMarkupColor(c)} style={{width:22,height:22,borderRadius:"50%",border:compareMarkupColor===c?"3px solid #fff":"2px solid rgba(255,255,255,0.2)",background:c,cursor:"pointer"}}/>
-                  ))}
+                  {(()=>{
+                    const sel=compareMarkupStrokes[compareSelectedIdx];
+                    const activeColor=sel?.color||compareMarkupColor;
+                    return ["#ff3b30","#ff9500","#ffcc00","#34c759","#fff"].map(c=>(
+                      <button key={c} onClick={()=>{
+                        setCompareMarkupColor(c);
+                        if(compareSelectedIdx!=null){
+                          setCompareMarkupStrokes(strokes=>strokes.map((s,i)=>i===compareSelectedIdx?{...s,color:c}:s));
+                        }
+                      }} title={compareSelectedIdx!=null?"Apply color to selected":"Color for new strokes"} style={{width:22,height:22,borderRadius:"50%",border:activeColor===c?"3px solid #fff":"2px solid rgba(255,255,255,0.2)",background:c,cursor:"pointer"}}/>
+                    ));
+                  })()}
                   <div style={{width:1,height:20,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
                   {/* Text size presets */}
                   {[{id:"S",v:1.8},{id:"M",v:2.4},{id:"L",v:3.4},{id:"XL",v:4.8}].map(sz=>{
