@@ -1022,7 +1022,7 @@ function ComboField({label,value,onChange,options,placeholder,grouped}){
         <div style={{maxHeight:200,overflowY:"auto",borderRadius:10,border:"1px solid rgba(0,0,0,0.08)"}}>
           {Object.entries(filteredGroups).map(([group,items])=>(
             <div key={group}>
-              <div style={{padding:"6px 12px",background:"rgba(0,0,0,0.04)",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",position:"sticky",top:0}}>{group.toUpperCase()}</div>
+              <div style={{padding:"6px 12px",background:"#f5f5f5",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",position:"sticky",top:0,zIndex:2,borderBottom:"1px solid rgba(0,0,0,0.06)"}}>{group.toUpperCase()}</div>
               {items.map(it=>(
                 <div key={it} onClick={()=>{if(it==="Other"||it==="General"){setCustom(true);onChange("");}else{onChange(it);}setSearch("");}} style={{padding:"10px 12px",cursor:"pointer",background:value===it?"rgba(255,107,0,0.08)":"#fff",borderBottom:"1px solid rgba(0,0,0,0.04)",fontSize:14,color:value===it?"#ff6b00":"#1a1a1a",fontWeight:value===it?700:400}}>
                   {it}
@@ -2366,7 +2366,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       setLast({location:locationDisplay,assignee:form.assignee,severity:form.severity,
         locationLevel:form.locationLevel,locationZone:form.locationZone,component:form.component,
         workCategory:form.workCategory,queued:saveResult==="queued"});
-      setCount(c=>c+1);setShowBatch(true);setForm(blank);setAiResult(null);setShowMore(false);
+      setCount(c=>c+1);setShowBatch(true);setForm(blank);setAiResult(null);
     }catch(e){alert("Error saving: "+e.message);}
     setSaving(false);
   };
