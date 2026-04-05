@@ -4759,7 +4759,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
             <div style={{padding:"14px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)",display:"flex",alignItems:"center",gap:10}}>
               <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff"}}>PDF COMPARISON{viewingSaved?` (SAVED)`:""}
               </div>
-              <button onClick={saveComparison} disabled={!compareRes&&!compareOverlayCanvasRef.current?.width} style={{background:"rgba(52,199,89,0.25)",border:"1px solid rgba(52,199,89,0.5)",borderRadius:18,padding:"7px 14px",color:"#9ef0b5",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",opacity:(!compareRes&&!compareOverlayCanvasRef.current?.width)?0.4:1}}>SAVE</button>
+              <button onClick={saveComparison} style={{background:"rgba(52,199,89,0.25)",border:"1px solid rgba(52,199,89,0.5)",borderRadius:18,padding:"7px 14px",color:"#9ef0b5",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>SAVE</button>
               <button onClick={()=>{setShowCompare(false);setViewingSaved(null);}} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:18,padding:"7px 12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CLOSE</button>
             </div>
 
