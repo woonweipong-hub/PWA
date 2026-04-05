@@ -198,18 +198,21 @@ function _drawMarkupStroke(ctx,W,H,s,imageCache){
     const fs=(s.fontSize?Math.max(8,W*s.fontSize*0.0075):Math.max(14,W*0.018));
     ctx.font=`bold ${fs}px Arial`;
     const tw=ctx.measureText(s.text).width;
-    const pad=fs*0.35;
+    // Tight padding — minimal so valign actually shifts the text visibly
+    const padX=fs*0.15,padY=fs*0.08;
     const align=s.align||"left";
     const valign=s.valign||"bottom";
-    const bw=tw+pad*2,bh=fs+pad*1.2;
-    let bgX=p.x-pad;
-    if(align==="center")bgX=p.x-tw/2-pad;
-    else if(align==="right")bgX=p.x-tw-pad;
+    const bw=tw+padX*2,bh=fs+padY*2;
+    let bgX;
+    if(align==="center")bgX=p.x-bw/2;
+    else if(align==="right")bgX=p.x-bw;
+    else bgX=p.x;
     let bgY;
     if(valign==="top")bgY=p.y;
     else if(valign==="middle")bgY=p.y-bh/2;
-    else bgY=p.y-fs-pad*0.2;
-    const textY=bgY+bh-pad*0.6;
+    else bgY=p.y-bh;
+    const textX=align==="center"?p.x:(align==="right"?p.x-padX:p.x+padX);
+    const textY=bgY+fs+padY*0.85;
     ctx.fillStyle="rgba(255,255,255,0.92)";
     ctx.strokeStyle=s.color||"#ff6b00";
     ctx.lineWidth=2;
@@ -218,7 +221,7 @@ function _drawMarkupStroke(ctx,W,H,s,imageCache){
     ctx.fillStyle=s.color||"#ff6b00";
     ctx.textBaseline="alphabetic";
     ctx.textAlign=align==="center"?"center":(align==="right"?"right":"left");
-    ctx.fillText(s.text,p.x,textY);
+    ctx.fillText(s.text,textX,textY);
     ctx.textAlign="left";
   }else if(s.type==="photo"&&s.pos&&s.dataUrl){
     const x=(s.pos.x/100)*W;
@@ -3637,6 +3640,8 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[compareTextAlign,setCompareTextAlign]=useState("left");
   const[compareTextValign,setCompareTextValign]=useState("bottom");
   const[showAlignMenu,setShowAlignMenu]=useState(false);const alignMenuTimer=useRef(null);
+  const[showCompareColorMenu,setShowCompareColorMenu]=useState(false);const compareColorTimer=useRef(null);
+  const[showCompareSizeMenu,setShowCompareSizeMenu]=useState(false);const compareSizeTimer=useRef(null);
   const[compareTextPoint,setCompareTextPoint]=useState(null);
   const[compareTextValue,setCompareTextValue]=useState("");
   const[savedComparisons,setSavedComparisons]=useState(()=>getSavedComparisons(currentProject?.id||""));
@@ -4319,19 +4324,22 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     }
     if(s.type==="text"&&s.pos&&s.text){
       const fs=s.fontSize||2.4;
-      const bw=Math.max(fs*3.3,s.text.length*fs*0.54);
-      const bh=fs*1.67;
+      // Tight box — minimal padding so valign actually shifts the text visibly
+      const padX=fs*0.15,padY=fs*0.08;
+      const bw=s.text.length*fs*0.54+padX*2;
+      const bh=fs+padY*2;
       const align=s.align||"left";
       const valign=s.valign||"bottom";
-      let rectX=s.pos.x-0.2,textAnchor="start";
+      let rectX,textAnchor="start";
       if(align==="center"){rectX=s.pos.x-bw/2;textAnchor="middle";}
-      else if(align==="right"){rectX=s.pos.x-bw+0.2;textAnchor="end";}
-      const textX=align==="center"?s.pos.x:(align==="right"?s.pos.x-0.4:s.pos.x+0.4);
+      else if(align==="right"){rectX=s.pos.x-bw;textAnchor="end";}
+      else rectX=s.pos.x;
+      const textX=align==="center"?s.pos.x:(align==="right"?s.pos.x-padX:s.pos.x+padX);
       let rectY;
       if(valign==="top")rectY=s.pos.y;
       else if(valign==="middle")rectY=s.pos.y-bh/2;
-      else rectY=s.pos.y-bh+0.4;
-      const textY=rectY+bh-0.6;
+      else rectY=s.pos.y-bh;
+      const textY=rectY+fs+padY*0.85;
       return <g key={i} {...hit}>
         <rect x={rectX} y={rectY} width={bw} height={bh} rx={fs*0.25} fill="rgba(0,0,0,0.65)" stroke={isSel?"#5856d6":"none"} strokeWidth={isSel?"0.3":"0"}/>
         <text x={textX} y={textY} fontSize={fs} fontWeight="700" fill={s.color} fontFamily="Barlow Condensed, sans-serif" textAnchor={textAnchor}>{s.text}</text>
@@ -5277,26 +5285,44 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                   ))}
                   <button onClick={()=>comparePhotoInputRef.current?.click()} title="Add / capture photo overlay" style={{width:34,height:34,borderRadius:8,border:"2px solid rgba(255,107,0,0.35)",background:"rgba(255,107,0,0.1)",color:"#ffb48a",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>📷</button>
                   <div style={{width:1,height:20,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
+                  {/* Color — consolidated swatch dropdown */}
                   {(()=>{
+                    const COLORS=["#ff3b30","#ff9500","#ffcc00","#34c759","#fff"];
                     const sel=compareMarkupStrokes[compareSelectedIdx];
                     const activeColor=sel?.color||compareMarkupColor;
-                    return ["#ff3b30","#ff9500","#ffcc00","#34c759","#fff"].map(c=>(
-                      <button key={c} onClick={()=>{
-                        setCompareMarkupColor(c);
-                        if(compareSelectedIdx!=null){
-                          setCompareMarkupStrokes(strokes=>strokes.map((s,i)=>i===compareSelectedIdx?{...s,color:c}:s));
-                        }
-                      }} title={compareSelectedIdx!=null?"Apply color to selected":"Color for new strokes"} style={{width:22,height:22,borderRadius:"50%",border:activeColor===c?"3px solid #fff":"2px solid rgba(255,255,255,0.2)",background:c,cursor:"pointer"}}/>
-                    ));
+                    const applyColor=c=>{
+                      setCompareMarkupColor(c);
+                      if(compareSelectedIdx!=null){
+                        setCompareMarkupStrokes(strokes=>strokes.map((s,i)=>i===compareSelectedIdx?{...s,color:c}:s));
+                      }
+                    };
+                    return <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(compareColorTimer.current);setShowCompareColorMenu(true);}} onMouseLeave={()=>{compareColorTimer.current=setTimeout(()=>setShowCompareColorMenu(false),250);}}>
+                      <button onClick={()=>setShowCompareColorMenu(v=>!v)} title="Color" style={{width:30,height:28,borderRadius:6,border:"2px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.05)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+                        <span style={{width:16,height:16,borderRadius:"50%",background:activeColor,border:"1.5px solid rgba(0,0,0,0.5)",boxShadow:"0 0 0 1px rgba(255,255,255,0.4) inset"}}/>
+                      </button>
+                      {showCompareColorMenu&&<div onMouseEnter={()=>clearTimeout(compareColorTimer.current)} onMouseLeave={()=>{compareColorTimer.current=setTimeout(()=>setShowCompareColorMenu(false),250);}} style={{position:"absolute",top:"100%",left:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:8,zIndex:100,boxShadow:"0 4px 12px rgba(0,0,0,0.4)",display:"flex",gap:6}}>
+                        {COLORS.map(c=>(
+                          <button key={c} onClick={()=>{applyColor(c);setShowCompareColorMenu(false);}} style={{width:26,height:26,borderRadius:"50%",border:activeColor===c?"3px solid #fff":"2px solid rgba(255,255,255,0.2)",background:c,cursor:"pointer"}}/>
+                        ))}
+                      </div>}
+                    </div>;
                   })()}
-                  <div style={{width:1,height:20,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
-                  {/* Text size presets */}
-                  {[{id:"S",v:1.8},{id:"M",v:2.4},{id:"L",v:3.4},{id:"XL",v:4.8}].map(sz=>{
+                  {/* Size — consolidated dropdown */}
+                  {(()=>{
+                    const SIZES=[{id:"S",v:1.8},{id:"M",v:2.4},{id:"L",v:3.4},{id:"XL",v:4.8}];
                     const sel=compareMarkupStrokes[compareSelectedIdx];
                     const activeSize=(sel&&sel.type==="text")?(sel.fontSize||2.4):compareTextSize;
-                    const isActive=Math.abs(activeSize-sz.v)<0.01;
-                    return <button key={sz.id} onClick={()=>setCompareTextSizeBoth(sz.v)} title={`Text size ${sz.id}`} style={{minWidth:24,height:28,padding:"0 6px",borderRadius:6,border:isActive?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:isActive?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>{sz.id}</button>;
-                  })}
+                    const activeLabel=SIZES.find(s=>Math.abs(activeSize-s.v)<0.01)?.id||"M";
+                    return <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(compareSizeTimer.current);setShowCompareSizeMenu(true);}} onMouseLeave={()=>{compareSizeTimer.current=setTimeout(()=>setShowCompareSizeMenu(false),250);}}>
+                      <button onClick={()=>setShowCompareSizeMenu(v=>!v)} title={`Text size ${activeLabel}`} style={{minWidth:30,height:28,padding:"0 6px",borderRadius:6,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>{activeLabel}</button>
+                      {showCompareSizeMenu&&<div onMouseEnter={()=>clearTimeout(compareSizeTimer.current)} onMouseLeave={()=>{compareSizeTimer.current=setTimeout(()=>setShowCompareSizeMenu(false),250);}} style={{position:"absolute",top:"100%",left:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:8,zIndex:100,boxShadow:"0 4px 12px rgba(0,0,0,0.4)",display:"flex",gap:4}}>
+                        {SIZES.map(sz=>{
+                          const isActive=activeLabel===sz.id;
+                          return <button key={sz.id} onClick={()=>{setCompareTextSizeBoth(sz.v);setShowCompareSizeMenu(false);}} style={{minWidth:28,height:28,padding:"0 6px",borderRadius:6,border:isActive?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:isActive?"rgba(88,86,214,0.25)":"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>{sz.id}</button>;
+                        })}
+                      </div>}
+                    </div>;
+                  })()}
                   <div style={{width:1,height:20,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
                   {/* Text alignment (9-way) — consolidated dropdown */}
                   {(()=>{
@@ -5498,6 +5524,12 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   const[markupMode,setMarkupMode]=useState(false);const[markupTool,setMarkupTool]=useState("freehand");
   const[markupColor,setMarkupColor]=useState("#ff3b30");const[markupStrokes,setMarkupStrokes]=useState(()=>getDrawingMarkup(drawing.id));
   const[markupCurrent,setMarkupCurrent]=useState(null);
+  // Photo placement + selection state
+  const[pendingPhoto,setPendingPhoto]=useState(null); // {dataUrl, aspect}
+  const[photoPlaceRect,setPhotoPlaceRect]=useState(null); // {x,y,w,h} during drag
+  const[markupSelectedIdx,setMarkupSelectedIdx]=useState(null);
+  const photoDragRef=useRef(null); // {mode:'move'|'resize', startPos, orig}
+  const[showDvColorMenu,setShowDvColorMenu]=useState(false);const dvColorTimer=useRef(null);
   const[notes,setNotes]=useState([]);
   const[pendingNotePos,setPendingNotePos]=useState(null);
   const[noteText,setNoteText]=useState("");
@@ -5641,9 +5673,48 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     const t=e.touches?e.touches[0]:e;
     return{x:((t.clientX-rect.left)/rect.width*100),y:((t.clientY-rect.top)/rect.height*100)};
   };
+  // Hit-test: find topmost photo stroke under point p (SVG % coords)
+  const hitPhotoAt=p=>{
+    for(let i=markupStrokes.length-1;i>=0;i--){
+      const s=markupStrokes[i];
+      if(s.type!=="photo"||!s.pos)continue;
+      if(p.x>=s.pos.x&&p.x<=s.pos.x+s.w&&p.y>=s.pos.y&&p.y<=s.pos.y+s.h)return i;
+    }
+    return -1;
+  };
+  // Is the click in the bottom-right resize handle of stroke idx?
+  const hitResizeHandle=(p,idx)=>{
+    const s=markupStrokes[idx];if(!s||s.type!=="photo")return false;
+    const hx=s.pos.x+s.w,hy=s.pos.y+s.h;
+    return Math.abs(p.x-hx)<2.2&&Math.abs(p.y-hy)<2.2;
+  };
+
   const onMarkupDown=e=>{
     if(!markupMode)return;e.preventDefault();e.stopPropagation();
     const p=getMarkupPos(e);if(!p)return;
+    // Drag to place a pending photo (rubber-band rect)
+    if(pendingPhoto){
+      setPhotoPlaceRect({x:p.x,y:p.y,w:0,h:0,startX:p.x,startY:p.y});
+      return;
+    }
+    // Select tool: move or resize an existing photo
+    if(markupTool==="select"){
+      // First check if a corner handle of the already-selected photo is grabbed
+      if(markupSelectedIdx!=null&&hitResizeHandle(p,markupSelectedIdx)){
+        const s=markupStrokes[markupSelectedIdx];
+        photoDragRef.current={mode:"resize",startPos:p,orig:{pos:{...s.pos},w:s.w,h:s.h}};
+        return;
+      }
+      const idx=hitPhotoAt(p);
+      if(idx>=0){
+        setMarkupSelectedIdx(idx);
+        const s=markupStrokes[idx];
+        photoDragRef.current={mode:"move",startPos:p,orig:{pos:{...s.pos},w:s.w,h:s.h}};
+      }else{
+        setMarkupSelectedIdx(null);
+      }
+      return;
+    }
     if(markupTool==="text"){
       setPendingNotePos({...p,pageNum:isPdf?currentPage:1});
       setNoteText("");
@@ -5653,16 +5724,99 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     else setMarkupCurrent({type:markupTool,color:markupColor,start:p,end:p});
   };
   const onMarkupMove=e=>{
-    if(!markupCurrent)return;e.preventDefault();e.stopPropagation();
+    if(!markupMode)return;
     const p=getMarkupPos(e);if(!p)return;
+    // Rubber-band rect while placing a new photo
+    if(pendingPhoto&&photoPlaceRect){
+      e.preventDefault();e.stopPropagation();
+      const sx=photoPlaceRect.startX,sy=photoPlaceRect.startY;
+      const x=Math.min(sx,p.x),y=Math.min(sy,p.y);
+      const w=Math.abs(p.x-sx),h=Math.abs(p.y-sy);
+      setPhotoPlaceRect({...photoPlaceRect,x,y,w,h});
+      return;
+    }
+    // Move / resize selected photo
+    if(photoDragRef.current&&markupSelectedIdx!=null){
+      e.preventDefault();e.stopPropagation();
+      const{mode,startPos,orig}=photoDragRef.current;
+      const dx=p.x-startPos.x,dy=p.y-startPos.y;
+      setMarkupStrokes(strokes=>strokes.map((s,i)=>{
+        if(i!==markupSelectedIdx||s.type!=="photo")return s;
+        if(mode==="move"){
+          return{...s,pos:{x:Math.max(0,Math.min(100-orig.w,orig.pos.x+dx)),y:Math.max(0,Math.min(100-orig.h,orig.pos.y+dy))}};
+        }
+        // Resize from bottom-right, preserve aspect
+        const aspect=orig.h/orig.w;
+        const nw=Math.max(4,Math.min(100-orig.pos.x,orig.w+dx));
+        const nh=nw*aspect;
+        return{...s,w:nw,h:Math.min(100-orig.pos.y,nh)};
+      }));
+      return;
+    }
+    if(!markupCurrent)return;
+    e.preventDefault();e.stopPropagation();
     if(markupCurrent.type==="freehand")setMarkupCurrent(c=>({...c,points:[...c.points,p]}));
     else setMarkupCurrent(c=>({...c,end:p}));
   };
   const onMarkupUp=()=>{
+    // Finalise a pending photo placement
+    if(pendingPhoto&&photoPlaceRect){
+      let{x,y,w,h}=photoPlaceRect;
+      // If drag was tiny, use a default 30%-wide centered rect
+      if(w<3||h<3){
+        w=30;h=30*pendingPhoto.aspect;
+        x=Math.max(0,Math.min(100-w,(photoPlaceRect.startX||50)-w/2));
+        y=Math.max(0,Math.min(100-h,(photoPlaceRect.startY||50)-h/2));
+      }else{
+        // Preserve the image's aspect based on the drawn width
+        h=w*pendingPhoto.aspect;
+        if(y+h>100)h=100-y;
+      }
+      const stroke={type:"photo",dataUrl:pendingPhoto.dataUrl,pos:{x,y},w,h};
+      setMarkupStrokes(s=>{
+        setMarkupSelectedIdx(s.length);
+        return[...s,stroke];
+      });
+      setPendingPhoto(null);setPhotoPlaceRect(null);
+      setMarkupTool("select");
+      return;
+    }
+    if(photoDragRef.current){photoDragRef.current=null;return;}
     if(markupCurrent){setMarkupStrokes(s=>[...s,markupCurrent]);setMarkupCurrent(null);}
   };
   const undoMarkup=()=>setMarkupStrokes(s=>s.slice(0,-1));
   const clearMarkup=()=>{if(markupStrokes.length&&confirm("Clear all markup?"))setMarkupStrokes([]);};
+
+  // Photo overlay — pick/capture an image, compress, then enter "drag to place" mode
+  const markupPhotoRef=useRef();
+  const handleMarkupPhotoFile=e=>{
+    const file=e.target.files?.[0];
+    if(!file)return;
+    e.target.value="";
+    const img=new Image();
+    img.onload=()=>{
+      const maxDim=1200;
+      const sc=Math.min(1,maxDim/Math.max(img.width,img.height));
+      const cw=Math.round(img.width*sc),ch=Math.round(img.height*sc);
+      const cnv=document.createElement("canvas");
+      cnv.width=cw;cnv.height=ch;
+      const ctx2=cnv.getContext("2d");
+      ctx2.drawImage(img,0,0,cw,ch);
+      const dataUrl=cnv.toDataURL("image/jpeg",0.82);
+      setPendingPhoto({dataUrl,aspect:ch/cw});
+      setMarkupSelectedIdx(null);
+    };
+    img.onerror=()=>alert("Could not load image.");
+    const reader=new FileReader();
+    reader.onload=ev=>{img.src=ev.target.result;};
+    reader.readAsDataURL(file);
+  };
+  const cancelPendingPhoto=()=>{setPendingPhoto(null);setPhotoPlaceRect(null);};
+  const deleteSelectedMarkup=()=>{
+    if(markupSelectedIdx==null)return;
+    setMarkupStrokes(s=>s.filter((_,i)=>i!==markupSelectedIdx));
+    setMarkupSelectedIdx(null);
+  };
 
   const addNote=()=>{
     if(!pendingNotePos||!noteText.trim())return;
@@ -5699,6 +5853,13 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       const rx=Math.abs(s.end.x-s.start.x)/2,ry=Math.abs(s.end.y-s.start.y)/2;
       if(rx<0.3&&ry<0.3)return null;
       return <ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry} stroke={s.color} strokeWidth="0.3" fill="none"/>;
+    }else if(s.type==="photo"&&s.pos&&s.dataUrl){
+      const isSel=markupSelectedIdx===i;
+      return <g key={i}>
+        <image href={s.dataUrl} x={s.pos.x} y={s.pos.y} width={s.w} height={s.h} preserveAspectRatio="xMidYMid meet"/>
+        <rect x={s.pos.x} y={s.pos.y} width={s.w} height={s.h} fill="none" stroke={isSel?"#5856d6":"rgba(255,255,255,0.85)"} strokeWidth={isSel?"0.5":"0.25"} strokeDasharray={isSel?"1 0.6":undefined}/>
+        {isSel&&<rect x={s.pos.x+s.w-1.8} y={s.pos.y+s.h-1.8} width={1.8} height={1.8} fill="#5856d6" stroke="#fff" strokeWidth="0.2"/>}
+      </g>;
     }
     return null;
   });
@@ -5836,17 +5997,17 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
         </button>
       </div>
 
-      {/* Zoom controls */}
-      <div style={{position:"absolute",right:12,top:70,zIndex:10,display:"flex",flexDirection:"column",gap:6}}>
+      {/* Zoom controls — pushed down when the markup toolbar (and pending photo banner) are visible */}
+      <div style={{position:"absolute",right:12,top:markupMode?(pendingPhoto?170:124):70,zIndex:10,display:"flex",flexDirection:"column",gap:6}}>
         <button onClick={zoomIn} style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
         <button onClick={resetZoom} style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{Math.round(scale*100)}%</button>
         <button onClick={zoomOut} style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
         {pagePins.length>0&&<button onClick={()=>setShowHeatmap(!showHeatmap)} style={{width:36,height:36,borderRadius:10,background:showHeatmap?"rgba(255,59,48,0.6)":"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",marginTop:4}} title="Heatmap">🔥</button>}
       </div>
 
-      {/* PDF page navigation */}
+      {/* PDF page navigation — pushed down when the markup toolbar (and pending photo banner) are visible */}
       {isPdf&&pdfPageCount>1&&(
-        <div style={{position:"absolute",left:12,top:70,zIndex:10,display:"flex",flexDirection:"column",gap:6}}>
+        <div style={{position:"absolute",left:12,top:markupMode?(pendingPhoto?170:124):70,zIndex:10,display:"flex",flexDirection:"column",gap:6}}>
           <button onClick={prevPage} disabled={currentPage<=1} style={{width:36,height:36,borderRadius:10,background:currentPage<=1?"rgba(0,0,0,0.3)":"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:16,cursor:currentPage<=1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>▲</button>
           <div style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.6)",color:"#fff",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{currentPage}</div>
           <button onClick={nextPage} disabled={currentPage>=pdfPageCount} style={{width:36,height:36,borderRadius:10,background:currentPage>=pdfPageCount?"rgba(0,0,0,0.3)":"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:16,cursor:currentPage>=pdfPageCount?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>▼</button>
@@ -5858,17 +6019,42 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
 
       {/* Markup toolbar */}
       {markupMode&&(
-        <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:6,background:"#1a1a1a",borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0}}>
-          {[{id:"freehand",label:"✏"},{id:"arrow",label:"↗"},{id:"circle",label:"○"},{id:"text",label:"T"}].map(t=>(
-            <button key={t.id} onClick={()=>setMarkupTool(t.id)} style={{width:36,height:36,borderRadius:8,border:markupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:markupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{t.label}</button>
+        <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:6,background:"#1a1a1a",borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0,flexWrap:"wrap"}}>
+          {[{id:"select",label:"▢"},{id:"freehand",label:"✏"},{id:"arrow",label:"↗"},{id:"circle",label:"○"},{id:"text",label:"T"}].map(t=>(
+            <button key={t.id} onClick={()=>{setMarkupTool(t.id);if(t.id!=="select")setMarkupSelectedIdx(null);}} title={t.id==="select"?"Select, move, resize":t.id} style={{width:36,height:36,borderRadius:8,border:markupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:markupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{t.label}</button>
           ))}
+          <button onClick={()=>markupPhotoRef.current?.click()} title="Add photo — drag on drawing to place" style={{width:36,height:36,borderRadius:8,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>📷</button>
+          <input ref={markupPhotoRef} type="file" accept="image/*" capture="environment" onChange={handleMarkupPhotoFile} style={{display:"none"}}/>
           <div style={{width:1,height:24,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
-          {["#ff3b30","#ff9500","#ffcc00","#fff"].map(c=>(
-            <button key={c} onClick={()=>setMarkupColor(c)} style={{width:24,height:24,borderRadius:"50%",border:markupColor===c?"3px solid #fff":"3px solid rgba(255,255,255,0.15)",background:c,cursor:"pointer",flexShrink:0}}/>
-          ))}
+          {/* Color — consolidated swatch dropdown */}
+          {(()=>{
+            const COLORS=["#ff3b30","#ff9500","#ffcc00","#34c759","#fff"];
+            return <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(dvColorTimer.current);setShowDvColorMenu(true);}} onMouseLeave={()=>{dvColorTimer.current=setTimeout(()=>setShowDvColorMenu(false),250);}}>
+              <button onClick={()=>setShowDvColorMenu(v=>!v)} title="Color" style={{width:36,height:36,borderRadius:8,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+                <span style={{width:18,height:18,borderRadius:"50%",background:markupColor,border:"1.5px solid rgba(0,0,0,0.5)",boxShadow:"0 0 0 1px rgba(255,255,255,0.4) inset"}}/>
+              </button>
+              {showDvColorMenu&&<div onMouseEnter={()=>clearTimeout(dvColorTimer.current)} onMouseLeave={()=>{dvColorTimer.current=setTimeout(()=>setShowDvColorMenu(false),250);}} style={{position:"absolute",top:"100%",left:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:8,zIndex:100,boxShadow:"0 4px 12px rgba(0,0,0,0.4)",display:"flex",gap:6}}>
+                {COLORS.map(c=>(
+                  <button key={c} onClick={()=>{setMarkupColor(c);setShowDvColorMenu(false);}} style={{width:26,height:26,borderRadius:"50%",border:markupColor===c?"3px solid #fff":"2px solid rgba(255,255,255,0.2)",background:c,cursor:"pointer"}}/>
+                ))}
+              </div>}
+            </div>;
+          })()}
           <div style={{flex:1}}/>
+          {markupSelectedIdx!=null&&markupTool==="select"&&(
+            <button onClick={deleteSelectedMarkup} style={{background:"rgba(255,59,48,0.25)",border:"1px solid rgba(255,59,48,0.45)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>DELETE</button>
+          )}
           <button onClick={undoMarkup} disabled={!markupStrokes.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:markupStrokes.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>UNDO</button>
           <button onClick={clearMarkup} disabled={!markupStrokes.length} style={{background:"rgba(255,59,48,0.2)",border:"none",borderRadius:8,padding:"6px 10px",color:markupStrokes.length?"#ff6b6b":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>CLEAR</button>
+        </div>
+      )}
+
+      {/* Pending photo placement banner */}
+      {markupMode&&pendingPhoto&&(
+        <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:10,background:"rgba(88,86,214,0.18)",borderBottom:"1px solid rgba(88,86,214,0.35)",flexShrink:0}}>
+          <span style={{fontSize:14}}>📷</span>
+          <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:"#fff"}}>Drag on the drawing to place the photo · tap to drop at default size</div>
+          <button onClick={cancelPendingPhoto} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:8,padding:"5px 10px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>CANCEL</button>
         </div>
       )}
 
@@ -5887,6 +6073,12 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
               onTouchStart={onMarkupDown} onTouchMove={onMarkupMove} onTouchEnd={onMarkupUp}>
               {renderMarkupSvg(markupStrokes)}
               {markupCurrent&&renderMarkupSvg([markupCurrent])}
+              {pendingPhoto&&photoPlaceRect&&photoPlaceRect.w>0&&(
+                <g>
+                  <image href={pendingPhoto.dataUrl} x={photoPlaceRect.x} y={photoPlaceRect.y} width={photoPlaceRect.w} height={photoPlaceRect.w*pendingPhoto.aspect} preserveAspectRatio="xMidYMid meet" opacity="0.7"/>
+                  <rect x={photoPlaceRect.x} y={photoPlaceRect.y} width={photoPlaceRect.w} height={photoPlaceRect.w*pendingPhoto.aspect} fill="none" stroke="#5856d6" strokeWidth="0.4" strokeDasharray="1 0.6"/>
+                </g>
+              )}
             </svg>
             {renderHeatmap()}
             {renderNotes()}
