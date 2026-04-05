@@ -130,6 +130,174 @@ function comparePdfLineSets(baseLines,revisionLines){
   return{added,removed};
 }
 
+// ── Annotated drawing rendering (for PDF exports) ────────────────
+// Renders each relevant page of a drawing (PDF or image) to a canvas
+// with pins, notes and markup strokes burned in, and returns an array
+// of { pageNum, dataUrl } suitable for embedding as <img> in a report.
+function _loadImageEl(url){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.crossOrigin="anonymous";
+    img.onload=()=>resolve(img);
+    img.onerror=()=>reject(new Error("Image load failed"));
+    img.src=url;
+  });
+}
+function _roundRectPath(ctx,x,y,w,h,r){
+  const rr=Math.min(r,w/2,h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+rr,y);
+  ctx.arcTo(x+w,y,x+w,y+h,rr);
+  ctx.arcTo(x+w,y+h,x,y+h,rr);
+  ctx.arcTo(x,y+h,x,y,rr);
+  ctx.arcTo(x,y,x+w,y,rr);
+  ctx.closePath();
+}
+function _drawMarkupStroke(ctx,W,H,s){
+  const px=p=>({x:(p.x/100)*W,y:(p.y/100)*H});
+  ctx.save();
+  ctx.strokeStyle=s.color||"#ff6b00";
+  ctx.fillStyle=s.color||"#ff6b00";
+  ctx.lineWidth=Math.max(2,W*0.003);
+  ctx.lineCap="round";ctx.lineJoin="round";
+  if(s.type==="freehand"&&Array.isArray(s.points)&&s.points.length>1){
+    ctx.beginPath();
+    const p0=px(s.points[0]);ctx.moveTo(p0.x,p0.y);
+    for(let i=1;i<s.points.length;i++){const p=px(s.points[i]);ctx.lineTo(p.x,p.y);}
+    ctx.stroke();
+  }else if(s.type==="arrow"&&s.start&&s.end){
+    const a=px(s.start),b=px(s.end);
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+    const angle=Math.atan2(b.y-a.y,b.x-a.x);
+    const hl=Math.max(12,W*0.018);
+    ctx.beginPath();
+    ctx.moveTo(b.x,b.y);
+    ctx.lineTo(b.x-hl*Math.cos(angle-0.4),b.y-hl*Math.sin(angle-0.4));
+    ctx.moveTo(b.x,b.y);
+    ctx.lineTo(b.x-hl*Math.cos(angle+0.4),b.y-hl*Math.sin(angle+0.4));
+    ctx.stroke();
+  }else if(s.type==="circle"&&s.start&&s.end){
+    const a=px(s.start),b=px(s.end);
+    const cx=(a.x+b.x)/2,cy=(a.y+b.y)/2;
+    const rx=Math.abs(b.x-a.x)/2,ry=Math.abs(b.y-a.y)/2;
+    if(rx>1||ry>1){ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();}
+  }else if(s.type==="text"&&s.pos&&s.text){
+    const p=px(s.pos);
+    const fs=Math.max(14,W*0.018);
+    ctx.font=`bold ${fs}px Arial`;
+    const tw=ctx.measureText(s.text).width;
+    const pad=fs*0.35;
+    ctx.fillStyle="rgba(255,255,255,0.92)";
+    ctx.strokeStyle=s.color||"#ff6b00";
+    ctx.lineWidth=2;
+    _roundRectPath(ctx,p.x-pad,p.y-fs-pad*0.2,tw+pad*2,fs+pad*1.2,4);
+    ctx.fill();ctx.stroke();
+    ctx.fillStyle=s.color||"#ff6b00";
+    ctx.textBaseline="alphabetic";
+    ctx.fillText(s.text,p.x,p.y);
+  }
+  ctx.restore();
+}
+function _drawNoteMarker(ctx,W,H,n){
+  const x=(n.x/100)*W,y=(n.y/100)*H;
+  const fs=Math.max(12,W*0.013);
+  ctx.save();
+  ctx.font=`bold ${fs}px Arial`;
+  const label=(n.text||"").slice(0,60);
+  const tw=ctx.measureText(label).width;
+  const pad=fs*0.5;
+  const bw=tw+pad*2+fs*1.2,bh=fs+pad*1.2;
+  ctx.fillStyle="rgba(88,86,214,0.92)";
+  ctx.strokeStyle="#fff";ctx.lineWidth=Math.max(1.5,W*0.0015);
+  _roundRectPath(ctx,x-bw/2,y-bh/2,bw,bh,fs*0.35);
+  ctx.fill();ctx.stroke();
+  ctx.fillStyle="#fff";
+  ctx.textBaseline="middle";
+  ctx.fillText("📝 "+label,x-bw/2+pad,y);
+  ctx.restore();
+}
+function _drawPinMarker(ctx,W,H,pin,defect){
+  const x=(pin.x/100)*W,y=(pin.y/100)*H;
+  const color=defect?(SEV_COLOR[defect.severity]||"#ff6b00"):"#8e8e93";
+  const r=Math.max(14,W*0.016);
+  ctx.save();
+  ctx.fillStyle="rgba(0,0,0,0.55)";
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle=color;ctx.lineWidth=Math.max(3,r*0.28);
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle=color;
+  ctx.beginPath();ctx.arc(x,y,r*0.38,0,Math.PI*2);ctx.fill();
+  if(defect?.severity){
+    ctx.fillStyle="#fff";
+    ctx.font=`900 ${Math.round(r*0.95)}px Arial`;
+    ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.fillText(defect.severity[0],x,y);
+  }
+  ctx.restore();
+}
+async function renderDrawingAnnotatedPages(drawing,defects,allPins){
+  if(!drawing||!drawing.file)return[];
+  const fileUrl=DB.fileUrl("drawings",drawing.id,drawing.file);
+  const isPdf=/\.pdf$/i.test(drawing.file||"");
+  const notes=getDrawingNotes(drawing.id)||[];
+  const markups=getDrawingMarkup(drawing.id)||[];
+  const pins=(allPins||[]).filter(p=>p.drawingId===drawing.id);
+  const pageSet=new Set();
+  pins.forEach(p=>pageSet.add(p.pageNum||1));
+  notes.forEach(n=>pageSet.add(n.pageNum||1));
+  if(pageSet.size===0&&markups.length>0)pageSet.add(1);
+  if(pageSet.size===0)return[];
+  const pages=[...pageSet].sort((a,b)=>a-b);
+  const applyOverlays=(ctx,W,H,pageNum)=>{
+    markups.forEach(s=>_drawMarkupStroke(ctx,W,H,s));
+    notes.filter(n=>(n.pageNum||1)===pageNum).forEach(n=>_drawNoteMarker(ctx,W,H,n));
+    pins.filter(p=>(p.pageNum||1)===pageNum).forEach(p=>{
+      const def=(defects||[]).find(x=>x.id===p.entryId);
+      _drawPinMarker(ctx,W,H,p,def);
+    });
+  };
+  const out=[];
+  if(isPdf){
+    if(!window.pdfjsLib)return[];
+    const pdfjsLib=window.pdfjsLib;
+    if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    let doc=null;
+    try{
+      doc=await pdfjsLib.getDocument(fileUrl).promise;
+      for(const pn of pages){
+        if(pn>doc.numPages)continue;
+        const page=await doc.getPage(pn);
+        const viewport=page.getViewport({scale:1.5});
+        const canvas=document.createElement("canvas");
+        canvas.width=viewport.width;canvas.height=viewport.height;
+        const ctx=canvas.getContext("2d");
+        ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
+        await page.render({canvasContext:ctx,viewport}).promise;
+        applyOverlays(ctx,canvas.width,canvas.height,pn);
+        out.push({pageNum:pn,dataUrl:canvas.toDataURL("image/jpeg",0.85)});
+      }
+    }catch(e){console.warn("renderDrawingAnnotatedPages PDF failed for",drawing.name,e);}
+    finally{try{if(doc)await doc.destroy();}catch{}}
+  }else{
+    try{
+      const img=await _loadImageEl(fileUrl);
+      const maxW=1600;
+      const scale=Math.min(1,maxW/(img.width||maxW));
+      const canvas=document.createElement("canvas");
+      canvas.width=Math.max(1,Math.round((img.width||maxW)*scale));
+      canvas.height=Math.max(1,Math.round((img.height||maxW)*scale));
+      const ctx=canvas.getContext("2d");
+      ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      applyOverlays(ctx,canvas.width,canvas.height,1);
+      out.push({pageNum:1,dataUrl:canvas.toDataURL("image/jpeg",0.85)});
+    }catch(e){console.warn("renderDrawingAnnotatedPages image failed for",drawing.name,e);}
+  }
+  return out;
+}
+
 // ── Photo Markup Editor ──────────────────────────────────────────
 function PhotoMarkup({src,onSave,onCancel}){
   const canvasRef=useRef();const overlayRef=useRef();
@@ -3200,6 +3368,7 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   // Batch compare state
   const[showBatchCompare,setShowBatchCompare]=useState(false);
   const[showDnMenu,setShowDnMenu]=useState(false);const dnMenuTimer=useRef(null);
+  const[showDiffMenu,setShowDiffMenu]=useState(false);const diffMenuTimer=useRef(null);
   const[batchLabelA,setBatchLabelA]=useState("SET A");
   const[batchLabelB,setBatchLabelB]=useState("SET B");
   const[batchSetAFiles,setBatchSetAFiles]=useState([]);
@@ -3870,14 +4039,42 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     downloadTextFile(csv,`${fileTimestamp()}-markup_annotations.csv`,"text/csv;charset=utf-8");
   };
 
-  const exportMarkupsPdf=()=>{
+  const exportMarkupsPdf=async()=>{
     const markedUp=drawings.filter(d=>getDrawingMarkup(d.id).length>0||getDrawingNotes(d.id).length>0);
     if(!markedUp.length){alert("No markup annotations to export.");return;}
-    const html=generateDrawingsEmailHTML(drawings);
-    if(!html){alert("No markup annotations to export.");return;}
     const w=window.open("","_blank");if(!w){alert("Popup blocked.");return;}
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileTimestamp()}-Markup Annotations</title><style>body{font-family:Arial,sans-serif;padding:22px;color:#111;max-width:900px;margin:0 auto}h1{margin:0 0 4px;font-size:20px}.meta{font-size:12px;color:#444;margin-bottom:10px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ddd;padding:6px;vertical-align:top}th{background:#f5f5f5;text-align:left}@media print{.no-print{display:none}}</style></head><body><h1>Markup Annotations Report</h1><div class="meta"><b>Project:</b> ${sanitize(currentProject?.name||"—")} | <b>Company:</b> ${sanitize(company?.companyName||"—")} | <b>Generated:</b> ${sanitize(new Date().toLocaleString())}</div>${html}<button class="no-print" onclick="window.print()">Print / Save as PDF</button></body></html>`);
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileTimestamp()}-Markup Annotations</title><style>body{font-family:Arial,sans-serif;padding:22px;color:#111;max-width:900px;margin:0 auto}h1{margin:0 0 4px;font-size:20px}.meta{font-size:12px;color:#444;margin-bottom:10px}.loading{padding:40px;text-align:center;color:#888;font-size:14px}</style></head><body><div class="loading">Rendering annotated drawings… please wait.</div></body></html>`);
     w.document.close();
+    try{
+      const rendered={};
+      for(const d of markedUp){
+        rendered[d.id]=await renderDrawingAnnotatedPages(d,defects,allPins);
+      }
+      const annotationListHtml=generateDrawingsEmailHTML(drawings);
+      let imagesHtml="";
+      markedUp.forEach(d=>{
+        const pages=rendered[d.id]||[];
+        const notes=getDrawingNotes(d.id);const markups=getDrawingMarkup(d.id);
+        const dPins=allPins.filter(p=>p.drawingId===d.id);
+        const total=notes.length+markups.length+dPins.length;
+        imagesHtml+=`<div style="margin:18px 0;page-break-inside:avoid"><h3 style="margin:0 0 6px;font-size:14px;color:#ff6b00">📐 ${sanitize(d.name)} <span style="font-weight:400;color:#888;font-size:11px">(${total} annotation${total===1?"":"s"})</span></h3>`;
+        if(pages.length===0){
+          imagesHtml+=`<div style="font-size:11px;color:#999;padding:10px;border:1px dashed #ddd;border-radius:6px">Drawing preview unavailable.</div>`;
+        }else{
+          pages.forEach(pg=>{
+            imagesHtml+=`<div style="margin:6px 0;page-break-inside:avoid"><div style="font-size:10px;color:#888;margin-bottom:3px">Page ${pg.pageNum}</div><img src="${pg.dataUrl}" style="max-width:100%;height:auto;border:1px solid #ddd;border-radius:6px"/></div>`;
+          });
+        }
+        imagesHtml+=`</div>`;
+      });
+      w.document.open();
+      w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileTimestamp()}-Markup Annotations</title><style>body{font-family:Arial,sans-serif;padding:22px;color:#111;max-width:900px;margin:0 auto}h1{margin:0 0 4px;font-size:20px}h2{margin:22px 0 10px;font-size:16px;border-bottom:2px solid #ddd;padding-bottom:4px}.meta{font-size:12px;color:#444;margin-bottom:10px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ddd;padding:6px;vertical-align:top}th{background:#f5f5f5;text-align:left}@media print{.no-print{display:none}}</style></head><body><h1>Markup Annotations Report</h1><div class="meta"><b>Project:</b> ${sanitize(currentProject?.name||"—")} | <b>Company:</b> ${sanitize(company?.companyName||"—")} | <b>Generated:</b> ${sanitize(new Date().toLocaleString())}</div><h2>📐 Annotated Drawings</h2>${imagesHtml}<h2>📋 Annotation Details</h2>${annotationListHtml}<button class="no-print" onclick="window.print()">Print / Save as PDF</button><script>window.onload=function(){setTimeout(function(){window.print();},400);};</script></body></html>`);
+      w.document.close();
+    }catch(e){
+      console.error(e);
+      try{w.close();}catch{}
+      alert("Failed to render drawings: "+e.message);
+    }
   };
 
   // Export Comparisons only
@@ -3894,8 +4091,18 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     if(!savedComparisons.length){alert("No saved comparisons to export.");return;}
     const html=generateComparisonsEmailHTML(savedComparisons);
     if(!html){alert("No saved comparisons to export.");return;}
+    let imagesHtml="";
+    savedComparisons.forEach(sc=>{
+      imagesHtml+=`<div style="margin:18px 0;page-break-inside:avoid"><h3 style="margin:0 0 6px;font-size:14px;color:#5856d6">🔍 ${sanitize(sc.baseName)} → ${sanitize(sc.targetName)} <span style="font-weight:400;color:#888;font-size:11px">(+${sc.totalAdded||0} / -${sc.totalRemoved||0})</span></h3>`;
+      if(sc.overlayThumb){
+        imagesHtml+=`<img src="${sc.overlayThumb}" style="max-width:100%;height:auto;border:1px solid #ddd;border-radius:6px"/>`;
+      }else{
+        imagesHtml+=`<div style="font-size:11px;color:#999;padding:10px;border:1px dashed #ddd;border-radius:6px">No overlay preview saved for this comparison.</div>`;
+      }
+      imagesHtml+=`</div>`;
+    });
     const w=window.open("","_blank");if(!w){alert("Popup blocked.");return;}
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileTimestamp()}-Saved Comparisons</title><style>body{font-family:Arial,sans-serif;padding:22px;color:#111;max-width:900px;margin:0 auto}h1{margin:0 0 4px;font-size:20px}.meta{font-size:12px;color:#444;margin-bottom:10px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ddd;padding:6px;vertical-align:top}th{background:#f5f5f5;text-align:left}@media print{.no-print{display:none}}</style></head><body><h1>Saved Comparisons Report</h1><div class="meta"><b>Project:</b> ${sanitize(currentProject?.name||"—")} | <b>Company:</b> ${sanitize(company?.companyName||"—")} | <b>Generated:</b> ${sanitize(new Date().toLocaleString())}</div>${html}<button class="no-print" onclick="window.print()">Print / Save as PDF</button></body></html>`);
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileTimestamp()}-Saved Comparisons</title><style>body{font-family:Arial,sans-serif;padding:22px;color:#111;max-width:900px;margin:0 auto}h1{margin:0 0 4px;font-size:20px}h2{margin:22px 0 10px;font-size:16px;border-bottom:2px solid #ddd;padding-bottom:4px}.meta{font-size:12px;color:#444;margin-bottom:10px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ddd;padding:6px;vertical-align:top}th{background:#f5f5f5;text-align:left}@media print{.no-print{display:none}}</style></head><body><h1>Saved Comparisons Report</h1><div class="meta"><b>Project:</b> ${sanitize(currentProject?.name||"—")} | <b>Company:</b> ${sanitize(company?.companyName||"—")} | <b>Generated:</b> ${sanitize(new Date().toLocaleString())}</div><h2>🔍 Comparison Overlays</h2>${imagesHtml}<h2>📋 Comparison Details</h2>${html}<button class="no-print" onclick="window.print()">Print / Save as PDF</button><script>window.onload=function(){setTimeout(function(){window.print();},400);};</script></body></html>`);
     w.document.close();
   };
 
@@ -3941,10 +4148,27 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
   };
 
   // Export All PDF — combined printable report of drawings + saved comparisons
-  const exportAllPdf=()=>{
+  const exportAllPdf=async()=>{
     const stamp=new Date().toLocaleString();
     const proj=sanitize(currentProject?.name||"—");
     const comp=sanitize(company?.companyName||"—");
+
+    // Open placeholder window immediately so popup-blockers see a user-gesture
+    const w=window.open("","_blank");
+    if(!w){alert("Popup blocked. Please allow popups to export PDF.");return;}
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Project Annotations Report</title></head><body style="font-family:Arial,sans-serif;padding:40px;text-align:center;color:#888">Rendering annotated drawings and comparison overlays… please wait.</body></html>`);
+    w.document.close();
+
+    // Pre-render annotated pages for every drawing that has any annotation
+    const renderedDrawings={};
+    try{
+      for(const d of drawings){
+        const hasAny=(getDrawingNotes(d.id).length+getDrawingMarkup(d.id).length+allPins.filter(p=>p.drawingId===d.id).length)>0;
+        if(hasAny){
+          renderedDrawings[d.id]=await renderDrawingAnnotatedPages(d,defects,allPins);
+        }
+      }
+    }catch(e){console.warn("Drawing render error",e);}
 
     // Build drawing sections
     let drawingSections="";
@@ -3960,7 +4184,9 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       const markupRows=markups.map((s,i)=>`<tr><td>${dPins.length+notes.length+i+1}</td><td style="color:#ff6b00;font-weight:700">MARKUP</td><td>${sanitize(s.type==="text"?s.text:s.type)}</td><td>${sanitize(s.color||"")}</td><td>—</td></tr>`).join("");
       const total=dPins.length+notes.length+markups.length;
       if(total>0){
-        drawingSections+=`<div style="margin-bottom:18px"><h3 style="margin:0 0 6px;font-size:14px;color:#ff6b00">📐 ${sanitize(d.name)} <span style="font-weight:400;color:#888;font-size:11px">(${total} item${total>1?"s":""})</span></h3><table><thead><tr><th style="width:36px">#</th><th>Type</th><th>Title / Content</th><th>Category</th><th>Status / Location</th></tr></thead><tbody>${pinRows}${noteRows}${markupRows}</tbody></table></div>`;
+        const pages=renderedDrawings[d.id]||[];
+        const pagesHtml=pages.length?pages.map(pg=>`<div style="margin:6px 0;page-break-inside:avoid"><div style="font-size:10px;color:#888;margin-bottom:3px">Page ${pg.pageNum}</div><img src="${pg.dataUrl}" style="max-width:100%;height:auto;border:1px solid #ddd;border-radius:6px"/></div>`).join(""):`<div style="font-size:11px;color:#999;padding:8px;border:1px dashed #ddd;border-radius:6px;margin:6px 0">Drawing preview unavailable.</div>`;
+        drawingSections+=`<div style="margin-bottom:18px;page-break-inside:avoid"><h3 style="margin:0 0 6px;font-size:14px;color:#ff6b00">📐 ${sanitize(d.name)} <span style="font-weight:400;color:#888;font-size:11px">(${total} item${total>1?"s":""})</span></h3>${pagesHtml}<table><thead><tr><th style="width:36px">#</th><th>Type</th><th>Title / Content</th><th>Category</th><th>Status / Location</th></tr></thead><tbody>${pinRows}${noteRows}${markupRows}</tbody></table></div>`;
       }
     });
 
@@ -3973,13 +4199,13 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       const aiSection=sc.aiReport?`<div style="margin:8px 0;background:#f5f3ff;border:1px solid #d8d2ff;border-radius:6px;padding:8px;font-size:11px;white-space:pre-wrap">${sanitize(sc.aiReport)}</div><div style="font-size:10px;color:${sc.aiLocked?"#1a7a35":"#666"};margin-bottom:6px"><b>Status:</b> ${sc.aiLocked?"LOCKED / APPROVED":"DRAFT"}</div>`:"";
       const auditSection=(sc.auditLog||[]).length?`<div style="font-size:10px;border:1px solid #ddd;border-radius:6px;padding:6px;background:#fafafa;margin:6px 0"><b>Audit Trail</b>${(sc.auditLog||[]).map(e=>`<div style="margin:2px 0;color:${e.action==="lock"?"#1a7a35":"#b36b00"}"><b>${e.action.toUpperCase()}</b> by ${sanitize(e.by)} at ${sanitize(new Date(e.at).toLocaleString())}${e.reason?` — <i>${sanitize(e.reason)}</i>`:""}</div>`).join("")}</div>`:"";
       const markupSection=(sc.markups||[]).length?`<div style="font-size:10px;color:#ff6b00;margin:4px 0">✏ ${(sc.markups||[]).length} markup annotation(s): ${(sc.markups||[]).filter(s=>s.type==="text").map(s=>`"${sanitize(s.text)}"`).join(", ")||"(no text)"}</div>`:"";
-      compareSections+=`<div style="margin-bottom:18px;page-break-inside:avoid"><h3 style="margin:0 0 6px;font-size:14px;color:#5856d6">🔍 ${sanitize(sc.baseName)} → ${sanitize(sc.targetName)} <span style="font-weight:400;color:#888;font-size:11px">(${scStamp})</span></h3><div style="display:flex;gap:8px;margin:6px 0"><div style="flex:1;border:1px solid #ff3b30;border-radius:6px;padding:6px;background:#fff3f2"><b>Added</b><div style="font-size:18px;font-weight:bold">${sc.totalAdded||0}</div></div><div style="flex:1;border:1px solid #34c759;border-radius:6px;padding:6px;background:#f0fff5"><b>Removed</b><div style="font-size:18px;font-weight:bold">${sc.totalRemoved||0}</div></div></div>${aiSection}${auditSection}${markupSection}<h4 style="color:#ff3b30;margin:8px 0 4px;font-size:12px">Added Lines</h4><table><thead><tr><th style="width:36px">#</th><th>Line</th></tr></thead><tbody>${addedRows}</tbody></table><h4 style="color:#34c759;margin:8px 0 4px;font-size:12px">Removed Lines</h4><table><thead><tr><th style="width:36px">#</th><th>Line</th></tr></thead><tbody>${removedRows}</tbody></table></div>`;
+      const overlayHtml=sc.overlayThumb?`<div style="margin:6px 0;page-break-inside:avoid"><img src="${sc.overlayThumb}" style="max-width:100%;height:auto;border:1px solid #ddd;border-radius:6px"/></div>`:"";
+      compareSections+=`<div style="margin-bottom:18px;page-break-inside:avoid"><h3 style="margin:0 0 6px;font-size:14px;color:#5856d6">🔍 ${sanitize(sc.baseName)} → ${sanitize(sc.targetName)} <span style="font-weight:400;color:#888;font-size:11px">(${scStamp})</span></h3>${overlayHtml}<div style="display:flex;gap:8px;margin:6px 0"><div style="flex:1;border:1px solid #ff3b30;border-radius:6px;padding:6px;background:#fff3f2"><b>Added</b><div style="font-size:18px;font-weight:bold">${sc.totalAdded||0}</div></div><div style="flex:1;border:1px solid #34c759;border-radius:6px;padding:6px;background:#f0fff5"><b>Removed</b><div style="font-size:18px;font-weight:bold">${sc.totalRemoved||0}</div></div></div>${aiSection}${auditSection}${markupSection}<h4 style="color:#ff3b30;margin:8px 0 4px;font-size:12px">Added Lines</h4><table><thead><tr><th style="width:36px">#</th><th>Line</th></tr></thead><tbody>${addedRows}</tbody></table><h4 style="color:#34c759;margin:8px 0 4px;font-size:12px">Removed Lines</h4><table><thead><tr><th style="width:36px">#</th><th>Line</th></tr></thead><tbody>${removedRows}</tbody></table></div>`;
     });
 
-    if(!drawingSections&&!compareSections){alert("No annotations or comparisons to export.");return;}
+    if(!drawingSections&&!compareSections){try{w.close();}catch{}alert("No annotations or comparisons to export.");return;}
 
-    const w=window.open("","_blank");
-    if(!w){alert("Popup blocked. Please allow popups to export PDF.");return;}
+    w.document.open();
     w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileTimestamp()}-${sanitize(currentProject?.name||"export")}_all_annotations</title><style>
       body{font-family:Arial,sans-serif;padding:22px;color:#111;max-width:900px;margin:0 auto}
       h1{margin:0 0 4px;font-size:22px} h2{margin:22px 0 10px;font-size:17px;border-bottom:2px solid #ddd;padding-bottom:4px}
@@ -4072,28 +4298,29 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       <div style={{padding:20}}>
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf,.pdf,.tif,.tiff" onChange={uploadDrawing} style={{display:"none"}}/>
 
-        {/* Compact action bar */}
-        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:16}}>
+        {/* Action bar */}
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
           <div style={{flex:1,fontSize:12,color:"rgba(0,0,0,0.4)"}}>📁 {currentProject?.name}</div>
           {canUpload&&(
-            <button onClick={()=>fileRef.current?.click()} disabled={uploading} title="Upload" style={{borderRadius:8,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 7px",gap:3}}>
-              {uploading?<Spin size={12}/>:<><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 16V3m0 0L7 8m5-5l5 5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5" strokeLinecap="round"/></svg><span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.45)"}}>Up</span></>}
+            <button onClick={()=>fileRef.current?.click()} disabled={uploading} title="Upload" style={{borderRadius:10,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 12px",gap:5}}>
+              {uploading?<Spin size={16}/>:<><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 16V3m0 0L7 8m5-5l5 5" stroke="rgba(0,0,0,0.55)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="rgba(0,0,0,0.55)" strokeWidth="1.8" strokeLinecap="round"/></svg><span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.55)"}}>Up</span></>}
             </button>
           )}
-          {pdfDrawings.length>=2&&(
-            <button onClick={openCompare} title="Compare" style={{borderRadius:8,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 7px",gap:3}}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="18" rx="1.5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5"/><rect x="13" y="3" width="8" height="18" rx="1.5" stroke="rgba(0,0,0,0.45)" strokeWidth="1.5"/><path d="M7 8h0M7 12h0M17 8h0M17 12h0" stroke="rgba(0,0,0,0.45)" strokeWidth="2" strokeLinecap="round"/></svg>
-              <span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.45)"}}>Diff</span>
+          <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(diffMenuTimer.current);setShowDiffMenu(true);}} onMouseLeave={()=>{diffMenuTimer.current=setTimeout(()=>setShowDiffMenu(false),250);}}>
+            <button onClick={()=>setShowDiffMenu(v=>!v)} title="Diff / Compare" style={{borderRadius:10,background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 12px",gap:5}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="18" rx="1.5" stroke="rgba(88,86,214,0.8)" strokeWidth="1.8"/><rect x="13" y="3" width="8" height="18" rx="1.5" stroke="rgba(88,86,214,0.8)" strokeWidth="1.8"/><path d="M7 8h0M7 12h0M17 8h0M17 12h0" stroke="rgba(88,86,214,0.8)" strokeWidth="2.2" strokeLinecap="round"/></svg>
+              <span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(88,86,214,0.85)"}}>Diff</span>
             </button>
-          )}
-          <button onClick={()=>setShowBatchCompare(true)} title="Batch PDFs Comparison" style={{borderRadius:8,background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 7px",gap:3}}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 7h4v14H3zM10 3h4v18h-4zM17 10h4v11h-4z" stroke="rgba(88,86,214,0.7)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            <span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(88,86,214,0.8)"}}>Batch</span>
-          </button>
+            {showDiffMenu&&<div onMouseEnter={()=>clearTimeout(diffMenuTimer.current)} onMouseLeave={()=>{diffMenuTimer.current=setTimeout(()=>setShowDiffMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,overflow:"hidden",zIndex:100,minWidth:200}}>
+              <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>COMPARE</div>
+              <button onClick={()=>{setShowDiffMenu(false);if(pdfDrawings.length>=2)openCompare();else alert("Upload at least 2 PDF drawings to compare.");}} disabled={pdfDrawings.length<2} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:pdfDrawings.length>=2?"pointer":"not-allowed",color:pdfDrawings.length>=2?"#d8d2ff":"rgba(216,210,255,0.3)",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>Single <span style={{color:"rgba(255,255,255,0.35)",fontWeight:400}}>(PDFs Comparison)</span></button>
+              <button onClick={()=>{setShowDiffMenu(false);setShowBatchCompare(true);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#d8d2ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>Batch <span style={{color:"rgba(255,255,255,0.35)",fontWeight:400}}>(Folders Comparison)</span></button>
+            </div>}
+          </div>
           <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(dnMenuTimer.current);setShowDnMenu(true);}} onMouseLeave={()=>{dnMenuTimer.current=setTimeout(()=>setShowDnMenu(false),250);}}>
-            <button onClick={()=>setShowDnMenu(v=>!v)} title="Download" style={{borderRadius:8,background:"rgba(52,170,220,0.1)",border:"1px solid rgba(52,170,220,0.25)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"6px 7px",gap:3}}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(52,170,220,0.8)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(52,170,220,0.8)" strokeWidth="1.5" strokeLinecap="round"/></svg>
-              <span style={{fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(52,170,220,0.85)"}}>Dn</span>
+            <button onClick={()=>setShowDnMenu(v=>!v)} title="Download" style={{borderRadius:10,background:"rgba(52,170,220,0.1)",border:"1px solid rgba(52,170,220,0.25)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 12px",gap:5}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(52,170,220,0.85)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(52,170,220,0.85)" strokeWidth="1.8" strokeLinecap="round"/></svg>
+              <span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(52,170,220,0.9)"}}>Dn</span>
             </button>
             {showDnMenu&&<div onMouseEnter={()=>clearTimeout(dnMenuTimer.current)} onMouseLeave={()=>{dnMenuTimer.current=setTimeout(()=>setShowDnMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,overflow:"hidden",zIndex:100,minWidth:180}}>
               <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>MARKUPS</div>
@@ -4105,7 +4332,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
               <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>ALL</div>
               <button onClick={()=>{exportAll();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#7fd7ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>All CSV</button>
               <button onClick={()=>{exportAllPdf();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#7fd7ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>All PDF</button>
-              <button onClick={()=>{exportAll();exportAllPdf();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"rgba(48,209,88,0.08)",border:"none",cursor:"pointer",color:"#6ee7a0",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800}}>All-in-One (CSV + PDF)</button>
+              <button onClick={async()=>{setShowDnMenu(false);exportAll();await exportAllPdf();}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"rgba(48,209,88,0.08)",border:"none",cursor:"pointer",color:"#6ee7a0",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800}}>All-in-One (CSV + PDF)</button>
             </div>}
           </div>
         </div>
@@ -5028,12 +5255,20 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     const a=document.createElement("a");a.href=url;a.download=`${fileTimestamp()}-${drawing.name.replace(/\W+/g,"_")}_annotations.csv`;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),500);
   };
 
-  const exportDrawingPdf=()=>{
+  const exportDrawingPdf=async()=>{
     const stamp=new Date().toLocaleString();
     const itemsHtml=combinedItems.length?combinedItems.map((item,i)=>`<tr><td>${i+1}</td><td style="color:${item.kind==="pin"?"#ff3b30":item.kind==="note"?"#5856d6":"#ff6b00"};font-weight:700">${item.kind.toUpperCase()}</td><td>${sanitize(item.title)}</td><td>${sanitize(item.severity)}</td><td>${sanitize(item.detail||"")}</td></tr>`).join(""):`<tr><td colspan="5" style="text-align:center;color:#999">No annotations</td></tr>`;
     const w=window.open("","_blank");
     if(!w){alert("Popup blocked.");return;}
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileTimestamp()}-${sanitize(drawing.name)}_annotations</title><style>body{font-family:Arial,sans-serif;padding:22px;color:#111}h1{margin:0 0 4px;font-size:20px}table{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px}th,td{border:1px solid #ddd;padding:6px;vertical-align:top}th{background:#f5f5f5;text-align:left}.meta{font-size:12px;color:#444;margin-bottom:4px}@media print{.no-print{display:none}}</style></head><body><h1>Drawing Annotations — ${sanitize(drawing.name)}</h1><div class="meta"><b>Project:</b> ${sanitize(currentProject?.name||"—")} | <b>Company:</b> ${sanitize(company?.companyName||"—")} | <b>Generated:</b> ${sanitize(stamp)}</div><div class="meta"><b>Total:</b> ${combinedItems.length} items (${combinedItems.filter(i=>i.kind==="pin").length} pins, ${combinedItems.filter(i=>i.kind==="note").length} notes, ${combinedItems.filter(i=>i.kind==="markup").length} markups)</div><table><tr><th>#</th><th>Type</th><th>Title / Content</th><th>Category</th><th>Detail</th></tr>${itemsHtml}</table><br><button class="no-print" onclick="window.print()">Print / Save as PDF</button></body></html>`);
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileTimestamp()}-${sanitize(drawing.name)}_annotations</title></head><body style="font-family:Arial,sans-serif;padding:40px;text-align:center;color:#888">Rendering annotated drawing… please wait.</body></html>`);
+    w.document.close();
+    let pagesHtml="";
+    try{
+      const pages=await renderDrawingAnnotatedPages(drawing,defects,pins.map(p=>({...p,drawingId:drawing.id})));
+      pagesHtml=pages.length?pages.map(pg=>`<div style="margin:8px 0;page-break-inside:avoid"><div style="font-size:10px;color:#888;margin-bottom:3px">Page ${pg.pageNum}</div><img src="${pg.dataUrl}" style="max-width:100%;height:auto;border:1px solid #ddd;border-radius:6px"/></div>`).join(""):`<div style="font-size:11px;color:#999;padding:8px;border:1px dashed #ddd;border-radius:6px">Drawing preview unavailable.</div>`;
+    }catch(e){console.warn(e);pagesHtml=`<div style="font-size:11px;color:#999">Drawing preview unavailable.</div>`;}
+    w.document.open();
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileTimestamp()}-${sanitize(drawing.name)}_annotations</title><style>body{font-family:Arial,sans-serif;padding:22px;color:#111;max-width:900px;margin:0 auto}h1{margin:0 0 4px;font-size:20px}h2{margin:18px 0 8px;font-size:15px;border-bottom:2px solid #ddd;padding-bottom:4px}table{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px}th,td{border:1px solid #ddd;padding:6px;vertical-align:top}th{background:#f5f5f5;text-align:left}.meta{font-size:12px;color:#444;margin-bottom:4px}@media print{.no-print{display:none}}</style></head><body><h1>Drawing Annotations — ${sanitize(drawing.name)}</h1><div class="meta"><b>Project:</b> ${sanitize(currentProject?.name||"—")} | <b>Company:</b> ${sanitize(company?.companyName||"—")} | <b>Generated:</b> ${sanitize(stamp)}</div><div class="meta"><b>Total:</b> ${combinedItems.length} items (${combinedItems.filter(i=>i.kind==="pin").length} pins, ${combinedItems.filter(i=>i.kind==="note").length} notes, ${combinedItems.filter(i=>i.kind==="markup").length} markups)</div><h2>📐 Annotated Drawing</h2>${pagesHtml}<h2>📋 Annotation Details</h2><table><tr><th>#</th><th>Type</th><th>Title / Content</th><th>Category</th><th>Detail</th></tr>${itemsHtml}</table><button class="no-print" onclick="window.print()">Print / Save as PDF</button><script>window.onload=function(){setTimeout(function(){window.print();},400);};</script></body></html>`);
     w.document.close();
   };
 
@@ -5819,7 +6054,7 @@ function App(){
     <div style={{width:"100%",maxWidth:430,margin:"0 auto",height:"100dvh",background:"#f0ede8",display:"flex",flexDirection:"column",overflow:"hidden"}}>
       {/* Header */}
         <div style={{background:"#1a1a1a",padding:"10px 12px 8px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
-          <button onClick={()=>setShowProjects(true)} style={{background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0,flex:1,minWidth:0,maxWidth:"calc(100% - 214px)"}}>
+          <button onClick={()=>setShowProjects(true)} style={{background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0,flex:1,minWidth:0,maxWidth:"calc(100% - 240px)"}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:8.5,fontWeight:700,color:"#ff6b00",letterSpacing:"0.13em",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{company.companyName}</div>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13.5,fontWeight:800,color:"#fff",marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
             {currentProject?.name||"SELECT PROJECT"} <span style={{fontSize:10,color:"rgba(255,255,255,0.3)"}}>▼</span>
@@ -5827,18 +6062,18 @@ function App(){
         </button>
           <div style={{display:"flex",alignItems:"center",gap:3,flexWrap:"nowrap",justifyContent:"flex-end",flexShrink:0}}>
           {queueCount>0&&(
-              <button onClick={syncQueue} title="Queued offline entries" style={{position:"relative",width:26,height:26,borderRadius:8,background:"rgba(255,149,0,0.2)",border:"1px solid rgba(255,149,0,0.4)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,flexShrink:0}}>
-                {syncing2?<Spin size={9}/>:<span style={{fontSize:11}}>📤</span>}
+              <button onClick={syncQueue} title="Queued offline entries" style={{position:"relative",width:32,height:32,borderRadius:9,background:"rgba(255,149,0,0.2)",border:"1px solid rgba(255,149,0,0.4)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,flexShrink:0}}>
+                {syncing2?<Spin size={12}/>:<span style={{fontSize:15}}>📤</span>}
                 <span style={{position:"absolute",top:-5,right:-4,minWidth:14,height:14,borderRadius:999,background:"#ff9500",color:"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,lineHeight:"14px",padding:"0 3px",textAlign:"center"}}>{queueCount}</span>
             </button>
           )}
-          <button onClick={()=>{setShowAiSearch(true);setTab("defects");setShowHeaderMenu(false);}} title="AI Search" style={{width:26,height:26,borderRadius:8,background:"rgba(255,107,0,0.15)",border:"1px solid rgba(255,107,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:12,flexShrink:0}}>💬</button>
-          <button onClick={()=>{setShowGemini(true);setShowHeaderMenu(false);}} title="AI Setup" style={{width:26,height:26,borderRadius:8,background:aiEnabled?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${aiEnabled?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:12,flexShrink:0}}>🤖</button>
-          <button onClick={()=>setShowTg(true)} title="Telegram" style={{width:26,height:26,borderRadius:8,background:tgEnabled?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${tgEnabled?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21.5 4.5L2.5 11.5L9 13.5L11 20.5L15 15.5L20 18.5L21.5 4.5Z" stroke={tgEnabled?"#ff6b00":"rgba(255,255,255,0.4)"} strokeWidth="1.5" strokeLinejoin="round"/></svg>
+          <button onClick={()=>{setShowAiSearch(true);setTab("defects");setShowHeaderMenu(false);}} title="AI Search" style={{width:32,height:32,borderRadius:9,background:"rgba(255,107,0,0.15)",border:"1px solid rgba(255,107,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:16,flexShrink:0}}>💬</button>
+          <button onClick={()=>{setShowGemini(true);setShowHeaderMenu(false);}} title="AI Setup" style={{width:32,height:32,borderRadius:9,background:aiEnabled?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${aiEnabled?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:16,flexShrink:0}}>🤖</button>
+          <button onClick={()=>setShowTg(true)} title="Telegram" style={{width:32,height:32,borderRadius:9,background:tgEnabled?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${tgEnabled?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21.5 4.5L2.5 11.5L9 13.5L11 20.5L15 15.5L20 18.5L21.5 4.5Z" stroke={tgEnabled?"#ff6b00":"rgba(255,255,255,0.5)"} strokeWidth="1.6" strokeLinejoin="round"/></svg>
           </button>
           <div style={{position:"relative"}} onMouseEnter={()=>setShowHeaderMenu(true)} onMouseLeave={()=>{headerMenuTimer.current=setTimeout(()=>setShowHeaderMenu(false),250);}}>
-            <button onClick={()=>setShowHeaderMenu(!showHeaderMenu)} title="More" style={{width:26,height:26,borderRadius:8,background:showHeaderMenu?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showHeaderMenu?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:14,color:showHeaderMenu?"#ff6b00":"rgba(255,255,255,0.65)",flexShrink:0}}>⋯</button>
+            <button onClick={()=>setShowHeaderMenu(!showHeaderMenu)} title="More" style={{width:32,height:32,borderRadius:9,background:showHeaderMenu?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showHeaderMenu?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:18,color:showHeaderMenu?"#ff6b00":"rgba(255,255,255,0.7)",flexShrink:0}}>⋯</button>
             {showHeaderMenu&&<div onMouseEnter={()=>clearTimeout(headerMenuTimer.current)} onMouseLeave={()=>{headerMenuTimer.current=setTimeout(()=>setShowHeaderMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,overflow:"hidden",zIndex:100,minWidth:170}}>
               <button onClick={()=>{setShowStorage(true);setShowHeaderMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Storage Settings</button>
               {isAdmin&&<button onClick={()=>{setShowUsers(true);setShowHeaderMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Team Management</button>}
@@ -5846,7 +6081,7 @@ function App(){
               <button onClick={()=>{setShowFeedback(true);setFbSent(false);setFbText("");setShowHeaderMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13}}>Feedback</button>
             </div>}
           </div>
-          <button onClick={()=>setShowProfile(!showProfile)} style={{width:26,height:26,borderRadius:"50%",background:"#ff6b00",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,color:"#fff",flexShrink:0}}>
+          <button onClick={()=>setShowProfile(!showProfile)} style={{width:32,height:32,borderRadius:"50%",background:"#ff6b00",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",flexShrink:0}}>
             {(member?.name||"?")[0].toUpperCase()}
           </button>
         </div>
@@ -5856,7 +6091,7 @@ function App(){
       {showProfile&&<ProfilePanel member={member} authUser={authUser} company={company} onClose={()=>setShowProfile(false)} onEmailSettings={()=>{setShowEmail(true);setShowProfile(false);}} onSignOut={signOut}/>}
 
       {/* Main content */}
-      <div style={{flex:1,overflowY:"auto",paddingBottom:72}}>
+      <div style={{flex:1,overflowY:"auto",paddingBottom:84}}>
         {tab==="dashboard"&&<Dashboard defects={defects} onView={setViewing} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} company={company} currentProject={currentProject} member={member} onDrawings={()=>setShowDrawings(true)} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>Viewer access — defect logging disabled</div>}
@@ -5866,11 +6101,11 @@ function App(){
       </div>
 
       {/* Bottom Nav */}
-      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:"#1a1a1a",borderTop:"1px solid rgba(255,255,255,0.06)",display:"flex",padding:"8px 0 12px",zIndex:50}}>
+      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:"#1a1a1a",borderTop:"1px solid rgba(255,255,255,0.06)",display:"flex",padding:"10px 0 14px",zIndex:50}}>
         {navItems.map(n=>(
-          <button key={n.id} onClick={()=>setTab(n.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 0"}}>
-            <div style={{fontSize:n.id==="log"?22:18,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.55)",fontWeight:700,lineHeight:1,fontFamily:n.id==="log"?"'Barlow Condensed',sans-serif":"inherit"}}>{n.icon}</div>
-            <div style={{fontSize:9,fontWeight:700,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em"}}>{n.label.toUpperCase()}</div>
+          <button key={n.id} onClick={()=>setTab(n.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"4px 0"}}>
+            <div style={{fontSize:n.id==="log"?28:24,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.55)",fontWeight:700,lineHeight:1,fontFamily:n.id==="log"?"'Barlow Condensed',sans-serif":"inherit"}}>{n.icon}</div>
+            <div style={{fontSize:11,fontWeight:700,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em"}}>{n.label.toUpperCase()}</div>
           </button>
         ))}
       </div>

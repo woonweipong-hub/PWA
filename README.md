@@ -26,58 +26,109 @@
 ### For admins (5 minutes)
 
 1. Sign up and create a company
-2. Set up integrations (header icons):
-   - **AI** (robot icon) — choose Gemini, Ollama, or OpenAI for photo analysis
-   - **Telegram** (plane icon) — bot token + chat ID for team notifications
-   - **Storage** (server icon) — PocketBase (default), local path, or Google Drive
-   - **Email** — EmailJS for HTML reports (Profile > Email Report Settings)
+2. Set up integrations:
+   - **AI** (robot icon in header) — choose Gemini, Ollama, or OpenAI for photo analysis
+   - **Telegram** (plane icon in header) — bot token + chat ID for team notifications
+   - **Storage** (⋯ more menu → Storage Settings) — PocketBase (default), local path, or Google Drive
+   - **Email** (Profile → Email Report Settings) — EmailJS for HTML reports
 3. Create projects, invite team members via invite link
 
 ---
 
-## Features (65+)
+## Features (100+)
 
 ### Entry Logging
 
 | Feature | Description |
 |---------|-------------|
 | **4 Default Entry Types** | Defect, Observation, Update, Instruction |
-| **Custom Entry Types** | Create your own (Site Checks, Safety Audit, Snag List, etc.) — shared across team |
+| **Custom Entry Types** | Create your own (Site Checks, Safety Audit, Snag List, etc.) — icon + color picker, shared across team |
 | **Component + Issue Selector** | 93 building components, 517 predefined issues — tap to select, minimal typing |
 | **AI Photo Analysis** | Snap a photo, AI auto-fills title, severity, description |
+| **AI Trade + Assignee Suggestion** | Auto-assigns a trade and suggested assignee from the analyzed photo |
+| **AI Safety Risk Scoring** | Auto-escalates entries to Critical when safety risk is detected |
 | **3 AI Providers** | Google Gemini (free cloud), Ollama (local/private), OpenAI/GPT (or compatible) |
-| **Multi-Photo** | Up to 10 photos per entry, compressed for fast upload |
+| **Duplicate Detection** | Similarity check on submit to catch near-duplicates |
+| **Multi-Photo** | Up to 10 photos per entry, auto-compressed for fast upload |
+| **Photo Markup Editor** | Draw arrows, circles, freehand, and text on photos — scaled correctly on save |
 | **Voice Input** | Hold mic button, speak to fill any text field |
 | **Location Hierarchy** | Level > Zone > Room/Area > Grid — predefined dropdowns |
 | **Batch Logging** | Log multiple entries at same location — carries forward level, zone, component |
 | **Cost Tracking** | Impact type, responsible party, amount, supporting docs |
-| **Time Tracking** | Target date, estimated duration |
+| **Time Tracking** | Target date, estimated duration, actual completion |
 
 ### Entry Management
 
 | Feature | Description |
 |---------|-------------|
-| **5-Status Workflow** | Open > In Progress > Done > Verified > Closed |
-| **Filters** | Filter by status, severity, and entry type |
+| **5-Status Workflow** | Open → In Progress → Done → Verified → Closed |
+| **Full-text Search** | Search entries with keyword highlighting |
+| **AI Natural Language Search** | Voice or text — "show me all critical plumbing open this week" |
+| **Filters** | Status, severity, entry type (with clear button) |
 | **Entry Type Badges** | Color-coded type badges on list and detail views |
-| **Comments** | Team discussion thread on each entry (text + voice) |
+| **Verification Photo** | Required photo when closing / verifying an entry |
+| **Before / After Slider** | Compare the original photo with the verification photo |
+| **Resolution Timeline** | Visual, color-coded history of every status change |
+| **Comments** | Team discussion thread (text + voice + photos) |
+| **Comment Photo Markup** | Tap to annotate photos right from the comment thread |
+| **Inline Comment Editing** | Edit your own comments (with edited indicator) |
+| **Quick Reactions** | Thumbs, check, warn, fix emoji reactions |
 | **Telegram Alerts** | New entries, status changes, comments sent to team group |
+
+### Drawings & Floor Plans
+
+| Feature | Description |
+|---------|-------------|
+| **Upload Formats** | JPG, PNG, WEBP, TIFF, PDF (multi-page via PDF.js) |
+| **Zoom / Pan / Pinch-to-Zoom** | Mobile and desktop friendly |
+| **Defect Pins** | Ring-style markers with severity initial, tooltip with entry details |
+| **Critical Pin Pulse** | Animated ring for open Critical pins |
+| **Quick-Pin** | Create a new entry directly from a tap on the drawing |
+| **Defect Heatmap** | Severity-weighted radial overlay across the drawing |
+| **Drawing Markup** | Freehand, arrows, circles, and text notes per drawing |
+| **Color Picker + Undo/Clear** | Full markup control |
+| **Drawing Notes** | Pinned text notes with author + timestamp |
+| **PDF Thumbnails** | Preview cards with pin counts and severity badges |
+
+### PDF Diff & Batch Comparison
+
+| Feature | Description |
+|---------|-------------|
+| **Single PDF Diff** | Compare two drawings revision-to-revision with added/removed line detection |
+| **Diff Overlay** | Visual color overlay showing what changed between base and revision |
+| **Compare Markup** | Draw and annotate on top of the diff |
+| **AI Diff Report** | Generate a written compliance/coordination summary of the changes |
+| **Lock / Approve AI Report** | Audit trail of lock/unlock with reason + user |
+| **Save Comparisons** | Comparisons persist per-project with overlay thumbnails |
+| **Batch Folder Comparison** | Diff two folders of PDFs (Tender vs As-Built, M&E vs Arch, etc.) |
+| **Completeness Check** | Flags missing / extra files between sets |
+| **Editable Set Labels** | Name each set (Tender, As-Built, M&E, Revision A, etc.) |
+| **Diff Dropdown** | Single (PDFs Comparison) and Batch (Folders Comparison) in one menu |
 
 ### Dashboard & Analytics
 
 | Feature | Description |
 |---------|-------------|
-| **Dashboard** | Status cards, severity chart, critical alerts, recent entries |
-| **Admin Analytics** | Entries by day/week/month, per-user rankings, photos stats, by project, AI usage |
+| **Dashboard** | Status cards (5 stages), severity chart, critical alerts, recent entries |
 | **Live Sync** | All team members see updates instantly via PocketBase SSE |
+| **Offline Queue Badge** | Header and Dashboard show queued offline entries |
+| **Admin Analytics** | Entries today/week/month, per-user rankings, photo stats, by entry type, by project, AI usage |
 
-### Reports
+### Reports & Exports
 
 | Feature | Description |
 |---------|-------------|
 | **Site Report** | Filtered statistics with severity/status charts |
+| **Filters** | Severity, status, assignee, and date range |
+| **Email Reports** | HTML report via EmailJS with per-section opt-in (Defects / Drawings / Comparisons) |
+| **Email Preview** | See exactly what will go out before sending |
 | **CSV Export** | Download filtered entries for Excel / Google Sheets |
-| **Email Reports** | Filtered HTML report sent to multiple recipients via EmailJS |
+| **Dn Menu — Markup CSV / PDF** | Export all drawing annotations |
+| **Dn Menu — Compare CSV / PDF** | Export saved PDF comparisons |
+| **Dn Menu — All CSV / PDF** | Combined drawings + comparisons export |
+| **Dn Menu — All-in-One** | CSV and PDF in a single tap |
+| **Annotated Drawings in PDF** | Markup, Compare, and All PDF exports embed rendered drawing pages with pins, notes and markup burned in (not just tables) |
+| **Per-Drawing PDF** | Export a single drawing's annotated pages + annotation list from the viewer |
 
 ### Storage Options
 
@@ -93,16 +144,29 @@
 |---------|-------------|
 | **Multi-tenant** | Each company has isolated data |
 | **Role-based Access** | Admin, Manager, Inspector, Viewer with granular permissions |
-| **Multi-project** | Each company manages multiple projects |
+| **Multi-project** | Each company manages multiple projects, archive / restore |
 | **Invite System** | Invite via link + code, assign role on join |
+| **Team Management** | Admins can edit roles and remove members |
 
-### Installation & Offline
+### Offline & Installation
 
 | Feature | Description |
 |---------|-------------|
 | **Installable** | Add to home screen, works like native app |
-| **Offline Shell** | App shell cached via service worker, works without internet |
+| **Offline Shell** | App shell cached via service worker |
+| **Offline Queue** | Save entries to IndexedDB when offline, auto-sync when back online |
+| **Manual Sync** | Tap the queued badge to force sync |
 | **Server URL Config** | Point at your own PocketBase instance |
+
+### Account & Settings
+
+| Feature | Description |
+|---------|-------------|
+| **Profile Editing** | Display name, job title, email, password |
+| **Integration Settings** | Telegram, AI (multi-provider), Email, Storage — each with test button |
+| **Daily AI Usage Limit** | Per-company cap to control cost |
+| **Help Guide + Feature List** | In-app reference with live feature count |
+| **Feedback Form** | Send suggestions, bugs, or praise from inside the app |
 
 ---
 
@@ -112,14 +176,13 @@
 Phone (SiteShrimp)              Services
 +------------------+            +---------------------------+
 |  React 18 (JSX)  |            |  PocketBase               |
-|  Babel (browser) |----------->|    Auth + DB + Files       |
+|  Babel (browser) |----------->|    Auth + DB + Files      |
 |  Service Worker  |            +---------------------------+
-+------------------+            |  AI (pick one)            |
-       |                        |    Gemini / Ollama / GPT  |
-       |  Photo + Voice ------->|                           |
+|  PDF.js          |            |  AI (pick one)            |
++------------------+            |    Gemini / Ollama / GPT  |
        |                        +---------------------------+
-       |                        |  Storage (pick one)       |
-       |  Photos -------------->|    PocketBase / Local /   |
+       |  Photo + Voice ------->|  Storage (pick one)       |
+       |                        |    PocketBase / Local /   |
        |                        |    Google Drive           |
        |                        +---------------------------+
        |                        |  Telegram Bot API         |
@@ -137,6 +200,7 @@ Phone (SiteShrimp)              Services
 | Layer | Technology | Cost |
 |-------|-----------|------|
 | Frontend | React 18 + Babel (in-browser JSX) | Free |
+| PDF Rendering | PDF.js | Free |
 | Backend | PocketBase (self-hosted) | Free |
 | Auth | PocketBase built-in (email/password) | Free |
 | Database | PocketBase (SQLite) | Free |
@@ -146,7 +210,7 @@ Phone (SiteShrimp)              Services
 | Notifications | Telegram Bot API | Free |
 | Email | EmailJS | Free (200/month) |
 | Hosting | GitHub Pages | Free |
-| **Total** |  | **$0/month** |
+| **Total** | — | **$0/month** |
 
 OpenAI requires a paid API key. Gemini and Ollama are free.
 
@@ -175,13 +239,13 @@ OpenAI requires a paid API key. Gemini and Ollama are free.
 **PocketBase (default)** — no setup needed, photos stored on your server
 
 **Local Path** — for self-hosted setups:
-1. Tap storage icon (header) → select Local Path
+1. Header ⋯ menu → Storage Settings → select Local Path
 2. Enter folder path (e.g. `/opt/siteshrimp/photos`)
 3. Test path → Save
 
 **Google Drive** — for mobile users:
 1. Create OAuth Client ID at **https://console.cloud.google.com**
-2. Tap storage icon → select Google Drive → paste Client ID → Connect
+2. Header ⋯ menu → Storage Settings → select Google Drive → paste Client ID → Connect
 
 ### Telegram Notifications
 
@@ -199,7 +263,9 @@ OpenAI requires a paid API key. Gemini and Ollama are free.
 
 ## Data Model (PocketBase)
 
-**12 collections:** defects, companies, members, projects, invites, settings, activity, location_presets, component_presets, drawings, pins, counters
+**12 collections:** `defects`, `companies`, `members`, `projects`, `invites`, `settings`, `activity`, `location_presets`, `component_presets`, `drawings`, `pins`, `counters`
+
+Saved PDF comparisons and drawing markup/notes are stored client-side in `localStorage` per project and are included in exports.
 
 ### Entry fields
 
@@ -207,10 +273,10 @@ OpenAI requires a paid API key. Gemini and Ollama are free.
 defects: {
   entryType, title, description, severity, status,
   component, locationLevel, locationZone, locationSubzone, locationGrid,
-  photo (up to 10), assignee, dueDate, duration,
+  photo (up to 10), photoOriginal, assignee, assigneeId, dueDate, duration, actualCompleted,
   costImpact, costResponsible, costAmount, costDoc, costRemarks,
   loggedBy, loggedByRole, projectId, projectName, companyId,
-  storageMode, storagePath, gdrivePhotos,
+  storageMode, storagePath, gdrivePhotos, drawingPinId,
   comments, createdAt, updatedAt, closedAt, verifiedAt, verifiedBy
 }
 ```
@@ -227,6 +293,7 @@ defects: {
 | Verify / Close | Yes | Verify only | No | No |
 | Manage team | Yes | No | No | No |
 | Manage projects | Yes | Yes | No | No |
+| Place drawing pins | Yes | Yes | Yes | No |
 | Export | Yes | Yes | No | No |
 | Comment | Yes | Yes | Yes | No |
 | View admin analytics | Yes | No | No | No |
@@ -237,7 +304,7 @@ defects: {
 
 ```
 SiteShrimp/
-  index.html              # App shell + CDN libs
+  index.html              # App shell + CDN libs (React, Babel, PDF.js, EmailJS)
   js/
     app.js                # React components + business logic
     constants.js          # Entry types, components, issues, locations, statuses
@@ -283,24 +350,17 @@ The server hook supports all three AI providers via environment variables:
 
 ## Roadmap
 
-### Coming Soon
-- [ ] Drawings / floor plan pins — tap on a drawing to place defect pins
-- [ ] Profile editing — update name, job title, avatar
-- [ ] Search across entries — full-text search with filters
-- [ ] Offline submission queue — log entries offline, auto-sync when back online
-- [ ] Push notifications — browser push for status changes and comments
-- [ ] Location presets per project — save and reuse custom location hierarchies
-- [ ] Component presets per project — save and reuse custom component lists
-- [ ] Photo annotation — draw on photos to highlight defects
-- [ ] PDF report generation — downloadable formatted reports
-- [ ] Audit trail — full history of who changed what and when
-
 ### Ideas
-- [ ] QR code scanning for location/asset tagging
+- [ ] QR code scanning for location / asset tagging
 - [ ] Integration with project management tools (Procore, Aconex)
 - [ ] Multi-language support (Mandarin, Malay, Tamil, Thai)
 - [ ] Handover checklist templates
 - [ ] Automated follow-up reminders (overdue entries)
+- [ ] Per-page markup tracking on multi-page drawings
+- [ ] Push notifications (browser push for status changes and comments)
+- [ ] Full audit trail view (who changed what and when) beyond comparison locks
+
+Most of the original roadmap (drawings/pins, photo annotation, PDF reports, offline queue, search, profile editing, location/component presets) has already shipped — see the Features list above.
 
 ---
 
