@@ -6330,6 +6330,18 @@ function App(){
     return true;
   });
 
+  // Setup progress — counts optional setup items that actually add value.
+  // Storage is excluded because its default (PocketBase) is already a valid choice.
+  const setupChecks={
+    project:(projects?.length||0)>0,
+    team:isAdmin?(members?.length||0)>1:true,
+    ai:!!aiEnabled,
+    telegram:!!tgEnabled,
+  };
+  const setupTotal=Object.keys(setupChecks).length;
+  const setupDone=Object.values(setupChecks).filter(Boolean).length;
+  const setupComplete=setupDone===setupTotal;
+
   return(
     <div style={{width:"100%",maxWidth:430,margin:"0 auto",height:"100dvh",background:"#f0ede8",display:"flex",flexDirection:"column",overflow:"hidden"}}>
       {/* Header */}
@@ -6343,15 +6355,21 @@ function App(){
           <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"nowrap",justifyContent:"flex-end",flexShrink:0}}>
           {/* Settings dropdown — all one-time setup in one place */}
           <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(settingsMenuTimer.current);setShowSettingsMenu(true);}} onMouseLeave={()=>{settingsMenuTimer.current=setTimeout(()=>setShowSettingsMenu(false),250);}}>
-            <button onClick={()=>setShowSettingsMenu(v=>!v)} title="Settings" style={{width:34,height:34,borderRadius:9,background:showSettingsMenu?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showSettingsMenu?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:17,color:showSettingsMenu?"#ff6b00":"rgba(255,255,255,0.75)",flexShrink:0}}>⚙</button>
-            {showSettingsMenu&&<div onMouseEnter={()=>clearTimeout(settingsMenuTimer.current)} onMouseLeave={()=>{settingsMenuTimer.current=setTimeout(()=>setShowSettingsMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,overflow:"hidden",zIndex:100,minWidth:210,boxShadow:"0 6px 20px rgba(0,0,0,0.4)"}}>
+            <button onClick={()=>setShowSettingsMenu(v=>!v)} title={setupComplete?"Settings (all configured)":`Settings — ${setupDone}/${setupTotal} configured`} style={{position:"relative",width:34,height:34,borderRadius:9,background:showSettingsMenu?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showSettingsMenu?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:17,color:showSettingsMenu?"#ff6b00":"rgba(255,255,255,0.75)",flexShrink:0}}>⚙
+              {!setupComplete&&<span style={{position:"absolute",top:-4,right:-4,minWidth:16,height:16,borderRadius:999,background:"#ff9500",color:"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,lineHeight:"16px",padding:"0 4px",textAlign:"center",border:"1.5px solid #1a1a1a"}}>{setupDone}/{setupTotal}</span>}
+            </button>
+            {showSettingsMenu&&<div onMouseEnter={()=>clearTimeout(settingsMenuTimer.current)} onMouseLeave={()=>{settingsMenuTimer.current=setTimeout(()=>setShowSettingsMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,overflow:"hidden",zIndex:100,minWidth:220,boxShadow:"0 6px 20px rgba(0,0,0,0.4)"}}>
+              <div style={{padding:"10px 14px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <span style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.5)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>SETUP</span>
+                <span style={{fontSize:10,fontWeight:800,color:setupComplete?"#30d158":"#ff9500",fontFamily:"'Barlow Condensed',sans-serif"}}>{setupDone}/{setupTotal} {setupComplete?"· COMPLETE":"· CONFIGURED"}</span>
+              </div>
               <div style={{padding:"8px 14px 4px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>PROJECT</div>
-              <button onClick={()=>{setShowProjects(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13}}>📁 Projects</button>
-              {isAdmin&&<button onClick={()=>{setShowUsers(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13}}>👥 Team Management</button>}
+              <button onClick={()=>{setShowProjects(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span>📁 Projects</span><span style={{color:setupChecks.project?"#30d158":"rgba(255,255,255,0.25)",fontSize:12}}>{setupChecks.project?"✓":"—"}</span></button>
+              {isAdmin&&<button onClick={()=>{setShowUsers(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span>👥 Team Management</span><span style={{color:setupChecks.team?"#30d158":"rgba(255,255,255,0.25)",fontSize:12}}>{setupChecks.team?"✓":"—"}</span></button>}
               <div style={{padding:"8px 14px 4px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif",borderTop:"1px solid rgba(255,255,255,0.06)",marginTop:2}}>ENHANCE</div>
-              <button onClick={()=>{setShowGemini(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span>🤖 AI Setup</span>{aiEnabled&&<span style={{color:"#30d158",fontSize:11}}>✓</span>}</button>
-              <button onClick={()=>{setShowTg(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span>✈ Telegram Alerts</span>{tgEnabled&&<span style={{color:"#30d158",fontSize:11}}>✓</span>}</button>
-              <button onClick={()=>{setShowStorage(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13}}>💾 Storage</button>
+              <button onClick={()=>{setShowGemini(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span>🤖 AI Setup</span><span style={{color:setupChecks.ai?"#30d158":"rgba(255,255,255,0.25)",fontSize:12}}>{setupChecks.ai?"✓":"—"}</span></button>
+              <button onClick={()=>{setShowTg(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span>✈ Telegram Alerts</span><span style={{color:setupChecks.telegram?"#30d158":"rgba(255,255,255,0.25)",fontSize:12}}>{setupChecks.telegram?"✓":"—"}</span></button>
+              <button onClick={()=>{setShowStorage(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span>💾 Storage</span><span style={{color:"rgba(255,255,255,0.4)",fontSize:10}}>optional</span></button>
             </div>}
           </div>
           {/* Avatar dropdown — profile, admin analytics, help, feedback, sign out */}
