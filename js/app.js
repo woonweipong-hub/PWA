@@ -1795,7 +1795,7 @@ function GeminiSettings({onClose,companyId}){
         {provider==="gemini"&&(
           <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#1a1a1a",marginBottom:12}}>GOOGLE GEMINI SETUP</div>
-            {[["1","Go to aistudio.google.com and sign in with Google"],["2","Click Get API Key → Create API Key"],["3","Copy the key and paste below → Test → Save"]].map(([n,t])=>(
+            {[["1",<>Go to <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" style={{color:"#4285f4",fontWeight:700,textDecoration:"underline"}}>aistudio.google.com</a> and sign in with Google</>],["2","Click Get API Key → Create API Key"],["3","Copy the key and paste below → Test → Save"]].map(([n,t])=>(
               <div key={n} style={{display:"flex",gap:10,marginBottom:8,alignItems:"flex-start"}}>
                 <div style={{width:22,height:22,borderRadius:"50%",background:"#4285f4",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff"}}>{n}</div>
                 <div style={{fontSize:12,color:"#444",lineHeight:1.5,paddingTop:2}}>{t}</div>
