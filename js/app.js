@@ -2627,7 +2627,7 @@ function AiSearch({defects,onApplyFilters,onClose}){
   );
 }
 
-function DefectsList({defects,onView,nlFilters,onClearNl}){
+function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled}){
   const[filter,setFilter]=useState("All");const[sevF,setSevF]=useState("All");const[typeF,setTypeF]=useState("All");
   const[search,setSearch]=useState("");const[showFilters,setShowFilters]=useState(false);
   const searchRef=useRef(null);
@@ -2666,11 +2666,14 @@ function DefectsList({defects,onView,nlFilters,onClearNl}){
         {(activeFilters>0||q)&&<button onClick={clearAll} style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:20,padding:"4px 10px",color:"#ff3b30",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>CLEAR ({activeFilters+(q?1:0)})</button>}
       </div>
 
-      {/* Search bar */}
-      <div style={{position:"relative",marginBottom:14}}>
-        <div style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:14,color:"rgba(0,0,0,0.3)",pointerEvents:"none"}}>🔍</div>
-        <input ref={searchRef} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search title, description, component, assignee, location..." style={{...inp,width:"100%",flex:"unset",paddingLeft:34,paddingRight:search?34:12,fontSize:13}}/>
-        {search&&<button onClick={()=>{setSearch("");searchRef.current?.focus();}} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"rgba(0,0,0,0.08)",border:"none",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:12,color:"rgba(0,0,0,0.4)",padding:0}}>×</button>}
+      {/* Search bar + AI Search */}
+      <div style={{display:"flex",gap:8,marginBottom:14}}>
+        <div style={{position:"relative",flex:1}}>
+          <div style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:14,color:"rgba(0,0,0,0.3)",pointerEvents:"none"}}>🔍</div>
+          <input ref={searchRef} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search title, description, assignee..." style={{...inp,width:"100%",flex:"unset",paddingLeft:34,paddingRight:search?34:12,fontSize:13}}/>
+          {search&&<button onClick={()=>{setSearch("");searchRef.current?.focus();}} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"rgba(0,0,0,0.08)",border:"none",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:12,color:"rgba(0,0,0,0.4)",padding:0}}>×</button>}
+        </div>
+        {onAiSearch&&<button onClick={onAiSearch} title={aiEnabled?"AI natural-language search":"Configure AI in Settings to enable"} disabled={!aiEnabled} style={{background:aiEnabled?"rgba(255,107,0,0.12)":"rgba(0,0,0,0.04)",border:`1px solid ${aiEnabled?"rgba(255,107,0,0.3)":"rgba(0,0,0,0.08)"}`,borderRadius:10,padding:"0 14px",fontSize:16,cursor:aiEnabled?"pointer":"not-allowed",color:aiEnabled?"#ff6b00":"rgba(0,0,0,0.25)",flexShrink:0}}>💬</button>}
       </div>
 
       {/* Filter toggle */}
@@ -3138,8 +3141,7 @@ function ProfilePanel({member,authUser,company,onClose,onEmailSettings,onSignOut
           <button onClick={savePassword} disabled={saving||!oldPass||!newPass} style={{width:"100%",background:oldPass&&newPass?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:"12px",color:oldPass&&newPass?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>UPDATE PASSWORD</button>
         </div>
 
-        {/* Actions */}
-        <button onClick={onEmailSettings} style={{width:"100%",background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:14,padding:"14px 16px",marginBottom:10,cursor:"pointer",display:"flex",alignItems:"center",gap:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#1a1a1a"}}>📧 Email Report Settings</button>
+        {/* Email report settings are managed under the Report tab */}
         <button onClick={onSignOut} style={{width:"100%",background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.15)",borderRadius:14,padding:"14px 16px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#ff3b30"}}>Sign Out</button>
       </div>
     </div>
@@ -6023,7 +6025,6 @@ function App(){
   const[showTg,setShowTg]=useState(false);
   const[showEmail,setShowEmail]=useState(false);
   const[showGemini,setShowGemini]=useState(false);
-  const[showHeaderMenu,setShowHeaderMenu]=useState(false);const headerMenuTimer=useRef(null);
   const[showUsers,setShowUsers]=useState(false);
   const[showProjects,setShowProjects]=useState(false);
   const[showProfile,setShowProfile]=useState(false);
@@ -6033,6 +6034,8 @@ function App(){
   const[showDrawings,setShowDrawings]=useState(false);
   const[showDrawingsCompare,setShowDrawingsCompare]=useState(false);
   const[showAdminAnalytics,setShowAdminAnalytics]=useState(false);
+  const[showSettingsMenu,setShowSettingsMenu]=useState(false);const settingsMenuTimer=useRef(null);
+  const[showAvatarMenu,setShowAvatarMenu]=useState(false);const avatarMenuTimer=useRef(null);
   const[showAiSearch,setShowAiSearch]=useState(false);
   const[nlFilters,setNlFilters]=useState(null);
   const[queueCount,setQueueCount]=useState(0);
@@ -6337,31 +6340,37 @@ function App(){
             {currentProject?.name||"SELECT PROJECT"} <span style={{fontSize:10,color:"rgba(255,255,255,0.3)"}}>▼</span>
           </div>
         </button>
-          <div style={{display:"flex",alignItems:"center",gap:3,flexWrap:"nowrap",justifyContent:"flex-end",flexShrink:0}}>
-          {queueCount>0&&(
-              <button onClick={syncQueue} title="Queued offline entries" style={{position:"relative",width:32,height:32,borderRadius:9,background:"rgba(255,149,0,0.2)",border:"1px solid rgba(255,149,0,0.4)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,flexShrink:0}}>
-                {syncing2?<Spin size={12}/>:<span style={{fontSize:15}}>📤</span>}
-                <span style={{position:"absolute",top:-5,right:-4,minWidth:14,height:14,borderRadius:999,background:"#ff9500",color:"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,lineHeight:"14px",padding:"0 3px",textAlign:"center"}}>{queueCount}</span>
-            </button>
-          )}
-          <button onClick={()=>{setShowAiSearch(true);setTab("defects");setShowHeaderMenu(false);}} title="AI Search" style={{width:32,height:32,borderRadius:9,background:"rgba(255,107,0,0.15)",border:"1px solid rgba(255,107,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:16,flexShrink:0}}>💬</button>
-          <button onClick={()=>{setShowGemini(true);setShowHeaderMenu(false);}} title="AI Setup" style={{width:32,height:32,borderRadius:9,background:aiEnabled?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${aiEnabled?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:16,flexShrink:0}}>🤖</button>
-          <button onClick={()=>setShowTg(true)} title="Telegram" style={{width:32,height:32,borderRadius:9,background:tgEnabled?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${tgEnabled?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21.5 4.5L2.5 11.5L9 13.5L11 20.5L15 15.5L20 18.5L21.5 4.5Z" stroke={tgEnabled?"#ff6b00":"rgba(255,255,255,0.5)"} strokeWidth="1.6" strokeLinejoin="round"/></svg>
-          </button>
-          <div style={{position:"relative"}} onMouseEnter={()=>setShowHeaderMenu(true)} onMouseLeave={()=>{headerMenuTimer.current=setTimeout(()=>setShowHeaderMenu(false),250);}}>
-            <button onClick={()=>setShowHeaderMenu(!showHeaderMenu)} title="More" style={{width:32,height:32,borderRadius:9,background:showHeaderMenu?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showHeaderMenu?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:18,color:showHeaderMenu?"#ff6b00":"rgba(255,255,255,0.7)",flexShrink:0}}>⋯</button>
-            {showHeaderMenu&&<div onMouseEnter={()=>clearTimeout(headerMenuTimer.current)} onMouseLeave={()=>{headerMenuTimer.current=setTimeout(()=>setShowHeaderMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,overflow:"hidden",zIndex:100,minWidth:170}}>
-              <button onClick={()=>{setShowStorage(true);setShowHeaderMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Storage Settings</button>
-              {isAdmin&&<button onClick={()=>{setShowUsers(true);setShowHeaderMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Team Management</button>}
-              {isAdmin&&<button onClick={()=>{setShowAdminAnalytics(true);setShowHeaderMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Admin Analytics</button>}
-              <button onClick={()=>{setShowHelp(true);setShowHeaderMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Help</button>
-              <button onClick={()=>{setShowFeedback(true);setFbSent(false);setFbText("");setShowHeaderMenu(false);}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13}}>Feedback</button>
+          <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"nowrap",justifyContent:"flex-end",flexShrink:0}}>
+          {/* Settings dropdown — all one-time setup in one place */}
+          <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(settingsMenuTimer.current);setShowSettingsMenu(true);}} onMouseLeave={()=>{settingsMenuTimer.current=setTimeout(()=>setShowSettingsMenu(false),250);}}>
+            <button onClick={()=>setShowSettingsMenu(v=>!v)} title="Settings" style={{width:34,height:34,borderRadius:9,background:showSettingsMenu?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showSettingsMenu?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:17,color:showSettingsMenu?"#ff6b00":"rgba(255,255,255,0.75)",flexShrink:0}}>⚙</button>
+            {showSettingsMenu&&<div onMouseEnter={()=>clearTimeout(settingsMenuTimer.current)} onMouseLeave={()=>{settingsMenuTimer.current=setTimeout(()=>setShowSettingsMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,overflow:"hidden",zIndex:100,minWidth:210,boxShadow:"0 6px 20px rgba(0,0,0,0.4)"}}>
+              <div style={{padding:"8px 14px 4px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>PROJECT</div>
+              <button onClick={()=>{setShowProjects(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13}}>📁 Projects</button>
+              {isAdmin&&<button onClick={()=>{setShowUsers(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13}}>👥 Team Management</button>}
+              <div style={{padding:"8px 14px 4px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif",borderTop:"1px solid rgba(255,255,255,0.06)",marginTop:2}}>ENHANCE</div>
+              <button onClick={()=>{setShowGemini(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span>🤖 AI Setup</span>{aiEnabled&&<span style={{color:"#30d158",fontSize:11}}>✓</span>}</button>
+              <button onClick={()=>{setShowTg(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span>✈ Telegram Alerts</span>{tgEnabled&&<span style={{color:"#30d158",fontSize:11}}>✓</span>}</button>
+              <button onClick={()=>{setShowStorage(true);setShowSettingsMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13}}>💾 Storage</button>
             </div>}
           </div>
-          <button onClick={()=>setShowProfile(!showProfile)} style={{width:32,height:32,borderRadius:"50%",background:"#ff6b00",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",flexShrink:0}}>
-            {(member?.name||"?")[0].toUpperCase()}
-          </button>
+          {/* Avatar dropdown — profile, admin analytics, help, feedback, sign out */}
+          <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(avatarMenuTimer.current);setShowAvatarMenu(true);}} onMouseLeave={()=>{avatarMenuTimer.current=setTimeout(()=>setShowAvatarMenu(false),250);}}>
+            <button onClick={()=>setShowAvatarMenu(v=>!v)} style={{width:34,height:34,borderRadius:"50%",background:"#ff6b00",border:showAvatarMenu?"2px solid #fff":"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",flexShrink:0}}>
+              {(member?.name||"?")[0].toUpperCase()}
+            </button>
+            {showAvatarMenu&&<div onMouseEnter={()=>clearTimeout(avatarMenuTimer.current)} onMouseLeave={()=>{avatarMenuTimer.current=setTimeout(()=>setShowAvatarMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,overflow:"hidden",zIndex:100,minWidth:200,boxShadow:"0 6px 20px rgba(0,0,0,0.4)"}}>
+              <div style={{padding:"10px 14px 8px",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#fff"}}>{member?.name||"—"}</div>
+                <div style={{fontSize:10,color:"rgba(255,255,255,0.4)"}}>{member?.role||""}{member?.jobTitle?` · ${member.jobTitle}`:""}</div>
+              </div>
+              <button onClick={()=>{setShowProfile(true);setShowAvatarMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13}}>👤 My Profile</button>
+              {isAdmin&&<button onClick={()=>{setShowAdminAnalytics(true);setShowAvatarMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13}}>📊 Admin Analytics</button>}
+              <button onClick={()=>{setShowHelp(true);setShowAvatarMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13}}>❓ Help</button>
+              <button onClick={()=>{setShowFeedback(true);setFbSent(false);setFbText("");setShowAvatarMenu(false);}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#fff",fontSize:13}}>💬 Feedback</button>
+              <button onClick={()=>{setShowAvatarMenu(false);signOut();}} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"none",border:"none",cursor:"pointer",color:"#ff8f8f",fontSize:13,borderTop:"1px solid rgba(255,255,255,0.06)"}}>↩ Sign Out</button>
+            </div>}
+          </div>
         </div>
       </div>
 
@@ -6374,7 +6383,7 @@ function App(){
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>Viewer access — defect logging disabled</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("dashboard")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} initialCompare={showDrawingsCompare}/>}
-        {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)}/>}
+        {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled}/>}
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company}/>}
       </div>
 
