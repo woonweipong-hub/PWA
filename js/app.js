@@ -3360,6 +3360,9 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[compareMarkupColor,setCompareMarkupColor]=useState("#ff3b30");
   const[compareMarkupStrokes,setCompareMarkupStrokes]=useState([]);
   const[compareMarkupCurrent,setCompareMarkupCurrent]=useState(null);
+  const[compareSelectedIdx,setCompareSelectedIdx]=useState(null);
+  const compareDragRef=useRef(null);
+  const[compareTextSize,setCompareTextSize]=useState(2.4);
   const[compareTextPoint,setCompareTextPoint]=useState(null);
   const[compareTextValue,setCompareTextValue]=useState("");
   const[savedComparisons,setSavedComparisons]=useState(()=>getSavedComparisons(currentProject?.id||""));
@@ -3857,6 +3860,11 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     }
     const p=getCompareMarkupPos(e);if(!p)return;
     e.preventDefault();
+    if(compareMarkupTool==="select"){
+      // Clicking empty space deselects; clicking a stroke is handled by the stroke's own onMouseDown
+      setCompareSelectedIdx(null);
+      return;
+    }
     if(compareMarkupTool==="text"){
       setCompareTextPoint(p);
       setCompareTextValue("");
@@ -3866,7 +3874,33 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     else setCompareMarkupCurrent({type:compareMarkupTool,color:compareMarkupColor,start:p,end:p});
   };
 
+  // Translate a stroke by (dx,dy) in percentage coords
+  const translateStroke=(s,dx,dy)=>{
+    const clamp=v=>Math.max(0,Math.min(100,v));
+    if(s.type==="freehand"&&Array.isArray(s.points))return{...s,points:s.points.map(pt=>({x:clamp(pt.x+dx),y:clamp(pt.y+dy)}))};
+    if((s.type==="arrow"||s.type==="circle")&&s.start&&s.end)return{...s,start:{x:clamp(s.start.x+dx),y:clamp(s.start.y+dy)},end:{x:clamp(s.end.x+dx),y:clamp(s.end.y+dy)}};
+    if(s.type==="text"&&s.pos)return{...s,pos:{x:clamp(s.pos.x+dx),y:clamp(s.pos.y+dy)}};
+    return s;
+  };
+
+  const onCompareStrokeDown=(idx,e)=>{
+    if(compareMarkupTool!=="select")return;
+    e.preventDefault();e.stopPropagation();
+    const p=getCompareMarkupPos(e);if(!p)return;
+    setCompareSelectedIdx(idx);
+    compareDragRef.current={idx,startX:p.x,startY:p.y,orig:compareMarkupStrokes[idx]};
+  };
+
   const onCompareMarkupMove=e=>{
+    // Dragging a selected stroke
+    if(compareDragRef.current){
+      const p=getCompareMarkupPos(e);if(!p)return;
+      e.preventDefault();
+      const d=compareDragRef.current;
+      const dx=p.x-d.startX,dy=p.y-d.startY;
+      setCompareMarkupStrokes(strokes=>strokes.map((s,i)=>i===d.idx?translateStroke(d.orig,dx,dy):s));
+      return;
+    }
     // Pinch zoom move
     if(e.touches&&e.touches.length===2&&comparePinchDist.current){
       e.preventDefault();
@@ -3900,6 +3934,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
 
   const onCompareMarkupUp=()=>{
     comparePinchDist.current=null;comparePanStart.current=null;
+    compareDragRef.current=null;
     if(compareMarkupCurrent){setCompareMarkupStrokes(s=>[...s,compareMarkupCurrent]);setCompareMarkupCurrent(null);}
   };
 
@@ -3908,33 +3943,54 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
 
   const addCompareText=()=>{
     if(!compareTextPoint||!compareTextValue.trim())return;
-    setCompareMarkupStrokes(s=>[...s,{type:"text",color:compareMarkupColor,pos:compareTextPoint,text:compareTextValue.trim()}]);
+    setCompareMarkupStrokes(s=>[...s,{type:"text",color:compareMarkupColor,pos:compareTextPoint,text:compareTextValue.trim(),fontSize:compareTextSize}]);
     setCompareTextPoint(null);setCompareTextValue("");
   };
 
-  const renderCompareMarkup=(strokes)=>strokes.map((s,i)=>{
+  // Update font size of the currently selected text stroke (and the default for new text)
+  const setCompareTextSizeBoth=(size)=>{
+    setCompareTextSize(size);
+    if(compareSelectedIdx!=null){
+      setCompareMarkupStrokes(strokes=>strokes.map((s,i)=>(i===compareSelectedIdx&&s.type==="text")?{...s,fontSize:size}:s));
+    }
+  };
+
+  const deleteCompareSelected=()=>{
+    if(compareSelectedIdx==null)return;
+    setCompareMarkupStrokes(strokes=>strokes.filter((_,i)=>i!==compareSelectedIdx));
+    setCompareSelectedIdx(null);
+  };
+
+  const renderCompareMarkup=(strokes,interactive)=>strokes.map((s,i)=>{
+    const isSel=interactive&&compareSelectedIdx===i;
+    const hit=interactive?{style:{cursor:"move",pointerEvents:"visiblePainted"},onMouseDown:e=>onCompareStrokeDown(i,e),onTouchStart:e=>onCompareStrokeDown(i,e)}:{};
+    const selStroke=isSel?"#5856d6":s.color;
+    const selWidth=isSel?"0.9":"0.5";
     if(s.type==="freehand"&&s.points.length>1){
       const d="M"+s.points.map(p=>`${p.x} ${p.y}`).join("L");
-      return <path key={i} d={d} stroke={s.color} strokeWidth="0.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>;
+      return <path key={i} d={d} stroke={selStroke} strokeWidth={selWidth} fill="none" strokeLinecap="round" strokeLinejoin="round" {...hit}/>;
     }
     if(s.type==="arrow"&&s.start&&s.end){
       const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y,len=Math.sqrt(dx*dx+dy*dy);
       if(len<0.5)return null;
       const angle=Math.atan2(dy,dx),hl=1.8;
-      return <g key={i}><line x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={s.color} strokeWidth="0.5"/>
-        <line x1={s.end.x} y1={s.end.y} x2={s.end.x-hl*Math.cos(angle-0.45)} y2={s.end.y-hl*Math.sin(angle-0.45)} stroke={s.color} strokeWidth="0.5"/>
-        <line x1={s.end.x} y1={s.end.y} x2={s.end.x-hl*Math.cos(angle+0.45)} y2={s.end.y-hl*Math.sin(angle+0.45)} stroke={s.color} strokeWidth="0.5"/></g>;
+      return <g key={i} {...hit}><line x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={selStroke} strokeWidth={selWidth}/>
+        <line x1={s.end.x} y1={s.end.y} x2={s.end.x-hl*Math.cos(angle-0.45)} y2={s.end.y-hl*Math.sin(angle-0.45)} stroke={selStroke} strokeWidth={selWidth}/>
+        <line x1={s.end.x} y1={s.end.y} x2={s.end.x-hl*Math.cos(angle+0.45)} y2={s.end.y-hl*Math.sin(angle+0.45)} stroke={selStroke} strokeWidth={selWidth}/></g>;
     }
     if(s.type==="circle"&&s.start&&s.end){
       const cx=(s.start.x+s.end.x)/2,cy=(s.start.y+s.end.y)/2;
       const rx=Math.abs(s.end.x-s.start.x)/2,ry=Math.abs(s.end.y-s.start.y)/2;
       if(rx<0.3&&ry<0.3)return null;
-      return <ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry} stroke={s.color} strokeWidth="0.5" fill="none"/>;
+      return <ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry} stroke={selStroke} strokeWidth={selWidth} fill="none" {...hit}/>;
     }
     if(s.type==="text"&&s.pos&&s.text){
-      return <g key={i}>
-        <rect x={s.pos.x-0.2} y={s.pos.y-3.2} width={Math.max(8,s.text.length*1.3)} height="4" rx="0.6" fill="rgba(0,0,0,0.65)"/>
-        <text x={s.pos.x+0.4} y={s.pos.y-0.6} fontSize="2.4" fontWeight="700" fill={s.color} fontFamily="Barlow Condensed, sans-serif">{s.text}</text>
+      const fs=s.fontSize||2.4;
+      const bw=Math.max(fs*3.3,s.text.length*fs*0.54);
+      const bh=fs*1.67;
+      return <g key={i} {...hit}>
+        <rect x={s.pos.x-0.2} y={s.pos.y-bh+0.4} width={bw} height={bh} rx={fs*0.25} fill="rgba(0,0,0,0.65)" stroke={isSel?"#5856d6":"none"} strokeWidth={isSel?"0.3":"0"}/>
+        <text x={s.pos.x+0.4} y={s.pos.y-0.6} fontSize={fs} fontWeight="700" fill={s.color} fontFamily="Barlow Condensed, sans-serif">{s.text}</text>
       </g>;
     }
     return null;
@@ -4764,9 +4820,9 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                       onWheel={e=>{e.preventDefault();setCompareZoom(z=>{const nz=Math.max(1,Math.min(5,z+(e.deltaY<0?0.3:-0.3)));if(nz<=1)setComparePan({x:0,y:0});return nz;});}}>
                       <div style={{transform:`scale(${compareZoom}) translate(${comparePan.x/compareZoom}px,${comparePan.y/compareZoom}px)`,transformOrigin:"center center"}}>
                         <canvas ref={compareOverlayCanvasRef} style={{width:"100%",display:"block",background:"#fff"}}/>
-                        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}}>
-                          {renderCompareMarkup(compareMarkupStrokes)}
-                          {compareMarkupCurrent&&renderCompareMarkup([compareMarkupCurrent])}
+                        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:compareMarkupTool==="select"?"auto":"none"}}>
+                          {renderCompareMarkup(compareMarkupStrokes,compareMarkupTool==="select")}
+                          {compareMarkupCurrent&&renderCompareMarkup([compareMarkupCurrent],false)}
                           {compareHighlight&&<>
                             <rect x={compareHighlight.x-1} y={compareHighlight.y-1.5} width={Math.max(compareHighlight.w+2,12)} height="3" rx="0.5" fill="none" stroke={compareHighlight.color} strokeWidth="0.4" strokeDasharray="1,0.5">
                               <animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/>
@@ -4828,14 +4884,23 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
               {/* Markup tools — below overlay */}
               {(compareBaseId&&compareTargetId)&&(
                 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,flexWrap:"wrap"}}>
-                  {[{id:"freehand",label:"✏"},{id:"arrow",label:"↗"},{id:"circle",label:"○"},{id:"text",label:"T"}].map(t=>(
-                    <button key={t.id} onClick={()=>setCompareMarkupTool(t.id)} style={{width:34,height:34,borderRadius:8,border:compareMarkupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:compareMarkupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{t.label}</button>
+                  {[{id:"select",label:"✥"},{id:"freehand",label:"✏"},{id:"arrow",label:"↗"},{id:"circle",label:"○"},{id:"text",label:"T"}].map(t=>(
+                    <button key={t.id} onClick={()=>{setCompareMarkupTool(t.id);if(t.id!=="select")setCompareSelectedIdx(null);}} title={t.id==="select"?"Select / Move":t.id} style={{width:34,height:34,borderRadius:8,border:compareMarkupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:compareMarkupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{t.label}</button>
                   ))}
                   <div style={{width:1,height:20,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
                   {["#ff3b30","#ff9500","#ffcc00","#34c759","#fff"].map(c=>(
                     <button key={c} onClick={()=>setCompareMarkupColor(c)} style={{width:22,height:22,borderRadius:"50%",border:compareMarkupColor===c?"3px solid #fff":"2px solid rgba(255,255,255,0.2)",background:c,cursor:"pointer"}}/>
                   ))}
+                  <div style={{width:1,height:20,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
+                  {/* Text size presets */}
+                  {[{id:"S",v:1.8},{id:"M",v:2.4},{id:"L",v:3.4},{id:"XL",v:4.8}].map(sz=>{
+                    const sel=compareMarkupStrokes[compareSelectedIdx];
+                    const activeSize=(sel&&sel.type==="text")?(sel.fontSize||2.4):compareTextSize;
+                    const isActive=Math.abs(activeSize-sz.v)<0.01;
+                    return <button key={sz.id} onClick={()=>setCompareTextSizeBoth(sz.v)} title={`Text size ${sz.id}`} style={{minWidth:24,height:28,padding:"0 6px",borderRadius:6,border:isActive?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:isActive?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>{sz.id}</button>;
+                  })}
                   <div style={{flex:1}}/>
+                  {compareSelectedIdx!=null&&<button onClick={deleteCompareSelected} title="Delete selected" style={{background:"rgba(255,59,48,0.2)",border:"1px solid rgba(255,59,48,0.35)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>DEL</button>}
                   <button onClick={undoCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>UNDO</button>
                   <button onClick={clearCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,59,48,0.2)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#ff8f8f":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>CLEAR</button>
                 </div>
@@ -6207,7 +6272,7 @@ function App(){
                     ["Projects",["Create / rename projects","Switch active project","Archive / restore projects"]],
                     ["Entry Logging",["Log with title, severity, location","4 default types + custom entry types","Custom type manager (icon & color picker)","Multi-level location (Level > Zone > Room > Grid)","Snap / upload up to 10 photos","Photo markup editor (arrows, circles, freehand, text)","Markup scales correctly on save (pen, text, arrows)","Edit / delete text annotations on markup","AI photo analysis (Gemini, Ollama, GPT)","AI auto-assign trade + suggested assignee","AI safety risk scoring (auto-escalate Critical)","Duplicate detection (similarity check on submit)","Voice-to-text input (title, description, search)","Component + issue selector (93 / 517)","Assign to team member","Cost & time tracking fields","Batch logging mode (same location)"]],
                     ["Entry Management",["Full-text search with highlighting","AI natural language search (voice + text)","Filter by status, severity, entry type","Collapsible filters with clear button","Entry type badges on list & detail","Detail view with all fields + photos","Update status workflow (5 stages)","Verification photo on Close / Verify","Before / after photo comparison slider","Resolution timeline (visual, color-coded)","Photo comments in timeline","Markup on comment photos (tap to annotate)","Edit own comments inline (with edited indicator)","Quick reactions (thumbs, check, warn, fix)","Delete entry (Admin only)","Telegram alerts on new entry & status change"]],
-                    ["Drawings & Floor Plans",["Upload floor plans (JPG, PNG, TIF, PDF)","PDF rendering via PDF.js with page navigation","Zoom, pan & pinch-to-zoom (mobile)","Ring-style defect pins with severity initial","Critical pin pulse animation","Pin tooltip with entry details + remove","Quick-pin: create entry directly from drawing","Defect heatmap overlay (severity-weighted)","Drawing-level markup (freehand, arrows, circles, text)","Drawing notes — pinned text with author + timestamp","Markup color picker + undo / clear","Pin count & severity badges on cards","PDF thumbnail preview in list","Diff dropdown: Single (PDFs) and Batch (Folders) in one menu","Single PDF diff with visual overlay of changes","Compare markup — draw on top of the diff","AI diff report with lock / approve audit trail","Saved comparisons with overlay thumbnails","Batch PDFs Comparison (folder vs folder)","Batch completeness check (missing / extra files)","Batch content comparison (per-file diff with detail)","Batch export (CSV + PDF with per-file changes)","Editable set labels (Tender, As-Built, M&E, etc.)"]],
+                    ["Drawings & Floor Plans",["Upload floor plans (JPG, PNG, TIF, PDF)","PDF rendering via PDF.js with page navigation","Zoom, pan & pinch-to-zoom (mobile)","Ring-style defect pins with severity initial","Critical pin pulse animation","Pin tooltip with entry details + remove","Quick-pin: create entry directly from drawing","Defect heatmap overlay (severity-weighted)","Drawing-level markup (freehand, arrows, circles, text)","Drawing notes — pinned text with author + timestamp","Markup color picker + undo / clear","Pin count & severity badges on cards","PDF thumbnail preview in list","Diff dropdown: Single (PDFs) and Batch (Folders) in one menu","Single PDF diff with visual overlay of changes","Compare markup — draw on top of the diff (select / move / resize text)","AI diff report with lock / approve audit trail","Saved comparisons with overlay thumbnails","Batch PDFs Comparison (folder vs folder)","Batch completeness check (missing / extra files)","Batch content comparison (per-file diff with detail)","Batch export (CSV + PDF with per-file changes)","Editable set labels (Tender, As-Built, M&E, etc.)"]],
                     ["Dashboard",["Real-time status counts (5 stages)","Critical alerts banner","Severity breakdown chart","Recent entries with type badges","Live sync indicator + queue count"]],
                     ["Admin Analytics",["Entries today / week / month / all time","Active users — who submitted today & this week","Per-user ranking bar chart","Photos stats (total & avg per entry)","Entries by entry type breakdown","Entries by project breakdown","AI usage stats (daily limit, coverage, provider)"]],
                     ["Reports & Exports",["Site report with charts + entry list","Filter by severity / status / assignee / date","Email content sections (defects, drawings, comparisons)","Email preview with opt-in/out per section","Email report via EmailJS","Dn menu: Markup CSV / PDF export","Dn menu: Compare CSV / PDF export","Dn menu: All CSV / PDF export","Dn menu: All-in-One (CSV + PDF in one tap)","Annotated drawings embedded in PDF exports (pins, notes, markup burned in)","Per-drawing PDF export from the viewer"]],
