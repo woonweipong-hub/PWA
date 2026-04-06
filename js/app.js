@@ -1263,19 +1263,29 @@ function ComboField({label,value,onChange,options,placeholder,grouped}){
     );
   }
 
-  // Expanded flat options list with chip-style buttons
+  // Expanded flat options — vertical dropdown list (same style as grouped)
+  const filtered=search
+    ?(options||[]).filter(it=>it.toLowerCase().includes(search.toLowerCase()))
+    :options||[];
   return(
     <div style={{marginBottom:16}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
         <label style={{...lbl(),marginBottom:0}}>{label}</label>
         <button onClick={()=>setOpen(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"rgba(0,0,0,0.5)"}}>▲ CLOSE</button>
       </div>
-      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:6}}>
-        {options.map(opt=>(
-          <button key={opt} onClick={()=>{if(opt==="Other"||opt==="General"){setCustom(true);setOpen(false);onChange("");}else{onChange(opt);setOpen(false);}}} style={{padding:"8px 12px",borderRadius:20,border:`1.5px solid ${value===opt?"#ff6b00":"rgba(0,0,0,0.12)"}`,background:value===opt?"rgba(255,107,0,0.08)":"#fff",color:value===opt?"#ff6b00":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,fontSize:12,cursor:"pointer"}}>{opt}</button>
-        ))}
+      <div style={{display:"flex",gap:8,marginBottom:8}}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." style={{...inp,flex:1,fontSize:13}}/>
+        <MicBtn onResult={t=>setSearch(t)} currentValue={search}/>
+        <button onClick={()=>{setCustom(true);setOpen(false);}} style={{background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:8,padding:"8px 10px",fontSize:11,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff6b00",flexShrink:0}}>TYPE</button>
       </div>
-      <button onClick={()=>{setCustom(true);setOpen(false);}} style={{background:"none",border:"none",fontSize:11,color:"rgba(255,107,0,0.7)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:"4px 0"}}>+ Type custom value</button>
+      <div style={{maxHeight:200,overflowY:"auto",borderRadius:10,border:"1px solid rgba(0,0,0,0.08)"}}>
+        {filtered.map(opt=>(
+          <div key={opt} onClick={()=>{if(opt==="Other"||opt==="General"){setCustom(true);setOpen(false);onChange("");}else{onChange(opt);setOpen(false);}setSearch("");}} style={{padding:"10px 12px",cursor:"pointer",background:value===opt?"rgba(255,107,0,0.08)":"#fff",borderBottom:"1px solid rgba(0,0,0,0.04)",fontSize:14,color:value===opt?"#ff6b00":"#1a1a1a",fontWeight:value===opt?700:400}}>
+            {opt}
+          </div>
+        ))}
+        {filtered.length===0&&<div style={{padding:16,textAlign:"center",color:"rgba(0,0,0,0.3)",fontSize:13}}>No match</div>}
+      </div>
     </div>
   );
 }
