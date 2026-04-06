@@ -6139,7 +6139,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       setPhotoPlaceRect({x:p.x,y:p.y,w:0,h:0,startX:p.x,startY:p.y});
       return;
     }
-    // Select tool: move or resize an existing photo
+    // Select tool: select any markup stroke (photo, text, shape)
     if(markupTool==="select"){
       // First check if a corner handle of the already-selected photo is grabbed
       if(markupSelectedIdx!=null&&hitResizeHandle(p,markupSelectedIdx)){
@@ -6147,14 +6147,33 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
         photoDragRef.current={mode:"resize",startPos:p,orig:{pos:{...s.pos},w:s.w,h:s.h}};
         return;
       }
-      const idx=hitPhotoAt(p);
-      if(idx>=0){
-        setMarkupSelectedIdx(idx);
-        const s=markupStrokes[idx];
+      // Try photo first (supports drag/move)
+      const photoIdx=hitPhotoAt(p);
+      if(photoIdx>=0){
+        setMarkupSelectedIdx(photoIdx);
+        const s=markupStrokes[photoIdx];
         photoDragRef.current={mode:"move",startPos:p,orig:{pos:{...s.pos},w:s.w,h:s.h}};
-      }else{
-        setMarkupSelectedIdx(null);
+        return;
       }
+      // Hit-test all other strokes for selection (no drag, just select for delete)
+      const hitRadius=2.5; // percentage units
+      let hitIdx=-1;
+      for(let i=markupStrokes.length-1;i>=0;i--){
+        const s=markupStrokes[i];
+        if(s.type==="text"&&s.pos){
+          const fs=s.fontSize?s.fontSize*0.75:1.8;
+          const tw=fs*((s.text||"").length)*0.44;
+          if(p.x>=s.pos.x-1&&p.x<=s.pos.x+tw+1&&p.y>=s.pos.y-fs-1&&p.y<=s.pos.y+1){hitIdx=i;break;}
+        }else if(s.type==="freehand"&&s.points){
+          for(const pt of s.points){if(Math.abs(p.x-pt.x)<hitRadius&&Math.abs(p.y-pt.y)<hitRadius){hitIdx=i;break;}}
+          if(hitIdx>=0)break;
+        }else if(s.start&&s.end){
+          const cx=(s.start.x+s.end.x)/2,cy=(s.start.y+s.end.y)/2;
+          const hw=Math.abs(s.end.x-s.start.x)/2+hitRadius,hh=Math.abs(s.end.y-s.start.y)/2+hitRadius;
+          if(Math.abs(p.x-cx)<=hw&&Math.abs(p.y-cy)<=hh){hitIdx=i;break;}
+        }
+      }
+      setMarkupSelectedIdx(hitIdx>=0?hitIdx:null);
       return;
     }
     if(markupTool==="text"){
@@ -6326,6 +6345,17 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
         <line x1={s.start.x+nx} y1={s.start.y+ny} x2={s.start.x-nx} y2={s.start.y-ny} stroke={s.color} strokeWidth="0.3"/>
         <line x1={s.end.x+nx} y1={s.end.y+ny} x2={s.end.x-nx} y2={s.end.y-ny} stroke={s.color} strokeWidth="0.3"/>
         {label&&<text x={mx} y={my} fill={s.color} fontSize="2.2" fontFamily="'Barlow Condensed',sans-serif" fontWeight="700" textAnchor="middle" dominantBaseline="central" transform={`rotate(${angle>90||angle<-90?angle+180:angle},${mx},${my})`} dy="-1">{label}</text>}
+      </g>;
+    }else if(s.type==="text"&&s.pos&&s.text){
+      const fs=s.fontSize?Math.max(0.8,s.fontSize*0.75):1.8;
+      const isSel=markupSelectedIdx===i;
+      const align=s.align||"left";
+      const valign=s.valign||"bottom";
+      const anchor=align==="center"?"middle":(align==="right"?"end":"start");
+      const dy=valign==="top"?fs:(valign==="middle"?fs*0.4:0);
+      return <g key={i}>
+        <rect x={s.pos.x-(align==="center"?fs*s.text.length*0.22:(align==="right"?fs*s.text.length*0.44:0))-0.3} y={s.pos.y-dy-0.3} width={Math.max(2,fs*s.text.length*0.44)+0.6} height={fs*1.3+0.6} fill="rgba(255,255,255,0.92)" stroke={isSel?"#5856d6":s.color} strokeWidth={isSel?"0.4":"0.2"} rx="0.4"/>
+        <text x={s.pos.x} y={s.pos.y-dy+fs} fill={s.color} fontSize={fs} fontFamily="'Barlow Condensed',sans-serif" fontWeight="700" textAnchor={anchor}>{s.text}</text>
       </g>;
     }else if(s.type==="photo"&&s.pos&&s.dataUrl){
       const isSel=markupSelectedIdx===i;
