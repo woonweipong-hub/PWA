@@ -2726,6 +2726,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
 
       {/* Entry Type */}
       <ComboField label="ENTRY TYPE" value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder="Select entry type..."/>
+      <div style={{marginTop:-10,marginBottom:12}}><button onClick={()=>setShowTypeManager(true)} style={{background:"none",border:"none",fontSize:11,color:"rgba(255,107,0,0.7)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:0}}>⚙ Manage custom types</button></div>
 
       {/* Component (grouped dropdown) */}
       <ComboField label="COMPONENT" value={form.component} onChange={v=>{set("component",v);set("issue","");}} grouped={activeComponentGroups} placeholder="e.g. Wall, Pipe, Tile..."/>
