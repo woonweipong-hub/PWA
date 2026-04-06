@@ -273,7 +273,7 @@ function _drawMarkupStroke(ctx,W,H,s,imageCache){
       for(let i=0;i<arcsPerW;i++){const cx=x+dw*i+dw/2;ctx.arc(cx,y,r,Math.PI,0);}
       for(let i=0;i<arcsPerH;i++){const cy=y+dh*i+dh/2;ctx.arc(x+w,cy,r,-Math.PI/2,Math.PI/2);}
       for(let i=arcsPerW-1;i>=0;i--){const cx=x+dw*i+dw/2;ctx.arc(cx,y+h,r,0,Math.PI);}
-      for(let i=arcsPerH-1;i>=0;i--){const cy=y+dh*i+dh/2;ctx.arc(x,cy,Math.PI/2,-Math.PI/2);}
+      for(let i=arcsPerH-1;i>=0;i--){const cy=y+dh*i+dh/2;ctx.arc(x,cy,r,Math.PI/2,-Math.PI/2);}
       ctx.stroke();
     }
   }else if(s.type==="callout"&&s.start&&s.end){
