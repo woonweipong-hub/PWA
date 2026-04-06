@@ -420,7 +420,7 @@ function PhotoMarkup({src,onSave,onCancel}){
 
   const drawStroke=(ctx,s,scale=1)=>{
     const lw=3*scale;
-    const fontSize=Math.round(16*scale);
+    const fontSize=Math.round((s.textSize||16)*scale);
     const hl=14*scale;
     ctx.strokeStyle=s.color;ctx.fillStyle=s.color;ctx.lineWidth=lw;ctx.lineCap="round";ctx.lineJoin="round";
     if(s.type==="freehand"&&s.points.length>1){
@@ -519,9 +519,32 @@ function PhotoMarkup({src,onSave,onCancel}){
     return -1;
   };
 
+  const hitTestStroke=(p)=>{
+    const canvas=canvasRef.current;if(!canvas)return -1;
+    const ctx=canvas.getContext("2d");
+    for(let i=strokes.length-1;i>=0;i--){
+      const s=strokes[i];
+      if(s.type==="text"&&s.pos&&s.text){
+        ctx.font=`bold ${s.textSize||16}px 'Barlow Condensed',sans-serif`;
+        const m=ctx.measureText(s.text);
+        if(p.x>=s.pos.x-4&&p.x<=s.pos.x+m.width+8&&p.y>=s.pos.y-(s.textSize||16)&&p.y<=s.pos.y+6)return i;
+      }else if(s.type==="freehand"&&s.points){
+        for(const pt of s.points){if(Math.abs(p.x-pt.x)<10&&Math.abs(p.y-pt.y)<10)return i;}
+      }else if(s.start&&s.end){
+        const cx=(s.start.x+s.end.x)/2,cy=(s.start.y+s.end.y)/2;
+        if(Math.abs(p.x-cx)<Math.abs(s.end.x-s.start.x)/2+10&&Math.abs(p.y-cy)<Math.abs(s.end.y-s.start.y)/2+10)return i;
+      }
+    }
+    return -1;
+  };
   const onDown=e=>{
     e.preventDefault();
     const p=getPos(e);
+    if(tool==="select"){
+      const hit=hitTestStroke(p);
+      setSelectedIdx(hit>=0?hit:null);
+      return;
+    }
     if(tool==="text"){
       const hitIdx=hitTestText(p);
       if(hitIdx>=0){setEditingTextIdx(hitIdx);setTextInput(strokes[hitIdx].pos);return;}
@@ -551,13 +574,11 @@ function PhotoMarkup({src,onSave,onCancel}){
   const submitText=(text)=>{
     if(text&&textInput){
       if(editingTextIdx!==null){
-        // Update existing text annotation
-        setStrokes(s=>s.map((st,i)=>i===editingTextIdx?{...st,text,color}:st));
+        setStrokes(s=>s.map((st,i)=>i===editingTextIdx?{...st,text,color,textSize}:st));
       }else{
-        setStrokes(s=>[...s,{type:"text",color,pos:textInput,text}]);
+        setStrokes(s=>[...s,{type:"text",color,pos:textInput,text,textSize}]);
       }
     }else if(!text&&editingTextIdx!==null){
-      // Empty text = delete the annotation
       setStrokes(s=>s.filter((_,i)=>i!==editingTextIdx));
     }
     setEditingTextIdx(null);
@@ -588,7 +609,12 @@ function PhotoMarkup({src,onSave,onCancel}){
     onSave(fc.toDataURL("image/jpeg",0.92));
   };
 
+  const[textSize,setTextSize]=useState(16);
+  const[selectedIdx,setSelectedIdx]=useState(null);
+  const deleteSelected=()=>{if(selectedIdx!=null){setStrokes(s=>s.filter((_,i)=>i!==selectedIdx));setSelectedIdx(null);}};
+
   const TOOLS=[
+    {id:"select",title:"Select / Delete"},
     {id:"freehand",title:"Draw"},
     {id:"line",title:"Line"},
     {id:"arrow",title:"Arrow"},
@@ -597,6 +623,7 @@ function PhotoMarkup({src,onSave,onCancel}){
     {id:"dimension",title:"Dimension"},
     {id:"text",title:"Text"}
   ];
+  const TEXT_SIZES=[{id:"S",v:12},{id:"M",v:16},{id:"L",v:22},{id:"XL",v:30}];
   const COLORS=["#ff3b30","#ff9500","#ffcc00","#fff"];
 
   return(
@@ -611,8 +638,9 @@ function PhotoMarkup({src,onSave,onCancel}){
       {/* Toolbar */}
       <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:6,borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0,flexWrap:"wrap"}}>
         {TOOLS.map(t=>(
-          <button key={t.id} onClick={()=>setTool(t.id)} title={t.title} style={{width:36,height:36,borderRadius:8,border:tool===t.id?"2px solid #ff6b00":"2px solid rgba(255,255,255,0.15)",background:tool===t.id?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            {t.id==="freehand"?"✏"
+          <button key={t.id} onClick={()=>{setTool(t.id);if(t.id!=="select")setSelectedIdx(null);}} title={t.title} style={{width:36,height:36,borderRadius:8,border:tool===t.id?"2px solid #ff6b00":"2px solid rgba(255,255,255,0.15)",background:tool===t.id?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            {t.id==="select"?"▢"
+            :t.id==="freehand"?"✏"
             :t.id==="line"?<svg width="20" height="20" viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
             :t.id==="arrow"?"↗"
             :t.id==="circle"?<svg width="20" height="20" viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="8" ry="8" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
@@ -632,7 +660,14 @@ function PhotoMarkup({src,onSave,onCancel}){
               :<line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeDasharray="3 3"/>}
           </svg>
         </button>
+        {/* Text size */}
+        {TEXT_SIZES.map(sz=>(
+          <button key={sz.id} onClick={()=>setTextSize(sz.v)} style={{minWidth:28,height:28,padding:"0 4px",borderRadius:6,border:textSize===sz.v?"2px solid #ff6b00":"2px solid rgba(255,255,255,0.15)",background:textSize===sz.v?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,cursor:"pointer"}}>{sz.id}</button>
+        ))}
         <div style={{flex:1}}/>
+        {selectedIdx!=null&&tool==="select"&&(
+          <button onClick={deleteSelected} style={{background:"rgba(255,59,48,0.25)",border:"1px solid rgba(255,59,48,0.45)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>DELETE</button>
+        )}
         <button onClick={undo} disabled={strokes.length===0} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"7px 12px",color:strokes.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>UNDO</button>
       </div>
 
@@ -5855,6 +5890,19 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   const[markupMode,setMarkupMode]=useState(false);const[markupTool,setMarkupTool]=useState("freehand");
   const[markupLineStyle,setMarkupLineStyle]=useState("solid");
   const[markupColor,setMarkupColor]=useState("#ff3b30");const[markupStrokes,setMarkupStrokes]=useState(()=>getDrawingMarkup(drawing.id));
+  const[markupTextSize,setMarkupTextSize]=useState(2.4);
+  const[markupTextAlign,setMarkupTextAlign]=useState("left");
+  const[markupTextValign,setMarkupTextValign]=useState("bottom");
+  const[showDvSizeMenu,setShowDvSizeMenu]=useState(false);const dvSizeTimer=useRef();
+  const[showDvAlignMenu,setShowDvAlignMenu]=useState(false);const dvAlignTimer=useRef();
+  const setMarkupTextSizeBoth=(size)=>{
+    setMarkupTextSize(size);
+    if(markupSelectedIdx!=null){const s=markupStrokes[markupSelectedIdx];if(s?.type==="text")setMarkupStrokes(strokes=>strokes.map((st,i)=>i===markupSelectedIdx?{...st,fontSize:size}:st));}
+  };
+  const setMarkupTextAnchor=(v,h)=>{
+    setMarkupTextValign(v);setMarkupTextAlign(h);
+    if(markupSelectedIdx!=null){const s=markupStrokes[markupSelectedIdx];if(s?.type==="text")setMarkupStrokes(strokes=>strokes.map((st,i)=>i===markupSelectedIdx?{...st,align:h,valign:v}:st));}
+  };
   const[markupCurrent,setMarkupCurrent]=useState(null);
   // Photo placement + selection state
   const[pendingPhoto,setPendingPhoto]=useState(null); // {dataUrl, aspect}
@@ -5865,6 +5913,13 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   const[notes,setNotes]=useState([]);
   const[pendingNotePos,setPendingNotePos]=useState(null);
   const[noteText,setNoteText]=useState("");
+  const[pendingTextPos,setPendingTextPos]=useState(null);
+  const[pendingTextValue,setPendingTextValue]=useState("");
+  const submitMarkupText=()=>{
+    if(!pendingTextPos||!pendingTextValue.trim())return;
+    setMarkupStrokes(s=>[...s,{type:"text",color:markupColor,pos:pendingTextPos,text:pendingTextValue.trim(),fontSize:markupTextSize,align:markupTextAlign,valign:markupTextValign}]);
+    setPendingTextPos(null);setPendingTextValue("");
+  };
   const[pendingDimStroke,setPendingDimStroke]=useState(null);
   const[dimLabel,setDimLabel]=useState("");
   const[showCombinedList,setShowCombinedList]=useState(false);
@@ -6103,8 +6158,8 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       return;
     }
     if(markupTool==="text"){
-      setPendingNotePos({...p,pageNum:isPdf?currentPage:1});
-      setNoteText("");
+      setPendingTextPos(p);
+      setPendingTextValue("");
       return;
     }
     if(markupTool==="freehand")setMarkupCurrent({type:"freehand",color:markupColor,points:[p]});
@@ -6475,6 +6530,54 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
                 :<line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeDasharray="3 3"/>}
             </svg>
           </button>
+          {/* Text size — S/M/L/XL dropdown */}
+          {(()=>{
+            const SIZES=[{id:"S",v:1.8},{id:"M",v:2.4},{id:"L",v:3.4},{id:"XL",v:4.8}];
+            const sel=markupStrokes[markupSelectedIdx];
+            const activeSize=(sel&&sel.type==="text")?(sel.fontSize||2.4):markupTextSize;
+            const activeLabel=SIZES.find(s=>Math.abs(activeSize-s.v)<0.01)?.id||"M";
+            return <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(dvSizeTimer.current);setShowDvSizeMenu(true);}} onMouseLeave={()=>{dvSizeTimer.current=setTimeout(()=>setShowDvSizeMenu(false),250);}}>
+              <button onClick={()=>setShowDvSizeMenu(v=>!v)} title={`Text size ${activeLabel}`} style={{minWidth:36,height:36,padding:"0 8px",borderRadius:8,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{activeLabel}</button>
+              {showDvSizeMenu&&<div onMouseEnter={()=>clearTimeout(dvSizeTimer.current)} onMouseLeave={()=>{dvSizeTimer.current=setTimeout(()=>setShowDvSizeMenu(false),250);}} style={{position:"absolute",top:"100%",left:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:8,zIndex:100,boxShadow:"0 4px 12px rgba(0,0,0,0.4)",display:"flex",gap:4}}>
+                {SIZES.map(sz=>{
+                  const isActive=activeLabel===sz.id;
+                  return <button key={sz.id} onClick={()=>{setMarkupTextSizeBoth(sz.v);setShowDvSizeMenu(false);}} style={{minWidth:28,height:28,padding:"0 6px",borderRadius:6,border:isActive?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:isActive?"rgba(88,86,214,0.25)":"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>{sz.id}</button>;
+                })}
+              </div>}
+            </div>;
+          })()}
+          {/* Text alignment — 9-way grid */}
+          {(()=>{
+            const sel=markupStrokes[markupSelectedIdx];
+            const curH=(sel&&sel.type==="text")?(sel.align||"left"):markupTextAlign;
+            const curV=(sel&&sel.type==="text")?(sel.valign||"bottom"):markupTextValign;
+            const HS=["left","center","right"],VS=["top","middle","bottom"];
+            const hIdx=HS.indexOf(curH),vIdx=VS.indexOf(curV);
+            return <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(dvAlignTimer.current);setShowDvAlignMenu(true);}} onMouseLeave={()=>{dvAlignTimer.current=setTimeout(()=>setShowDvAlignMenu(false),250);}}>
+              <button onClick={()=>setShowDvAlignMenu(v=>!v)} title={`Text align: ${curV}-${curH}`} style={{width:36,height:36,borderRadius:8,border:"2px solid rgba(88,86,214,0.35)",background:"rgba(88,86,214,0.1)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+                <svg width="14" height="14" viewBox="-0.1 -0.1 3.2 3.2">
+                  {[0,1,2].map(r=>[0,1,2].map(c=>(
+                    <rect key={`${r}-${c}`} x={c} y={r} width="0.9" height="0.9" fill={(r===vIdx&&c===hIdx)?"#5856d6":"rgba(255,255,255,0.25)"} stroke="rgba(0,0,0,0.4)" strokeWidth="0.05"/>
+                  )))}
+                </svg>
+              </button>
+              {showDvAlignMenu&&<div onMouseEnter={()=>clearTimeout(dvAlignTimer.current)} onMouseLeave={()=>{dvAlignTimer.current=setTimeout(()=>setShowDvAlignMenu(false),250);}} style={{position:"absolute",top:"100%",left:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:8,zIndex:100,boxShadow:"0 4px 12px rgba(0,0,0,0.4)"}}>
+                <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6,whiteSpace:"nowrap"}}>TEXT ALIGNMENT</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,26px)",gap:3}}>
+                  {VS.map(v=>HS.map(h=>{
+                    const isActive=curH===h&&curV===v;
+                    return <button key={`${v}-${h}`} onClick={()=>{setMarkupTextAnchor(v,h);setShowDvAlignMenu(false);}} title={`${v}-${h}`} style={{width:26,height:26,borderRadius:4,border:isActive?"1.5px solid #5856d6":"1.5px solid rgba(255,255,255,0.15)",background:isActive?"rgba(88,86,214,0.25)":"rgba(255,255,255,0.05)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      <svg width="14" height="14" viewBox="-0.1 -0.1 3.2 3.2">
+                        {[0,1,2].map(r=>[0,1,2].map(c=>(
+                          <rect key={`${r}-${c}`} x={c} y={r} width="0.9" height="0.9" fill={(VS[r]===v&&HS[c]===h)?"#5856d6":"rgba(255,255,255,0.2)"} stroke="rgba(0,0,0,0.4)" strokeWidth="0.05"/>
+                        )))}
+                      </svg>
+                    </button>;
+                  }))}
+                </div>
+              </div>}
+            </div>;
+          })()}
           <div style={{flex:1}}/>
           {markupSelectedIdx!=null&&markupTool==="select"&&(
             <button onClick={deleteSelectedMarkup} style={{background:"rgba(255,59,48,0.25)",border:"1px solid rgba(255,59,48,0.45)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>DELETE</button>
@@ -6575,7 +6678,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
         </div>
       )}
 
-      {/* Text note modal for markup text tool */}
+      {/* Text note modal for note tool (pin-based notes) */}
       {pendingNotePos&&(
         <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.84)",zIndex:320,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
           <div style={{width:"100%",maxWidth:360,background:"#1a1a1a",borderRadius:16,padding:18,border:"1px solid rgba(255,255,255,0.12)"}}>
@@ -6588,6 +6691,30 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
             <div style={{display:"flex",gap:8,marginTop:12}}>
               <button onClick={()=>{setPendingNotePos(null);setNoteText("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CANCEL</button>
               <button onClick={addNote} disabled={!noteText.trim()} style={{flex:1,padding:10,borderRadius:10,border:"none",background:noteText.trim()?"#5856d6":"rgba(255,255,255,0.1)",color:noteText.trim()?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD NOTE</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Markup text input modal (text tool — with font size) */}
+      {pendingTextPos&&(
+        <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.84)",zIndex:320,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <div style={{width:"100%",maxWidth:360,background:"#1a1a1a",borderRadius:16,padding:18,border:"1px solid rgba(255,255,255,0.12)"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff",marginBottom:6}}>ADD TEXT ANNOTATION</div>
+            <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:12}}>Text appears directly on the drawing at the tapped location.</div>
+            <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
+              <input autoFocus value={pendingTextValue} onChange={e=>setPendingTextValue(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submitMarkupText()} placeholder="Type text..." style={{flex:1,padding:"12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
+              <MicBtn onResult={t=>setPendingTextValue(v=>v?(v+" "+t):t)} append currentValue={pendingTextValue}/>
+            </div>
+            <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:12}}>
+              <span style={{fontSize:10,color:"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>SIZE</span>
+              {[{id:"S",v:1.8},{id:"M",v:2.4},{id:"L",v:3.4},{id:"XL",v:4.8}].map(sz=>(
+                <button key={sz.id} onClick={()=>setMarkupTextSize(sz.v)} style={{minWidth:28,height:28,padding:"0 6px",borderRadius:6,border:Math.abs(markupTextSize-sz.v)<0.01?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:Math.abs(markupTextSize-sz.v)<0.01?"rgba(88,86,214,0.25)":"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>{sz.id}</button>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>{setPendingTextPos(null);setPendingTextValue("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CANCEL</button>
+              <button onClick={submitMarkupText} disabled={!pendingTextValue.trim()} style={{flex:1,padding:10,borderRadius:10,border:"none",background:pendingTextValue.trim()?"#ff6b00":"rgba(255,255,255,0.1)",color:pendingTextValue.trim()?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD TEXT</button>
             </div>
           </div>
         </div>
