@@ -179,7 +179,9 @@ function _drawMarkupStroke(ctx,W,H,s,imageCache){
     ctx.stroke();
   }else if(s.type==="arrow"&&s.start&&s.end){
     const a=px(s.start),b=px(s.end);
+    if(s.lineStyle==="dotted")ctx.setLineDash([Math.max(4,W*0.005),Math.max(3,W*0.004)]);
     ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+    ctx.setLineDash([]);
     const angle=Math.atan2(b.y-a.y,b.x-a.x);
     const hl=Math.max(12,W*0.018);
     ctx.beginPath();
@@ -192,7 +194,43 @@ function _drawMarkupStroke(ctx,W,H,s,imageCache){
     const a=px(s.start),b=px(s.end);
     const cx=(a.x+b.x)/2,cy=(a.y+b.y)/2;
     const rx=Math.abs(b.x-a.x)/2,ry=Math.abs(b.y-a.y)/2;
+    if(s.lineStyle==="dotted")ctx.setLineDash([Math.max(4,W*0.005),Math.max(3,W*0.004)]);
     if(rx>1||ry>1){ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();}
+    ctx.setLineDash([]);
+  }else if(s.type==="rect"&&s.start&&s.end){
+    const a=px(s.start),b=px(s.end);
+    const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y),w=Math.abs(b.x-a.x),h=Math.abs(b.y-a.y);
+    if(s.lineStyle==="dotted")ctx.setLineDash([Math.max(4,W*0.005),Math.max(3,W*0.004)]);
+    if(w>1||h>1){ctx.beginPath();ctx.rect(x,y,w,h);ctx.stroke();}
+    ctx.setLineDash([]);
+  }else if(s.type==="line"&&s.start&&s.end){
+    const a=px(s.start),b=px(s.end);
+    if(s.lineStyle==="dotted")ctx.setLineDash([Math.max(4,W*0.005),Math.max(3,W*0.004)]);
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+    ctx.setLineDash([]);
+  }else if(s.type==="dimension"&&s.start&&s.end){
+    const a=px(s.start),b=px(s.end);
+    const dx=b.x-a.x,dy=b.y-a.y,len=Math.sqrt(dx*dx+dy*dy);
+    if(len>3){
+      const tick=Math.max(8,W*0.012);
+      const nx=(-dy/len)*tick,ny=(dx/len)*tick;
+      if(s.lineStyle==="dotted")ctx.setLineDash([Math.max(4,W*0.005),Math.max(3,W*0.004)]);
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();ctx.moveTo(a.x+nx,a.y+ny);ctx.lineTo(a.x-nx,a.y-ny);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(b.x+nx,b.y+ny);ctx.lineTo(b.x-nx,b.y-ny);ctx.stroke();
+      const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+      const label=(Math.sqrt(((s.end.x-s.start.x)**2)+((s.end.y-s.start.y)**2))).toFixed(1);
+      const fs=Math.max(10,W*0.014);
+      ctx.save();
+      ctx.translate(mx,my);
+      const angle=Math.atan2(dy,dx);
+      ctx.rotate(angle>Math.PI/2||angle<-Math.PI/2?angle+Math.PI:angle);
+      ctx.font=`bold ${fs}px 'Barlow Condensed',sans-serif`;
+      ctx.textAlign="center";ctx.textBaseline="bottom";
+      ctx.fillText(label,0,-4);
+      ctx.restore();
+    }
   }else if(s.type==="text"&&s.pos&&s.text){
     const p=px(s.pos);
     const fs=(s.fontSize?Math.max(8,W*s.fontSize*0.0075):Math.max(14,W*0.018));
@@ -345,8 +383,9 @@ async function renderDrawingAnnotatedPages(drawing,defects,allPins){
 // ── Photo Markup Editor ──────────────────────────────────────────
 function PhotoMarkup({src,onSave,onCancel}){
   const canvasRef=useRef();const overlayRef=useRef();
-  const[tool,setTool]=useState("arrow"); // arrow, circle, freehand, text
+  const[tool,setTool]=useState("arrow"); // arrow, circle, rect, line, dimension, freehand, text
   const[color,setColor]=useState("#ff3b30");
+  const[lineStyle,setLineStyle]=useState("solid");
   const[strokes,setStrokes]=useState([]);
   const[current,setCurrent]=useState(null);
   const[imgLoaded,setImgLoaded]=useState(false);
@@ -390,7 +429,9 @@ function PhotoMarkup({src,onSave,onCancel}){
       const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y;
       const len=Math.sqrt(dx*dx+dy*dy);
       if(len<5*scale)return;
+      if(s.lineStyle==="dotted")ctx.setLineDash([6*scale,4*scale]);
       ctx.beginPath();ctx.moveTo(s.start.x,s.start.y);ctx.lineTo(s.end.x,s.end.y);ctx.stroke();
+      ctx.setLineDash([]);
       // Arrowhead
       const angle=Math.atan2(dy,dx);
       ctx.beginPath();
@@ -403,7 +444,41 @@ function PhotoMarkup({src,onSave,onCancel}){
       const rx=Math.abs(s.end.x-s.start.x)/2,ry=Math.abs(s.end.y-s.start.y)/2;
       const cx=Math.min(s.start.x,s.end.x)+rx,cy=Math.min(s.start.y,s.end.y)+ry;
       if(rx<3*scale&&ry<3*scale)return;
+      if(s.lineStyle==="dotted")ctx.setLineDash([6*scale,4*scale]);
       ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();
+      ctx.setLineDash([]);
+    }else if(s.type==="rect"&&s.start&&s.end){
+      const x=Math.min(s.start.x,s.end.x),y=Math.min(s.start.y,s.end.y);
+      const w=Math.abs(s.end.x-s.start.x),h=Math.abs(s.end.y-s.start.y);
+      if(w<3*scale&&h<3*scale)return;
+      if(s.lineStyle==="dotted")ctx.setLineDash([6*scale,4*scale]);
+      ctx.beginPath();ctx.rect(x,y,w,h);ctx.stroke();
+      ctx.setLineDash([]);
+    }else if(s.type==="line"&&s.start&&s.end){
+      const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y;
+      if(Math.sqrt(dx*dx+dy*dy)<3*scale)return;
+      if(s.lineStyle==="dotted")ctx.setLineDash([6*scale,4*scale]);
+      ctx.beginPath();ctx.moveTo(s.start.x,s.start.y);ctx.lineTo(s.end.x,s.end.y);ctx.stroke();
+      ctx.setLineDash([]);
+    }else if(s.type==="dimension"&&s.start&&s.end){
+      const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y,len=Math.sqrt(dx*dx+dy*dy);
+      if(len<5*scale)return;
+      const tick=hl*0.8;
+      const nx=(-dy/len)*tick,ny=(dx/len)*tick;
+      if(s.lineStyle==="dotted")ctx.setLineDash([6*scale,4*scale]);
+      ctx.beginPath();ctx.moveTo(s.start.x,s.start.y);ctx.lineTo(s.end.x,s.end.y);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();ctx.moveTo(s.start.x+nx,s.start.y+ny);ctx.lineTo(s.start.x-nx,s.start.y-ny);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(s.end.x+nx,s.end.y+ny);ctx.lineTo(s.end.x-nx,s.end.y-ny);ctx.stroke();
+      const mx=(s.start.x+s.end.x)/2,my=(s.start.y+s.end.y)/2;
+      const dimLen=(len/scale).toFixed(0);
+      ctx.save();ctx.translate(mx,my);
+      const angle=Math.atan2(dy,dx);
+      ctx.rotate(angle>Math.PI/2||angle<-Math.PI/2?angle+Math.PI:angle);
+      ctx.font=`bold ${fontSize}px 'Barlow Condensed',sans-serif`;
+      ctx.textAlign="center";ctx.textBaseline="bottom";
+      ctx.fillText(dimLen+"px",0,-4*scale);
+      ctx.restore();
     }else if(s.type==="text"&&s.pos&&s.text){
       ctx.font=`bold ${fontSize}px 'Barlow Condensed',sans-serif`;
       ctx.fillStyle=s.color;
@@ -449,7 +524,7 @@ function PhotoMarkup({src,onSave,onCancel}){
       setTextInput(p);return;
     }
     if(tool==="freehand")setCurrent({type:"freehand",color,points:[p]});
-    else setCurrent({type:tool,color,start:p,end:p});
+    else setCurrent({type:tool,color,lineStyle,start:p,end:p});
   };
   const onMove=e=>{
     if(!current)return;
@@ -503,10 +578,13 @@ function PhotoMarkup({src,onSave,onCancel}){
   };
 
   const TOOLS=[
-    {id:"arrow",label:"↗",title:"Arrow"},
-    {id:"circle",label:"○",title:"Circle"},
-    {id:"freehand",label:"✏",title:"Draw"},
-    {id:"text",label:"T",title:"Text"}
+    {id:"freehand",title:"Draw"},
+    {id:"line",title:"Line"},
+    {id:"arrow",title:"Arrow"},
+    {id:"circle",title:"Circle"},
+    {id:"rect",title:"Rectangle"},
+    {id:"dimension",title:"Dimension"},
+    {id:"text",title:"Text"}
   ];
   const COLORS=["#ff3b30","#ff9500","#ffcc00","#fff"];
 
@@ -520,14 +598,29 @@ function PhotoMarkup({src,onSave,onCancel}){
       </div>
 
       {/* Toolbar */}
-      <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:8,borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0}}>
+      <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:6,borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0,flexWrap:"wrap"}}>
         {TOOLS.map(t=>(
-          <button key={t.id} onClick={()=>setTool(t.id)} title={t.title} style={{width:40,height:40,borderRadius:10,border:tool===t.id?"2px solid #ff6b00":"2px solid rgba(255,255,255,0.15)",background:tool===t.id?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{t.label}</button>
+          <button key={t.id} onClick={()=>setTool(t.id)} title={t.title} style={{width:36,height:36,borderRadius:8,border:tool===t.id?"2px solid #ff6b00":"2px solid rgba(255,255,255,0.15)",background:tool===t.id?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            {t.id==="freehand"?"✏"
+            :t.id==="line"?<svg width="20" height="20" viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            :t.id==="arrow"?"↗"
+            :t.id==="circle"?<svg width="20" height="20" viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="8" ry="8" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
+            :t.id==="rect"?<svg width="20" height="20" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
+            :t.id==="dimension"?<svg width="20" height="20" viewBox="0 0 20 20"><line x1="3" y1="10" x2="17" y2="10" stroke="#fff" strokeWidth="1"/><line x1="3" y1="6" x2="3" y2="14" stroke="#fff" strokeWidth="1.5"/><line x1="17" y1="6" x2="17" y2="14" stroke="#fff" strokeWidth="1.5"/><text x="10" y="8" fill="#fff" fontSize="6" textAnchor="middle" fontFamily="sans-serif">d</text></svg>
+            :t.id==="text"?"T":""}
+          </button>
         ))}
-        <div style={{width:1,height:28,background:"rgba(255,255,255,0.15)",margin:"0 4px"}}/>
+        <div style={{width:1,height:24,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
         {COLORS.map(c=>(
           <button key={c} onClick={()=>setColor(c)} style={{width:28,height:28,borderRadius:"50%",border:color===c?"3px solid #fff":"3px solid rgba(255,255,255,0.15)",background:c,cursor:"pointer"}}/>
         ))}
+        <button onClick={()=>setLineStyle(s=>s==="solid"?"dotted":"solid")} title={lineStyle==="solid"?"Solid (tap for dotted)":"Dotted (tap for solid)"} style={{width:36,height:36,borderRadius:8,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <svg width="20" height="20" viewBox="0 0 20 20">
+            {lineStyle==="solid"
+              ?<line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+              :<line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeDasharray="3 3"/>}
+          </svg>
+        </button>
         <div style={{flex:1}}/>
         <button onClick={undo} disabled={strokes.length===0} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"7px 12px",color:strokes.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>UNDO</button>
       </div>
@@ -3631,6 +3724,7 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const comparePinchDist=useRef(null);
   const compareOverlayCanvasRef=useRef();
   const[compareMarkupTool,setCompareMarkupTool]=useState("freehand");
+  const[compareMarkupLineStyle,setCompareMarkupLineStyle]=useState("solid");
   const[compareMarkupColor,setCompareMarkupColor]=useState("#ff3b30");
   const[compareMarkupStrokes,setCompareMarkupStrokes]=useState([]);
   const[compareMarkupCurrent,setCompareMarkupCurrent]=useState(null);
@@ -4155,14 +4249,14 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       return;
     }
     if(compareMarkupTool==="freehand")setCompareMarkupCurrent({type:"freehand",color:compareMarkupColor,points:[p]});
-    else setCompareMarkupCurrent({type:compareMarkupTool,color:compareMarkupColor,start:p,end:p});
+    else setCompareMarkupCurrent({type:compareMarkupTool,color:compareMarkupColor,lineStyle:compareMarkupLineStyle,start:p,end:p});
   };
 
   // Translate a stroke by (dx,dy) in percentage coords
   const translateStroke=(s,dx,dy)=>{
     const clamp=v=>Math.max(0,Math.min(100,v));
     if(s.type==="freehand"&&Array.isArray(s.points))return{...s,points:s.points.map(pt=>({x:clamp(pt.x+dx),y:clamp(pt.y+dy)}))};
-    if((s.type==="arrow"||s.type==="circle")&&s.start&&s.end)return{...s,start:{x:clamp(s.start.x+dx),y:clamp(s.start.y+dy)},end:{x:clamp(s.end.x+dx),y:clamp(s.end.y+dy)}};
+    if(["arrow","circle","rect","line","dimension"].includes(s.type)&&s.start&&s.end)return{...s,start:{x:clamp(s.start.x+dx),y:clamp(s.start.y+dy)},end:{x:clamp(s.end.x+dx),y:clamp(s.end.y+dy)}};
     if((s.type==="text"||s.type==="photo")&&s.pos)return{...s,pos:{x:clamp(s.pos.x+dx),y:clamp(s.pos.y+dy)}};
     return s;
   };
@@ -4304,6 +4398,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     const hit=interactive?{style:{cursor:"move",pointerEvents:"visiblePainted"},onMouseDown:e=>onCompareStrokeDown(i,e),onTouchStart:e=>onCompareStrokeDown(i,e)}:{};
     const selStroke=isSel?"#5856d6":s.color;
     const selWidth=isSel?"0.9":"0.5";
+    const dash=s.lineStyle==="dotted"?"0.8 0.6":undefined;
     if(s.type==="freehand"&&s.points.length>1){
       const d="M"+s.points.map(p=>`${p.x} ${p.y}`).join("L");
       return <path key={i} d={d} stroke={selStroke} strokeWidth={selWidth} fill="none" strokeLinecap="round" strokeLinejoin="round" {...hit}/>;
@@ -4312,7 +4407,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y,len=Math.sqrt(dx*dx+dy*dy);
       if(len<0.5)return null;
       const angle=Math.atan2(dy,dx),hl=1.8;
-      return <g key={i} {...hit}><line x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={selStroke} strokeWidth={selWidth}/>
+      return <g key={i} {...hit}><line x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={selStroke} strokeWidth={selWidth} strokeDasharray={dash}/>
         <line x1={s.end.x} y1={s.end.y} x2={s.end.x-hl*Math.cos(angle-0.45)} y2={s.end.y-hl*Math.sin(angle-0.45)} stroke={selStroke} strokeWidth={selWidth}/>
         <line x1={s.end.x} y1={s.end.y} x2={s.end.x-hl*Math.cos(angle+0.45)} y2={s.end.y-hl*Math.sin(angle+0.45)} stroke={selStroke} strokeWidth={selWidth}/></g>;
     }
@@ -4320,7 +4415,32 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       const cx=(s.start.x+s.end.x)/2,cy=(s.start.y+s.end.y)/2;
       const rx=Math.abs(s.end.x-s.start.x)/2,ry=Math.abs(s.end.y-s.start.y)/2;
       if(rx<0.3&&ry<0.3)return null;
-      return <ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry} stroke={selStroke} strokeWidth={selWidth} fill="none" {...hit}/>;
+      return <ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry} stroke={selStroke} strokeWidth={selWidth} fill="none" strokeDasharray={dash} {...hit}/>;
+    }
+    if(s.type==="rect"&&s.start&&s.end){
+      const x=Math.min(s.start.x,s.end.x),y=Math.min(s.start.y,s.end.y);
+      const w=Math.abs(s.end.x-s.start.x),h=Math.abs(s.end.y-s.start.y);
+      if(w<0.3&&h<0.3)return null;
+      return <rect key={i} x={x} y={y} width={w} height={h} stroke={selStroke} strokeWidth={selWidth} fill="none" strokeDasharray={dash} {...hit}/>;
+    }
+    if(s.type==="line"&&s.start&&s.end){
+      const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y,len=Math.sqrt(dx*dx+dy*dy);
+      if(len<0.3)return null;
+      return <line key={i} x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={selStroke} strokeWidth={selWidth} strokeDasharray={dash} {...hit}/>;
+    }
+    if(s.type==="dimension"&&s.start&&s.end){
+      const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y,len=Math.sqrt(dx*dx+dy*dy);
+      if(len<0.5)return null;
+      const nx=-dy/len*1.2,ny=dx/len*1.2;
+      const mx=(s.start.x+s.end.x)/2,my=(s.start.y+s.end.y)/2;
+      const angle=Math.atan2(dy,dx)*180/Math.PI;
+      const label=len.toFixed(1);
+      return <g key={i} {...hit}>
+        <line x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={selStroke} strokeWidth="0.2" strokeDasharray={dash}/>
+        <line x1={s.start.x+nx} y1={s.start.y+ny} x2={s.start.x-nx} y2={s.start.y-ny} stroke={selStroke} strokeWidth={selWidth}/>
+        <line x1={s.end.x+nx} y1={s.end.y+ny} x2={s.end.x-nx} y2={s.end.y-ny} stroke={selStroke} strokeWidth={selWidth}/>
+        <text x={mx} y={my} fill={selStroke} fontSize="2.2" fontFamily="'Barlow Condensed',sans-serif" fontWeight="700" textAnchor="middle" dominantBaseline="central" transform={`rotate(${angle>90||angle<-90?angle+180:angle},${mx},${my})`} dy="-1">{label}</text>
+      </g>;
     }
     if(s.type==="text"&&s.pos&&s.text){
       const fs=s.fontSize||2.4;
@@ -5280,8 +5400,14 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
               {(compareBaseId&&compareTargetId)&&(
                 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,flexWrap:"wrap"}}>
                   <input ref={comparePhotoInputRef} type="file" accept="image/*" capture="environment" onChange={handleComparePhotoFile} style={{display:"none"}}/>
-                  {[{id:"select",label:"✥"},{id:"freehand",label:"✏"},{id:"arrow",label:"↗"},{id:"circle",label:"○"},{id:"text",label:"T"}].map(t=>(
-                    <button key={t.id} onClick={()=>{setCompareMarkupTool(t.id);if(t.id!=="select")setCompareSelectedIdx(null);}} title={t.id==="select"?"Select / Move":t.id} style={{width:34,height:34,borderRadius:8,border:compareMarkupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:compareMarkupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{t.label}</button>
+                  {[{id:"select",label:"✥",title:"Select / Move"},{id:"freehand",label:"✏",title:"Freehand"},{id:"line",label:null,title:"Line"},{id:"arrow",label:"↗",title:"Arrow"},{id:"circle",label:null,title:"Circle"},{id:"rect",label:null,title:"Rectangle"},{id:"dimension",label:null,title:"Dimension"},{id:"text",label:"T",title:"Text"}].map(t=>(
+                    <button key={t.id} onClick={()=>{setCompareMarkupTool(t.id);if(t.id!=="select")setCompareSelectedIdx(null);}} title={t.title} style={{width:34,height:34,borderRadius:8,border:compareMarkupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:compareMarkupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      {t.id==="circle"?<svg width="18" height="18" viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="8" ry="8" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
+                      :t.id==="rect"?<svg width="18" height="18" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
+                      :t.id==="line"?<svg width="18" height="18" viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                      :t.id==="dimension"?<svg width="18" height="18" viewBox="0 0 20 20"><line x1="3" y1="10" x2="17" y2="10" stroke="#fff" strokeWidth="1"/><line x1="3" y1="6" x2="3" y2="14" stroke="#fff" strokeWidth="1.5"/><line x1="17" y1="6" x2="17" y2="14" stroke="#fff" strokeWidth="1.5"/><text x="10" y="8" fill="#fff" fontSize="6" textAnchor="middle" fontFamily="sans-serif">d</text></svg>
+                      :t.label}
+                    </button>
                   ))}
                   <button onClick={()=>comparePhotoInputRef.current?.click()} title="Add / capture photo overlay" style={{width:34,height:34,borderRadius:8,border:"2px solid rgba(255,107,0,0.35)",background:"rgba(255,107,0,0.1)",color:"#ffb48a",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>📷</button>
                   <div style={{width:1,height:20,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
@@ -5307,6 +5433,14 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                       </div>}
                     </div>;
                   })()}
+                  {/* Line style toggle */}
+                  <button onClick={()=>setCompareMarkupLineStyle(s=>s==="solid"?"dotted":"solid")} title={compareMarkupLineStyle==="solid"?"Solid (tap for dotted)":"Dotted (tap for solid)"} style={{width:30,height:28,borderRadius:6,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    <svg width="18" height="18" viewBox="0 0 20 20">
+                      {compareMarkupLineStyle==="solid"
+                        ?<line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+                        :<line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeDasharray="3 3"/>}
+                    </svg>
+                  </button>
                   {/* Size — consolidated dropdown */}
                   {(()=>{
                     const SIZES=[{id:"S",v:1.8},{id:"M",v:2.4},{id:"L",v:3.4},{id:"XL",v:4.8}];
@@ -5522,6 +5656,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   // Heatmap + drawing markup state
   const[showHeatmap,setShowHeatmap]=useState(false);
   const[markupMode,setMarkupMode]=useState(false);const[markupTool,setMarkupTool]=useState("freehand");
+  const[markupLineStyle,setMarkupLineStyle]=useState("solid");
   const[markupColor,setMarkupColor]=useState("#ff3b30");const[markupStrokes,setMarkupStrokes]=useState(()=>getDrawingMarkup(drawing.id));
   const[markupCurrent,setMarkupCurrent]=useState(null);
   // Photo placement + selection state
@@ -5598,6 +5733,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
 
   // Handle tap on drawing to place pin or dismiss tooltip
   const handleDrawingClick=e=>{
+    if(viewMode)return;
     if(activePin){setActivePin(null);return;}
     if(!placing)return;
     const target=isImage?imgRef.current:canvasRef.current;
@@ -5625,22 +5761,58 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     setPins(prev=>prev.filter(p=>p.id!==id));
   };
 
+  // View mode — zoom/pan only, blocks pin placement & markup
+  const[viewMode,setViewMode]=useState(false);
+
   // Zoom controls
-  const zoomIn=()=>setScale(s=>Math.min(s+0.3,4));
+  const zoomIn=()=>setScale(s=>Math.min(s+0.3,5));
   const zoomOut=()=>setScale(s=>Math.max(s-0.3,0.5));
   const resetZoom=()=>{setScale(1);setOffset({x:0,y:0});};
+
+  // Mouse-wheel zoom at cursor position (desktop) — attached via useEffect for {passive:false}
+  const wheelHandler=useRef(null);
+  wheelHandler.current=e=>{
+    if(markupMode)return;
+    e.preventDefault();
+    const container=containerRef.current;if(!container)return;
+    const rect=container.getBoundingClientRect();
+    const cx=e.clientX-rect.left;
+    const cy=e.clientY-rect.top;
+    const factor=e.deltaY<0?1.12:1/1.12;
+    setScale(prev=>{
+      const next=Math.min(Math.max(prev*factor,0.5),5);
+      const ratio=next/prev;
+      setOffset(o=>({x:cx-(cx-o.x)*ratio,y:cy-(cy-o.y)*ratio}));
+      return next;
+    });
+  };
+  useEffect(()=>{
+    const el=containerRef.current;if(!el)return;
+    const handler=e=>wheelHandler.current(e);
+    el.addEventListener("wheel",handler,{passive:false});
+    return()=>el.removeEventListener("wheel",handler);
+  },[]);
 
   // Page navigation
   const prevPage=()=>setCurrentPage(p=>Math.max(1,p-1));
   const nextPage=()=>setCurrentPage(p=>Math.min(pdfPageCount,p+1));
+
+  // Double-tap to reset zoom
+  const lastTapRef=useRef(0);
+  const handleDoubleTap=()=>{
+    const now=Date.now();
+    if(now-lastTapRef.current<300){resetZoom();lastTapRef.current=0;}
+    else lastTapRef.current=now;
+  };
 
   // Drag for panning (single pointer when not placing, always for multi-touch)
   const dragRef=useRef(null);
   const pointerCount=useRef(0);
   const onPointerDown=e=>{
     pointerCount.current++;
-    // Allow pan with one finger when not placing, or always with two fingers
-    if(!placing||pointerCount.current>=2){
+    if(viewMode)handleDoubleTap();
+    // Allow pan with one finger when not placing/viewMode, or always with two fingers
+    if(viewMode||!placing||pointerCount.current>=2){
       dragRef.current={startX:e.clientX-offset.x,startY:e.clientY-offset.y};
     }
   };
@@ -5649,22 +5821,36 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   };
   const onPointerUp=()=>{pointerCount.current=Math.max(0,pointerCount.current-1);if(pointerCount.current===0)dragRef.current=null;};
 
-  // Pinch-to-zoom for mobile
+  // Pinch-to-zoom for mobile — zooms toward pinch midpoint
   const lastPinchDist=useRef(null);
+  const lastPinchMid=useRef(null);
   const onTouchMove=e=>{
     if(e.touches.length===2){
       e.preventDefault();
-      const dx=e.touches[0].clientX-e.touches[1].clientX;
-      const dy=e.touches[0].clientY-e.touches[1].clientY;
+      const t0=e.touches[0],t1=e.touches[1];
+      const dx=t0.clientX-t1.clientX,dy=t0.clientY-t1.clientY;
       const dist=Math.sqrt(dx*dx+dy*dy);
-      if(lastPinchDist.current!==null){
-        const delta=(dist-lastPinchDist.current)*0.005;
-        setScale(s=>Math.min(Math.max(s+delta,0.5),4));
+      const container=containerRef.current;
+      const rect=container?container.getBoundingClientRect():{left:0,top:0};
+      const mx=(t0.clientX+t1.clientX)/2-rect.left;
+      const my=(t0.clientY+t1.clientY)/2-rect.top;
+      if(lastPinchDist.current!==null&&lastPinchMid.current!==null){
+        const factor=dist/lastPinchDist.current;
+        setScale(prev=>{
+          const next=Math.min(Math.max(prev*factor,0.5),5);
+          const ratio=next/prev;
+          setOffset(o=>({x:mx-(mx-o.x)*ratio,y:my-(my-o.y)*ratio}));
+          return next;
+        });
+        // Two-finger pan: shift by midpoint delta
+        const pmx=lastPinchMid.current.x,pmy=lastPinchMid.current.y;
+        setOffset(o=>({x:o.x+(mx-pmx),y:o.y+(my-pmy)}));
       }
       lastPinchDist.current=dist;
+      lastPinchMid.current={x:mx,y:my};
     }
   };
-  const onTouchEnd=()=>{lastPinchDist.current=null;};
+  const onTouchEnd=()=>{lastPinchDist.current=null;lastPinchMid.current=null;};
 
   // Drawing markup handlers
   const getMarkupPos=e=>{
@@ -5721,7 +5907,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       return;
     }
     if(markupTool==="freehand")setMarkupCurrent({type:"freehand",color:markupColor,points:[p]});
-    else setMarkupCurrent({type:markupTool,color:markupColor,start:p,end:p});
+    else setMarkupCurrent({type:markupTool,color:markupColor,lineStyle:markupLineStyle,start:p,end:p});
   };
   const onMarkupMove=e=>{
     if(!markupMode)return;
@@ -5838,6 +6024,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
 
   // Render SVG markup strokes
   const renderMarkupSvg=(strokes)=>strokes.map((s,i)=>{
+    const dash=s.lineStyle==="dotted"?"0.8 0.6":undefined;
     if(s.type==="freehand"&&s.points.length>1){
       const d="M"+s.points.map(p=>`${p.x} ${p.y}`).join("L");
       return <path key={i} d={d} stroke={s.color} strokeWidth="0.3" fill="none" strokeLinecap="round" strokeLinejoin="round"/>;
@@ -5845,14 +6032,40 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y,len=Math.sqrt(dx*dx+dy*dy);
       if(len<0.5)return null;
       const angle=Math.atan2(dy,dx),hl=1.5;
-      return <g key={i}><line x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={s.color} strokeWidth="0.3"/>
+      return <g key={i}><line x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={s.color} strokeWidth="0.3" strokeDasharray={dash}/>
         <line x1={s.end.x} y1={s.end.y} x2={s.end.x-hl*Math.cos(angle-0.4)*1.5} y2={s.end.y-hl*Math.sin(angle-0.4)*1.5} stroke={s.color} strokeWidth="0.3"/>
         <line x1={s.end.x} y1={s.end.y} x2={s.end.x-hl*Math.cos(angle+0.4)*1.5} y2={s.end.y-hl*Math.sin(angle+0.4)*1.5} stroke={s.color} strokeWidth="0.3"/></g>;
     }else if(s.type==="circle"&&s.start&&s.end){
       const cx=(s.start.x+s.end.x)/2,cy=(s.start.y+s.end.y)/2;
       const rx=Math.abs(s.end.x-s.start.x)/2,ry=Math.abs(s.end.y-s.start.y)/2;
       if(rx<0.3&&ry<0.3)return null;
-      return <ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry} stroke={s.color} strokeWidth="0.3" fill="none"/>;
+      return <ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry} stroke={s.color} strokeWidth="0.3" fill="none" strokeDasharray={dash}/>;
+    }else if(s.type==="rect"&&s.start&&s.end){
+      const x=Math.min(s.start.x,s.end.x),y=Math.min(s.start.y,s.end.y);
+      const w=Math.abs(s.end.x-s.start.x),h=Math.abs(s.end.y-s.start.y);
+      if(w<0.3&&h<0.3)return null;
+      return <rect key={i} x={x} y={y} width={w} height={h} stroke={s.color} strokeWidth="0.3" fill="none" strokeDasharray={dash}/>;
+    }else if(s.type==="line"&&s.start&&s.end){
+      const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y,len=Math.sqrt(dx*dx+dy*dy);
+      if(len<0.3)return null;
+      return <line key={i} x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={s.color} strokeWidth="0.3" strokeDasharray={dash}/>;
+    }else if(s.type==="dimension"&&s.start&&s.end){
+      const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y,len=Math.sqrt(dx*dx+dy*dy);
+      if(len<0.5)return null;
+      // Perpendicular tick direction
+      const nx=-dy/len*1.2,ny=dx/len*1.2;
+      const mx=(s.start.x+s.end.x)/2,my=(s.start.y+s.end.y)/2;
+      const angle=Math.atan2(dy,dx)*180/Math.PI;
+      // Dimension text — show length as % of viewbox (approx)
+      const label=len.toFixed(1);
+      return <g key={i}>
+        <line x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={s.color} strokeWidth="0.2" strokeDasharray={dash}/>
+        {/* End ticks */}
+        <line x1={s.start.x+nx} y1={s.start.y+ny} x2={s.start.x-nx} y2={s.start.y-ny} stroke={s.color} strokeWidth="0.3"/>
+        <line x1={s.end.x+nx} y1={s.end.y+ny} x2={s.end.x-nx} y2={s.end.y-ny} stroke={s.color} strokeWidth="0.3"/>
+        {/* Label */}
+        <text x={mx} y={my} fill={s.color} fontSize="2.2" fontFamily="'Barlow Condensed',sans-serif" fontWeight="700" textAnchor="middle" dominantBaseline="central" transform={`rotate(${angle>90||angle<-90?angle+180:angle},${mx},${my})`} dy="-1">{label}</text>
+      </g>;
     }else if(s.type==="photo"&&s.pos&&s.dataUrl){
       const isSel=markupSelectedIdx===i;
       return <g key={i}>
@@ -5976,19 +6189,20 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   return(
     <div style={{position:"fixed",inset:0,background:"#1a1a1a",zIndex:250,display:"flex",flexDirection:"column"}}>
       {/* Header */}
-      <div style={{background:"#1a1a1a",padding:"12px 14px",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0}}>
+      <div style={{background:"#1a1a1a",padding:"12px 14px",display:"flex",alignItems:"center",gap:8,borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0,flexWrap:"wrap"}}>
         <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>← BACK</button>
-        <div style={{flex:1}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff"}}>{drawing.name}</div>
+        <div style={{flex:1,minWidth:80}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{drawing.name}</div>
           <div style={{fontSize:10,color:"rgba(255,255,255,0.4)"}}>{pins.length} pin(s){isPdf&&pdfPageCount>0?` · Page ${currentPage}/${pdfPageCount}`:""}</div>
         </div>
-        {canPin&&!markupMode&&(
-          <button onClick={()=>setPlacing(!placing)} style={{background:placing?"#ff6b00":"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>
+        <button onClick={()=>{setViewMode(v=>!v);if(!viewMode){setPlacing(false);setMarkupMode(false);}}} title="View mode — zoom & pan" style={{width:36,height:36,borderRadius:10,border:viewMode?"2px solid #2da845":"2px solid rgba(255,255,255,0.15)",background:viewMode?"rgba(52,199,89,0.25)":"rgba(255,255,255,0.08)",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>👁</button>
+        {canPin&&!markupMode&&!viewMode&&(
+          <button onClick={()=>{setPlacing(!placing);setViewMode(false);}} style={{background:placing?"#ff6b00":"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>
             {placing?"TAP TO PLACE":"📌 ADD PIN"}
           </button>
         )}
-        {canPin&&!placing&&(
-          <button onClick={()=>setMarkupMode(!markupMode)} style={{background:markupMode?"#5856d6":"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>
+        {canPin&&!placing&&!viewMode&&(
+          <button onClick={()=>{setMarkupMode(!markupMode);setViewMode(false);}} style={{background:markupMode?"#5856d6":"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>
             {markupMode?"DONE":"✏ MARKUP"}
           </button>
         )}
@@ -6015,16 +6229,24 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       )}
 
       {/* Placing mode indicator */}
-      {placing&&<div style={{background:"#ff6b00",padding:"8px 16px",textAlign:"center",color:"#fff",fontSize:12,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",flexShrink:0}}>TAP ON THE DRAWING TO PLACE A PIN</div>}
+      {placing&&!viewMode&&<div style={{background:"#ff6b00",padding:"8px 16px",textAlign:"center",color:"#fff",fontSize:12,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",flexShrink:0}}>TAP ON THE DRAWING TO PLACE A PIN</div>}
+      {viewMode&&<div style={{background:"#34c759",padding:"6px 16px",textAlign:"center",color:"#fff",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",flexShrink:0}}>VIEW MODE — pinch or scroll to zoom · drag to pan · tap VIEW to exit</div>}
 
       {/* Markup toolbar */}
       {markupMode&&(
         <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:6,background:"#1a1a1a",borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0,flexWrap:"wrap"}}>
-          {[{id:"select",label:"▢"},{id:"freehand",label:"✏"},{id:"arrow",label:"↗"},{id:"circle",label:"○"},{id:"text",label:"T"}].map(t=>(
-            <button key={t.id} onClick={()=>{setMarkupTool(t.id);if(t.id!=="select")setMarkupSelectedIdx(null);}} title={t.id==="select"?"Select, move, resize":t.id} style={{width:36,height:36,borderRadius:8,border:markupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:markupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{t.label}</button>
+          {[{id:"select",label:"▢",title:"Select, move, resize"},{id:"freehand",label:"✏",title:"Freehand"},{id:"line",label:null,title:"Line"},{id:"arrow",label:"↗",title:"Arrow"},{id:"circle",label:null,title:"Circle"},{id:"rect",label:null,title:"Rectangle"},{id:"dimension",label:null,title:"Dimension line"},{id:"text",label:"T",title:"Text"}].map(t=>(
+            <button key={t.id} onClick={()=>{setMarkupTool(t.id);if(t.id!=="select")setMarkupSelectedIdx(null);}} title={t.title} style={{width:36,height:36,borderRadius:8,border:markupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:markupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              {t.id==="circle"?<svg width="20" height="20" viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="8" ry="8" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
+              :t.id==="rect"?<svg width="20" height="20" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
+              :t.id==="line"?<svg width="20" height="20" viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              :t.id==="dimension"?<svg width="20" height="20" viewBox="0 0 20 20"><line x1="3" y1="10" x2="17" y2="10" stroke="#fff" strokeWidth="1"/><line x1="3" y1="6" x2="3" y2="14" stroke="#fff" strokeWidth="1.5"/><line x1="17" y1="6" x2="17" y2="14" stroke="#fff" strokeWidth="1.5"/><text x="10" y="8" fill="#fff" fontSize="6" textAnchor="middle" fontFamily="sans-serif">d</text></svg>
+              :t.label}
+            </button>
           ))}
           <button onClick={()=>markupPhotoRef.current?.click()} title="Add photo — drag on drawing to place" style={{width:36,height:36,borderRadius:8,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>📷</button>
           <input ref={markupPhotoRef} type="file" accept="image/*" capture="environment" onChange={handleMarkupPhotoFile} style={{display:"none"}}/>
+          <button onClick={()=>{setViewMode(v=>!v);if(!viewMode){setPlacing(false);setMarkupMode(false);}}} title="View mode — zoom & pan" style={{width:36,height:36,borderRadius:8,border:viewMode?"2px solid #2da845":"2px solid rgba(255,255,255,0.15)",background:viewMode?"rgba(52,199,89,0.25)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>👁</button>
           <div style={{width:1,height:24,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
           {/* Color — consolidated swatch dropdown */}
           {(()=>{
@@ -6040,6 +6262,14 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
               </div>}
             </div>;
           })()}
+          {/* Line style toggle — solid / dotted */}
+          <button onClick={()=>setMarkupLineStyle(s=>s==="solid"?"dotted":"solid")} title={markupLineStyle==="solid"?"Solid line (tap for dotted)":"Dotted line (tap for solid)"} style={{width:36,height:36,borderRadius:8,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <svg width="20" height="20" viewBox="0 0 20 20">
+              {markupLineStyle==="solid"
+                ?<line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+                :<line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeDasharray="3 3"/>}
+            </svg>
+          </button>
           <div style={{flex:1}}/>
           {markupSelectedIdx!=null&&markupTool==="select"&&(
             <button onClick={deleteSelectedMarkup} style={{background:"rgba(255,59,48,0.25)",border:"1px solid rgba(255,59,48,0.45)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>DELETE</button>
@@ -6059,7 +6289,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       )}
 
       {/* Drawing canvas */}
-      <div ref={containerRef} style={{flex:1,overflow:"hidden",position:"relative",cursor:markupMode?"crosshair":placing?"crosshair":"grab",touchAction:"none"}}
+      <div ref={containerRef} style={{flex:1,overflow:"hidden",position:"relative",cursor:markupMode?"crosshair":placing&&!viewMode?"crosshair":"grab",touchAction:"none"}}
         onPointerDown={markupMode?undefined:onPointerDown} onPointerMove={markupMode?undefined:onPointerMove} onPointerUp={markupMode?undefined:onPointerUp} onPointerCancel={markupMode?undefined:onPointerUp}
         onTouchMove={markupMode?undefined:onTouchMove} onTouchEnd={markupMode?undefined:onTouchEnd}>
         {isImage?(
