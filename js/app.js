@@ -2702,11 +2702,15 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
 
   const[saving,setSaving]=useState(false);const[analyzing,setAnalyzing]=useState(false);const[aiResult,setAiResult]=useState(null);
   const[count,setCount]=useState(0);const[last,setLast]=useState(null);const[showBatch,setShowBatch]=useState(false);
+  const[showMoreDetails,setShowMoreDetails]=useState(false);
+  const saveAndDoneRef=useRef(false);
+  const[speakTranscript,setSpeakTranscript]=useState("");
   const[showTypeManager,setShowTypeManager]=useState(false);
   const[customTypes,setCustomTypes]=useState(()=>getCustomTypes());
   const[newTypeName,setNewTypeName]=useState("");
   const[markupIdx,setMarkupIdx]=useState(null);
   const fileRef=useRef();
+  const speakVoice=useVoice();
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
   const aiReady=isAiConfigured();
   const assignees=members.length>0?members.map(m=>m.name):["Site Manager","Engineer","Contractor","QC Inspector","Safety Officer"];
@@ -2845,7 +2849,9 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       setLast({location:locationDisplay,assignee:form.assignee,severity:form.severity,
         locationLevel:form.locationLevel,locationZone:form.locationZone,component:form.component,
         workCategory:form.workCategory,queued:saveResult==="queued"});
-      setCount(c=>c+1);setShowBatch(true);setForm(blank);setAiResult(null);
+      setCount(c=>c+1);setForm(blank);setAiResult(null);setSpeakTranscript("");
+      if(saveAndDoneRef.current){saveAndDoneRef.current=false;/* stay on form, batch screen not shown — parent tab switch handles "done" */}
+      else{setShowBatch(true);}
     }catch(e){alert("Error saving: "+e.message);}
     setSaving(false);
   };
@@ -2955,72 +2961,37 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         workCategory:last?.workCategory||blank.workCategory,
         location:last?.location||"",assignee:last?.assignee||member?.name||"",severity:last?.severity||"Major",
         locationLevel:last?.locationLevel||"",locationZone:last?.locationZone||"",component:last?.component||""
-      });setShowBatch(false);}} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:16,color:"#fff",fontSize:15,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:10}}>+ LOG ANOTHER HERE</button>
+      });setShowBatch(false);setSpeakTranscript("");setShowMoreDetails(false);}} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:16,color:"#fff",fontSize:15,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:10}}>+ LOG ANOTHER HERE</button>
       <button onClick={()=>setShowBatch(false)} style={{width:"100%",background:"rgba(0,0,0,0.06)",border:"none",borderRadius:12,padding:14,fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>DONE — VIEW ALL</button>
     </div>
   );
 
+  const handleSpeakIssue=()=>{
+    speakVoice.toggle(transcript=>{
+      setSpeakTranscript(transcript);
+      if(!form.title.trim())set("title",transcript.split(/\s+/).slice(0,10).join(" "));
+      if(!form.description.trim())set("description",transcript);
+    });
+  };
+
   return(
-    <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
+    <div style={{padding:"20px 16px 120px",animation:"fadeIn 0.25s ease"}}>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>LOG ENTRY</div>
         {count>0&&<div style={{fontSize:10,fontWeight:700,color:"#30d158",background:"rgba(48,209,88,0.1)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>{count} LOGGED</div>}
-        <div style={{fontSize:10,fontWeight:700,color:"#ff6b00",background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>🎙 VOICE</div>
+        <div style={{fontSize:10,fontWeight:700,color:"#ff6b00",background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>QUICK CAPTURE</div>
       </div>
-      <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:20}}>📁 {currentProject?.name||"—"} · Tap 🎙 to dictate</div>
+      <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:20}}>📁 {currentProject?.name||"—"} · Photo, speak, or type</div>
 
-      {/* Work Category — narrows the Component dropdown to relevant groups */}
-      <ComboField label="WORK CATEGORY" value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder="Select work category..."/>
-
-      {/* Entry Type */}
-      <ComboField label="ENTRY TYPE" value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder="Select entry type..."/>
-      <div style={{marginTop:-10,marginBottom:12}}><button onClick={()=>setShowTypeManager(true)} style={{background:"none",border:"none",fontSize:11,color:"rgba(255,107,0,0.7)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:0}}>⚙ Manage custom types</button></div>
-
-      {/* Component (grouped dropdown) */}
-      <ComboField label="COMPONENT" value={form.component} onChange={v=>{set("component",v);set("issue","");}} grouped={activeComponentGroups} placeholder="e.g. Wall, Pipe, Tile..."/>
-
-      {/* Issue (filtered by selected component) */}
-      {form.component&&(
-        <ComboField label="ISSUE" value={form.issue} onChange={v=>{set("issue",v);if(!form.title)set("title",form.component+" — "+v);}} options={COMPONENT_ISSUES[form.component]||COMPONENT_ISSUES["General"]} placeholder="Describe the issue..."/>
-      )}
-
-      <VoiceField label="TITLE *" value={form.title} onChange={v=>set("title",v)} placeholder="e.g. Crack in column C4"/>
-
-      {/* Location hierarchy */}
-      <ComboField label="LEVEL / FLOOR" value={form.locationLevel} onChange={v=>set("locationLevel",v)} options={DEFAULT_LEVELS} placeholder="e.g. 3rd Floor"/>
-      <ComboField label="ZONE" value={form.locationZone} onChange={v=>set("locationZone",v)} options={DEFAULT_ZONES} placeholder="e.g. Zone A, Block B"/>
-      <ComboField label="ROOM / AREA" value={form.locationSubzone} onChange={v=>set("locationSubzone",v)} options={DEFAULT_SUBZONES} placeholder="e.g. Kitchen, Bathroom"/>
-      <VoiceField label="GRID REF (optional)" value={form.locationGrid} onChange={v=>set("locationGrid",v)} placeholder="e.g. C4, Grid 3-A"/>
-
-      {/* Severity */}
-      <ComboField label="SEVERITY" value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder="Select severity..."/>
-
-      {/* Assignee */}
-      <ComboField label="ASSIGN TO" value={form.assignee} onChange={v=>set("assignee",v)} options={assignees} placeholder="Select assignee..."/>
-
-      <VoiceField label="DESCRIPTION" value={form.description} onChange={v=>set("description",v)} placeholder="Describe the issue..." multiline/>
-
-      {/* Cost & Time */}
-      <div style={{background:"rgba(0,0,0,0.02)",borderRadius:12,padding:14,marginBottom:16,border:"1px solid rgba(0,0,0,0.06)"}}>
-        <div style={{marginBottom:12}}>
-          <label style={lbl()}>TARGET DATE</label>
-          <input type="date" value={form.dueDate} onChange={e=>set("dueDate",e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
-        </div>
-        <ComboField label="ESTIMATED DURATION" value={form.duration} onChange={v=>set("duration",v)} options={DURATION_OPTIONS} placeholder="e.g. 3 days"/>
-        <ComboField label="COST IMPACT" value={form.costImpact} onChange={v=>set("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder="e.g. No change"/>
-        {form.costImpact&&form.costImpact!=="No change"&&form.costImpact!=="To be confirmed by QS"&&(
-          <>
-            <VoiceField label="COST AMOUNT" value={form.costAmount} onChange={v=>set("costAmount",v)} placeholder="e.g. $500, TBC"/>
-            <ComboField label="COST RESPONSIBLE" value={form.costResponsible} onChange={v=>set("costResponsible",v)} options={COST_RESPONSIBLE_OPTIONS} placeholder="Who bears the cost?"/>
-            <VoiceField label="COST REMARKS" value={form.costRemarks} onChange={v=>set("costRemarks",v)} placeholder="Contract clause, reference..." multiline/>
-          </>
-        )}
-      </div>
-
-      <div style={{marginBottom:20}}>
+      {/* ── 1. TAKE PHOTO — big prominent capture ── */}
+      <div style={{marginBottom:16}}>
         <label style={lbl()}>PHOTOS ({form.photos.length}/{MAX_PHOTOS})</label>
         <input type="file" accept="image/*" capture="environment" multiple ref={fileRef} onChange={handlePhoto} style={{display:"none"}}/>
-        {form.photos.length>0&&(
+        {form.photos.length===0?(
+          <button onClick={()=>fileRef.current.click()} style={{width:"100%",height:64,background:"#fff",border:"2px dashed rgba(0,0,0,0.18)",borderRadius:14,color:"rgba(0,0,0,0.5)",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
+            <span style={{fontSize:24}}>📷</span> TAKE PHOTO{aiReady?" · AI auto-analyze":""}
+          </button>
+        ):(
           <div>
             <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8,marginBottom:8}}>
               {form.photos.map((p,i)=>(
@@ -3042,7 +3013,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
             {!aiReady&&<div style={{fontSize:11,color:"rgba(0,0,0,0.35)",textAlign:"center",padding:"6px 0"}}>Setup AI (🤖 in header) to auto-fill from photo</div>}
             {aiResult&&(
               <div style={{background:"rgba(88,86,214,0.06)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:10,padding:"10px 12px",marginTop:8}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#5856d6",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif"}}>AI FILLED — REVIEW & EDIT ABOVE</div>
+                <div style={{fontSize:11,fontWeight:700,color:"#5856d6",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif"}}>AI FILLED — REVIEW & EDIT BELOW</div>
                 <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",marginBottom:6}}>{aiResult.description}</div>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                   {aiResult.trade&&<span style={{fontSize:10,fontWeight:700,background:"rgba(88,86,214,0.1)",color:"#5856d6",padding:"2px 8px",borderRadius:10}}>🔧 {aiResult.trade}</span>}
@@ -3053,17 +3024,93 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
             )}
           </div>
         )}
-        {form.photos.length===0&&(
-          <button onClick={()=>fileRef.current.click()} style={{width:"100%",background:"#fff",border:"2px dashed rgba(0,0,0,0.15)",borderRadius:10,padding:20,color:"rgba(0,0,0,0.4)",fontSize:14,cursor:"pointer"}}>📷 Add photos (up to {MAX_PHOTOS}){aiReady?" · AI will auto-analyze":""}</button>
-        )}
       </div>
 
+      {/* ── 2. SPEAK ISSUE — large voice capture ── */}
+      {speakVoice.supported&&(
+        <div style={{marginBottom:16}}>
+          <button onClick={handleSpeakIssue} style={{width:"100%",height:54,background:speakVoice.listening?"rgba(255,59,48,0.1)":"rgba(255,107,0,0.08)",border:`2px solid ${speakVoice.listening?"rgba(255,59,48,0.4)":"rgba(255,107,0,0.25)"}`,borderRadius:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,transition:"all 0.2s",boxShadow:speakVoice.listening?"0 0 20px rgba(255,59,48,0.3)":"none"}}>
+            <span style={{fontSize:22}}>{speakVoice.listening?"🔴":"🎙"}</span>
+            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:16,color:speakVoice.listening?"#ff3b30":"#ff6b00",letterSpacing:"0.06em"}}>{speakVoice.listening?"LISTENING...":"TAP TO SPEAK"}</span>
+          </button>
+          {speakTranscript&&(
+            <div style={{marginTop:6,background:"rgba(255,107,0,0.05)",border:"1px solid rgba(255,107,0,0.15)",borderRadius:8,padding:"8px 10px",fontSize:12,color:"rgba(0,0,0,0.55)",fontStyle:"italic"}}>"{speakTranscript}"</div>
+          )}
+        </div>
+      )}
+
+      {/* ── 3. TITLE ── */}
+      <VoiceField label="TITLE *" value={form.title} onChange={v=>set("title",v)} placeholder="What's the issue?"/>
+
+      {/* ── 4. WHAT HAPPENED ── */}
+      <VoiceField label="WHAT HAPPENED" value={form.description} onChange={v=>set("description",v)} placeholder="Describe what you see..." multiline/>
+
+      {/* ── 5. SEVERITY ── */}
+      <ComboField label="SEVERITY" value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder="Select severity..."/>
+
+      {/* ── MORE DETAILS accordion ── */}
+      <button onClick={()=>setShowMoreDetails(!showMoreDetails)} style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:12,padding:"14px 16px",marginBottom:showMoreDetails?16:0,display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}}>
+        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"rgba(0,0,0,0.55)",letterSpacing:"0.06em"}}>MORE DETAILS</span>
+        <span style={{fontSize:12,color:"rgba(0,0,0,0.35)",transition:"transform 0.2s",transform:showMoreDetails?"rotate(180deg)":"rotate(0deg)"}}>▼</span>
+      </button>
+
+      {showMoreDetails&&(
+        <div style={{animation:"fadeIn 0.2s ease",marginTop:showMoreDetails?0:0}}>
+          {/* Work Category */}
+          <ComboField label="WORK CATEGORY" value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder="Select work category..."/>
+
+          {/* Entry Type */}
+          <ComboField label="ENTRY TYPE" value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder="Select entry type..."/>
+          <div style={{marginTop:-10,marginBottom:12}}><button onClick={()=>setShowTypeManager(true)} style={{background:"none",border:"none",fontSize:11,color:"rgba(255,107,0,0.7)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:0}}>⚙ Manage custom types</button></div>
+
+          {/* Item / Part (was Component) */}
+          <ComboField label="ITEM / PART" value={form.component} onChange={v=>{set("component",v);set("issue","");}} grouped={activeComponentGroups} placeholder="e.g. Wall, Pipe, Tile..."/>
+
+          {/* Issue (filtered by selected component) */}
+          {form.component&&(
+            <ComboField label="ISSUE" value={form.issue} onChange={v=>{set("issue",v);if(!form.title)set("title",form.component+" — "+v);}} options={COMPONENT_ISSUES[form.component]||COMPONENT_ISSUES["General"]} placeholder="Describe the issue..."/>
+          )}
+
+          {/* Location hierarchy */}
+          <ComboField label="LEVEL / FLOOR" value={form.locationLevel} onChange={v=>set("locationLevel",v)} options={DEFAULT_LEVELS} placeholder="e.g. 3rd Floor"/>
+          <ComboField label="ZONE" value={form.locationZone} onChange={v=>set("locationZone",v)} options={DEFAULT_ZONES} placeholder="e.g. Zone A, Block B"/>
+          <ComboField label="ROOM / AREA" value={form.locationSubzone} onChange={v=>set("locationSubzone",v)} options={DEFAULT_SUBZONES} placeholder="e.g. Kitchen, Bathroom"/>
+          <VoiceField label="GRID REF (optional)" value={form.locationGrid} onChange={v=>set("locationGrid",v)} placeholder="e.g. C4, Grid 3-A"/>
+
+          {/* Assignee */}
+          <ComboField label="ASSIGN TO" value={form.assignee} onChange={v=>set("assignee",v)} options={assignees} placeholder="Select assignee..."/>
+
+          {/* Cost & Time */}
+          <div style={{background:"rgba(0,0,0,0.02)",borderRadius:12,padding:14,marginBottom:16,border:"1px solid rgba(0,0,0,0.06)"}}>
+            <div style={{marginBottom:12}}>
+              <label style={lbl()}>DUE DATE</label>
+              <input type="date" value={form.dueDate} onChange={e=>set("dueDate",e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
+            </div>
+            <ComboField label="TIME NEEDED" value={form.duration} onChange={v=>set("duration",v)} options={DURATION_OPTIONS} placeholder="e.g. 3 days"/>
+            <ComboField label="COST CHANGE" value={form.costImpact} onChange={v=>set("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder="e.g. No change"/>
+            {form.costImpact&&form.costImpact!=="No change"&&form.costImpact!=="To be confirmed by QS"&&(
+              <>
+                <VoiceField label="COST AMOUNT" value={form.costAmount} onChange={v=>set("costAmount",v)} placeholder="e.g. $500, TBC"/>
+                <ComboField label="COST RESPONSIBLE" value={form.costResponsible} onChange={v=>set("costResponsible",v)} options={COST_RESPONSIBLE_OPTIONS} placeholder="Who bears the cost?"/>
+                <VoiceField label="COST REMARKS" value={form.costRemarks} onChange={v=>set("costRemarks",v)} placeholder="Contract clause, reference..." multiline/>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── 6. STICKY BOTTOM ACTION BAR ── */}
       {(()=>{
         const canSubmit=!!(form.title.trim()||form.description.trim()||(form.photos||[]).length>0);
         return(
-          <button onClick={submit} disabled={saving||!canSubmit} style={{width:"100%",background:canSubmit&&!saving?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:12,padding:16,color:canSubmit?"#fff":"rgba(0,0,0,0.3)",fontSize:16,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",cursor:canSubmit&&!saving?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-            {saving?<><Spin size={16}/><span>SAVING...</span></>:"SUBMIT ENTRY"}
-          </button>
+          <div style={{position:"sticky",bottom:0,background:"rgba(240,237,232,0.97)",backdropFilter:"blur(8px)",padding:"12px 16px",borderTop:"1px solid rgba(0,0,0,0.08)",zIndex:10,margin:"0 -16px",width:"calc(100% + 32px)"}}>
+            <button onClick={submit} disabled={saving||!canSubmit} style={{width:"100%",height:54,background:canSubmit&&!saving?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:14,color:canSubmit?"#fff":"rgba(0,0,0,0.3)",fontSize:16,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",cursor:canSubmit&&!saving?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+              {saving?<><Spin size={16}/><span>SAVING...</span></>:"SAVE & NEXT"}
+            </button>
+            <div style={{textAlign:"center",marginTop:8}}>
+              <button onClick={()=>{saveAndDoneRef.current=true;submit();}} disabled={saving||!canSubmit} style={{background:"none",border:"none",fontSize:12,color:"rgba(0,0,0,0.4)",cursor:canSubmit&&!saving?"pointer":"not-allowed",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600}}>SAVE & DONE</button>
+            </div>
+          </div>
         );
       })()}
 
