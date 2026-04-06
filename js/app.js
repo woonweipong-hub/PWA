@@ -1197,44 +1197,29 @@ function VoiceField({label,value,onChange,placeholder,multiline}){
   );
 }
 
-// ComboField: collapsible dropdown with predefined options + free text input
-// Default closed to save space. Tap to expand, select, and auto-collapse.
+// ComboField: voice/manual text input first, with LIST button to open dropdown.
+// Default shows text input + mic. Tap LIST to browse predefined options.
 function ComboField({label,value,onChange,options,placeholder,grouped}){
-  const[custom,setCustom]=useState(false);
-  const[search,setSearch]=useState("");
   const[open,setOpen]=useState(false);
-  const allOpts=grouped?Object.values(grouped).flat():options||[];
-  const isCustom=custom||(!allOpts.includes(value)&&value&&!open);
+  const[search,setSearch]=useState("");
 
-  // Custom text input mode
-  if(isCustom)return(
+  // Default state — text input + voice mic + LIST button
+  if(!open)return(
     <div style={{marginBottom:16}}>
       <label style={lbl()}>{label}</label>
       <div style={{display:"flex",gap:8,alignItems:"center"}}>
-        <input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder||"Type here..."} style={{...inp,flex:1}}/>
+        <input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder||"Type or tap LIST..."} style={{...inp,flex:1}}/>
         <MicBtn onResult={t=>onChange(t)} currentValue={value}/>
-        <button onClick={()=>{setCustom(false);setSearch("");setOpen(true);}} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"8px 10px",fontSize:11,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,flexShrink:0}}>LIST</button>
+        <button onClick={()=>{setSearch("");setOpen(true);}} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"8px 10px",fontSize:11,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,flexShrink:0}}>LIST ▼</button>
       </div>
     </div>
   );
 
-  // Collapsed state — show selected value or placeholder
-  if(!open)return(
-    <div style={{marginBottom:16}}>
-      <label style={lbl()}>{label}</label>
-      <button onClick={()=>setOpen(true)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",borderRadius:10,border:`1px solid ${value?"rgba(255,107,0,0.3)":"rgba(0,0,0,0.12)"}`,background:value?"rgba(255,107,0,0.04)":"#fff",cursor:"pointer",textAlign:"left"}}>
-        <span style={{fontSize:14,fontFamily:"'Barlow',sans-serif",color:value?"#1a1a1a":"rgba(0,0,0,0.35)",fontWeight:value?600:400}}>{value||placeholder||"Select..."}</span>
-        <span style={{fontSize:10,color:"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,flexShrink:0,marginLeft:8}}>▼</span>
-      </button>
-    </div>
-  );
-
-  // Expanded grouped options (e.g. COMPONENT_GROUPS)
+  // Expanded dropdown — grouped options (e.g. COMPONENT_GROUPS)
   if(grouped){
-    const groups=grouped;
     const filteredGroups=search
-      ?Object.fromEntries(Object.entries(groups).map(([g,items])=>[g,items.filter(it=>it.toLowerCase().includes(search.toLowerCase()))]).filter(([,items])=>items.length>0))
-      :groups;
+      ?Object.fromEntries(Object.entries(grouped).map(([g,items])=>[g,items.filter(it=>it.toLowerCase().includes(search.toLowerCase()))]).filter(([,items])=>items.length>0))
+      :grouped;
     return(
       <div style={{marginBottom:16}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
@@ -1242,16 +1227,15 @@ function ComboField({label,value,onChange,options,placeholder,grouped}){
           <button onClick={()=>setOpen(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"rgba(0,0,0,0.5)"}}>▲ CLOSE</button>
         </div>
         <div style={{display:"flex",gap:8,marginBottom:8}}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." style={{...inp,flex:1,fontSize:13}}/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search list..." style={{...inp,flex:1,fontSize:13}}/>
           <MicBtn onResult={t=>setSearch(t)} currentValue={search}/>
-          <button onClick={()=>{setCustom(true);setOpen(false);}} style={{background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:8,padding:"8px 10px",fontSize:11,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff6b00",flexShrink:0}}>TYPE</button>
         </div>
         <div style={{maxHeight:200,overflowY:"auto",borderRadius:10,border:"1px solid rgba(0,0,0,0.08)"}}>
           {Object.entries(filteredGroups).map(([group,items])=>(
             <div key={group}>
               <div style={{padding:"6px 12px",background:"#f5f5f5",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",position:"sticky",top:0,zIndex:2,borderBottom:"1px solid rgba(0,0,0,0.06)"}}>{group.toUpperCase()}</div>
               {items.map(it=>(
-                <div key={it} onClick={()=>{if(it==="Other"||it==="General"){setCustom(true);setOpen(false);onChange("");}else{onChange(it);setOpen(false);}setSearch("");}} style={{padding:"10px 12px",cursor:"pointer",background:value===it?"rgba(255,107,0,0.08)":"#fff",borderBottom:"1px solid rgba(0,0,0,0.04)",fontSize:14,color:value===it?"#ff6b00":"#1a1a1a",fontWeight:value===it?700:400}}>
+                <div key={it} onClick={()=>{onChange(it);setOpen(false);setSearch("");}} style={{padding:"10px 12px",cursor:"pointer",background:value===it?"rgba(255,107,0,0.08)":"#fff",borderBottom:"1px solid rgba(0,0,0,0.04)",fontSize:14,color:value===it?"#ff6b00":"#1a1a1a",fontWeight:value===it?700:400}}>
                   {it}
                 </div>
               ))}
@@ -1263,7 +1247,7 @@ function ComboField({label,value,onChange,options,placeholder,grouped}){
     );
   }
 
-  // Expanded flat options — vertical dropdown list (same style as grouped)
+  // Expanded dropdown — flat options list
   const filtered=search
     ?(options||[]).filter(it=>it.toLowerCase().includes(search.toLowerCase()))
     :options||[];
@@ -1274,13 +1258,12 @@ function ComboField({label,value,onChange,options,placeholder,grouped}){
         <button onClick={()=>setOpen(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"rgba(0,0,0,0.5)"}}>▲ CLOSE</button>
       </div>
       <div style={{display:"flex",gap:8,marginBottom:8}}>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." style={{...inp,flex:1,fontSize:13}}/>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search list..." style={{...inp,flex:1,fontSize:13}}/>
         <MicBtn onResult={t=>setSearch(t)} currentValue={search}/>
-        <button onClick={()=>{setCustom(true);setOpen(false);}} style={{background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:8,padding:"8px 10px",fontSize:11,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff6b00",flexShrink:0}}>TYPE</button>
       </div>
       <div style={{maxHeight:200,overflowY:"auto",borderRadius:10,border:"1px solid rgba(0,0,0,0.08)"}}>
         {filtered.map(opt=>(
-          <div key={opt} onClick={()=>{if(opt==="Other"||opt==="General"){setCustom(true);setOpen(false);onChange("");}else{onChange(opt);setOpen(false);}setSearch("");}} style={{padding:"10px 12px",cursor:"pointer",background:value===opt?"rgba(255,107,0,0.08)":"#fff",borderBottom:"1px solid rgba(0,0,0,0.04)",fontSize:14,color:value===opt?"#ff6b00":"#1a1a1a",fontWeight:value===opt?700:400}}>
+          <div key={opt} onClick={()=>{onChange(opt);setOpen(false);setSearch("");}} style={{padding:"10px 12px",cursor:"pointer",background:value===opt?"rgba(255,107,0,0.08)":"#fff",borderBottom:"1px solid rgba(0,0,0,0.04)",fontSize:14,color:value===opt?"#ff6b00":"#1a1a1a",fontWeight:value===opt?700:400}}>
             {opt}
           </div>
         ))}
