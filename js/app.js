@@ -837,7 +837,7 @@ function PhotoMarkup({src,onSave,onCancel}){
         ))}
         <div style={{width:1,height:24,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
         {COLORS.map(c=>(
-          <button key={c} onClick={()=>setColor(c)} style={{width:28,height:28,borderRadius:"50%",border:color===c?"3px solid #fff":"3px solid rgba(255,255,255,0.15)",background:c,cursor:"pointer"}}/>
+          <button key={c} onClick={()=>{setColor(c);if(selectedIdx!=null)setStrokes(s=>s.map((st,i)=>i===selectedIdx?{...st,color:c}:st));}} style={{width:28,height:28,borderRadius:"50%",border:color===c?"3px solid #fff":"3px solid rgba(255,255,255,0.15)",background:c,cursor:"pointer"}}/>
         ))}
         <button onClick={()=>setLineStyle(s=>s==="solid"?"dotted":"solid")} title={lineStyle==="solid"?"Solid (tap for dotted)":"Dotted (tap for solid)"} style={{width:36,height:36,borderRadius:8,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
           <svg width="20" height="20" viewBox="0 0 20 20">
@@ -848,7 +848,7 @@ function PhotoMarkup({src,onSave,onCancel}){
         </button>
         {/* Text size */}
         {TEXT_SIZES.map(sz=>(
-          <button key={sz.id} onClick={()=>setTextSize(sz.v)} style={{minWidth:28,height:28,padding:"0 4px",borderRadius:6,border:textSize===sz.v?"2px solid #ff6b00":"2px solid rgba(255,255,255,0.15)",background:textSize===sz.v?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,cursor:"pointer"}}>{sz.id}</button>
+          <button key={sz.id} onClick={()=>{setTextSize(sz.v);if(selectedIdx!=null){const st=strokes[selectedIdx];if(st?.type==="text"||st?.type==="callout"||st?.type==="stamp")setStrokes(s=>s.map((x,i)=>i===selectedIdx?{...x,textSize:sz.v}:x));}}} style={{minWidth:28,height:28,padding:"0 4px",borderRadius:6,border:textSize===sz.v?"2px solid #ff6b00":"2px solid rgba(255,255,255,0.15)",background:textSize===sz.v?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,cursor:"pointer"}}>{sz.id}</button>
         ))}
         {/* Stamp picker */}
         {tool==="stamp"&&(
@@ -7013,7 +7013,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
               </button>
               {showDvColorMenu&&<div onMouseEnter={()=>clearTimeout(dvColorTimer.current)} onMouseLeave={()=>{dvColorTimer.current=setTimeout(()=>setShowDvColorMenu(false),250);}} style={{position:"absolute",top:"100%",left:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:8,zIndex:100,boxShadow:"0 4px 12px rgba(0,0,0,0.4)",display:"flex",gap:6}}>
                 {COLORS.map(c=>(
-                  <button key={c} onClick={()=>{setMarkupColor(c);setShowDvColorMenu(false);}} style={{width:26,height:26,borderRadius:"50%",border:markupColor===c?"3px solid #fff":"2px solid rgba(255,255,255,0.2)",background:c,cursor:"pointer"}}/>
+                  <button key={c} onClick={()=>{setMarkupColor(c);if(markupSelectedIdx!=null)setMarkupStrokes(s=>s.map((st,i)=>i===markupSelectedIdx?{...st,color:c}:st));setShowDvColorMenu(false);}} style={{width:26,height:26,borderRadius:"50%",border:markupColor===c?"3px solid #fff":"2px solid rgba(255,255,255,0.2)",background:c,cursor:"pointer"}}/>
                 ))}
               </div>}
             </div>;
