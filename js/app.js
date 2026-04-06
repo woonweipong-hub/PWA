@@ -901,6 +901,110 @@ function exportReportAll(defects,drawings,savedComparisons,projectName){
   a.click();
 }
 
+// Full report export — PDF version with summary stats + defect table
+async function exportReportPdf(defects,drawings,savedComparisons,projectName,companyName,allPins){
+  const doc=new jspdf.jsPDF("p","mm","a4");
+  const pageW=doc.internal.pageSize.getWidth();
+  const pageH=doc.internal.pageSize.getHeight();
+  const margin=14;
+  const contentW=pageW-margin*2;
+  let y=18;
+  const footer=()=>{doc.setFontSize(8);doc.setTextColor(150);doc.text("SiteShrimp Report",margin,pageH-8);doc.setTextColor(0);};
+  // Title
+  doc.setFontSize(18);doc.setFont(undefined,"bold");
+  doc.text("SITE REPORT",margin,y);y+=8;
+  doc.setFontSize(10);doc.setFont(undefined,"normal");doc.setTextColor(100);
+  doc.text(`${projectName||""}${companyName?" · "+companyName:""} · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}`,margin,y);y+=10;
+  doc.setTextColor(0);
+
+  // Summary stats
+  const total=(defects||[]).length;
+  const bySev={};const byStat={};
+  (defects||[]).forEach(d=>{bySev[d.severity]=(bySev[d.severity]||0)+1;byStat[d.status]=(byStat[d.status]||0)+1;});
+  doc.setFontSize(12);doc.setFont(undefined,"bold");
+  doc.text("SUMMARY",margin,y);y+=6;
+  doc.setFontSize(10);doc.setFont(undefined,"normal");
+  doc.text(`Total Entries: ${total}`,margin,y);y+=5;
+  doc.text(`By Severity: ${Object.entries(bySev).map(([k,v])=>`${k}: ${v}`).join("  |  ")}`,margin,y);y+=5;
+  doc.text(`By Status: ${Object.entries(byStat).map(([k,v])=>`${k}: ${v}`).join("  |  ")}`,margin,y);y+=10;
+
+  // Defect entries table
+  if(defects&&defects.length>0){
+    doc.setFontSize(12);doc.setFont(undefined,"bold");
+    doc.text("DEFECT ENTRIES",margin,y);y+=2;
+    const headers=[["ID","Type","Title","Component","Location","Severity","Status","Assignee","Date"]];
+    const rows=(defects||[]).map(d=>[
+      d.defect_id||d.id||"",
+      d.entryType||"Defect",
+      (d.title||"").substring(0,40),
+      d.component||"",
+      d.location||"",
+      d.severity||"",
+      d.status||"",
+      d.assignee||"",
+      (d.createdAt||d.created)?new Date(d.createdAt||d.created).toLocaleDateString("en-GB"):""
+    ]);
+    doc.autoTable({startY:y,head:headers,body:rows,margin:{left:margin,right:margin},styles:{fontSize:7,cellPadding:2},headStyles:{fillColor:[255,107,0],textColor:255,fontStyle:"bold"},alternateRowStyles:{fillColor:[252,250,247]},didDrawPage:footer});
+    y=doc.lastAutoTable.finalY+8;
+  }
+
+  // Drawing annotations — summary table + rendered annotated images
+  if(drawings&&drawings.length>0){
+    const annotated=drawings.filter(d=>{const n=getDrawingNotes(d.id)||[];const m=getDrawingMarkup(d.id)||[];return n.length>0||m.length>0;});
+    if(annotated.length>0){
+      if(y>250){doc.addPage();y=18;}
+      doc.setFontSize(12);doc.setFont(undefined,"bold");
+      doc.text("DRAWING ANNOTATIONS",margin,y);y+=2;
+      const dHeaders=[["Drawing","Notes","Markups"]];
+      const dRows=annotated.map(d=>[d.name||"",(getDrawingNotes(d.id)||[]).length.toString(),(getDrawingMarkup(d.id)||[]).length.toString()]);
+      doc.autoTable({startY:y,head:dHeaders,body:dRows,margin:{left:margin,right:margin},styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:[255,107,0],textColor:255,fontStyle:"bold"}});
+      y=doc.lastAutoTable.finalY+8;
+
+      // Render and embed annotated drawing images
+      for(const d of annotated){
+        try{
+          const pages=await renderDrawingAnnotatedPages(d,defects,allPins||[]);
+          if(!pages||pages.length===0)continue;
+          for(const pg of pages){
+            // Start each drawing image on a new page for clarity
+            doc.addPage();y=18;
+            doc.setFontSize(11);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
+            doc.text(`${d.name||"Drawing"}${pages.length>1?" — Page "+pg.pageNum:""}`,margin,y);
+            doc.setTextColor(0);y+=6;
+            doc.setFontSize(8);doc.setFont(undefined,"normal");
+            const notes=getDrawingNotes(d.id)||[];const markups=getDrawingMarkup(d.id)||[];
+            doc.text(`${notes.length} note(s), ${markups.length} markup(s)`,margin,y);y+=6;
+            // Determine image dimensions to fit page width
+            const img=new Image();
+            await new Promise((resolve)=>{img.onload=resolve;img.onerror=resolve;img.src=pg.dataUrl;});
+            if(img.width>0&&img.height>0){
+              const ratio=img.height/img.width;
+              const imgW=contentW;
+              const imgH=Math.min(imgW*ratio,pageH-y-margin-10);
+              const actualW=imgH/(ratio||1);
+              doc.addImage(pg.dataUrl,"JPEG",margin,y,Math.min(imgW,actualW),imgH);
+              y+=imgH+4;
+            }
+            footer();
+          }
+        }catch(e){console.warn("exportReportPdf: failed to render drawing",d.name,e);}
+      }
+    }
+  }
+
+  // Saved comparisons summary
+  if(savedComparisons&&savedComparisons.length>0){
+    if(y>250){doc.addPage();y=18;}
+    doc.setFontSize(12);doc.setFont(undefined,"bold");
+    doc.text("SAVED COMPARISONS",margin,y);y+=2;
+    const cHeaders=[["Base","Target","Added","Removed","AI Report","Date"]];
+    const cRows=savedComparisons.map(sc=>[sc.baseName||"",sc.targetName||"",String(sc.totalAdded||0),String(sc.totalRemoved||0),sc.aiReport?"Yes":"No",sc.savedAt?new Date(sc.savedAt).toLocaleDateString("en-GB"):""]);
+    doc.autoTable({startY:y,head:cHeaders,body:cRows,margin:{left:margin,right:margin},styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:[88,86,214],textColor:255,fontStyle:"bold"}});
+  }
+
+  doc.save(`SiteShrimp_Report_${(projectName||"Export").replace(/\s/g,"_")}_${new Date().toLocaleDateString("en-GB").replace(/\//g,"-")}.pdf`);
+}
+
 async function sendTelegram(token,chatId,text){
   try{
     const r=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
@@ -1093,26 +1197,39 @@ function VoiceField({label,value,onChange,placeholder,multiline}){
   );
 }
 
-// ComboField: dropdown with predefined options + free text input
-// For foreign workers: tap to select. For architects: type custom value.
+// ComboField: collapsible dropdown with predefined options + free text input
+// Default closed to save space. Tap to expand, select, and auto-collapse.
 function ComboField({label,value,onChange,options,placeholder,grouped}){
   const[custom,setCustom]=useState(false);
   const[search,setSearch]=useState("");
+  const[open,setOpen]=useState(false);
   const allOpts=grouped?Object.values(grouped).flat():options||[];
-  const isCustom=custom||(!allOpts.includes(value)&&value);
+  const isCustom=custom||(!allOpts.includes(value)&&value&&!open);
 
+  // Custom text input mode
   if(isCustom)return(
     <div style={{marginBottom:16}}>
       <label style={lbl()}>{label}</label>
       <div style={{display:"flex",gap:8,alignItems:"center"}}>
         <input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder||"Type here..."} style={{...inp,flex:1}}/>
         <MicBtn onResult={t=>onChange(t)} currentValue={value}/>
-        <button onClick={()=>{setCustom(false);setSearch("");}} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"8px 10px",fontSize:11,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,flexShrink:0}}>LIST</button>
+        <button onClick={()=>{setCustom(false);setSearch("");setOpen(true);}} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"8px 10px",fontSize:11,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,flexShrink:0}}>LIST</button>
       </div>
     </div>
   );
 
-  // Grouped options (e.g. COMPONENT_GROUPS)
+  // Collapsed state — show selected value or placeholder
+  if(!open)return(
+    <div style={{marginBottom:16}}>
+      <label style={lbl()}>{label}</label>
+      <button onClick={()=>setOpen(true)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",borderRadius:10,border:`1px solid ${value?"rgba(255,107,0,0.3)":"rgba(0,0,0,0.12)"}`,background:value?"rgba(255,107,0,0.04)":"#fff",cursor:"pointer",textAlign:"left"}}>
+        <span style={{fontSize:14,fontFamily:"'Barlow',sans-serif",color:value?"#1a1a1a":"rgba(0,0,0,0.35)",fontWeight:value?600:400}}>{value||placeholder||"Select..."}</span>
+        <span style={{fontSize:10,color:"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,flexShrink:0,marginLeft:8}}>▼</span>
+      </button>
+    </div>
+  );
+
+  // Expanded grouped options (e.g. COMPONENT_GROUPS)
   if(grouped){
     const groups=grouped;
     const filteredGroups=search
@@ -1120,18 +1237,21 @@ function ComboField({label,value,onChange,options,placeholder,grouped}){
       :groups;
     return(
       <div style={{marginBottom:16}}>
-        <label style={lbl()}>{label}</label>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+          <label style={{...lbl(),marginBottom:0}}>{label}</label>
+          <button onClick={()=>setOpen(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"rgba(0,0,0,0.5)"}}>▲ CLOSE</button>
+        </div>
         <div style={{display:"flex",gap:8,marginBottom:8}}>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." style={{...inp,flex:1,fontSize:13}}/>
           <MicBtn onResult={t=>setSearch(t)} currentValue={search}/>
-          <button onClick={()=>setCustom(true)} style={{background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:8,padding:"8px 10px",fontSize:11,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff6b00",flexShrink:0}}>TYPE</button>
+          <button onClick={()=>{setCustom(true);setOpen(false);}} style={{background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:8,padding:"8px 10px",fontSize:11,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff6b00",flexShrink:0}}>TYPE</button>
         </div>
         <div style={{maxHeight:200,overflowY:"auto",borderRadius:10,border:"1px solid rgba(0,0,0,0.08)"}}>
           {Object.entries(filteredGroups).map(([group,items])=>(
             <div key={group}>
               <div style={{padding:"6px 12px",background:"#f5f5f5",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",position:"sticky",top:0,zIndex:2,borderBottom:"1px solid rgba(0,0,0,0.06)"}}>{group.toUpperCase()}</div>
               {items.map(it=>(
-                <div key={it} onClick={()=>{if(it==="Other"||it==="General"){setCustom(true);onChange("");}else{onChange(it);}setSearch("");}} style={{padding:"10px 12px",cursor:"pointer",background:value===it?"rgba(255,107,0,0.08)":"#fff",borderBottom:"1px solid rgba(0,0,0,0.04)",fontSize:14,color:value===it?"#ff6b00":"#1a1a1a",fontWeight:value===it?700:400}}>
+                <div key={it} onClick={()=>{if(it==="Other"||it==="General"){setCustom(true);setOpen(false);onChange("");}else{onChange(it);setOpen(false);}setSearch("");}} style={{padding:"10px 12px",cursor:"pointer",background:value===it?"rgba(255,107,0,0.08)":"#fff",borderBottom:"1px solid rgba(0,0,0,0.04)",fontSize:14,color:value===it?"#ff6b00":"#1a1a1a",fontWeight:value===it?700:400}}>
                   {it}
                 </div>
               ))}
@@ -1143,16 +1263,19 @@ function ComboField({label,value,onChange,options,placeholder,grouped}){
     );
   }
 
-  // Flat options list with chip-style buttons
+  // Expanded flat options list with chip-style buttons
   return(
     <div style={{marginBottom:16}}>
-      <label style={lbl()}>{label}</label>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+        <label style={{...lbl(),marginBottom:0}}>{label}</label>
+        <button onClick={()=>setOpen(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"rgba(0,0,0,0.5)"}}>▲ CLOSE</button>
+      </div>
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:6}}>
         {options.map(opt=>(
-          <button key={opt} onClick={()=>{if(opt==="Other"||opt==="General"){setCustom(true);onChange("");}else onChange(opt);}} style={{padding:"8px 12px",borderRadius:20,border:`1.5px solid ${value===opt?"#ff6b00":"rgba(0,0,0,0.12)"}`,background:value===opt?"rgba(255,107,0,0.08)":"#fff",color:value===opt?"#ff6b00":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,fontSize:12,cursor:"pointer"}}>{opt}</button>
+          <button key={opt} onClick={()=>{if(opt==="Other"||opt==="General"){setCustom(true);setOpen(false);onChange("");}else{onChange(opt);setOpen(false);}}} style={{padding:"8px 12px",borderRadius:20,border:`1.5px solid ${value===opt?"#ff6b00":"rgba(0,0,0,0.12)"}`,background:value===opt?"rgba(255,107,0,0.08)":"#fff",color:value===opt?"#ff6b00":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,fontSize:12,cursor:"pointer"}}>{opt}</button>
         ))}
       </div>
-      <button onClick={()=>setCustom(true)} style={{background:"none",border:"none",fontSize:11,color:"rgba(255,107,0,0.7)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:"4px 0"}}>+ Type custom value</button>
+      <button onClick={()=>{setCustom(true);setOpen(false);}} style={{background:"none",border:"none",fontSize:11,color:"rgba(255,107,0,0.7)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:"4px 0"}}>+ Type custom value</button>
     </div>
   );
 }
@@ -2599,32 +2722,10 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:20}}>📁 {currentProject?.name||"—"} · Tap 🎙 to dictate</div>
 
       {/* Work Category — narrows the Component dropdown to relevant groups */}
-      <div style={{marginBottom:16}}>
-        <label style={lbl()}>WORK CATEGORY</label>
-        <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4,scrollbarWidth:"thin"}}>
-          {Object.entries(WORK_CATEGORIES).map(([name,cat])=>{
-            const active=form.workCategory===name;
-            return(
-              <button key={name} onClick={()=>{setForm(f=>({...f,workCategory:name,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,name);}} title={cat.desc} style={{flexShrink:0,padding:"9px 12px",borderRadius:12,border:`2px solid ${active?"#ff6b00":"rgba(0,0,0,0.1)"}`,background:active?"rgba(255,107,0,0.08)":"#fff",color:active?"#ff6b00":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}>
-                <span style={{fontSize:14}}>{cat.icon}</span>
-                <span>{name.replace(" Defects","").replace(" Works","").toUpperCase()}</span>
-              </button>
-            );
-          })}
-        </div>
-        <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",marginTop:6,fontStyle:"italic"}}>{WORK_CATEGORIES[form.workCategory]?.desc||""}</div>
-      </div>
+      <ComboField label="WORK CATEGORY" value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder="Select work category..."/>
 
       {/* Entry Type */}
-      <div style={{marginBottom:16}}>
-        <label style={lbl()}>ENTRY TYPE</label>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          {getAllEntryTypes().map(t=>(
-            <button key={t} onClick={()=>set("entryType",t)} style={{padding:"8px 14px",borderRadius:20,border:`2px solid ${form.entryType===t?typeColor(t):"rgba(0,0,0,0.12)"}`,background:form.entryType===t?typeBg(t):"#fff",color:form.entryType===t?typeColor(t):"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{typeIcon(t)} {t.toUpperCase()}</button>
-          ))}
-          <button onClick={()=>setShowTypeManager(true)} style={{padding:"8px 12px",borderRadius:20,border:"2px dashed rgba(0,0,0,0.15)",background:"#fff",color:"rgba(0,0,0,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>+ TYPE</button>
-        </div>
-      </div>
+      <ComboField label="ENTRY TYPE" value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder="Select entry type..."/>
 
       {/* Component (grouped dropdown) */}
       <ComboField label="COMPONENT" value={form.component} onChange={v=>{set("component",v);set("issue","");}} grouped={activeComponentGroups} placeholder="e.g. Wall, Pipe, Tile..."/>
@@ -2643,22 +2744,10 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       <VoiceField label="GRID REF (optional)" value={form.locationGrid} onChange={v=>set("locationGrid",v)} placeholder="e.g. C4, Grid 3-A"/>
 
       {/* Severity */}
-      <div style={{marginBottom:16}}>
-        <label style={lbl()}>SEVERITY</label>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          {SEVERITY.map(s=>(
-            <button key={s} onClick={()=>set("severity",s)} style={{padding:"8px 14px",borderRadius:20,border:`2px solid ${form.severity===s?SEV_COLOR[s]:"rgba(0,0,0,0.12)"}`,background:form.severity===s?SEV_BG[s]:"#fff",color:form.severity===s?SEV_COLOR[s]:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{s.toUpperCase()}</button>
-          ))}
-        </div>
-      </div>
+      <ComboField label="SEVERITY" value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder="Select severity..."/>
 
       {/* Assignee */}
-      <div style={{marginBottom:16}}>
-        <label style={lbl()}>ASSIGN TO</label>
-        <select value={form.assignee} onChange={e=>set("assignee",e.target.value)} style={{...inp,width:"100%",flex:"unset",appearance:"none"}}>
-          {assignees.map(t=><option key={t}>{t}</option>)}
-        </select>
-      </div>
+      <ComboField label="ASSIGN TO" value={form.assignee} onChange={v=>set("assignee",v)} options={assignees} placeholder="Select assignee..."/>
 
       <VoiceField label="DESCRIPTION" value={form.description} onChange={v=>set("description",v)} placeholder="Describe the issue..." multiline/>
 
@@ -3105,6 +3194,47 @@ function BeforeAfter({before,after}){
   );
 }
 
+// ── Full-screen Photo Viewer with zoom/pan ──────────────────────
+function PhotoViewer({src,onClose}){
+  const[scale,setScale]=useState(1);
+  const[pan,setPan]=useState({x:0,y:0});
+  const[dragging,setDragging]=useState(false);
+  const lastPos=useRef({x:0,y:0});
+  const lastDist=useRef(0);
+  const zoomIn=()=>setScale(s=>Math.min(s+0.5,5));
+  const zoomOut=()=>setScale(s=>Math.max(s-0.5,0.5));
+  const resetZoom=()=>{setScale(1);setPan({x:0,y:0});};
+  const onWheel=e=>{e.preventDefault();setScale(s=>Math.max(0.5,Math.min(5,s+(e.deltaY<0?0.3:-0.3))));};
+  const onPointerDown=e=>{setDragging(true);lastPos.current={x:e.clientX-pan.x,y:e.clientY-pan.y};};
+  const onPointerMove=e=>{if(!dragging)return;setPan({x:e.clientX-lastPos.current.x,y:e.clientY-lastPos.current.y});};
+  const onPointerUp=()=>setDragging(false);
+  const onTouchStart=e=>{if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX;const dy=e.touches[0].clientY-e.touches[1].clientY;lastDist.current=Math.sqrt(dx*dx+dy*dy);}};
+  const onTouchMove=e=>{if(e.touches.length===2){e.preventDefault();const dx=e.touches[0].clientX-e.touches[1].clientX;const dy=e.touches[0].clientY-e.touches[1].clientY;const dist=Math.sqrt(dx*dx+dy*dy);if(lastDist.current){const delta=(dist-lastDist.current)*0.01;setScale(s=>Math.max(0.5,Math.min(5,s+delta)));}lastDist.current=dist;}};
+  // Double-tap to reset
+  const lastTap=useRef(0);
+  const onDoubleTap=()=>{const now=Date.now();if(now-lastTap.current<300){resetZoom();}lastTap.current=now;};
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,0.92)",display:"flex",flexDirection:"column",animation:"fadeIn 0.2s ease"}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+      {/* Top bar */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",flexShrink:0}}>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <button onClick={zoomOut} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,padding:"8px 14px",color:"#fff",fontSize:16,cursor:"pointer",fontWeight:700}}>−</button>
+          <button onClick={resetZoom} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,minWidth:50}}>{Math.round(scale*100)}%</button>
+          <button onClick={zoomIn} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,padding:"8px 14px",color:"#fff",fontSize:16,cursor:"pointer",fontWeight:700}}>+</button>
+        </div>
+        <button onClick={onClose} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:10,padding:"8px 16px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>✕ CLOSE</button>
+      </div>
+      {/* Photo area */}
+      <div style={{flex:1,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",touchAction:"none",cursor:dragging?"grabbing":"grab"}}
+        onWheel={onWheel} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerLeave={onPointerUp}
+        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onClick={onDoubleTap}>
+        <img src={src} alt="" style={{maxWidth:"90vw",maxHeight:"85vh",objectFit:"contain",transform:`scale(${scale}) translate(${pan.x/scale}px,${pan.y/scale}px)`,transition:dragging?"none":"transform 0.15s ease",userSelect:"none",pointerEvents:"none"}}/>
+      </div>
+      <div style={{textAlign:"center",padding:"8px",color:"rgba(255,255,255,0.4)",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif"}}>Scroll or pinch to zoom · Drag to pan · Double-tap to reset</div>
+    </div>
+  );
+}
+
 function DefectDetail({defect,onClose,onUpdate,member,company}){
   const[status,setStatus]=useState(defect.status);
   const[comment,setComment]=useState("");const[saving,setSaving]=useState(false);const[deleting,setDeleting]=useState(false);
@@ -3120,6 +3250,10 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
   const[editingCommentText,setEditingCommentText]=useState("");
   // Comment photo markup state
   const[markupCommentIdx,setMarkupCommentIdx]=useState(null);
+  // Full-screen photo viewer state
+  const[viewerPhoto,setViewerPhoto]=useState(null);
+  // Pending verify status (stored when user picks photo before confirming)
+  const[pendingVerifyStatus,setPendingVerifyStatus]=useState(null);
 
   // Capture photo for comment
   const handleCommentPhoto=e=>{
@@ -3140,10 +3274,12 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
     // Require verification photo for Closed/Verified
     if((s==="Closed"||s==="Verified")&&!verifyPhoto){
       if(confirm(`Add a verification photo to confirm ${s.toLowerCase()}? Tap OK to attach, or Cancel to skip.`)){
+        setPendingVerifyStatus(s);
         verifyPhotoRef.current?.click();
         return;
       }
     }
+    setPendingVerifyStatus(null);
     setStatus(s);
     try{
       const updateData={status:s};
@@ -3252,10 +3388,10 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
           return afterPhoto&&origPhoto?(
             <BeforeAfter before={origPhoto} after={afterPhoto}/>
           ):typeof defect.photo==="string"
-            ?<img src={defect.photo} alt="" style={{maxWidth:"100%",borderRadius:12,maxHeight:350,objectFit:"contain",display:"block",marginBottom:14,background:"#f8f8f6"}}/>
+            ?<img src={defect.photo} alt="" onClick={()=>setViewerPhoto(defect.photo)} style={{maxWidth:"100%",borderRadius:12,maxHeight:350,objectFit:"contain",display:"block",marginBottom:14,background:"#f8f8f6",cursor:"pointer"}} title="Tap to view full screen"/>
             :Array.isArray(defect.photo)&&defect.photo.length>0
               ?<div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8,marginBottom:14}}>
-                {defect.photo.map((p,i)=><img key={i} src={p} alt="" style={{height:180,borderRadius:12,objectFit:"cover",flexShrink:0}}/>)}
+                {defect.photo.map((p,i)=><img key={i} src={p} alt="" onClick={()=>setViewerPhoto(p)} style={{height:180,borderRadius:12,objectFit:"cover",flexShrink:0,cursor:"pointer"}} title="Tap to view full screen"/>)}
               </div>
               :null;
         })()}
@@ -3267,6 +3403,21 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
               {STATUS.map(s=>(
                 <button key={s} onClick={()=>updateStatus(s)} style={{flex:1,padding:"10px 4px",borderRadius:10,border:`2px solid ${status===s?STATUS_COLOR[s]:"rgba(0,0,0,0.1)"}`,background:status===s?STATUS_COLOR[s]+"20":"#fff",color:status===s?STATUS_COLOR[s]:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{s.toUpperCase()}</button>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Verification photo preview + confirm panel */}
+        {verifyPhoto&&pendingVerifyStatus&&(
+          <div style={{background:"rgba(48,209,88,0.06)",border:"1.5px solid rgba(48,209,88,0.25)",borderRadius:14,padding:14,marginBottom:14}}>
+            <div style={lbl("#30d158")}>VERIFICATION PHOTO — {pendingVerifyStatus.toUpperCase()}</div>
+            <div style={{position:"relative",marginBottom:10}}>
+              <img src={verifyPhoto} alt="" onClick={()=>setViewerPhoto(verifyPhoto)} style={{width:"100%",maxHeight:280,objectFit:"contain",borderRadius:10,background:"#f8f8f6",cursor:"pointer"}} title="Tap to view full screen"/>
+              <button onClick={()=>{setVerifyPhoto(null);setPendingVerifyStatus(null);}} style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,0.7)",border:"none",borderRadius:"50%",color:"#fff",width:26,height:26,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>updateStatus(pendingVerifyStatus)} style={{flex:1,background:"#30d158",border:"none",borderRadius:10,padding:"12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer"}}>CONFIRM {pendingVerifyStatus.toUpperCase()}</button>
+              <button onClick={()=>{verifyPhotoRef.current?.click();}} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:10,padding:"12px 16px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>RETAKE</button>
             </div>
           </div>
         )}
@@ -3322,9 +3473,12 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
                     </div>
                   )}
                   {c.photo&&(
-                    <div style={{position:"relative",marginTop:6,cursor:canUpdate?"pointer":"default"}} onClick={()=>{if(canUpdate)setMarkupCommentIdx(i);}} title={canUpdate?"Tap to markup photo":""}>
-                      <img src={c.photo} alt="" style={{width:"100%",maxHeight:200,objectFit:"contain",borderRadius:8,background:"#f8f8f6"}}/>
-                      {canUpdate&&<div style={{position:"absolute",bottom:6,right:6,background:"rgba(0,0,0,0.6)",borderRadius:6,padding:"3px 8px",fontSize:10,color:"#fff",fontWeight:700}}>✏ MARKUP</div>}
+                    <div style={{position:"relative",marginTop:6}}>
+                      <img src={c.photo} alt="" onClick={()=>setViewerPhoto(c.photo)} style={{width:"100%",maxHeight:280,objectFit:"contain",borderRadius:8,background:"#f8f8f6",cursor:"pointer"}} title="Tap to view full screen"/>
+                      <div style={{position:"absolute",bottom:6,right:6,display:"flex",gap:4}}>
+                        <button onClick={()=>setViewerPhoto(c.photo)} style={{background:"rgba(0,0,0,0.6)",border:"none",borderRadius:6,padding:"3px 8px",fontSize:10,color:"#fff",fontWeight:700,cursor:"pointer"}}>🔍 VIEW</button>
+                        {canUpdate&&<button onClick={()=>setMarkupCommentIdx(i)} style={{background:"rgba(0,0,0,0.6)",border:"none",borderRadius:6,padding:"3px 8px",fontSize:10,color:"#fff",fontWeight:700,cursor:"pointer"}}>✏ MARKUP</button>}
+                      </div>
                     </div>
                   )}
                   {/* Reactions */}
@@ -3368,6 +3522,8 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
       {markupCommentIdx!==null&&(latestRef.current.comments||[])[markupCommentIdx]?.photo&&(
         <PhotoMarkup src={(latestRef.current.comments||[])[markupCommentIdx].photo} onSave={saveCommentMarkup} onCancel={()=>setMarkupCommentIdx(null)}/>
       )}
+      {/* Full-screen photo viewer modal */}
+      {viewerPhoto&&<PhotoViewer src={viewerPhoto} onClose={()=>setViewerPhoto(null)}/>}
     </div>
   );
 }
@@ -3482,7 +3638,7 @@ function ProfilePanel({member,authUser,company,onClose,onSignOut}){
 
 function Report({defects,onEmailSetup,currentProject,company}){
   const[sending,setSending]=useState(false);const[sendRes,setSendRes]=useState(null);
-  const[showFilters,setShowFilters]=useState(false);
+  const[showFilters,setShowFilters]=useState(false);const[showExportMenu,setShowExportMenu]=useState(false);
   const[sevFilter,setSevFilter]=useState([]);const[statusFilter,setStatusFilter]=useState([]);
   const[assigneeFilter,setAssigneeFilter]=useState([]);const[dateFrom,setDateFrom]=useState("");const[dateTo,setDateTo]=useState("");
   const[showPreview,setShowPreview]=useState(false);
@@ -3496,6 +3652,11 @@ function Report({defects,onEmailSetup,currentProject,company}){
     if(!company?.companyId||!currentProject?.id)return;
     DB.drawings.list(`companyId="${company.companyId}" && projectId="${currentProject.id}"`).then(items=>setReportDrawings(items)).catch(()=>{});
   },[company?.companyId,currentProject?.id]);
+  const[reportPins,setReportPins]=useState([]);
+  useEffect(()=>{
+    if(!reportDrawings.length)return;
+    Promise.all(reportDrawings.map(d=>DB.pins.list(`drawingId="${d.id}"`))).then(results=>setReportPins(results.flat())).catch(()=>{});
+  },[reportDrawings]);
   const savedComparisons=getSavedComparisons(currentProject?.id);
   const drawingsWithAnnotations=reportDrawings.filter(d=>getDrawingMarkup(d.id).length>0||getDrawingNotes(d.id).length>0);
 
@@ -3579,7 +3740,16 @@ function Report({defects,onEmailSetup,currentProject,company}){
           {sending?<><Spin size={14}/><span>SENDING...</span></>:emailReady?"📧 EMAIL REPORT":"⚙️ SETUP EMAIL"}
         </button>
         <button onClick={()=>setShowPreview(p=>!p)} style={{background:showPreview?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 14px",color:showPreview?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>👁 PREVIEW</button>
-        <button onClick={()=>exportReportAll(filtered,reportDrawings,savedComparisons,currentProject?.name)} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>📊 EXPORT</button>
+        <div style={{position:"relative"}}>
+          <button onClick={()=>setShowExportMenu(m=>!m)} style={{background:showExportMenu?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 14px",color:showExportMenu?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>📊 EXPORT ▾</button>
+          {showExportMenu&&(
+            <div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(0,0,0,0.08)",zIndex:20,minWidth:160,overflow:"hidden"}}>
+              <button onClick={()=>{exportReportAll(filtered,reportDrawings,savedComparisons,currentProject?.name);setShowExportMenu(false);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📄 Export CSV</button>
+              <button onClick={()=>{exportReportPdf(filtered,reportDrawings,savedComparisons,currentProject?.name,company?.companyName,reportPins);setShowExportMenu(false);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📕 Export PDF</button>
+              <button onClick={()=>{exportReportAll(filtered,reportDrawings,savedComparisons,currentProject?.name);exportReportPdf(filtered,reportDrawings,savedComparisons,currentProject?.name,company?.companyName,reportPins);setShowExportMenu(false);}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#ff6b00"}}>📊 Export All (CSV + PDF)</button>
+            </div>
+          )}
+        </div>
         {emailReady&&<button onClick={onEmailSetup} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>EDIT</button>}
       </div>
 
@@ -6487,11 +6657,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
             {/* Title */}
             <input value={qTitle} onChange={e=>setQTitle(e.target.value)} placeholder="Defect title..." style={{width:"100%",padding:12,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",marginBottom:12,boxSizing:"border-box"}}/>
             {/* Severity */}
-            <div style={{display:"flex",gap:6,marginBottom:16}}>
-              {SEVERITY.map(s=>(
-                <button key={s} onClick={()=>setQSev(s)} style={{flex:1,padding:"8px 4px",borderRadius:8,border:`2px solid ${qSev===s?SEV_COLOR[s]:"rgba(255,255,255,0.1)"}`,background:qSev===s?SEV_COLOR[s]+"30":"rgba(255,255,255,0.05)",color:qSev===s?SEV_COLOR[s]:"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,cursor:"pointer"}}>{s.toUpperCase()}</button>
-              ))}
-            </div>
+            <ComboField label="SEVERITY" value={qSev} onChange={v=>setQSev(v)} options={SEVERITY} placeholder="Select severity..."/>
             {/* Actions */}
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>{setQuickCreate(false);setQTitle("");setQPhoto(null);}} style={{flex:1,padding:12,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>BACK</button>
