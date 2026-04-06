@@ -263,6 +263,76 @@ function _drawMarkupStroke(ctx,W,H,s,imageCache){
     ctx.textAlign=align==="center"?"center":(align==="right"?"right":"left");
     ctx.fillText(s.text,textX,textY);
     ctx.textAlign="left";
+  }else if(s.type==="cloud"&&s.start&&s.end){
+    const a=px(s.start),b=px(s.end);
+    const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y),w=Math.abs(b.x-a.x),h=Math.abs(b.y-a.y);
+    if(w>2||h>2){
+      ctx.beginPath();
+      const arcsPerW=Math.max(4,Math.round(w/18)),arcsPerH=Math.max(4,Math.round(h/18));
+      const dw=w/arcsPerW,dh=h/arcsPerH,r=Math.max(dw,dh)*0.55;
+      for(let i=0;i<arcsPerW;i++){const cx=x+dw*i+dw/2;ctx.arc(cx,y,r,Math.PI,0);}
+      for(let i=0;i<arcsPerH;i++){const cy=y+dh*i+dh/2;ctx.arc(x+w,cy,r,-Math.PI/2,Math.PI/2);}
+      for(let i=arcsPerW-1;i>=0;i--){const cx=x+dw*i+dw/2;ctx.arc(cx,y+h,r,0,Math.PI);}
+      for(let i=arcsPerH-1;i>=0;i--){const cy=y+dh*i+dh/2;ctx.arc(x,cy,Math.PI/2,-Math.PI/2);}
+      ctx.stroke();
+    }
+  }else if(s.type==="callout"&&s.start&&s.end){
+    const a=px(s.start),b=px(s.end);
+    const angle=Math.atan2(b.y-a.y,b.x-a.x);
+    const hl=Math.max(12,W*0.018);
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(a.x,a.y);
+    ctx.lineTo(a.x+hl*Math.cos(angle-0.4),a.y+hl*Math.sin(angle-0.4));
+    ctx.moveTo(a.x,a.y);
+    ctx.lineTo(a.x+hl*Math.cos(angle+0.4),a.y+hl*Math.sin(angle+0.4));
+    ctx.stroke();
+    if(s.text){
+      const fs=s.fontSize?Math.max(8,W*s.fontSize*0.0075):Math.max(12,W*0.014);
+      ctx.font=`bold ${fs}px Arial`;
+      const tw=ctx.measureText(s.text).width;
+      const pad=fs*0.3;
+      ctx.fillStyle="rgba(255,255,255,0.92)";
+      ctx.strokeStyle=s.color||"#ff6b00";ctx.lineWidth=2;
+      _roundRectPath(ctx,b.x-pad,b.y-fs-pad,tw+pad*2,fs+pad*2,4);
+      ctx.fill();ctx.stroke();
+      ctx.fillStyle=s.color||"#ff6b00";
+      ctx.textBaseline="alphabetic";ctx.textAlign="left";
+      ctx.fillText(s.text,b.x,b.y);
+    }
+  }else if(s.type==="highlight"&&Array.isArray(s.points)&&s.points.length>1){
+    ctx.save();
+    ctx.globalAlpha=0.3;
+    ctx.lineWidth=Math.max(8,W*0.015);
+    ctx.lineCap="round";ctx.lineJoin="round";
+    ctx.beginPath();
+    const p0=px(s.points[0]);ctx.moveTo(p0.x,p0.y);
+    for(let i=1;i<s.points.length;i++){const p=px(s.points[i]);ctx.lineTo(p.x,p.y);}
+    ctx.stroke();
+    ctx.restore();
+  }else if(s.type==="polyline"&&Array.isArray(s.points)&&s.points.length>1){
+    if(s.lineStyle==="dotted")ctx.setLineDash([Math.max(4,W*0.005),Math.max(3,W*0.004)]);
+    ctx.beginPath();
+    const p0=px(s.points[0]);ctx.moveTo(p0.x,p0.y);
+    for(let i=1;i<s.points.length;i++){const p=px(s.points[i]);ctx.lineTo(p.x,p.y);}
+    if(s.closed)ctx.closePath();
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }else if(s.type==="stamp"&&s.pos){
+    const p=px(s.pos);
+    const text=s.text||s.stampId||"STAMP";
+    const fs=s.fontSize?Math.max(8,W*s.fontSize*0.0075):Math.max(16,W*0.022);
+    ctx.save();
+    ctx.translate(p.x,p.y);ctx.rotate(-15*Math.PI/180);
+    ctx.font=`bold ${fs}px Arial`;
+    const tw=ctx.measureText(text).width;
+    const pad=fs*0.4;
+    const stampColor=s.stampId==="APPROVED"?"#34c759":s.stampId==="REJECTED"?"#ff3b30":s.stampId==="REVIEWED"?"#007aff":s.color||"#ff9500";
+    ctx.strokeStyle=stampColor;ctx.lineWidth=Math.max(2,fs*0.08);
+    ctx.strokeRect(-tw/2-pad,-fs/2-pad,tw+pad*2,fs+pad*2);
+    ctx.fillStyle=stampColor;ctx.globalAlpha=0.85;
+    ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.fillText(text,0,0);
+    ctx.restore();
   }else if(s.type==="photo"&&s.pos&&s.dataUrl){
     const x=(s.pos.x/100)*W;
     const y=(s.pos.y/100)*H;
@@ -385,15 +455,25 @@ async function renderDrawingAnnotatedPages(drawing,defects,allPins){
 // ── Photo Markup Editor ──────────────────────────────────────────
 function PhotoMarkup({src,onSave,onCancel}){
   const canvasRef=useRef();const overlayRef=useRef();
-  const[tool,setTool]=useState("arrow"); // arrow, circle, rect, line, dimension, freehand, text
+  const[tool,setTool]=useState("arrow"); // arrow, circle, rect, line, dimension, freehand, text, cloud, callout, highlight, polyline, stamp
   const[color,setColor]=useState("#ff3b30");
   const[lineStyle,setLineStyle]=useState("solid");
   const[strokes,setStrokes]=useState([]);
+  const[redoStack,setRedoStack]=useState([]);
   const[current,setCurrent]=useState(null);
   const[imgLoaded,setImgLoaded]=useState(false);
   const[textInput,setTextInput]=useState(null);
+  const[polylinePoints,setPolylinePoints]=useState([]);
+  const[polylineClosed,setPolylineClosed]=useState(false);
+  const[stampType,setStampType]=useState("APPROVED");
+  const[showStampMenu,setShowStampMenu]=useState(false);
+  const[calloutTextInput,setCalloutTextInput]=useState(null);
   const imgRef=useRef(new Image());
   const sizeRef=useRef({w:0,h:0});
+  const STAMP_PRESETS=["APPROVED","REJECTED","REVIEWED","HOLD","FOR CONSTRUCTION","PRELIMINARY","DRAFT","SUPERSEDED","NOT FOR CONSTRUCTION"];
+  const addStroke=(s)=>{setStrokes(prev=>[...prev,s]);setRedoStack([]);};
+  const undo=()=>{setStrokes(s=>{if(!s.length)return s;setRedoStack(r=>[...r,s[s.length-1]]);return s.slice(0,-1);});};
+  const redo=()=>{setRedoStack(r=>{if(!r.length)return r;const item=r[r.length-1];setStrokes(s=>[...s,item]);return r.slice(0,-1);});};
 
   // Load image
   useEffect(()=>{
@@ -416,7 +496,13 @@ function PhotoMarkup({src,onSave,onCancel}){
     const ctx=canvas.getContext("2d");
     ctx.drawImage(img,0,0,cw,ch);
     [...strokes,current].filter(Boolean).forEach(s=>drawStroke(ctx,s));
-  },[imgLoaded,strokes,current]);
+    // Draw polyline preview
+    if(polylinePoints.length>1){
+      drawStroke(ctx,{type:"polyline",color,points:polylinePoints,closed:polylineClosed,lineStyle});
+    }else if(polylinePoints.length===1){
+      ctx.fillStyle=color;ctx.beginPath();ctx.arc(polylinePoints[0].x,polylinePoints[0].y,4,0,Math.PI*2);ctx.fill();
+    }
+  },[imgLoaded,strokes,current,polylinePoints,polylineClosed]);
 
   const drawStroke=(ctx,s,scale=1)=>{
     const lw=3*scale;
@@ -493,6 +579,70 @@ function PhotoMarkup({src,onSave,onCancel}){
       ctx.fillRect(s.pos.x-pad/2,s.pos.y-fontSize,metrics.width+pad*2,fontSize*1.4);
       ctx.fillStyle=s.color;
       ctx.fillText(s.text,s.pos.x+pad/2,s.pos.y);
+    }else if(s.type==="cloud"&&s.start&&s.end){
+      const x=Math.min(s.start.x,s.end.x),y=Math.min(s.start.y,s.end.y);
+      const w=Math.abs(s.end.x-s.start.x),h=Math.abs(s.end.y-s.start.y);
+      if(w>3*scale||h>3*scale){
+        ctx.beginPath();
+        const arcsPerW=Math.max(4,Math.round(w/(18*scale))),arcsPerH=Math.max(4,Math.round(h/(18*scale)));
+        const dw=w/arcsPerW,dh=h/arcsPerH,r=Math.max(dw,dh)*0.55;
+        for(let i=0;i<arcsPerW;i++){const cx=x+dw*i+dw/2;ctx.arc(cx,y,r,Math.PI,0);}
+        for(let i=0;i<arcsPerH;i++){const cy=y+dh*i+dh/2;ctx.arc(x+w,cy,r,-Math.PI/2,Math.PI/2);}
+        for(let i=arcsPerW-1;i>=0;i--){const cx=x+dw*i+dw/2;ctx.arc(cx,y+h,r,0,Math.PI);}
+        for(let i=arcsPerH-1;i>=0;i--){const cy=y+dh*i+dh/2;ctx.arc(x,cy,r,Math.PI/2,-Math.PI/2);}
+        ctx.stroke();
+      }
+    }else if(s.type==="callout"&&s.start&&s.end){
+      const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y;
+      const angle=Math.atan2(dy,dx);
+      if(s.lineStyle==="dotted")ctx.setLineDash([6*scale,4*scale]);
+      ctx.beginPath();ctx.moveTo(s.start.x,s.start.y);ctx.lineTo(s.end.x,s.end.y);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();ctx.moveTo(s.start.x,s.start.y);
+      ctx.lineTo(s.start.x+hl*Math.cos(angle-0.4),s.start.y+hl*Math.sin(angle-0.4));
+      ctx.moveTo(s.start.x,s.start.y);
+      ctx.lineTo(s.start.x+hl*Math.cos(angle+0.4),s.start.y+hl*Math.sin(angle+0.4));
+      ctx.stroke();
+      if(s.text){
+        ctx.font=`bold ${fontSize}px 'Barlow Condensed',sans-serif`;
+        const metrics=ctx.measureText(s.text);
+        const pad=4*scale;
+        ctx.fillStyle="rgba(255,255,255,0.92)";
+        ctx.strokeStyle=s.color;ctx.lineWidth=2*scale;
+        const bx=s.end.x-pad,by=s.end.y-fontSize-pad;
+        ctx.beginPath();ctx.rect(bx,by,metrics.width+pad*2,fontSize+pad*2);ctx.fill();ctx.stroke();
+        ctx.fillStyle=s.color;ctx.textBaseline="alphabetic";ctx.textAlign="left";
+        ctx.fillText(s.text,s.end.x,s.end.y);
+      }
+    }else if(s.type==="highlight"&&s.points&&s.points.length>1){
+      ctx.save();
+      ctx.globalAlpha=0.3;
+      ctx.lineWidth=15*scale;
+      ctx.lineCap="round";ctx.lineJoin="round";
+      ctx.beginPath();ctx.moveTo(s.points[0].x,s.points[0].y);
+      for(let i=1;i<s.points.length;i++)ctx.lineTo(s.points[i].x,s.points[i].y);
+      ctx.stroke();
+      ctx.restore();
+    }else if(s.type==="polyline"&&s.points&&s.points.length>1){
+      if(s.lineStyle==="dotted")ctx.setLineDash([6*scale,4*scale]);
+      ctx.beginPath();ctx.moveTo(s.points[0].x,s.points[0].y);
+      for(let i=1;i<s.points.length;i++)ctx.lineTo(s.points[i].x,s.points[i].y);
+      if(s.closed)ctx.closePath();
+      ctx.stroke();ctx.setLineDash([]);
+    }else if(s.type==="stamp"&&s.pos){
+      const text=s.text||s.stampId||"STAMP";
+      ctx.save();
+      ctx.translate(s.pos.x,s.pos.y);ctx.rotate(-15*Math.PI/180);
+      ctx.font=`bold ${fontSize}px Arial`;
+      const tw=ctx.measureText(text).width;
+      const pad=fontSize*0.4;
+      const stampColor=s.stampId==="APPROVED"?"#34c759":s.stampId==="REJECTED"?"#ff3b30":s.stampId==="REVIEWED"?"#007aff":s.color||"#ff9500";
+      ctx.strokeStyle=stampColor;ctx.lineWidth=Math.max(2,fontSize*0.08);
+      ctx.strokeRect(-tw/2-pad,-fontSize/2-pad,tw+pad*2,fontSize+pad*2);
+      ctx.fillStyle=stampColor;ctx.globalAlpha=0.85;
+      ctx.textAlign="center";ctx.textBaseline="middle";
+      ctx.fillText(text,0,0);
+      ctx.restore();
     }
   };
 
@@ -528,8 +678,16 @@ function PhotoMarkup({src,onSave,onCancel}){
         ctx.font=`bold ${s.textSize||16}px 'Barlow Condensed',sans-serif`;
         const m=ctx.measureText(s.text);
         if(p.x>=s.pos.x-4&&p.x<=s.pos.x+m.width+8&&p.y>=s.pos.y-(s.textSize||16)&&p.y<=s.pos.y+6)return i;
-      }else if(s.type==="freehand"&&s.points){
+      }else if((s.type==="freehand"||s.type==="highlight")&&s.points){
+        for(const pt of s.points){if(Math.abs(p.x-pt.x)<(s.type==="highlight"?18:10)&&Math.abs(p.y-pt.y)<(s.type==="highlight"?18:10))return i;}
+      }else if(s.type==="polyline"&&s.points){
         for(const pt of s.points){if(Math.abs(p.x-pt.x)<10&&Math.abs(p.y-pt.y)<10)return i;}
+      }else if(s.type==="stamp"&&s.pos){
+        if(Math.abs(p.x-s.pos.x)<40&&Math.abs(p.y-s.pos.y)<20)return i;
+      }else if(s.type==="callout"&&s.start&&s.end){
+        // Hit on line or text box
+        const cx=(s.start.x+s.end.x)/2,cy=(s.start.y+s.end.y)/2;
+        if(Math.abs(p.x-cx)<Math.abs(s.end.x-s.start.x)/2+15&&Math.abs(p.y-cy)<Math.abs(s.end.y-s.start.y)/2+15)return i;
       }else if(s.start&&s.end){
         const cx=(s.start.x+s.end.x)/2,cy=(s.start.y+s.end.y)/2;
         if(Math.abs(p.x-cx)<Math.abs(s.end.x-s.start.x)/2+10&&Math.abs(p.y-cy)<Math.abs(s.end.y-s.start.y)/2+10)return i;
@@ -550,25 +708,44 @@ function PhotoMarkup({src,onSave,onCancel}){
       if(hitIdx>=0){setEditingTextIdx(hitIdx);setTextInput(strokes[hitIdx].pos);return;}
       setTextInput(p);return;
     }
+    if(tool==="polyline"){
+      setPolylinePoints(prev=>[...prev,p]);
+      return;
+    }
+    if(tool==="stamp"){
+      addStroke({type:"stamp",color,pos:p,stampId:stampType,text:stampType,textSize});
+      return;
+    }
     if(tool==="freehand")setCurrent({type:"freehand",color,points:[p]});
+    else if(tool==="highlight")setCurrent({type:"highlight",color,points:[p]});
     else setCurrent({type:tool,color,lineStyle,start:p,end:p});
   };
   const onMove=e=>{
     if(!current)return;
     e.preventDefault();
     const p=getPos(e);
-    if(current.type==="freehand")setCurrent(c=>({...c,points:[...c.points,p]}));
+    if(current.type==="freehand"||current.type==="highlight")setCurrent(c=>({...c,points:[...c.points,p]}));
     else setCurrent(c=>({...c,end:p}));
   };
   const onUp=()=>{
     if(current){
       if(current.type==="dimension"){
         const label=prompt("Enter dimension (e.g. 3.5m, 1200mm). Leave blank for no label.")||"";
-        setStrokes(s=>[...s,{...current,label:label.trim()}]);setCurrent(null);
+        addStroke({...current,label:label.trim()});setCurrent(null);
         return;
       }
-      setStrokes(s=>[...s,current]);setCurrent(null);
+      if(current.type==="callout"){
+        setCalloutTextInput(current);setCurrent(null);
+        return;
+      }
+      addStroke(current);setCurrent(null);
     }
+  };
+  const finishPolyline=()=>{
+    if(polylinePoints.length>1){
+      addStroke({type:"polyline",color,points:[...polylinePoints],closed:polylineClosed,lineStyle});
+    }
+    setPolylinePoints([]);
   };
 
   const submitText=(text)=>{
@@ -576,7 +753,7 @@ function PhotoMarkup({src,onSave,onCancel}){
       if(editingTextIdx!==null){
         setStrokes(s=>s.map((st,i)=>i===editingTextIdx?{...st,text,color,textSize}:st));
       }else{
-        setStrokes(s=>[...s,{type:"text",color,pos:textInput,text,textSize}]);
+        addStroke({type:"text",color,pos:textInput,text,textSize});
       }
     }else if(!text&&editingTextIdx!==null){
       setStrokes(s=>s.filter((_,i)=>i!==editingTextIdx));
@@ -584,8 +761,6 @@ function PhotoMarkup({src,onSave,onCancel}){
     setEditingTextIdx(null);
     setTextInput(null);
   };
-
-  const undo=()=>setStrokes(s=>s.slice(0,-1));
 
   const save=()=>{
     if(!canvasRef.current)return;
@@ -598,8 +773,9 @@ function PhotoMarkup({src,onSave,onCancel}){
     // Scale strokes to full resolution
     const sx=img.width/sizeRef.current.w,sy=img.height/sizeRef.current.h;
     const scaleStroke=s=>{
-      if(s.type==="freehand")return{...s,points:s.points.map(p=>({x:p.x*sx,y:p.y*sy}))};
-      if(s.type==="text")return{...s,pos:{x:s.pos.x*sx,y:s.pos.y*sy}};
+      if((s.type==="freehand"||s.type==="highlight"||s.type==="polyline")&&s.points)return{...s,points:s.points.map(p=>({x:p.x*sx,y:p.y*sy}))};
+      if(s.type==="text"||s.type==="stamp")return{...s,pos:{x:s.pos.x*sx,y:s.pos.y*sy}};
+      if(s.type==="callout")return{...s,start:{x:s.start.x*sx,y:s.start.y*sy},end:{x:s.end.x*sx,y:s.end.y*sy}};
       return{...s,start:{x:s.start.x*sx,y:s.start.y*sy},end:{x:s.end.x*sx,y:s.end.y*sy}};
     };
     strokes.forEach(s=>{
@@ -616,12 +792,17 @@ function PhotoMarkup({src,onSave,onCancel}){
   const TOOLS=[
     {id:"select",title:"Select / Delete"},
     {id:"freehand",title:"Draw"},
+    {id:"highlight",title:"Highlight Marker"},
     {id:"line",title:"Line"},
     {id:"arrow",title:"Arrow"},
+    {id:"polyline",title:"Polyline / Polygon"},
     {id:"circle",title:"Circle"},
     {id:"rect",title:"Rectangle"},
+    {id:"cloud",title:"Revision Cloud"},
     {id:"dimension",title:"Dimension"},
-    {id:"text",title:"Text"}
+    {id:"text",title:"Text"},
+    {id:"callout",title:"Callout / Leader Note"},
+    {id:"stamp",title:"Stamp"}
   ];
   const TEXT_SIZES=[{id:"S",v:12},{id:"M",v:16},{id:"L",v:22},{id:"XL",v:30}];
   const COLORS=["#ff3b30","#ff9500","#ffcc00","#fff"];
@@ -641,12 +822,17 @@ function PhotoMarkup({src,onSave,onCancel}){
           <button key={t.id} onClick={()=>{setTool(t.id);if(t.id!=="select")setSelectedIdx(null);}} title={t.title} style={{width:36,height:36,borderRadius:8,border:tool===t.id?"2px solid #ff6b00":"2px solid rgba(255,255,255,0.15)",background:tool===t.id?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
             {t.id==="select"?"▢"
             :t.id==="freehand"?"✏"
+            :t.id==="highlight"?<svg width="20" height="20" viewBox="0 0 20 20"><rect x="2" y="7" width="16" height="6" rx="1" fill="#fff" opacity="0.5"/><line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="4" strokeLinecap="round" opacity="0.4"/></svg>
             :t.id==="line"?<svg width="20" height="20" viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
             :t.id==="arrow"?"↗"
+            :t.id==="polyline"?<svg width="20" height="20" viewBox="0 0 20 20"><polyline points="2,16 7,4 13,14 18,6" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             :t.id==="circle"?<svg width="20" height="20" viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="8" ry="8" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
             :t.id==="rect"?<svg width="20" height="20" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
+            :t.id==="cloud"?<svg width="20" height="20" viewBox="0 0 20 20"><path d="M4,14 A3,3 0 0,1 4,8 A4,4 0 0,1 8,5 A4,4 0 0,1 14,5 A4,4 0 0,1 17,8 A3,3 0 0,1 17,14 Z" fill="none" stroke="#fff" strokeWidth="1.2"/></svg>
             :t.id==="dimension"?<svg width="20" height="20" viewBox="0 0 20 20"><line x1="3" y1="10" x2="17" y2="10" stroke="#fff" strokeWidth="1"/><line x1="3" y1="6" x2="3" y2="14" stroke="#fff" strokeWidth="1.5"/><line x1="17" y1="6" x2="17" y2="14" stroke="#fff" strokeWidth="1.5"/><text x="10" y="8" fill="#fff" fontSize="6" textAnchor="middle" fontFamily="sans-serif">d</text></svg>
-            :t.id==="text"?"T":""}
+            :t.id==="text"?"T"
+            :t.id==="callout"?<svg width="20" height="20" viewBox="0 0 20 20"><line x1="3" y1="16" x2="10" y2="6" stroke="#fff" strokeWidth="1.2"/><rect x="9" y="2" width="9" height="7" rx="1.5" fill="none" stroke="#fff" strokeWidth="1.2"/><text x="13.5" y="7.5" fill="#fff" fontSize="5" textAnchor="middle" fontFamily="sans-serif">A</text></svg>
+            :t.id==="stamp"?"⊞":""}
           </button>
         ))}
         <div style={{width:1,height:24,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
@@ -664,11 +850,30 @@ function PhotoMarkup({src,onSave,onCancel}){
         {TEXT_SIZES.map(sz=>(
           <button key={sz.id} onClick={()=>setTextSize(sz.v)} style={{minWidth:28,height:28,padding:"0 4px",borderRadius:6,border:textSize===sz.v?"2px solid #ff6b00":"2px solid rgba(255,255,255,0.15)",background:textSize===sz.v?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,cursor:"pointer"}}>{sz.id}</button>
         ))}
+        {/* Stamp picker */}
+        {tool==="stamp"&&(
+          <div style={{position:"relative"}}>
+            <button onClick={()=>setShowStampMenu(v=>!v)} style={{height:28,padding:"0 8px",borderRadius:6,border:"2px solid rgba(255,107,0,0.4)",background:"rgba(255,107,0,0.15)",color:"#ffb48a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,cursor:"pointer"}}>{stampType}</button>
+            {showStampMenu&&<div style={{position:"absolute",top:"100%",left:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:6,zIndex:100,boxShadow:"0 4px 12px rgba(0,0,0,0.4)",maxHeight:200,overflowY:"auto",minWidth:140}}>
+              {STAMP_PRESETS.map(st=>(
+                <button key={st} onClick={()=>{setStampType(st);setShowStampMenu(false);}} style={{display:"block",width:"100%",padding:"5px 8px",border:"none",borderRadius:4,background:stampType===st?"rgba(255,107,0,0.25)":"none",color:st==="APPROVED"?"#34c759":st==="REJECTED"?"#ff3b30":st==="REVIEWED"?"#007aff":"#ffb48a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,cursor:"pointer",textAlign:"left",marginBottom:2}}>{st}</button>
+              ))}
+            </div>}
+          </div>
+        )}
+        {/* Polyline controls */}
+        {tool==="polyline"&&polylinePoints.length>0&&(
+          <>
+            <button onClick={()=>setPolylineClosed(v=>!v)} style={{height:28,padding:"0 8px",borderRadius:6,border:polylineClosed?"2px solid #ff6b00":"2px solid rgba(255,255,255,0.15)",background:polylineClosed?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,cursor:"pointer"}}>{polylineClosed?"POLYGON":"OPEN"}</button>
+            <button onClick={finishPolyline} style={{height:28,padding:"0 10px",borderRadius:6,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>DONE ({polylinePoints.length}pts)</button>
+          </>
+        )}
         <div style={{flex:1}}/>
         {selectedIdx!=null&&tool==="select"&&(
           <button onClick={deleteSelected} style={{background:"rgba(255,59,48,0.25)",border:"1px solid rgba(255,59,48,0.45)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>DELETE</button>
         )}
         <button onClick={undo} disabled={strokes.length===0} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"7px 12px",color:strokes.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>UNDO</button>
+        <button onClick={redo} disabled={redoStack.length===0} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"7px 12px",color:redoStack.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>REDO</button>
       </div>
 
       {/* Canvas */}
@@ -693,6 +898,21 @@ function PhotoMarkup({src,onSave,onCancel}){
               <button onClick={()=>{setEditingTextIdx(null);setTextInput(null);}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>CANCEL</button>
               {editingTextIdx!==null&&<button onClick={()=>submitText("")} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff3b30",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>DELETE</button>}
               <button onClick={e=>{const inp=e.target.closest("div").parentElement.querySelector("input");submitText(inp.value);}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{editingTextIdx!==null?"UPDATE":"ADD"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Callout text modal */}
+      {calloutTextInput&&(
+        <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.85)",zIndex:310,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <div style={{background:"#1a1a1a",borderRadius:16,padding:20,width:"100%",maxWidth:360}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",marginBottom:12}}>CALLOUT LABEL</div>
+            <input autoFocus type="text" placeholder="Enter callout text..." onKeyDown={e=>{if(e.key==="Enter"){const t=e.target.value.trim();addStroke({...calloutTextInput,text:t,textSize});setCalloutTextInput(null);}}}
+              style={{width:"100%",padding:12,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
+            <div style={{display:"flex",gap:8,marginTop:12}}>
+              <button onClick={()=>{addStroke({...calloutTextInput,text:""});setCalloutTextInput(null);}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>SKIP</button>
+              <button onClick={e=>{const inp=e.target.closest("div").parentElement.querySelector("input");addStroke({...calloutTextInput,text:(inp.value||"").trim(),textSize});setCalloutTextInput(null);}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>ADD</button>
             </div>
           </div>
         </div>
@@ -3939,6 +4159,15 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[compareMarkupStrokes,setCompareMarkupStrokes]=useState([]);
   const[compareMarkupCurrent,setCompareMarkupCurrent]=useState(null);
   const[compareSelectedIdx,setCompareSelectedIdx]=useState(null);
+  const[compareRedoStack,setCompareRedoStack]=useState([]);
+  const[cmpPolylinePoints,setCmpPolylinePoints]=useState([]);
+  const[cmpPolylineClosed,setCmpPolylineClosed]=useState(false);
+  const[cmpStampType,setCmpStampType]=useState("APPROVED");
+  const[showCmpStampMenu,setShowCmpStampMenu]=useState(false);
+  const[cmpCalloutStroke,setCmpCalloutStroke]=useState(null);
+  const[cmpCalloutText,setCmpCalloutText]=useState("");
+  const CMP_STAMP_PRESETS=["APPROVED","REJECTED","REVIEWED","HOLD","FOR CONSTRUCTION","PRELIMINARY","DRAFT","SUPERSEDED","NOT FOR CONSTRUCTION"];
+  const addCompareStroke=(s)=>{setCompareMarkupStrokes(prev=>[...prev,s]);setCompareRedoStack([]);};
   const compareDragRef=useRef(null);
   const[compareTextSize,setCompareTextSize]=useState(2.4);
   const[compareTextAlign,setCompareTextAlign]=useState("left");
@@ -4460,16 +4689,25 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       setCompareTextValue("");
       return;
     }
+    if(compareMarkupTool==="polyline"){
+      setCmpPolylinePoints(prev=>[...prev,p]);
+      return;
+    }
+    if(compareMarkupTool==="stamp"){
+      addCompareStroke({type:"stamp",color:compareMarkupColor,pos:p,stampId:cmpStampType,text:cmpStampType,fontSize:compareTextSize});
+      return;
+    }
     if(compareMarkupTool==="freehand")setCompareMarkupCurrent({type:"freehand",color:compareMarkupColor,points:[p]});
+    else if(compareMarkupTool==="highlight")setCompareMarkupCurrent({type:"highlight",color:compareMarkupColor,points:[p]});
     else setCompareMarkupCurrent({type:compareMarkupTool,color:compareMarkupColor,lineStyle:compareMarkupLineStyle,start:p,end:p});
   };
 
   // Translate a stroke by (dx,dy) in percentage coords
   const translateStroke=(s,dx,dy)=>{
     const clamp=v=>Math.max(0,Math.min(100,v));
-    if(s.type==="freehand"&&Array.isArray(s.points))return{...s,points:s.points.map(pt=>({x:clamp(pt.x+dx),y:clamp(pt.y+dy)}))};
-    if(["arrow","circle","rect","line","dimension"].includes(s.type)&&s.start&&s.end)return{...s,start:{x:clamp(s.start.x+dx),y:clamp(s.start.y+dy)},end:{x:clamp(s.end.x+dx),y:clamp(s.end.y+dy)}};
-    if((s.type==="text"||s.type==="photo")&&s.pos)return{...s,pos:{x:clamp(s.pos.x+dx),y:clamp(s.pos.y+dy)}};
+    if((s.type==="freehand"||s.type==="highlight"||s.type==="polyline")&&Array.isArray(s.points))return{...s,points:s.points.map(pt=>({x:clamp(pt.x+dx),y:clamp(pt.y+dy)}))};
+    if(["arrow","circle","rect","line","dimension","cloud","callout"].includes(s.type)&&s.start&&s.end)return{...s,start:{x:clamp(s.start.x+dx),y:clamp(s.start.y+dy)},end:{x:clamp(s.end.x+dx),y:clamp(s.end.y+dy)}};
+    if((s.type==="text"||s.type==="photo"||s.type==="stamp")&&s.pos)return{...s,pos:{x:clamp(s.pos.x+dx),y:clamp(s.pos.y+dy)}};
     return s;
   };
 
@@ -4518,7 +4756,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     if(!compareMarkupCurrent)return;
     const p=getCompareMarkupPos(e);if(!p)return;
     e.preventDefault();
-    if(compareMarkupCurrent.type==="freehand")setCompareMarkupCurrent(c=>({...c,points:[...c.points,p]}));
+    if(compareMarkupCurrent.type==="freehand"||compareMarkupCurrent.type==="highlight")setCompareMarkupCurrent(c=>({...c,points:[...c.points,p]}));
     else setCompareMarkupCurrent(c=>({...c,end:p}));
   };
 
@@ -4530,16 +4768,27 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         setComparePendingDim(compareMarkupCurrent);setCompareDimLabel("");setCompareMarkupCurrent(null);
         return;
       }
-      setCompareMarkupStrokes(s=>[...s,compareMarkupCurrent]);setCompareMarkupCurrent(null);
+      if(compareMarkupCurrent.type==="callout"){
+        setCmpCalloutStroke(compareMarkupCurrent);setCmpCalloutText("");setCompareMarkupCurrent(null);
+        return;
+      }
+      addCompareStroke(compareMarkupCurrent);setCompareMarkupCurrent(null);
     }
   };
+  const finishCmpPolyline=()=>{
+    if(cmpPolylinePoints.length>1){
+      addCompareStroke({type:"polyline",color:compareMarkupColor,points:[...cmpPolylinePoints],closed:cmpPolylineClosed,lineStyle:compareMarkupLineStyle});
+    }
+    setCmpPolylinePoints([]);
+  };
 
-  const undoCompareMarkup=()=>setCompareMarkupStrokes(s=>s.slice(0,-1));
+  const undoCompareMarkup=()=>{setCompareMarkupStrokes(s=>{if(!s.length)return s;setCompareRedoStack(r=>[...r,s[s.length-1]]);return s.slice(0,-1);});};
+  const redoCompareMarkup=()=>{setCompareRedoStack(r=>{if(!r.length)return r;const item=r[r.length-1];setCompareMarkupStrokes(s=>[...s,item]);return r.slice(0,-1);});};
   const clearCompareMarkup=()=>{if(compareMarkupStrokes.length&&confirm("Clear compare markup?"))setCompareMarkupStrokes([]);};
 
   const addCompareText=()=>{
     if(!compareTextPoint||!compareTextValue.trim())return;
-    setCompareMarkupStrokes(s=>[...s,{type:"text",color:compareMarkupColor,pos:compareTextPoint,text:compareTextValue.trim(),fontSize:compareTextSize,align:compareTextAlign,valign:compareTextValign}]);
+    addCompareStroke({type:"text",color:compareMarkupColor,pos:compareTextPoint,text:compareTextValue.trim(),fontSize:compareTextSize,align:compareTextAlign,valign:compareTextValign});
     setCompareTextPoint(null);setCompareTextValue("");
   };
 
@@ -4590,7 +4839,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       setCompareMarkupStrokes(s=>{
         setCompareSelectedIdx(s.length);
         return[...s,stroke];
-      });
+      });setCompareRedoStack([]);
       setCompareMarkupTool("select");
     };
     img.onerror=()=>alert("Could not load image.");
@@ -4681,6 +4930,52 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       return <g key={i} {...hit}>
         <rect x={rectX} y={rectY} width={bw} height={bh} rx={fs*0.25} fill="rgba(0,0,0,0.65)" stroke={isSel?"#5856d6":"none"} strokeWidth={isSel?"0.3":"0"}/>
         <text x={textX} y={textY} fontSize={fs} fontWeight="700" fill={s.color} fontFamily="Barlow Condensed, sans-serif" textAnchor={textAnchor}>{s.text}</text>
+      </g>;
+    }
+    if(s.type==="cloud"&&s.start&&s.end){
+      const x=Math.min(s.start.x,s.end.x),y=Math.min(s.start.y,s.end.y);
+      const w=Math.abs(s.end.x-s.start.x),h=Math.abs(s.end.y-s.start.y);
+      if(w<0.3&&h<0.3)return null;
+      const arcsPerW=Math.max(4,Math.round(w/3)),arcsPerH=Math.max(4,Math.round(h/3));
+      const dw=w/arcsPerW,dh=h/arcsPerH,r=Math.max(dw,dh)*0.55;
+      let d="";
+      for(let j=0;j<arcsPerW;j++){const cx=x+dw*j+dw/2;d+=`M${cx-dw/2},${y} A${r},${r} 0 0,1 ${cx+dw/2},${y} `;}
+      for(let j=0;j<arcsPerH;j++){const cy=y+dh*j+dh/2;d+=`M${x+w},${cy-dh/2} A${r},${r} 0 0,1 ${x+w},${cy+dh/2} `;}
+      for(let j=arcsPerW-1;j>=0;j--){const cx=x+dw*j+dw/2;d+=`M${cx+dw/2},${y+h} A${r},${r} 0 0,1 ${cx-dw/2},${y+h} `;}
+      for(let j=arcsPerH-1;j>=0;j--){const cy=y+dh*j+dh/2;d+=`M${x},${cy+dh/2} A${r},${r} 0 0,1 ${x},${cy-dh/2} `;}
+      return <path key={i} d={d} stroke={selStroke} strokeWidth={selWidth} fill="none" {...hit}/>;
+    }
+    if(s.type==="callout"&&s.start&&s.end){
+      const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y;
+      const angle=Math.atan2(dy,dx),hl=1.8;
+      const fs=s.fontSize||2.4;
+      const text=s.text||"";
+      const tw=text.length*fs*0.54;
+      return <g key={i} {...hit}>
+        <line x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={selStroke} strokeWidth={selWidth} strokeDasharray={dash}/>
+        <line x1={s.start.x} y1={s.start.y} x2={s.start.x+hl*Math.cos(angle-0.45)} y2={s.start.y+hl*Math.sin(angle-0.45)} stroke={selStroke} strokeWidth={selWidth}/>
+        <line x1={s.start.x} y1={s.start.y} x2={s.start.x+hl*Math.cos(angle+0.45)} y2={s.start.y+hl*Math.sin(angle+0.45)} stroke={selStroke} strokeWidth={selWidth}/>
+        {text&&<><rect x={s.end.x-0.3} y={s.end.y-fs-0.3} width={tw+0.6} height={fs+0.6} rx={fs*0.25} fill="rgba(0,0,0,0.65)" stroke={isSel?"#5856d6":"none"} strokeWidth={isSel?"0.3":"0"}/><text x={s.end.x} y={s.end.y} fontSize={fs} fontWeight="700" fill={s.color} fontFamily="Barlow Condensed, sans-serif">{text}</text></>}
+      </g>;
+    }
+    if(s.type==="highlight"&&s.points&&s.points.length>1){
+      const d="M"+s.points.map(p=>`${p.x} ${p.y}`).join("L");
+      return <path key={i} d={d} stroke={selStroke} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.3" {...hit}/>;
+    }
+    if(s.type==="polyline"&&s.points&&s.points.length>1){
+      const pts=s.points.map(p=>`${p.x},${p.y}`).join(" ");
+      if(s.closed)return <polygon key={i} points={pts} stroke={selStroke} strokeWidth={selWidth} fill="none" strokeDasharray={dash} strokeLinecap="round" strokeLinejoin="round" {...hit}/>;
+      return <polyline key={i} points={pts} stroke={selStroke} strokeWidth={selWidth} fill="none" strokeDasharray={dash} strokeLinecap="round" strokeLinejoin="round" {...hit}/>;
+    }
+    if(s.type==="stamp"&&s.pos){
+      const text=s.text||s.stampId||"STAMP";
+      const fs=s.fontSize||2.4;
+      const tw=text.length*fs*0.5;
+      const pad=fs*0.4;
+      const stampColor=s.stampId==="APPROVED"?"#34c759":s.stampId==="REJECTED"?"#ff3b30":s.stampId==="REVIEWED"?"#007aff":s.color||"#ff9500";
+      return <g key={i} transform={`rotate(-15,${s.pos.x},${s.pos.y})`} {...hit}>
+        <rect x={s.pos.x-tw/2-pad} y={s.pos.y-fs/2-pad} width={tw+pad*2} height={fs+pad*2} fill="none" stroke={isSel?"#5856d6":stampColor} strokeWidth={isSel?"0.5":"0.25"}/>
+        <text x={s.pos.x} y={s.pos.y} fill={stampColor} fontSize={fs} fontFamily="Arial,sans-serif" fontWeight="700" textAnchor="middle" dominantBaseline="central" opacity="0.85">{text}</text>
       </g>;
     }
     if(s.type==="photo"&&s.pos&&s.dataUrl){
@@ -5556,6 +5851,8 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                         <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:compareMarkupTool==="select"?"auto":"none"}}>
                           {renderCompareMarkup(compareMarkupStrokes,compareMarkupTool==="select")}
                           {compareMarkupCurrent&&renderCompareMarkup([compareMarkupCurrent],false)}
+                          {cmpPolylinePoints.length>1&&<polyline points={cmpPolylinePoints.map(p=>`${p.x},${p.y}`).join(" ")} stroke={compareMarkupColor} strokeWidth="0.5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="0.8 0.4"/>}
+                          {cmpPolylinePoints.length===1&&<circle cx={cmpPolylinePoints[0].x} cy={cmpPolylinePoints[0].y} r="0.5" fill={compareMarkupColor}/>}
                           {compareHighlight&&<>
                             <rect x={compareHighlight.x-1} y={compareHighlight.y-1.5} width={Math.max(compareHighlight.w+2,12)} height="3" rx="0.5" fill="none" stroke={compareHighlight.color} strokeWidth="0.4" strokeDasharray="1,0.5">
                               <animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/>
@@ -5618,12 +5915,16 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
               {(compareBaseId&&compareTargetId)&&(
                 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,flexWrap:"wrap"}}>
                   <input ref={comparePhotoInputRef} type="file" accept="image/*" capture="environment" onChange={handleComparePhotoFile} style={{display:"none"}}/>
-                  {[{id:"select",label:"✥",title:"Select / Move"},{id:"freehand",label:"✏",title:"Freehand"},{id:"line",label:null,title:"Line"},{id:"arrow",label:"↗",title:"Arrow"},{id:"circle",label:null,title:"Circle"},{id:"rect",label:null,title:"Rectangle"},{id:"dimension",label:null,title:"Dimension"},{id:"text",label:"T",title:"Text"}].map(t=>(
+                  {[{id:"select",label:"✥",title:"Select / Move"},{id:"freehand",label:"✏",title:"Freehand"},{id:"highlight",label:null,title:"Highlight Marker"},{id:"line",label:null,title:"Line"},{id:"arrow",label:"↗",title:"Arrow"},{id:"polyline",label:null,title:"Polyline / Polygon"},{id:"circle",label:null,title:"Circle"},{id:"rect",label:null,title:"Rectangle"},{id:"cloud",label:null,title:"Revision Cloud"},{id:"dimension",label:null,title:"Dimension"},{id:"text",label:"T",title:"Text"},{id:"callout",label:null,title:"Callout / Leader Note"},{id:"stamp",label:"⊞",title:"Stamp"}].map(t=>(
                     <button key={t.id} onClick={()=>{setCompareMarkupTool(t.id);if(t.id!=="select")setCompareSelectedIdx(null);}} title={t.title} style={{width:34,height:34,borderRadius:8,border:compareMarkupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:compareMarkupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                      {t.id==="circle"?<svg width="18" height="18" viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="8" ry="8" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
+                      {t.id==="highlight"?<svg width="18" height="18" viewBox="0 0 20 20"><rect x="2" y="7" width="16" height="6" rx="1" fill="#fff" opacity="0.5"/><line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="4" strokeLinecap="round" opacity="0.4"/></svg>
+                      :t.id==="polyline"?<svg width="18" height="18" viewBox="0 0 20 20"><polyline points="2,16 7,4 13,14 18,6" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      :t.id==="circle"?<svg width="18" height="18" viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="8" ry="8" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
                       :t.id==="rect"?<svg width="18" height="18" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
+                      :t.id==="cloud"?<svg width="18" height="18" viewBox="0 0 20 20"><path d="M4,14 A3,3 0 0,1 4,8 A4,4 0 0,1 8,5 A4,4 0 0,1 14,5 A4,4 0 0,1 17,8 A3,3 0 0,1 17,14 Z" fill="none" stroke="#fff" strokeWidth="1.2"/></svg>
                       :t.id==="line"?<svg width="18" height="18" viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
                       :t.id==="dimension"?<svg width="18" height="18" viewBox="0 0 20 20"><line x1="3" y1="10" x2="17" y2="10" stroke="#fff" strokeWidth="1"/><line x1="3" y1="6" x2="3" y2="14" stroke="#fff" strokeWidth="1.5"/><line x1="17" y1="6" x2="17" y2="14" stroke="#fff" strokeWidth="1.5"/><text x="10" y="8" fill="#fff" fontSize="6" textAnchor="middle" fontFamily="sans-serif">d</text></svg>
+                      :t.id==="callout"?<svg width="18" height="18" viewBox="0 0 20 20"><line x1="3" y1="16" x2="10" y2="6" stroke="#fff" strokeWidth="1.2"/><rect x="9" y="2" width="9" height="7" rx="1.5" fill="none" stroke="#fff" strokeWidth="1.2"/><text x="13.5" y="7.5" fill="#fff" fontSize="5" textAnchor="middle" fontFamily="sans-serif">A</text></svg>
                       :t.label}
                     </button>
                   ))}
@@ -5717,8 +6018,27 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                       <button onClick={()=>scaleComparePhoto(1.18)} title="Enlarge photo" style={{width:26,height:28,borderRadius:6,border:"1px solid rgba(255,107,0,0.35)",background:"rgba(255,107,0,0.1)",color:"#ffb48a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>+</button>
                     </>;
                   })()}
+                  {/* Stamp picker */}
+                  {compareMarkupTool==="stamp"&&(
+                    <div style={{position:"relative"}}>
+                      <button onClick={()=>setShowCmpStampMenu(v=>!v)} style={{height:26,padding:"0 6px",borderRadius:6,border:"2px solid rgba(88,86,214,0.4)",background:"rgba(88,86,214,0.15)",color:"#d8d2ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,cursor:"pointer"}}>{cmpStampType}</button>
+                      {showCmpStampMenu&&<div style={{position:"absolute",top:"100%",left:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:6,zIndex:100,boxShadow:"0 4px 12px rgba(0,0,0,0.4)",maxHeight:200,overflowY:"auto",minWidth:140}}>
+                        {CMP_STAMP_PRESETS.map(st=>(
+                          <button key={st} onClick={()=>{setCmpStampType(st);setShowCmpStampMenu(false);}} style={{display:"block",width:"100%",padding:"5px 8px",border:"none",borderRadius:4,background:cmpStampType===st?"rgba(88,86,214,0.25)":"none",color:st==="APPROVED"?"#34c759":st==="REJECTED"?"#ff3b30":st==="REVIEWED"?"#007aff":"#d8d2ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,cursor:"pointer",textAlign:"left",marginBottom:2}}>{st}</button>
+                        ))}
+                      </div>}
+                    </div>
+                  )}
+                  {/* Polyline controls */}
+                  {compareMarkupTool==="polyline"&&cmpPolylinePoints.length>0&&(
+                    <>
+                      <button onClick={()=>setCmpPolylineClosed(v=>!v)} style={{height:26,padding:"0 6px",borderRadius:6,border:cmpPolylineClosed?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:cmpPolylineClosed?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,cursor:"pointer"}}>{cmpPolylineClosed?"POLYGON":"OPEN"}</button>
+                      <button onClick={finishCmpPolyline} style={{height:26,padding:"0 8px",borderRadius:6,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>DONE ({cmpPolylinePoints.length})</button>
+                    </>
+                  )}
                   {compareSelectedIdx!=null&&<button onClick={deleteCompareSelected} title="Delete selected" style={{background:"rgba(255,59,48,0.2)",border:"1px solid rgba(255,59,48,0.35)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>DEL</button>}
                   <button onClick={undoCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>UNDO</button>
+                  <button onClick={redoCompareMarkup} disabled={!compareRedoStack.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:compareRedoStack.length?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>REDO</button>
                   <button onClick={clearCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,59,48,0.2)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#ff8f8f":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>CLEAR</button>
                 </div>
               )}
@@ -5807,10 +6127,25 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                   <div style={{width:"100%",maxWidth:340,background:"#1a1a1a",borderRadius:14,padding:16,border:"1px solid rgba(255,255,255,0.15)"}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",marginBottom:6}}>DIMENSION LABEL</div>
                     <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:12}}>Enter the measurement (e.g. 3.5m, 1200mm). Leave blank for no label.</div>
-                    <input autoFocus value={compareDimLabel} onChange={e=>setCompareDimLabel(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){setCompareMarkupStrokes(s=>[...s,{...comparePendingDim,label:compareDimLabel.trim()}]);setComparePendingDim(null);setCompareDimLabel("");}}} placeholder="e.g. 3500mm" style={{width:"100%",padding:11,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
+                    <input autoFocus value={compareDimLabel} onChange={e=>setCompareDimLabel(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){addCompareStroke({...comparePendingDim,label:compareDimLabel.trim()});setComparePendingDim(null);setCompareDimLabel("");}}} placeholder="e.g. 3500mm" style={{width:"100%",padding:11,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
                     <div style={{display:"flex",gap:8,marginTop:12}}>
                       <button onClick={()=>{setComparePendingDim(null);setCompareDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CANCEL</button>
-                      <button onClick={()=>{setCompareMarkupStrokes(s=>[...s,{...comparePendingDim,label:compareDimLabel.trim()}]);setComparePendingDim(null);setCompareDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD</button>
+                      <button onClick={()=>{addCompareStroke({...comparePendingDim,label:compareDimLabel.trim()});setComparePendingDim(null);setCompareDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Callout text modal */}
+              {cmpCalloutStroke&&(
+                <div style={{position:"fixed",inset:0,zIndex:280,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+                  <div style={{width:"100%",maxWidth:340,background:"#1a1a1a",borderRadius:14,padding:16,border:"1px solid rgba(255,255,255,0.15)"}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",marginBottom:6}}>CALLOUT LABEL</div>
+                    <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:12}}>Enter callout text. Leave blank for arrow only.</div>
+                    <input autoFocus value={cmpCalloutText} onChange={e=>setCmpCalloutText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){addCompareStroke({...cmpCalloutStroke,text:cmpCalloutText.trim(),fontSize:compareTextSize});setCmpCalloutStroke(null);setCmpCalloutText("");}}} placeholder="e.g. Check alignment" style={{width:"100%",padding:11,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
+                    <div style={{display:"flex",gap:8,marginTop:12}}>
+                      <button onClick={()=>{addCompareStroke({...cmpCalloutStroke,text:""});setCmpCalloutStroke(null);setCmpCalloutText("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>SKIP</button>
+                      <button onClick={()=>{addCompareStroke({...cmpCalloutStroke,text:cmpCalloutText.trim(),fontSize:compareTextSize});setCmpCalloutStroke(null);setCmpCalloutText("");}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD</button>
                     </div>
                   </div>
                 </div>
@@ -5904,6 +6239,15 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     if(markupSelectedIdx!=null){const s=markupStrokes[markupSelectedIdx];if(s?.type==="text")setMarkupStrokes(strokes=>strokes.map((st,i)=>i===markupSelectedIdx?{...st,align:h,valign:v}:st));}
   };
   const[markupCurrent,setMarkupCurrent]=useState(null);
+  const[markupRedoStack,setMarkupRedoStack]=useState([]);
+  const[dvPolylinePoints,setDvPolylinePoints]=useState([]);
+  const[dvPolylineClosed,setDvPolylineClosed]=useState(false);
+  const[dvStampType,setDvStampType]=useState("APPROVED");
+  const[showDvStampMenu,setShowDvStampMenu]=useState(false);
+  const[dvCalloutStroke,setDvCalloutStroke]=useState(null);
+  const[dvCalloutText,setDvCalloutText]=useState("");
+  const DV_STAMP_PRESETS=["APPROVED","REJECTED","REVIEWED","HOLD","FOR CONSTRUCTION","PRELIMINARY","DRAFT","SUPERSEDED","NOT FOR CONSTRUCTION"];
+  const addMarkupStroke=(s)=>{setMarkupStrokes(prev=>[...prev,s]);setMarkupRedoStack([]);};
   // Photo placement + selection state
   const[pendingPhoto,setPendingPhoto]=useState(null); // {dataUrl, aspect}
   const[photoPlaceRect,setPhotoPlaceRect]=useState(null); // {x,y,w,h} during drag
@@ -5917,7 +6261,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   const[pendingTextValue,setPendingTextValue]=useState("");
   const submitMarkupText=()=>{
     if(!pendingTextPos||!pendingTextValue.trim())return;
-    setMarkupStrokes(s=>[...s,{type:"text",color:markupColor,pos:pendingTextPos,text:pendingTextValue.trim(),fontSize:markupTextSize,align:markupTextAlign,valign:markupTextValign}]);
+    addMarkupStroke({type:"text",color:markupColor,pos:pendingTextPos,text:pendingTextValue.trim(),fontSize:markupTextSize,align:markupTextAlign,valign:markupTextValign});
     setPendingTextPos(null);setPendingTextValue("");
   };
   const[pendingDimStroke,setPendingDimStroke]=useState(null);
@@ -6164,9 +6508,19 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
           const fs=s.fontSize?s.fontSize*0.75:1.8;
           const tw=fs*((s.text||"").length)*0.44;
           if(p.x>=s.pos.x-1&&p.x<=s.pos.x+tw+1&&p.y>=s.pos.y-fs-1&&p.y<=s.pos.y+1){hitIdx=i;break;}
-        }else if(s.type==="freehand"&&s.points){
+        }else if((s.type==="freehand"||s.type==="highlight")&&s.points){
+          const hr=s.type==="highlight"?4:hitRadius;
+          for(const pt of s.points){if(Math.abs(p.x-pt.x)<hr&&Math.abs(p.y-pt.y)<hr){hitIdx=i;break;}}
+          if(hitIdx>=0)break;
+        }else if(s.type==="polyline"&&s.points){
           for(const pt of s.points){if(Math.abs(p.x-pt.x)<hitRadius&&Math.abs(p.y-pt.y)<hitRadius){hitIdx=i;break;}}
           if(hitIdx>=0)break;
+        }else if(s.type==="stamp"&&s.pos){
+          if(Math.abs(p.x-s.pos.x)<5&&Math.abs(p.y-s.pos.y)<3){hitIdx=i;break;}
+        }else if(s.type==="callout"&&s.start&&s.end){
+          const cx=(s.start.x+s.end.x)/2,cy=(s.start.y+s.end.y)/2;
+          const hw=Math.abs(s.end.x-s.start.x)/2+hitRadius+2,hh=Math.abs(s.end.y-s.start.y)/2+hitRadius+2;
+          if(Math.abs(p.x-cx)<=hw&&Math.abs(p.y-cy)<=hh){hitIdx=i;break;}
         }else if(s.start&&s.end){
           const cx=(s.start.x+s.end.x)/2,cy=(s.start.y+s.end.y)/2;
           const hw=Math.abs(s.end.x-s.start.x)/2+hitRadius,hh=Math.abs(s.end.y-s.start.y)/2+hitRadius;
@@ -6181,7 +6535,16 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       setPendingTextValue("");
       return;
     }
+    if(markupTool==="polyline"){
+      setDvPolylinePoints(prev=>[...prev,p]);
+      return;
+    }
+    if(markupTool==="stamp"){
+      addMarkupStroke({type:"stamp",color:markupColor,pos:p,stampId:dvStampType,text:dvStampType,fontSize:markupTextSize});
+      return;
+    }
     if(markupTool==="freehand")setMarkupCurrent({type:"freehand",color:markupColor,points:[p]});
+    else if(markupTool==="highlight")setMarkupCurrent({type:"highlight",color:markupColor,points:[p]});
     else setMarkupCurrent({type:markupTool,color:markupColor,lineStyle:markupLineStyle,start:p,end:p});
   };
   const onMarkupMove=e=>{
@@ -6216,7 +6579,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     }
     if(!markupCurrent)return;
     e.preventDefault();e.stopPropagation();
-    if(markupCurrent.type==="freehand")setMarkupCurrent(c=>({...c,points:[...c.points,p]}));
+    if(markupCurrent.type==="freehand"||markupCurrent.type==="highlight")setMarkupCurrent(c=>({...c,points:[...c.points,p]}));
     else setMarkupCurrent(c=>({...c,end:p}));
   };
   const onMarkupUp=()=>{
@@ -6237,7 +6600,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       setMarkupStrokes(s=>{
         setMarkupSelectedIdx(s.length);
         return[...s,stroke];
-      });
+      });setMarkupRedoStack([]);
       setPendingPhoto(null);setPhotoPlaceRect(null);
       setMarkupTool("select");
       return;
@@ -6249,10 +6612,21 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
         setPendingDimStroke(markupCurrent);setDimLabel("");setMarkupCurrent(null);
         return;
       }
-      setMarkupStrokes(s=>[...s,markupCurrent]);setMarkupCurrent(null);
+      if(markupCurrent.type==="callout"){
+        setDvCalloutStroke(markupCurrent);setDvCalloutText("");setMarkupCurrent(null);
+        return;
+      }
+      addMarkupStroke(markupCurrent);setMarkupCurrent(null);
     }
   };
-  const undoMarkup=()=>setMarkupStrokes(s=>s.slice(0,-1));
+  const finishDvPolyline=()=>{
+    if(dvPolylinePoints.length>1){
+      addMarkupStroke({type:"polyline",color:markupColor,points:[...dvPolylinePoints],closed:dvPolylineClosed,lineStyle:markupLineStyle});
+    }
+    setDvPolylinePoints([]);
+  };
+  const undoMarkup=()=>{setMarkupStrokes(s=>{if(!s.length)return s;setMarkupRedoStack(r=>[...r,s[s.length-1]]);return s.slice(0,-1);});};
+  const redoMarkup=()=>{setMarkupRedoStack(r=>{if(!r.length)return r;const item=r[r.length-1];setMarkupStrokes(s=>[...s,item]);return r.slice(0,-1);});};
   const clearMarkup=()=>{if(markupStrokes.length&&confirm("Clear all markup?"))setMarkupStrokes([]);};
 
   // Photo overlay — pick/capture an image, compress, then enter "drag to place" mode
@@ -6356,6 +6730,47 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       return <g key={i}>
         <rect x={s.pos.x-(align==="center"?fs*s.text.length*0.22:(align==="right"?fs*s.text.length*0.44:0))-0.3} y={s.pos.y-dy-0.3} width={Math.max(2,fs*s.text.length*0.44)+0.6} height={fs*1.3+0.6} fill="rgba(255,255,255,0.92)" stroke={isSel?"#5856d6":s.color} strokeWidth={isSel?"0.4":"0.2"} rx="0.4"/>
         <text x={s.pos.x} y={s.pos.y-dy+fs} fill={s.color} fontSize={fs} fontFamily="'Barlow Condensed',sans-serif" fontWeight="700" textAnchor={anchor}>{s.text}</text>
+      </g>;
+    }else if(s.type==="cloud"&&s.start&&s.end){
+      const x=Math.min(s.start.x,s.end.x),y=Math.min(s.start.y,s.end.y);
+      const w=Math.abs(s.end.x-s.start.x),h=Math.abs(s.end.y-s.start.y);
+      if(w<0.3&&h<0.3)return null;
+      const arcsPerW=Math.max(4,Math.round(w/3)),arcsPerH=Math.max(4,Math.round(h/3));
+      const dw=w/arcsPerW,dh=h/arcsPerH,r=Math.max(dw,dh)*0.55;
+      let d="";
+      for(let j=0;j<arcsPerW;j++){const cx=x+dw*j+dw/2;d+=`M${cx-dw/2},${y} A${r},${r} 0 0,1 ${cx+dw/2},${y} `;}
+      for(let j=0;j<arcsPerH;j++){const cy=y+dh*j+dh/2;d+=`M${x+w},${cy-dh/2} A${r},${r} 0 0,1 ${x+w},${cy+dh/2} `;}
+      for(let j=arcsPerW-1;j>=0;j--){const cx=x+dw*j+dw/2;d+=`M${cx+dw/2},${y+h} A${r},${r} 0 0,1 ${cx-dw/2},${y+h} `;}
+      for(let j=arcsPerH-1;j>=0;j--){const cy=y+dh*j+dh/2;d+=`M${x},${cy+dh/2} A${r},${r} 0 0,1 ${x},${cy-dh/2} `;}
+      return <path key={i} d={d} stroke={s.color} strokeWidth="0.3" fill="none"/>;
+    }else if(s.type==="callout"&&s.start&&s.end){
+      const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y;
+      const angle=Math.atan2(dy,dx),hl=1.5;
+      const fs=s.fontSize?Math.max(0.8,s.fontSize*0.75):1.8;
+      const text=s.text||"";
+      const tw=text.length*fs*0.44;
+      return <g key={i}>
+        <line x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={s.color} strokeWidth="0.3" strokeDasharray={dash}/>
+        <line x1={s.start.x} y1={s.start.y} x2={s.start.x+hl*Math.cos(angle-0.4)*1.5} y2={s.start.y+hl*Math.sin(angle-0.4)*1.5} stroke={s.color} strokeWidth="0.3"/>
+        <line x1={s.start.x} y1={s.start.y} x2={s.start.x+hl*Math.cos(angle+0.4)*1.5} y2={s.start.y+hl*Math.sin(angle+0.4)*1.5} stroke={s.color} strokeWidth="0.3"/>
+        {text&&<><rect x={s.end.x-0.3} y={s.end.y-fs-0.3} width={tw+0.6} height={fs+0.6} rx="0.3" fill="rgba(255,255,255,0.92)" stroke={s.color} strokeWidth="0.2"/><text x={s.end.x} y={s.end.y} fill={s.color} fontSize={fs} fontFamily="'Barlow Condensed',sans-serif" fontWeight="700">{text}</text></>}
+      </g>;
+    }else if(s.type==="highlight"&&s.points&&s.points.length>1){
+      const d="M"+s.points.map(p=>`${p.x} ${p.y}`).join("L");
+      return <path key={i} d={d} stroke={s.color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.3"/>;
+    }else if(s.type==="polyline"&&s.points&&s.points.length>1){
+      const pts=s.points.map(p=>`${p.x},${p.y}`).join(" ");
+      if(s.closed)return <polygon key={i} points={pts} stroke={s.color} strokeWidth="0.3" fill="none" strokeDasharray={dash} strokeLinecap="round" strokeLinejoin="round"/>;
+      return <polyline key={i} points={pts} stroke={s.color} strokeWidth="0.3" fill="none" strokeDasharray={dash} strokeLinecap="round" strokeLinejoin="round"/>;
+    }else if(s.type==="stamp"&&s.pos){
+      const text=s.text||s.stampId||"STAMP";
+      const fs=s.fontSize?Math.max(0.8,s.fontSize*0.75):2.2;
+      const tw=text.length*fs*0.5;
+      const pad=fs*0.4;
+      const stampColor=s.stampId==="APPROVED"?"#34c759":s.stampId==="REJECTED"?"#ff3b30":s.stampId==="REVIEWED"?"#007aff":s.color||"#ff9500";
+      return <g key={i} transform={`rotate(-15,${s.pos.x},${s.pos.y})`}>
+        <rect x={s.pos.x-tw/2-pad} y={s.pos.y-fs/2-pad} width={tw+pad*2} height={fs+pad*2} fill="none" stroke={stampColor} strokeWidth="0.25"/>
+        <text x={s.pos.x} y={s.pos.y} fill={stampColor} fontSize={fs} fontFamily="Arial,sans-serif" fontWeight="700" textAnchor="middle" dominantBaseline="central" opacity="0.85">{text}</text>
       </g>;
     }else if(s.type==="photo"&&s.pos&&s.dataUrl){
       const isSel=markupSelectedIdx===i;
@@ -6526,12 +6941,16 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       {/* Markup toolbar */}
       {markupMode&&(
         <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:6,background:"#1a1a1a",borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0,flexWrap:"wrap"}}>
-          {[{id:"select",label:"▢",title:"Select, move, resize"},{id:"freehand",label:"✏",title:"Freehand"},{id:"line",label:null,title:"Line"},{id:"arrow",label:"↗",title:"Arrow"},{id:"circle",label:null,title:"Circle"},{id:"rect",label:null,title:"Rectangle"},{id:"dimension",label:null,title:"Dimension line"},{id:"text",label:"T",title:"Text"}].map(t=>(
+          {[{id:"select",label:"▢",title:"Select, move, resize"},{id:"freehand",label:"✏",title:"Freehand"},{id:"highlight",label:null,title:"Highlight Marker"},{id:"line",label:null,title:"Line"},{id:"arrow",label:"↗",title:"Arrow"},{id:"polyline",label:null,title:"Polyline / Polygon"},{id:"circle",label:null,title:"Circle"},{id:"rect",label:null,title:"Rectangle"},{id:"cloud",label:null,title:"Revision Cloud"},{id:"dimension",label:null,title:"Dimension line"},{id:"text",label:"T",title:"Text"},{id:"callout",label:null,title:"Callout / Leader Note"},{id:"stamp",label:"⊞",title:"Stamp"}].map(t=>(
             <button key={t.id} onClick={()=>{setMarkupTool(t.id);if(t.id!=="select")setMarkupSelectedIdx(null);}} title={t.title} style={{width:36,height:36,borderRadius:8,border:markupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:markupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              {t.id==="circle"?<svg width="20" height="20" viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="8" ry="8" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
+              {t.id==="highlight"?<svg width="20" height="20" viewBox="0 0 20 20"><rect x="2" y="7" width="16" height="6" rx="1" fill="#fff" opacity="0.5"/><line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="4" strokeLinecap="round" opacity="0.4"/></svg>
+              :t.id==="polyline"?<svg width="20" height="20" viewBox="0 0 20 20"><polyline points="2,16 7,4 13,14 18,6" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              :t.id==="circle"?<svg width="20" height="20" viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="8" ry="8" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
               :t.id==="rect"?<svg width="20" height="20" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
+              :t.id==="cloud"?<svg width="20" height="20" viewBox="0 0 20 20"><path d="M4,14 A3,3 0 0,1 4,8 A4,4 0 0,1 8,5 A4,4 0 0,1 14,5 A4,4 0 0,1 17,8 A3,3 0 0,1 17,14 Z" fill="none" stroke="#fff" strokeWidth="1.2"/></svg>
               :t.id==="line"?<svg width="20" height="20" viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
               :t.id==="dimension"?<svg width="20" height="20" viewBox="0 0 20 20"><line x1="3" y1="10" x2="17" y2="10" stroke="#fff" strokeWidth="1"/><line x1="3" y1="6" x2="3" y2="14" stroke="#fff" strokeWidth="1.5"/><line x1="17" y1="6" x2="17" y2="14" stroke="#fff" strokeWidth="1.5"/><text x="10" y="8" fill="#fff" fontSize="6" textAnchor="middle" fontFamily="sans-serif">d</text></svg>
+              :t.id==="callout"?<svg width="20" height="20" viewBox="0 0 20 20"><line x1="3" y1="16" x2="10" y2="6" stroke="#fff" strokeWidth="1.2"/><rect x="9" y="2" width="9" height="7" rx="1.5" fill="none" stroke="#fff" strokeWidth="1.2"/><text x="13.5" y="7.5" fill="#fff" fontSize="5" textAnchor="middle" fontFamily="sans-serif">A</text></svg>
               :t.label}
             </button>
           ))}
@@ -6608,11 +7027,30 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
               </div>}
             </div>;
           })()}
+          {/* Stamp picker */}
+          {markupTool==="stamp"&&(
+            <div style={{position:"relative"}}>
+              <button onClick={()=>setShowDvStampMenu(v=>!v)} style={{height:28,padding:"0 8px",borderRadius:6,border:"2px solid rgba(88,86,214,0.4)",background:"rgba(88,86,214,0.15)",color:"#d8d2ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,cursor:"pointer"}}>{dvStampType}</button>
+              {showDvStampMenu&&<div style={{position:"absolute",top:"100%",left:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:6,zIndex:100,boxShadow:"0 4px 12px rgba(0,0,0,0.4)",maxHeight:200,overflowY:"auto",minWidth:140}}>
+                {DV_STAMP_PRESETS.map(st=>(
+                  <button key={st} onClick={()=>{setDvStampType(st);setShowDvStampMenu(false);}} style={{display:"block",width:"100%",padding:"5px 8px",border:"none",borderRadius:4,background:dvStampType===st?"rgba(88,86,214,0.25)":"none",color:st==="APPROVED"?"#34c759":st==="REJECTED"?"#ff3b30":st==="REVIEWED"?"#007aff":"#d8d2ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,cursor:"pointer",textAlign:"left",marginBottom:2}}>{st}</button>
+                ))}
+              </div>}
+            </div>
+          )}
+          {/* Polyline controls */}
+          {markupTool==="polyline"&&dvPolylinePoints.length>0&&(
+            <>
+              <button onClick={()=>setDvPolylineClosed(v=>!v)} style={{height:28,padding:"0 8px",borderRadius:6,border:dvPolylineClosed?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:dvPolylineClosed?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,cursor:"pointer"}}>{dvPolylineClosed?"POLYGON":"OPEN"}</button>
+              <button onClick={finishDvPolyline} style={{height:28,padding:"0 10px",borderRadius:6,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>DONE ({dvPolylinePoints.length}pts)</button>
+            </>
+          )}
           <div style={{flex:1}}/>
           {markupSelectedIdx!=null&&markupTool==="select"&&(
             <button onClick={deleteSelectedMarkup} style={{background:"rgba(255,59,48,0.25)",border:"1px solid rgba(255,59,48,0.45)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>DELETE</button>
           )}
           <button onClick={undoMarkup} disabled={!markupStrokes.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:markupStrokes.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>UNDO</button>
+          <button onClick={redoMarkup} disabled={!markupRedoStack.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:markupRedoStack.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>REDO</button>
           <button onClick={clearMarkup} disabled={!markupStrokes.length} style={{background:"rgba(255,59,48,0.2)",border:"none",borderRadius:8,padding:"6px 10px",color:markupStrokes.length?"#ff6b6b":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>CLEAR</button>
         </div>
       )}
@@ -6641,6 +7079,8 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
               onTouchStart={onMarkupDown} onTouchMove={onMarkupMove} onTouchEnd={onMarkupUp}>
               {renderMarkupSvg(markupStrokes)}
               {markupCurrent&&renderMarkupSvg([markupCurrent])}
+              {dvPolylinePoints.length>1&&<polyline points={dvPolylinePoints.map(p=>`${p.x},${p.y}`).join(" ")} stroke={markupColor} strokeWidth="0.3" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="0.8 0.4"/>}
+              {dvPolylinePoints.length===1&&<circle cx={dvPolylinePoints[0].x} cy={dvPolylinePoints[0].y} r="0.5" fill={markupColor}/>}
               {pendingPhoto&&photoPlaceRect&&photoPlaceRect.w>0&&(
                 <g>
                   <image href={pendingPhoto.dataUrl} x={photoPlaceRect.x} y={photoPlaceRect.y} width={photoPlaceRect.w} height={photoPlaceRect.w*pendingPhoto.aspect} preserveAspectRatio="xMidYMid meet" opacity="0.7"/>
@@ -6664,6 +7104,8 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
                 onTouchStart={onMarkupDown} onTouchMove={onMarkupMove} onTouchEnd={onMarkupUp}>
                 {renderMarkupSvg(markupStrokes)}
                 {markupCurrent&&renderMarkupSvg([markupCurrent])}
+                {dvPolylinePoints.length>1&&<polyline points={dvPolylinePoints.map(p=>`${p.x},${p.y}`).join(" ")} stroke={markupColor} strokeWidth="0.3" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="0.8 0.4"/>}
+                {dvPolylinePoints.length===1&&<circle cx={dvPolylinePoints[0].x} cy={dvPolylinePoints[0].y} r="0.5" fill={markupColor}/>}
               </svg>
             )}
             {!pdfLoading&&!pdfError&&renderHeatmap()}
@@ -6756,10 +7198,25 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
           <div style={{width:"100%",maxWidth:340,background:"#1a1a1a",borderRadius:16,padding:18,border:"1px solid rgba(255,255,255,0.12)"}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff",marginBottom:6}}>DIMENSION LABEL</div>
             <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:12}}>Enter the measurement (e.g. 3.5m, 1200mm, 4'-6"). Leave blank for no label.</div>
-            <input autoFocus value={dimLabel} onChange={e=>setDimLabel(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){setMarkupStrokes(s=>[...s,{...pendingDimStroke,label:dimLabel.trim()}]);setPendingDimStroke(null);setDimLabel("");}}} placeholder="e.g. 3500mm" style={{width:"100%",padding:"12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
+            <input autoFocus value={dimLabel} onChange={e=>setDimLabel(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){addMarkupStroke({...pendingDimStroke,label:dimLabel.trim()});setPendingDimStroke(null);setDimLabel("");}}} placeholder="e.g. 3500mm" style={{width:"100%",padding:"12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
             <div style={{display:"flex",gap:8,marginTop:12}}>
               <button onClick={()=>{setPendingDimStroke(null);setDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CANCEL</button>
-              <button onClick={()=>{setMarkupStrokes(s=>[...s,{...pendingDimStroke,label:dimLabel.trim()}]);setPendingDimStroke(null);setDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD</button>
+              <button onClick={()=>{addMarkupStroke({...pendingDimStroke,label:dimLabel.trim()});setPendingDimStroke(null);setDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Callout text modal */}
+      {dvCalloutStroke&&(
+        <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.84)",zIndex:320,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <div style={{width:"100%",maxWidth:340,background:"#1a1a1a",borderRadius:16,padding:18,border:"1px solid rgba(255,255,255,0.12)"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff",marginBottom:6}}>CALLOUT LABEL</div>
+            <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:12}}>Enter the callout text. Leave blank for arrow only.</div>
+            <input autoFocus value={dvCalloutText} onChange={e=>setDvCalloutText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){addMarkupStroke({...dvCalloutStroke,text:dvCalloutText.trim(),fontSize:markupTextSize});setDvCalloutStroke(null);setDvCalloutText("");}}} placeholder="e.g. Check alignment" style={{width:"100%",padding:"12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
+            <div style={{display:"flex",gap:8,marginTop:12}}>
+              <button onClick={()=>{addMarkupStroke({...dvCalloutStroke,text:""});setDvCalloutStroke(null);setDvCalloutText("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>SKIP</button>
+              <button onClick={()=>{addMarkupStroke({...dvCalloutStroke,text:dvCalloutText.trim(),fontSize:markupTextSize});setDvCalloutStroke(null);setDvCalloutText("");}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD</button>
             </div>
           </div>
         </div>
