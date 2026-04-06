@@ -219,17 +219,19 @@ function _drawMarkupStroke(ctx,W,H,s,imageCache){
       ctx.setLineDash([]);
       ctx.beginPath();ctx.moveTo(a.x+nx,a.y+ny);ctx.lineTo(a.x-nx,a.y-ny);ctx.stroke();
       ctx.beginPath();ctx.moveTo(b.x+nx,b.y+ny);ctx.lineTo(b.x-nx,b.y-ny);ctx.stroke();
-      const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
-      const label=(Math.sqrt(((s.end.x-s.start.x)**2)+((s.end.y-s.start.y)**2))).toFixed(1);
-      const fs=Math.max(10,W*0.014);
-      ctx.save();
-      ctx.translate(mx,my);
-      const angle=Math.atan2(dy,dx);
-      ctx.rotate(angle>Math.PI/2||angle<-Math.PI/2?angle+Math.PI:angle);
-      ctx.font=`bold ${fs}px 'Barlow Condensed',sans-serif`;
-      ctx.textAlign="center";ctx.textBaseline="bottom";
-      ctx.fillText(label,0,-4);
-      ctx.restore();
+      const label=s.label||"";
+      if(label){
+        const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+        const fs=Math.max(10,W*0.014);
+        ctx.save();
+        ctx.translate(mx,my);
+        const angle=Math.atan2(dy,dx);
+        ctx.rotate(angle>Math.PI/2||angle<-Math.PI/2?angle+Math.PI:angle);
+        ctx.font=`bold ${fs}px 'Barlow Condensed',sans-serif`;
+        ctx.textAlign="center";ctx.textBaseline="bottom";
+        ctx.fillText(label,0,-4);
+        ctx.restore();
+      }
     }
   }else if(s.type==="text"&&s.pos&&s.text){
     const p=px(s.pos);
@@ -470,15 +472,17 @@ function PhotoMarkup({src,onSave,onCancel}){
       ctx.setLineDash([]);
       ctx.beginPath();ctx.moveTo(s.start.x+nx,s.start.y+ny);ctx.lineTo(s.start.x-nx,s.start.y-ny);ctx.stroke();
       ctx.beginPath();ctx.moveTo(s.end.x+nx,s.end.y+ny);ctx.lineTo(s.end.x-nx,s.end.y-ny);ctx.stroke();
-      const mx=(s.start.x+s.end.x)/2,my=(s.start.y+s.end.y)/2;
-      const dimLen=(len/scale).toFixed(0);
-      ctx.save();ctx.translate(mx,my);
-      const angle=Math.atan2(dy,dx);
-      ctx.rotate(angle>Math.PI/2||angle<-Math.PI/2?angle+Math.PI:angle);
-      ctx.font=`bold ${fontSize}px 'Barlow Condensed',sans-serif`;
-      ctx.textAlign="center";ctx.textBaseline="bottom";
-      ctx.fillText(dimLen+"px",0,-4*scale);
-      ctx.restore();
+      const dimLabel=s.label||"";
+      if(dimLabel){
+        const mx=(s.start.x+s.end.x)/2,my=(s.start.y+s.end.y)/2;
+        ctx.save();ctx.translate(mx,my);
+        const angle=Math.atan2(dy,dx);
+        ctx.rotate(angle>Math.PI/2||angle<-Math.PI/2?angle+Math.PI:angle);
+        ctx.font=`bold ${fontSize}px 'Barlow Condensed',sans-serif`;
+        ctx.textAlign="center";ctx.textBaseline="bottom";
+        ctx.fillText(dimLabel,0,-4*scale);
+        ctx.restore();
+      }
     }else if(s.type==="text"&&s.pos&&s.text){
       ctx.font=`bold ${fontSize}px 'Barlow Condensed',sans-serif`;
       ctx.fillStyle=s.color;
@@ -534,7 +538,14 @@ function PhotoMarkup({src,onSave,onCancel}){
     else setCurrent(c=>({...c,end:p}));
   };
   const onUp=()=>{
-    if(current){setStrokes(s=>[...s,current]);setCurrent(null);}
+    if(current){
+      if(current.type==="dimension"){
+        const label=prompt("Enter dimension (e.g. 3.5m, 1200mm). Leave blank for no label.")||"";
+        setStrokes(s=>[...s,{...current,label:label.trim()}]);setCurrent(null);
+        return;
+      }
+      setStrokes(s=>[...s,current]);setCurrent(null);
+    }
   };
 
   const submitText=(text)=>{
@@ -3738,6 +3749,8 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[showCompareSizeMenu,setShowCompareSizeMenu]=useState(false);const compareSizeTimer=useRef(null);
   const[compareTextPoint,setCompareTextPoint]=useState(null);
   const[compareTextValue,setCompareTextValue]=useState("");
+  const[comparePendingDim,setComparePendingDim]=useState(null);
+  const[compareDimLabel,setCompareDimLabel]=useState("");
   const[savedComparisons,setSavedComparisons]=useState(()=>getSavedComparisons(currentProject?.id||""));
   const[viewingSaved,setViewingSaved]=useState(null);
   const fileRef=useRef();
@@ -4313,7 +4326,13 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
   const onCompareMarkupUp=()=>{
     comparePinchDist.current=null;comparePanStart.current=null;
     compareDragRef.current=null;
-    if(compareMarkupCurrent){setCompareMarkupStrokes(s=>[...s,compareMarkupCurrent]);setCompareMarkupCurrent(null);}
+    if(compareMarkupCurrent){
+      if(compareMarkupCurrent.type==="dimension"){
+        setComparePendingDim(compareMarkupCurrent);setCompareDimLabel("");setCompareMarkupCurrent(null);
+        return;
+      }
+      setCompareMarkupStrokes(s=>[...s,compareMarkupCurrent]);setCompareMarkupCurrent(null);
+    }
   };
 
   const undoCompareMarkup=()=>setCompareMarkupStrokes(s=>s.slice(0,-1));
@@ -4434,12 +4453,12 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       const nx=-dy/len*1.2,ny=dx/len*1.2;
       const mx=(s.start.x+s.end.x)/2,my=(s.start.y+s.end.y)/2;
       const angle=Math.atan2(dy,dx)*180/Math.PI;
-      const label=len.toFixed(1);
+      const label=s.label||"";
       return <g key={i} {...hit}>
         <line x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={selStroke} strokeWidth="0.2" strokeDasharray={dash}/>
         <line x1={s.start.x+nx} y1={s.start.y+ny} x2={s.start.x-nx} y2={s.start.y-ny} stroke={selStroke} strokeWidth={selWidth}/>
         <line x1={s.end.x+nx} y1={s.end.y+ny} x2={s.end.x-nx} y2={s.end.y-ny} stroke={selStroke} strokeWidth={selWidth}/>
-        <text x={mx} y={my} fill={selStroke} fontSize="2.2" fontFamily="'Barlow Condensed',sans-serif" fontWeight="700" textAnchor="middle" dominantBaseline="central" transform={`rotate(${angle>90||angle<-90?angle+180:angle},${mx},${my})`} dy="-1">{label}</text>
+        {label&&<text x={mx} y={my} fill={selStroke} fontSize="2.2" fontFamily="'Barlow Condensed',sans-serif" fontWeight="700" textAnchor="middle" dominantBaseline="central" transform={`rotate(${angle>90||angle<-90?angle+180:angle},${mx},${my})`} dy="-1">{label}</text>}
       </g>;
     }
     if(s.type==="text"&&s.pos&&s.text){
@@ -5584,6 +5603,20 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                 </div>
               )}
 
+              {comparePendingDim&&(
+                <div style={{position:"fixed",inset:0,zIndex:280,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+                  <div style={{width:"100%",maxWidth:340,background:"#1a1a1a",borderRadius:14,padding:16,border:"1px solid rgba(255,255,255,0.15)"}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",marginBottom:6}}>DIMENSION LABEL</div>
+                    <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:12}}>Enter the measurement (e.g. 3.5m, 1200mm). Leave blank for no label.</div>
+                    <input autoFocus value={compareDimLabel} onChange={e=>setCompareDimLabel(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){setCompareMarkupStrokes(s=>[...s,{...comparePendingDim,label:compareDimLabel.trim()}]);setComparePendingDim(null);setCompareDimLabel("");}}} placeholder="e.g. 3500mm" style={{width:"100%",padding:11,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
+                    <div style={{display:"flex",gap:8,marginTop:12}}>
+                      <button onClick={()=>{setComparePendingDim(null);setCompareDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CANCEL</button>
+                      <button onClick={()=>{setCompareMarkupStrokes(s=>[...s,{...comparePendingDim,label:compareDimLabel.trim()}]);setComparePendingDim(null);setCompareDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {showUnlockPrompt&&(
                 <div style={{position:"fixed",inset:0,zIndex:280,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
                   <div style={{width:"100%",maxWidth:380,background:"#1a1a1a",borderRadius:14,padding:16,border:"1px solid rgba(255,149,0,0.35)"}}>
@@ -5668,7 +5701,9 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   const[notes,setNotes]=useState([]);
   const[pendingNotePos,setPendingNotePos]=useState(null);
   const[noteText,setNoteText]=useState("");
-  const[showCombinedList,setShowCombinedList]=useState(true);
+  const[pendingDimStroke,setPendingDimStroke]=useState(null);
+  const[dimLabel,setDimLabel]=useState("");
+  const[showCombinedList,setShowCombinedList]=useState(false);
   const markupSvgRef=useRef();
   const imgRef=useRef();const containerRef=useRef();const canvasRef=useRef();const pdfDocRef=useRef(null);
   const canPin=["Admin","Manager","Inspector"].includes(member?.role);
@@ -5772,7 +5807,6 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   // Mouse-wheel zoom at cursor position (desktop) — attached via useEffect for {passive:false}
   const wheelHandler=useRef(null);
   wheelHandler.current=e=>{
-    if(markupMode)return;
     e.preventDefault();
     const container=containerRef.current;if(!container)return;
     const rect=container.getBoundingClientRect();
@@ -5805,14 +5839,17 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     else lastTapRef.current=now;
   };
 
-  // Drag for panning (single pointer when not placing, always for multi-touch)
+  // Drag for panning
+  // - In markup mode: only pan with 2+ fingers (single finger draws via SVG overlay)
+  // - In placing mode: only pan with 2+ fingers
+  // - Otherwise (view mode or normal): single finger pans
   const dragRef=useRef(null);
   const pointerCount=useRef(0);
   const onPointerDown=e=>{
     pointerCount.current++;
     if(viewMode)handleDoubleTap();
-    // Allow pan with one finger when not placing/viewMode, or always with two fingers
-    if(viewMode||!placing||pointerCount.current>=2){
+    const needMultiTouch=markupMode||placing;
+    if(!needMultiTouch||pointerCount.current>=2){
       dragRef.current={startX:e.clientX-offset.x,startY:e.clientY-offset.y};
     }
   };
@@ -5968,7 +6005,14 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       return;
     }
     if(photoDragRef.current){photoDragRef.current=null;return;}
-    if(markupCurrent){setMarkupStrokes(s=>[...s,markupCurrent]);setMarkupCurrent(null);}
+    if(markupCurrent){
+      if(markupCurrent.type==="dimension"){
+        // Hold the dimension stroke and ask for label
+        setPendingDimStroke(markupCurrent);setDimLabel("");setMarkupCurrent(null);
+        return;
+      }
+      setMarkupStrokes(s=>[...s,markupCurrent]);setMarkupCurrent(null);
+    }
   };
   const undoMarkup=()=>setMarkupStrokes(s=>s.slice(0,-1));
   const clearMarkup=()=>{if(markupStrokes.length&&confirm("Clear all markup?"))setMarkupStrokes([]);};
@@ -6056,15 +6100,13 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       const nx=-dy/len*1.2,ny=dx/len*1.2;
       const mx=(s.start.x+s.end.x)/2,my=(s.start.y+s.end.y)/2;
       const angle=Math.atan2(dy,dx)*180/Math.PI;
-      // Dimension text — show length as % of viewbox (approx)
-      const label=len.toFixed(1);
+      const label=s.label||"";
       return <g key={i}>
         <line x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={s.color} strokeWidth="0.2" strokeDasharray={dash}/>
         {/* End ticks */}
         <line x1={s.start.x+nx} y1={s.start.y+ny} x2={s.start.x-nx} y2={s.start.y-ny} stroke={s.color} strokeWidth="0.3"/>
         <line x1={s.end.x+nx} y1={s.end.y+ny} x2={s.end.x-nx} y2={s.end.y-ny} stroke={s.color} strokeWidth="0.3"/>
-        {/* Label */}
-        <text x={mx} y={my} fill={s.color} fontSize="2.2" fontFamily="'Barlow Condensed',sans-serif" fontWeight="700" textAnchor="middle" dominantBaseline="central" transform={`rotate(${angle>90||angle<-90?angle+180:angle},${mx},${my})`} dy="-1">{label}</text>
+        {label&&<text x={mx} y={my} fill={s.color} fontSize="2.2" fontFamily="'Barlow Condensed',sans-serif" fontWeight="700" textAnchor="middle" dominantBaseline="central" transform={`rotate(${angle>90||angle<-90?angle+180:angle},${mx},${my})`} dy="-1">{label}</text>}
       </g>;
     }else if(s.type==="photo"&&s.pos&&s.dataUrl){
       const isSel=markupSelectedIdx===i;
@@ -6246,7 +6288,6 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
           ))}
           <button onClick={()=>markupPhotoRef.current?.click()} title="Add photo — drag on drawing to place" style={{width:36,height:36,borderRadius:8,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>📷</button>
           <input ref={markupPhotoRef} type="file" accept="image/*" capture="environment" onChange={handleMarkupPhotoFile} style={{display:"none"}}/>
-          <button onClick={()=>{setViewMode(v=>!v);if(!viewMode){setPlacing(false);setMarkupMode(false);}}} title="View mode — zoom & pan" style={{width:36,height:36,borderRadius:8,border:viewMode?"2px solid #2da845":"2px solid rgba(255,255,255,0.15)",background:viewMode?"rgba(52,199,89,0.25)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>👁</button>
           <div style={{width:1,height:24,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
           {/* Color — consolidated swatch dropdown */}
           {(()=>{
@@ -6290,8 +6331,8 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
 
       {/* Drawing canvas */}
       <div ref={containerRef} style={{flex:1,overflow:"hidden",position:"relative",cursor:markupMode?"crosshair":placing&&!viewMode?"crosshair":"grab",touchAction:"none"}}
-        onPointerDown={markupMode?undefined:onPointerDown} onPointerMove={markupMode?undefined:onPointerMove} onPointerUp={markupMode?undefined:onPointerUp} onPointerCancel={markupMode?undefined:onPointerUp}
-        onTouchMove={markupMode?undefined:onTouchMove} onTouchEnd={markupMode?undefined:onTouchEnd}>
+        onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
+        onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         {isImage?(
           <div style={{position:"relative",transform:`scale(${scale}) translate(${offset.x/scale}px,${offset.y/scale}px)`,transformOrigin:"0 0",transition:dragRef.current?"none":"transform 0.15s ease",maxWidth:"100%",margin:"0 auto"}}>
             <img ref={imgRef} src={fileUrl} alt={drawing.name} onClick={markupMode?undefined:handleDrawingClick}
@@ -6383,6 +6424,21 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
             <div style={{display:"flex",gap:8,marginTop:12}}>
               <button onClick={()=>{setPendingNotePos(null);setNoteText("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CANCEL</button>
               <button onClick={addNote} disabled={!noteText.trim()} style={{flex:1,padding:10,borderRadius:10,border:"none",background:noteText.trim()?"#5856d6":"rgba(255,255,255,0.1)",color:noteText.trim()?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD NOTE</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dimension label input */}
+      {pendingDimStroke&&(
+        <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.84)",zIndex:320,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <div style={{width:"100%",maxWidth:340,background:"#1a1a1a",borderRadius:16,padding:18,border:"1px solid rgba(255,255,255,0.12)"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff",marginBottom:6}}>DIMENSION LABEL</div>
+            <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:12}}>Enter the measurement (e.g. 3.5m, 1200mm, 4'-6"). Leave blank for no label.</div>
+            <input autoFocus value={dimLabel} onChange={e=>setDimLabel(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){setMarkupStrokes(s=>[...s,{...pendingDimStroke,label:dimLabel.trim()}]);setPendingDimStroke(null);setDimLabel("");}}} placeholder="e.g. 3500mm" style={{width:"100%",padding:"12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
+            <div style={{display:"flex",gap:8,marginTop:12}}>
+              <button onClick={()=>{setPendingDimStroke(null);setDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CANCEL</button>
+              <button onClick={()=>{setMarkupStrokes(s=>[...s,{...pendingDimStroke,label:dimLabel.trim()}]);setPendingDimStroke(null);setDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD</button>
             </div>
           </div>
         </div>
