@@ -1,0 +1,10 @@
+{
+  "web_apps": [
+    {
+      "manifest": "https://siteshrimp.org/manifest.json",
+      "details": {
+        "paths": ["/*"]
+      }
+    }
+  ]
+}
