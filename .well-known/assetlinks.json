@@ -5,7 +5,7 @@
       "namespace": "android_app",
       "package_name": "org.siteshrimp.twa",
       "sha256_cert_fingerprints": [
-        "REPLACE_WITH_YOUR_SHA256_FINGERPRINT_FROM_PWABUILDER"
+        "01:E3:6C:AE:D6:9E:E7:40:3A:16:45:06:14:2F:F6:E5:B7:C1:C6:EA:4A:8E:9E:63:48:AB:4C:B0:C9:35:FB:74"
       ]
     }
   }
