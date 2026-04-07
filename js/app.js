@@ -4382,7 +4382,25 @@ function Report({defects,onEmailSetup,currentProject,company}){
   return(
     <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",marginBottom:2}}>SITE REPORT</div>
-      <div style={{fontSize:12,color:"rgba(0,0,0,0.4)",marginBottom:14}}>{currentProject?.name||""} · {new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}</div>
+      <div style={{fontSize:12,color:"rgba(0,0,0,0.4)",marginBottom:10}}>{currentProject?.name||""} · {new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}</div>
+
+      <div style={{display:"flex",gap:6,marginBottom:10}}>
+        <button onClick={emailReady?sendReport:onEmailSetup} disabled={sending} style={{flex:1,background:"#ff6b00",border:"none",borderRadius:10,padding:"10px 6px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",opacity:sending?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+          {sending?<><Spin size={12}/><span>...</span></>:<>{emailReady?"📧 EMAIL":"⚙️ SETUP"}</>}
+        </button>
+        <button onClick={()=>setShowContractAdvisor(v=>!v)} style={{flex:1,background:showContractAdvisor?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"10px 6px",color:showContractAdvisor?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>⚖️ ADVISOR</button>
+        <button onClick={()=>setShowPreview(p=>!p)} style={{flex:1,background:showPreview?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"10px 6px",color:showPreview?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>👁 PREVIEW</button>
+        <div style={{position:"relative",flex:1,display:"flex"}}>
+          <button onClick={()=>setShowExportMenu(m=>!m)} style={{flex:1,background:showExportMenu?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"10px 6px",color:showExportMenu?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>📊 EXPORT ▾</button>
+          {showExportMenu&&(
+            <div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(0,0,0,0.08)",zIndex:20,minWidth:160,overflow:"hidden"}}>
+              <button onClick={()=>{exportReportAll(filtered,reportDrawings,savedComparisons,currentProject?.name);setShowExportMenu(false);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📄 Export CSV</button>
+              <button onClick={()=>{exportReportPdf(filtered,reportDrawings,savedComparisons,currentProject?.name,company?.companyName,reportPins,contractSummary);setShowExportMenu(false);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📕 Export PDF</button>
+              <button onClick={()=>{exportReportAll(filtered,reportDrawings,savedComparisons,currentProject?.name);exportReportPdf(filtered,reportDrawings,savedComparisons,currentProject?.name,company?.companyName,reportPins,contractSummary);setShowExportMenu(false);}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#ff6b00"}}>📊 Export All (CSV + PDF)</button>
+            </div>
+          )}
+        </div>
+      </div>
 
       <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
         <button onClick={()=>setShowFilters(f=>!f)} style={{flex:1,background:showFilters?"#1a1a1a":"rgba(0,0,0,0.06)",border:"none",borderRadius:10,padding:"11px",color:showFilters?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
@@ -4403,28 +4421,6 @@ function Report({defects,onEmailSetup,currentProject,company}){
 
       {activeFilters>0&&<div style={{background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#ff6b00",fontWeight:600}}>Showing {filtered.length} of {defects.length} defects</div>}
 
-      <div style={{display:"flex",gap:8,marginBottom:10}}>
-        <button onClick={emailReady?sendReport:onEmailSetup} disabled={sending} style={{flex:1,background:"#ff6b00",border:"none",borderRadius:10,padding:"12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",opacity:sending?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-          {sending?<><Spin size={14}/><span>SENDING...</span></>:emailReady?"📧 EMAIL REPORT":"⚙️ SETUP EMAIL"}
-        </button>
-        <button onClick={()=>setShowContractAdvisor(v=>!v)} style={{background:showContractAdvisor?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 14px",color:showContractAdvisor?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-          <span>⚖️</span>
-          <span>CONTRACT ADVISOR</span>
-        </button>
-        <button onClick={()=>setShowPreview(p=>!p)} style={{background:showPreview?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 14px",color:showPreview?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>👁 PREVIEW</button>
-        <div style={{position:"relative"}}>
-          <button onClick={()=>setShowExportMenu(m=>!m)} style={{background:showExportMenu?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 14px",color:showExportMenu?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>📊 EXPORT ▾</button>
-          {showExportMenu&&(
-            <div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(0,0,0,0.08)",zIndex:20,minWidth:160,overflow:"hidden"}}>
-              <button onClick={()=>{exportReportAll(filtered,reportDrawings,savedComparisons,currentProject?.name);setShowExportMenu(false);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📄 Export CSV</button>
-              <button onClick={()=>{exportReportPdf(filtered,reportDrawings,savedComparisons,currentProject?.name,company?.companyName,reportPins,contractSummary);setShowExportMenu(false);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📕 Export PDF</button>
-              <button onClick={()=>{exportReportAll(filtered,reportDrawings,savedComparisons,currentProject?.name);exportReportPdf(filtered,reportDrawings,savedComparisons,currentProject?.name,company?.companyName,reportPins,contractSummary);setShowExportMenu(false);}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#ff6b00"}}>📊 Export All (CSV + PDF)</button>
-            </div>
-          )}
-        </div>
-        {emailReady&&<button onClick={onEmailSetup} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>EDIT</button>}
-      </div>
-
       {/* Email content sections — opt in/out */}
       <div style={{background:"#fff",borderRadius:14,padding:14,marginBottom:14}}>
         <div style={lbl()}>EMAIL CONTENT SECTIONS</div>
@@ -4440,69 +4436,6 @@ function Report({defects,onEmailSetup,currentProject,company}){
           </button>
         ))}
       </div>
-
-      {showContractAdvisor&&(
-        <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,border:"2px solid rgba(88,86,214,0.2)"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,gap:10}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a"}}>⚖️ CONTRACT ADVISOR</div>
-            {contractBusy&&<div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"#5856d6",fontWeight:700}}><Spin size={12}/><span>RUNNING</span></div>}
-          </div>
-
-          <div style={{background:"rgba(88,86,214,0.05)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontSize:12,lineHeight:1.6,color:"#2f2e55"}}>
-            AI reads your contract PDFs (PSSCOC, REDAS, SIA) and cross-references the <b>{filtered.length} defect{filtered.length!==1?"s":""}</b> in this report to advise:<br/>
-            <span style={{color:"#5856d6",fontWeight:700}}>Applicable clauses</span> · <span style={{color:"#5856d6",fontWeight:700}}>Responsible parties</span> · <span style={{color:"#5856d6",fontWeight:700}}>Impact & considerations</span> · <span style={{color:"#5856d6",fontWeight:700}}>Actionable follow-ups</span>
-          </div>
-
-          {!contractBusy&&!contractSummary&&(
-            <button disabled={contractBusy} onClick={runContractAdvisor} style={{width:"100%",background:"#5856d6",border:"none",borderRadius:10,padding:"14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:10}}>
-              <span>⚖️</span><span>RUN CONTRACT ADVISOR</span>
-            </button>
-          )}
-
-          {contractProgress.length>0&&(
-            <div style={{background:"rgba(88,86,214,0.06)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:10,padding:"10px 12px",marginBottom:10}}>
-              <div style={{fontSize:10,fontWeight:800,color:"#5856d6",letterSpacing:"0.05em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>PROGRESS</div>
-              {contractProgress.map((p,i)=><div key={i} style={{fontSize:11,color:"#2f2e55",marginBottom:3}}>• {p}</div>)}
-            </div>
-          )}
-
-          {contractError&&<div style={{background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.25)",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#cc0000",fontWeight:600,marginBottom:10}}>{contractError}</div>}
-
-          {contractSummary&&(
-            <div>
-              <div style={{background:"rgba(26,26,26,0.03)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:10,padding:"12px 14px",marginBottom:10}}>
-                <div style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.5)",letterSpacing:"0.05em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:8}}>CONTRACT CLAUSE ADVISORY</div>
-                <div style={{whiteSpace:"pre-wrap",fontSize:12,lineHeight:1.6,color:"#1a1a1a"}}>{contractSummary}</div>
-              </div>
-              {contractTokens&&(
-                <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap"}}>
-                  <div style={{background:"rgba(88,86,214,0.06)",borderRadius:8,padding:"6px 10px",fontSize:10,color:"#5856d6",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>
-                    {contractTokens.provider}
-                  </div>
-                  <div style={{background:"rgba(0,0,0,0.04)",borderRadius:8,padding:"6px 10px",fontSize:10,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif"}}>
-                    Prompt: <b>{contractTokens.prompt.toLocaleString()}</b>
-                  </div>
-                  <div style={{background:"rgba(0,0,0,0.04)",borderRadius:8,padding:"6px 10px",fontSize:10,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif"}}>
-                    Completion: <b>{contractTokens.completion.toLocaleString()}</b>
-                  </div>
-                  <div style={{background:"rgba(0,0,0,0.04)",borderRadius:8,padding:"6px 10px",fontSize:10,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif"}}>
-                    Total: <b>{contractTokens.total.toLocaleString()}</b> tokens
-                  </div>
-                </div>
-              )}
-              <div style={{background:"rgba(255,149,0,0.08)",border:"1px solid rgba(255,149,0,0.2)",borderRadius:10,padding:"10px 12px",marginBottom:10}}>
-                <div style={{fontSize:10,color:"#996100",lineHeight:1.5}}>⚠ <b>Disclaimer:</b> This advisory is generated by AI for reference only. It is not legal advice. Always verify clause references against your actual contract documents and consult qualified professionals before acting on contractual matters. AI outputs may vary between runs — cross-check cited clause numbers with the source documents.</div>
-              </div>
-              <div style={{display:"flex",gap:8}}>
-                <button onClick={runContractAdvisor} disabled={contractBusy} style={{flex:1,background:"#5856d6",border:"none",borderRadius:10,padding:"11px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",opacity:contractBusy?0.7:1}}>
-                  {contractBusy?<><Spin size={12}/> ANALYZING...</>:"RE-RUN"}
-                </button>
-                <button onClick={()=>{setContractSummary("");setContractError("");setContractProgress([]);setContractTokens(null);}} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"11px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CLEAR</button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Preview panel */}
       {showPreview&&(
@@ -4591,7 +4524,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
       </div>
 
       {byAssignee.length>0&&(
-        <div style={{background:"#fff",borderRadius:14,padding:16}}>
+        <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14}}>
           <div style={lbl()}>BY ASSIGNEE</div>
           {byAssignee.map(({t,open,total:tot})=>(
             <div key={t} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid rgba(0,0,0,0.05)"}}>
@@ -4602,6 +4535,61 @@ function Report({defects,onEmailSetup,currentProject,company}){
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {showContractAdvisor&&(
+        <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,border:"2px solid rgba(88,86,214,0.2)"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,gap:10}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a"}}>⚖️ CONTRACT ADVISOR</div>
+            {contractBusy&&<div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"#5856d6",fontWeight:700}}><Spin size={12}/><span>RUNNING</span></div>}
+          </div>
+
+          <div style={{background:"rgba(88,86,214,0.05)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontSize:12,lineHeight:1.6,color:"#2f2e55"}}>
+            AI reads your contract PDFs (PSSCOC, REDAS, SIA) and cross-references the <b>{filtered.length} defect{filtered.length!==1?"s":""}</b> in this report to advise:<br/>
+            <span style={{color:"#5856d6",fontWeight:700}}>Applicable clauses</span> · <span style={{color:"#5856d6",fontWeight:700}}>Responsible parties</span> · <span style={{color:"#5856d6",fontWeight:700}}>Impact & considerations</span> · <span style={{color:"#5856d6",fontWeight:700}}>Actionable follow-ups</span>
+          </div>
+
+          {!contractBusy&&!contractSummary&&(
+            <button disabled={contractBusy} onClick={runContractAdvisor} style={{width:"100%",background:"#5856d6",border:"none",borderRadius:10,padding:"14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:10}}>
+              <span>⚖️</span><span>RUN CONTRACT ADVISOR</span>
+            </button>
+          )}
+
+          {contractProgress.length>0&&(
+            <div style={{background:"rgba(88,86,214,0.06)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:10,padding:"10px 12px",marginBottom:10}}>
+              <div style={{fontSize:10,fontWeight:800,color:"#5856d6",letterSpacing:"0.05em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>PROGRESS</div>
+              {contractProgress.map((p,i)=><div key={i} style={{fontSize:11,color:"#2f2e55",marginBottom:3}}>• {p}</div>)}
+            </div>
+          )}
+
+          {contractError&&<div style={{background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.25)",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#cc0000",fontWeight:600,marginBottom:10}}>{contractError}</div>}
+
+          {contractSummary&&(
+            <div>
+              <div style={{background:"rgba(26,26,26,0.03)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:10,padding:"12px 14px",marginBottom:10}}>
+                <div style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.5)",letterSpacing:"0.05em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:8}}>CONTRACT CLAUSE ADVISORY</div>
+                <div style={{whiteSpace:"pre-wrap",fontSize:12,lineHeight:1.6,color:"#1a1a1a"}}>{contractSummary}</div>
+              </div>
+              {contractTokens&&(
+                <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap"}}>
+                  <div style={{background:"rgba(88,86,214,0.06)",borderRadius:8,padding:"6px 10px",fontSize:10,color:"#5856d6",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>{contractTokens.provider}</div>
+                  <div style={{background:"rgba(0,0,0,0.04)",borderRadius:8,padding:"6px 10px",fontSize:10,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif"}}>Prompt: <b>{contractTokens.prompt.toLocaleString()}</b></div>
+                  <div style={{background:"rgba(0,0,0,0.04)",borderRadius:8,padding:"6px 10px",fontSize:10,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif"}}>Completion: <b>{contractTokens.completion.toLocaleString()}</b></div>
+                  <div style={{background:"rgba(0,0,0,0.04)",borderRadius:8,padding:"6px 10px",fontSize:10,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif"}}>Total: <b>{contractTokens.total.toLocaleString()}</b> tokens</div>
+                </div>
+              )}
+              <div style={{background:"rgba(255,149,0,0.08)",border:"1px solid rgba(255,149,0,0.2)",borderRadius:10,padding:"10px 12px",marginBottom:10}}>
+                <div style={{fontSize:10,color:"#996100",lineHeight:1.5}}>⚠ <b>Disclaimer:</b> This advisory is generated by AI for reference only. It is not legal advice. Always verify clause references against your actual contract documents and consult qualified professionals before acting on contractual matters. AI outputs may vary between runs — cross-check cited clause numbers with the source documents.</div>
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={runContractAdvisor} disabled={contractBusy} style={{flex:1,background:"#5856d6",border:"none",borderRadius:10,padding:"11px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",opacity:contractBusy?0.7:1}}>
+                  {contractBusy?<><Spin size={12}/> ANALYZING...</>:"RE-RUN"}
+                </button>
+                <button onClick={()=>{setContractSummary("");setContractError("");setContractProgress([]);setContractTokens(null);}} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"11px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CLEAR</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
