@@ -2896,7 +2896,7 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
 }
 
 // ── Log Entry (with AI + Batch + Multi-photo) ────────────────────
-function LogDefect({member,company,currentProject,members,onSave,existingDefects=[]}){
+function LogDefect({member,company,currentProject,members,onSave,existingDefects=[],onViewEntry,onTagDrawing}){
   const savedWorkCat=local.get(WORK_CATEGORY_KEY)||"Building Defects (Landed)";
   const blank={title:"",location:"",severity:"Major",description:"",assignee:member?.name||"",photos:[],
     component:"",issue:"",locationLevel:"",locationZone:"",locationSubzone:"",locationGrid:"",
@@ -3060,7 +3060,8 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       });
       setLast({location:locationDisplay,assignee:form.assignee,severity:form.severity,
         locationLevel:form.locationLevel,locationZone:form.locationZone,component:form.component,
-        workCategory:form.workCategory,queued:saveResult==="queued"});
+        workCategory:form.workCategory,queued:saveResult==="queued",
+        savedEntry:saveResult&&saveResult!=="queued"?{...saveResult,title:effectiveTitle,location:locationDisplay||form.location,severity:form.severity,trade,status:"Open",assignee:form.assignee,loggedBy:member?.name||"",loggedByRole:member?.role||"",description:form.description,component:form.component,entryType:form.entryType||"Defect"}:null});
       setCount(c=>c+1);setForm(blank);setAiResult(null);setSpeakTranscript("");
       if(saveAndDoneRef.current){saveAndDoneRef.current=false;/* stay on form, batch screen not shown — parent tab switch handles "done" */}
       else{setShowBatch(true);}
@@ -3169,6 +3170,12 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         <div style={{fontSize:13,color:"rgba(0,0,0,0.5)",marginBottom:6}}>Log another at the same location?</div>
         <div style={{fontSize:12,color:"rgba(0,0,0,0.4)"}}>📍 {last?.location} · → {last?.assignee}</div>
       </div>
+      {last?.savedEntry&&!last?.queued&&(
+        <div style={{display:"flex",gap:8,marginBottom:10}}>
+          {onTagDrawing&&<button onClick={()=>{setShowBatch(false);onTagDrawing(last.savedEntry);}} style={{flex:1,background:"#5856d6",border:"none",borderRadius:12,padding:14,color:"#fff",fontSize:13,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>📐 TAG DRAWING</button>}
+          {onViewEntry&&<button onClick={()=>{setShowBatch(false);onViewEntry(last.savedEntry);}} style={{flex:1,background:"#1a1a1a",border:"none",borderRadius:12,padding:14,color:"#fff",fontSize:13,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>✏️ EDIT DETAILS</button>}
+        </div>
+      )}
       <button onClick={()=>{setForm({...blank,
         workCategory:last?.workCategory||blank.workCategory,
         location:last?.location||"",assignee:last?.assignee||member?.name||"",severity:last?.severity||"Major",
@@ -3753,6 +3760,29 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
   const tgCfg=local.get(TG_KEY);
   const canUpdate=["Admin","Manager","Inspector"].includes(member?.role);
   const canDelete=member?.role==="Admin";
+  // Inline edit state
+  const[editing,setEditing]=useState(false);
+  const[editFields,setEditFields]=useState({
+    title:defect.title||"",description:defect.description||"",severity:defect.severity||"Major",
+    location:defect.location||"",assignee:defect.assignee||"",component:defect.component||"",
+    trade:defect.trade||"",entryType:defect.entryType||"Defect",
+    dueDate:defect.dueDate||"",duration:defect.duration||"",
+    costImpact:defect.costImpact||"",costResponsible:defect.costResponsible||"",costAmount:defect.costAmount||""
+  });
+  const[editSaving,setEditSaving]=useState(false);
+  const ef=(k,v)=>setEditFields(prev=>({...prev,[k]:v}));
+  const saveEdits=async()=>{
+    setEditSaving(true);
+    try{
+      const patch={...editFields,trade:COMPONENT_TRADE[editFields.component]||editFields.trade||""};
+      await DB.defects.update(defect.id,patch);
+      const updated={...latestRef.current,...patch};
+      latestRef.current=updated;
+      onUpdate(updated);
+      setEditing(false);
+    }catch(e){alert("Save failed: "+e.message);}
+    setEditSaving(false);
+  };
   // Comment editing state
   const[editingCommentIdx,setEditingCommentIdx]=useState(null);
   const[editingCommentText,setEditingCommentText]=useState("");
@@ -3870,24 +3900,87 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
       <div style={{position:"sticky",top:0,background:"rgba(240,237,232,0.95)",backdropFilter:"blur(8px)",padding:"16px 16px 12px",display:"flex",alignItems:"center",gap:12,borderBottom:"1px solid rgba(0,0,0,0.08)",zIndex:10}}>
         <button onClick={onClose} style={{background:"rgba(0,0,0,0.08)",border:"none",borderRadius:20,padding:"7px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>← BACK</button>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a",flex:1}}>ENTRY DETAIL</div>
+        {canUpdate&&!editing&&<button onClick={()=>{setEditFields({title:defect.title||"",description:defect.description||"",severity:defect.severity||"Major",location:defect.location||"",assignee:defect.assignee||"",component:defect.component||"",trade:defect.trade||"",entryType:defect.entryType||"Defect",dueDate:defect.dueDate||"",duration:defect.duration||"",costImpact:defect.costImpact||"",costResponsible:defect.costResponsible||"",costAmount:defect.costAmount||""});setEditing(true);}} style={{background:"rgba(255,107,0,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>EDIT</button>}
         {canDelete&&<button onClick={deleteDefect} disabled={deleting} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{deleting?"...":"DELETE"}</button>}
       </div>
       <div style={{padding:16}}>
-        <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,borderLeft:`5px solid ${SEV_COLOR[defect.severity]}`}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:20,color:"#1a1a1a",marginBottom:10}}>{defect.title}</div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>{defect.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(defect.entryType),background:typeBg(defect.entryType),padding:"3px 10px",borderRadius:12,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(defect.entryType)} {defect.entryType.toUpperCase()}</span>}<SevChip s={defect.severity}/><StatusChip s={status}/></div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            {[["📍 Location",defect.location],["👤 Assigned",defect.assignee],["📁 Project",defect.projectName||"—"],["🗓 Date",defect.created?new Date(defect.created).toLocaleDateString():"—"],["✍️ Logged by",defect.loggedBy],["🔑 Role",defect.loggedByRole||"—"]].map(([l,v])=>(
-              <div key={l}><div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em"}}>{l}</div><div style={{fontSize:13,color:"#1a1a1a",marginTop:2}}>{v||"—"}</div></div>
-            ))}
-          </div>
-          {defect.description&&(
-            <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid rgba(0,0,0,0.06)"}}>
-              <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:4}}>DESCRIPTION</div>
-              <div style={{fontSize:13,color:"#444",lineHeight:1.5}}>{defect.description}</div>
+        {editing?(
+          <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,borderLeft:"5px solid #ff6b00"}}>
+            <div style={{fontSize:10,fontWeight:800,color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",marginBottom:10}}>EDITING ENTRY</div>
+            <div style={{marginBottom:10}}>
+              <div style={lbl()}>TITLE</div>
+              <input value={editFields.title} onChange={e=>ef("title",e.target.value)} style={{...inp,width:"100%",fontSize:14,fontWeight:700}}/>
             </div>
-          )}
-        </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              <div>
+                <div style={lbl()}>SEVERITY</div>
+                <select value={editFields.severity} onChange={e=>ef("severity",e.target.value)} style={{...inp,width:"100%",fontSize:12}}>
+                  {SEVERITY.map(s=><option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={lbl()}>ENTRY TYPE</div>
+                <select value={editFields.entryType} onChange={e=>ef("entryType",e.target.value)} style={{...inp,width:"100%",fontSize:12}}>
+                  {getAllEntryTypes().map(t=><option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              <div>
+                <div style={lbl()}>LOCATION</div>
+                <input value={editFields.location} onChange={e=>ef("location",e.target.value)} style={{...inp,width:"100%",fontSize:12}}/>
+              </div>
+              <div>
+                <div style={lbl()}>ASSIGNED TO</div>
+                <input value={editFields.assignee} onChange={e=>ef("assignee",e.target.value)} style={{...inp,width:"100%",fontSize:12}}/>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              <div>
+                <div style={lbl()}>COMPONENT</div>
+                <input value={editFields.component} onChange={e=>ef("component",e.target.value)} style={{...inp,width:"100%",fontSize:12}}/>
+              </div>
+              <div>
+                <div style={lbl()}>TRADE</div>
+                <input value={editFields.trade} onChange={e=>ef("trade",e.target.value)} placeholder="Auto from component" style={{...inp,width:"100%",fontSize:12}}/>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              <div>
+                <div style={lbl()}>DUE DATE</div>
+                <input type="date" value={editFields.dueDate} onChange={e=>ef("dueDate",e.target.value)} style={{...inp,width:"100%",fontSize:12}}/>
+              </div>
+              <div>
+                <div style={lbl()}>DURATION</div>
+                <input value={editFields.duration} onChange={e=>ef("duration",e.target.value)} placeholder="e.g. 2 days" style={{...inp,width:"100%",fontSize:12}}/>
+              </div>
+            </div>
+            <div style={{marginBottom:10}}>
+              <div style={lbl()}>DESCRIPTION</div>
+              <textarea value={editFields.description} onChange={e=>ef("description",e.target.value)} rows={4} style={{...inp,width:"100%",resize:"vertical",fontSize:12}}/>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={saveEdits} disabled={editSaving} style={{flex:1,background:"#ff6b00",border:"none",borderRadius:10,padding:"12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",opacity:editSaving?0.7:1}}>{editSaving?"SAVING...":"SAVE CHANGES"}</button>
+              <button onClick={()=>{setEditing(false);setEditFields({title:defect.title||"",description:defect.description||"",severity:defect.severity||"Major",location:defect.location||"",assignee:defect.assignee||"",component:defect.component||"",trade:defect.trade||"",entryType:defect.entryType||"Defect",dueDate:defect.dueDate||"",duration:defect.duration||"",costImpact:defect.costImpact||"",costResponsible:defect.costResponsible||"",costAmount:defect.costAmount||""});}} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 16px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>CANCEL</button>
+            </div>
+          </div>
+        ):(
+          <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,borderLeft:`5px solid ${SEV_COLOR[defect.severity]}`}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:20,color:"#1a1a1a",marginBottom:10}}>{defect.title}</div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>{defect.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(defect.entryType),background:typeBg(defect.entryType),padding:"3px 10px",borderRadius:12,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(defect.entryType)} {defect.entryType.toUpperCase()}</span>}<SevChip s={defect.severity}/><StatusChip s={status}/></div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              {[["📍 Location",defect.location],["👤 Assigned",defect.assignee],["📁 Project",defect.projectName||"—"],["🗓 Date",defect.created?new Date(defect.created).toLocaleDateString():"—"],["✍️ Logged by",defect.loggedBy],["🔑 Role",defect.loggedByRole||"—"]].map(([l,v])=>(
+                <div key={l}><div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em"}}>{l}</div><div style={{fontSize:13,color:"#1a1a1a",marginTop:2}}>{v||"—"}</div></div>
+              ))}
+            </div>
+            {defect.description&&(
+              <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid rgba(0,0,0,0.06)"}}>
+                <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:4}}>DESCRIPTION</div>
+                <div style={{fontSize:13,color:"#444",lineHeight:1.5}}>{defect.description}</div>
+              </div>
+            )}
+          </div>
+        )}
 
         {defect.photo&&(()=>{
           const origPhoto=typeof defect.photo==="string"?defect.photo:Array.isArray(defect.photo)&&defect.photo[0]?defect.photo[0]:null;
@@ -8075,11 +8168,11 @@ function App(){
       if(data.extraPhotos)for(let i=0;i<data.extraPhotos.length;i++)if(data.extraPhotos[i]?.startsWith("data:"))try{gdriveUrls.push((await GDrive.uploadPhoto(data.extraPhotos[i],`defect_${ts}_${i+2}.jpg`)).url);}catch{}
       const gd={...data,companyId,storageMode:"gdrive",gdrivePhotos:JSON.stringify(gdriveUrls)};
       delete gd.photo;delete gd.extraPhotos;delete gd.photos;
-      await DB.defects.create(gd);
+      return await DB.defects.create(gd);
     }else if(storageCfg.mode==="local"&&storageCfg.localPath){
-      await DB.addDefect(companyId,{...data,storageMode:"local",storagePath:storageCfg.localPath});
+      return await DB.addDefect(companyId,{...data,storageMode:"local",storagePath:storageCfg.localPath});
     }else{
-      await DB.addDefect(companyId,data);
+      return await DB.addDefect(companyId,data);
     }
   };
 
@@ -8133,7 +8226,7 @@ function App(){
     if(!company?.companyId||!currentProject)return;
 
     try{
-      await uploadDefect(data,company.companyId);
+      const saved=await uploadDefect(data,company.companyId);
 
       // Telegram notification (fire-and-forget)
       try{
@@ -8145,6 +8238,7 @@ function App(){
           else await sendTelegram(cfg.token,cfg.chatId,text);
         }
       }catch{}
+      return saved;
     }catch(err){
       // ── Offline or network error: queue for later ──
       if(!navigator.onLine||err.message?.includes("Failed to fetch")||err.message?.includes("not responding")||err.message?.includes("Cannot reach")){
@@ -8396,7 +8490,7 @@ function App(){
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:84}}>
         {tab==="dashboard"&&<Dashboard defects={defects} onView={setViewing} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} company={company} currentProject={currentProject} member={member} onDrawings={()=>setTab("drawings")} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
-        {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects}/>}
+        {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>Viewer access — defect logging disabled</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("dashboard")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect}/>}
         {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate}/>}
