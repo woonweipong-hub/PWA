@@ -520,7 +520,22 @@
     "coordinate": "协调团队",
     "coordinate_desc": "通过实时同步和即时通知分配任务。",
     "install_app": "安装为应用",
-    "first_time_setup": "首次设置"
+    "first_time_setup": "首次设置",
+    "tagline": "管理缺陷、检查、进度和记录。",
+    "subtitle": "用照片、语音和图纸捕捉问题。将杂乱数据转化为清晰的记录和报告，加速结案。",
+    "log_faster_ai": "AI快速记录",
+    "log_faster_ai_desc": "拍照并在几秒内自动填写问题详情。",
+    "see_issues": "在图纸上查看问题",
+    "see_issues_desc": "在平面图上直接标注和追踪问题。",
+    "hands_free": "免提工作",
+    "hands_free_desc": "使用语音记录、填写字段和快速搜索。",
+    "audit_trail": "清晰审计追踪",
+    "audit_trail_desc": "通过验证和前后对比追踪更新。",
+    "coordinate_title": "协调团队",
+    "report_title": "无需返工的报告",
+    "report_desc": "导出CSV并快速分享精美报告。",
+    "install_prompt": "安装方法：\n\n安卓：菜单 (⋮) → 添加到主屏幕\n\niPhone：分享 (↑) → 添加到主屏幕",
+    "free_for_all": "对所有用户免费。"
   },
   "avatar_menu": {
     "profile": "我的资料",

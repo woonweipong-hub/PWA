@@ -288,3 +288,70 @@ onRecordAfterCreateSuccess((e) => {
     // Non-fatal — defect is still saved without AI analysis
   }
 }, "defects");
+
+// ====== SEND EMAIL REPORT (via PocketBase SMTP) ======
+// Requires SMTP configured in PocketBase Admin → Settings → Mail settings
+// Accepts: { recipients: ["a@b.com"], subject: "...", html: "..." }
+
+routerAdd("POST", "/api/send-email", (e) => {
+  // Require authenticated user
+  var auth = e.auth;
+  if (!auth) {
+    return e.json(401, { error: "Authentication required." });
+  }
+
+  var ip = e.request.remoteAddr || "unknown";
+  if (!rateLimit("send_email_" + ip, 5)) {
+    return e.json(429, { error: "Too many email requests. Try again in a minute." });
+  }
+
+  var body = e.request.body;
+  var data;
+  try {
+    data = JSON.parse($toString(body));
+  } catch {
+    return e.json(400, { error: "Invalid JSON body." });
+  }
+
+  var recipients = data.recipients || [];
+  var subject = data.subject || "";
+  var html = data.html || "";
+
+  if (!recipients.length) {
+    return e.json(400, { error: "No recipients provided." });
+  }
+  if (!subject || !html) {
+    return e.json(400, { error: "Subject and HTML content are required." });
+  }
+
+  // Basic email validation
+  var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  for (var i = 0; i < recipients.length; i++) {
+    if (!emailRegex.test(recipients[i])) {
+      return e.json(400, { error: "Invalid email: " + recipients[i] });
+    }
+  }
+
+  var errors = [];
+  for (var i = 0; i < recipients.length; i++) {
+    try {
+      var msg = new MailerMessage();
+      msg.from = { address: $app.settings().meta.senderAddress, name: $app.settings().meta.senderName || "SiteShrimp" };
+      msg.to = [{ address: recipients[i] }];
+      msg.subject = subject;
+      msg.html = html;
+      $app.newMailClient().send(msg);
+    } catch (err) {
+      console.log("Email send failed for " + recipients[i] + ":", err);
+      errors.push(recipients[i]);
+    }
+  }
+
+  if (errors.length === recipients.length) {
+    return e.json(500, { error: "Failed to send all emails. Check SMTP settings in PocketBase admin." });
+  }
+  if (errors.length > 0) {
+    return e.json(207, { ok: true, partial: true, failed: errors });
+  }
+  return e.json(200, { ok: true });
+});

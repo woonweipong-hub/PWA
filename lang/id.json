@@ -520,7 +520,22 @@
     "coordinate": "Koordinasikan tim Anda",
     "coordinate_desc": "Tugaskan tugas dengan sinkronisasi langsung dan notifikasi instan.",
     "install_app": "Pasang sebagai aplikasi",
-    "first_time_setup": "Pengaturan Pertama Kali"
+    "first_time_setup": "Pengaturan Pertama Kali",
+    "tagline": "Kelola cacat, inspeksi, progres, dan catatan.",
+    "subtitle": "Tangkap masalah dengan foto, suara, dan gambar. Ubah data berantakan menjadi catatan dan laporan rapi untuk penutupan lebih cepat.",
+    "log_faster_ai": "Catat lebih cepat dengan AI",
+    "log_faster_ai_desc": "Ambil foto dan isi detail masalah secara otomatis dalam hitungan detik.",
+    "see_issues": "Lihat masalah di gambar",
+    "see_issues_desc": "Tandai dan lacak masalah langsung di denah lantai.",
+    "hands_free": "Kerja bebas tangan",
+    "hands_free_desc": "Gunakan suara untuk mencatat, mengisi kolom, dan mencari dengan cepat.",
+    "audit_trail": "Jejak audit yang jelas",
+    "audit_trail_desc": "Lacak pembaruan dengan verifikasi dan bukti sebelum/sesudah.",
+    "coordinate_title": "Koordinasi tim Anda",
+    "report_title": "Laporan tanpa kerja ulang",
+    "report_desc": "Ekspor CSV dan bagikan laporan rapi dengan cepat.",
+    "install_prompt": "Untuk memasang:\n\nAndroid: Menu (⋮) → Tambahkan ke Layar Utama\n\niPhone: Bagikan (↑) → Tambahkan ke Layar Utama",
+    "free_for_all": "Gratis untuk semua Pengguna."
   },
   "avatar_menu": {
     "profile": "Profil Saya",

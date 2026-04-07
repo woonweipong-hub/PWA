@@ -520,7 +520,22 @@
     "coordinate": "Coordinate your team",
     "coordinate_desc": "Assign tasks with live sync and instant alerts.",
     "install_app": "Install as app",
-    "first_time_setup": "First-Time Setup"
+    "first_time_setup": "First-Time Setup",
+    "tagline": "Hallitse vikoja, tarkastuksia, edistymistä ja kirjanpitoa.",
+    "subtitle": "Tallenna ongelmat valokuvilla, äänellä ja piirustuksilla. Muuta sotkuinen data selkeiksi tietueiksi ja raporteiksi nopeampaa sulkemista varten.",
+    "log_faster_ai": "Kirjaa nopeammin tekoälyllä",
+    "log_faster_ai_desc": "Ota valokuvia ja täytä ongelmatiedot automaattisesti sekunneissa.",
+    "see_issues": "Katso ongelmat piirustuksissa",
+    "see_issues_desc": "Kiinnitä ja seuraa ongelmia suoraan pohjapiirustuksissa.",
+    "hands_free": "Kädetön työskentely",
+    "hands_free_desc": "Käytä ääntä kirjaamiseen, kenttien täyttämiseen ja nopeaan hakuun.",
+    "audit_trail": "Selkeä tarkastuspolku",
+    "audit_trail_desc": "Seuraa päivityksiä vahvistuksella ja ennen/jälkeen-todisteilla.",
+    "coordinate_title": "Koordinoi tiimiäsi",
+    "report_title": "Raportit ilman uudelleentyötä",
+    "report_desc": "Vie CSV ja jaa viimeistellyt raportit nopeasti.",
+    "install_prompt": "Asentaaksesi:\n\nAndroid: Valikko (⋮) → Lisää aloitusnäytölle\n\niPhone: Jaa (↑) → Lisää Koti-valikkoon",
+    "free_for_all": "Ilmainen kaikille käyttäjille."
   },
   "avatar_menu": {
     "profile": "Profiilini",

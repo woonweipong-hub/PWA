@@ -520,7 +520,22 @@
     "coordinate": "Coordinate your team",
     "coordinate_desc": "Assign tasks with live sync and instant alerts.",
     "install_app": "Install as app",
-    "first_time_setup": "First-Time Setup"
+    "first_time_setup": "First-Time Setup",
+    "tagline": "Kusurları, denetimleri, ilerlemeyi ve kayıtları yönetin.",
+    "subtitle": "Fotoğraf, ses ve çizimlerle sorunları yakalayın. Dağınık verileri temiz kayıtlara ve raporlara dönüştürün.",
+    "log_faster_ai": "AI ile daha hızlı kayıt",
+    "log_faster_ai_desc": "Fotoğraf çekin ve saniyeler içinde sorun detaylarını otomatik doldurun.",
+    "see_issues": "Çizimlerde sorunları görün",
+    "see_issues_desc": "Kat planlarında doğrudan sorunları işaretleyin ve takip edin.",
+    "hands_free": "Eller serbest çalışma",
+    "hands_free_desc": "Kayıt, alan doldurma ve hızlı arama için sesi kullanın.",
+    "audit_trail": "Net denetim izi",
+    "audit_trail_desc": "Doğrulama ve önce/sonra kanıtıyla güncellemeleri takip edin.",
+    "coordinate_title": "Ekibinizi koordine edin",
+    "report_title": "Yeniden iş olmadan rapor",
+    "report_desc": "CSV dışa aktarın ve cilalı raporları hızla paylaşın.",
+    "install_prompt": "Yüklemek için:\n\nAndroid: Menü (⋮) → Ana Ekrana Ekle\n\niPhone: Paylaş (↑) → Ana Ekrana Ekle",
+    "free_for_all": "Tüm kullanıcılar için ücretsiz."
   },
   "avatar_menu": {
     "profile": "Profilim",

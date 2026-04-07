@@ -520,7 +520,22 @@
     "coordinate": "Phối hợp nhóm",
     "coordinate_desc": "Giao việc với đồng bộ trực tiếp và cảnh báo tức thì.",
     "install_app": "Cài đặt như ứng dụng",
-    "first_time_setup": "Cài đặt lần đầu"
+    "first_time_setup": "Cài đặt lần đầu",
+    "tagline": "Quản lý lỗi, kiểm tra, tiến độ và hồ sơ.",
+    "subtitle": "Ghi nhận vấn đề bằng ảnh, giọng nói và bản vẽ. Biến dữ liệu lộn xộn thành hồ sơ và báo cáo gọn gàng để đóng nhanh hơn.",
+    "log_faster_ai": "Ghi nhận nhanh hơn với AI",
+    "log_faster_ai_desc": "Chụp ảnh và tự động điền chi tiết vấn đề trong vài giây.",
+    "see_issues": "Xem vấn đề trên bản vẽ",
+    "see_issues_desc": "Ghim và theo dõi vấn đề trực tiếp trên mặt bằng.",
+    "hands_free": "Làm việc rảnh tay",
+    "hands_free_desc": "Dùng giọng nói để ghi, điền trường và tìm kiếm nhanh.",
+    "audit_trail": "Dấu vết kiểm toán rõ ràng",
+    "audit_trail_desc": "Theo dõi cập nhật với xác minh và bằng chứng trước/sau.",
+    "coordinate_title": "Phối hợp nhóm của bạn",
+    "report_title": "Báo cáo không cần làm lại",
+    "report_desc": "Xuất CSV và chia sẻ báo cáo hoàn chỉnh nhanh chóng.",
+    "install_prompt": "Để cài đặt:\n\nAndroid: Menu (⋮) → Thêm vào Màn hình chính\n\niPhone: Chia sẻ (↑) → Thêm vào Màn hình chính",
+    "free_for_all": "Miễn phí cho tất cả Người dùng."
   },
   "avatar_menu": {
     "profile": "Hồ sơ của tôi",

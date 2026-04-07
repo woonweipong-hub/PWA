@@ -2014,20 +2014,20 @@ function AuthScreen({onAuth,onFullSetup}){
           <img src="icons/icon-192.png" alt="SiteShrimp" style={{width:introPreset.icon,height:introPreset.icon,borderRadius:8,marginBottom:9,boxShadow:"0 4px 20px rgba(255,107,0,0.3)"}}/>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:introPreset.title,fontWeight:800,color:"#fff",lineHeight:1,marginBottom:introPreset.titleGap}}>SITESHRIMP</div>
           <div style={{color:"rgba(255,255,255,0.56)",fontSize:introPreset.sub,marginBottom:4,lineHeight:introPreset.lineH}}>
-            Manage defects, inspections, progress, and records.
+            {t("onboarding.tagline")}
           </div>
           <div style={{color:"rgba(255,255,255,0.42)",fontSize:introPreset.body,marginBottom:introPreset.textGap,lineHeight:introPreset.lineH}}>
-            Capture issues with photos, voice, and drawings. Turn messy data into clean records and reports for faster closure.
+            {t("onboarding.subtitle")}
           </div>
 
           <div style={{textAlign:"left",marginBottom:introPreset.textGap}}>
           {[
-            ["📷","Log faster with AI","Snap photos and auto-fill issue details in seconds."],
-            ["📐","See issues on drawings","Pin and track issues directly on floor plans."],
-            ["🎤","Work hands-free","Use voice to log, fill fields, and search quickly."],
-            ["📋","Clear audit trail","Track updates with verification and before/after proof."],
-            ["👥","Coordinate your team","Assign tasks with live sync and instant alerts."],
-            ["📊","Report without rework","Export CSV and share polished reports fast."],
+            ["📷",t("onboarding.log_faster_ai"),t("onboarding.log_faster_ai_desc")],
+            ["📐",t("onboarding.see_issues"),t("onboarding.see_issues_desc")],
+            ["🎤",t("onboarding.hands_free"),t("onboarding.hands_free_desc")],
+            ["📋",t("onboarding.audit_trail"),t("onboarding.audit_trail_desc")],
+            ["👥",t("onboarding.coordinate_title"),t("onboarding.coordinate_desc")],
+            ["📊",t("onboarding.report_title"),t("onboarding.report_desc")],
           ].map(([icon,title,desc],i)=>(
             <div key={i} className="anim" style={{animationDelay:`${i*0.05}s`,display:"flex",gap:introPreset.rowGap,alignItems:"flex-start",padding:introPreset.rowPad}}>
               <span style={{fontSize:introPreset.featTitle,flexShrink:0,marginTop:1}}>{icon}</span>
@@ -2040,16 +2040,16 @@ function AuthScreen({onAuth,onFullSetup}){
           </div>
         </div>
         <div>
-          <button onClick={()=>setPage("auth")} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:11,padding:introPreset.btnPad,color:"#fff",fontSize:introPreset.btnFont,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:8,letterSpacing:"0.04em"}}>GET STARTED</button>
+          <button onClick={()=>setPage("auth")} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:11,padding:introPreset.btnPad,color:"#fff",fontSize:introPreset.btnFont,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:8,letterSpacing:"0.04em"}}>{t("actions.get_started")}</button>
 
-          <button onClick={installable?installApp:()=>alert("To install:\n\nAndroid: Menu (⋮) → Add to Home Screen\n\niPhone: Share (↑) → Add to Home Screen")} style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:11,padding:introPreset.btnPad,color:"rgba(255,255,255,0.82)",fontSize:introPreset.btnFont,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:9,display:"flex",alignItems:"center",justifyContent:"center",gap:introPreset.btnGap}}>
+          <button onClick={installable?installApp:()=>alert(t("onboarding.install_prompt"))} style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:11,padding:introPreset.btnPad,color:"rgba(255,255,255,0.82)",fontSize:introPreset.btnFont,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:9,display:"flex",alignItems:"center",justifyContent:"center",gap:introPreset.btnGap}}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(255,255,255,0.82)" strokeWidth="2" strokeLinecap="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(255,255,255,0.82)" strokeWidth="2" strokeLinecap="round"/></svg>
-            INSTALL APP
+            {t("onboarding.install_app").toUpperCase()}
           </button>
 
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:4}}>
             <div style={{color:"rgba(255,255,255,0.62)",fontSize:introPreset.footer,fontFamily:"'Barlow Condensed',sans-serif"}}>
-              Free for all Users.
+              {t("onboarding.free_for_all")}
             </div>
             <LangButton/>
           </div>
@@ -2444,7 +2444,7 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
 async function saveSettingToFirestore(companyId,key,value){
   if(!companyId)return;
   // Security hardening: keep integration secrets local on device.
-  if(["telegram","gemini","email"].includes(key))return;
+  if(["telegram","gemini"].includes(key))return;
   try{
     const existing=await DB.settings.getFirst(`companyId="${companyId}" && key="${key}"`);
     if(existing)await DB.settings.update(existing.id,{value,updatedAt:DB.serverTimestamp()});
@@ -2458,7 +2458,9 @@ async function loadSettingsFromFirestore(companyId){
     items.forEach(doc=>{
       const key=doc.key;const val=doc.value;
       // Do not hydrate secret-bearing settings from shared backend storage.
-      if(key==="telegram"||key==="gemini"||key==="email")return;
+      if(key==="telegram"||key==="gemini")return;
+      // Hydrate email recipients from cloud (shared across team)
+      if(key==="email"&&val&&val.recipients){local.set(EMAIL_KEY,val);return;}
       // Hydrate custom entry types from cloud (shared across team)
       if(key==="customEntryTypes"&&Array.isArray(val)){
         local.set(CUSTOM_TYPES_KEY,val);
@@ -2673,26 +2675,25 @@ function GeminiSettings({onClose,companyId}){
 
 // ── Email Settings ────────────────────────────────────────────────
 function EmailSettings({onClose,companyId}){
-  const s=local.get(EMAIL_KEY)||{publicKey:"",serviceId:"",templateId:"",recipients:[""]};
-  const[pk,setPk]=useState(s.publicKey);const[sid,setSid]=useState(s.serviceId);
-  const[tid,setTid]=useState(s.templateId);const[rec,setRec]=useState(s.recipients.length?s.recipients:[""]);
+  const s=local.get(EMAIL_KEY)||{recipients:[""]};
+  const[rec,setRec]=useState(s.recipients&&s.recipients.length?s.recipients:[""]);
   const[saved,setSaved]=useState(false);
-  const save=()=>{const cfg={publicKey:pk.trim(),serviceId:sid.trim(),templateId:tid.trim(),recipients:rec.filter(r=>r.trim())};local.set(EMAIL_KEY,cfg);saveSettingToFirestore(companyId,"email",cfg);setSaved(true);setTimeout(()=>setSaved(false),2000);};
+  const save=()=>{const cfg={recipients:rec.filter(r=>r.trim())};local.set(EMAIL_KEY,cfg);saveSettingToFirestore(companyId,"email",cfg);setSaved(true);setTimeout(()=>setSaved(false),2000);};
   return(
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
       <SettingsBack onClose={onClose} title={t("email.title")}/>
       <div style={{padding:20}}>
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:16}}>
-          {[["1","Go to emailjs.com → Sign up free"],["2","Add Email Service (Gmail/Outlook) → copy Service ID"],["3","Create Template → set HTML body to {{{html_content}}} → copy Template ID"],["4","Account → copy Public Key → paste all below → Save"]].map(([n,t])=>(
-            <div key={n} style={{display:"flex",gap:10,marginBottom:8,alignItems:"flex-start"}}>
-              <div style={{width:22,height:22,borderRadius:"50%",background:"#ff6b00",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff"}}>{n}</div>
-              <div style={{fontSize:13,color:"#444",lineHeight:1.5,paddingTop:2}}>{t}</div>
-            </div>
-          ))}
+          <div style={{fontSize:13,color:"#444",lineHeight:1.6}}>
+            Add recipient emails below. The email sends an <b>HTML summary</b> of your report (defects, comparisons, annotations).
+          </div>
+          <div style={{fontSize:12,color:"#888",marginTop:8,lineHeight:1.5,background:"rgba(255,107,0,0.05)",borderRadius:8,padding:"8px 10px"}}>
+            💡 <b>Need the full PDF with photos?</b> Use <b>EXPORT ▾ → Export PDF</b> in the Report tab to download it, then attach manually.
+          </div>
+          <div style={{fontSize:11,color:"#aaa",marginTop:8,lineHeight:1.5}}>
+            SMTP must be configured in PocketBase Admin → Settings → Mail settings.
+          </div>
         </div>
-        <div style={{marginBottom:12}}><label style={lbl()}>PUBLIC KEY</label><input value={pk} onChange={e=>setPk(e.target.value)} placeholder="user_XXXXXXXX" style={{...inp,width:"100%",flex:"unset"}}/></div>
-        <div style={{marginBottom:12}}><label style={lbl()}>SERVICE ID</label><input value={sid} onChange={e=>setSid(e.target.value)} placeholder="service_XXXXXX" style={{...inp,width:"100%",flex:"unset"}}/></div>
-        <div style={{marginBottom:16}}><label style={lbl()}>TEMPLATE ID</label><input value={tid} onChange={e=>setTid(e.target.value)} placeholder="template_XXXXXX" style={{...inp,width:"100%",flex:"unset"}}/></div>
         <div style={{marginBottom:16}}>
           <label style={lbl()}>RECIPIENT EMAILS</label>
           {rec.map((r,i)=>(
@@ -2703,7 +2704,7 @@ function EmailSettings({onClose,companyId}){
           ))}
           <button onClick={()=>setRec(r=>[...r,""])} style={{background:"rgba(255,107,0,0.08)",border:"1.5px dashed rgba(255,107,0,0.3)",borderRadius:10,padding:"10px",width:"100%",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>+ ADD RECIPIENT</button>
         </div>
-        <button onClick={save} disabled={!pk||!sid||!tid} style={{width:"100%",background:pk&&sid&&tid?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:14,color:pk&&sid&&tid?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{saved?"✓ SAVED":"SAVE"}</button>
+        <button onClick={save} disabled={!rec.some(r=>r.trim())} style={{width:"100%",background:rec.some(r=>r.trim())?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:14,color:rec.some(r=>r.trim())?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{saved?"✓ SAVED":"SAVE"}</button>
       </div>
     </div>
   );
@@ -4312,6 +4313,25 @@ function ProfilePanel({member,authUser,company,onClose,onSignOut}){
   const[editJobTitle,setEditJobTitle]=useState(member?.jobTitle||"");
   const[oldPass,setOldPass]=useState("");const[newPass,setNewPass]=useState("");const[confirmPass,setConfirmPass]=useState("");
   const[saving,setSaving]=useState(false);const[msg,setMsg]=useState(null);
+  const[showDeleteConfirm,setShowDeleteConfirm]=useState(false);const[deleting,setDeleting]=useState(false);
+
+  const deleteAccount=async()=>{
+    setDeleting(true);setMsg(null);
+    try{
+      // Delete member record
+      if(member?.id)await DB.members.delete(member.id);
+      // Delete user account via PocketBase API
+      const pbUrl=localStorage.getItem('pb_url')||'https://siteshrimp.duckdns.org';
+      const token=JSON.parse(localStorage.getItem('pb_auth')||'{}').token;
+      if(authUser?.id&&token){
+        await fetch(`${pbUrl}/api/collections/users/records/${authUser.id}`,{method:'DELETE',headers:{'Authorization':`Bearer ${token}`}});
+      }
+      // Clear local data
+      localStorage.clear();
+      if(window.indexedDB)try{indexedDB.deleteDatabase('siteshrimp');}catch(e){}
+      window.location.reload();
+    }catch(e){setMsg({type:"err",text:"Delete failed: "+e.message});setDeleting(false);}
+  };
 
   const saveProfile=async()=>{
     if(!editName.trim())return;
@@ -4406,7 +4426,20 @@ function ProfilePanel({member,authUser,company,onClose,onSignOut}){
         </div>
 
         {/* Email report settings are managed under the Report tab */}
-        <button onClick={onSignOut} style={{width:"100%",background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.15)",borderRadius:14,padding:"14px 16px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#ff3b30"}}>Sign Out</button>
+        <button onClick={onSignOut} style={{width:"100%",background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.15)",borderRadius:14,padding:"14px 16px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#ff3b30",marginBottom:8}}>Sign Out</button>
+
+        {!showDeleteConfirm?(
+          <button onClick={()=>setShowDeleteConfirm(true)} style={{width:"100%",background:"none",border:"none",padding:"12px 16px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:"rgba(255,59,48,0.5)"}}>Delete Account</button>
+        ):(
+          <div style={{background:"rgba(255,59,48,0.06)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:14,padding:16}}>
+            <div style={{fontSize:13,color:"#ff3b30",fontWeight:700,marginBottom:8,fontFamily:"'Barlow Condensed',sans-serif"}}>DELETE ACCOUNT</div>
+            <div style={{fontSize:12,color:"rgba(255,59,48,0.7)",marginBottom:12,lineHeight:1.5}}>This will permanently delete your account, all your entries, photos, and data. This action cannot be undone.</div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setShowDeleteConfirm(false)} style={{flex:1,background:"rgba(0,0,0,0.06)",border:"none",borderRadius:10,padding:"11px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#666"}}>CANCEL</button>
+              <button onClick={deleteAccount} disabled={deleting} style={{flex:1,background:"#ff3b30",border:"none",borderRadius:10,padding:"11px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#fff"}}>{deleting?"DELETING...":"YES, DELETE"}</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -4414,7 +4447,7 @@ function ProfilePanel({member,authUser,company,onClose,onSignOut}){
 
 function Report({defects,onEmailSetup,currentProject,company}){
   const[sending,setSending]=useState(false);const[sendRes,setSendRes]=useState(null);
-  const[showFilters,setShowFilters]=useState(false);const[showExportMenu,setShowExportMenu]=useState(false);
+  const[showFilters,setShowFilters]=useState(false);const[showExportMenu,setShowExportMenu]=useState(false);const[showEmailMenu,setShowEmailMenu]=useState(false);
   const[showContractAdvisor,setShowContractAdvisor]=useState(false);
   const[contractBusy,setContractBusy]=useState(false);
   const[contractProgress,setContractProgress]=useState([]);
@@ -4437,13 +4470,21 @@ function Report({defects,onEmailSetup,currentProject,company}){
   const[reportPins,setReportPins]=useState([]);
   useEffect(()=>{
     if(!reportDrawings.length)return;
-    Promise.all(reportDrawings.map(d=>DB.pins.list(`drawingId="${d.id}"`))).then(results=>setReportPins(results.flat())).catch(()=>{});
+    Promise.all(reportDrawings.map(d=>DB.pins.list(`drawingId="${d.id}"`))).then(results=>{
+      const flat=results.flat();
+      console.log("[Report] Loaded pins:",flat.length,"for",reportDrawings.length,"drawings",flat);
+      setReportPins(flat);
+    }).catch(e=>console.warn("[Report] Pin load failed:",e));
   },[reportDrawings]);
   const savedComparisons=getSavedComparisons(currentProject?.id);
-  const drawingsWithAnnotations=reportDrawings.filter(d=>getDrawingMarkup(d.id).length>0||getDrawingNotes(d.id).length>0);
+  const drawingsWithAnnotations=reportDrawings.filter(d=>getDrawingMarkup(d.id).length>0||getDrawingNotes(d.id).length>0||reportPins.some(p=>p.drawingId===d.id));
+  const totalMarkups=reportDrawings.reduce((s,d)=>s+getDrawingMarkup(d.id).length,0);
+  const totalNotes=reportDrawings.reduce((s,d)=>s+getDrawingNotes(d.id).length,0);
+  const totalPins=reportPins.length;
+  const totalAnnotations=totalMarkups+totalNotes+totalPins;
 
   const emailCfg=local.get(EMAIL_KEY);
-  const emailReady=!!(emailCfg?.publicKey&&emailCfg?.serviceId&&emailCfg?.templateId&&emailCfg?.recipients?.length);
+  const emailReady=!!(emailCfg?.recipients?.length);
   const toggleArr=(arr,setArr,val)=>setArr(a=>a.includes(val)?a.filter(x=>x!==val):[...a,val]);
   const clearFilters=()=>{setSevFilter([]);setStatusFilter([]);setAssigneeFilter([]);setDateFrom("");setDateTo("");};
   const activeFilters=sevFilter.length+statusFilter.length+assigneeFilter.length+(dateFrom?1:0)+(dateTo?1:0);
@@ -4472,13 +4513,12 @@ function Report({defects,onEmailSetup,currentProject,company}){
     if(!emailReady)return;
     setSending(true);setSendRes(null);
     try{
-      emailjs.init(emailCfg.publicKey);
       const opts=buildEmailOpts();
       const html=generateEmailHTML(incDefects?filtered:[],currentProject?.name,company?.companyName,opts);
-      const date=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
-      for(const email of emailCfg.recipients.filter(r=>r.trim())){
-        await emailjs.send(emailCfg.serviceId,emailCfg.templateId,{to_email:email,subject:`SiteShrimp Report – ${currentProject?.name||""} – ${date}`,html_content:html});
-      }
+      const timestamp=new Date().toLocaleString("en-GB",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+      const totalItems=filtered.length;
+      const subject=`${currentProject?.name||"Project"} – ${timestamp} – ${totalItems} Site Item${totalItems!==1?"s":""} Checked`;
+      await DB.sendEmail(emailCfg.recipients.filter(r=>r.trim()),subject,html);
       setSendRes("success");
     }catch(e){console.error(e);setSendRes("fail");}
     setSending(false);setTimeout(()=>setSendRes(null),4000);
@@ -4560,18 +4600,40 @@ function Report({defects,onEmailSetup,currentProject,company}){
       <div style={{fontSize:12,color:"rgba(0,0,0,0.4)",marginBottom:10}}>{currentProject?.name||""} · {new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}</div>
 
       <div style={{display:"flex",gap:6,marginBottom:10}}>
-        <button onClick={emailReady?sendReport:onEmailSetup} disabled={sending} style={{flex:1,background:"#ff6b00",border:"none",borderRadius:10,padding:"10px 6px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",opacity:sending?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
-          {sending?<><Spin size={12}/><span>...</span></>:<>{emailReady?"📧 EMAIL":"⚙️ SETUP"}</>}
-        </button>
+        <div style={{position:"relative",flex:1,display:"flex"}}>
+          <button onClick={()=>setShowEmailMenu(m=>!m)} disabled={sending} style={{flex:1,background:showEmailMenu?"#ff6b00":"#ff6b00",border:"none",borderRadius:10,padding:"10px 6px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",opacity:sending?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+            {sending?<><Spin size={12}/><span>...</span></>:<>{emailReady?"📧 EMAIL ✓ ▾":"📧 EMAIL ▾"}</>}
+          </button>
+          {showEmailMenu&&(
+            <div style={{position:"absolute",top:"100%",left:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(0,0,0,0.08)",zIndex:20,minWidth:240,overflow:"hidden"}}>
+              <button onClick={()=>{setShowEmailMenu(false);if(emailReady)sendReport();else onEmailSetup();}} disabled={!emailReady} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:emailReady?"pointer":"default",color:emailReady?"#ff6b00":"rgba(0,0,0,0.25)"}}>📧 Send Report{emailReady?"":" (not configured)"}</button>
+              <button onClick={()=>{setShowEmailMenu(false);onEmailSetup();}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>⚙️ Edit Recipients</button>
+              {emailReady&&<button onClick={()=>{setShowEmailMenu(false);local.del(EMAIL_KEY);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#ff3b30"}}>🗑 Reset Email Setup</button>}
+              <div style={{padding:"10px 16px",borderTop:"1px solid rgba(0,0,0,0.04)",background:"#fafafa"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.3)",letterSpacing:"0.05em",marginBottom:6}}>RECIPIENTS</div>
+                {emailReady
+                  ?emailCfg.recipients.filter(r=>r.trim()).map((r,i)=><div key={i} style={{fontSize:11,color:"#444",marginBottom:2}}>📨 {r}</div>)
+                  :<div style={{fontSize:11,color:"rgba(0,0,0,0.25)",fontStyle:"italic"}}>None configured</div>
+                }
+                <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.3)",letterSpacing:"0.05em",marginTop:8,marginBottom:4}}>CONTENT</div>
+                <div style={{fontSize:11,color:"#444",display:"flex",flexDirection:"column",gap:2}}>
+                  <span>{incDefects?"✅":"⬜"} Defect Entries ({filtered.length})</span>
+                  <span>{incDrawings?"✅":"⬜"} PDF Drawings ({totalAnnotations})</span>
+                  <span>{incComparisons?"✅":"⬜"} Saved Comparisons</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
         <button onClick={()=>setShowContractAdvisor(v=>!v)} style={{flex:1,background:showContractAdvisor?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"10px 6px",color:showContractAdvisor?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>⚖️ ADVISOR</button>
         <button onClick={()=>setShowPreview(p=>!p)} style={{flex:1,background:showPreview?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"10px 6px",color:showPreview?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>👁 PREVIEW</button>
         <div style={{position:"relative",flex:1,display:"flex"}}>
           <button onClick={()=>setShowExportMenu(m=>!m)} style={{flex:1,background:showExportMenu?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"10px 6px",color:showExportMenu?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>📊 EXPORT ▾</button>
           {showExportMenu&&(
             <div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(0,0,0,0.08)",zIndex:20,minWidth:160,overflow:"hidden"}}>
-              <button onClick={()=>{setShowExportMenu(false);exportReportAll(filtered,reportDrawings,savedComparisons,currentProject?.name);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📄 Export CSV</button>
-              <button onClick={()=>{setShowExportMenu(false);exportReportPdf(filtered,reportDrawings,savedComparisons,currentProject?.name,company?.companyName,reportPins,contractSummary).catch(e=>console.error("PDF export error:",e));}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📕 Export PDF</button>
-              <button onClick={()=>{setShowExportMenu(false);exportReportAll(filtered,reportDrawings,savedComparisons,currentProject?.name);setTimeout(()=>{exportReportPdf(filtered,reportDrawings,savedComparisons,currentProject?.name,company?.companyName,reportPins,contractSummary).catch(e=>console.error("PDF export error:",e));},600);}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#ff6b00"}}>📊 Export All (CSV + PDF)</button>
+              <button onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📄 Export CSV</button>
+              <button onClick={()=>{setShowExportMenu(false);exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary).catch(e=>console.error("PDF export error:",e));}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📕 Export PDF</button>
+              <button onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);setTimeout(()=>{exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary).catch(e=>console.error("PDF export error:",e));},600);}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#ff6b00"}}>📊 Export All (CSV + PDF)</button>
             </div>
           )}
         </div>
@@ -4599,14 +4661,20 @@ function Report({defects,onEmailSetup,currentProject,company}){
       {/* Email content sections — opt in/out */}
       <div style={{background:"#fff",borderRadius:14,padding:14,marginBottom:14}}>
         <div style={lbl()}>EMAIL CONTENT SECTIONS</div>
+        <div style={{background:"rgba(255,107,0,0.06)",border:"1px solid rgba(255,107,0,0.15)",borderRadius:10,padding:"10px 12px",marginBottom:10,fontSize:11,lineHeight:1.5,color:"#666"}}>
+          <span style={{fontWeight:700,color:"#ff6b00"}}>📧 Email</span> sends a lightweight HTML summary. <span style={{fontWeight:700,color:"#ff6b00"}}>📕 PDF</span> with photos and annotated drawings must be exported separately via <span style={{fontWeight:700}}>EXPORT ▾ → Export PDF</span>.
+        </div>
         {[
           {key:"defects",val:incDefects,set:setIncDefects,icon:"📋",label:"Defect Entries",count:filtered.length,color:"#ff3b30"},
-          {key:"drawings",val:incDrawings,set:setIncDrawings,icon:"📐",label:"Drawing Annotations",count:drawingsWithAnnotations.length,color:"#ff6b00"},
+          {key:"drawings",val:incDrawings,set:setIncDrawings,icon:"📐",label:"PDF Drawings",count:drawingsWithAnnotations.length,sub:`${totalPins} pins · ${totalMarkups} markups · ${totalNotes} notes`,color:"#ff6b00"},
           {key:"comparisons",val:incComparisons,set:setIncComparisons,icon:"🔍",label:"Saved Comparisons",count:savedComparisons.length,color:"#5856d6"}
         ].map(sec=>(
           <button key={sec.key} onClick={()=>sec.set(v=>!v)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",marginBottom:6,borderRadius:10,border:`1.5px solid ${sec.val?sec.color+"40":"rgba(0,0,0,0.08)"}`,background:sec.val?sec.color+"0a":"#fafafa",cursor:"pointer",textAlign:"left"}}>
             <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${sec.val?sec.color:"rgba(0,0,0,0.15)"}`,background:sec.val?sec.color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#fff",flexShrink:0}}>{sec.val?"✓":""}</div>
-            <span style={{fontSize:13,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:"#1a1a1a",flex:1}}>{sec.icon} {sec.label}</span>
+            <div style={{flex:1}}>
+              <span style={{fontSize:13,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:"#1a1a1a"}}>{sec.icon} {sec.label}</span>
+              {sec.sub&&sec.val&&<div style={{fontSize:10,color:"rgba(0,0,0,0.35)",marginTop:1}}>{sec.sub}</div>}
+            </div>
             <span style={{fontSize:12,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:sec.count>0?sec.color:"rgba(0,0,0,0.25)"}}>{sec.count}</span>
           </button>
         ))}
@@ -4662,7 +4730,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
 
       {sendRes&&(
         <div style={{background:sendRes==="success"?"rgba(48,209,88,0.1)":"rgba(255,59,48,0.1)",border:`1px solid ${sendRes==="success"?"rgba(48,209,88,0.3)":"rgba(255,59,48,0.3)"}`,borderRadius:10,padding:"12px 16px",marginBottom:14,color:sendRes==="success"?"#1a7a35":"#cc0000",fontSize:13,fontWeight:600}}>
-          {sendRes==="success"?`✓ Report sent to ${emailCfg.recipients.length} recipient(s)!`:"✗ Failed. Check email settings."}
+          {sendRes==="success"?<>✓ Sent to: {emailCfg.recipients.filter(r=>r.trim()).join(", ")}</>:"✗ Failed to send. Check SMTP settings in PocketBase admin."}
         </div>
       )}
 
@@ -8784,7 +8852,7 @@ function App(){
                     ["Drawings Tagging",["Upload floor plans (JPG, PNG, TIF, PDF)","PDF rendering via PDF.js with page navigation","Zoom, pan & pinch-to-zoom (mobile)","Ring-style defect pins with severity initial","Critical pin pulse animation","Pin tooltip with entry details + remove","Quick-pin: create entry directly from drawing","Defect heatmap overlay (severity-weighted)","Drawing-level markup (freehand, arrows, circles, text)","Drawing notes — pinned text with author + timestamp","Markup color picker + undo / clear","Pin count & severity badges on cards","PDF thumbnail preview in list","Diff dropdown: Single (PDFs) and Batch (Folders) in one menu","Single PDF diff with visual overlay of changes","Compare markup — draw on top of the diff (freehand, arrow, circle, text)","Compare markup: select and drag to reposition any stroke","Compare markup: 4 text size presets (S/M/L/XL)","Compare markup: 9-way text alignment via 3x3 grid menu","Compare markup: color picker retargets selected stroke","Compare markup: delete individual strokes without clearing all","Compare markup: overlay site photos onto the diff (capture or pick from device)","Compare markup: drag photos to reposition, +/− to resize, markup on top","AI diff report with lock / approve audit trail","Saved comparisons with overlay thumbnails (markup composited in)","Batch PDFs Comparison (folder vs folder)","Batch completeness check (missing / extra files)","Batch content comparison (per-file diff with detail)","Batch export (CSV + PDF with per-file changes)","Editable set labels (Tender, As-Built, M&E, etc.)"]],
                     ["Dashboard",["Real-time status counts (5 stages)","Critical alerts banner","Severity breakdown chart","Recent entries with type badges","Live sync indicator + queue count"]],
                     ["Admin Analytics",["Entries today / week / month / all time","Active users — who submitted today & this week","Per-user ranking bar chart","Photos stats (total & avg per entry)","Entries by entry type breakdown","Entries by project breakdown","AI usage stats (daily limit, coverage, provider)"]],
-                    ["Reports & Exports",["Site report with charts + entry list","Filter by severity / status / assignee / date","Email content sections (defects, drawings, comparisons)","Email preview with opt-in/out per section","Email report via EmailJS","Dn menu: Markup CSV / PDF export","Dn menu: Compare CSV / PDF export","Dn menu: All CSV / PDF export","Dn menu: All-in-One (CSV + PDF in one tap)","Annotated drawings embedded in PDF exports (pins, notes, markup burned in)","Per-drawing PDF export from the viewer"]],
+                    ["Reports & Exports",["Site report with charts + entry list","Filter by severity / status / assignee / date","Email content sections (defects, drawings, comparisons)","Email preview with opt-in/out per section","Email report via PocketBase SMTP","Dn menu: Markup CSV / PDF export","Dn menu: Compare CSV / PDF export","Dn menu: All CSV / PDF export","Dn menu: All-in-One (CSV + PDF in one tap)","Annotated drawings embedded in PDF exports (pins, notes, markup burned in)","Per-drawing PDF export from the viewer"]],
                     ["Storage",["PocketBase (default server)","Local path (self-hosted server / machine)","Google Drive (OAuth, personal cloud)"]],
                     ["Setup & Integrations",["Single Settings dropdown for all one-time setup","AI multi-provider setup + test (Gemini, Ollama, OpenAI)","Telegram bot setup + test","Storage mode selector (PocketBase, local path, Google Drive)","Daily AI usage limit","Email report config (inside Report tab)","Green ✓ check per configured integration"]],
                     ["Offline",["Save entries to IndexedDB when offline","Queued badge in header + Dashboard","Auto-sync when back online","Manual sync tap","Queued / synced status indicator"]],

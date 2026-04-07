@@ -520,7 +520,22 @@
     "coordinate": "Coordinate your team",
     "coordinate_desc": "Assign tasks with live sync and instant alerts.",
     "install_app": "Install as app",
-    "first_time_setup": "First-Time Setup"
+    "first_time_setup": "First-Time Setup",
+    "tagline": "Administrer fejl, inspektioner, fremskridt og optegnelser.",
+    "subtitle": "Fang problemer med fotos, stemme og tegninger. Forvandl rodet data til rene optegnelser og rapporter for hurtigere afslutning.",
+    "log_faster_ai": "Log hurtigere med AI",
+    "log_faster_ai_desc": "Tag billeder og udfyld problemdetaljer automatisk på sekunder.",
+    "see_issues": "Se problemer på tegninger",
+    "see_issues_desc": "Fastgør og spor problemer direkte på plantegninger.",
+    "hands_free": "Håndfrit arbejde",
+    "hands_free_desc": "Brug stemme til at logge, udfylde felter og søge hurtigt.",
+    "audit_trail": "Klar revisionsspor",
+    "audit_trail_desc": "Spor opdateringer med verifikation og før/efter-bevis.",
+    "coordinate_title": "Koordiner dit team",
+    "report_title": "Rapporter uden omarbejde",
+    "report_desc": "Eksporter CSV og del polerede rapporter hurtigt.",
+    "install_prompt": "For at installere:\n\nAndroid: Menu (⋮) → Føj til startskærm\n\niPhone: Del (↑) → Føj til hjemmeskærm",
+    "free_for_all": "Gratis for alle brugere."
   },
   "avatar_menu": {
     "profile": "Min Profil",

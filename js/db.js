@@ -375,6 +375,9 @@ const DB = (() => {
     drawings,
     pins,
     ...helpers,
+    async sendEmail(recipients, subject, html) {
+      return apiJson('/api/send-email', 'POST', { recipients, subject, html });
+    },
     get baseUrl() { return _baseUrl; },
   };
 })();

@@ -520,7 +520,22 @@
     "coordinate": "Coordinate your team",
     "coordinate_desc": "Assign tasks with live sync and instant alerts.",
     "install_app": "Install as app",
-    "first_time_setup": "First-Time Setup"
+    "first_time_setup": "First-Time Setup",
+    "tagline": "Manage defects, inspections, progress, and records.",
+    "subtitle": "Capture issues with photos, voice, and drawings. Turn messy data into clean records and reports for faster closure.",
+    "log_faster_ai": "Log faster with AI",
+    "log_faster_ai_desc": "Snap photos and auto-fill issue details in seconds.",
+    "see_issues": "See issues on drawings",
+    "see_issues_desc": "Pin and track issues directly on floor plans.",
+    "hands_free": "Work hands-free",
+    "hands_free_desc": "Use voice to log, fill fields, and search quickly.",
+    "audit_trail": "Clear audit trail",
+    "audit_trail_desc": "Track updates with verification and before/after proof.",
+    "coordinate_title": "Coordinate your team",
+    "report_title": "Report without rework",
+    "report_desc": "Export CSV and share polished reports fast.",
+    "install_prompt": "To install:\n\nAndroid: Menu (⋮) → Add to Home Screen\n\niPhone: Share (↑) → Add to Home Screen",
+    "free_for_all": "Free for all Users."
   },
   "avatar_menu": {
     "profile": "My Profile",

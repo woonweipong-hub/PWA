@@ -9,6 +9,9 @@ NEXT.md
 app.js
 preview-*.html
 
+# Play Store signing keys & build artifacts
+playstore/
+
 # Contract privacy policy
 contracts/REDAS/**
 contracts/SIA/**

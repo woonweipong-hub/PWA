@@ -520,7 +520,22 @@
     "coordinate": "Coordinate your team",
     "coordinate_desc": "Assign tasks with live sync and instant alerts.",
     "install_app": "Install as app",
-    "first_time_setup": "First-Time Setup"
+    "first_time_setup": "First-Time Setup",
+    "tagline": "Gerencie defeitos, inspeções, progresso e registros.",
+    "subtitle": "Capture problemas com fotos, voz e desenhos. Transforme dados bagunçados em registros e relatórios limpos para fechamento mais rápido.",
+    "log_faster_ai": "Registre mais rápido com IA",
+    "log_faster_ai_desc": "Tire fotos e preencha automaticamente os detalhes em segundos.",
+    "see_issues": "Ver problemas nos desenhos",
+    "see_issues_desc": "Fixe e rastreie problemas diretamente nas plantas.",
+    "hands_free": "Trabalho mãos livres",
+    "hands_free_desc": "Use a voz para registrar, preencher campos e buscar rapidamente.",
+    "audit_trail": "Trilha de auditoria clara",
+    "audit_trail_desc": "Rastreie atualizações com verificação e provas antes/depois.",
+    "coordinate_title": "Coordene sua equipe",
+    "report_title": "Relatórios sem retrabalho",
+    "report_desc": "Exporte CSV e compartilhe relatórios prontos rapidamente.",
+    "install_prompt": "Para instalar:\n\nAndroid: Menu (⋮) → Adicionar à tela inicial\n\niPhone: Compartilhar (↑) → Tela de Início",
+    "free_for_all": "Grátis para todos os usuários."
   },
   "avatar_menu": {
     "profile": "Meu Perfil",

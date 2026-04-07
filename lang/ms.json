@@ -520,7 +520,22 @@
     "coordinate": "Koordinasikan pasukan anda",
     "coordinate_desc": "Tugaskan tugas dengan penyegerakan langsung dan amaran segera.",
     "install_app": "Pasang sebagai aplikasi",
-    "first_time_setup": "Persediaan Kali Pertama"
+    "first_time_setup": "Persediaan Kali Pertama",
+    "tagline": "Urus kecacatan, pemeriksaan, kemajuan, dan rekod.",
+    "subtitle": "Tangkap isu dengan foto, suara, dan lukisan. Tukar data bersepah kepada rekod dan laporan kemas untuk penutupan lebih pantas.",
+    "log_faster_ai": "Log lebih pantas dengan AI",
+    "log_faster_ai_desc": "Ambil foto dan isi butiran isu secara automatik dalam beberapa saat.",
+    "see_issues": "Lihat isu pada lukisan",
+    "see_issues_desc": "Tandai dan jejak isu terus pada pelan lantai.",
+    "hands_free": "Kerja tanpa tangan",
+    "hands_free_desc": "Guna suara untuk log, isi medan, dan cari dengan pantas.",
+    "audit_trail": "Jejak audit yang jelas",
+    "audit_trail_desc": "Jejak kemas kini dengan pengesahan dan bukti sebelum/selepas.",
+    "coordinate_title": "Selaraskan pasukan anda",
+    "report_title": "Laporan tanpa kerja semula",
+    "report_desc": "Eksport CSV dan kongsi laporan kemas dengan pantas.",
+    "install_prompt": "Untuk memasang:\n\nAndroid: Menu (⋮) → Tambah ke Skrin Utama\n\niPhone: Kongsi (↑) → Tambah ke Skrin Utama",
+    "free_for_all": "Percuma untuk semua Pengguna."
   },
   "avatar_menu": {
     "profile": "Profil Saya",
