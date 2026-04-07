@@ -3810,7 +3810,7 @@ function PhotoViewer({src,onClose}){
   );
 }
 
-function DefectDetail({defect,onClose,onUpdate,member,company}){
+function DefectDetail({defect,onClose,onUpdate,member,company,members=[]}){
   const[status,setStatus]=useState(defect.status);
   const[comment,setComment]=useState("");const[saving,setSaving]=useState(false);const[deleting,setDeleting]=useState(false);
   const[commentPhoto,setCommentPhoto]=useState(null);const[verifyPhoto,setVerifyPhoto]=useState(null);
@@ -3825,16 +3825,32 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
   const[editFields,setEditFields]=useState({
     title:defect.title||"",description:defect.description||"",severity:defect.severity||"Major",
     location:defect.location||"",assignee:defect.assignee||"",component:defect.component||"",
-    trade:defect.trade||"",entryType:defect.entryType||"Defect",
+    issue:defect.issue||"",trade:defect.trade||"",entryType:defect.entryType||"Defect",
+    workCategory:defect.workCategory||"Building Defects (Landed)",
+    locationLevel:defect.locationLevel||"",locationZone:defect.locationZone||"",
+    locationSubzone:defect.locationSubzone||"",locationGrid:defect.locationGrid||"",
     dueDate:defect.dueDate||"",duration:defect.duration||"",
-    costImpact:defect.costImpact||"",costResponsible:defect.costResponsible||"",costAmount:defect.costAmount||""
+    costImpact:defect.costImpact||"",costResponsible:defect.costResponsible||"",
+    costAmount:defect.costAmount||"",costRemarks:defect.costRemarks||""
   });
   const[editSaving,setEditSaving]=useState(false);
   const ef=(k,v)=>setEditFields(prev=>({...prev,[k]:v}));
+  // Active component groups for edit form (filtered by work category)
+  const editComponentGroups=useMemo(()=>{
+    const cat=WORK_CATEGORIES[editFields.workCategory];
+    if(!cat)return COMPONENT_GROUPS;
+    const out={};
+    cat.groups.forEach(g=>{if(COMPONENT_GROUPS[g])out[g]=COMPONENT_GROUPS[g];});
+    return out;
+  },[editFields.workCategory]);
+  const editAssignees=members.length>0?members.map(m=>m.name):["Site Manager","Engineer","Contractor","QC Inspector","Safety Officer"];
   const saveEdits=async()=>{
     setEditSaving(true);
     try{
-      const patch={...editFields,trade:COMPONENT_TRADE[editFields.component]||editFields.trade||""};
+      // Build composite location from sub-fields
+      const locParts=[editFields.locationLevel,editFields.locationZone,editFields.locationSubzone,editFields.locationGrid].filter(Boolean);
+      const location=locParts.length?locParts.join(" > "):(editFields.location||"");
+      const patch={...editFields,location,trade:COMPONENT_TRADE[editFields.component]||editFields.trade||""};
       await DB.defects.update(defect.id,patch);
       const updated={...latestRef.current,...patch};
       latestRef.current=updated;
@@ -3986,68 +4002,66 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
       <div style={{position:"sticky",top:0,background:"rgba(240,237,232,0.95)",backdropFilter:"blur(8px)",padding:"16px 16px 12px",display:"flex",alignItems:"center",gap:12,borderBottom:"1px solid rgba(0,0,0,0.08)",zIndex:10}}>
         <button onClick={onClose} style={{background:"rgba(0,0,0,0.08)",border:"none",borderRadius:20,padding:"7px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.back")}</button>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a",flex:1}}>ENTRY DETAIL</div>
-        {canUpdate&&!editing&&<button onClick={()=>{setEditFields({title:defect.title||"",description:defect.description||"",severity:defect.severity||"Major",location:defect.location||"",assignee:defect.assignee||"",component:defect.component||"",trade:defect.trade||"",entryType:defect.entryType||"Defect",dueDate:defect.dueDate||"",duration:defect.duration||"",costImpact:defect.costImpact||"",costResponsible:defect.costResponsible||"",costAmount:defect.costAmount||""});setEditing(true);}} style={{background:"rgba(255,107,0,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.edit")}</button>}
+        {canUpdate&&!editing&&<button onClick={()=>{setEditFields({title:defect.title||"",description:defect.description||"",severity:defect.severity||"Major",location:defect.location||"",assignee:defect.assignee||"",component:defect.component||"",issue:defect.issue||"",trade:defect.trade||"",entryType:defect.entryType||"Defect",workCategory:defect.workCategory||"Building Defects (Landed)",locationLevel:defect.locationLevel||"",locationZone:defect.locationZone||"",locationSubzone:defect.locationSubzone||"",locationGrid:defect.locationGrid||"",dueDate:defect.dueDate||"",duration:defect.duration||"",costImpact:defect.costImpact||"",costResponsible:defect.costResponsible||"",costAmount:defect.costAmount||"",costRemarks:defect.costRemarks||""});setEditing(true);}} style={{background:"rgba(255,107,0,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.edit")}</button>}
         {canDelete&&<button onClick={deleteDefect} disabled={deleting} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{deleting?"...":t("actions.delete")}</button>}
       </div>
       <div style={{padding:16}}>
         {editing?(
           <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,borderLeft:"5px solid #ff6b00"}}>
             <div style={{fontSize:10,fontWeight:800,color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",marginBottom:10}}>EDITING ENTRY</div>
-            <div style={{marginBottom:10}}>
-              <div style={lbl()}>TITLE</div>
-              <input value={editFields.title} onChange={e=>ef("title",e.target.value)} style={{...inp,width:"100%",fontSize:14,fontWeight:700}}/>
+
+            {/* Title */}
+            <VoiceField label={t("fields.title")} value={editFields.title} onChange={v=>ef("title",v)} placeholder={t("fields.title_placeholder")}/>
+
+            {/* Description */}
+            <VoiceField label={t("fields.what_happened")} value={editFields.description} onChange={v=>ef("description",v)} placeholder={t("fields.description_placeholder")} multiline/>
+
+            {/* Severity */}
+            <ComboField label={t("fields.severity")} value={editFields.severity} onChange={v=>ef("severity",v)} options={SEVERITY} placeholder={t("fields.severity_placeholder")}/>
+
+            {/* Work Category */}
+            <ComboField label={t("fields.work_category")} value={editFields.workCategory} onChange={v=>{ef("workCategory",v);ef("component","");ef("issue","");}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")}/>
+
+            {/* Entry Type */}
+            <ComboField label={t("fields.entry_type")} value={editFields.entryType} onChange={v=>ef("entryType",v)} options={getAllEntryTypes()} placeholder={t("fields.entry_type_placeholder")}/>
+
+            {/* Item / Part */}
+            <ComboField label={t("fields.item_part")} value={editFields.component} onChange={v=>{ef("component",v);ef("issue","");}} grouped={editComponentGroups} placeholder={t("fields.item_part_placeholder")}/>
+
+            {/* Issue (filtered by component) */}
+            {editFields.component&&(
+              <ComboField label={t("fields.issue")} value={editFields.issue} onChange={v=>ef("issue",v)} options={COMPONENT_ISSUES[editFields.component]||COMPONENT_ISSUES["General"]} placeholder={t("fields.issue_placeholder")}/>
+            )}
+
+            {/* Location hierarchy */}
+            <ComboField label={t("fields.level_floor")} value={editFields.locationLevel} onChange={v=>ef("locationLevel",v)} options={DEFAULT_LEVELS} placeholder={t("fields.level_floor_placeholder")}/>
+            <ComboField label={t("fields.zone")} value={editFields.locationZone} onChange={v=>ef("locationZone",v)} options={DEFAULT_ZONES} placeholder={t("fields.zone_placeholder")}/>
+            <ComboField label={t("fields.room_area")} value={editFields.locationSubzone} onChange={v=>ef("locationSubzone",v)} options={DEFAULT_SUBZONES} placeholder={t("fields.room_area_placeholder")}/>
+            <VoiceField label={t("fields.grid_ref")} value={editFields.locationGrid} onChange={v=>ef("locationGrid",v)} placeholder={t("fields.grid_ref_placeholder")}/>
+
+            {/* Assignee */}
+            <ComboField label={t("fields.assign_to")} value={editFields.assignee} onChange={v=>ef("assignee",v)} options={editAssignees} placeholder={t("fields.assign_to_placeholder")}/>
+
+            {/* Cost & Time */}
+            <div style={{background:"rgba(0,0,0,0.02)",borderRadius:12,padding:14,marginBottom:16,border:"1px solid rgba(0,0,0,0.06)"}}>
+              <div style={{marginBottom:12}}>
+                <label style={lbl()}>DUE DATE</label>
+                <input type="date" value={editFields.dueDate} onChange={e=>ef("dueDate",e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
+              </div>
+              <ComboField label={t("fields.time_needed")} value={editFields.duration} onChange={v=>ef("duration",v)} options={DURATION_OPTIONS} placeholder={t("fields.time_needed_placeholder")}/>
+              <ComboField label={t("fields.cost_change")} value={editFields.costImpact} onChange={v=>ef("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder={t("fields.cost_change_placeholder")}/>
+              {editFields.costImpact&&editFields.costImpact!=="No change"&&editFields.costImpact!=="To be confirmed by QS"&&(
+                <>
+                  <VoiceField label={t("fields.cost_amount")} value={editFields.costAmount} onChange={v=>ef("costAmount",v)} placeholder={t("fields.cost_amount_placeholder")}/>
+                  <ComboField label={t("fields.cost_responsible")} value={editFields.costResponsible} onChange={v=>ef("costResponsible",v)} options={COST_RESPONSIBLE_OPTIONS} placeholder={t("fields.cost_responsible_placeholder")}/>
+                  <VoiceField label={t("fields.cost_remarks")} value={editFields.costRemarks} onChange={v=>ef("costRemarks",v)} placeholder={t("fields.cost_remarks_placeholder")} multiline/>
+                </>
+              )}
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-              <div>
-                <div style={lbl()}>SEVERITY</div>
-                <select value={editFields.severity} onChange={e=>ef("severity",e.target.value)} style={{...inp,width:"100%",fontSize:12}}>
-                  {SEVERITY.map(s=><option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
-                <div style={lbl()}>ENTRY TYPE</div>
-                <select value={editFields.entryType} onChange={e=>ef("entryType",e.target.value)} style={{...inp,width:"100%",fontSize:12}}>
-                  {getAllEntryTypes().map(t=><option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-              <div>
-                <div style={lbl()}>LOCATION</div>
-                <input value={editFields.location} onChange={e=>ef("location",e.target.value)} style={{...inp,width:"100%",fontSize:12}}/>
-              </div>
-              <div>
-                <div style={lbl()}>ASSIGNED TO</div>
-                <input value={editFields.assignee} onChange={e=>ef("assignee",e.target.value)} style={{...inp,width:"100%",fontSize:12}}/>
-              </div>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-              <div>
-                <div style={lbl()}>COMPONENT</div>
-                <input value={editFields.component} onChange={e=>ef("component",e.target.value)} style={{...inp,width:"100%",fontSize:12}}/>
-              </div>
-              <div>
-                <div style={lbl()}>TRADE</div>
-                <input value={editFields.trade} onChange={e=>ef("trade",e.target.value)} placeholder="Auto from component" style={{...inp,width:"100%",fontSize:12}}/>
-              </div>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-              <div>
-                <div style={lbl()}>DUE DATE</div>
-                <input type="date" value={editFields.dueDate} onChange={e=>ef("dueDate",e.target.value)} style={{...inp,width:"100%",fontSize:12}}/>
-              </div>
-              <div>
-                <div style={lbl()}>DURATION</div>
-                <input value={editFields.duration} onChange={e=>ef("duration",e.target.value)} placeholder="e.g. 2 days" style={{...inp,width:"100%",fontSize:12}}/>
-              </div>
-            </div>
-            <div style={{marginBottom:10}}>
-              <div style={lbl()}>DESCRIPTION</div>
-              <textarea value={editFields.description} onChange={e=>ef("description",e.target.value)} rows={4} style={{...inp,width:"100%",resize:"vertical",fontSize:12}}/>
-            </div>
+
             <div style={{display:"flex",gap:8}}>
               <button onClick={saveEdits} disabled={editSaving} style={{flex:1,background:"#ff6b00",border:"none",borderRadius:10,padding:"12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",opacity:editSaving?0.7:1}}>{editSaving?t("messages.saving"):t("actions.save_changes")}</button>
-              <button onClick={()=>{setEditing(false);setEditFields({title:defect.title||"",description:defect.description||"",severity:defect.severity||"Major",location:defect.location||"",assignee:defect.assignee||"",component:defect.component||"",trade:defect.trade||"",entryType:defect.entryType||"Defect",dueDate:defect.dueDate||"",duration:defect.duration||"",costImpact:defect.costImpact||"",costResponsible:defect.costResponsible||"",costAmount:defect.costAmount||""});}} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 16px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.cancel")}</button>
+              <button onClick={()=>{setEditing(false);}} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 16px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.cancel")}</button>
             </div>
           </div>
         ):(
@@ -8603,7 +8617,7 @@ function App(){
 
       {/* Overlays */}
       {showAiSearch&&<AiSearch defects={defects} onClose={()=>setShowAiSearch(false)} onApplyFilters={f=>{setNlFilters(f);setTab("defects");}}/>}
-      {viewing&&<DefectDetail defect={viewing} onClose={()=>setViewing(null)} onUpdate={updateDefect} member={member} company={company}/>}
+      {viewing&&<DefectDetail defect={viewing} onClose={()=>setViewing(null)} onUpdate={updateDefect} member={member} company={company} members={members}/>}
       {showHelp&&(
         <div style={{position:"fixed",inset:0,zIndex:500,background:"#1a1a1a",overflowY:"auto"}}>
           <div style={{maxWidth:430,margin:"0 auto",padding:"0 0 40px"}}>
