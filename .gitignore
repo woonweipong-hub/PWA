@@ -8,3 +8,9 @@ RESEARCH_similar_projects.md
 NEXT.md
 app.js
 preview-*.html
+
+# Contract privacy policy
+contracts/REDAS/**
+contracts/SIA/**
+!contracts/PSSCOC/
+!contracts/PSSCOC/**

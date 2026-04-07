@@ -1020,12 +1020,201 @@ async function askAI(prompt){
   return null;
 }
 
+// askAI variant that also returns token usage from the API response
+async function askAIWithUsage(prompt){
+  const provider=local.get(AI_PROVIDER_KEY)||"gemini";
+  try{
+    if(provider==="gemini"){
+      const key=local.get(GEMINI_KEY);if(!key)return{text:null,tokens:null};
+      const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
+      });
+      const data=await res.json();
+      const text=data.candidates?.[0]?.content?.parts?.[0]?.text||null;
+      const u=data.usageMetadata||{};
+      return{text,tokens:{prompt:u.promptTokenCount||0,completion:u.candidatesTokenCount||0,total:u.totalTokenCount||0,provider:"Gemini"}};
+    }
+    if(provider==="ollama"){
+      const cfg=local.get(OLLAMA_KEY)||{};
+      const res=await fetch(`${cfg.url}/api/generate`,{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:cfg.model||"llama3",prompt,stream:false})});
+      const data=await res.json();
+      return{text:data.response||null,tokens:{prompt:data.prompt_eval_count||0,completion:data.eval_count||0,total:(data.prompt_eval_count||0)+(data.eval_count||0),provider:"Ollama"}};
+    }
+    if(provider==="openai"){
+      const cfg=local.get(OPENAI_KEY)||{};
+      const res=await fetch(`${cfg.url||"https://api.openai.com"}/v1/chat/completions`,{method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},
+        body:JSON.stringify({model:cfg.model||"gpt-4o-mini",messages:[{role:"user",content:prompt}]})});
+      const data=await res.json();
+      const u=data.usage||{};
+      return{text:data.choices?.[0]?.message?.content||null,tokens:{prompt:u.prompt_tokens||0,completion:u.completion_tokens||0,total:u.total_tokens||0,provider:"OpenAI"}};
+    }
+  }catch{return{text:null,tokens:null};}
+  return{text:null,tokens:null};
+}
+
 function isAiConfigured(){
   const provider=local.get(AI_PROVIDER_KEY)||"gemini";
   if(provider==="gemini")return !!local.get(GEMINI_KEY);
   if(provider==="ollama"){const c=local.get(OLLAMA_KEY);return !!(c&&c.url);}
   if(provider==="openai"){const c=local.get(OPENAI_KEY);return !!(c&&c.apiKey);}
   return false;
+}
+
+const CONTRACT_CLAUSE_USES=[
+  "General compliance",
+  "Defects liability",
+  "Extensions of time",
+  "Variations",
+  "Payment / claims",
+  "Quality and workmanship",
+  "Safety and statutory obligations"
+];
+
+// ── Contract PDF manifest ──────────────────────────────────────────
+const CONTRACT_FILES={
+  PSSCOC:[
+    "PSSCOC for Construction Works 2020.pdf",
+    "PSSCOC for Construction Works Lite 2025.pdf",
+    "PSSCOC for Design and Build 2020.pdf"
+  ],
+  REDAS:[
+    "REDAS Design and Build Conditions of Contract 3rd Ed.pdf"
+  ],
+  SIA:[
+    "Nominated SubContract for Constuction Works 2008.pdf",
+    "Nominated SubContract for Constuction Works 2008 Supplement.pdf",
+    "SIA BC 2016 [With Quantities].pdf",
+    "SIA Building Contract 2016 [With Quantities].pdf",
+    "SIA Minor Works Contract 2012.pdf"
+  ]
+};
+
+// ── PDF text extraction via PDF.js ─────────────────────────────────
+async function extractPdfText(url,maxChars=12000){
+  if(!window.pdfjsLib)throw new Error("PDF.js not loaded");
+  const pdfjsLib=window.pdfjsLib;
+  if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  const pdf=await pdfjsLib.getDocument(url).promise;
+  let text="";
+  for(let i=1;i<=pdf.numPages;i++){
+    const page=await pdf.getPage(i);
+    const content=await page.getTextContent();
+    const pageText=content.items.map(item=>item.str).join(" ");
+    text+=pageText+"\n";
+    if(text.length>=maxChars)break;
+  }
+  return text.slice(0,maxChars).trim();
+}
+
+// ── Extract texts from selected contract folders ───────────────────
+async function extractContractTexts({usePssoc,useRedas,useSia,onProgress}){
+  const results=[];
+  const folders=[];
+  if(usePssoc)folders.push({label:"PSSCOC",path:"contracts/PSSCOC",files:CONTRACT_FILES.PSSCOC});
+  if(useRedas)folders.push({label:"REDAS",path:"contracts/REDAS",files:CONTRACT_FILES.REDAS});
+  if(useSia)folders.push({label:"SIA",path:"contracts/SIA",files:CONTRACT_FILES.SIA});
+
+  const maxPerFile=10000;
+  const maxTotal=40000;
+  let totalLen=0;
+
+  for(const folder of folders){
+    for(const file of folder.files){
+      if(totalLen>=maxTotal)break;
+      const url=`${folder.path}/${file}`;
+      if(onProgress)onProgress(`Reading: ${file}`);
+      try{
+        const remaining=maxTotal-totalLen;
+        const cap=Math.min(maxPerFile,remaining);
+        const text=await extractPdfText(url,cap);
+        if(text){
+          results.push({source:`${folder.label}: ${file}`,text});
+          totalLen+=text.length;
+        }
+      }catch(e){
+        results.push({source:`${folder.label}: ${file}`,text:`(Failed to extract: ${e.message||"unknown error"})`});
+      }
+    }
+  }
+  return results;
+}
+
+function buildContractAdvisorPrompt({clauseUse,contextText,sourceMode,usePssoc,useRedas,useSia,uploadSummaries,uploadExtracts,extractedTexts,defectsSummary}){
+  const selectedSources=[];
+  if(sourceMode==="existing"){
+    if(usePssoc)selectedSources.push("PSSCOC (public)");
+    if(useRedas)selectedSources.push("REDAS (private)");
+    if(useSia)selectedSources.push("SIA (private)");
+  }
+
+  const sourceSection=sourceMode==="existing"
+    ? `Selected contract sources: ${selectedSources.join(", ")||"None selected"}`
+    : `User uploaded files:\n${uploadSummaries||"No upload metadata provided"}`;
+
+  // Build extracted clause evidence block
+  let evidenceBlock="";
+  if(extractedTexts&&extractedTexts.length>0){
+    evidenceBlock="═══ EXTRACTED CONTRACT TEXT (read from actual PDFs) ═══\n"+
+      extractedTexts.map(e=>`── ${e.source} ──\n${e.text}`).join("\n\n")+
+      "\n═══ END OF EXTRACTED TEXT ═══";
+  }
+
+  return [
+    "You are a Contract Advisor for construction site defect-to-clause analysis.",
+    "You have been given ACTUAL TEXT extracted from the contract PDFs below, plus a list of defects/items from the site report.",
+    "Cross-reference each defect against the contract clauses to advise the site team.",
+    "Base your analysis ONLY on the extracted contract text provided — cite specific clause numbers and exact wording.",
+    "Do NOT invent or assume clause numbers that are not in the extracted text.",
+    "",
+    "CRITICAL: You MUST follow the EXACT output template below. Use the same headings, same order, same format every time.",
+    "Do NOT add extra sections, do NOT reorder, do NOT change heading names.",
+    "",
+    "═══ OUTPUT TEMPLATE (follow exactly) ═══",
+    "",
+    "SUMMARY",
+    "2-3 sentences summarizing the overall contractual position for these defects.",
+    "",
+    "DEFECT-TO-CLAUSE MAPPING",
+    "For each defect (or group of similar defects), output exactly this format:",
+    "",
+    "▸ Defect: [defect title/description]",
+    "  Clause: [Clause No. & Title] — \"[exact quote or close paraphrase from contract]\"",
+    "  Source: [which contract document this clause is from]",
+    "  Responsible Party: [Contractor / Sub-contractor / SO / Employer / etc.]",
+    "  Impact: [defects liability period, rectification timeline, cost implications, safety obligations]",
+    "  Action: [specific action required per contractual T&C]",
+    "",
+    "(Repeat for each defect or group. If no matching clause is found, write: Clause: No matching clause found in extracted text — [state what clause text is needed].)",
+    "",
+    "RISK NOTES",
+    "• [max 4 bullets — flag ambiguities, missing clauses, or cross-clause dependencies]",
+    "",
+    "RECOMMENDED NEXT STEPS",
+    "• [max 5 actionable bullets, each ending with (Responsible: [party])]",
+    "",
+    "CONFIDENCE: [High / Medium / Low] — [one-line reason based on clause text availability]",
+    "",
+    "═══ END OF TEMPLATE ═══",
+    "",
+    `Clause focus: ${clauseUse||"General compliance"}`,
+    "",
+    defectsSummary?`═══ SITE DEFECTS / ITEMS FROM REPORT ═══\n${defectsSummary}\n═══ END OF DEFECTS ═══`:"No defects provided from report.",
+    "",
+    contextText?`Additional context from user:\n${contextText}`:"",
+    "",
+    sourceSection,
+    "",
+    evidenceBlock||"No contract text was extracted from PDFs.",
+    "",
+    uploadExtracts?`Additional user-pasted clause extracts:\n${uploadExtracts}`:"",
+    "",
+    "If the extracted text does not contain relevant clauses for a defect, say so explicitly. Do NOT fabricate clause numbers."
+  ].filter(Boolean).join("\n");
 }
 
 // ── Custom Entry Types helpers ────────────────────────────────────
@@ -1157,7 +1346,7 @@ function exportReportAll(defects,drawings,savedComparisons,projectName){
 }
 
 // Full report export — PDF version with summary stats + defect table
-async function exportReportPdf(defects,drawings,savedComparisons,projectName,companyName,allPins){
+async function exportReportPdf(defects,drawings,savedComparisons,projectName,companyName,allPins,contractAdvisory){
   const doc=new jspdf.jsPDF("p","mm","a4");
   const pageW=doc.internal.pageSize.getWidth();
   const pageH=doc.internal.pageSize.getHeight();
@@ -1255,6 +1444,29 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     const cHeaders=[["Base","Target","Added","Removed","AI Report","Date"]];
     const cRows=savedComparisons.map(sc=>[sc.baseName||"",sc.targetName||"",String(sc.totalAdded||0),String(sc.totalRemoved||0),sc.aiReport?"Yes":"No",sc.savedAt?new Date(sc.savedAt).toLocaleDateString("en-GB"):""]);
     doc.autoTable({startY:y,head:cHeaders,body:cRows,margin:{left:margin,right:margin},styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:[88,86,214],textColor:255,fontStyle:"bold"}});
+  }
+
+  // Contract Advisory section
+  if(contractAdvisory){
+    doc.addPage();y=18;
+    doc.setFontSize(14);doc.setFont(undefined,"bold");doc.setTextColor(88,86,214);
+    doc.text("CONTRACT CLAUSE ADVISORY",margin,y);y+=7;
+    doc.setTextColor(0);doc.setFontSize(9);doc.setFont(undefined,"normal");
+    // Word-wrap the advisory text
+    const lines=doc.splitTextToSize(contractAdvisory,contentW);
+    for(const line of lines){
+      if(y>pageH-15){doc.addPage();y=18;footer();}
+      doc.text(line,margin,y);y+=4.2;
+    }
+    // Disclaimer
+    y+=4;
+    if(y>pageH-25){doc.addPage();y=18;}
+    doc.setFontSize(7);doc.setTextColor(150);
+    const disc="Disclaimer: This advisory is generated by AI for reference only. It is not legal advice. Always verify clause references against your actual contract documents and consult qualified professionals before acting on contractual matters.";
+    const discLines=doc.splitTextToSize(disc,contentW);
+    for(const dl of discLines){doc.text(dl,margin,y);y+=3.5;}
+    doc.setTextColor(0);
+    footer();
   }
 
   doc.save(`SiteShrimp_Report_${(projectName||"Export").replace(/\s/g,"_")}_${new Date().toLocaleDateString("en-GB").replace(/\//g,"-")}.pdf`);
@@ -3935,6 +4147,12 @@ function ProfilePanel({member,authUser,company,onClose,onSignOut}){
 function Report({defects,onEmailSetup,currentProject,company}){
   const[sending,setSending]=useState(false);const[sendRes,setSendRes]=useState(null);
   const[showFilters,setShowFilters]=useState(false);const[showExportMenu,setShowExportMenu]=useState(false);
+  const[showContractAdvisor,setShowContractAdvisor]=useState(false);
+  const[contractBusy,setContractBusy]=useState(false);
+  const[contractProgress,setContractProgress]=useState([]);
+  const[contractSummary,setContractSummary]=useState("");
+  const[contractError,setContractError]=useState("");
+  const[contractTokens,setContractTokens]=useState(null);
   const[sevFilter,setSevFilter]=useState([]);const[statusFilter,setStatusFilter]=useState([]);
   const[assigneeFilter,setAssigneeFilter]=useState([]);const[dateFrom,setDateFrom]=useState("");const[dateTo,setDateTo]=useState("");
   const[showPreview,setShowPreview]=useState(false);
@@ -4003,6 +4221,67 @@ function Report({defects,onEmailSetup,currentProject,company}){
   const byStatus=STATUS.map(s=>({s,count:filtered.filter(d=>d.status===s).length}));
   const byAssignee=allAssignees.map(t=>({t,open:filtered.filter(d=>d.assignee===t&&d.status==="Open").length,total:filtered.filter(d=>d.assignee===t).length})).filter(x=>x.total>0);
 
+  const runContractAdvisor=async()=>{
+    if(!isAiConfigured()){
+      setContractError("AI is not configured. Open Settings → AI Setup first.");
+      return;
+    }
+    if(filtered.length===0){
+      setContractError("No defects in report. Log defects first, then run Contract Advisor.");
+      return;
+    }
+
+    setContractBusy(true);
+    setContractError("");
+    setContractSummary("");
+    setContractTokens(null);
+    setContractProgress(["⚖️ Starting contract advisor..."]);
+
+    try{
+      // Step 1: Auto-detect available contract PDFs and extract text
+      setContractProgress(prev=>[...prev,"Step 1/4: Reading contract PDFs..."]);
+      const extractedTexts=await extractContractTexts({
+        usePssoc:true,useRedas:true,useSia:true,
+        onProgress:(msg)=>setContractProgress(prev=>[...prev,"  📄 "+msg])
+      });
+      const successCount=extractedTexts.filter(e=>!e.text.startsWith("(Failed")).length;
+      const totalChars=extractedTexts.reduce((sum,e)=>sum+e.text.length,0);
+      setContractProgress(prev=>[...prev,successCount>0
+        ?`  ✓ ${successCount} contract(s) read, ~${Math.round(totalChars/1000)}k chars`
+        :"  ⚠ No contract PDFs found — AI will use general knowledge"]);
+
+      // Step 2: Compile defects from report
+      setContractProgress(prev=>[...prev,`Step 2/4: Compiling ${filtered.length} defect(s) from report...`]);
+      const defectsSummary=filtered.slice(0,30).map((d,i)=>
+        `${i+1}. [${(d.severity||"—").toUpperCase()}] ${d.title||"Untitled"} — ${d.description||"No description"} (Status: ${d.status||"—"}, Trade: ${d.trade||"—"}, Location: ${d.location||"—"}, Assignee: ${d.assignee||"—"})`
+      ).join("\n")+(filtered.length>30?`\n... and ${filtered.length-30} more defects`:"");
+
+      // Step 3: Send to AI
+      setContractProgress(prev=>[...prev,"Step 3/4: AI analyzing defects against contract clauses..."]);
+      const prompt=buildContractAdvisorPrompt({
+        clauseUse:"General compliance",
+        contextText:"",
+        sourceMode:"existing",
+        usePssoc:true,useRedas:true,useSia:true,
+        uploadSummaries:"",uploadExtracts:"",
+        extractedTexts,defectsSummary
+      });
+      const result=await askAIWithUsage(prompt);
+      if(!result.text)throw new Error("AI returned an empty response. Check AI Setup.");
+
+      // Step 4: Done
+      setContractSummary(result.text.trim());
+      setContractTokens(result.tokens);
+      const t=result.tokens;
+      setContractProgress(prev=>[...prev,
+        `Step 4/4: ✓ Advisory complete`+(t?` — ${t.provider}: ${t.prompt.toLocaleString()} prompt + ${t.completion.toLocaleString()} completion = ${t.total.toLocaleString()} tokens`:"")]);
+    }catch(e){
+      setContractError(e?.message||"Failed to generate contract advisory.");
+      setContractProgress(prev=>[...prev,"⚠ Workflow ended with an error"]);
+    }
+    setContractBusy(false);
+  };
+
   const Chip=({label,active,color,onClick})=>(
     <button onClick={onClick} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${active?(color||"#1a1a1a"):"rgba(0,0,0,0.12)"}`,background:active?(color||"#1a1a1a"):"#fff",color:active?"#fff":"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{label}</button>
   );
@@ -4035,14 +4314,18 @@ function Report({defects,onEmailSetup,currentProject,company}){
         <button onClick={emailReady?sendReport:onEmailSetup} disabled={sending} style={{flex:1,background:"#ff6b00",border:"none",borderRadius:10,padding:"12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",opacity:sending?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
           {sending?<><Spin size={14}/><span>SENDING...</span></>:emailReady?"📧 EMAIL REPORT":"⚙️ SETUP EMAIL"}
         </button>
+        <button onClick={()=>setShowContractAdvisor(v=>!v)} style={{background:showContractAdvisor?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 14px",color:showContractAdvisor?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+          <span>⚖️</span>
+          <span>CONTRACT ADVISOR</span>
+        </button>
         <button onClick={()=>setShowPreview(p=>!p)} style={{background:showPreview?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 14px",color:showPreview?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>👁 PREVIEW</button>
         <div style={{position:"relative"}}>
           <button onClick={()=>setShowExportMenu(m=>!m)} style={{background:showExportMenu?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 14px",color:showExportMenu?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>📊 EXPORT ▾</button>
           {showExportMenu&&(
             <div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(0,0,0,0.08)",zIndex:20,minWidth:160,overflow:"hidden"}}>
               <button onClick={()=>{exportReportAll(filtered,reportDrawings,savedComparisons,currentProject?.name);setShowExportMenu(false);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📄 Export CSV</button>
-              <button onClick={()=>{exportReportPdf(filtered,reportDrawings,savedComparisons,currentProject?.name,company?.companyName,reportPins);setShowExportMenu(false);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📕 Export PDF</button>
-              <button onClick={()=>{exportReportAll(filtered,reportDrawings,savedComparisons,currentProject?.name);exportReportPdf(filtered,reportDrawings,savedComparisons,currentProject?.name,company?.companyName,reportPins);setShowExportMenu(false);}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#ff6b00"}}>📊 Export All (CSV + PDF)</button>
+              <button onClick={()=>{exportReportPdf(filtered,reportDrawings,savedComparisons,currentProject?.name,company?.companyName,reportPins,contractSummary);setShowExportMenu(false);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📕 Export PDF</button>
+              <button onClick={()=>{exportReportAll(filtered,reportDrawings,savedComparisons,currentProject?.name);exportReportPdf(filtered,reportDrawings,savedComparisons,currentProject?.name,company?.companyName,reportPins,contractSummary);setShowExportMenu(false);}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#ff6b00"}}>📊 Export All (CSV + PDF)</button>
             </div>
           )}
         </div>
@@ -4064,6 +4347,69 @@ function Report({defects,onEmailSetup,currentProject,company}){
           </button>
         ))}
       </div>
+
+      {showContractAdvisor&&(
+        <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,border:"2px solid rgba(88,86,214,0.2)"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,gap:10}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a"}}>⚖️ CONTRACT ADVISOR</div>
+            {contractBusy&&<div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"#5856d6",fontWeight:700}}><Spin size={12}/><span>RUNNING</span></div>}
+          </div>
+
+          <div style={{background:"rgba(88,86,214,0.05)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontSize:12,lineHeight:1.6,color:"#2f2e55"}}>
+            AI reads your contract PDFs (PSSCOC, REDAS, SIA) and cross-references the <b>{filtered.length} defect{filtered.length!==1?"s":""}</b> in this report to advise:<br/>
+            <span style={{color:"#5856d6",fontWeight:700}}>Applicable clauses</span> · <span style={{color:"#5856d6",fontWeight:700}}>Responsible parties</span> · <span style={{color:"#5856d6",fontWeight:700}}>Impact & considerations</span> · <span style={{color:"#5856d6",fontWeight:700}}>Actionable follow-ups</span>
+          </div>
+
+          {!contractBusy&&!contractSummary&&(
+            <button disabled={contractBusy} onClick={runContractAdvisor} style={{width:"100%",background:"#5856d6",border:"none",borderRadius:10,padding:"14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:10}}>
+              <span>⚖️</span><span>RUN CONTRACT ADVISOR</span>
+            </button>
+          )}
+
+          {contractProgress.length>0&&(
+            <div style={{background:"rgba(88,86,214,0.06)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:10,padding:"10px 12px",marginBottom:10}}>
+              <div style={{fontSize:10,fontWeight:800,color:"#5856d6",letterSpacing:"0.05em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>PROGRESS</div>
+              {contractProgress.map((p,i)=><div key={i} style={{fontSize:11,color:"#2f2e55",marginBottom:3}}>• {p}</div>)}
+            </div>
+          )}
+
+          {contractError&&<div style={{background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.25)",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#cc0000",fontWeight:600,marginBottom:10}}>{contractError}</div>}
+
+          {contractSummary&&(
+            <div>
+              <div style={{background:"rgba(26,26,26,0.03)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:10,padding:"12px 14px",marginBottom:10}}>
+                <div style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.5)",letterSpacing:"0.05em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:8}}>CONTRACT CLAUSE ADVISORY</div>
+                <div style={{whiteSpace:"pre-wrap",fontSize:12,lineHeight:1.6,color:"#1a1a1a"}}>{contractSummary}</div>
+              </div>
+              {contractTokens&&(
+                <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap"}}>
+                  <div style={{background:"rgba(88,86,214,0.06)",borderRadius:8,padding:"6px 10px",fontSize:10,color:"#5856d6",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>
+                    {contractTokens.provider}
+                  </div>
+                  <div style={{background:"rgba(0,0,0,0.04)",borderRadius:8,padding:"6px 10px",fontSize:10,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif"}}>
+                    Prompt: <b>{contractTokens.prompt.toLocaleString()}</b>
+                  </div>
+                  <div style={{background:"rgba(0,0,0,0.04)",borderRadius:8,padding:"6px 10px",fontSize:10,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif"}}>
+                    Completion: <b>{contractTokens.completion.toLocaleString()}</b>
+                  </div>
+                  <div style={{background:"rgba(0,0,0,0.04)",borderRadius:8,padding:"6px 10px",fontSize:10,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif"}}>
+                    Total: <b>{contractTokens.total.toLocaleString()}</b> tokens
+                  </div>
+                </div>
+              )}
+              <div style={{background:"rgba(255,149,0,0.08)",border:"1px solid rgba(255,149,0,0.2)",borderRadius:10,padding:"10px 12px",marginBottom:10}}>
+                <div style={{fontSize:10,color:"#996100",lineHeight:1.5}}>⚠ <b>Disclaimer:</b> This advisory is generated by AI for reference only. It is not legal advice. Always verify clause references against your actual contract documents and consult qualified professionals before acting on contractual matters. AI outputs may vary between runs — cross-check cited clause numbers with the source documents.</div>
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={runContractAdvisor} disabled={contractBusy} style={{flex:1,background:"#5856d6",border:"none",borderRadius:10,padding:"11px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",opacity:contractBusy?0.7:1}}>
+                  {contractBusy?<><Spin size={12}/> ANALYZING...</>:"RE-RUN"}
+                </button>
+                <button onClick={()=>{setContractSummary("");setContractError("");setContractProgress([]);setContractTokens(null);}} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"11px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CLEAR</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Preview panel */}
       {showPreview&&(
@@ -5384,7 +5730,14 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     w.document.close();
   };
 
-  if(viewing)return <DrawingViewer drawing={viewing} onClose={()=>setViewing(null)} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry}/>;
+  const closeViewerAndRefreshPins=()=>{
+    setViewing(null);
+    if(drawings.length){
+      Promise.all(drawings.map(d=>DB.pins.list(`drawingId="${d.id}"`))).then(results=>setAllPins(results.flat())).catch(()=>{});
+    }
+  };
+
+  if(viewing)return <DrawingViewer drawing={viewing} onClose={closeViewerAndRefreshPins} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry}/>;
 
   return(
     <div style={embedded?{background:"#f0ede8",minHeight:"100%"}:{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
