@@ -8047,9 +8047,15 @@ const DdIcon=({name,size=16})=>{
 
 
 function App(){
-  const{t,lang,setLang,languages}=useLang();
+  const[lang,setLangState]=useState(_currentCode);
   // Initialize i18n on first mount
-  useEffect(()=>{initI18n().then(()=>setLang(localStorage.getItem("lang")||"en"));},[]);
+  useEffect(()=>{
+    const unsub=onLangChange(code=>setLangState(code));
+    initI18n();
+    return unsub;
+  },[]);
+  const setLang=loadLanguage;
+  const languages=LANGUAGES;
   const[authUser,setAuthUser]=useState(null);
   const[authLoading,setAuthLoading]=useState(true);
   const[memberLoading,setMemberLoading]=useState(false);
