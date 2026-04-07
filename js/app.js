@@ -1436,7 +1436,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     }
   }
 
-  // Saved comparisons summary
+  // Saved comparisons — summary table + overlay images with markup
   if(savedComparisons&&savedComparisons.length>0){
     if(y>250){doc.addPage();y=18;}
     doc.setFontSize(12);doc.setFont(undefined,"bold");
@@ -1444,6 +1444,75 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     const cHeaders=[["Base","Target","Added","Removed","AI Report","Date"]];
     const cRows=savedComparisons.map(sc=>[sc.baseName||"",sc.targetName||"",String(sc.totalAdded||0),String(sc.totalRemoved||0),sc.aiReport?"Yes":"No",sc.savedAt?new Date(sc.savedAt).toLocaleDateString("en-GB"):""]);
     doc.autoTable({startY:y,head:cHeaders,body:cRows,margin:{left:margin,right:margin},styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:[88,86,214],textColor:255,fontStyle:"bold"}});
+    y=doc.lastAutoTable.finalY+8;
+    // Embed comparison overlay images (with markup burned in)
+    for(const sc of savedComparisons){
+      if(!sc.overlayThumb)continue;
+      try{
+        const img=new Image();
+        await new Promise(resolve=>{img.onload=resolve;img.onerror=resolve;img.src=sc.overlayThumb;});
+        if(img.width>0&&img.height>0){
+          doc.addPage();y=18;
+          doc.setFontSize(11);doc.setFont(undefined,"bold");doc.setTextColor(88,86,214);
+          doc.text(`${sc.baseName||"Base"} vs ${sc.targetName||"Target"}`,margin,y);
+          doc.setTextColor(0);y+=6;
+          doc.setFontSize(8);doc.setFont(undefined,"normal");
+          doc.text(`+${sc.totalAdded||0} added, -${sc.totalRemoved||0} removed${sc.savedAt?" · "+new Date(sc.savedAt).toLocaleDateString("en-GB"):""}`,margin,y);y+=6;
+          const ratio=img.height/img.width;
+          const imgW=contentW;
+          const imgH=Math.min(imgW*ratio,pageH-y-margin-10);
+          const actualW=imgH/(ratio||1);
+          doc.addImage(sc.overlayThumb,"JPEG",margin,y,Math.min(imgW,actualW),imgH);
+          y+=imgH+4;
+          // Embed AI report text if present
+          if(sc.aiReport){
+            y+=4;
+            doc.setFontSize(9);doc.setFont(undefined,"bold");doc.text("AI Diff Report:",margin,y);y+=5;
+            doc.setFont(undefined,"normal");doc.setFontSize(8);
+            const rptLines=doc.splitTextToSize(sc.aiReport,contentW);
+            for(const rl of rptLines){
+              if(y>pageH-15){doc.addPage();y=18;footer();}
+              doc.text(rl,margin,y);y+=3.8;
+            }
+          }
+          footer();
+        }
+      }catch(e){console.warn("PDF: failed to embed comparison overlay",e);}
+    }
+  }
+
+  // Defect entry photos — embed each entry's photos
+  if(defects&&defects.length>0){
+    const withPhotos=(defects||[]).filter(d=>d.photo&&(typeof d.photo==="string"||(Array.isArray(d.photo)&&d.photo.length>0)));
+    if(withPhotos.length>0){
+      doc.addPage();y=18;
+      doc.setFontSize(12);doc.setFont(undefined,"bold");
+      doc.text("ENTRY PHOTOS",margin,y);y+=8;
+      for(const d of withPhotos){
+        const photos=Array.isArray(d.photo)?d.photo:[d.photo];
+        for(const photoSrc of photos){
+          if(!photoSrc)continue;
+          try{
+            const img=new Image();
+            await new Promise(resolve=>{img.onload=resolve;img.onerror=resolve;img.src=photoSrc;});
+            if(img.width>0&&img.height>0){
+              if(y>pageH-80){doc.addPage();y=18;footer();}
+              doc.setFontSize(9);doc.setFont(undefined,"bold");
+              doc.text(`${(d.title||"Entry").substring(0,60)} — ${d.severity||""} [${d.status||""}]`,margin,y);y+=5;
+              doc.setFontSize(7);doc.setFont(undefined,"normal");doc.setTextColor(100);
+              doc.text(`${d.location||""} · ${d.assignee||""} · ${d.created?new Date(d.created).toLocaleDateString("en-GB"):""}`,margin,y);y+=5;
+              doc.setTextColor(0);
+              const ratio=img.height/img.width;
+              const imgW=Math.min(contentW,120);
+              const imgH=Math.min(imgW*ratio,100);
+              doc.addImage(photoSrc,"JPEG",margin,y,imgW,imgH);
+              y+=imgH+8;
+            }
+          }catch(e){/* skip failed photos */}
+        }
+      }
+      footer();
+    }
   }
 
   // Contract Advisory section
