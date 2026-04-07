@@ -1787,6 +1787,32 @@ function ServerUrlConfig(){
   );
 }
 
+// ── Language Selector (compact — for auth/intro pages) ───────────
+function LangButton(){
+  const[open,setOpen]=useState(false);
+  const[,tick]=useState(0);
+  useEffect(()=>onLangChange(()=>tick(t=>t+1)),[]);
+  const current=LANGUAGES.find(l=>l.code===_currentCode)||LANGUAGES[0];
+  return(
+    <div style={{position:"relative",display:"inline-block"}}>
+      <button onClick={()=>setOpen(o=>!o)} style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:20,padding:"5px 12px 5px 8px",color:"rgba(255,255,255,0.7)",fontSize:12,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,display:"flex",alignItems:"center",gap:6}}>
+        <span style={{fontSize:16}}>{current.flag}</span> {current.name} <span style={{fontSize:9,color:"rgba(255,255,255,0.35)"}}>▼</span>
+      </button>
+      {open&&(
+        <div style={{position:"absolute",bottom:"110%",left:0,background:"linear-gradient(180deg,#2e2e32 0%,#1f1f22 100%)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:12,overflow:"hidden",zIndex:999,minWidth:200,maxHeight:320,overflowY:"auto",boxShadow:"0 16px 48px rgba(0,0,0,0.55)"}}>
+          {LANGUAGES.map(l=>(
+            <button key={l.code} onClick={()=>{loadLanguage(l.code);setOpen(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"9px 14px",background:_currentCode===l.code?"rgba(255,107,0,0.12)":"transparent",border:"none",cursor:"pointer",textAlign:"left",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+              <span style={{fontSize:18}}>{l.flag}</span>
+              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,fontSize:13,color:_currentCode===l.code?"#ff6b00":"#fff"}}>{l.name}</span>
+              {_currentCode===l.code&&<span style={{marginLeft:"auto",color:"#ff6b00",fontSize:13,fontWeight:800}}>✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Screen: Auth (with intro + install prompt) ───────────────────
 function AuthScreen({onAuth,onFullSetup}){
   const[page,setPage]=useState("intro");
@@ -1952,8 +1978,11 @@ function AuthScreen({onAuth,onFullSetup}){
             INSTALL APP
           </button>
 
-          <div style={{color:"rgba(255,255,255,0.62)",fontSize:introPreset.footer,fontFamily:"'Barlow Condensed',sans-serif"}}>
-            Free for all Users.
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:4}}>
+            <div style={{color:"rgba(255,255,255,0.62)",fontSize:introPreset.footer,fontFamily:"'Barlow Condensed',sans-serif"}}>
+              Free for all Users.
+            </div>
+            <LangButton/>
           </div>
         </div>
       </div>
@@ -1997,6 +2026,9 @@ function AuthScreen({onAuth,onFullSetup}){
 
         <ServerUrlConfig/>
 
+        <div style={{display:"flex",justifyContent:"center",marginTop:12}}>
+          <LangButton/>
+        </div>
 
       </div>
     </div>
