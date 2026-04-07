@@ -3283,8 +3283,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         workCategory:last?.workCategory||blank.workCategory,
         location:last?.location||"",assignee:last?.assignee||member?.name||"",severity:last?.severity||"Major",
         locationLevel:last?.locationLevel||"",locationZone:last?.locationZone||"",component:last?.component||""
-      });setShowBatch(false);setSpeakTranscript("");setShowMoreDetails(false);}} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:16,color:"#fff",fontSize:15,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:10}}>+ LOG ANOTHER HERE</button>
-      <button onClick={()=>setShowBatch(false)} style={{width:"100%",background:"rgba(0,0,0,0.06)",border:"none",borderRadius:12,padding:14,fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>{t("actions.done")}</button>
+      });setShowBatch(false);setSpeakTranscript("");setShowMoreDetails(false);}} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:16,color:"#fff",fontSize:15,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>+ LOG ANOTHER HERE</button>
     </div>
   );
 
