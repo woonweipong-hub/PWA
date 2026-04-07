@@ -1,4 +1,4 @@
-const CACHE = 'siteshrimp-v85';
+const CACHE = 'siteshrimp-v86';
 const ASSETS = [
   '/',
   '/index.html',
@@ -121,7 +121,18 @@ self.addEventListener('notificationclick', e => {
   );
 });
 
-// ── Periodic background sync (for future offline queue sync) ──
+// ── Background Sync (retry failed requests when back online) ──
+self.addEventListener('sync', e => {
+  if (e.tag === 'sync-queue') {
+    e.waitUntil(
+      clients.matchAll({ type: 'window' }).then(list => {
+        list.forEach(client => client.postMessage({ type: 'SYNC_QUEUE' }));
+      })
+    );
+  }
+});
+
+// ── Periodic background sync (scheduled queue sync) ──
 self.addEventListener('periodicsync', e => {
   if (e.tag === 'sync-queue') {
     e.waitUntil(

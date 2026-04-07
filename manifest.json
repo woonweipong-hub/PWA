@@ -6,7 +6,7 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone", "window-controls-overlay"],
+  "display_override": ["standalone", "window-controls-overlay", "tabbed"],
   "background_color": "#1a1a1a",
   "theme_color": "#ff6b00",
   "orientation": "any",
@@ -14,7 +14,7 @@
   "dir": "ltr",
   "prefer_related_applications": false,
   "categories": ["productivity", "utilities", "business"],
-  "iarc_rating_id": "",
+  "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7",
   "icons": [
     {
       "src": "icons/icon-192.png",
@@ -101,5 +101,51 @@
   },
   "edge_side_panel": {
     "preferred_width": 430
+  },
+  "related_applications": [
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=org.siteshrimp.twa",
+      "id": "org.siteshrimp.twa"
+    }
+  ],
+  "scope_extensions": [
+    { "origin": "https://api.siteshrimp.org" }
+  ],
+  "file_handlers": [
+    {
+      "action": "/",
+      "accept": {
+        "application/pdf": [".pdf"],
+        "image/png": [".png"],
+        "image/jpeg": [".jpg", ".jpeg"],
+        "image/tiff": [".tif", ".tiff"],
+        "text/csv": [".csv"]
+      }
+    }
+  ],
+  "widgets": [
+    {
+      "name": "SiteShrimp Status",
+      "description": "Quick view of active defects and status counts",
+      "tag": "siteshrimp-widget",
+      "ms_ac_template": "widgets/status.json",
+      "screenshots": [
+        {
+          "src": "icons/icon-512.png",
+          "sizes": "512x512",
+          "label": "Active defects status widget"
+        }
+      ],
+      "icons": [
+        { "src": "icons/icon-192.png", "sizes": "192x192" }
+      ],
+      "backgrounds": [
+        { "src": "icons/icon-512.png", "sizes": "512x512" }
+      ]
+    }
+  ],
+  "note_taking": {
+    "new_note_url": "/?tab=log"
   }
 }
