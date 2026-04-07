@@ -1,14 +1,20 @@
 {
   "id": "/",
-  "name": "SiteShrimp",
+  "name": "SiteShrimp — Construction Site Tracker",
   "short_name": "SiteShrimp",
-  "description": "Construction site works, defects and items tracking and monitoring",
+  "description": "Manage defects, inspections, progress, and records. Capture issues with photos, voice, and drawings. AI-powered analysis, real-time sync, and team collaboration for construction sites.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#ff6b00",
+  "display_override": ["standalone", "window-controls-overlay"],
+  "background_color": "#1a1a1a",
   "theme_color": "#ff6b00",
-  "orientation": "portrait-primary",
+  "orientation": "any",
+  "lang": "en",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "categories": ["productivity", "utilities", "business"],
+  "iarc_rating_id": "",
   "icons": [
     {
       "src": "icons/icon-192.png",
@@ -35,5 +41,65 @@
       "purpose": "maskable"
     }
   ],
-  "categories": ["productivity", "utilities", "business"]
+  "screenshots": [
+    {
+      "src": "icons/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "SiteShrimp Dashboard — track defects, inspections, and reports"
+    },
+    {
+      "src": "icons/screenshot-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "SiteShrimp Mobile — log defects with photos and voice"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Log Defect",
+      "short_name": "Log",
+      "url": "/?tab=log",
+      "description": "Log a new defect entry",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Review Entries",
+      "short_name": "Review",
+      "url": "/?tab=defects",
+      "description": "Browse and filter defect entries",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Site Report",
+      "short_name": "Report",
+      "url": "/?tab=report",
+      "description": "Export reports and analytics",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "share_target": {
+    "action": "/",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+siteshrimp",
+      "url": "/?invite=%s"
+    }
+  ],
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "edge_side_panel": {
+    "preferred_width": 430
+  }
 }
