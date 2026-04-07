@@ -1,4 +1,4 @@
-const CACHE = 'siteshrimp-v77';
+const CACHE = 'siteshrimp-v78';
 const ASSETS = [
   '/',
   '/index.html',
@@ -6,9 +6,32 @@ const ASSETS = [
   '/js/db.js',
   '/js/constants.js',
   '/js/app.js',
+  '/js/lang.js',
   '/manifest.json',
   '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  '/icons/icon-512.png',
+  '/lang/en.json',
+  '/lang/zh.json',
+  '/lang/zh-TW.json',
+  '/lang/ms.json',
+  '/lang/id.json',
+  '/lang/hi.json',
+  '/lang/ta.json',
+  '/lang/th.json',
+  '/lang/vi.json',
+  '/lang/bn.json',
+  '/lang/ja.json',
+  '/lang/ko.json',
+  '/lang/de.json',
+  '/lang/fr.json',
+  '/lang/es.json',
+  '/lang/pt.json',
+  '/lang/it.json',
+  '/lang/tr.json',
+  '/lang/sv.json',
+  '/lang/no.json',
+  '/lang/da.json',
+  '/lang/fi.json'
 ];
 
 self.addEventListener('install', e => {

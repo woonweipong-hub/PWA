@@ -730,7 +730,7 @@ function PhotoMarkup({src,onSave,onCancel}){
   const onUp=()=>{
     if(current){
       if(current.type==="dimension"){
-        const label=prompt("Enter dimension (e.g. 3.5m, 1200mm). Leave blank for no label.")||"";
+        const label=prompt(t("markup.enter_dimension"))||"";
         addStroke({...current,label:label.trim()});setCurrent(null);
         return;
       }
@@ -790,19 +790,19 @@ function PhotoMarkup({src,onSave,onCancel}){
   const deleteSelected=()=>{if(selectedIdx!=null){setStrokes(s=>s.filter((_,i)=>i!==selectedIdx));setSelectedIdx(null);}};
 
   const TOOLS=[
-    {id:"select",title:"Select / Delete"},
-    {id:"freehand",title:"Draw"},
-    {id:"highlight",title:"Highlight Marker"},
-    {id:"line",title:"Line"},
-    {id:"arrow",title:"Arrow"},
-    {id:"polyline",title:"Polyline / Polygon"},
-    {id:"circle",title:"Circle"},
-    {id:"rect",title:"Rectangle"},
-    {id:"cloud",title:"Revision Cloud"},
-    {id:"dimension",title:"Dimension"},
-    {id:"text",title:"Text"},
-    {id:"callout",title:"Callout / Leader Note"},
-    {id:"stamp",title:"Stamp"}
+    {id:"select",title:t("markup.select")},
+    {id:"freehand",title:t("markup.draw")},
+    {id:"highlight",title:t("markup.highlight")},
+    {id:"line",title:t("markup.line")},
+    {id:"arrow",title:t("markup.arrow")},
+    {id:"polyline",title:t("markup.polyline")},
+    {id:"circle",title:t("markup.circle")},
+    {id:"rect",title:t("markup.rectangle")},
+    {id:"cloud",title:t("markup.cloud")},
+    {id:"dimension",title:t("markup.dimension")},
+    {id:"text",title:t("markup.text")},
+    {id:"callout",title:t("markup.callout")},
+    {id:"stamp",title:t("markup.stamp")}
   ];
   const TEXT_SIZES=[{id:"S",v:12},{id:"M",v:16},{id:"L",v:22},{id:"XL",v:30}];
   const COLORS=["#ff3b30","#ff9500","#ffcc00","#fff"];
@@ -811,9 +811,9 @@ function PhotoMarkup({src,onSave,onCancel}){
     <div style={{position:"fixed",inset:0,background:"#1a1a1a",zIndex:300,display:"flex",flexDirection:"column"}}>
       {/* Header */}
       <div style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0}}>
-        <button onClick={onCancel} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>CANCEL</button>
+        <button onClick={onCancel} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.cancel")}</button>
         <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",textAlign:"center"}}>MARKUP PHOTO</div>
-        <button onClick={save} style={{background:"#ff6b00",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>SAVE</button>
+        <button onClick={save} style={{background:"#ff6b00",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.save")}</button>
       </div>
 
       {/* Toolbar */}
@@ -839,7 +839,7 @@ function PhotoMarkup({src,onSave,onCancel}){
         {COLORS.map(c=>(
           <button key={c} onClick={()=>{setColor(c);if(selectedIdx!=null)setStrokes(s=>s.map((st,i)=>i===selectedIdx?{...st,color:c}:st));}} style={{width:28,height:28,borderRadius:"50%",border:color===c?"3px solid #fff":"3px solid rgba(255,255,255,0.15)",background:c,cursor:"pointer"}}/>
         ))}
-        <button onClick={()=>setLineStyle(s=>s==="solid"?"dotted":"solid")} title={lineStyle==="solid"?"Solid (tap for dotted)":"Dotted (tap for solid)"} style={{width:36,height:36,borderRadius:8,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <button onClick={()=>setLineStyle(s=>s==="solid"?"dotted":"solid")} title={lineStyle==="solid"?t("markup.solid"):t("markup.dotted")} style={{width:36,height:36,borderRadius:8,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
           <svg width="20" height="20" viewBox="0 0 20 20">
             {lineStyle==="solid"
               ?<line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
@@ -864,16 +864,16 @@ function PhotoMarkup({src,onSave,onCancel}){
         {/* Polyline controls */}
         {tool==="polyline"&&polylinePoints.length>0&&(
           <>
-            <button onClick={()=>setPolylineClosed(v=>!v)} style={{height:28,padding:"0 8px",borderRadius:6,border:polylineClosed?"2px solid #ff6b00":"2px solid rgba(255,255,255,0.15)",background:polylineClosed?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,cursor:"pointer"}}>{polylineClosed?"POLYGON":"OPEN"}</button>
-            <button onClick={finishPolyline} style={{height:28,padding:"0 10px",borderRadius:6,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>DONE ({polylinePoints.length}pts)</button>
+            <button onClick={()=>setPolylineClosed(v=>!v)} style={{height:28,padding:"0 8px",borderRadius:6,border:polylineClosed?"2px solid #ff6b00":"2px solid rgba(255,255,255,0.15)",background:polylineClosed?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,cursor:"pointer"}}>{polylineClosed?t("markup.polygon"):t("markup.open_shape")}</button>
+            <button onClick={finishPolyline} style={{height:28,padding:"0 10px",borderRadius:6,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>{t("actions.done")} ({polylinePoints.length}pts)</button>
           </>
         )}
         <div style={{flex:1}}/>
         {selectedIdx!=null&&tool==="select"&&(
-          <button onClick={deleteSelected} style={{background:"rgba(255,59,48,0.25)",border:"1px solid rgba(255,59,48,0.45)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>DELETE</button>
+          <button onClick={deleteSelected} style={{background:"rgba(255,59,48,0.25)",border:"1px solid rgba(255,59,48,0.45)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{t("actions.delete")}</button>
         )}
-        <button onClick={undo} disabled={strokes.length===0} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"7px 12px",color:strokes.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>UNDO</button>
-        <button onClick={redo} disabled={redoStack.length===0} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"7px 12px",color:redoStack.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>REDO</button>
+        <button onClick={undo} disabled={strokes.length===0} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"7px 12px",color:strokes.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.undo")}</button>
+        <button onClick={redo} disabled={redoStack.length===0} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"7px 12px",color:redoStack.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.redo")}</button>
       </div>
 
       {/* Canvas */}
@@ -892,12 +892,12 @@ function PhotoMarkup({src,onSave,onCancel}){
         <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.85)",zIndex:310,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
           <div style={{background:"#1a1a1a",borderRadius:16,padding:20,width:"100%",maxWidth:360}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",marginBottom:12}}>{editingTextIdx!==null?"EDIT TEXT ANNOTATION":"ADD TEXT ANNOTATION"}</div>
-            <input autoFocus type="text" placeholder="Type annotation..." defaultValue={editingTextIdx!==null?strokes[editingTextIdx].text:""} onKeyDown={e=>{if(e.key==="Enter")submitText(e.target.value);}}
+            <input autoFocus type="text" placeholder={t("markup.type_annotation")} defaultValue={editingTextIdx!==null?strokes[editingTextIdx].text:""} onKeyDown={e=>{if(e.key==="Enter")submitText(e.target.value);}}
               style={{width:"100%",padding:12,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
             <div style={{display:"flex",gap:8,marginTop:12}}>
-              <button onClick={()=>{setEditingTextIdx(null);setTextInput(null);}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>CANCEL</button>
-              {editingTextIdx!==null&&<button onClick={()=>submitText("")} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff3b30",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>DELETE</button>}
-              <button onClick={e=>{const inp=e.target.closest("div").parentElement.querySelector("input");submitText(inp.value);}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{editingTextIdx!==null?"UPDATE":"ADD"}</button>
+              <button onClick={()=>{setEditingTextIdx(null);setTextInput(null);}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.cancel")}</button>
+              {editingTextIdx!==null&&<button onClick={()=>submitText("")} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff3b30",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.delete")}</button>}
+              <button onClick={e=>{const inp=e.target.closest("div").parentElement.querySelector("input");submitText(inp.value);}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{editingTextIdx!==null?t("actions.update"):t("actions.add")}</button>
             </div>
           </div>
         </div>
@@ -908,11 +908,11 @@ function PhotoMarkup({src,onSave,onCancel}){
         <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.85)",zIndex:310,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
           <div style={{background:"#1a1a1a",borderRadius:16,padding:20,width:"100%",maxWidth:360}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",marginBottom:12}}>CALLOUT LABEL</div>
-            <input autoFocus type="text" placeholder="Enter callout text..." onKeyDown={e=>{if(e.key==="Enter"){const t=e.target.value.trim();addStroke({...calloutTextInput,text:t,textSize});setCalloutTextInput(null);}}}
+            <input autoFocus type="text" placeholder={t("markup.enter_callout")} onKeyDown={e=>{if(e.key==="Enter"){const t=e.target.value.trim();addStroke({...calloutTextInput,text:t,textSize});setCalloutTextInput(null);}}}
               style={{width:"100%",padding:12,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
             <div style={{display:"flex",gap:8,marginTop:12}}>
-              <button onClick={()=>{addStroke({...calloutTextInput,text:""});setCalloutTextInput(null);}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>SKIP</button>
-              <button onClick={e=>{const inp=e.target.closest("div").parentElement.querySelector("input");addStroke({...calloutTextInput,text:(inp.value||"").trim(),textSize});setCalloutTextInput(null);}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>ADD</button>
+              <button onClick={()=>{addStroke({...calloutTextInput,text:""});setCalloutTextInput(null);}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.skip")}</button>
+              <button onClick={e=>{const inp=e.target.closest("div").parentElement.querySelector("input");addStroke({...calloutTextInput,text:(inp.value||"").trim(),textSize});setCalloutTextInput(null);}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.add")}</button>
             </div>
           </div>
         </div>
@@ -1638,8 +1638,10 @@ function MicBtn({onResult,currentValue,append}){
   );
 }
 
-const SevChip=({s})=><span style={{display:"inline-flex",alignItems:"center",padding:"3px 9px",borderRadius:20,fontSize:11,fontWeight:600,fontFamily:"'Barlow Condensed',sans-serif",color:SEV_COLOR[s],background:SEV_BG[s]}}>{s.toUpperCase()}</span>;
-const StatusChip=({s})=><span style={{display:"inline-flex",alignItems:"center",padding:"3px 9px",borderRadius:20,fontSize:11,fontWeight:600,fontFamily:"'Barlow Condensed',sans-serif",color:STATUS_COLOR[s],background:STATUS_COLOR[s]+"22"}}>{s.toUpperCase()}</span>;
+const SEV_I18N={"Critical":"severity.critical","Major":"severity.major","Minor":"severity.minor","Observation":"severity.observation"};
+const SevChip=({s})=><span style={{display:"inline-flex",alignItems:"center",padding:"3px 9px",borderRadius:20,fontSize:11,fontWeight:600,fontFamily:"'Barlow Condensed',sans-serif",color:SEV_COLOR[s],background:SEV_BG[s]}}>{(SEV_I18N[s]?t(SEV_I18N[s]):s).toUpperCase()}</span>;
+const STATUS_I18N={"Open":"status.open","In Progress":"status.in_progress","Done":"status.done","Verified":"status.verified","Closed":"status.closed"};
+const StatusChip=({s})=><span style={{display:"inline-flex",alignItems:"center",padding:"3px 9px",borderRadius:20,fontSize:11,fontWeight:600,fontFamily:"'Barlow Condensed',sans-serif",color:STATUS_COLOR[s],background:STATUS_COLOR[s]+"22"}}>{(STATUS_I18N[s]?t(STATUS_I18N[s]):s).toUpperCase()}</span>;
 const RoleChip=({r})=><span style={{display:"inline-flex",alignItems:"center",padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:ROLE_COLOR[r]||"#888",background:(ROLE_COLOR[r]||"#888")+"18"}}>{(r||"").toUpperCase()}</span>;
 const lbl=(c="rgba(0,0,0,0.4)")=>({fontSize:11,fontWeight:700,color:c,letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif",display:"block",marginBottom:6});
 const inp={flex:1,background:"#fff",border:"1px solid rgba(0,0,0,0.12)",borderRadius:10,padding:"11px 14px",color:"#1a1a1a",fontSize:14,fontFamily:"'Barlow',sans-serif",outline:"none"};
@@ -1743,7 +1745,7 @@ function ComboField({label,value,onChange,options,placeholder,grouped}){
 function SettingsBack({onClose,title}){
   return(
     <div style={{background:"#1a1a1a",padding:"16px",display:"flex",alignItems:"center",gap:12}}>
-      <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>← BACK</button>
+      <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.back")}</button>
       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff"}}>{title}</div>
     </div>
   );
@@ -1767,15 +1769,15 @@ function ServerUrlConfig(){
   return(
     <div style={{marginTop:16}}>
       <button onClick={()=>setOpen(o=>!o)} style={{background:'none',border:'none',color:'rgba(255,255,255,0.25)',fontSize:12,cursor:'pointer',width:'100%',textAlign:'center',fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:'0.06em',padding:'4px 0'}}>
-        ⚙ {open?'HIDE':'SERVER URL'}
+        ⚙ {open?t("actions.hide"):t("server.title")}
       </button>
       {open&&(
         <div style={{marginTop:8,padding:'12px 14px',background:'rgba(255,255,255,0.05)',borderRadius:10,border:'1px solid rgba(255,255,255,0.1)'}}>
-          <label style={lbl('rgba(255,255,255,0.4)')}>POCKETBASE URL</label>
+          <label style={lbl('rgba(255,255,255,0.4)')}>{t("server.pocketbase_url")}</label>
           <div style={{display:'flex',gap:8}}>
             <input value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://your-server.example.com" style={{...darkInp,flex:1,fontSize:13,padding:'9px 12px'}}/>
             <button onClick={apply} style={{background:'#ff6b00',border:'none',borderRadius:8,padding:'0 14px',color:'#fff',fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:'pointer',flexShrink:0}}>
-              {saved?'✓':'SET'}
+              {saved?'✓':t("actions.set")}
             </button>
           </div>
           <div style={{fontSize:11,color:'rgba(255,255,255,0.2)',marginTop:6}}>Changing URL will reload the app.</div>
@@ -2150,7 +2152,7 @@ function UserManagement({onClose,company,member,members}){
 
   return(
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
-      <SettingsBack onClose={onClose} title="👥 TEAM MANAGEMENT"/>
+      <SettingsBack onClose={onClose} title={t("team.title")}/>
       <div style={{padding:20}}>
         <div style={{background:"#fff",borderRadius:14,padding:14,marginBottom:16}}>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15}}>{company.companyName}</div>
@@ -2280,7 +2282,7 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
 
   return(
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
-      <SettingsBack onClose={onClose} title="📁 PROJECTS"/>
+      <SettingsBack onClose={onClose} title={t("projects.title")}/>
       <div style={{padding:20}}>
         <div style={lbl()}>SELECT ACTIVE PROJECT</div>
         {projects.map(p=>(
@@ -2373,7 +2375,7 @@ function TelegramSettings({onClose,companyId}){
   const test=async()=>{setTesting(true);setTestRes(null);const ok=await sendTelegram(token.trim(),chatId.trim(),"✅ <b>SiteShrimp</b>\nTelegram connected successfully!");setTestRes(ok?"success":"fail");setTesting(false);};
   return(
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
-      <SettingsBack onClose={onClose} title="TELEGRAM SETUP"/>
+      <SettingsBack onClose={onClose} title={t("telegram.title")}/>
       <div style={{padding:20}}>
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
           {[["1","Open Telegram → search @BotFather → type /newbot → follow steps → copy the Bot Token"],["2","Create a group → add your bot as a member → promote it to Admin"],["3","Forward any message from the group to @userinfobot → it replies with Chat ID (negative number)"],["4","Paste both below → TEST → SAVE"]].map(([n,t])=>(
@@ -2464,7 +2466,7 @@ function GeminiSettings({onClose,companyId}){
 
   return(
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
-      <SettingsBack onClose={onClose} title="AI PHOTO ANALYSIS"/>
+      <SettingsBack onClose={onClose} title={t("ai.title")}/>
       <div style={{padding:20}}>
 
         {/* Provider selector */}
@@ -2577,7 +2579,7 @@ function EmailSettings({onClose,companyId}){
   const save=()=>{const cfg={publicKey:pk.trim(),serviceId:sid.trim(),templateId:tid.trim(),recipients:rec.filter(r=>r.trim())};local.set(EMAIL_KEY,cfg);saveSettingToFirestore(companyId,"email",cfg);setSaved(true);setTimeout(()=>setSaved(false),2000);};
   return(
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
-      <SettingsBack onClose={onClose} title="📧 EMAIL REPORTS"/>
+      <SettingsBack onClose={onClose} title={t("email.title")}/>
       <div style={{padding:20}}>
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:16}}>
           {[["1","Go to emailjs.com → Sign up free"],["2","Add Email Service (Gmail/Outlook) → copy Service ID"],["3","Create Template → set HTML body to {{{html_content}}} → copy Template ID"],["4","Account → copy Public Key → paste all below → Save"]].map(([n,t])=>(
@@ -2693,7 +2695,7 @@ function StorageSettings({onClose,companyId}){
 
   return(
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
-      <SettingsBack onClose={onClose} title="STORAGE SETTINGS"/>
+      <SettingsBack onClose={onClose} title={t("storage.title")}/>
       <div style={{padding:20}}>
         {/* Info box */}
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
@@ -2848,8 +2850,8 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
         <button onClick={onSyncQueue} style={{width:"100%",background:"rgba(255,149,0,0.1)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:12,padding:"12px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10,cursor:"pointer",textAlign:"left"}}>
           {syncing2?<Spin size={16}/>:<span style={{fontSize:20}}>📤</span>}
           <div style={{flex:1}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff9500",fontSize:14}}>{queueCount} QUEUED OFFLINE</div>
-            <div style={{fontSize:12,color:"rgba(0,0,0,0.5)"}}>{syncing2?"Syncing now...":navigator.onLine?"Tap to sync now":"Will auto-sync when online"}</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff9500",fontSize:14}}>{queueCount} {t("messages.queued_offline")}</div>
+            <div style={{fontSize:12,color:"rgba(0,0,0,0.5)"}}>{syncing2?t("messages.syncing"):navigator.onLine?"Tap to sync now":t("messages.will_sync")}</div>
           </div>
         </button>
       )}
@@ -3102,7 +3104,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   if(showTypeManager)return(
     <div style={{padding:"20px 16px",animation:"fadeIn 0.15s ease"}}>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
-        <button onClick={()=>setShowTypeManager(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:20,padding:"7px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>← BACK</button>
+        <button onClick={()=>setShowTypeManager(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:20,padding:"7px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.back")}</button>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:18,color:"#1a1a1a"}}>ENTRY TYPES</div>
       </div>
 
@@ -3163,7 +3165,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
     <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
       <div style={{background:"rgba(48,209,88,0.1)",border:"1px solid rgba(48,209,88,0.3)",borderRadius:14,padding:24,textAlign:"center",marginBottom:20}}>
         <div style={{fontSize:36,marginBottom:8}}>{last?.queued?"📤":"✓"}</div>
-        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:18,color:last?.queued?"#ff9500":"#1a7a35",marginBottom:4}}>{last?.queued?"QUEUED OFFLINE":"ENTRY LOGGED"}</div>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:18,color:last?.queued?"#ff9500":"#1a7a35",marginBottom:4}}>{last?.queued?t("messages.queued_offline"):t("log.entry_logged")}</div>
         <div style={{fontSize:13,color:"rgba(0,0,0,0.5)"}}>{count} logged this session · {last?.queued?"Will sync when online":"Team notified"}</div>
       </div>
       <div style={{background:"#fff",borderRadius:14,padding:14,marginBottom:12}}>
@@ -3181,7 +3183,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         location:last?.location||"",assignee:last?.assignee||member?.name||"",severity:last?.severity||"Major",
         locationLevel:last?.locationLevel||"",locationZone:last?.locationZone||"",component:last?.component||""
       });setShowBatch(false);setSpeakTranscript("");setShowMoreDetails(false);}} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:16,color:"#fff",fontSize:15,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:10}}>+ LOG ANOTHER HERE</button>
-      <button onClick={()=>setShowBatch(false)} style={{width:"100%",background:"rgba(0,0,0,0.06)",border:"none",borderRadius:12,padding:14,fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>DONE</button>
+      <button onClick={()=>setShowBatch(false)} style={{width:"100%",background:"rgba(0,0,0,0.06)",border:"none",borderRadius:12,padding:14,fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>{t("actions.done")}</button>
     </div>
   );
 
@@ -3259,13 +3261,13 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       )}
 
       {/* ── 3. TITLE ── */}
-      <VoiceField label="TITLE *" value={form.title} onChange={v=>set("title",v)} placeholder="What's the issue?"/>
+      <VoiceField label={t("fields.title")} value={form.title} onChange={v=>set("title",v)} placeholder={t("fields.title_placeholder")}/>
 
       {/* ── 4. WHAT HAPPENED ── */}
-      <VoiceField label="WHAT HAPPENED" value={form.description} onChange={v=>set("description",v)} placeholder="Describe what you see..." multiline/>
+      <VoiceField label={t("fields.what_happened")} value={form.description} onChange={v=>set("description",v)} placeholder={t("fields.description_placeholder")} multiline/>
 
       {/* ── 5. SEVERITY ── */}
-      <ComboField label="SEVERITY" value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder="Select severity..."/>
+      <ComboField label={t("fields.severity")} value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder={t("fields.severity_placeholder")}/>
 
       {/* ── MORE DETAILS accordion ── */}
       <button onClick={()=>setShowMoreDetails(!showMoreDetails)} style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:12,padding:"14px 16px",marginBottom:showMoreDetails?16:0,display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}}>
@@ -3276,28 +3278,28 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       {showMoreDetails&&(
         <div style={{animation:"fadeIn 0.2s ease",marginTop:showMoreDetails?0:0}}>
           {/* Work Category */}
-          <ComboField label="WORK CATEGORY" value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder="Select work category..."/>
+          <ComboField label={t("fields.work_category")} value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")}/>
 
           {/* Entry Type */}
-          <ComboField label="ENTRY TYPE" value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder="Select entry type..."/>
+          <ComboField label={t("fields.entry_type")} value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder={t("fields.entry_type_placeholder")}/>
           <div style={{marginTop:-10,marginBottom:12}}><button onClick={()=>setShowTypeManager(true)} style={{background:"none",border:"none",fontSize:11,color:"rgba(255,107,0,0.7)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:0}}>⚙ Manage custom types</button></div>
 
           {/* Item / Part (was Component) */}
-          <ComboField label="ITEM / PART" value={form.component} onChange={v=>{set("component",v);set("issue","");}} grouped={activeComponentGroups} placeholder="e.g. Wall, Pipe, Tile..."/>
+          <ComboField label={t("fields.item_part")} value={form.component} onChange={v=>{set("component",v);set("issue","");}} grouped={activeComponentGroups} placeholder={t("fields.item_part_placeholder")}/>
 
           {/* Issue (filtered by selected component) */}
           {form.component&&(
-            <ComboField label="ISSUE" value={form.issue} onChange={v=>{set("issue",v);if(!form.title)set("title",form.component+" — "+v);}} options={COMPONENT_ISSUES[form.component]||COMPONENT_ISSUES["General"]} placeholder="Describe the issue..."/>
+            <ComboField label={t("fields.issue")} value={form.issue} onChange={v=>{set("issue",v);if(!form.title)set("title",form.component+" — "+v);}} options={COMPONENT_ISSUES[form.component]||COMPONENT_ISSUES["General"]} placeholder={t("fields.issue_placeholder")}/>
           )}
 
           {/* Location hierarchy */}
-          <ComboField label="LEVEL / FLOOR" value={form.locationLevel} onChange={v=>set("locationLevel",v)} options={DEFAULT_LEVELS} placeholder="e.g. 3rd Floor"/>
-          <ComboField label="ZONE" value={form.locationZone} onChange={v=>set("locationZone",v)} options={DEFAULT_ZONES} placeholder="e.g. Zone A, Block B"/>
-          <ComboField label="ROOM / AREA" value={form.locationSubzone} onChange={v=>set("locationSubzone",v)} options={DEFAULT_SUBZONES} placeholder="e.g. Kitchen, Bathroom"/>
-          <VoiceField label="GRID REF (optional)" value={form.locationGrid} onChange={v=>set("locationGrid",v)} placeholder="e.g. C4, Grid 3-A"/>
+          <ComboField label={t("fields.level_floor")} value={form.locationLevel} onChange={v=>set("locationLevel",v)} options={DEFAULT_LEVELS} placeholder={t("fields.level_floor_placeholder")}/>
+          <ComboField label={t("fields.zone")} value={form.locationZone} onChange={v=>set("locationZone",v)} options={DEFAULT_ZONES} placeholder={t("fields.zone_placeholder")}/>
+          <ComboField label={t("fields.room_area")} value={form.locationSubzone} onChange={v=>set("locationSubzone",v)} options={DEFAULT_SUBZONES} placeholder={t("fields.room_area_placeholder")}/>
+          <VoiceField label={t("fields.grid_ref")} value={form.locationGrid} onChange={v=>set("locationGrid",v)} placeholder={t("fields.grid_ref_placeholder")}/>
 
           {/* Assignee */}
-          <ComboField label="ASSIGN TO" value={form.assignee} onChange={v=>set("assignee",v)} options={assignees} placeholder="Select assignee..."/>
+          <ComboField label={t("fields.assign_to")} value={form.assignee} onChange={v=>set("assignee",v)} options={assignees} placeholder={t("fields.assign_to_placeholder")}/>
 
           {/* Cost & Time */}
           <div style={{background:"rgba(0,0,0,0.02)",borderRadius:12,padding:14,marginBottom:16,border:"1px solid rgba(0,0,0,0.06)"}}>
@@ -3305,13 +3307,13 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
               <label style={lbl()}>DUE DATE</label>
               <input type="date" value={form.dueDate} onChange={e=>set("dueDate",e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
             </div>
-            <ComboField label="TIME NEEDED" value={form.duration} onChange={v=>set("duration",v)} options={DURATION_OPTIONS} placeholder="e.g. 3 days"/>
-            <ComboField label="COST CHANGE" value={form.costImpact} onChange={v=>set("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder="e.g. No change"/>
+            <ComboField label={t("fields.time_needed")} value={form.duration} onChange={v=>set("duration",v)} options={DURATION_OPTIONS} placeholder={t("fields.time_needed_placeholder")}/>
+            <ComboField label={t("fields.cost_change")} value={form.costImpact} onChange={v=>set("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder={t("fields.cost_change_placeholder")}/>
             {form.costImpact&&form.costImpact!=="No change"&&form.costImpact!=="To be confirmed by QS"&&(
               <>
-                <VoiceField label="COST AMOUNT" value={form.costAmount} onChange={v=>set("costAmount",v)} placeholder="e.g. $500, TBC"/>
-                <ComboField label="COST RESPONSIBLE" value={form.costResponsible} onChange={v=>set("costResponsible",v)} options={COST_RESPONSIBLE_OPTIONS} placeholder="Who bears the cost?"/>
-                <VoiceField label="COST REMARKS" value={form.costRemarks} onChange={v=>set("costRemarks",v)} placeholder="Contract clause, reference..." multiline/>
+                <VoiceField label={t("fields.cost_amount")} value={form.costAmount} onChange={v=>set("costAmount",v)} placeholder={t("fields.cost_amount_placeholder")}/>
+                <ComboField label={t("fields.cost_responsible")} value={form.costResponsible} onChange={v=>set("costResponsible",v)} options={COST_RESPONSIBLE_OPTIONS} placeholder={t("fields.cost_responsible_placeholder")}/>
+                <VoiceField label={t("fields.cost_remarks")} value={form.costRemarks} onChange={v=>set("costRemarks",v)} placeholder={t("fields.cost_remarks_placeholder")} multiline/>
               </>
             )}
           </div>
@@ -3414,8 +3416,8 @@ function AiSearch({defects,onApplyFilters,onClose}){
       <div style={{maxWidth:430,width:"100%",margin:"0 auto",display:"flex",flexDirection:"column",height:"100%"}}>
         {/* Header */}
         <div style={{padding:"12px 14px",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0}}>
-          <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>← BACK</button>
-          <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff"}}>AI SEARCH</div>
+          <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.back")}</button>
+          <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff"}}>{t("ai.search")}</div>
           {!aiReady&&<div style={{fontSize:10,color:"#ff9500",fontWeight:700}}>AI not configured</div>}
         </div>
 
@@ -3509,10 +3511,10 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
           <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginTop:1}}>{selectMode?`${selectedIds.size} selected · tap rows to select`:"Triage, update status, verify and close entries"}</div>
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
-          {(activeFilters>0||q)&&!selectMode&&<button onClick={clearAll} style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:20,padding:"4px 10px",color:"#ff3b30",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>CLEAR ({activeFilters+(q?1:0)})</button>}
+          {(activeFilters>0||q)&&!selectMode&&<button onClick={clearAll} style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:20,padding:"4px 10px",color:"#ff3b30",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.clear")} ({activeFilters+(q?1:0)})</button>}
           {canBulk&&onBulkUpdate&&(
             selectMode?(
-              <button onClick={exitSelect} style={{background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:20,padding:"4px 10px",color:"rgba(0,0,0,0.55)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>DONE</button>
+              <button onClick={exitSelect} style={{background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:20,padding:"4px 10px",color:"rgba(0,0,0,0.55)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.done")}</button>
             ):(
               <button onClick={()=>setSelectMode(true)} style={{background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:20,padding:"4px 10px",color:"#ff6b00",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>✓ SELECT</button>
             )
@@ -3524,7 +3526,7 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <div style={{position:"relative",flex:1}}>
           <div style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:14,color:"rgba(0,0,0,0.3)",pointerEvents:"none"}}>🔍</div>
-          <input ref={searchRef} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search title, description, assignee..." style={{...inp,width:"100%",flex:"unset",paddingLeft:34,paddingRight:search?34:12,fontSize:13}}/>
+          <input ref={searchRef} value={search} onChange={e=>setSearch(e.target.value)} placeholder={t("review.search_placeholder")} style={{...inp,width:"100%",flex:"unset",paddingLeft:34,paddingRight:search?34:12,fontSize:13}}/>
           {search&&<button onClick={()=>{setSearch("");searchRef.current?.focus();}} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"rgba(0,0,0,0.08)",border:"none",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:12,color:"rgba(0,0,0,0.4)",padding:0}}>×</button>}
         </div>
         {onAiSearch&&<button onClick={onAiSearch} title={aiEnabled?"AI natural-language search":"Configure AI in Settings to enable"} disabled={!aiEnabled} style={{background:aiEnabled?"rgba(255,107,0,0.12)":"rgba(0,0,0,0.04)",border:`1px solid ${aiEnabled?"rgba(255,107,0,0.3)":"rgba(0,0,0,0.08)"}`,borderRadius:10,padding:"0 14px",fontSize:16,cursor:aiEnabled?"pointer":"not-allowed",color:aiEnabled?"#ff6b00":"rgba(0,0,0,0.25)",flexShrink:0}}>💬</button>}
@@ -3573,11 +3575,11 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
         <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10,padding:"8px 12px",background:"rgba(255,107,0,0.06)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:10}}>
           <button onClick={()=>setSelectedIds(new Set(filtered.map(d=>d.id)))} style={{background:"none",border:"none",color:"#ff6b00",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>SELECT ALL ({filtered.length})</button>
           <span style={{color:"rgba(0,0,0,0.15)"}}>|</span>
-          <button onClick={()=>setSelectedIds(new Set())} style={{background:"none",border:"none",color:"rgba(0,0,0,0.5)",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>CLEAR</button>
+          <button onClick={()=>setSelectedIds(new Set())} style={{background:"none",border:"none",color:"rgba(0,0,0,0.5)",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.clear")}</button>
         </div>
       )}
 
-      {filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>{q?"No entries matching \""+search+"\"":"No entries found"}</div>}
+      {filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>{q?t("review.no_matching")+" \""+search+"\"":t("review.no_entries")}</div>}
       {filtered.map((d,i)=>{
         const checked=selectedIds.has(d.id);
         return(
@@ -3658,7 +3660,7 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
           </div>
 
           <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>setShowBulkPanel(false)} disabled={bulkSaving} style={{flex:1,background:"rgba(0,0,0,0.06)",border:"none",borderRadius:10,padding:"12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>CANCEL</button>
+            <button onClick={()=>setShowBulkPanel(false)} disabled={bulkSaving} style={{flex:1,background:"rgba(0,0,0,0.06)",border:"none",borderRadius:10,padding:"12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")}</button>
             <button onClick={applyBulk} disabled={bulkSaving} style={{flex:2,background:"#ff6b00",border:"none",borderRadius:10,padding:"12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>{bulkSaving?<><Spin size={14}/> APPLYING…</>:`APPLY TO ${selectedIds.size}`}</button>
           </div>
         </div>
@@ -3677,34 +3679,60 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
 
 // ── Defect Detail ─────────────────────────────────────────────────
 // ── Before/After Photo Comparison ────────────────────────────────
-function BeforeAfter({before,after}){
+function BeforeAfter({before,after,onMarkup}){
   const[split,setSplit]=useState(50);
+  const[mode,setMode]=useState("slider"); // slider | side
+  const[imgRatio,setImgRatio]=useState(0.75);
   const containerRef=useRef();
   const onMove=e=>{
     const rect=containerRef.current.getBoundingClientRect();
-    const t=e.touches?e.touches[0]:e;
-    const x=Math.max(5,Math.min(95,((t.clientX-rect.left)/rect.width)*100));
+    const pointer=e.touches?e.touches[0]:e;
+    const x=Math.max(5,Math.min(95,((pointer.clientX-rect.left)/rect.width)*100));
     setSplit(x);
   };
+  // Detect aspect ratio from before image for proper height
+  useEffect(()=>{
+    const img=new Image();
+    img.onload=()=>setImgRatio(img.height/img.width);
+    img.src=before;
+  },[before]);
   return(
     <div style={{marginBottom:14}}>
-      <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",marginBottom:6}}>BEFORE / AFTER</div>
-      <div ref={containerRef} style={{position:"relative",width:"100%",height:220,borderRadius:12,overflow:"hidden",cursor:"col-resize",touchAction:"none",background:"#f8f8f6"}}
-        onMouseMove={e=>e.buttons===1&&onMove(e)} onTouchMove={onMove}>
-        {/* After (full) */}
-        <img src={after} alt="After" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
-        {/* Before (clipped) */}
-        <div style={{position:"absolute",inset:0,width:`${split}%`,overflow:"hidden"}}>
-          <img src={before} alt="Before" style={{width:containerRef.current?.clientWidth||"100%",height:"100%",objectFit:"cover"}}/>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+        <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em"}}>{t("compare.before")} / {t("compare.after")}</div>
+        <div style={{display:"flex",gap:4}}>
+          <button onClick={()=>setMode(m=>m==="slider"?"side":"slider")} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:6,padding:"3px 8px",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>{mode==="slider"?"⊞ SIDE":"⇔ SLIDER"}</button>
         </div>
-        {/* Slider line */}
-        <div style={{position:"absolute",top:0,bottom:0,left:`${split}%`,width:3,background:"#fff",transform:"translateX(-50%)",boxShadow:"0 0 8px rgba(0,0,0,0.5)"}}>
-          <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:28,height:28,borderRadius:"50%",background:"#fff",boxShadow:"0 2px 8px rgba(0,0,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#1a1a1a"}}>⇔</div>
-        </div>
-        {/* Labels */}
-        <div style={{position:"absolute",top:8,left:8,background:"rgba(0,0,0,0.6)",borderRadius:6,padding:"3px 8px",fontSize:10,fontWeight:700,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif"}}>BEFORE</div>
-        <div style={{position:"absolute",top:8,right:8,background:"rgba(0,0,0,0.6)",borderRadius:6,padding:"3px 8px",fontSize:10,fontWeight:700,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif"}}>AFTER</div>
       </div>
+      {mode==="slider"?(
+        <div ref={containerRef} style={{position:"relative",width:"100%",paddingBottom:`${Math.min(imgRatio*100,120)}%`,borderRadius:12,overflow:"hidden",cursor:"col-resize",touchAction:"none",background:"#f8f8f6"}}
+          onMouseMove={e=>e.buttons===1&&onMove(e)} onTouchMove={onMove}>
+          {/* After (full) */}
+          <img src={after} alt="After" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"contain"}}/>
+          {/* Before (clipped) */}
+          <div style={{position:"absolute",inset:0,width:`${split}%`,overflow:"hidden"}}>
+            <img src={before} alt="Before" style={{width:containerRef.current?.clientWidth||"100%",height:"100%",objectFit:"contain"}}/>
+          </div>
+          {/* Slider line */}
+          <div style={{position:"absolute",top:0,bottom:0,left:`${split}%`,width:3,background:"#fff",transform:"translateX(-50%)",boxShadow:"0 0 8px rgba(0,0,0,0.5)"}}>
+            <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:28,height:28,borderRadius:"50%",background:"#fff",boxShadow:"0 2px 8px rgba(0,0,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#1a1a1a"}}>⇔</div>
+          </div>
+          {/* Labels */}
+          <div style={{position:"absolute",top:8,left:8,background:"rgba(0,0,0,0.6)",borderRadius:6,padding:"3px 8px",fontSize:10,fontWeight:700,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("compare.before")}</div>
+          <div style={{position:"absolute",top:8,right:8,background:"rgba(0,0,0,0.6)",borderRadius:6,padding:"3px 8px",fontSize:10,fontWeight:700,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("compare.after")}</div>
+        </div>
+      ):(
+        /* Side-by-side mode — full photos with markup buttons */
+        <div style={{display:"flex",gap:6}}>
+          {[{src:before,label:t("compare.before"),which:"before"},{src:after,label:t("compare.after"),which:"after"}].map(p=>(
+            <div key={p.which} style={{flex:1,position:"relative"}}>
+              <img src={p.src} alt={p.label} style={{width:"100%",borderRadius:10,objectFit:"contain",display:"block",background:"#f8f8f6"}}/>
+              <div style={{position:"absolute",top:6,left:6,background:"rgba(0,0,0,0.6)",borderRadius:6,padding:"3px 8px",fontSize:10,fontWeight:700,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif"}}>{p.label}</div>
+              {onMarkup&&<button onClick={()=>onMarkup(p.which)} style={{position:"absolute",bottom:6,right:6,background:"rgba(255,107,0,0.85)",border:"none",borderRadius:8,padding:"5px 10px",fontSize:10,fontWeight:800,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",letterSpacing:"0.05em",boxShadow:"0 2px 8px rgba(0,0,0,0.3)"}}>✏ MARKUP</button>}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -3788,6 +3816,8 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
   const[editingCommentText,setEditingCommentText]=useState("");
   // Comment photo markup state
   const[markupCommentIdx,setMarkupCommentIdx]=useState(null);
+  // Before/After photo markup state
+  const[markupBA,setMarkupBA]=useState(null); // "before" | "after" | null
   // Full-screen photo viewer state
   const[viewerPhoto,setViewerPhoto]=useState(null);
   // Pending verify status (stored when user picks photo before confirming)
@@ -3886,6 +3916,30 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
     setMarkupCommentIdx(null);
   };
 
+  // Save markup on before/after photos
+  const saveBAMarkup=async(dataUrl)=>{
+    if(!markupBA)return;
+    try{
+      if(markupBA==="before"){
+        // Update the original photo
+        const photos=Array.isArray(latestRef.current.photo)?[...latestRef.current.photo]:[latestRef.current.photo];
+        photos[0]=dataUrl;
+        await DB.defects.update(defect.id,{photo:photos.length===1?photos[0]:photos});
+        latestRef.current={...latestRef.current,photo:photos.length===1?photos[0]:photos};
+      }else{
+        // Update the verification comment photo (after)
+        const comments=[...(latestRef.current.comments||[])];
+        const idx=comments.findIndex(c=>c.text?.startsWith("✅")&&c.photo);
+        if(idx>=0){comments[idx]={...comments[idx],photo:dataUrl,editedAt:Date.now()};
+          await DB.defects.update(defect.id,{comments});
+          latestRef.current={...latestRef.current,comments};
+        }
+      }
+      onUpdate({...latestRef.current});
+    }catch(e){alert("Failed to save markup: "+e.message);}
+    setMarkupBA(null);
+  };
+
   const deleteDefect=async()=>{
     if(!canDelete||!confirm("Delete this defect permanently? This cannot be undone."))return;
     setDeleting(true);
@@ -3898,10 +3952,10 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
   return(
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:100,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
       <div style={{position:"sticky",top:0,background:"rgba(240,237,232,0.95)",backdropFilter:"blur(8px)",padding:"16px 16px 12px",display:"flex",alignItems:"center",gap:12,borderBottom:"1px solid rgba(0,0,0,0.08)",zIndex:10}}>
-        <button onClick={onClose} style={{background:"rgba(0,0,0,0.08)",border:"none",borderRadius:20,padding:"7px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>← BACK</button>
+        <button onClick={onClose} style={{background:"rgba(0,0,0,0.08)",border:"none",borderRadius:20,padding:"7px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.back")}</button>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a",flex:1}}>ENTRY DETAIL</div>
-        {canUpdate&&!editing&&<button onClick={()=>{setEditFields({title:defect.title||"",description:defect.description||"",severity:defect.severity||"Major",location:defect.location||"",assignee:defect.assignee||"",component:defect.component||"",trade:defect.trade||"",entryType:defect.entryType||"Defect",dueDate:defect.dueDate||"",duration:defect.duration||"",costImpact:defect.costImpact||"",costResponsible:defect.costResponsible||"",costAmount:defect.costAmount||""});setEditing(true);}} style={{background:"rgba(255,107,0,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>EDIT</button>}
-        {canDelete&&<button onClick={deleteDefect} disabled={deleting} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{deleting?"...":"DELETE"}</button>}
+        {canUpdate&&!editing&&<button onClick={()=>{setEditFields({title:defect.title||"",description:defect.description||"",severity:defect.severity||"Major",location:defect.location||"",assignee:defect.assignee||"",component:defect.component||"",trade:defect.trade||"",entryType:defect.entryType||"Defect",dueDate:defect.dueDate||"",duration:defect.duration||"",costImpact:defect.costImpact||"",costResponsible:defect.costResponsible||"",costAmount:defect.costAmount||""});setEditing(true);}} style={{background:"rgba(255,107,0,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.edit")}</button>}
+        {canDelete&&<button onClick={deleteDefect} disabled={deleting} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{deleting?"...":t("actions.delete")}</button>}
       </div>
       <div style={{padding:16}}>
         {editing?(
@@ -3960,8 +4014,8 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
               <textarea value={editFields.description} onChange={e=>ef("description",e.target.value)} rows={4} style={{...inp,width:"100%",resize:"vertical",fontSize:12}}/>
             </div>
             <div style={{display:"flex",gap:8}}>
-              <button onClick={saveEdits} disabled={editSaving} style={{flex:1,background:"#ff6b00",border:"none",borderRadius:10,padding:"12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",opacity:editSaving?0.7:1}}>{editSaving?"SAVING...":"SAVE CHANGES"}</button>
-              <button onClick={()=>{setEditing(false);setEditFields({title:defect.title||"",description:defect.description||"",severity:defect.severity||"Major",location:defect.location||"",assignee:defect.assignee||"",component:defect.component||"",trade:defect.trade||"",entryType:defect.entryType||"Defect",dueDate:defect.dueDate||"",duration:defect.duration||"",costImpact:defect.costImpact||"",costResponsible:defect.costResponsible||"",costAmount:defect.costAmount||""});}} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 16px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>CANCEL</button>
+              <button onClick={saveEdits} disabled={editSaving} style={{flex:1,background:"#ff6b00",border:"none",borderRadius:10,padding:"12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",opacity:editSaving?0.7:1}}>{editSaving?t("messages.saving"):t("actions.save_changes")}</button>
+              <button onClick={()=>{setEditing(false);setEditFields({title:defect.title||"",description:defect.description||"",severity:defect.severity||"Major",location:defect.location||"",assignee:defect.assignee||"",component:defect.component||"",trade:defect.trade||"",entryType:defect.entryType||"Defect",dueDate:defect.dueDate||"",duration:defect.duration||"",costImpact:defect.costImpact||"",costResponsible:defect.costResponsible||"",costAmount:defect.costAmount||""});}} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"12px 16px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.cancel")}</button>
             </div>
           </div>
         ):(
@@ -3987,7 +4041,7 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
           const verifyComment=(latestRef.current.comments||[]).find(c=>c.text?.startsWith("✅")&&c.photo);
           const afterPhoto=verifyComment?.photo;
           return afterPhoto&&origPhoto?(
-            <BeforeAfter before={origPhoto} after={afterPhoto}/>
+            <BeforeAfter before={origPhoto} after={afterPhoto} onMarkup={canUpdate?(which=>setMarkupBA(which)):null}/>
           ):typeof defect.photo==="string"
             ?<img src={defect.photo} alt="" onClick={()=>setViewerPhoto(defect.photo)} style={{maxWidth:"100%",borderRadius:12,maxHeight:350,objectFit:"contain",display:"block",marginBottom:14,background:"#f8f8f6",cursor:"pointer"}} title="Tap to view full screen"/>
             :Array.isArray(defect.photo)&&defect.photo.length>0
@@ -4064,8 +4118,8 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
                   {editingCommentIdx===i?(
                     <div style={{display:"flex",gap:6,alignItems:"center",marginTop:4}}>
                       <input autoFocus value={editingCommentText} onChange={e=>setEditingCommentText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveCommentEdit(i)} style={{...inp,flex:1,fontSize:13}}/>
-                      <button onClick={()=>saveCommentEdit(i)} style={{background:"#ff6b00",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>SAVE</button>
-                      <button onClick={()=>{setEditingCommentIdx(null);setEditingCommentText("");}} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"6px 10px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",color:"rgba(0,0,0,0.5)"}}>CANCEL</button>
+                      <button onClick={()=>saveCommentEdit(i)} style={{background:"#ff6b00",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{t("actions.save")}</button>
+                      <button onClick={()=>{setEditingCommentIdx(null);setEditingCommentText("");}} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"6px 10px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",color:"rgba(0,0,0,0.5)"}}>{t("actions.cancel")}</button>
                     </div>
                   ):(
                     <div style={{display:"flex",alignItems:"flex-start",gap:6}}>
@@ -4109,7 +4163,7 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
               )}
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                 <button onClick={()=>commentPhotoRef.current?.click()} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:10,padding:"11px",cursor:"pointer",fontSize:16,flexShrink:0}}>📷</button>
-                <input value={comment} onChange={e=>setComment(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addComment()} placeholder="Add a comment..." style={{...inp,flex:1}}/>
+                <input value={comment} onChange={e=>setComment(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addComment()} placeholder={t("fields.comment_placeholder")} style={{...inp,flex:1}}/>
                 <MicBtn onResult={t=>setComment(c=>c+(c?" ":"")+t)} append currentValue={comment}/>
                 <button onClick={addComment} disabled={saving||(!comment.trim()&&!commentPhoto)} style={{background:"#ff6b00",border:"none",borderRadius:10,padding:"11px 16px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",flexShrink:0}}>{saving?"...":"POST"}</button>
               </div>
@@ -4123,6 +4177,13 @@ function DefectDetail({defect,onClose,onUpdate,member,company}){
       {markupCommentIdx!==null&&(latestRef.current.comments||[])[markupCommentIdx]?.photo&&(
         <PhotoMarkup src={(latestRef.current.comments||[])[markupCommentIdx].photo} onSave={saveCommentMarkup} onCancel={()=>setMarkupCommentIdx(null)}/>
       )}
+      {/* Before/After photo markup modal */}
+      {markupBA&&(()=>{
+        const origPhoto=typeof latestRef.current.photo==="string"?latestRef.current.photo:Array.isArray(latestRef.current.photo)&&latestRef.current.photo[0]?latestRef.current.photo[0]:null;
+        const verifyComment=(latestRef.current.comments||[]).find(c=>c.text?.startsWith("✅")&&c.photo);
+        const src=markupBA==="before"?origPhoto:verifyComment?.photo;
+        return src?<PhotoMarkup src={src} onSave={saveBAMarkup} onCancel={()=>setMarkupBA(null)}/>:null;
+      })()}
       {/* Full-screen photo viewer modal */}
       {viewerPhoto&&<PhotoViewer src={viewerPhoto} onClose={()=>setViewerPhoto(null)}/>}
     </div>
@@ -4190,7 +4251,7 @@ function ProfilePanel({member,authUser,company,onClose,onSignOut}){
 
   return(
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:300,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
-      <SettingsBack onClose={onClose} title="MY PROFILE"/>
+      <SettingsBack onClose={onClose} title={t("profile.title")}/>
       <div style={{padding:20}}>
         {/* Avatar */}
         <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:24}}>
@@ -4217,7 +4278,7 @@ function ProfilePanel({member,authUser,company,onClose,onSignOut}){
           <div style={lbl()}>EMAIL</div>
           <div style={{display:"flex",gap:8}}>
             <input value={editEmail} onChange={e=>setEditEmail(e.target.value)} type="email" style={{...inp,flex:1}}/>
-            <button onClick={saveEmail} disabled={saving||!editEmail.trim()||editEmail===authUser?.email} style={{background:editEmail!==authUser?.email?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:"10px 16px",color:editEmail!==authUser?.email?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",flexShrink:0}}>SAVE</button>
+            <button onClick={saveEmail} disabled={saving||!editEmail.trim()||editEmail===authUser?.email} style={{background:editEmail!==authUser?.email?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:"10px 16px",color:editEmail!==authUser?.email?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",flexShrink:0}}>{t("actions.save")}</button>
           </div>
         </div>
 
@@ -4381,7 +4442,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
 
   return(
     <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
-      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",marginBottom:2}}>SITE REPORT</div>
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",marginBottom:2}}>{t("report.site_report")}</div>
       <div style={{fontSize:12,color:"rgba(0,0,0,0.4)",marginBottom:10}}>{currentProject?.name||""} · {new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}</div>
 
       <div style={{display:"flex",gap:6,marginBottom:10}}>
@@ -5258,7 +5319,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
 
   const undoCompareMarkup=()=>{setCompareMarkupStrokes(s=>{if(!s.length)return s;setCompareRedoStack(r=>[...r,s[s.length-1]]);return s.slice(0,-1);});};
   const redoCompareMarkup=()=>{setCompareRedoStack(r=>{if(!r.length)return r;const item=r[r.length-1];setCompareMarkupStrokes(s=>[...s,item]);return r.slice(0,-1);});};
-  const clearCompareMarkup=()=>{if(compareMarkupStrokes.length&&confirm("Clear compare markup?"))setCompareMarkupStrokes([]);};
+  const clearCompareMarkup=()=>{if(compareMarkupStrokes.length&&confirm(t("markup.clear_compare")))setCompareMarkupStrokes([]);};
 
   const addCompareText=()=>{
     if(!compareTextPoint||!compareTextValue.trim())return;
@@ -5822,10 +5883,10 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
 
   return(
     <div style={embedded?{background:"#f0ede8",minHeight:"100%"}:{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
-      {!embedded&&<SettingsBack onClose={onClose} title="TAG & COMPARE"/>}
+      {!embedded&&<SettingsBack onClose={onClose} title={t("drawings.tag_compare")}/>}
       <div style={{padding:20}}>
         {embedded&&<div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:14}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>TAG & COMPARE</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>{t("drawings.tag_compare")}</div>
           <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>Upload, pin, overlay photos and compare</div>
         </div>}
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf,.pdf,.tif,.tiff" onChange={uploadDrawing} style={{display:"none"}}/>
@@ -5858,7 +5919,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
               <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>MARKUPS</div>
               <button onClick={()=>{exportMarkupsCsv();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#ffb48a",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>Markup CSV</button>
               <button onClick={()=>{exportMarkupsPdf();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#ffb48a",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Markup PDF</button>
-              <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>COMPARISONS</div>
+              <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("compare.title")}</div>
               <button onClick={()=>{exportSavedComparisonsCsv();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#d8d2ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>Compare CSV</button>
               <button onClick={()=>{exportSavedComparisonsPdf();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#d8d2ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Compare PDF</button>
               <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>ALL</div>
@@ -5876,7 +5937,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
             <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
               <div style={{background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"6px 12px",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.5)"}}>📐 UPLOADED DRAWINGS ({drawings.length})</div>
               {markedUpDrawings.length>0&&<div style={{background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:10,padding:"6px 12px",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:"#ff6b00"}}>✏ SAVED MARKUP DRAWINGS ({markedUpDrawings.length})</div>}
-              {savedComparisons.length>0&&<div style={{background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:10,padding:"6px 12px",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:"#5856d6"}}>🔍 SAVED COMPARISONS ({savedComparisons.length})</div>}
+              {savedComparisons.length>0&&<div style={{background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:10,padding:"6px 12px",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:"#5856d6"}}>🔍 {t("compare.saved_comparisons")} ({savedComparisons.length})</div>}
             </div>
           );
         })()}
@@ -5884,7 +5945,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         {/* Saved comparisons */}
         {savedComparisons.length>0&&(
           <div style={{marginBottom:16}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:8}}>SAVED COMPARISONS ({savedComparisons.length})</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:8}}>{t("compare.saved_comparisons")} ({savedComparisons.length})</div>
             {savedComparisons.map(sc=>(
               <div key={sc.id} style={{background:"#fff",borderRadius:12,padding:0,marginBottom:10,overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)"}}>
                 {sc.overlayThumb&&(
@@ -5904,7 +5965,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                       <div style={{fontSize:10,color:"rgba(0,0,0,0.4)"}}>{new Date(sc.savedAt).toLocaleString()} · By {sc.savedBy||"—"}</div>
                     </div>
                     <button onClick={()=>loadSavedComparison(sc)} style={{background:"rgba(88,86,214,0.12)",border:"1px solid rgba(88,86,214,0.25)",borderRadius:8,padding:"5px 10px",color:"#5856d6",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>OPEN</button>
-                    <button onClick={()=>deleteSavedComparison(sc.id)} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:8,padding:"5px 10px",color:"#ff3b30",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>DELETE</button>
+                    <button onClick={()=>deleteSavedComparison(sc.id)} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:8,padding:"5px 10px",color:"#ff3b30",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.delete")}</button>
                   </div>
                   <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap"}}>
                     {sc.markups?.length>0&&<span style={{fontSize:9,fontWeight:700,color:"#ff6b00",background:"rgba(255,107,0,0.12)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:8,padding:"2px 6px",fontFamily:"'Barlow Condensed',sans-serif"}}>✏ {sc.markups.length}</span>}
@@ -6024,7 +6085,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a"}}>{d.name}</div>
                     <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>By {d.uploadedBy||"—"} · {d.uploadedAt?new Date(d.uploadedAt).toLocaleDateString():""}</div>
                   </div>
-                  {member?.role==="Admin"&&<button onClick={e=>{e.stopPropagation();deleteDrawing(d.id);}} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:"#ff3b30",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>DELETE</button>}
+                  {member?.role==="Admin"&&<button onClick={e=>{e.stopPropagation();deleteDrawing(d.id);}} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:"#ff3b30",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.delete")}</button>}
                 </div>
                 {(drawingPins.length>0||drawingNotes.length>0||drawingMarkup.length>0)&&(
                   <div style={{display:"flex",alignItems:"center",gap:6,marginTop:8,flexWrap:"wrap"}}>
@@ -6045,7 +6106,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       {/* Batch Compare Modal */}
       {showBatchCompare&&(
         <div style={{position:"fixed",inset:0,zIndex:260,background:"#f0ede8",overflowY:"auto",animation:"slideUp 0.25s ease"}}>
-          <SettingsBack onClose={()=>{setShowBatchCompare(false);setBatchSetAFiles([]);setBatchSetBFiles([]);setBatchMatches([]);setBatchResults([]);setBatchUnmatchedA([]);setBatchUnmatchedB([]);setBatchLabelA("SET A");setBatchLabelB("SET B");}} title="BATCH PDFs COMPARISON"/>
+          <SettingsBack onClose={()=>{setShowBatchCompare(false);setBatchSetAFiles([]);setBatchSetBFiles([]);setBatchMatches([]);setBatchResults([]);setBatchUnmatchedA([]);setBatchUnmatchedB([]);setBatchLabelA("SET A");setBatchLabelB("SET B");}} title={t("compare.batch_title")}/>
           <div style={{padding:20}}>
             {/* Hidden folder inputs */}
             <input ref={batchSetARef} type="file" accept=".pdf" multiple onChange={e=>handleBatchFolder(e,setBatchSetAFiles)} style={{display:"none"}}/>
@@ -6181,7 +6242,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
               <div style={{background:"#1a1a1a",borderRadius:14,padding:16,marginBottom:14}}>
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#fff",letterSpacing:"0.1em",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
                   <span style={{background:"#ff6b00",color:"#fff",borderRadius:"50%",width:20,height:20,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:11,flexShrink:0}}>2</span>
-                  CONTENT COMPARISON
+                  {t("compare.content")} {t("compare.title")}
                   {batchResults.length>0&&!batchRunning&&<span style={{marginLeft:"auto",fontSize:11,color:"rgba(255,255,255,0.5)",fontWeight:400}}>{batchResults.length}/{batchMatches.length} compared</span>}
                 </div>
                 <button onClick={runBatchCompare} disabled={batchRunning} style={{width:"100%",background:batchRunning?"rgba(255,255,255,0.05)":"#ff6b00",border:"none",borderRadius:10,padding:14,color:batchRunning?"rgba(255,255,255,0.4)":"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:batchResults.length?12:0}}>
@@ -6267,9 +6328,9 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         <div style={{position:"fixed",inset:0,zIndex:260,background:"rgba(0,0,0,0.9)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
           <div style={{width:"100%",height:"100vh",background:"#1a1a1a",overflow:"hidden",display:"flex",flexDirection:"column"}}>
             <div style={{padding:"14px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)",display:"flex",alignItems:"center",gap:10}}>
-              <button onClick={()=>{setShowCompare(false);setViewingSaved(null);}} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",flexShrink:0}}>← BACK</button>
-              <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>PDF COMPARISON{viewingSaved?` (SAVED)`:""}</div>
-              <button onClick={saveComparison} style={{background:"rgba(52,199,89,0.25)",border:"1px solid rgba(52,199,89,0.5)",borderRadius:18,padding:"7px 14px",color:"#9ef0b5",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",flexShrink:0}}>SAVE</button>
+              <button onClick={()=>{setShowCompare(false);setViewingSaved(null);}} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",flexShrink:0}}>{t("actions.back")}</button>
+              <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>PDF {t("compare.title")}{viewingSaved?` (SAVED)`:""}</div>
+              <button onClick={saveComparison} style={{background:"rgba(52,199,89,0.25)",border:"1px solid rgba(52,199,89,0.5)",borderRadius:18,padding:"7px 14px",color:"#9ef0b5",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",flexShrink:0}}>{t("actions.save")}</button>
             </div>
 
             <div style={{padding:16,overflowY:"auto",flex:1,minHeight:0,display:"flex",flexDirection:"column"}}>
@@ -6292,7 +6353,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
               </div>
 
               <button onClick={runCompare} disabled={comparing||!compareBaseId||!compareTargetId||compareBaseId===compareTargetId} style={{width:"100%",background:(!compareBaseId||!compareTargetId||compareBaseId===compareTargetId)?"rgba(255,255,255,0.1)":"#ff6b00",border:"none",borderRadius:10,padding:12,color:(!compareBaseId||!compareTargetId||compareBaseId===compareTargetId)?"rgba(255,255,255,0.35)":"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",marginBottom:10}}>
-                {comparing?"COMPARING...":"RUN COMPARISON"}
+                {comparing?t("compare.comparing"):t("actions.run_comparison")}
               </button>
 
               {compareError&&<div style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"10px 12px",color:"#ff7f7f",fontSize:12,marginBottom:10}}>{compareError}</div>}
@@ -6364,14 +6425,14 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
               {compareAiReport&&(
                 <div style={{background:compareAiLocked?"rgba(52,199,89,0.14)":"rgba(255,255,255,0.06)",border:`1px solid ${compareAiLocked?"rgba(52,199,89,0.35)":"rgba(255,255,255,0.18)"}`,borderRadius:10,padding:"9px 10px",marginBottom:12}}>
                   <div style={{fontSize:11,color:compareAiLocked?"#9ef0b5":"rgba(255,255,255,0.7)",marginBottom:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
-                    {compareAiLocked?"AI REPORT LOCKED":"AI REPORT DRAFT"}
+                    {compareAiLocked?t("ai.report_locked"):t("ai.report_draft")}
                     {compareAiApprovedBy?` · ${compareAiApprovedBy}`:""}
                     {compareAiApprovedAt?` · ${new Date(compareAiApprovedAt).toLocaleString()}`:""}
                   </div>
                   {canApproveAi&&(
                     <div style={{display:"flex",gap:8}}>
                       {!compareAiLocked&&<button onClick={approveAndLockCompareAi} style={{flex:1,background:"rgba(52,199,89,0.2)",border:"1px solid rgba(52,199,89,0.4)",borderRadius:8,padding:"8px 10px",color:"#9ef0b5",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>APPROVE & LOCK</button>}
-                      {compareAiLocked&&<button onClick={unlockCompareAi} style={{flex:1,background:"rgba(255,149,0,0.18)",border:"1px solid rgba(255,149,0,0.4)",borderRadius:8,padding:"8px 10px",color:"#ffd08a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>UNLOCK</button>}
+                      {compareAiLocked&&<button onClick={unlockCompareAi} style={{flex:1,background:"rgba(255,149,0,0.18)",border:"1px solid rgba(255,149,0,0.4)",borderRadius:8,padding:"8px 10px",color:"#ffd08a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{t("actions.unlock")}</button>}
                     </div>
                   )}
                   {compareAuditLog.length>0&&(
@@ -6434,7 +6495,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                     </div>;
                   })()}
                   {/* Line style toggle */}
-                  <button onClick={()=>setCompareMarkupLineStyle(s=>s==="solid"?"dotted":"solid")} title={compareMarkupLineStyle==="solid"?"Solid (tap for dotted)":"Dotted (tap for solid)"} style={{width:30,height:28,borderRadius:6,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <button onClick={()=>setCompareMarkupLineStyle(s=>s==="solid"?"dotted":"solid")} title={compareMarkupLineStyle==="solid"?t("markup.solid"):t("markup.dotted")} style={{width:30,height:28,borderRadius:6,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
                     <svg width="18" height="18" viewBox="0 0 20 20">
                       {compareMarkupLineStyle==="solid"
                         ?<line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
@@ -6518,8 +6579,8 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                     </>
                   )}
                   {compareSelectedIdx!=null&&<button onClick={deleteCompareSelected} title="Delete selected" style={{background:"rgba(255,59,48,0.2)",border:"1px solid rgba(255,59,48,0.35)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>DEL</button>}
-                  <button onClick={undoCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>UNDO</button>
-                  <button onClick={redoCompareMarkup} disabled={!compareRedoStack.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:compareRedoStack.length?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>REDO</button>
+                  <button onClick={undoCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{t("actions.undo")}</button>
+                  <button onClick={redoCompareMarkup} disabled={!compareRedoStack.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:compareRedoStack.length?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{t("actions.redo")}</button>
                   <button onClick={clearCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,59,48,0.2)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#ff8f8f":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>CLEAR</button>
                 </div>
               )}
@@ -6596,7 +6657,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                       <MicBtn onResult={t=>setCompareTextValue(v=>v?(v+" "+t):t)} append currentValue={compareTextValue}/>
                     </div>
                     <div style={{display:"flex",gap:8,marginTop:12}}>
-                      <button onClick={()=>{setCompareTextPoint(null);setCompareTextValue("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CANCEL</button>
+                      <button onClick={()=>{setCompareTextPoint(null);setCompareTextValue("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")}</button>
                       <button onClick={addCompareText} disabled={!compareTextValue.trim()} style={{flex:1,padding:10,borderRadius:10,border:"none",background:compareTextValue.trim()?"#5856d6":"rgba(255,255,255,0.1)",color:compareTextValue.trim()?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD</button>
                     </div>
                   </div>
@@ -6610,7 +6671,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                     <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:12}}>Enter the measurement (e.g. 3.5m, 1200mm). Leave blank for no label.</div>
                     <input autoFocus value={compareDimLabel} onChange={e=>setCompareDimLabel(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){addCompareStroke({...comparePendingDim,label:compareDimLabel.trim()});setComparePendingDim(null);setCompareDimLabel("");}}} placeholder="e.g. 3500mm" style={{width:"100%",padding:11,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
                     <div style={{display:"flex",gap:8,marginTop:12}}>
-                      <button onClick={()=>{setComparePendingDim(null);setCompareDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CANCEL</button>
+                      <button onClick={()=>{setComparePendingDim(null);setCompareDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")}</button>
                       <button onClick={()=>{addCompareStroke({...comparePendingDim,label:compareDimLabel.trim()});setComparePendingDim(null);setCompareDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD</button>
                     </div>
                   </div>
@@ -6639,7 +6700,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                     <div style={{fontSize:11,color:"rgba(255,255,255,0.55)",marginBottom:12}}>Provide a reason for unlocking this approved report. This will be recorded in the audit trail.</div>
                     <textarea autoFocus value={unlockReason} onChange={e=>setUnlockReason(e.target.value)} placeholder="e.g. Client requested revision after site walkthrough..." rows={3} style={{width:"100%",padding:11,borderRadius:10,border:"1px solid rgba(255,149,0,0.3)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box",resize:"vertical"}}/>
                     <div style={{display:"flex",gap:8,marginTop:12}}>
-                      <button onClick={()=>{setShowUnlockPrompt(false);setUnlockReason("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CANCEL</button>
+                      <button onClick={()=>{setShowUnlockPrompt(false);setUnlockReason("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")}</button>
                       <button onClick={()=>confirmUnlock(unlockReason.trim())} disabled={!unlockReason.trim()} style={{flex:1,padding:10,borderRadius:10,border:"none",background:unlockReason.trim()?"rgba(255,149,0,0.35)":"rgba(255,255,255,0.1)",color:unlockReason.trim()?"#ffd08a":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>CONFIRM UNLOCK</button>
                     </div>
                   </div>
@@ -6652,12 +6713,12 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:editingDiffItem.type==="added"?"#ff8a8a":"#8ab4ff",marginBottom:4}}>EDIT {editingDiffItem.type.toUpperCase()} ITEM</div>
                     <div style={{fontSize:10,color:"rgba(255,255,255,0.4)",marginBottom:12,wordBreak:"break-word"}}>Original: {editingDiffItem.original}</div>
                     <div style={{fontSize:10,color:"rgba(255,255,255,0.45)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:4}}>RENAME</div>
-                    <input value={editingDiffItem.name} onChange={e=>setEditingDiffItem(prev=>({...prev,name:e.target.value}))} placeholder="Custom name (leave blank to keep original)" style={{width:"100%",padding:10,borderRadius:8,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box",marginBottom:10}}/>
+                    <input value={editingDiffItem.name} onChange={e=>setEditingDiffItem(prev=>({...prev,name:e.target.value}))} placeholder={t("fields.custom_name_placeholder")} style={{width:"100%",padding:10,borderRadius:8,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box",marginBottom:10}}/>
                     <div style={{fontSize:10,color:"rgba(255,255,255,0.45)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:4}}>REMARKS / NOTES</div>
-                    <textarea value={editingDiffItem.remark} onChange={e=>setEditingDiffItem(prev=>({...prev,remark:e.target.value}))} placeholder="Add follow-up notes, comments, or instructions..." rows={3} style={{width:"100%",padding:10,borderRadius:8,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box",resize:"vertical"}}/>
+                    <textarea value={editingDiffItem.remark} onChange={e=>setEditingDiffItem(prev=>({...prev,remark:e.target.value}))} placeholder={t("fields.followup_placeholder")} rows={3} style={{width:"100%",padding:10,borderRadius:8,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box",resize:"vertical"}}/>
                     <div style={{display:"flex",gap:8,marginTop:12}}>
-                      <button onClick={()=>setEditingDiffItem(null)} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CANCEL</button>
-                      <button onClick={()=>{const e={...diffEdits};if(editingDiffItem.name.trim()||editingDiffItem.remark.trim()){e[editingDiffItem.key]={name:editingDiffItem.name.trim(),remark:editingDiffItem.remark.trim()};}else{delete e[editingDiffItem.key];}setDiffEdits(e);setEditingDiffItem(null);}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>SAVE</button>
+                      <button onClick={()=>setEditingDiffItem(null)} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")}</button>
+                      <button onClick={()=>{const e={...diffEdits};if(editingDiffItem.name.trim()||editingDiffItem.remark.trim()){e[editingDiffItem.key]={name:editingDiffItem.name.trim(),remark:editingDiffItem.remark.trim()};}else{delete e[editingDiffItem.key];}setDiffEdits(e);setEditingDiffItem(null);}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{t("actions.save")}</button>
                     </div>
                   </div>
                 </div>
@@ -7108,7 +7169,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   };
   const undoMarkup=()=>{setMarkupStrokes(s=>{if(!s.length)return s;setMarkupRedoStack(r=>[...r,s[s.length-1]]);return s.slice(0,-1);});};
   const redoMarkup=()=>{setMarkupRedoStack(r=>{if(!r.length)return r;const item=r[r.length-1];setMarkupStrokes(s=>[...s,item]);return r.slice(0,-1);});};
-  const clearMarkup=()=>{if(markupStrokes.length&&confirm("Clear all markup?"))setMarkupStrokes([]);};
+  const clearMarkup=()=>{if(markupStrokes.length&&confirm(t("markup.clear_markup")))setMarkupStrokes([]);};
 
   // Photo overlay — pick/capture an image, compress, then enter "drag to place" mode
   const markupPhotoRef=useRef();
@@ -7377,7 +7438,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     <div style={{position:"fixed",inset:0,background:"#1a1a1a",zIndex:250,display:"flex",flexDirection:"column"}}>
       {/* Header */}
       <div style={{background:"#1a1a1a",padding:"12px 14px",display:"flex",alignItems:"center",gap:8,borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0,flexWrap:"wrap"}}>
-        <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>← BACK</button>
+        <button onClick={onClose} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.back")}</button>
         <div style={{flex:1,minWidth:80}}>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{drawing.name}</div>
           <div style={{fontSize:10,color:"rgba(255,255,255,0.4)"}}>{pins.length} pin(s){isPdf&&pdfPageCount>0?` · Page ${currentPage}/${pdfPageCount}`:""}</div>
@@ -7385,7 +7446,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
         <button onClick={()=>{setViewMode(v=>!v);if(!viewMode){setPlacing(false);setMarkupMode(false);}}} title="View mode — zoom & pan" style={{width:36,height:36,borderRadius:10,border:viewMode?"2px solid #2da845":"2px solid rgba(255,255,255,0.15)",background:viewMode?"rgba(52,199,89,0.25)":"rgba(255,255,255,0.08)",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>👁</button>
         {canPin&&!markupMode&&!viewMode&&(
           <button onClick={()=>{setPlacing(!placing);setViewMode(false);}} style={{background:placing?"#ff6b00":"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>
-            {placing?"TAP TO PLACE":"📌 ADD PIN"}
+            {placing?t("actions.tap_to_place"):"📌 ADD PIN"}
           </button>
         )}
         {canPin&&!placing&&!viewMode&&(
@@ -7528,10 +7589,10 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
           )}
           <div style={{flex:1}}/>
           {markupSelectedIdx!=null&&markupTool==="select"&&(
-            <button onClick={deleteSelectedMarkup} style={{background:"rgba(255,59,48,0.25)",border:"1px solid rgba(255,59,48,0.45)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>DELETE</button>
+            <button onClick={deleteSelectedMarkup} style={{background:"rgba(255,59,48,0.25)",border:"1px solid rgba(255,59,48,0.45)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{t("actions.delete")}</button>
           )}
-          <button onClick={undoMarkup} disabled={!markupStrokes.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:markupStrokes.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>UNDO</button>
-          <button onClick={redoMarkup} disabled={!markupRedoStack.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:markupRedoStack.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>REDO</button>
+          <button onClick={undoMarkup} disabled={!markupStrokes.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:markupStrokes.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{t("actions.undo")}</button>
+          <button onClick={redoMarkup} disabled={!markupRedoStack.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:markupRedoStack.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{t("actions.redo")}</button>
           <button onClick={clearMarkup} disabled={!markupStrokes.length} style={{background:"rgba(255,59,48,0.2)",border:"none",borderRadius:8,padding:"6px 10px",color:markupStrokes.length?"#ff6b6b":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>CLEAR</button>
         </div>
       )}
@@ -7541,7 +7602,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
         <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:10,background:"rgba(88,86,214,0.18)",borderBottom:"1px solid rgba(88,86,214,0.35)",flexShrink:0}}>
           <span style={{fontSize:14}}>📷</span>
           <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:"#fff"}}>Drag on the drawing to place the photo · tap to drop at default size</div>
-          <button onClick={cancelPendingPhoto} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:8,padding:"5px 10px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>CANCEL</button>
+          <button onClick={cancelPendingPhoto} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:8,padding:"5px 10px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{t("actions.cancel")}</button>
         </div>
       )}
 
@@ -7624,7 +7685,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
                   </div>
                 </div>
                 {item.kind==="pin"&&canPin&&<button onClick={()=>deletePin(item.id)} style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:7,padding:"4px 8px",color:"#ff8f8f",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>REMOVE</button>}
-                {item.kind==="note"&&canPin&&<button onClick={()=>deleteNote(item.id)} style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:7,padding:"4px 8px",color:"#ff8f8f",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>DELETE</button>}
+                {item.kind==="note"&&canPin&&<button onClick={()=>deleteNote(item.id)} style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:7,padding:"4px 8px",color:"#ff8f8f",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.delete")}</button>}
               </div>
             ))}
           </div>
@@ -7638,11 +7699,11 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff",marginBottom:6}}>ADD DRAWING NOTE</div>
             <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:12}}>Type or dictate a note. This appears in the consolidated list with pins and defects.</div>
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <input autoFocus value={noteText} onChange={e=>setNoteText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addNote()} placeholder="Type note or annotation..." style={{flex:1,padding:"12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
+              <input autoFocus value={noteText} onChange={e=>setNoteText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addNote()} placeholder={t("fields.note_placeholder")} style={{flex:1,padding:"12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
               <MicBtn onResult={t=>setNoteText(v=>v?(v+" "+t):t)} append currentValue={noteText}/>
             </div>
             <div style={{display:"flex",gap:8,marginTop:12}}>
-              <button onClick={()=>{setPendingNotePos(null);setNoteText("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CANCEL</button>
+              <button onClick={()=>{setPendingNotePos(null);setNoteText("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")}</button>
               <button onClick={addNote} disabled={!noteText.trim()} style={{flex:1,padding:10,borderRadius:10,border:"none",background:noteText.trim()?"#5856d6":"rgba(255,255,255,0.1)",color:noteText.trim()?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD NOTE</button>
             </div>
           </div>
@@ -7656,7 +7717,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff",marginBottom:6}}>ADD TEXT ANNOTATION</div>
             <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:12}}>Text appears directly on the drawing at the tapped location.</div>
             <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
-              <input autoFocus value={pendingTextValue} onChange={e=>setPendingTextValue(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submitMarkupText()} placeholder="Type text..." style={{flex:1,padding:"12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
+              <input autoFocus value={pendingTextValue} onChange={e=>setPendingTextValue(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submitMarkupText()} placeholder={t("markup.type_text")} style={{flex:1,padding:"12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
               <MicBtn onResult={t=>setPendingTextValue(v=>v?(v+" "+t):t)} append currentValue={pendingTextValue}/>
             </div>
             <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:12}}>
@@ -7666,7 +7727,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
               ))}
             </div>
             <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>{setPendingTextPos(null);setPendingTextValue("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CANCEL</button>
+              <button onClick={()=>{setPendingTextPos(null);setPendingTextValue("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")}</button>
               <button onClick={submitMarkupText} disabled={!pendingTextValue.trim()} style={{flex:1,padding:10,borderRadius:10,border:"none",background:pendingTextValue.trim()?"#ff6b00":"rgba(255,255,255,0.1)",color:pendingTextValue.trim()?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD TEXT</button>
             </div>
           </div>
@@ -7681,7 +7742,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
             <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:12}}>Enter the measurement (e.g. 3.5m, 1200mm, 4'-6"). Leave blank for no label.</div>
             <input autoFocus value={dimLabel} onChange={e=>setDimLabel(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){addMarkupStroke({...pendingDimStroke,label:dimLabel.trim()});setPendingDimStroke(null);setDimLabel("");}}} placeholder="e.g. 3500mm" style={{width:"100%",padding:"12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
             <div style={{display:"flex",gap:8,marginTop:12}}>
-              <button onClick={()=>{setPendingDimStroke(null);setDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CANCEL</button>
+              <button onClick={()=>{setPendingDimStroke(null);setDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")}</button>
               <button onClick={()=>{addMarkupStroke({...pendingDimStroke,label:dimLabel.trim()});setPendingDimStroke(null);setDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD</button>
             </div>
           </div>
@@ -7722,7 +7783,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
                 </div>
               </button>
             ))}
-            <button onClick={()=>setLinkEntry(null)} style={{width:"100%",background:"none",border:"1px solid rgba(255,255,255,0.15)",borderRadius:10,padding:12,color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",marginTop:4}}>CANCEL</button>
+            <button onClick={()=>setLinkEntry(null)} style={{width:"100%",background:"none",border:"1px solid rgba(255,255,255,0.15)",borderRadius:10,padding:12,color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",marginTop:4}}>{t("actions.cancel")}</button>
           </div>
         </div>
       )}
@@ -7746,17 +7807,17 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
             {/* Title */}
             <input value={qTitle} onChange={e=>setQTitle(e.target.value)} placeholder="Defect title..." style={{width:"100%",padding:12,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",marginBottom:12,boxSizing:"border-box"}}/>
             {/* Severity */}
-            <ComboField label="SEVERITY" value={qSev} onChange={v=>setQSev(v)} options={SEVERITY} placeholder="Select severity..."/>
+            <ComboField label={t("fields.severity")} value={qSev} onChange={v=>setQSev(v)} options={SEVERITY} placeholder={t("fields.severity_placeholder")}/>
             {/* Actions */}
             <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>{setQuickCreate(false);setQTitle("");setQPhoto(null);}} style={{flex:1,padding:12,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>BACK</button>
+              <button onClick={()=>{setQuickCreate(false);setQTitle("");setQPhoto(null);}} style={{flex:1,padding:12,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.back")}</button>
               <button disabled={!qTitle.trim()||qSaving} onClick={async()=>{
                 setQSaving(true);
                 try{
                   let photo=null;
                   if(qPhoto){photo=await compressPhoto(qPhoto);}
                   const entryData={title:qTitle,severity:qSev,status:"Open",entryType:"Defect",
-                    location:drawing.name,description:"Pinned on: "+drawing.name,
+                    location:drawing.name,description:t("drawings.pinned_on")+drawing.name,
                     photo:photo||null,extraPhotos:[],
                     projectId:currentProject?.id||"default",projectName:currentProject?.name||"",
                     loggedBy:member?.name||"",loggedByRole:member?.role||"",
@@ -7859,7 +7920,7 @@ function AdminAnalytics({defects,members,company,currentProject,projects,allDefe
   return(
     <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
-        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>ADMIN ANALYTICS</div>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>{t("dashboard.admin_analytics")}</div>
         <div style={{fontSize:10,fontWeight:700,color:"#ff3b30",background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>ADMIN ONLY</div>
       </div>
       <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:20}}>📁 {currentProject?.name||"All"} · {company?.companyName}</div>
@@ -7867,10 +7928,10 @@ function AdminAnalytics({defects,members,company,currentProject,projects,allDefe
       {/* Entries logged today/week/month */}
       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:8}}>ENTRIES LOGGED</div>
       <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
-        <StatCard label="TODAY" value={today} color="#30d158"/>
-        <StatCard label="THIS WEEK" value={week} color="#34aadc"/>
-        <StatCard label="THIS MONTH" value={month} color="#ff9500"/>
-        <StatCard label="ALL TIME" value={defects.length} color="#8e8e93"/>
+        <StatCard label={t("dashboard.today")} value={today} color="#30d158"/>
+        <StatCard label={t("dashboard.this_week")} value={week} color="#34aadc"/>
+        <StatCard label={t("dashboard.this_month")} value={month} color="#ff9500"/>
+        <StatCard label={t("dashboard.all_time")} value={defects.length} color="#8e8e93"/>
       </div>
 
       {/* Active users */}
@@ -7916,8 +7977,8 @@ function AdminAnalytics({defects,members,company,currentProject,projects,allDefe
       {/* Photos per entry */}
       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:8}}>PHOTOS</div>
       <div style={{display:"flex",gap:8,marginBottom:20}}>
-        <StatCard label="TOTAL PHOTOS" value={totalPhotos} color="#5856d6"/>
-        <StatCard label="AVG / ENTRY" value={avgPhotos} color="#e91e63"/>
+        <StatCard label={t("dashboard.total_photos")} value={totalPhotos} color="#5856d6"/>
+        <StatCard label={t("dashboard.avg_per_entry")} value={avgPhotos} color="#e91e63"/>
       </div>
 
       {/* Entry types breakdown */}
@@ -7963,7 +8024,7 @@ function AdminAnalytics({defects,members,company,currentProject,projects,allDefe
 }
 
 // ── App Root ──────────────────────────────────────────────────────
-const NAV=[{id:"dashboard",icon:"⊞",label:"Dashboard"},{id:"log",icon:"+",label:"Log"},{id:"drawings",icon:"📐",label:"Tag"},{id:"defects",icon:"≡",label:"Review"},{id:"report",icon:"◎",label:"Report"}];
+const NAV=[{id:"dashboard",icon:"⊞",labelKey:"nav.dashboard"},{id:"log",icon:"+",labelKey:"nav.log"},{id:"drawings",icon:"📐",labelKey:"nav.tag"},{id:"defects",icon:"≡",labelKey:"nav.review"},{id:"report",icon:"◎",labelKey:"nav.report"}];
 
 // Dropdown line icons — stroke-only, single color
 const DdIcon=({name,size=16})=>{
@@ -7979,16 +8040,21 @@ const DdIcon=({name,size=16})=>{
     case"help":return <svg {...p}><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5c.5-1.5 1.5-2 2.5-2 1.5 0 2.5 1 2.5 2.3 0 1.2-.8 1.7-1.5 2.2-.8.5-1 1-1 2"/><circle cx="12" cy="17" r="0.6" fill="currentColor"/></svg>;
     case"chat":return <svg {...p}><path d="M4 5h16v10H8l-4 4V5z"/></svg>;
     case"logout":return <svg {...p}><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 8l-4 4 4 4"/><path d="M6 12h10"/></svg>;
+    case"globe":return <svg {...p}><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8"/><path d="M12 3c2.2 2.5 3.5 5.5 3.5 9s-1.3 6.5-3.5 9c-2.2-2.5-3.5-5.5-3.5-9s1.3-6.5 3.5-9z"/></svg>;
     default:return null;
   }
 };
 
 
 function App(){
+  const{t,lang,setLang,languages}=useLang();
+  // Initialize i18n on first mount
+  useEffect(()=>{initI18n().then(()=>setLang(localStorage.getItem("lang")||"en"));},[]);
   const[authUser,setAuthUser]=useState(null);
   const[authLoading,setAuthLoading]=useState(true);
   const[memberLoading,setMemberLoading]=useState(false);
   const[inviteCode,setInviteCode]=useState("");
+  const[showLangPicker,setShowLangPicker]=useState(false);
   const[company,setCompany]=useState(()=>local.get(COMPANY_KEY));
   const[member,setMember]=useState(null);
   const[members,setMembers]=useState([]);
@@ -8318,7 +8384,7 @@ function App(){
     <div style={{minHeight:"100vh",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{textAlign:"center"}}>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#ff6b00",marginBottom:16}}>SITESHRIMP</div>
-        {memberLoading?<><Spin size={24}/><div style={{color:"rgba(255,255,255,0.4)",fontSize:12,marginTop:12}}>Loading workspace...</div></>:(
+        {memberLoading?<><Spin size={24}/><div style={{color:"rgba(255,255,255,0.4)",fontSize:12,marginTop:12}}>{t("messages.loading_workspace")}</div></>:(
           <div style={{color:"rgba(255,255,255,0.6)",fontSize:14,maxWidth:280}}>
             <div style={{marginBottom:12}}>Could not find your membership record.</div>
             <button onClick={()=>{setCompany(null);local.del(COMPANY_KEY);}} style={{background:"#ff6b00",border:"none",color:"#fff",fontSize:14,cursor:"pointer",padding:"10px 20px",borderRadius:8,marginBottom:8,width:"100%"}}>Try another company</button>
@@ -8353,7 +8419,7 @@ function App(){
           <button onClick={()=>setShowProjects(true)} style={{background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0,flex:1,minWidth:0,maxWidth:"calc(100% - 240px)"}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:8.5,fontWeight:700,color:"#ff6b00",letterSpacing:"0.13em",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{company.companyName}</div>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13.5,fontWeight:800,color:"#fff",marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-            {currentProject?.name||"SELECT PROJECT"} <span style={{fontSize:10,color:"rgba(255,255,255,0.3)"}}>▼</span>
+            {currentProject?.name||t("dashboard.select_project")} <span style={{fontSize:10,color:"rgba(255,255,255,0.3)"}}>▼</span>
           </div>
         </button>
           <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"nowrap",justifyContent:"flex-end",flexShrink:0}}>
@@ -8368,13 +8434,15 @@ function App(){
               const optPill={background:"rgba(255,255,255,0.06)",color:"rgba(255,255,255,0.4)",border:"1px solid rgba(255,255,255,0.1)"};
               const headerPct=Math.round((setupDone/setupTotal)*100);
               const items=[
-                {section:"PROJECT"},
-                {label:"Projects",desc:"Create or switch projects",icon:"folder",done:setupChecks.project,onClick:()=>{setShowProjects(true);setShowSettingsMenu(false);}},
-                ...(isAdmin?[{label:"Team Management",desc:"Invite and manage members",icon:"users",done:setupChecks.team,onClick:()=>{setShowUsers(true);setShowSettingsMenu(false);}}]:[]),
-                {section:"ENHANCE"},
-                {label:"AI Setup",desc:"Vision, voice and AI search",icon:"ai",done:setupChecks.ai,onClick:()=>{setShowGemini(true);setShowSettingsMenu(false);}},
-                {label:"Telegram Alerts",desc:"Real-time defect pings",icon:"plane",done:setupChecks.telegram,onClick:()=>{setShowTg(true);setShowSettingsMenu(false);}},
-                {label:"Storage",desc:"Backend and file hosting",icon:"disk",optional:true,onClick:()=>{setShowStorage(true);setShowSettingsMenu(false);}},
+                {section:t("settings.section_project")},
+                {label:t("settings.projects"),desc:t("settings.projects_desc"),icon:"folder",done:setupChecks.project,onClick:()=>{setShowProjects(true);setShowSettingsMenu(false);}},
+                ...(isAdmin?[{label:t("settings.team"),desc:t("settings.team_desc"),icon:"users",done:setupChecks.team,onClick:()=>{setShowUsers(true);setShowSettingsMenu(false);}}]:[]),
+                {section:t("settings.section_enhance")},
+                {label:t("settings.ai_setup"),desc:t("settings.ai_desc"),icon:"ai",done:setupChecks.ai,onClick:()=>{setShowGemini(true);setShowSettingsMenu(false);}},
+                {label:t("settings.telegram"),desc:t("settings.telegram_desc"),icon:"plane",done:setupChecks.telegram,onClick:()=>{setShowTg(true);setShowSettingsMenu(false);}},
+                {label:t("settings.storage"),desc:t("settings.storage_desc"),icon:"disk",optional:true,onClick:()=>{setShowStorage(true);setShowSettingsMenu(false);}},
+                {section:t("language.title")},
+                {label:t("settings.language"),desc:(languages.find(l=>l.code===lang)||{}).name||"English",icon:"globe",optional:true,onClick:()=>{setShowLangPicker(true);setShowSettingsMenu(false);}},
               ];
               return(
               <div className="dd-panel" onMouseEnter={()=>clearTimeout(settingsMenuTimer.current)} onMouseLeave={()=>{settingsMenuTimer.current=setTimeout(()=>setShowSettingsMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:8,background:"linear-gradient(180deg,#2e2e32 0%,#1f1f22 100%)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,overflow:"hidden",zIndex:100,minWidth:278,boxShadow:"0 16px 48px rgba(0,0,0,0.55),0 2px 10px rgba(0,0,0,0.35)"}}>
@@ -8382,8 +8450,8 @@ function App(){
                 <div style={{padding:"13px 16px 12px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"linear-gradient(180deg,rgba(255,107,0,0.06),rgba(255,107,0,0))"}}>
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
                     <div>
-                      <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.14em",fontFamily:"'Barlow Condensed',sans-serif"}}>SETTINGS</div>
-                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff",marginTop:2,lineHeight:1}}>{setupComplete?"All set up":"Finish setup"}</div>
+                      <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.14em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("settings.title")}</div>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff",marginTop:2,lineHeight:1}}>{setupComplete?t("settings.all_set"):t("settings.finish_setup")}</div>
                     </div>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:setupComplete?"#30d158":"#ff9500"}}>{setupDone}/{setupTotal}</div>
                   </div>
@@ -8402,7 +8470,7 @@ function App(){
                         <div className="dd-label">{it.label}</div>
                         <div className="dd-sub">{it.desc}</div>
                       </div>
-                      <span className="dd-pill" style={it.optional?optPill:(it.done?donePill:todoPill)}>{it.optional?"OPT":(it.done?"DONE":"TODO")}</span>
+                      <span className="dd-pill" style={it.optional?optPill:(it.done?donePill:todoPill)}>{it.optional?t("settings.opt_pill"):(it.done?t("settings.done_pill"):t("settings.todo_pill"))}</span>
                     </button>
                   ))}
                 </div>
@@ -8431,28 +8499,28 @@ function App(){
                 <div style={{padding:"6px 0"}}>
                   <button className="dd-row" onClick={()=>{setShowProfile(true);setShowAvatarMenu(false);}}>
                     <div className="dd-ico"><DdIcon name="user"/></div>
-                    <div style={{flex:1,minWidth:0}}><div className="dd-label">My Profile</div><div className="dd-sub">Account details</div></div>
+                    <div style={{flex:1,minWidth:0}}><div className="dd-label">{t("avatar_menu.profile")}</div><div className="dd-sub">{t("profile.account")}</div></div>
                   </button>
                   {isAdmin&&(
                     <button className="dd-row" onClick={()=>{setShowAdminAnalytics(true);setShowAvatarMenu(false);}}>
                       <div className="dd-ico"><DdIcon name="chart"/></div>
-                      <div style={{flex:1,minWidth:0}}><div className="dd-label">Admin Analytics</div><div className="dd-sub">Usage and insights</div></div>
+                      <div style={{flex:1,minWidth:0}}><div className="dd-label">{t("avatar_menu.admin_analytics")}</div><div className="dd-sub">{t("avatar_menu.usage_insights")}</div></div>
                     </button>
                   )}
                   <button className="dd-row" onClick={()=>{setShowHelp(true);setShowAvatarMenu(false);}}>
                     <div className="dd-ico"><DdIcon name="help"/></div>
-                    <div style={{flex:1,minWidth:0}}><div className="dd-label">Help & Features</div><div className="dd-sub">Guides and tips</div></div>
+                    <div style={{flex:1,minWidth:0}}><div className="dd-label">{t("avatar_menu.help")}</div><div className="dd-sub">{t("avatar_menu.guides")}</div></div>
                   </button>
                   <button className="dd-row" onClick={()=>{setShowFeedback(true);setFbSent(false);setFbText("");setShowAvatarMenu(false);}}>
                     <div className="dd-ico"><DdIcon name="chat"/></div>
-                    <div style={{flex:1,minWidth:0}}><div className="dd-label">Feedback</div><div className="dd-sub">Send us a note</div></div>
+                    <div style={{flex:1,minWidth:0}}><div className="dd-label">{t("avatar_menu.feedback")}</div><div className="dd-sub">{t("avatar_menu.send_note")}</div></div>
                   </button>
                 </div>
                 {/* Sign out footer */}
                 <div style={{borderTop:"1px solid rgba(255,255,255,0.06)",padding:"6px 0"}}>
                   <button className="dd-row danger" onClick={()=>{setShowAvatarMenu(false);signOut();}}>
                     <div className="dd-ico" style={{color:"#ff8f8f",borderColor:"rgba(255,143,143,0.3)"}}><DdIcon name="logout"/></div>
-                    <div style={{flex:1,minWidth:0}}><div className="dd-label" style={{color:"#ff8f8f"}}>Sign Out</div><div className="dd-sub">End this session</div></div>
+                    <div style={{flex:1,minWidth:0}}><div className="dd-label" style={{color:"#ff8f8f"}}>{t("avatar_menu.sign_out")}</div><div className="dd-sub">{t("avatar_menu.end_session")}</div></div>
                   </button>
                 </div>
               </div>
@@ -8466,7 +8534,7 @@ function App(){
         <div style={{background:"#1a1a1a",padding:"0 12px 10px"}}>
           <button onClick={()=>{if(aiEnabled)setShowAiSearch(true);}} title={aiEnabled?"AI natural-language query across your entries":"Configure AI in Settings to enable"} style={{width:"100%",display:"flex",alignItems:"center",gap:10,background:aiEnabled?"rgba(255,255,255,0.07)":"rgba(255,255,255,0.04)",border:`1px solid ${aiEnabled?"rgba(255,107,0,0.35)":"rgba(255,255,255,0.08)"}`,borderRadius:10,padding:"9px 12px",cursor:aiEnabled?"pointer":"not-allowed",textAlign:"left"}}>
             <span style={{fontSize:14,color:aiEnabled?"#ff6b00":"rgba(255,255,255,0.3)"}}>💬</span>
-            <span style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:aiEnabled?"rgba(255,255,255,0.75)":"rgba(255,255,255,0.35)",letterSpacing:"0.04em"}}>{aiEnabled?"AI QUERY — ask in plain English…":"AI QUERY — configure AI in Settings"}</span>
+            <span style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:aiEnabled?"rgba(255,255,255,0.75)":"rgba(255,255,255,0.35)",letterSpacing:"0.04em"}}>{aiEnabled?t("ai.query_enabled"):t("ai.query_disabled")}</span>
             {aiEnabled&&<span style={{fontSize:10,fontWeight:800,color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",background:"rgba(255,107,0,0.12)",border:"1px solid rgba(255,107,0,0.3)",borderRadius:8,padding:"2px 7px"}}>ASK</span>}
           </button>
         </div>
@@ -8479,7 +8547,7 @@ function App(){
       <div style={{flex:1,overflowY:"auto",paddingBottom:84}}>
         {tab==="dashboard"&&<Dashboard defects={defects} onView={setViewing} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} company={company} currentProject={currentProject} member={member} onDrawings={()=>setTab("drawings")} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")}/>}
-        {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>Viewer access — defect logging disabled</div>}
+        {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("dashboard")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect}/>}
         {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate}/>}
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company}/>}
@@ -8490,7 +8558,7 @@ function App(){
         {navItems.map(n=>(
           <button key={n.id} onClick={()=>setTab(n.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"4px 0"}}>
             <div style={{height:26,display:"flex",alignItems:"center",justifyContent:"center",fontSize:n.id==="log"?28:22,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.55)",fontWeight:700,lineHeight:1,fontFamily:n.id==="log"?"'Barlow Condensed',sans-serif":"inherit"}}>{n.icon}</div>
-            <div style={{fontSize:11,fontWeight:700,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",lineHeight:1}}>{n.label.toUpperCase()}</div>
+            <div style={{fontSize:11,fontWeight:700,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",lineHeight:1}}>{t(n.labelKey).toUpperCase()}</div>
           </button>
         ))}
       </div>
@@ -8502,10 +8570,10 @@ function App(){
         <div style={{position:"fixed",inset:0,zIndex:500,background:"#1a1a1a",overflowY:"auto"}}>
           <div style={{maxWidth:430,margin:"0 auto",padding:"0 0 40px"}}>
             <div style={{background:"#1a1a1a",padding:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:1}}>
-              <button onClick={()=>setShowHelp(false)} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>← BACK</button>
+              <button onClick={()=>setShowHelp(false)} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.back")}</button>
               <div style={{display:"flex",gap:0,flex:1}}>
-                <button onClick={()=>setHelpTab("help")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="help"?"2px solid #ff6b00":"2px solid transparent",color:helpTab==="help"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>HELP</button>
-                <button onClick={()=>setHelpTab("features")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="features"?"2px solid #ff6b00":"2px solid transparent",color:helpTab==="features"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>FEATURES</button>
+                <button onClick={()=>setHelpTab("help")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="help"?"2px solid #ff6b00":"2px solid transparent",color:helpTab==="help"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{t("help.title").toUpperCase()}</button>
+                <button onClick={()=>setHelpTab("features")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="features"?"2px solid #ff6b00":"2px solid transparent",color:helpTab==="features"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{t("help.features")}</button>
               </div>
             </div>
             <div style={{padding:"20px 16px"}}>
@@ -8533,7 +8601,7 @@ function App(){
                       ["Report","Review charts, filtered statistics, and export or email reports."],
                       ["Admin","Manage analytics, projects, team settings, and system controls (Admin only)."],
                     ]],
-                    ["Logging an Entry",[
+                    [t("log.logging_entry"),[
                       ["","1. Choose an entry type such as Defect, Observation, Instruction, or Update."],
                       ["","2. Add or capture photos on site."],
                       ["","3. Use AI analysis to suggest the title, severity, description, trade, and assignee."],
@@ -8543,12 +8611,12 @@ function App(){
                     ["Drawings",[
                       ["","Open Drawings Tagging from the Dashboard to upload or view drawings. You can place pins on plans, link them to existing entries, create entries directly from a drawing, use the heatmap to spot problem areas, and overlay site photos onto PDF comparisons with markup on top."],
                     ]],
-                    ["Entry Status Flow",[
-                      ["Open","New item logged and awaiting action."],
-                      ["In Progress","Work has started on this item."],
-                      ["Done","Work has been completed and is pending review."],
-                      ["Verified","The item has been checked and confirmed."],
-                      ["Closed","The item is fully resolved and archived."],
+                    [t("status.flow_title"),[
+                      [t("status.open"),t("status.open_desc")],
+                      [t("status.in_progress"),t("status.in_progress_desc")],
+                      [t("status.done"),t("status.done_desc")],
+                      [t("status.verified"),t("status.verified_desc")],
+                      [t("status.closed"),t("status.closed_desc")],
                     ]],
                     ["Header Tools",[
                       ["Project selector","Switch between projects or create a new one."],
@@ -8562,12 +8630,12 @@ function App(){
                       ["Feedback","Send suggestions or report bugs."],
                       ["Profile","Manage your account settings and sign out."],
                     ]],
-                    ["Practical Tips",[
-                      ["Offline use","You can continue logging entries while offline and sync them later when you reconnect."],
+                    [t("help.practical_tips"),[
+                      [t("messages.offline_use"),t("messages.offline_continue")],
                       ["Multiple projects","Use the project selector to switch between project workspaces."],
                       ["CSV export","Use the Report tab to download filtered data for sharing or analysis."],
-                      ["Voice input","Use the mic button in supported fields to speak instead of typing."],
-                      ["Batch logging","If you are logging several issues in the same area, reuse the same location to work faster."],
+                      [t("onboarding.voice_input"),t("onboarding.voice_tip")],
+                      [t("log.batch_logging"),t("log.reuse_location_tip")],
                     ]],
                   ].map(([section,items])=>(
                     <div key={section} style={{marginBottom:24}}>
@@ -8623,7 +8691,7 @@ function App(){
 
               <div style={{textAlign:"center",marginTop:20}}>
                 <div style={{fontSize:11,color:"rgba(255,255,255,0.2)",fontFamily:"'Barlow Condensed',sans-serif"}}>SiteShrimp v2 — Built for teams that deliver</div>
-                <button onClick={()=>setShowHelp(false)} style={{marginTop:16,background:"#ff6b00",border:"none",borderRadius:10,padding:"12px 32px",color:"#fff",fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>GOT IT</button>
+                <button onClick={()=>setShowHelp(false)} style={{marginTop:16,background:"#ff6b00",border:"none",borderRadius:10,padding:"12px 32px",color:"#fff",fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>{t("actions.ok")}</button>
               </div>
             </div>
           </div>
@@ -8632,24 +8700,24 @@ function App(){
       {showFeedback&&(
         <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
           <div style={{background:"#1a1a1a",borderRadius:16,padding:24,width:"100%",maxWidth:400,animation:"fadeIn 0.15s ease"}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#fff",marginBottom:4}}>FEEDBACK</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#fff",marginBottom:4}}>{t("feedback.title").toUpperCase()}</div>
             <div style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:20,lineHeight:1.5}}>Help us improve SiteShrimp! Share your thoughts on the design, usability, or features. What works well? What feels confusing? Any ideas for improvement?</div>
             {fbSent?(
               <div style={{textAlign:"center",padding:"20px 0"}}>
                 <div style={{fontSize:28,marginBottom:10}}>✓</div>
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:700,color:"#00e564",marginBottom:6}}>THANK YOU!</div>
                 <div style={{fontSize:13,color:"rgba(255,255,255,0.5)",marginBottom:20}}>Your feedback has been recorded. We read every submission.</div>
-                <button onClick={()=>setShowFeedback(false)} style={{background:"#ff6b00",border:"none",borderRadius:10,padding:"12px 32px",color:"#fff",fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>DONE</button>
+                <button onClick={()=>setShowFeedback(false)} style={{background:"#ff6b00",border:"none",borderRadius:10,padding:"12px 32px",color:"#fff",fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>{t("actions.done")}</button>
               </div>
             ):(
               <>
                 <div style={{display:"flex",gap:6,marginBottom:14}}>
-                  {[["suggestion","Suggestion"],["bug","Bug Report"],["praise","What I Like"],["other","Other"]].map(([id,label])=>(
+                  {[["suggestion",t("feedback.suggestion")],["bug",t("feedback.bug_report")],["praise",t("feedback.what_i_like")],["other","Other"]].map(([id,label])=>(
                     <button key={id} onClick={()=>setFbType(id)} style={{flex:1,padding:"8px 4px",borderRadius:8,border:`1.5px solid ${fbType===id?"#ff6b00":"rgba(255,255,255,0.1)"}`,background:fbType===id?"rgba(255,107,0,0.15)":"rgba(255,255,255,0.05)",color:fbType===id?"#ff6b00":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{label}</button>
                   ))}
                 </div>
                 <div style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:16}}>
-                  <textarea value={fbText} onChange={e=>setFbText(e.target.value)} placeholder="Type your feedback here... What would make this app better for your team?" rows={4} style={{flex:1,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"12px",color:"#fff",fontSize:14,resize:"none",fontFamily:"'Barlow',sans-serif"}}/>
+                  <textarea value={fbText} onChange={e=>setFbText(e.target.value)} placeholder={t("feedback.placeholder")} rows={4} style={{flex:1,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"12px",color:"#fff",fontSize:14,resize:"none",fontFamily:"'Barlow',sans-serif"}}/>
                   <MicBtn onResult={t=>setFbText(t)} append={true} currentValue={fbText}/>
                 </div>
                 <button onClick={async()=>{
@@ -8661,9 +8729,9 @@ function App(){
                   }catch(e){console.warn("Feedback save failed:",e);}
                   setFbSending(false);
                 }} disabled={fbSending||!fbText.trim()} style={{width:"100%",background:fbText.trim()?"#ff6b00":"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"14px",color:"#fff",fontSize:15,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",opacity:fbSending?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-                  {fbSending?<Spin size={16}/>:null}{fbSending?"SENDING...":"SUBMIT FEEDBACK"}
+                  {fbSending?<Spin size={16}/>:null}{fbSending?t("messages.sending"):t("actions.submit_feedback")}
                 </button>
-                <button onClick={()=>setShowFeedback(false)} style={{width:"100%",background:"none",border:"none",color:"rgba(255,255,255,0.3)",fontSize:12,cursor:"pointer",padding:"12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600}}>Cancel</button>
+                <button onClick={()=>setShowFeedback(false)} style={{width:"100%",background:"none",border:"none",color:"rgba(255,255,255,0.3)",fontSize:12,cursor:"pointer",padding:"12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600}}>{t("actions.cancel")}</button>
               </>
             )}
           </div>
@@ -8676,11 +8744,34 @@ function App(){
       {showUsers&&<UserManagement onClose={()=>setShowUsers(false)} company={company} member={member} members={members}/>}
       {showAdminAnalytics&&isAdmin&&(
         <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:300,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
-          <SettingsBack onClose={()=>setShowAdminAnalytics(false)} title="ADMIN ANALYTICS"/>
+          <SettingsBack onClose={()=>setShowAdminAnalytics(false)} title={t("dashboard.admin_analytics")}/>
           <AdminAnalytics defects={defects} members={members} company={company} currentProject={currentProject} projects={projects}/>
         </div>
       )}
       {showProjects&&<ProjectManagement onClose={()=>setShowProjects(false)} company={company} member={member} projects={projects} currentProject={currentProject} onSelect={p=>{selectProject(p);setShowProjects(false);}}/>}
+      {/* Language Picker */}
+      {showLangPicker&&(
+        <div style={{position:"fixed",inset:0,zIndex:500,background:"#1a1a1a",overflowY:"auto",animation:"slideUp 0.25s ease"}}>
+          <div style={{maxWidth:430,margin:"0 auto"}}>
+            <SettingsBack onClose={()=>setShowLangPicker(false)} title={t("language.title")}/>
+            <div style={{padding:"16px"}}>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.1em",marginBottom:12}}>{t("language.select").toUpperCase()}</div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {languages.map(l=>(
+                  <button key={l.code} onClick={()=>{setLang(l.code);setShowLangPicker(false);}} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",background:lang===l.code?"rgba(255,107,0,0.12)":"rgba(255,255,255,0.04)",border:lang===l.code?"1px solid rgba(255,107,0,0.4)":"1px solid rgba(255,255,255,0.08)",borderRadius:10,cursor:"pointer",textAlign:"left"}}>
+                    <span style={{fontSize:22}}>{l.flag}</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:lang===l.code?"#ff6b00":"#fff"}}>{l.name}</div>
+                      <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginTop:1}}>{l.code}</div>
+                    </div>
+                    {lang===l.code&&<span style={{color:"#ff6b00",fontSize:16,fontWeight:800}}>✓</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
