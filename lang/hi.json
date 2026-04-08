@@ -471,7 +471,7 @@
     "app_password": "ऐप पासवर्ड",
     "password_placeholder": "अपना ऐप पासवर्ड यहां पेस्ट करें",
     "custom_domain": "कस्टम डोमेन",
-    "gmail_hint": "Google खाता → सुरक्षा → 2-चरणीय सत्यापन → ऐप पासवर्ड → एक जनरेट करें पर जाएं। इसे ऊपर चिपकाएँ.",
+    "gmail_hint": "<a href=\"https://myaccount.google.com/signinoptions/two-step-verification\" target=\"_blank\" rel=\"noopener\" style=\"color:#ff6b00;text-decoration:underline\">Google खाता → सुरक्षा → 2-चरणीय सत्यापन</a> → ऐप पासवर्ड → एक जनरेट करें पर जाएं। इसे ऊपर चिपकाएँ.",
     "outlook_hint": "अपने सामान्य पासवर्ड का प्रयोग करें. यदि एमएफए चालू है, तो खाता सुरक्षा → ऐप पासवर्ड पर जाएं।",
     "yahoo_hint": "याहू अकाउंट → सुरक्षा → ऐप पासवर्ड जेनरेट करें पर जाएं।",
     "zoho_hint": "अपने ज़ोहो पासवर्ड का उपयोग करें। ज़ोहो मेल → सेटिंग्स → मेल खातों में एसएमटीपी सक्षम करें।",

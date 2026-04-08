@@ -471,7 +471,7 @@
     "app_password": "รหัสผ่านสำหรับแอป",
     "password_placeholder": "วางรหัสผ่านสำหรับแอปของคุณที่นี่",
     "custom_domain": "โดเมนที่กำหนดเอง",
-    "gmail_hint": "ไปที่บัญชี Google → ความปลอดภัย → การยืนยันแบบ 2 ขั้นตอน → รหัสผ่านสำหรับแอป → สร้างหนึ่งรายการ แปะไว้ข้างบน..",
+    "gmail_hint": "<a href=\"https://myaccount.google.com/signinoptions/two-step-verification\" target=\"_blank\" rel=\"noopener\" style=\"color:#ff6b00;text-decoration:underline\">ไปที่บัญชี Google → ความปลอดภัย → การยืนยันแบบ 2 ขั้นตอน</a> → รหัสผ่านสำหรับแอป → สร้างหนึ่งรายการ แปะไว้ข้างบน..",
     "outlook_hint": "ใช้รหัสผ่านปกติของคุณ หากเปิด MFA ไว้ ให้ไปที่ความปลอดภัยของบัญชี → รหัสผ่านสำหรับแอป",
     "yahoo_hint": "ไปที่บัญชี Yahoo → ความปลอดภัย → สร้างรหัสผ่านสำหรับแอป",
     "zoho_hint": "ใช้รหัสผ่าน Zoho ของคุณ เปิดใช้งาน SMTP ใน Zoho Mail → การตั้งค่า → บัญชีเมล",

@@ -471,7 +471,7 @@
     "app_password": "APP-PASSORD",
     "password_placeholder": "Lim inn app-passordet ditt her",
     "custom_domain": "Egendefinert domene",
-    "gmail_hint": "Gå til Google-konto → Sikkerhet → 2-trinns bekreftelse → App-passord → generer ett. Lim den inn over.",
+    "gmail_hint": "<a href=\"https://myaccount.google.com/signinoptions/two-step-verification\" target=\"_blank\" rel=\"noopener\" style=\"color:#ff6b00;text-decoration:underline\">Gå til Google-konto → Sikkerhet → 2-trinns bekreftelse</a> → App-passord → generer ett. Lim den inn over.",
     "outlook_hint": "Bruk ditt vanlige passord. Hvis MFA er på, går du til kontosikkerhet → App-passord.",
     "yahoo_hint": "Gå til Yahoo-konto → Sikkerhet → Generer app-passord.",
     "zoho_hint": "Bruk ditt Zoho-passord. Aktiver SMTP i Zoho Mail → Innstillinger → E-postkontoer.",

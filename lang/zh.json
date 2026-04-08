@@ -471,7 +471,7 @@
     "app_password": "应用程序密码",
     "password_placeholder": "将您的应用程序密码粘贴到此处",
     "custom_domain": "自定义域",
-    "gmail_hint": "转到 Google 帐户 → 安全 → 两步验证 → 应用程序密码 → 生成一个。 粘贴在上面。",
+    "gmail_hint": "<a href=\"https://myaccount.google.com/signinoptions/two-step-verification\" target=\"_blank\" rel=\"noopener\" style=\"color:#ff6b00;text-decoration:underline\">转到 Google 帐户 → 安全 → 两步验证</a> → 应用程序密码 → 生成一个。 粘贴在上面。",
     "outlook_hint": "使用您的普通密码。 如果 MFA 已打开，请转至帐户安全 → 应用程序密码。",
     "yahoo_hint": "转到雅虎帐户→安全→生成应用程序密码。",
     "zoho_hint": "使用您的 Zoho 密码。 在 Zoho Mail → 设置 → 邮件帐户中启用 SMTP。",

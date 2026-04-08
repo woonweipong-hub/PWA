@@ -2730,7 +2730,7 @@ function SmtpSetup(){
           <button key={p.name} onClick={()=>pickProvider(p.name)} style={{padding:"7px 14px",borderRadius:8,border:provider===p.name?"2px solid #ff6b00":"1.5px solid #ddd",background:provider===p.name?"rgba(255,107,0,0.06)":"#fff",fontSize:12,fontWeight:provider===p.name?700:500,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",color:provider===p.name?"#ff6b00":"#555"}}>{p.name}</button>
         ))}
       </div>
-      {preset.hint&&<div style={{fontSize:11,color:"#888",marginBottom:12,background:"rgba(255,107,0,0.04)",borderRadius:8,padding:"8px 10px",lineHeight:1.5}}>💡 {preset.hint}</div>}
+      {preset.hint&&<div style={{fontSize:11,color:"#888",marginBottom:12,background:"rgba(255,107,0,0.04)",borderRadius:8,padding:"8px 10px",lineHeight:1.5}} dangerouslySetInnerHTML={{__html:"💡 "+preset.hint}}/>}
       <label style={lbl()}>{t("email.your_email")}</label>
       <input value={email} onChange={e=>setEmail(e.target.value)} placeholder={t("email.email_placeholder")} type="email" style={{...inp,marginBottom:12}}/>
       <label style={lbl()}>{t("email.app_password")}</label>

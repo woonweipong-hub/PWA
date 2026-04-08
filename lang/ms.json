@@ -471,7 +471,7 @@
     "app_password": "KATA LALUAN APP",
     "password_placeholder": "Tampal kata laluan apl anda di sini",
     "custom_domain": "Domain tersuai",
-    "gmail_hint": "Pergi ke Akaun Google → Keselamatan → Pengesahan 2 Langkah → Kata Laluan Apl → jana satu. Tampal di atas.",
+    "gmail_hint": "<a href=\"https://myaccount.google.com/signinoptions/two-step-verification\" target=\"_blank\" rel=\"noopener\" style=\"color:#ff6b00;text-decoration:underline\">Pergi ke Akaun Google → Keselamatan → Pengesahan 2 Langkah</a> → Kata Laluan Apl → jana satu. Tampal di atas.",
     "outlook_hint": "Gunakan kata laluan biasa anda. Jika MFA dihidupkan, pergi ke keselamatan akaun → Kata Laluan Apl.",
     "yahoo_hint": "Pergi ke Akaun Yahoo → Keselamatan → Jana Kata Laluan Apl.",
     "zoho_hint": "Gunakan kata laluan Zoho anda. Dayakan SMTP dalam Mel Zoho → Tetapan → Akaun Mel.",

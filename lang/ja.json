@@ -471,7 +471,7 @@
     "app_password": "アプリのパスワード",
     "password_placeholder": "アプリのパスワードをここに貼り付けます",
     "custom_domain": "カスタムドメイン",
-    "gmail_hint": "「Google アカウント」→「セキュリティ」→「2 段階認証プロセス」→「アプリ パスワード」に移動し、パスワードを生成します。 上に貼り付けます。",
+    "gmail_hint": "<a href=\"https://myaccount.google.com/signinoptions/two-step-verification\" target=\"_blank\" rel=\"noopener\" style=\"color:#ff6b00;text-decoration:underline\">「Google アカウント」→「セキュリティ」→「2 段階認証プロセス」</a> →「アプリ パスワード」に移動し、パスワードを生成します。 上に貼り付けます。",
     "outlook_hint": "通常のパスワードを使用してください。 MFA がオンの場合は、「アカウント セキュリティ」→「アプリ パスワード」に移動します。",
     "yahoo_hint": "「Yahooアカウント」→「セキュリティ」→「アプリパスワードの生成」に移動します。",
     "zoho_hint": "Zoho のパスワードを使用してください。 「Zoho Mail」→「設定」→「メールアカウント」でSMTPを有効にします。",

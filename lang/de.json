@@ -471,7 +471,7 @@
     "app_password": "APP-PASSWORT",
     "password_placeholder": "Fügen Sie hier Ihr App-Passwort ein",
     "custom_domain": "Benutzerdefinierte Domäne",
-    "gmail_hint": "Gehen Sie zu Google-Konto → Sicherheit → Bestätigung in zwei Schritten → App-Passwörter → generieren Sie eins. Fügen Sie es oben ein.",
+    "gmail_hint": "<a href=\"https://myaccount.google.com/signinoptions/two-step-verification\" target=\"_blank\" rel=\"noopener\" style=\"color:#ff6b00;text-decoration:underline\">Gehen Sie zu Google-Konto → Sicherheit → Bestätigung in zwei Schritten</a> → App-Passwörter → generieren Sie eins. Fügen Sie es oben ein.",
     "outlook_hint": "Verwenden Sie Ihr normales Passwort. Wenn MFA aktiviert ist, gehen Sie zu Kontosicherheit → App-Passwörter.",
     "yahoo_hint": "Gehen Sie zu Yahoo-Konto → Sicherheit → App-Passwort generieren.",
     "zoho_hint": "Verwenden Sie Ihr Zoho-Passwort. Aktivieren Sie SMTP in Zoho Mail → Einstellungen → E-Mail-Konten.",

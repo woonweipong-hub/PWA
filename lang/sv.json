@@ -471,7 +471,7 @@
     "app_password": "APP-LÖSENORD",
     "password_placeholder": "Klistra in ditt applösenord här",
     "custom_domain": "Anpassad domän",
-    "gmail_hint": "Gå till Google-konto → Säkerhet → Tvåstegsverifiering → Applösenord → generera ett. Klistra in det ovan.",
+    "gmail_hint": "<a href=\"https://myaccount.google.com/signinoptions/two-step-verification\" target=\"_blank\" rel=\"noopener\" style=\"color:#ff6b00;text-decoration:underline\">Gå till Google-konto → Säkerhet → Tvåstegsverifiering</a> → Applösenord → generera ett. Klistra in det ovan.",
     "outlook_hint": "Använd ditt vanliga lösenord. Om MFA är på, gå till kontosäkerhet → Applösenord.",
     "yahoo_hint": "Gå till Yahoo Account → Security → Generate App Password.",
     "zoho_hint": "Använd ditt Zoho-lösenord. Aktivera SMTP i Zoho Mail → Inställningar → E-postkonton.",

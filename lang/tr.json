@@ -471,7 +471,7 @@
     "app_password": "UYGULAMA ŞİFRESİ",
     "password_placeholder": "Uygulama şifrenizi buraya yapıştırın",
     "custom_domain": "Özel alan adı",
-    "gmail_hint": "Google Hesabı → Güvenlik → 2 Adımlı Doğrulama → Uygulama Şifreleri → bir tane oluşturun'a gidin. Yukarıya yapıştırın.",
+    "gmail_hint": "<a href=\"https://myaccount.google.com/signinoptions/two-step-verification\" target=\"_blank\" rel=\"noopener\" style=\"color:#ff6b00;text-decoration:underline\">Google Hesabı → Güvenlik → 2 Adımlı Doğrulama</a> → Uygulama Şifreleri → bir tane oluşturun'a gidin. Yukarıya yapıştırın.",
     "outlook_hint": "Normal şifrenizi kullanın. MFA açıksa hesap güvenliği → Uygulama Şifreleri'ne gidin.",
     "yahoo_hint": "Yahoo Hesabı → Güvenlik → Uygulama Şifresi Oluştur seçeneğine gidin.",
     "zoho_hint": "Zoho şifrenizi kullanın. Zoho Mail → Ayarlar → Posta Hesapları'nda SMTP'yi etkinleştirin.",

@@ -471,7 +471,7 @@
     "app_password": "PASSWORD DELL'APP",
     "password_placeholder": "Incolla qui la password dell'app",
     "custom_domain": "Dominio personalizzato",
-    "gmail_hint": "Vai su Account Google → Sicurezza → Verifica in due passaggi → Password per le app → generane una. Incollalo sopra.",
+    "gmail_hint": "<a href=\"https://myaccount.google.com/signinoptions/two-step-verification\" target=\"_blank\" rel=\"noopener\" style=\"color:#ff6b00;text-decoration:underline\">Vai su Account Google → Sicurezza → Verifica in due passaggi</a> → Password per le app → generane una. Incollalo sopra.",
     "outlook_hint": "Usa la tua password normale. Se l'MFA è attivo, vai su Sicurezza dell'account → Password app.",
     "yahoo_hint": "Vai su Account Yahoo → Sicurezza → Genera password app.",
     "zoho_hint": "Usa la tua password Zoho. Abilita SMTP in Zoho Mail → Impostazioni → Account di posta.",

@@ -471,7 +471,7 @@
     "app_password": "SOVELLUKSEN SALASANA",
     "password_placeholder": "Liitä sovelluksesi salasana tähän",
     "custom_domain": "Muokattu verkkotunnus",
-    "gmail_hint": "Siirry kohtaan Google-tili → Suojaus → 2-vaiheinen vahvistus → Sovellussalasanat → luo salasana. Liitä se yläpuolelle.",
+    "gmail_hint": "<a href=\"https://myaccount.google.com/signinoptions/two-step-verification\" target=\"_blank\" rel=\"noopener\" style=\"color:#ff6b00;text-decoration:underline\">Siirry kohtaan Google-tili → Suojaus → 2-vaiheinen vahvistus</a> → Sovellussalasanat → luo salasana. Liitä se yläpuolelle.",
     "outlook_hint": "Käytä tavallista salasanaasi. Jos MFA on käytössä, siirry kohtaan tilin suojaus → Sovellussalasanat.",
     "yahoo_hint": "Siirry kohtaan Yahoo-tili → Security → Generate App Password.",
     "zoho_hint": "Käytä Zoho-salasanasi. Ota SMTP käyttöön kohdassa Zoho Mail → Asetukset → Postitilit.",

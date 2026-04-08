@@ -471,7 +471,7 @@
     "app_password": "MẬT KHẨU ỨNG DỤNG",
     "password_placeholder": "Dán mật khẩu ứng dụng của bạn vào đây",
     "custom_domain": "Miền tùy chỉnh",
-    "gmail_hint": "Đi tới Tài khoản Google → Bảo mật → Xác minh 2 bước → Mật khẩu ứng dụng → tạo mật khẩu. Dán nó ở trên.",
+    "gmail_hint": "<a href=\"https://myaccount.google.com/signinoptions/two-step-verification\" target=\"_blank\" rel=\"noopener\" style=\"color:#ff6b00;text-decoration:underline\">Đi tới Tài khoản Google → Bảo mật → Xác minh 2 bước</a> → Mật khẩu ứng dụng → tạo mật khẩu. Dán nó ở trên.",
     "outlook_hint": "Sử dụng mật khẩu thông thường của bạn. Nếu MFA được bật, hãy chuyển đến bảo mật tài khoản → Mật khẩu ứng dụng.",
     "yahoo_hint": "Đi tới Tài khoản Yahoo → Bảo mật → Tạo mật khẩu ứng dụng.",
     "zoho_hint": "Sử dụng mật khẩu Zoho của bạn. Kích hoạt SMTP trong Zoho Mail → Cài đặt → Tài khoản thư.",

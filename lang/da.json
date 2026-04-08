@@ -471,7 +471,7 @@
     "app_password": "APP-ADGANGSKODE",
     "password_placeholder": "Indsæt din app-adgangskode her",
     "custom_domain": "Brugerdefineret domæne",
-    "gmail_hint": "Gå til Google-konto → Sikkerhed → 2-trinsbekræftelse → App-adgangskoder → generer en. Indsæt det ovenfor.",
+    "gmail_hint": "<a href=\"https://myaccount.google.com/signinoptions/two-step-verification\" target=\"_blank\" rel=\"noopener\" style=\"color:#ff6b00;text-decoration:underline\">Gå til Google-konto → Sikkerhed → 2-trinsbekræftelse</a> → App-adgangskoder → generer en. Indsæt det ovenfor.",
     "outlook_hint": "Brug din normale adgangskode. Hvis MFA er slået til, skal du gå til kontosikkerhed → App-adgangskoder.",
     "yahoo_hint": "Gå til Yahoo-konto → Sikkerhed → Generer app-adgangskode.",
     "zoho_hint": "Brug din Zoho adgangskode. Aktiver SMTP i Zoho Mail → Indstillinger → Mailkonti.",

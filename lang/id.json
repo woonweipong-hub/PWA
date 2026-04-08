@@ -471,7 +471,7 @@
     "app_password": "KATA SANDI APLIKASI",
     "password_placeholder": "Tempelkan kata sandi aplikasi Anda di sini",
     "custom_domain": "Domain khusus",
-    "gmail_hint": "Buka Akun Google → Keamanan → Verifikasi 2 Langkah → Kata Sandi Aplikasi → buat satu. Tempelkan di atas.",
+    "gmail_hint": "<a href=\"https://myaccount.google.com/signinoptions/two-step-verification\" target=\"_blank\" rel=\"noopener\" style=\"color:#ff6b00;text-decoration:underline\">Buka Akun Google → Keamanan → Verifikasi 2 Langkah</a> → Kata Sandi Aplikasi → buat satu. Tempelkan di atas.",
     "outlook_hint": "Gunakan kata sandi biasa Anda. Jika MFA aktif, buka keamanan akun → Kata Sandi Aplikasi.",
     "yahoo_hint": "Buka Akun Yahoo → Keamanan → Buat Kata Sandi Aplikasi.",
     "zoho_hint": "Gunakan kata sandi Zoho Anda. Enable SMTP in Zoho Mail → Settings → Mail Accounts.",

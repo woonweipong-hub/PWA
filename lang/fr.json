@@ -471,7 +471,7 @@
     "app_password": "MOT DE PASSE DE L'APPLICATION",
     "password_placeholder": "Collez le mot de passe de votre application ici",
     "custom_domain": "Domaine personnalisé",
-    "gmail_hint": "Accédez à Compte Google → Sécurité → Vérification en 2 étapes → Mots de passe d'application → générez-en un. Collez-le ci-dessus.",
+    "gmail_hint": "<a href=\"https://myaccount.google.com/signinoptions/two-step-verification\" target=\"_blank\" rel=\"noopener\" style=\"color:#ff6b00;text-decoration:underline\">Accédez à Compte Google → Sécurité → Vérification en 2 étapes</a> → Mots de passe d'application → générez-en un. Collez-le ci-dessus.",
     "outlook_hint": "Utilisez votre mot de passe habituel. Si MFA est activé, accédez à Sécurité du compte → Mots de passe des applications.",
     "yahoo_hint": "Accédez à Compte Yahoo → Sécurité → Générer un mot de passe d'application.",
     "zoho_hint": "Utilisez votre mot de passe Zoho. Activez SMTP dans Zoho Mail → Paramètres → Comptes de messagerie.",
