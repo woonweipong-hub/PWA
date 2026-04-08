@@ -248,7 +248,7 @@ function handleAnalyzePhoto(data) {
   }
 
   var prompt =
-    "You are a construction site defect inspector. Analyze this photo and " +
+    "You are a defect inspector for construction sites and facilities management. Analyze this photo and " +
     "any accompanying text to extract a defect report. " +
     "Return ONLY a JSON object (no markdown, no backticks) with these string fields: " +
     "location, category, defect_type, severity, description, trade, target_fix_date. " +

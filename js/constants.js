@@ -92,6 +92,10 @@ const COMPONENT_GROUPS = {
   "Linkway": ["Linkway Roof", "Linkway Column", "Linkway Beam", "Linkway Paving", "Handrail", "Drip Line", "Fascia Board", "Gutter", "Downpipe", "Lighting"],
   // Construction site condition & safety
   "Site & Safety": ["Hoarding", "Scaffold", "Temporary Access", "Formwork", "Rebar", "Signage", "Storage Area", "PPE", "Housekeeping", "Spill", "Edge Protection", "Ladder"],
+  // Facilities management
+  "FM – Building Services": ["HVAC System", "Chiller", "Cooling Tower", "AHU", "FCU", "BMS Panel", "Generator", "Transformer", "Switchboard", "UPS", "Water Tank", "Pump Room"],
+  "FM – Common Areas": ["Lobby", "Corridor", "Staircase", "Lift Lobby", "Car Park", "Loading Bay", "Bin Centre", "Guard House", "Mailroom", "Roof Access"],
+  "FM – Amenities": ["Swimming Pool", "Gym", "Function Room", "BBQ Area", "Playground", "Tennis Court", "Landscape Area", "Water Feature"],
   "General": ["General", "Other"],
 };
 
@@ -327,6 +331,11 @@ const WORK_CATEGORIES = {
     icon: "\u{1F6CB}\uFE0F", // 🛋️
     desc: "Fit-out, renovation, ID works",
     groups: ["Architectural","Finishes","Carpentry","Sanitary","M&E – Electrical","M&E – Plumbing","M&E – ACMV","General"],
+  },
+  "Facilities Management": {
+    icon: "\u{1F3E0}", // 🏠
+    desc: "FM defects, building services, common areas",
+    groups: ["Architectural","M&E – Plumbing","M&E – Electrical","M&E – ACMV","M&E – Fire","M&E – Lift","Finishes","Sanitary","FM – Building Services","FM – Common Areas","FM – Amenities","External/Landscape","General"],
   },
   "Infrastructure Works": {
     icon: "\u{1F6E3}\uFE0F", // 🛣️

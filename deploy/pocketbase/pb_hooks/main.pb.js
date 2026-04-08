@@ -140,7 +140,7 @@ routerAdd("POST", "/api/storage/test", (e) => {
 // ====== AI ANALYSIS (multi-provider: Gemini, Ollama, OpenAI) ======
 
 var AI_SERVER_PROMPT = [
-  "You are a construction site defect inspector. Analyze this photo.",
+  "You are a defect inspector for construction sites and facilities management. Analyze this photo.",
   "Return ONLY a JSON object with: category, defect_type, severity, location, description, trade.",
   "Categories: Column, Beam, Slab, Door, Window, Wall, Floor, Ceiling, Roof,",
   "Plumbing, Electrical, Aircon, Painting, Tiling, Waterproofing, Cabinet, General.",

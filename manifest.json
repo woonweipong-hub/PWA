@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "SiteShrimp — Construction Site Tracker",
+  "name": "SiteShrimp — Defects, Site, FM & Progress Tracker",
   "short_name": "SiteShrimp",
-  "description": "Manage defects, inspections, progress, and records. Capture issues with photos, voice, and drawings. AI-powered analysis, real-time sync, and team collaboration for construction sites.",
+  "description": "Manage defects, inspections, progress, and records for construction sites and facilities. Capture issues with photos, voice, and drawings. AI-powered analysis, real-time sync, and team collaboration.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
