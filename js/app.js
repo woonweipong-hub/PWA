@@ -4972,6 +4972,8 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const CMP_STAMP_PRESETS=["APPROVED","REJECTED","REVIEWED","HOLD","FOR CONSTRUCTION","PRELIMINARY","DRAFT","SUPERSEDED","NOT FOR CONSTRUCTION"];
   const addCompareStroke=(s)=>{setCompareMarkupStrokes(prev=>[...prev,s]);setCompareRedoStack([]);};
   const compareDragRef=useRef(null);
+  const[comparePendingPhoto,setComparePendingPhoto]=useState(null);
+  const[comparePhotoPlaceRect,setComparePhotoPlaceRect]=useState(null);
   const[compareTextSize,setCompareTextSize]=useState(2.4);
   const[compareTextAlign,setCompareTextAlign]=useState("left");
   const[compareTextValign,setCompareTextValign]=useState("bottom");
@@ -5465,6 +5467,22 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     };
   };
 
+  // Hit-test: find topmost photo stroke under point
+  const hitComparePhotoAt=p=>{
+    for(let i=compareMarkupStrokes.length-1;i>=0;i--){
+      const s=compareMarkupStrokes[i];
+      if(s.type!=="photo"||!s.pos)continue;
+      if(p.x>=s.pos.x&&p.x<=s.pos.x+s.w&&p.y>=s.pos.y&&p.y<=s.pos.y+s.h)return i;
+    }
+    return -1;
+  };
+  const hitCompareResizeHandle=(p,idx)=>{
+    const s=compareMarkupStrokes[idx];if(!s||s.type!=="photo")return false;
+    const hx=s.pos.x+s.w,hy=s.pos.y+s.h;
+    return Math.abs(p.x-hx)<2.2&&Math.abs(p.y-hy)<2.2;
+  };
+  const cancelComparePendingPhoto=()=>{setComparePendingPhoto(null);setComparePhotoPlaceRect(null);};
+
   const onCompareMarkupDown=e=>{
     // Pinch zoom — 2 fingers
     if(e.touches&&e.touches.length===2){
@@ -5482,8 +5500,27 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     }
     const p=getCompareMarkupPos(e);if(!p)return;
     e.preventDefault();
+    // Drag to place a pending photo (rubber-band rect)
+    if(comparePendingPhoto){
+      setComparePhotoPlaceRect({x:p.x,y:p.y,w:0,h:0,startX:p.x,startY:p.y});
+      return;
+    }
     if(compareMarkupTool==="select"){
-      // Clicking empty space deselects; clicking a stroke is handled by the stroke's own onMouseDown
+      // Check resize handle on selected photo
+      if(compareSelectedIdx!=null&&hitCompareResizeHandle(p,compareSelectedIdx)){
+        const s=compareMarkupStrokes[compareSelectedIdx];
+        compareDragRef.current={idx:compareSelectedIdx,mode:"resize",startX:p.x,startY:p.y,orig:{...s}};
+        return;
+      }
+      // Check photo hit for move
+      const photoIdx=hitComparePhotoAt(p);
+      if(photoIdx>=0){
+        setCompareSelectedIdx(photoIdx);
+        const s=compareMarkupStrokes[photoIdx];
+        compareDragRef.current={idx:photoIdx,mode:"move",startX:p.x,startY:p.y,orig:{...s}};
+        return;
+      }
+      // Clicking empty space deselects
       setCompareSelectedIdx(null);
       return;
     }
@@ -5523,12 +5560,32 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
   };
 
   const onCompareMarkupMove=e=>{
-    // Dragging a selected stroke
+    // Rubber-band rect while placing a new photo
+    if(comparePendingPhoto&&comparePhotoPlaceRect){
+      const p=getCompareMarkupPos(e);if(!p)return;
+      e.preventDefault();e.stopPropagation();
+      const sx=comparePhotoPlaceRect.startX,sy=comparePhotoPlaceRect.startY;
+      const x=Math.min(sx,p.x),y=Math.min(sy,p.y);
+      const w=Math.abs(p.x-sx),h=Math.abs(p.y-sy);
+      setComparePhotoPlaceRect({...comparePhotoPlaceRect,x,y,w,h});
+      return;
+    }
+    // Dragging a selected stroke (move or resize)
     if(compareDragRef.current){
       const p=getCompareMarkupPos(e);if(!p)return;
       e.preventDefault();
       const d=compareDragRef.current;
       const dx=p.x-d.startX,dy=p.y-d.startY;
+      if(d.mode==="resize"){
+        setCompareMarkupStrokes(strokes=>strokes.map((s,i)=>{
+          if(i!==d.idx||s.type!=="photo")return s;
+          const aspect=d.orig.h/d.orig.w;
+          const nw=Math.max(4,Math.min(100-d.orig.pos.x,d.orig.w+dx));
+          const nh=nw*aspect;
+          return{...s,w:nw,h:Math.min(100-d.orig.pos.y,nh)};
+        }));
+        return;
+      }
       setCompareMarkupStrokes(strokes=>strokes.map((s,i)=>i===d.idx?translateStroke(d.orig,dx,dy):s));
       return;
     }
@@ -5565,6 +5622,25 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
 
   const onCompareMarkupUp=()=>{
     comparePinchDist.current=null;comparePanStart.current=null;
+    // Finalize pending photo placement
+    if(comparePendingPhoto&&comparePhotoPlaceRect){
+      let{x,y,w,h}=comparePhotoPlaceRect;
+      if(w<3||h<3){
+        w=30;h=30*comparePendingPhoto.aspect;
+        x=Math.max(0,Math.min(100-w,(comparePhotoPlaceRect.startX||50)-w/2));
+        y=Math.max(0,Math.min(100-h,(comparePhotoPlaceRect.startY||50)-h/2));
+      }else{
+        h=w*comparePendingPhoto.aspect;
+        if(y+h>100)h=100-y;
+      }
+      const stroke={type:"photo",dataUrl:comparePendingPhoto.dataUrl,pos:{x,y},w,h};
+      setCompareMarkupStrokes(s=>{setCompareSelectedIdx(s.length);return[...s,stroke];});
+      setCompareRedoStack([]);
+      setComparePendingPhoto(null);setComparePhotoPlaceRect(null);
+      setCompareMarkupTool("select");
+      compareDragRef.current=null;
+      return;
+    }
     compareDragRef.current=null;
     if(compareMarkupCurrent){
       if(compareMarkupCurrent.type==="dimension"){
@@ -5635,15 +5711,8 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       const ctx=canvas.getContext("2d");
       ctx.drawImage(img,0,0,cw,ch);
       const dataUrl=canvas.toDataURL("image/jpeg",0.82);
-      // Default size: 30% wide, preserve aspect, centered
-      const w=30;
-      const h=(ch/cw)*30;
-      const stroke={type:"photo",dataUrl,pos:{x:50-w/2,y:50-h/2},w,h};
-      setCompareMarkupStrokes(s=>{
-        setCompareSelectedIdx(s.length);
-        return[...s,stroke];
-      });setCompareRedoStack([]);
-      setCompareMarkupTool("select");
+      setComparePendingPhoto({dataUrl,aspect:ch/cw});
+      setCompareSelectedIdx(null);
     };
     img.onerror=()=>alert("Could not load image.");
     const reader=new FileReader();
@@ -5785,6 +5854,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       return <g key={i} {...hit}>
         <image href={s.dataUrl} x={s.pos.x} y={s.pos.y} width={s.w} height={s.h} preserveAspectRatio="xMidYMid meet"/>
         <rect x={s.pos.x} y={s.pos.y} width={s.w} height={s.h} fill="none" stroke={isSel?"#5856d6":"rgba(255,255,255,0.85)"} strokeWidth={isSel?"0.5":"0.25"}/>
+        {isSel&&<rect x={s.pos.x+s.w-1.5} y={s.pos.y+s.h-1.5} width={3} height={3} fill="#5856d6" stroke="#fff" strokeWidth="0.3" rx="0.5" style={{cursor:"nwse-resize"}}/>}
       </g>;
     }
     return null;
@@ -6661,6 +6731,12 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                         <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:compareMarkupTool==="select"?"auto":"none"}}>
                           {renderCompareMarkup(compareMarkupStrokes,compareMarkupTool==="select")}
                           {compareMarkupCurrent&&renderCompareMarkup([compareMarkupCurrent],false)}
+                          {comparePendingPhoto&&comparePhotoPlaceRect&&comparePhotoPlaceRect.w>0&&(
+                            <g>
+                              <image href={comparePendingPhoto.dataUrl} x={comparePhotoPlaceRect.x} y={comparePhotoPlaceRect.y} width={comparePhotoPlaceRect.w} height={comparePhotoPlaceRect.w*comparePendingPhoto.aspect} preserveAspectRatio="xMidYMid meet" opacity="0.7"/>
+                              <rect x={comparePhotoPlaceRect.x} y={comparePhotoPlaceRect.y} width={comparePhotoPlaceRect.w} height={comparePhotoPlaceRect.w*comparePendingPhoto.aspect} fill="none" stroke="#5856d6" strokeWidth="0.4" strokeDasharray="1 0.6"/>
+                            </g>
+                          )}
                           {cmpPolylinePoints.length>1&&<polyline points={cmpPolylinePoints.map(p=>`${p.x},${p.y}`).join(" ")} stroke={compareMarkupColor} strokeWidth="0.5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="0.8 0.4"/>}
                           {cmpPolylinePoints.length===1&&<circle cx={cmpPolylinePoints[0].x} cy={cmpPolylinePoints[0].y} r="0.5" fill={compareMarkupColor}/>}
                           {compareHighlight&&<>
@@ -6738,7 +6814,13 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                       :t.label}
                     </button>
                   ))}
-                  <button onClick={()=>comparePhotoInputRef.current?.click()} title="Add / capture photo overlay" style={{width:34,height:34,borderRadius:8,border:"2px solid rgba(255,107,0,0.35)",background:"rgba(255,107,0,0.1)",color:"#ffb48a",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>📷</button>
+                  <button onClick={()=>comparePhotoInputRef.current?.click()} title={t("markup.add_photo")} style={{width:34,height:34,borderRadius:8,border:"2px solid rgba(255,107,0,0.35)",background:"rgba(255,107,0,0.1)",color:"#ffb48a",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>📷</button>
+                  {comparePendingPhoto&&(
+                    <div style={{display:"flex",alignItems:"center",gap:8,background:"rgba(88,86,214,0.15)",borderRadius:8,padding:"6px 12px"}}>
+                      <span style={{fontSize:12,color:"#fff",fontWeight:600}}>{t("actions.tap_to_place")}</span>
+                      <button onClick={cancelComparePendingPhoto} style={{background:"rgba(255,59,48,0.2)",border:"none",borderRadius:6,padding:"3px 8px",color:"#ff6b6b",fontSize:11,fontWeight:700,cursor:"pointer"}}>{t("actions.cancel")}</button>
+                    </div>
+                  )}
                   <div style={{width:1,height:20,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
                   {/* Color — consolidated swatch dropdown */}
                   {(()=>{
