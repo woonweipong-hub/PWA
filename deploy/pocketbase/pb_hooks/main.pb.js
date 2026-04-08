@@ -355,3 +355,89 @@ routerAdd("POST", "/api/send-email", (e) => {
   }
   return e.json(200, { ok: true });
 });
+
+// ====== CONFIGURE SMTP (admin-only, from in-app settings) ======
+// Lets the owner set SMTP directly from SiteShrimp without opening PB admin
+routerAdd("POST", "/api/configure-smtp", (e) => {
+  var auth = e.auth;
+  if (!auth) {
+    return e.json(401, { error: "Authentication required." });
+  }
+
+  // Check if user is admin role in their company
+  var member;
+  try {
+    member = $app.findFirstRecordByFilter("members", 'userId="' + auth.id + '"');
+  } catch(_) {}
+  if (!member || member.getString("role") !== "admin") {
+    return e.json(403, { error: "Only admins can configure SMTP." });
+  }
+
+  var body;
+  try {
+    body = JSON.parse($toString(e.request.body));
+  } catch(_) {
+    return e.json(400, { error: "Invalid JSON body." });
+  }
+
+  var host = body.host || "";
+  var port = parseInt(body.port) || 587;
+  var username = body.username || "";
+  var password = body.password || "";
+  var fromEmail = body.fromEmail || username;
+  var fromName = body.fromName || "SiteShrimp";
+
+  if (!host || !username || !password) {
+    return e.json(400, { error: "Host, username, and password are required." });
+  }
+
+  try {
+    var settings = $app.settings();
+    settings.smtp.enabled = true;
+    settings.smtp.host = host;
+    settings.smtp.port = port;
+    settings.smtp.tls = true;
+    settings.smtp.username = username;
+    settings.smtp.password = password;
+    settings.meta.senderAddress = fromEmail;
+    settings.meta.senderName = fromName;
+    $app.save(settings);
+    return e.json(200, { ok: true });
+  } catch (err) {
+    console.log("SMTP configure failed:", err);
+    return e.json(500, { error: "Failed to save SMTP settings: " + err });
+  }
+});
+
+// ====== TEST SMTP (send a test email to verify config) ======
+routerAdd("POST", "/api/test-smtp", (e) => {
+  var auth = e.auth;
+  if (!auth) {
+    return e.json(401, { error: "Authentication required." });
+  }
+
+  var body;
+  try {
+    body = JSON.parse($toString(e.request.body));
+  } catch(_) {
+    return e.json(400, { error: "Invalid JSON body." });
+  }
+
+  var to = body.to || auth.getString("email");
+  if (!to) {
+    return e.json(400, { error: "No email address to test." });
+  }
+
+  try {
+    var msg = new MailerMessage();
+    msg.from = { address: $app.settings().meta.senderAddress, name: $app.settings().meta.senderName || "SiteShrimp" };
+    msg.to = [{ address: to }];
+    msg.subject = "SiteShrimp — Test Email";
+    msg.html = "<h2>It works!</h2><p>Your email is configured correctly. You can now send reports from SiteShrimp.</p>";
+    $app.newMailClient().send(msg);
+    return e.json(200, { ok: true });
+  } catch (err) {
+    console.log("Test email failed:", err);
+    return e.json(500, { error: "Test email failed: " + err });
+  }
+});

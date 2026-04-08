@@ -378,6 +378,12 @@ const DB = (() => {
     async sendEmail(recipients, subject, html) {
       return apiJson('/api/send-email', 'POST', { recipients, subject, html });
     },
+    async configureSmtp(host, port, username, password, fromEmail, fromName) {
+      return apiJson('/api/configure-smtp', 'POST', { host, port, username, password, fromEmail, fromName });
+    },
+    async testSmtp(to) {
+      return apiJson('/api/test-smtp', 'POST', { to });
+    },
     get baseUrl() { return _baseUrl; },
   };
 })();

@@ -2673,51 +2673,90 @@ function GeminiSettings({onClose,companyId}){
   );
 }
 
-// ── SMTP Setup Guide (collapsible) ───────────────────────────────
+// ── SMTP Setup (in-app, no PocketBase admin needed) ──────────────
 const SMTP_PRESETS=[
-  {name:"Gmail",host:"smtp.gmail.com",port:587,note:"Use an App Password: Google Account → Security → 2-Step Verification → App Passwords → generate one."},
-  {name:"Outlook / Microsoft 365",host:"smtp.office365.com",port:587,note:"Use your normal email password. If MFA is on, create an App Password in account security."},
-  {name:"Yahoo",host:"smtp.mail.yahoo.com",port:587,note:"Use an App Password: Yahoo Account → Security → Generate App Password."},
-  {name:"Zoho",host:"smtp.zoho.com",port:587,note:"Use your Zoho email password. Enable SMTP access in Zoho Mail → Settings → Mail Accounts."},
-  {name:"Custom domain (GoDaddy, Namecheap, etc.)",host:"check your hosting provider",port:587,note:"Your hosting provider gives SMTP details in their email settings dashboard."},
+  {name:"Gmail",host:"smtp.gmail.com",port:587,hint:t("email.gmail_hint")},
+  {name:"Outlook / Microsoft 365",host:"smtp.office365.com",port:587,hint:t("email.outlook_hint")},
+  {name:"Yahoo",host:"smtp.mail.yahoo.com",port:587,hint:t("email.yahoo_hint")},
+  {name:"Zoho",host:"smtp.zoho.com",port:587,hint:t("email.zoho_hint")},
+  {name:t("email.custom_domain"),host:"",port:587,hint:t("email.custom_hint")},
 ];
-function SmtpGuide(){
-  const[open,setOpen]=useState(false);
-  const[copied,setCopied]=useState(null);
-  const copy=(txt,id)=>{navigator.clipboard.writeText(txt);setCopied(id);setTimeout(()=>setCopied(null),1500);};
-  const sty={fontSize:12,color:"#666",lineHeight:1.6};
+const SMTP_KEY="sdt-smtp-v1";
+function SmtpSetup(){
+  const saved=local.get(SMTP_KEY)||{};
+  const[provider,setProvider]=useState(saved.provider||"Gmail");
+  const[email,setEmail]=useState(saved.email||"");
+  const[password,setPassword]=useState(saved.password||"");
+  const[host,setHost]=useState(saved.host||"smtp.gmail.com");
+  const[port,setPort]=useState(saved.port||587);
+  const[saving,setSaving]=useState(false);
+  const[testing,setTesting]=useState(false);
+  const[result,setResult]=useState(null);
+  const[showPassword,setShowPassword]=useState(false);
+  const preset=SMTP_PRESETS.find(p=>p.name===provider)||SMTP_PRESETS[0];
+  const isCustom=provider===t("email.custom_domain");
+  const pickProvider=(name)=>{
+    setProvider(name);
+    const p=SMTP_PRESETS.find(x=>x.name===name);
+    if(p&&p.host){setHost(p.host);setPort(p.port);}
+    setResult(null);
+  };
+  const canSave=email.trim()&&password.trim()&&host.trim();
+  const saveSmtp=async()=>{
+    if(!canSave)return;
+    setSaving(true);setResult(null);
+    try{
+      await DB.configureSmtp(host,port,email,password,email,"SiteShrimp");
+      local.set(SMTP_KEY,{provider,email,password,host,port,configured:true});
+      setResult("saved");
+    }catch(e){console.error(e);setResult("fail");}
+    setSaving(false);setTimeout(()=>{if(result==="saved")setResult(null);},3000);
+  };
+  const testSmtp=async()=>{
+    setTesting(true);setResult(null);
+    try{
+      await DB.testSmtp(email);
+      setResult("test_ok");
+    }catch(e){console.error(e);setResult("test_fail");}
+    setTesting(false);
+  };
   return(
-    <div style={{marginTop:8}}>
-      <button onClick={()=>setOpen(!open)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#ff6b00",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",padding:0}}>
-        {open?"▾":"▸"} {t("email.smtp_guide_title")}
-      </button>
-      {open&&(
-        <div style={{background:"rgba(255,107,0,0.04)",borderRadius:10,padding:14,marginTop:8}}>
-          <div style={sty}>
-            <b>{t("email.smtp_step1")}</b><br/>
-            {t("email.smtp_step1_detail")}<br/><br/>
-            <b>{t("email.smtp_step2")}</b><br/>
-            {t("email.smtp_step2_detail")}
-          </div>
-          <div style={{marginTop:12}}>
-            <div style={{fontSize:11,fontWeight:700,color:"#999",marginBottom:6,textTransform:"uppercase"}}>{t("email.smtp_presets")}</div>
-            {SMTP_PRESETS.map((p,i)=>(
-              <div key={i} style={{background:"#fff",borderRadius:8,padding:"10px 12px",marginBottom:6,border:"1px solid #eee"}}>
-                <div style={{fontSize:13,fontWeight:700,color:"#333"}}>{p.name}</div>
-                <div style={{fontSize:11,color:"#888",marginTop:4}}>
-                  Host: <code style={{background:"#f5f5f5",padding:"1px 5px",borderRadius:4,cursor:"pointer"}} onClick={()=>copy(p.host,"h"+i)}>{p.host}</code>
-                  {copied==="h"+i&&<span style={{color:"#ff6b00",marginLeft:4}}>✓</span>}
-                  {" "}Port: <code style={{background:"#f5f5f5",padding:"1px 5px",borderRadius:4}}>{p.port}</code>
-                </div>
-                <div style={{fontSize:11,color:"#666",marginTop:4}}>{p.note}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{fontSize:11,color:"#aaa",marginTop:8,lineHeight:1.5}}>
-            {t("email.smtp_tip")}
-          </div>
-        </div>
-      )}
+    <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:16}}>
+      <div style={{fontSize:14,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"#1a1a1a",marginBottom:12}}>{t("email.smtp_setup_title")}</div>
+      <div style={{fontSize:12,color:"#666",lineHeight:1.5,marginBottom:14}}>{t("email.smtp_setup_desc")}</div>
+      <label style={lbl()}>{t("email.provider")}</label>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
+        {SMTP_PRESETS.map(p=>(
+          <button key={p.name} onClick={()=>pickProvider(p.name)} style={{padding:"7px 14px",borderRadius:8,border:provider===p.name?"2px solid #ff6b00":"1.5px solid #ddd",background:provider===p.name?"rgba(255,107,0,0.06)":"#fff",fontSize:12,fontWeight:provider===p.name?700:500,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",color:provider===p.name?"#ff6b00":"#555"}}>{p.name}</button>
+        ))}
+      </div>
+      {preset.hint&&<div style={{fontSize:11,color:"#888",marginBottom:12,background:"rgba(255,107,0,0.04)",borderRadius:8,padding:"8px 10px",lineHeight:1.5}}>💡 {preset.hint}</div>}
+      <label style={lbl()}>{t("email.your_email")}</label>
+      <input value={email} onChange={e=>setEmail(e.target.value)} placeholder={t("email.email_placeholder")} type="email" style={{...inp,marginBottom:12}}/>
+      <label style={lbl()}>{t("email.app_password")}</label>
+      <div style={{position:"relative",marginBottom:12}}>
+        <input value={password} onChange={e=>setPassword(e.target.value)} placeholder={t("email.password_placeholder")} type={showPassword?"text":"password"} style={{...inp,paddingRight:40}}/>
+        <button onClick={()=>setShowPassword(!showPassword)} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#999"}}>{showPassword?"🙈":"👁"}</button>
+      </div>
+      {isCustom&&(<>
+        <label style={lbl()}>SMTP HOST</label>
+        <input value={host} onChange={e=>setHost(e.target.value)} placeholder="smtp.yourdomain.com" style={{...inp,marginBottom:12}}/>
+        <label style={lbl()}>PORT</label>
+        <input value={port} onChange={e=>setPort(parseInt(e.target.value)||587)} placeholder="587" type="number" style={{...inp,marginBottom:12,width:100}}/>
+      </>)}
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={saveSmtp} disabled={!canSave||saving} style={{flex:1,background:canSave?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:14,color:canSave?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer",opacity:saving?0.7:1}}>
+          {saving?t("messages.saving"):result==="saved"?"✓ "+t("messages.saved"):t("actions.save")}
+        </button>
+        {local.get(SMTP_KEY)?.configured&&(
+          <button onClick={testSmtp} disabled={testing} style={{padding:"14px 20px",background:"rgba(255,107,0,0.08)",border:"1.5px solid rgba(255,107,0,0.2)",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer",color:"#ff6b00",opacity:testing?0.7:1}}>
+            {testing?t("messages.testing"):t("email.test_btn")}
+          </button>
+        )}
+      </div>
+      {result==="test_ok"&&<div style={{marginTop:10,padding:"10px 12px",background:"rgba(52,199,89,0.08)",borderRadius:8,fontSize:12,color:"#34c759",fontWeight:600}}>✓ {t("email.test_success")}</div>}
+      {result==="test_fail"&&<div style={{marginTop:10,padding:"10px 12px",background:"rgba(255,59,48,0.08)",borderRadius:8,fontSize:12,color:"#ff3b30",fontWeight:600}}>✗ {t("email.test_fail")}</div>}
+      {result==="fail"&&<div style={{marginTop:10,padding:"10px 12px",background:"rgba(255,59,48,0.08)",borderRadius:8,fontSize:12,color:"#ff3b30",fontWeight:600}}>✗ {t("email.save_fail")}</div>}
     </div>
   );
 }
@@ -2732,14 +2771,14 @@ function EmailSettings({onClose,companyId}){
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
       <SettingsBack onClose={onClose} title={t("email.title")}/>
       <div style={{padding:20}}>
+        <SmtpSetup/>
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:16}}>
           <div style={{fontSize:13,color:"#444",lineHeight:1.6}}>
-            Add recipient emails below. The email sends an <b>HTML summary</b> of your report (defects, comparisons, annotations).
+            {t("email.recipients_desc")}
           </div>
           <div style={{fontSize:12,color:"#888",marginTop:8,lineHeight:1.5,background:"rgba(255,107,0,0.05)",borderRadius:8,padding:"8px 10px"}}>
-            💡 <b>Need the full PDF with photos?</b> Use <b>EXPORT ▾ → Export PDF</b> in the Report tab to download it, then attach manually.
+            💡 <b>{t("email.pdf_tip_title")}</b> {t("email.pdf_tip_desc")}
           </div>
-          <SmtpGuide/>
         </div>
         <div style={{marginBottom:16}}>
           <label style={lbl()}>RECIPIENT EMAILS</label>
