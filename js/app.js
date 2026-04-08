@@ -5011,16 +5011,12 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const aiReady=isAiConfigured();
   const pdfDrawings=drawings.filter(d=>/\.pdf$/i.test(d.file||""));
 
-  // Load drawings and all pins for current project
+  // Load drawings for current project
   useEffect(()=>{
     if(!company?.companyId||!currentProject?.id)return;
     setLoading(true);
     DB.drawings.list(`companyId="${company.companyId}" && projectId="${currentProject.id}"`).then(items=>{
       setDrawings(items);setLoading(false);
-      // Load pins for all drawings
-      Promise.all(items.map(d=>DB.pins.list(`drawingId="${d.id}"`))).then(results=>{
-        setAllPins(results.flat());
-      }).catch(()=>{});
       // Auto-open compare if launched from dashboard shortcut
       if(initialCompare){
         const pdfs=items.filter(d=>/\.pdf$/i.test(d.file||""));
@@ -5032,6 +5028,18 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
       }
     }).catch(()=>setLoading(false));
   },[company?.companyId,currentProject?.id]);
+
+  // Real-time pin subscription for all drawings
+  useEffect(()=>{
+    if(!drawings.length)return;
+    const unsubs=drawings.map(d=>DB.pins.subscribe(`drawingId="${d.id}"`,items=>{
+      setAllPins(prev=>{
+        const other=prev.filter(p=>p.drawingId!==d.id);
+        return[...other,...items];
+      });
+    }));
+    return()=>unsubs.forEach(u=>u());
+  },[drawings]);
 
   const uploadDrawing=async e=>{
     const file=e.target.files?.[0];
@@ -6212,9 +6220,6 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
 
   const closeViewerAndRefreshPins=()=>{
     setViewing(null);
-    if(drawings.length){
-      Promise.all(drawings.map(d=>DB.pins.list(`drawingId="${d.id}"`))).then(results=>setAllPins(results.flat())).catch(()=>{});
-    }
   };
 
   if(viewing)return <DrawingViewer drawing={viewing} onClose={closeViewerAndRefreshPins} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry}/>;
@@ -7166,9 +7171,9 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   const isImage=/\.(jpg|jpeg|png|gif|webp)$/i.test(drawing.file);
   const isPdf=/\.pdf$/i.test(drawing.file);
 
-  // Load pins
+  // Real-time pin subscription
   useEffect(()=>{
-    DB.pins.list(`drawingId="${drawing.id}"`).then(items=>{setPins(items);setLoading(false);}).catch(()=>setLoading(false));
+    return DB.pins.subscribe(`drawingId="${drawing.id}"`,items=>{setPins(items);setLoading(false);});
   },[drawing.id]);
 
   // Load and persist text notes per drawing
@@ -7235,20 +7240,18 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     setPlacing(false);
   };
 
-  // Save pin linked to entry
+  // Save pin linked to entry (subscription auto-updates pins list)
   const savePin=async(entryId)=>{
     if(!linkEntry)return;
     try{
-      const pin=await DB.pins.create({drawingId:drawing.id,entryId,pageNum:linkEntry.pageNum||1,x:linkEntry.x,y:linkEntry.y,label:""});
-      setPins(prev=>[...prev,pin]);
+      await DB.pins.create({drawingId:drawing.id,entryId,pageNum:linkEntry.pageNum||1,x:linkEntry.x,y:linkEntry.y,label:""});
     }catch(e){alert("Failed to place pin: "+e.message);}
     setLinkEntry(null);
   };
 
-  // Delete pin
+  // Delete pin (subscription auto-updates pins list)
   const deletePin=async id=>{
     await DB.pins.delete(id);
-    setPins(prev=>prev.filter(p=>p.id!==id));
   };
 
   // View mode — zoom/pan only, blocks pin placement & markup
@@ -8172,13 +8175,11 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
                     projectId:currentProject?.id||"default",projectName:currentProject?.name||"",
                     loggedBy:member?.name||"",loggedByRole:member?.role||"",
                     createdAt:DB.serverTimestamp(),updatedAt:DB.serverTimestamp(),comments:[]};
-                  await onSaveEntry(entryData);
-                  // Reload defects to get the new entry, then pin it
-                  const allEntries=await DB.defects.list(`companyId="${company.companyId}" && projectId="${currentProject?.id}"`,"-created");
-                  const newEntry=allEntries.find(e=>e.title===qTitle);
-                  if(newEntry){
-                    const pin=await DB.pins.create({drawingId:drawing.id,entryId:newEntry.id,pageNum:linkEntry.pageNum||1,x:linkEntry.x,y:linkEntry.y,label:""});
-                    setPins(prev=>[...prev,pin]);
+                  const saved=await onSaveEntry(entryData);
+                  // Use returned record ID directly — no fragile title lookup
+                  const entryId=saved?.id||saved;
+                  if(entryId&&entryId!=="queued"){
+                    await DB.pins.create({drawingId:drawing.id,entryId,pageNum:linkEntry.pageNum||1,x:linkEntry.x,y:linkEntry.y,label:""});
                   }
                   setQuickCreate(false);setQTitle("");setQSev("Major");setQPhoto(null);setLinkEntry(null);
                 }catch(e){alert("Failed: "+e.message);}
