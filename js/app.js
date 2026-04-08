@@ -2673,6 +2673,55 @@ function GeminiSettings({onClose,companyId}){
   );
 }
 
+// ── SMTP Setup Guide (collapsible) ───────────────────────────────
+const SMTP_PRESETS=[
+  {name:"Gmail",host:"smtp.gmail.com",port:587,note:"Use an App Password: Google Account → Security → 2-Step Verification → App Passwords → generate one."},
+  {name:"Outlook / Microsoft 365",host:"smtp.office365.com",port:587,note:"Use your normal email password. If MFA is on, create an App Password in account security."},
+  {name:"Yahoo",host:"smtp.mail.yahoo.com",port:587,note:"Use an App Password: Yahoo Account → Security → Generate App Password."},
+  {name:"Zoho",host:"smtp.zoho.com",port:587,note:"Use your Zoho email password. Enable SMTP access in Zoho Mail → Settings → Mail Accounts."},
+  {name:"Custom domain (GoDaddy, Namecheap, etc.)",host:"check your hosting provider",port:587,note:"Your hosting provider gives SMTP details in their email settings dashboard."},
+];
+function SmtpGuide(){
+  const[open,setOpen]=useState(false);
+  const[copied,setCopied]=useState(null);
+  const copy=(txt,id)=>{navigator.clipboard.writeText(txt);setCopied(id);setTimeout(()=>setCopied(null),1500);};
+  const sty={fontSize:12,color:"#666",lineHeight:1.6};
+  return(
+    <div style={{marginTop:8}}>
+      <button onClick={()=>setOpen(!open)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#ff6b00",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",padding:0}}>
+        {open?"▾":"▸"} {t("email.smtp_guide_title")}
+      </button>
+      {open&&(
+        <div style={{background:"rgba(255,107,0,0.04)",borderRadius:10,padding:14,marginTop:8}}>
+          <div style={sty}>
+            <b>{t("email.smtp_step1")}</b><br/>
+            {t("email.smtp_step1_detail")}<br/><br/>
+            <b>{t("email.smtp_step2")}</b><br/>
+            {t("email.smtp_step2_detail")}
+          </div>
+          <div style={{marginTop:12}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#999",marginBottom:6,textTransform:"uppercase"}}>{t("email.smtp_presets")}</div>
+            {SMTP_PRESETS.map((p,i)=>(
+              <div key={i} style={{background:"#fff",borderRadius:8,padding:"10px 12px",marginBottom:6,border:"1px solid #eee"}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#333"}}>{p.name}</div>
+                <div style={{fontSize:11,color:"#888",marginTop:4}}>
+                  Host: <code style={{background:"#f5f5f5",padding:"1px 5px",borderRadius:4,cursor:"pointer"}} onClick={()=>copy(p.host,"h"+i)}>{p.host}</code>
+                  {copied==="h"+i&&<span style={{color:"#ff6b00",marginLeft:4}}>✓</span>}
+                  {" "}Port: <code style={{background:"#f5f5f5",padding:"1px 5px",borderRadius:4}}>{p.port}</code>
+                </div>
+                <div style={{fontSize:11,color:"#666",marginTop:4}}>{p.note}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{fontSize:11,color:"#aaa",marginTop:8,lineHeight:1.5}}>
+            {t("email.smtp_tip")}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Email Settings ────────────────────────────────────────────────
 function EmailSettings({onClose,companyId}){
   const s=local.get(EMAIL_KEY)||{recipients:[""]};
@@ -2690,9 +2739,7 @@ function EmailSettings({onClose,companyId}){
           <div style={{fontSize:12,color:"#888",marginTop:8,lineHeight:1.5,background:"rgba(255,107,0,0.05)",borderRadius:8,padding:"8px 10px"}}>
             💡 <b>Need the full PDF with photos?</b> Use <b>EXPORT ▾ → Export PDF</b> in the Report tab to download it, then attach manually.
           </div>
-          <div style={{fontSize:11,color:"#aaa",marginTop:8,lineHeight:1.5}}>
-            SMTP must be configured in PocketBase Admin → Settings → Mail settings.
-          </div>
+          <SmtpGuide/>
         </div>
         <div style={{marginBottom:16}}>
           <label style={lbl()}>RECIPIENT EMAILS</label>
@@ -2926,7 +2973,7 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
         <div style={{display:"flex",gap:5,flexWrap:"wrap",justifyContent:"flex-end"}}>
           {syncing
             ?<div style={{display:"flex",alignItems:"center",gap:5,background:"rgba(255,149,0,0.1)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:20,padding:"4px 10px"}}><Spin size={8}/><span style={{fontSize:10,fontWeight:700,color:"#ff9500",fontFamily:"'Barlow Condensed',sans-serif",marginLeft:4}}>SYNC</span></div>
-            :<div style={{display:"flex",alignItems:"center",gap:4,background:"rgba(0,229,100,0.1)",border:"1px solid rgba(0,229,100,0.2)",borderRadius:20,padding:"4px 8px"}}><div style={{width:6,height:6,borderRadius:"50%",background:"#00e564",animation:"pulse 2s infinite"}}/><span style={{fontSize:10,fontWeight:700,color:"#00e564",fontFamily:"'Barlow Condensed',sans-serif"}}>LIVE</span></div>
+            :<div style={{display:"flex",alignItems:"center",gap:4,background:"rgba(0,229,100,0.1)",border:"1px solid rgba(0,229,100,0.2)",borderRadius:20,padding:"4px 8px"}}><div style={{width:6,height:6,borderRadius:"50%",background:"#00e564",animation:"pulse 2s infinite"}}/><span style={{fontSize:10,fontWeight:700,color:"#00e564",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("dashboard.live")}</span></div>
           }
           {tgEnabled&&<div style={{background:"rgba(0,136,204,0.1)",border:"1px solid rgba(0,136,204,0.25)",borderRadius:20,padding:"4px 8px"}}><span style={{fontSize:10,fontWeight:700,color:"#0088cc",fontFamily:"'Barlow Condensed',sans-serif"}}>TG</span></div>}
           {aiEnabled&&<div style={{background:"rgba(88,86,214,0.1)",border:"1px solid rgba(88,86,214,0.25)",borderRadius:20,padding:"4px 8px"}}><span style={{fontSize:10,fontWeight:700,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif"}}>AI</span></div>}
@@ -2944,7 +2991,7 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
       {critical>0&&(
         <div style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.25)",borderRadius:12,padding:"12px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
           <div style={{fontSize:20}}>⚠️</div>
-          <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff3b30",fontSize:14}}>{critical} CRITICAL UNRESOLVED</div><div style={{fontSize:12,color:"rgba(0,0,0,0.5)"}}>Requires immediate attention</div></div>
+          <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff3b30",fontSize:14}}>{critical} {t("dashboard.critical_unresolved")}</div><div style={{fontSize:12,color:"rgba(0,0,0,0.5)"}}>{t("dashboard.requires_attention")}</div></div>
         </div>
       )}
 
@@ -2953,14 +3000,14 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
           {syncing2?<Spin size={16}/>:<span style={{fontSize:20}}>📤</span>}
           <div style={{flex:1}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff9500",fontSize:14}}>{queueCount} {t("messages.queued_offline")}</div>
-            <div style={{fontSize:12,color:"rgba(0,0,0,0.5)"}}>{syncing2?t("messages.syncing"):navigator.onLine?"Tap to sync now":t("messages.will_sync")}</div>
+            <div style={{fontSize:12,color:"rgba(0,0,0,0.5)"}}>{syncing2?t("messages.syncing"):navigator.onLine?t("dashboard.tap_sync"):t("messages.will_sync")}</div>
           </div>
         </button>
       )}
 
       {sevData.length>0&&(
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:16}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:12}}>BY SEVERITY</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:12}}>{t("dashboard.by_severity")}</div>
           {sevData.map(({s,count})=>(
             <div key={s} style={{marginBottom:8}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
@@ -2975,10 +3022,10 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
         </div>
       )}
 
-<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:10}}>RECENT ENTRIES</div>
+<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:10}}>{t("dashboard.recent_entries")}</div>
       {defects.length===0&&(
         <div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"40px 0",fontSize:14}}>
-          No defects yet.{["Admin","Manager","Inspector"].includes(member?.role)?" Tap + Log to start.":""}
+          {t("dashboard.no_defects")}{["Admin","Manager","Inspector"].includes(member?.role)?` ${t("dashboard.tap_log")}`:""}
         </div>
       )}
       {defects.slice(0,6).map((d,i)=>(
@@ -3284,7 +3331,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         workCategory:last?.workCategory||blank.workCategory,
         location:last?.location||"",assignee:last?.assignee||member?.name||"",severity:last?.severity||"Major",
         locationLevel:last?.locationLevel||"",locationZone:last?.locationZone||"",component:last?.component||""
-      });setShowBatch(false);setSpeakTranscript("");setShowMoreDetails(false);}} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:16,color:"#fff",fontSize:15,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>+ LOG ANOTHER HERE</button>
+      });setShowBatch(false);setSpeakTranscript("");setShowMoreDetails(false);}} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:16,color:"#fff",fontSize:15,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>{t("log.log_another")}</button>
     </div>
   );
 
@@ -3299,19 +3346,19 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   return(
     <div style={{padding:"20px 16px 120px",animation:"fadeIn 0.25s ease"}}>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
-        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>LOG ENTRY</div>
-        {count>0&&<div style={{fontSize:10,fontWeight:700,color:"#30d158",background:"rgba(48,209,88,0.1)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>{count} LOGGED</div>}
-        <div style={{fontSize:10,fontWeight:700,color:"#ff6b00",background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>QUICK CAPTURE</div>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>{t("log.log_entry")}</div>
+        {count>0&&<div style={{fontSize:10,fontWeight:700,color:"#30d158",background:"rgba(48,209,88,0.1)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>{count} {t("log.logged")}</div>}
+        <div style={{fontSize:10,fontWeight:700,color:"#ff6b00",background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("log.quick_capture")}</div>
       </div>
-      <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:20}}>📁 {currentProject?.name||"—"} · Photo, speak, or type</div>
+      <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:20}}>📁 {currentProject?.name||"—"} · {t("log.photo_speak_type")}</div>
 
       {/* ── 1. TAKE PHOTO — big prominent capture ── */}
       <div style={{marginBottom:16}}>
-        <label style={lbl()}>PHOTOS ({form.photos.length}/{MAX_PHOTOS})</label>
+        <label style={lbl()}>{t("log.photos_count")} ({form.photos.length}/{MAX_PHOTOS})</label>
         <input type="file" accept="image/*" capture="environment" multiple ref={fileRef} onChange={handlePhoto} style={{display:"none"}}/>
         {form.photos.length===0?(
           <button onClick={()=>fileRef.current.click()} style={{width:"100%",height:64,background:"#fff",border:"2px dashed rgba(0,0,0,0.18)",borderRadius:14,color:"rgba(0,0,0,0.5)",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
-            <span style={{fontSize:24}}>📷</span> TAKE PHOTO{aiReady?" · AI auto-analyze":""}
+            <span style={{fontSize:24}}>📷</span> {t("log.take_photo")}{aiReady?` · ${t("log.ai_auto_analyze")}`:""}
           </button>
         ):(
           <div>
@@ -3320,7 +3367,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
                 <div key={i} style={{position:"relative",flexShrink:0}}>
                   <img src={p} alt="" onClick={()=>setMarkupIdx(i)} style={{width:100,height:100,borderRadius:10,objectFit:"cover",cursor:"pointer"}}/>
                   <button onClick={()=>removePhoto(i)} style={{position:"absolute",top:4,right:4,background:"rgba(0,0,0,0.7)",border:"none",borderRadius:"50%",color:"#fff",width:22,height:22,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
-                  <div onClick={()=>setMarkupIdx(i)} style={{position:"absolute",bottom:4,left:4,background:"rgba(0,0,0,0.7)",borderRadius:10,padding:"2px 6px",color:"#fff",fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>✏ MARKUP</div>
+                  <div onClick={()=>setMarkupIdx(i)} style={{position:"absolute",bottom:4,left:4,background:"rgba(0,0,0,0.7)",borderRadius:10,padding:"2px 6px",color:"#fff",fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>✏ {t("log.markup")}</div>
                 </div>
               ))}
               {form.photos.length<MAX_PHOTOS&&(
@@ -3329,13 +3376,13 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
             </div>
             {aiReady&&(
               <button onClick={analyze} disabled={analyzing} style={{width:"100%",background:"rgba(88,86,214,0.08)",border:"1.5px solid rgba(88,86,214,0.3)",borderRadius:10,padding:"11px",color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-                {analyzing?<><Spin size={14}/><span>ANALYZING...</span></>:<><span>🤖</span><span>ANALYZE WITH AI</span></>}
+                {analyzing?<><Spin size={14}/><span>{t("log.analyzing")}</span></>:<><span>🤖</span><span>{t("log.analyze_with_ai")}</span></>}
               </button>
             )}
-            {!aiReady&&<div style={{fontSize:11,color:"rgba(0,0,0,0.35)",textAlign:"center",padding:"6px 0"}}>Setup AI (🤖 in header) to auto-fill from photo</div>}
+            {!aiReady&&<div style={{fontSize:11,color:"rgba(0,0,0,0.35)",textAlign:"center",padding:"6px 0"}}>{t("log.setup_ai_tip")}</div>}
             {aiResult&&(
               <div style={{background:"rgba(88,86,214,0.06)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:10,padding:"10px 12px",marginTop:8}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#5856d6",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif"}}>AI FILLED — REVIEW & EDIT BELOW</div>
+                <div style={{fontSize:11,fontWeight:700,color:"#5856d6",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif"}}>{t("log.ai_filled")}</div>
                 <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",marginBottom:6}}>{aiResult.description}</div>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                   {aiResult.trade&&<span style={{fontSize:10,fontWeight:700,background:"rgba(88,86,214,0.1)",color:"#5856d6",padding:"2px 8px",borderRadius:10}}>🔧 {aiResult.trade}</span>}
@@ -3353,7 +3400,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         <div style={{marginBottom:16}}>
           <button onClick={handleSpeakIssue} style={{width:"100%",height:54,background:speakVoice.listening?"rgba(255,59,48,0.1)":"rgba(255,107,0,0.08)",border:`2px solid ${speakVoice.listening?"rgba(255,59,48,0.4)":"rgba(255,107,0,0.25)"}`,borderRadius:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,transition:"all 0.2s",boxShadow:speakVoice.listening?"0 0 20px rgba(255,59,48,0.3)":"none"}}>
             <span style={{fontSize:22}}>{speakVoice.listening?"🔴":"🎙"}</span>
-            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:16,color:speakVoice.listening?"#ff3b30":"#ff6b00",letterSpacing:"0.06em"}}>{speakVoice.listening?"LISTENING...":"TAP TO SPEAK"}</span>
+            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:16,color:speakVoice.listening?"#ff3b30":"#ff6b00",letterSpacing:"0.06em"}}>{speakVoice.listening?t("log.listening"):t("log.tap_to_speak")}</span>
           </button>
           {speakTranscript&&(
             <div style={{marginTop:6,background:"rgba(255,107,0,0.05)",border:"1px solid rgba(255,107,0,0.15)",borderRadius:8,padding:"8px 10px",fontSize:12,color:"rgba(0,0,0,0.55)",fontStyle:"italic"}}>"{speakTranscript}"</div>
@@ -3372,7 +3419,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
 
       {/* ── MORE DETAILS accordion ── */}
       <button onClick={()=>setShowMoreDetails(!showMoreDetails)} style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:12,padding:"14px 16px",marginBottom:showMoreDetails?16:0,display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}}>
-        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"rgba(0,0,0,0.55)",letterSpacing:"0.06em"}}>MORE DETAILS</span>
+        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"rgba(0,0,0,0.55)",letterSpacing:"0.06em"}}>{t("log.more_details")}</span>
         <span style={{fontSize:12,color:"rgba(0,0,0,0.35)",transition:"transform 0.2s",transform:showMoreDetails?"rotate(180deg)":"rotate(0deg)"}}>▼</span>
       </button>
 
@@ -3405,7 +3452,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           {/* Cost & Time */}
           <div style={{background:"rgba(0,0,0,0.02)",borderRadius:12,padding:14,marginBottom:16,border:"1px solid rgba(0,0,0,0.06)"}}>
             <div style={{marginBottom:12}}>
-              <label style={lbl()}>DUE DATE</label>
+              <label style={lbl()}>{t("log.due_date")}</label>
               <input type="date" value={form.dueDate} onChange={e=>set("dueDate",e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
             </div>
             <ComboField label={t("fields.time_needed")} value={form.duration} onChange={v=>set("duration",v)} options={DURATION_OPTIONS} placeholder={t("fields.time_needed_placeholder")}/>
@@ -3427,10 +3474,10 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         return(
           <div style={{position:"sticky",bottom:0,background:"rgba(240,237,232,0.97)",backdropFilter:"blur(8px)",padding:"12px 16px",borderTop:"1px solid rgba(0,0,0,0.08)",zIndex:10,margin:"0 -16px",width:"calc(100% + 32px)"}}>
             <button onClick={submit} disabled={saving||!canSubmit} style={{width:"100%",height:54,background:canSubmit&&!saving?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:14,color:canSubmit?"#fff":"rgba(0,0,0,0.3)",fontSize:16,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",cursor:canSubmit&&!saving?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-              {saving?<><Spin size={16}/><span>SAVING...</span></>:"SAVE & NEXT"}
+              {saving?<><Spin size={16}/><span>{t("log.saving")}</span></>:t("log.save_next")}
             </button>
             <div style={{textAlign:"center",marginTop:8}}>
-              <button onClick={()=>{saveAndDoneRef.current=true;submit();}} disabled={saving||!canSubmit} style={{background:"none",border:"none",fontSize:12,color:"rgba(0,0,0,0.4)",cursor:canSubmit&&!saving?"pointer":"not-allowed",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600}}>SAVE & DONE</button>
+              <button onClick={()=>{saveAndDoneRef.current=true;submit();}} disabled={saving||!canSubmit} style={{background:"none",border:"none",fontSize:12,color:"rgba(0,0,0,0.4)",cursor:canSubmit&&!saving?"pointer":"not-allowed",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600}}>{t("log.save_done")}</button>
             </div>
           </div>
         );
@@ -3609,7 +3656,7 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,gap:8}}>
         <div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>REVIEW <span style={{color:"rgba(0,0,0,0.3)",fontSize:18}}>({filtered.length})</span></div>
-          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginTop:1}}>{selectMode?`${selectedIds.size} selected · tap rows to select`:"Triage, update status, verify and close entries"}</div>
+          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginTop:1}}>{selectMode?`${selectedIds.size} ${t("review.selected_tip")}`:t("review.triage_desc")}</div>
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
           {(activeFilters>0||q)&&!selectMode&&<button onClick={clearAll} style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:20,padding:"4px 10px",color:"#ff3b30",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.clear")} ({activeFilters+(q?1:0)})</button>}
@@ -3617,7 +3664,7 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
             selectMode?(
               <button onClick={exitSelect} style={{background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:20,padding:"4px 10px",color:"rgba(0,0,0,0.55)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.done")}</button>
             ):(
-              <button onClick={()=>setSelectMode(true)} style={{background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:20,padding:"4px 10px",color:"#ff6b00",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>✓ SELECT</button>
+              <button onClick={()=>setSelectMode(true)} style={{background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:20,padding:"4px 10px",color:"#ff6b00",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("review.select")}</button>
             )
           )}
         </div>
@@ -3635,7 +3682,7 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
 
       {/* Filter toggle */}
       <button onClick={()=>setShowFilters(!showFilters)} style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"8px 14px",marginBottom:showFilters?12:16,width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:"rgba(0,0,0,0.5)"}}>
-        <span>FILTERS {activeFilters>0?`(${activeFilters} active)`:""}</span>
+        <span>{t("review.filters")} {activeFilters>0?`(${activeFilters} active)`:""}</span>
         <span style={{fontSize:10}}>{showFilters?"▲":"▼"}</span>
       </button>
 
@@ -3644,7 +3691,7 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
           {/* Type filter */}
           {typeFilterOptions.length>1&&(
             <div style={{marginBottom:10}}>
-              <div style={lbl()}>TYPE</div>
+              <div style={lbl()}>{t("review.type_label")}</div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 {["All",...typeFilterOptions].map(t=>(
                   <button key={t} onClick={()=>setTypeF(t)} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${typeF===t?(t==="All"?"#ff6b00":typeColor(t)):"rgba(0,0,0,0.12)"}`,background:typeF===t?(t==="All"?"#ff6b00":typeBg(t)):"#fff",color:typeF===t?(t==="All"?"#fff":typeColor(t)):"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t==="All"?"ALL":typeIcon(t)+" "+t.toUpperCase()}</button>
@@ -3653,7 +3700,7 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
             </div>
           )}
           <div style={{marginBottom:10}}>
-            <div style={lbl()}>STATUS</div>
+            <div style={lbl()}>{t("review.status_label")}</div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {["All",...STATUS].map(s=>(
                 <button key={s} onClick={()=>setFilter(s)} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${filter===s?"#ff6b00":"rgba(0,0,0,0.12)"}`,background:filter===s?"#ff6b00":"#fff",color:filter===s?"#fff":"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{s.toUpperCase()}</button>
@@ -4114,7 +4161,7 @@ function DefectDetail({defect,onClose,onUpdate,member,company,members=[]}){
             {/* Cost & Time */}
             <div style={{background:"rgba(0,0,0,0.02)",borderRadius:12,padding:14,marginBottom:16,border:"1px solid rgba(0,0,0,0.06)"}}>
               <div style={{marginBottom:12}}>
-                <label style={lbl()}>DUE DATE</label>
+                <label style={lbl()}>{t("log.due_date")}</label>
                 <input type="date" value={editFields.dueDate} onChange={e=>ef("dueDate",e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
               </div>
               <ComboField label={t("fields.time_needed")} value={editFields.duration} onChange={v=>ef("duration",v)} options={DURATION_OPTIONS} placeholder={t("fields.time_needed_placeholder")}/>
@@ -4602,38 +4649,38 @@ function Report({defects,onEmailSetup,currentProject,company}){
       <div style={{display:"flex",gap:6,marginBottom:10}}>
         <div style={{position:"relative",flex:1,display:"flex"}}>
           <button onClick={()=>setShowEmailMenu(m=>!m)} disabled={sending} style={{flex:1,background:showEmailMenu?"#ff6b00":"#ff6b00",border:"none",borderRadius:10,padding:"10px 6px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",opacity:sending?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
-            {sending?<><Spin size={12}/><span>...</span></>:<>{emailReady?"📧 EMAIL ✓ ▾":"📧 EMAIL ▾"}</>}
+            {sending?<><Spin size={12}/><span>...</span></>:<>{emailReady?`📧 ${t("report.email_btn")} ✓ ▾`:`📧 ${t("report.email_btn")} ▾`}</>}
           </button>
           {showEmailMenu&&(
             <div style={{position:"absolute",top:"100%",left:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(0,0,0,0.08)",zIndex:20,minWidth:240,overflow:"hidden"}}>
-              <button onClick={()=>{setShowEmailMenu(false);if(emailReady)sendReport();else onEmailSetup();}} disabled={!emailReady} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:emailReady?"pointer":"default",color:emailReady?"#ff6b00":"rgba(0,0,0,0.25)"}}>📧 Send Report{emailReady?"":" (not configured)"}</button>
-              <button onClick={()=>{setShowEmailMenu(false);onEmailSetup();}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>⚙️ Edit Recipients</button>
-              {emailReady&&<button onClick={()=>{setShowEmailMenu(false);local.del(EMAIL_KEY);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#ff3b30"}}>🗑 Reset Email Setup</button>}
+              <button onClick={()=>{setShowEmailMenu(false);if(emailReady)sendReport();else onEmailSetup();}} disabled={!emailReady} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:emailReady?"pointer":"default",color:emailReady?"#ff6b00":"rgba(0,0,0,0.25)"}}>📧 {emailReady?t("report.send_report"):t("report.send_report_not_configured")}</button>
+              <button onClick={()=>{setShowEmailMenu(false);onEmailSetup();}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>⚙️ {t("report.edit_recipients")}</button>
+              {emailReady&&<button onClick={()=>{setShowEmailMenu(false);local.del(EMAIL_KEY);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#ff3b30"}}>🗑 {t("report.reset_email")}</button>}
               <div style={{padding:"10px 16px",borderTop:"1px solid rgba(0,0,0,0.04)",background:"#fafafa"}}>
-                <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.3)",letterSpacing:"0.05em",marginBottom:6}}>RECIPIENTS</div>
+                <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.3)",letterSpacing:"0.05em",marginBottom:6}}>{t("report.recipients")}</div>
                 {emailReady
                   ?emailCfg.recipients.filter(r=>r.trim()).map((r,i)=><div key={i} style={{fontSize:11,color:"#444",marginBottom:2}}>📨 {r}</div>)
-                  :<div style={{fontSize:11,color:"rgba(0,0,0,0.25)",fontStyle:"italic"}}>None configured</div>
+                  :<div style={{fontSize:11,color:"rgba(0,0,0,0.25)",fontStyle:"italic"}}>{t("report.none_configured")}</div>
                 }
-                <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.3)",letterSpacing:"0.05em",marginTop:8,marginBottom:4}}>CONTENT</div>
+                <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.3)",letterSpacing:"0.05em",marginTop:8,marginBottom:4}}>{t("report.content")}</div>
                 <div style={{fontSize:11,color:"#444",display:"flex",flexDirection:"column",gap:2}}>
-                  <span>{incDefects?"✅":"⬜"} Defect Entries ({filtered.length})</span>
-                  <span>{incDrawings?"✅":"⬜"} PDF Drawings ({totalAnnotations})</span>
-                  <span>{incComparisons?"✅":"⬜"} Saved Comparisons</span>
+                  <span>{incDefects?"✅":"⬜"} {t("report.defect_entries")} ({filtered.length})</span>
+                  <span>{incDrawings?"✅":"⬜"} {t("report.pdf_drawings")} ({totalAnnotations})</span>
+                  <span>{incComparisons?"✅":"⬜"} {t("report.saved_comparisons")}</span>
                 </div>
               </div>
             </div>
           )}
         </div>
-        <button onClick={()=>setShowContractAdvisor(v=>!v)} style={{flex:1,background:showContractAdvisor?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"10px 6px",color:showContractAdvisor?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>⚖️ ADVISOR</button>
-        <button onClick={()=>setShowPreview(p=>!p)} style={{flex:1,background:showPreview?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"10px 6px",color:showPreview?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>👁 PREVIEW</button>
+        <button onClick={()=>setShowContractAdvisor(v=>!v)} style={{flex:1,background:showContractAdvisor?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"10px 6px",color:showContractAdvisor?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>⚖️ {t("report.advisor")}</button>
+        <button onClick={()=>setShowPreview(p=>!p)} style={{flex:1,background:showPreview?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"10px 6px",color:showPreview?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>👁 {t("report.preview")}</button>
         <div style={{position:"relative",flex:1,display:"flex"}}>
-          <button onClick={()=>setShowExportMenu(m=>!m)} style={{flex:1,background:showExportMenu?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"10px 6px",color:showExportMenu?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>📊 EXPORT ▾</button>
+          <button onClick={()=>setShowExportMenu(m=>!m)} style={{flex:1,background:showExportMenu?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"10px 6px",color:showExportMenu?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>📊 {t("report.export_btn")}</button>
           {showExportMenu&&(
             <div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(0,0,0,0.08)",zIndex:20,minWidth:160,overflow:"hidden"}}>
-              <button onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📄 Export CSV</button>
-              <button onClick={()=>{setShowExportMenu(false);exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary).catch(e=>console.error("PDF export error:",e));}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📕 Export PDF</button>
-              <button onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);setTimeout(()=>{exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary).catch(e=>console.error("PDF export error:",e));},600);}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#ff6b00"}}>📊 Export All (CSV + PDF)</button>
+              <button onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📄 {t("report.export_csv")}</button>
+              <button onClick={()=>{setShowExportMenu(false);exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary).catch(e=>console.error("PDF export error:",e));}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📕 {t("report.export_pdf")}</button>
+              <button onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);setTimeout(()=>{exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary).catch(e=>console.error("PDF export error:",e));},600);}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#ff6b00"}}>📊 {t("report.export_all")}</button>
             </div>
           )}
         </div>
@@ -4641,33 +4688,33 @@ function Report({defects,onEmailSetup,currentProject,company}){
 
       <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
         <button onClick={()=>setShowFilters(f=>!f)} style={{flex:1,background:showFilters?"#1a1a1a":"rgba(0,0,0,0.06)",border:"none",borderRadius:10,padding:"11px",color:showFilters?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
-          <span>▼ FILTER</span>
+          <span>{t("report.filter")}</span>
           {activeFilters>0&&<span style={{background:"#ff6b00",color:"#fff",borderRadius:20,padding:"1px 7px",fontSize:11}}>{activeFilters}</span>}
         </button>
-        {activeFilters>0&&<button onClick={clearFilters} style={{background:"rgba(255,59,48,0.08)",border:"none",borderRadius:10,padding:"11px 14px",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CLEAR</button>}
+        {activeFilters>0&&<button onClick={clearFilters} style={{background:"rgba(255,59,48,0.08)",border:"none",borderRadius:10,padding:"11px 14px",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("report.clear")}</button>}
       </div>
 
       {showFilters&&(
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14}}>
-          <div style={{marginBottom:12}}><div style={lbl()}>SEVERITY</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{SEVERITY.map(s=><Chip key={s} label={s.toUpperCase()} active={sevFilter.includes(s)} color={SEV_COLOR[s]} onClick={()=>toggleArr(sevFilter,setSevFilter,s)}/>)}</div></div>
-          <div style={{marginBottom:12}}><div style={lbl()}>STATUS</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{STATUS.map(s=><Chip key={s} label={s.toUpperCase()} active={statusFilter.includes(s)} color={STATUS_COLOR[s]} onClick={()=>toggleArr(statusFilter,setStatusFilter,s)}/>)}</div></div>
-          {allAssignees.length>0&&<div style={{marginBottom:12}}><div style={lbl()}>ASSIGNEE</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{allAssignees.map(t=><Chip key={t} label={t} active={assigneeFilter.includes(t)} onClick={()=>toggleArr(assigneeFilter,setAssigneeFilter,t)}/>)}</div></div>}
-          <div><div style={lbl()}>DATE RANGE</div><div style={{display:"flex",gap:8,alignItems:"center"}}><input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{...inp,flex:1,fontSize:13}}/><span style={{color:"rgba(0,0,0,0.3)",fontSize:12}}>to</span><input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{...inp,flex:1,fontSize:13}}/></div></div>
+          <div style={{marginBottom:12}}><div style={lbl()}>{t("report.severity_label")}</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{SEVERITY.map(s=><Chip key={s} label={s.toUpperCase()} active={sevFilter.includes(s)} color={SEV_COLOR[s]} onClick={()=>toggleArr(sevFilter,setSevFilter,s)}/>)}</div></div>
+          <div style={{marginBottom:12}}><div style={lbl()}>{t("report.status_label")}</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{STATUS.map(s=><Chip key={s} label={s.toUpperCase()} active={statusFilter.includes(s)} color={STATUS_COLOR[s]} onClick={()=>toggleArr(statusFilter,setStatusFilter,s)}/>)}</div></div>
+          {allAssignees.length>0&&<div style={{marginBottom:12}}><div style={lbl()}>{t("report.assignee_label")}</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{allAssignees.map(t=><Chip key={t} label={t} active={assigneeFilter.includes(t)} onClick={()=>toggleArr(assigneeFilter,setAssigneeFilter,t)}/>)}</div></div>}
+          <div><div style={lbl()}>{t("report.date_range")}</div><div style={{display:"flex",gap:8,alignItems:"center"}}><input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{...inp,flex:1,fontSize:13}}/><span style={{color:"rgba(0,0,0,0.3)",fontSize:12}}>to</span><input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{...inp,flex:1,fontSize:13}}/></div></div>
         </div>
       )}
 
-      {activeFilters>0&&<div style={{background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#ff6b00",fontWeight:600}}>Showing {filtered.length} of {defects.length} defects</div>}
+      {activeFilters>0&&<div style={{background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#ff6b00",fontWeight:600}}>{t("report.showing_filtered").replace("{shown}",filtered.length).replace("{total}",defects.length)}</div>}
 
       {/* Email content sections — opt in/out */}
       <div style={{background:"#fff",borderRadius:14,padding:14,marginBottom:14}}>
-        <div style={lbl()}>EMAIL CONTENT SECTIONS</div>
+        <div style={lbl()}>{t("report.email_content_sections")}</div>
         <div style={{background:"rgba(255,107,0,0.06)",border:"1px solid rgba(255,107,0,0.15)",borderRadius:10,padding:"10px 12px",marginBottom:10,fontSize:11,lineHeight:1.5,color:"#666"}}>
-          <span style={{fontWeight:700,color:"#ff6b00"}}>📧 Email</span> sends a lightweight HTML summary. <span style={{fontWeight:700,color:"#ff6b00"}}>📕 PDF</span> with photos and annotated drawings must be exported separately via <span style={{fontWeight:700}}>EXPORT ▾ → Export PDF</span>.
+          <span style={{fontWeight:700,color:"#ff6b00"}}>📧 {t("report.email_btn_label")}</span> {t("report.email_summary_note")} <span style={{fontWeight:700,color:"#ff6b00"}}>📕 PDF</span> {t("report.email_pdf_note")} <span style={{fontWeight:700}}>{t("report.email_export_via")}</span>.
         </div>
         {[
-          {key:"defects",val:incDefects,set:setIncDefects,icon:"📋",label:"Defect Entries",count:filtered.length,color:"#ff3b30"},
-          {key:"drawings",val:incDrawings,set:setIncDrawings,icon:"📐",label:"PDF Drawings",count:drawingsWithAnnotations.length,sub:`${totalPins} pins · ${totalMarkups} markups · ${totalNotes} notes`,color:"#ff6b00"},
-          {key:"comparisons",val:incComparisons,set:setIncComparisons,icon:"🔍",label:"Saved Comparisons",count:savedComparisons.length,color:"#5856d6"}
+          {key:"defects",val:incDefects,set:setIncDefects,icon:"📋",label:t("report.defect_entries"),count:filtered.length,color:"#ff3b30"},
+          {key:"drawings",val:incDrawings,set:setIncDrawings,icon:"📐",label:t("report.pdf_drawings"),count:drawingsWithAnnotations.length,sub:`${totalPins} ${t("report.pins")} · ${totalMarkups} ${t("report.markups")} · ${totalNotes} ${t("report.notes")}`,color:"#ff6b00"},
+          {key:"comparisons",val:incComparisons,set:setIncComparisons,icon:"🔍",label:t("report.saved_comparisons"),count:savedComparisons.length,color:"#5856d6"}
         ].map(sec=>(
           <button key={sec.key} onClick={()=>sec.set(v=>!v)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",marginBottom:6,borderRadius:10,border:`1.5px solid ${sec.val?sec.color+"40":"rgba(0,0,0,0.08)"}`,background:sec.val?sec.color+"0a":"#fafafa",cursor:"pointer",textAlign:"left"}}>
             <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${sec.val?sec.color:"rgba(0,0,0,0.15)"}`,background:sec.val?sec.color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#fff",flexShrink:0}}>{sec.val?"✓":""}</div>
@@ -4684,7 +4731,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
       {showPreview&&(
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,border:"2px solid rgba(255,107,0,0.2)"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-            <div style={lbl()}>EMAIL PREVIEW</div>
+            <div style={lbl()}>{t("report.email_preview")}</div>
             {emailReady&&<div style={{fontSize:10,color:"rgba(0,0,0,0.35)"}}>Recipients: {emailCfg.recipients.filter(r=>r.trim()).join(", ")}</div>}
           </div>
           {incDefects&&filtered.length>0&&(
@@ -4724,7 +4771,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
               ))}
             </div>
           )}
-          {!incDefects&&!incDrawings&&!incComparisons&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",fontSize:12,padding:10}}>No sections selected. Toggle at least one section above.</div>}
+          {!incDefects&&!incDrawings&&!incComparisons&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",fontSize:12,padding:10}}>{t("report.no_sections_selected")}</div>}
         </div>
       )}
 
@@ -4735,12 +4782,12 @@ function Report({defects,onEmailSetup,currentProject,company}){
       )}
 
       <div style={{background:"#1a1a1a",borderRadius:14,padding:20,marginBottom:16}}>
-        <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:4}}>TOTAL DEFECTS</div>
+        <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:4}}>{t("report.total_defects")}</div>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:56,fontWeight:800,color:"#ff6b00",lineHeight:1}}>{total}</div>
       </div>
 
       <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14}}>
-        <div style={lbl()}>BY SEVERITY</div>
+        <div style={lbl()}>{t("report.by_severity")}</div>
         {bySev.map(({s,count})=>(
           <div key={s} style={{marginBottom:10}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
@@ -4755,7 +4802,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
       </div>
 
       <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14}}>
-        <div style={lbl()}>BY STATUS</div>
+        <div style={lbl()}>{t("report.by_status")}</div>
         <div style={{display:"flex",gap:10}}>
           {byStatus.map(({s,count})=>(
             <div key={s} style={{flex:1,textAlign:"center",padding:"12px 8px",background:STATUS_COLOR[s]+"12",borderRadius:10}}>
@@ -6082,14 +6129,14 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
             </button>
           )}
           <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(diffMenuTimer.current);setShowDiffMenu(true);}} onMouseLeave={()=>{diffMenuTimer.current=setTimeout(()=>setShowDiffMenu(false),250);}}>
-            <button onClick={()=>setShowDiffMenu(v=>!v)} title="Diff / Compare" style={{borderRadius:10,background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 12px",gap:5}}>
+            <button onClick={()=>setShowDiffMenu(v=>!v)} title={t("export.diff_compare")} style={{borderRadius:10,background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 12px",gap:5}}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="18" rx="1.5" stroke="rgba(88,86,214,0.8)" strokeWidth="1.8"/><rect x="13" y="3" width="8" height="18" rx="1.5" stroke="rgba(88,86,214,0.8)" strokeWidth="1.8"/><path d="M7 8h0M7 12h0M17 8h0M17 12h0" stroke="rgba(88,86,214,0.8)" strokeWidth="2.2" strokeLinecap="round"/></svg>
-              <span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(88,86,214,0.85)"}}>Diff</span>
+              <span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(88,86,214,0.85)"}}>{t("export.diff")}</span>
             </button>
             {showDiffMenu&&<div onMouseEnter={()=>clearTimeout(diffMenuTimer.current)} onMouseLeave={()=>{diffMenuTimer.current=setTimeout(()=>setShowDiffMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,overflow:"hidden",zIndex:100,minWidth:200}}>
-              <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>COMPARE</div>
-              <button onClick={()=>{setShowDiffMenu(false);if(pdfDrawings.length>=2)openCompare();else alert("Upload at least 2 PDF drawings to compare.");}} disabled={pdfDrawings.length<2} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:pdfDrawings.length>=2?"pointer":"not-allowed",color:pdfDrawings.length>=2?"#d8d2ff":"rgba(216,210,255,0.3)",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>Single <span style={{color:"rgba(255,255,255,0.35)",fontWeight:400}}>(PDFs Comparison)</span></button>
-              <button onClick={()=>{setShowDiffMenu(false);setShowBatchCompare(true);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#d8d2ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>Batch <span style={{color:"rgba(255,255,255,0.35)",fontWeight:400}}>(Folders Comparison)</span></button>
+              <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("export.compare_header")}</div>
+              <button onClick={()=>{setShowDiffMenu(false);if(pdfDrawings.length>=2)openCompare();else alert("Upload at least 2 PDF drawings to compare.");}} disabled={pdfDrawings.length<2} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:pdfDrawings.length>=2?"pointer":"not-allowed",color:pdfDrawings.length>=2?"#d8d2ff":"rgba(216,210,255,0.3)",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{t("export.single_compare")} <span style={{color:"rgba(255,255,255,0.35)",fontWeight:400}}>{t("export.single_compare_desc")}</span></button>
+              <button onClick={()=>{setShowDiffMenu(false);setShowBatchCompare(true);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#d8d2ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{t("export.batch_compare")} <span style={{color:"rgba(255,255,255,0.35)",fontWeight:400}}>{t("export.batch_compare_desc")}</span></button>
             </div>}
           </div>
           <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(dnMenuTimer.current);setShowDnMenu(true);}} onMouseLeave={()=>{dnMenuTimer.current=setTimeout(()=>setShowDnMenu(false),250);}}>
@@ -6098,16 +6145,16 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
               <span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(52,170,220,0.9)"}}>Dn</span>
             </button>
             {showDnMenu&&<div onMouseEnter={()=>clearTimeout(dnMenuTimer.current)} onMouseLeave={()=>{dnMenuTimer.current=setTimeout(()=>setShowDnMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,overflow:"hidden",zIndex:100,minWidth:180}}>
-              <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>MARKUPS</div>
-              <button onClick={()=>{exportMarkupsCsv();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#ffb48a",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>Markup CSV</button>
-              <button onClick={()=>{exportMarkupsPdf();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#ffb48a",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Markup PDF</button>
+              <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("export.markups_header")}</div>
+              <button onClick={()=>{exportMarkupsCsv();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#ffb48a",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{t("export.markup_csv")}</button>
+              <button onClick={()=>{exportMarkupsPdf();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#ffb48a",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>{t("export.markup_pdf")}</button>
               <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("compare.title")}</div>
-              <button onClick={()=>{exportSavedComparisonsCsv();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#d8d2ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>Compare CSV</button>
-              <button onClick={()=>{exportSavedComparisonsPdf();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#d8d2ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>Compare PDF</button>
-              <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>ALL</div>
-              <button onClick={()=>{exportAll();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#7fd7ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>All CSV</button>
-              <button onClick={()=>{exportAllPdf();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#7fd7ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>All PDF</button>
-              <button onClick={async()=>{setShowDnMenu(false);exportAll();await exportAllPdf();}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"rgba(48,209,88,0.08)",border:"none",cursor:"pointer",color:"#6ee7a0",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800}}>All-in-One (CSV + PDF)</button>
+              <button onClick={()=>{exportSavedComparisonsCsv();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#d8d2ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{t("export.compare_csv")}</button>
+              <button onClick={()=>{exportSavedComparisonsPdf();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#d8d2ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>{t("export.compare_pdf")}</button>
+              <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("export.all_header")}</div>
+              <button onClick={()=>{exportAll();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#7fd7ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{t("export.all_csv")}</button>
+              <button onClick={()=>{exportAllPdf();setShowDnMenu(false);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#7fd7ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,borderBottom:"1px solid rgba(255,255,255,0.06)"}}>{t("export.all_pdf")}</button>
+              <button onClick={async()=>{setShowDnMenu(false);exportAll();await exportAllPdf();}} style={{width:"100%",textAlign:"left",padding:"8px 12px",background:"rgba(48,209,88,0.08)",border:"none",cursor:"pointer",color:"#6ee7a0",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800}}>{t("export.all_in_one")}</button>
             </div>}
           </div>
         </div>
@@ -6117,8 +6164,8 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           const markedUpDrawings=drawings.filter(d=>getDrawingMarkup(d.id).length>0||getDrawingNotes(d.id).length>0);
           return(
             <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
-              <div style={{background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"6px 12px",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.5)"}}>📐 UPLOADED DRAWINGS ({drawings.length})</div>
-              {markedUpDrawings.length>0&&<div style={{background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:10,padding:"6px 12px",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:"#ff6b00"}}>✏ SAVED MARKUP DRAWINGS ({markedUpDrawings.length})</div>}
+              <div style={{background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"6px 12px",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.5)"}}>📐 {t("drawings.uploaded_drawings")} ({drawings.length})</div>
+              {markedUpDrawings.length>0&&<div style={{background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:10,padding:"6px 12px",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:"#ff6b00"}}>✏ {t("drawings.saved_markup_drawings")} ({markedUpDrawings.length})</div>}
               {savedComparisons.length>0&&<div style={{background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:10,padding:"6px 12px",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:"#5856d6"}}>🔍 {t("compare.saved_comparisons")} ({savedComparisons.length})</div>}
             </div>
           );
@@ -8230,10 +8277,9 @@ const DdIcon=({name,size=16})=>{
 
 function App(){
   const[lang,setLangState]=useState(_currentCode);
-  // Initialize i18n on first mount
+  // Re-render on language change
   useEffect(()=>{
     const unsub=onLangChange(code=>setLangState(code));
-    initI18n();
     return unsub;
   },[]);
   const setLang=loadLanguage;

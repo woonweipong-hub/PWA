@@ -15,7 +15,7 @@
 <!-- React -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<!-- Babel removed — app.js is pre-compiled now -->
 <!-- Fonts -->
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
@@ -76,8 +76,8 @@ window.addEventListener('beforeinstallprompt', e => {
 <!-- Shared constants (entry types, statuses, components, locations) -->
 <script src="js/constants.js"></script>
 <!-- i18n — lightweight translation helper (must load before app.js) -->
-<script src="js/lang.js?v=87"></script>
-<!-- App logic — Babel processes JSX -->
-<script type="text/babel" src="js/app.js?v=87"></script>
+<script src="js/lang.js?v=88"></script>
+<!-- App logic — pre-compiled, no Babel needed -->
+<script src="js/app.compiled.js?v=88"></script>
 </body>
 </html>

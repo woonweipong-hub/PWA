@@ -1,11 +1,11 @@
-const CACHE = 'siteshrimp-v95';
+const CACHE = 'siteshrimp-v96';
 const ASSETS = [
   '/',
   '/index.html',
   '/css/style.css',
   '/js/db.js',
   '/js/constants.js',
-  '/js/app.js',
+  '/js/app.compiled.js',
   '/js/lang.js',
   '/manifest.json',
   '/icons/icon-192.png',

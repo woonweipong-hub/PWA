@@ -1,0 +1,16 @@
+{
+  "scripts": {
+    "build": "babel --presets @babel/preset-react js/app.js -o js/app.compiled.js",
+    "translate": "node tools/translate.js"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.28.6",
+    "@babel/core": "^7.29.0",
+    "@babel/parser": "^7.29.2",
+    "@babel/preset-react": "^7.28.5"
+  },
+  "dependencies": {
+    "google-translate-api-x": "^10.7.2",
+    "sharp": "^0.34.5"
+  }
+}
