@@ -6717,6 +6717,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                       <button onClick={()=>setCompareZoom(z=>Math.min(5,z+0.5))} style={{width:28,height:28,borderRadius:6,background:"rgba(0,0,0,0.65)",border:"none",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
                       <button onClick={()=>{setCompareZoom(1);setComparePan({x:0,y:0});}} style={{width:28,height:28,borderRadius:6,background:"rgba(0,0,0,0.65)",border:"none",color:"#fff",fontSize:9,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif"}}>{Math.round(compareZoom*100)}%</button>
                       <button onClick={()=>{setCompareZoom(z=>{const nz=Math.max(1,z-0.5);if(nz<=1)setComparePan({x:0,y:0});return nz;});}} style={{width:28,height:28,borderRadius:6,background:"rgba(0,0,0,0.65)",border:"none",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+                      <div style={{background:"rgba(0,0,0,0.55)",borderRadius:6,padding:"3px 4px",fontSize:8,color:"rgba(255,255,255,0.6)",textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,lineHeight:1.3}}>Ctrl<br/>+scroll</div>
                     </div>
                     {/* Legend */}
                     <div style={{position:"absolute",left:6,top:6,zIndex:5,display:"flex",gap:4,flexWrap:"wrap",pointerEvents:"none"}}>
@@ -6730,7 +6731,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                     <div ref={compareBoardRef} style={{touchAction:"none",overflow:"hidden"}}
                       onMouseDown={onCompareMarkupDown} onMouseMove={onCompareMarkupMove} onMouseUp={onCompareMarkupUp} onMouseLeave={onCompareMarkupUp}
                       onTouchStart={onCompareMarkupDown} onTouchMove={onCompareMarkupMove} onTouchEnd={onCompareMarkupUp}
-                      onWheel={e=>{e.preventDefault();setCompareZoom(z=>{const nz=Math.max(1,Math.min(5,z+(e.deltaY<0?0.3:-0.3)));if(nz<=1)setComparePan({x:0,y:0});return nz;});}}>
+                      onWheel={e=>{if(!e.ctrlKey&&!e.metaKey)return;e.preventDefault();setCompareZoom(z=>{const nz=Math.max(1,Math.min(5,z+(e.deltaY<0?0.3:-0.3)));if(nz<=1)setComparePan({x:0,y:0});return nz;});}}>
                       <div style={{transform:`scale(${compareZoom}) translate(${comparePan.x/compareZoom}px,${comparePan.y/compareZoom}px)`,transformOrigin:"center center"}}>
                         <canvas ref={compareOverlayCanvasRef} style={{width:"100%",display:"block",background:"#fff"}}/>
                         <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:compareMarkupTool==="select"?"auto":"none"}}>
