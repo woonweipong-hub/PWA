@@ -370,7 +370,10 @@
     "finish_setup": "Fullfør oppsettet",
     "done_pill": "FERDIG",
     "todo_pill": "Å GJØRE",
-    "opt_pill": "VALGFRITT"
+    "opt_pill": "VALGFRITT",
+    "section_app": "APP",
+    "clear_cache": "Tøm hurtigbuffer og last på nytt",
+    "clear_cache_desc": "Løs innlastingsproblemer ved å oppdatere alle hurtigbufrede filer"
   },
   "team": {
     "title": "👥 TEAM LEDELSE",

@@ -370,7 +370,10 @@
     "finish_setup": "Hoàn tất cài đặt",
     "done_pill": "XONG",
     "todo_pill": "CẦN LÀM",
-    "opt_pill": "TÙY CHỌN"
+    "opt_pill": "TÙY CHỌN",
+    "section_app": "ỨNG DỤNG",
+    "clear_cache": "Xóa bộ nhớ đệm và tải lại",
+    "clear_cache_desc": "Khắc phục sự cố tải bằng cách làm mới tất cả các tệp đã lưu trong bộ nhớ đệm"
   },
   "team": {
     "title": "👥 QUẢN LÝ NHÓM",

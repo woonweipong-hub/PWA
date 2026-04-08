@@ -370,7 +370,10 @@
     "finish_setup": "セットアップを完了",
     "done_pill": "完了",
     "todo_pill": "未完了",
-    "opt_pill": "任意"
+    "opt_pill": "任意",
+    "section_app": "アプリ",
+    "clear_cache": "キャッシュをクリアして再読み込み",
+    "clear_cache_desc": "キャッシュされたファイルを更新して読み込みの問題を修正します"
   },
   "team": {
     "title": "👥 チーム管理",

@@ -370,7 +370,10 @@
     "finish_setup": "Viimeistele asennus",
     "done_pill": "VALMIS",
     "todo_pill": "TEHTÄVÄ",
-    "opt_pill": "VALINNAINEN"
+    "opt_pill": "VALINNAINEN",
+    "section_app": "SOVELLUS",
+    "clear_cache": "Tyhjennä välimuisti ja lataa uudelleen",
+    "clear_cache_desc": "Korjaa latausongelmat päivittämällä kaikki välimuistissa olevat tiedostot"
   },
   "team": {
     "title": "👥 RYHMÄN HALLINTA",

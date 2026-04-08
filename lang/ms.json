@@ -370,7 +370,10 @@
     "finish_setup": "Selesaikan persediaan",
     "done_pill": "SELESAI",
     "todo_pill": "PERLU BUAT",
-    "opt_pill": "PILIHAN"
+    "opt_pill": "PILIHAN",
+    "section_app": "APLIKASI",
+    "clear_cache": "Kosongkan Cache & Muat Semula",
+    "clear_cache_desc": "Selesaikan masalah pemuatan dengan menyegarkan semua fail yang dicache"
   },
   "team": {
     "title": "👥 PENGURUSAN PASUKAN",

@@ -370,7 +370,10 @@
     "finish_setup": "Kurulumu bitir",
     "done_pill": "TAMAM",
     "todo_pill": "YAPILACAK",
-    "opt_pill": "İSTEĞE BAĞLI"
+    "opt_pill": "İSTEĞE BAĞLI",
+    "section_app": "UYGULAMA",
+    "clear_cache": "Önbelleği Temizle ve Yeniden Yükle",
+    "clear_cache_desc": "Önbelleğe alınmış tüm dosyaları yenileyerek yükleme sorunlarını düzeltin"
   },
   "team": {
     "title": "👥 TAKIM YÖNETİMİ",

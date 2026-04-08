@@ -8391,6 +8391,7 @@ const DdIcon=({name,size=16})=>{
     case"chat":return <svg {...p}><path d="M4 5h16v10H8l-4 4V5z"/></svg>;
     case"logout":return <svg {...p}><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 8l-4 4 4 4"/><path d="M6 12h10"/></svg>;
     case"globe":return <svg {...p}><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8"/><path d="M12 3c2.2 2.5 3.5 5.5 3.5 9s-1.3 6.5-3.5 9c-2.2-2.5-3.5-5.5-3.5-9s1.3-6.5 3.5-9z"/></svg>;
+    case"refresh":return <svg {...p}><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>;
     default:return null;
   }
 };
@@ -8798,6 +8799,8 @@ function App(){
                 {label:t("settings.storage"),desc:t("settings.storage_desc"),icon:"disk",optional:true,onClick:()=>{setShowStorage(true);setShowSettingsMenu(false);}},
                 {section:t("language.title")},
                 {label:t("settings.language"),desc:(languages.find(l=>l.code===lang)||{}).name||"English",icon:"globe",optional:true,onClick:()=>{setShowLangPicker(true);setShowSettingsMenu(false);}},
+                {section:t("settings.section_app")},
+                {label:t("settings.clear_cache"),desc:t("settings.clear_cache_desc"),icon:"refresh",optional:true,onClick:async()=>{if("caches"in window){const keys=await caches.keys();await Promise.all(keys.map(k=>caches.delete(k)));}if(navigator.serviceWorker){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.unregister()));}setShowSettingsMenu(false);window.location.reload(true);}},
               ];
               return(
               <div className="dd-panel" onMouseEnter={()=>clearTimeout(settingsMenuTimer.current)} onMouseLeave={()=>{settingsMenuTimer.current=setTimeout(()=>setShowSettingsMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:8,background:"linear-gradient(180deg,#2e2e32 0%,#1f1f22 100%)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,overflow:"hidden",zIndex:100,minWidth:278,boxShadow:"0 16px 48px rgba(0,0,0,0.55),0 2px 10px rgba(0,0,0,0.35)"}}>

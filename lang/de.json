@@ -370,7 +370,10 @@
     "finish_setup": "Einrichtung abschließen",
     "done_pill": "FERTIG",
     "todo_pill": "AUSSTEHEND",
-    "opt_pill": "OPTIONAL"
+    "opt_pill": "OPTIONAL",
+    "section_app": "APP",
+    "clear_cache": "Cache leeren & neu laden",
+    "clear_cache_desc": "Ladeprobleme durch Aktualisierung aller zwischengespeicherten Dateien beheben"
   },
   "team": {
     "title": "👥 TEAMVERWALTUNG",

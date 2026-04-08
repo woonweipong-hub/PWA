@@ -370,7 +370,10 @@
     "finish_setup": "Afslut opsætningen",
     "done_pill": "FÆRDIG",
     "todo_pill": "AT GØRE",
-    "opt_pill": "VALGFRI"
+    "opt_pill": "VALGFRI",
+    "section_app": "APP",
+    "clear_cache": "Ryd cache og genindlæs",
+    "clear_cache_desc": "Løs indlæsningsproblemer ved at opdatere alle cachelagrede filer"
   },
   "team": {
     "title": "👥 TEAMLEDELSE",

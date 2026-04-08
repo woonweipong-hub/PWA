@@ -370,7 +370,10 @@
     "finish_setup": "설정 완료",
     "done_pill": "완료",
     "todo_pill": "할일",
-    "opt_pill": "선택"
+    "opt_pill": "선택",
+    "section_app": "앱",
+    "clear_cache": "캐시 지우기 및 새로고침",
+    "clear_cache_desc": "캐시된 모든 파일을 새로 고쳐 로딩 문제를 해결합니다"
   },
   "team": {
     "title": "👥 팀 관리",

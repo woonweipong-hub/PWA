@@ -370,7 +370,10 @@
     "finish_setup": "Selesaikan pengaturan",
     "done_pill": "SELESAI",
     "todo_pill": "PERLU",
-    "opt_pill": "OPSIONAL"
+    "opt_pill": "OPSIONAL",
+    "section_app": "APLIKASI",
+    "clear_cache": "Hapus Cache & Muat Ulang",
+    "clear_cache_desc": "Perbaiki masalah pemuatan dengan menyegarkan semua file yang di-cache"
   },
   "team": {
     "title": "👥 MANAJEMEN TIM",

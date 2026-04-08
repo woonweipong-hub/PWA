@@ -370,7 +370,10 @@
     "finish_setup": "Finalizar la configuración",
     "done_pill": "HECHO",
     "todo_pill": "PENDIENTE",
-    "opt_pill": "OPCIONAL"
+    "opt_pill": "OPCIONAL",
+    "section_app": "APP",
+    "clear_cache": "Borrar caché y recargar",
+    "clear_cache_desc": "Soluciona problemas de carga actualizando todos los archivos en caché"
   },
   "team": {
     "title": "👥 GESTIÓN DEL EQUIPO",

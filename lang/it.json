@@ -370,7 +370,10 @@
     "finish_setup": "Termina la configurazione",
     "done_pill": "FATTO",
     "todo_pill": "DA FARE",
-    "opt_pill": "OPZIONALE"
+    "opt_pill": "OPZIONALE",
+    "section_app": "APP",
+    "clear_cache": "Svuota cache e ricarica",
+    "clear_cache_desc": "Risolvi i problemi di caricamento aggiornando tutti i file memorizzati nella cache"
   },
   "team": {
     "title": "👥 GESTIONE DELLA SQUADRA",

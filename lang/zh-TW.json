@@ -370,7 +370,10 @@
     "finish_setup": "完成設定",
     "done_pill": "完成",
     "todo_pill": "待辦",
-    "opt_pill": "選用"
+    "opt_pill": "選用",
+    "section_app": "應用程式",
+    "clear_cache": "清除快取並重新載入",
+    "clear_cache_desc": "透過重新整理所有快取檔案來修復載入問題"
   },
   "team": {
     "title": "👥 團隊管理",

@@ -370,7 +370,10 @@
     "finish_setup": "Slutför installationen",
     "done_pill": "KLAR",
     "todo_pill": "ATT GÖRA",
-    "opt_pill": "VALFRITT"
+    "opt_pill": "VALFRITT",
+    "section_app": "APP",
+    "clear_cache": "Rensa cache och ladda om",
+    "clear_cache_desc": "Åtgärda laddningsproblem genom att uppdatera alla cachade filer"
   },
   "team": {
     "title": "👥 TEAMLEDNING",

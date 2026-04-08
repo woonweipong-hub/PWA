@@ -370,7 +370,10 @@
     "finish_setup": "完成设置",
     "done_pill": "完成",
     "todo_pill": "待办",
-    "opt_pill": "可选"
+    "opt_pill": "可选",
+    "section_app": "应用",
+    "clear_cache": "清除缓存并重新加载",
+    "clear_cache_desc": "通过刷新所有缓存文件来修复加载问题"
   },
   "team": {
     "title": "👥 团队管理",
