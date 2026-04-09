@@ -676,5 +676,14 @@
     "description": "BESKRIVELSE",
     "timeline": "TIDSLINJE",
     "assigned": "Tildelt"
+  },
+  "work_categories": {
+    "landed": "Byggfeil (Lavbygg)",
+    "highrise": "Byggfeil (Høybygg)",
+    "construction": "Byggeplass",
+    "interior": "Innredningsarbeid",
+    "facilities": "Eiendomsforvaltning",
+    "infrastructure": "Infrastrukturarbeid",
+    "others": "Annet"
   }
 }

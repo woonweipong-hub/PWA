@@ -676,5 +676,14 @@
     "description": "विवरण",
     "timeline": "समयरेखा",
     "assigned": "सौंपा गया"
+  },
+  "work_categories": {
+    "landed": "भवन दोष (लो-राइज़)",
+    "highrise": "भवन दोष (हाई-राइज़)",
+    "construction": "निर्माण स्थल",
+    "interior": "इंटीरियर कार्य",
+    "facilities": "सुविधा प्रबंधन",
+    "infrastructure": "बुनियादी ढांचा कार्य",
+    "others": "अन्य"
   }
 }

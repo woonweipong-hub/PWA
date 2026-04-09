@@ -676,5 +676,14 @@
     "description": "DESKRIPSI",
     "timeline": "KRONOLOGI",
     "assigned": "Ditugaskan"
+  },
+  "work_categories": {
+    "landed": "Cacat Bangunan (Landed)",
+    "highrise": "Cacat Bangunan (Highrise)",
+    "construction": "Lokasi Konstruksi",
+    "interior": "Pekerjaan Interior",
+    "facilities": "Manajemen Fasilitas",
+    "infrastructure": "Pekerjaan Infrastruktur",
+    "others": "Lainnya"
   }
 }

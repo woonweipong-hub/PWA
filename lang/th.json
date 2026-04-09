@@ -676,5 +676,14 @@
     "description": "รายละเอียด",
     "timeline": "ไทม์ไลน์",
     "assigned": "มอบหมายให้"
+  },
+  "work_categories": {
+    "landed": "ข้อบกพร่องอาคาร (แนวราบ)",
+    "highrise": "ข้อบกพร่องอาคาร (สูง)",
+    "construction": "พื้นที่ก่อสร้าง",
+    "interior": "งานตกแต่งภายใน",
+    "facilities": "การจัดการอาคาร",
+    "infrastructure": "งานโครงสร้างพื้นฐาน",
+    "others": "อื่นๆ"
   }
 }

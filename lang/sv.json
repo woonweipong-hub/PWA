@@ -676,5 +676,14 @@
     "description": "BESKRIVNING",
     "timeline": "TIDSLINJE",
     "assigned": "Tilldelad"
+  },
+  "work_categories": {
+    "landed": "Byggfel (Låghus)",
+    "highrise": "Byggfel (Höghus)",
+    "construction": "Byggarbetsplats",
+    "interior": "Inredningsarbeten",
+    "facilities": "Fastighetsförvaltning",
+    "infrastructure": "Infrastrukturarbeten",
+    "others": "Övrigt"
   }
 }

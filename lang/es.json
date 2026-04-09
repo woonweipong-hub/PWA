@@ -676,5 +676,14 @@
     "description": "DESCRIPCIÓN",
     "timeline": "CRONOLOGÍA",
     "assigned": "Asignado"
+  },
+  "work_categories": {
+    "landed": "Defectos Edificio (Baja Altura)",
+    "highrise": "Defectos Edificio (Gran Altura)",
+    "construction": "Obra de Construcción",
+    "interior": "Trabajos Interiores",
+    "facilities": "Gestión de Instalaciones",
+    "infrastructure": "Obras de Infraestructura",
+    "others": "Otros"
   }
 }

@@ -80,6 +80,15 @@
     "observation": "观察",
     "label": "严重程度"
   },
+  "work_categories": {
+    "landed": "建筑缺陷（低层住宅）",
+    "highrise": "建筑缺陷（高层住宅）",
+    "construction": "施工现场",
+    "interior": "室内装修",
+    "facilities": "设施管理",
+    "infrastructure": "基础设施工程",
+    "others": "其他"
+  },
   "roles": {
     "admin": "管理员",
     "manager": "经理",

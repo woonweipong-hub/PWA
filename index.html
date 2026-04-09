@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <meta name="theme-color" content="#ff6b00"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -20,7 +20,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html,body,#root{height:100%;background:#f0ede8;}
+html,body,#root{height:100%;background:#f0ede8;touch-action:pan-x pan-y;}
 body{font-family:'Barlow',sans-serif;}
 input,textarea,select{outline:none;font-family:'Barlow',sans-serif;}
 ::-webkit-scrollbar{width:2px;}
@@ -76,8 +76,8 @@ window.addEventListener('beforeinstallprompt', e => {
 <!-- Shared constants (entry types, statuses, components, locations) -->
 <script src="js/constants.js"></script>
 <!-- i18n — lightweight translation helper (must load before app.js) -->
-<script src="js/lang.js?v=89"></script>
+<script src="js/lang.js?v=92"></script>
 <!-- App logic — pre-compiled, no Babel needed -->
-<script src="js/app.compiled.js?v=90"></script>
+<script src="js/app.compiled.js?v=93"></script>
 </body>
 </html>

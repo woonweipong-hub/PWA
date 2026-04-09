@@ -676,5 +676,14 @@
     "description": "説明",
     "timeline": "タイムライン",
     "assigned": "担当者"
+  },
+  "work_categories": {
+    "landed": "建物欠陥（低層）",
+    "highrise": "建物欠陥（高層）",
+    "construction": "建設現場",
+    "interior": "内装工事",
+    "facilities": "施設管理",
+    "infrastructure": "インフラ工事",
+    "others": "その他"
   }
 }

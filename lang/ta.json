@@ -676,5 +676,14 @@
     "description": "விவரம்",
     "timeline": "காலவரிசை",
     "assigned": "ஒதுக்கப்பட்டது"
+  },
+  "work_categories": {
+    "landed": "கட்டிட குறைபாடுகள் (தாழ்வான)",
+    "highrise": "கட்டிட குறைபாடுகள் (உயரமான)",
+    "construction": "கட்டுமான தளம்",
+    "interior": "உள்அலங்கார வேலைகள்",
+    "facilities": "வசதி மேலாண்மை",
+    "infrastructure": "உள்கட்டமைப்பு பணிகள்",
+    "others": "மற்றவை"
   }
 }

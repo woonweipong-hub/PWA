@@ -676,5 +676,14 @@
     "description": "বিবরণ",
     "timeline": "টাইমলাইন",
     "assigned": "নির্ধারিত"
+  },
+  "work_categories": {
+    "landed": "ভবন ত্রুটি (নিম্ন তলা)",
+    "highrise": "ভবন ত্রুটি (উচ্চ তলা)",
+    "construction": "নির্মাণ সাইট",
+    "interior": "অভ্যন্তরীণ কাজ",
+    "facilities": "সুবিধা ব্যবস্থাপনা",
+    "infrastructure": "অবকাঠামো কাজ",
+    "others": "অন্যান্য"
   }
 }

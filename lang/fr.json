@@ -676,5 +676,14 @@
     "description": "DESCRIPTION",
     "timeline": "CHRONOLOGIE",
     "assigned": "Assigné"
+  },
+  "work_categories": {
+    "landed": "Défauts Bâtiment (Bas)",
+    "highrise": "Défauts Bâtiment (Tour)",
+    "construction": "Chantier",
+    "interior": "Travaux Intérieurs",
+    "facilities": "Gestion des Installations",
+    "infrastructure": "Travaux d'Infrastructure",
+    "others": "Autres"
   }
 }

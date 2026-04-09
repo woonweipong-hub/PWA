@@ -676,5 +676,14 @@
     "description": "MÔ TẢ",
     "timeline": "DÒNG THỜI GIAN",
     "assigned": "Phụ trách"
+  },
+  "work_categories": {
+    "landed": "Lỗi Công Trình (Nhà Thấp Tầng)",
+    "highrise": "Lỗi Công Trình (Nhà Cao Tầng)",
+    "construction": "Công Trường Xây Dựng",
+    "interior": "Công Trình Nội Thất",
+    "facilities": "Quản Lý Cơ Sở",
+    "infrastructure": "Công Trình Hạ Tầng",
+    "others": "Khác"
   }
 }

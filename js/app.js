@@ -2165,6 +2165,9 @@ function MicBtn({onResult,currentValue,append}){
 }
 
 const SEV_I18N={"Critical":"severity.critical","Major":"severity.major","Minor":"severity.minor","Observation":"severity.observation"};
+const WORKCAT_I18N={"Building Defects (Landed)":"work_categories.landed","Building Defects (Highrise)":"work_categories.highrise","Construction Site":"work_categories.construction","Interior Works":"work_categories.interior","Facilities Management":"work_categories.facilities","Infrastructure Works":"work_categories.infrastructure","Others":"work_categories.others"};
+const sevDisplayFn=v=>SEV_I18N[v]?t(SEV_I18N[v]):v;
+const workcatDisplayFn=v=>WORKCAT_I18N[v]?t(WORKCAT_I18N[v]):v;
 const SevChip=({s})=><span style={{display:"inline-flex",alignItems:"center",padding:"3px 9px",borderRadius:20,fontSize:11,fontWeight:600,fontFamily:"'Barlow Condensed',sans-serif",color:SEV_COLOR[s],background:SEV_BG[s]}}>{(SEV_I18N[s]?t(SEV_I18N[s]):s).toUpperCase()}</span>;
 const STATUS_I18N={"Open":"status.open","In Progress":"status.in_progress","Done":"status.done","Verified":"status.verified","Closed":"status.closed"};
 const StatusChip=({s})=><span style={{display:"inline-flex",alignItems:"center",padding:"3px 9px",borderRadius:20,fontSize:11,fontWeight:600,fontFamily:"'Barlow Condensed',sans-serif",color:STATUS_COLOR[s],background:STATUS_COLOR[s]+"22"}}>{(STATUS_I18N[s]?t(STATUS_I18N[s]):s).toUpperCase()}</span>;
@@ -2194,7 +2197,8 @@ function VoiceField({label,value,onChange,placeholder,multiline}){
 
 // ComboField: voice/manual text input first, with LIST button to open dropdown.
 // Default shows text input + mic. Tap LIST to browse predefined options.
-function ComboField({label,value,onChange,options,placeholder,grouped}){
+function ComboField({label,value,onChange,options,placeholder,grouped,displayFn}){
+  const _d=displayFn||(v=>v);
   const[open,setOpen]=useState(false);
   const[search,setSearch]=useState("");
 
@@ -2203,7 +2207,7 @@ function ComboField({label,value,onChange,options,placeholder,grouped}){
     <div style={{marginBottom:16}}>
       <label style={lbl()}>{label}</label>
       <div style={{display:"flex",gap:8,alignItems:"center"}}>
-        <input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder||"Type or tap LIST..."} style={{...inp,flex:1}}/>
+        <input value={_d(value)} onChange={e=>onChange(e.target.value)} placeholder={placeholder||"Type or tap LIST..."} style={{...inp,flex:1}} readOnly={!!displayFn}/>
         <MicBtn onResult={t=>onChange(t)} currentValue={value}/>
         <button onClick={()=>{setSearch("");setOpen(true);}} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"8px 10px",fontSize:11,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,flexShrink:0}}>LIST ▼</button>
       </div>
@@ -2244,7 +2248,7 @@ function ComboField({label,value,onChange,options,placeholder,grouped}){
 
   // Expanded dropdown — flat options list
   const filtered=search
-    ?(options||[]).filter(it=>it.toLowerCase().includes(search.toLowerCase()))
+    ?(options||[]).filter(it=>{const q=search.toLowerCase();return it.toLowerCase().includes(q)||_d(it).toLowerCase().includes(q);})
     :options||[];
   return(
     <div style={{marginBottom:16}}>
@@ -2259,7 +2263,7 @@ function ComboField({label,value,onChange,options,placeholder,grouped}){
       <div style={{maxHeight:200,overflowY:"auto",borderRadius:10,border:"1px solid rgba(0,0,0,0.08)"}}>
         {filtered.map(opt=>(
           <div key={opt} onClick={()=>{onChange(opt);setOpen(false);setSearch("");}} style={{padding:"10px 12px",cursor:"pointer",background:value===opt?"rgba(255,107,0,0.08)":"#fff",borderBottom:"1px solid rgba(0,0,0,0.04)",fontSize:14,color:value===opt?"#ff6b00":"#1a1a1a",fontWeight:value===opt?700:400}}>
-            {opt}
+            {_d(opt)}
           </div>
         ))}
         {filtered.length===0&&<div style={{padding:16,textAlign:"center",color:"rgba(0,0,0,0.3)",fontSize:13}}>No match</div>}
@@ -2283,7 +2287,7 @@ function SettingsBack({onClose,title}){
 // (same key as index.html reads on startup).
 function ServerUrlConfig(){
   const[open,setOpen]=useState(false);
-  const[url,setUrl]=useState(()=>localStorage.getItem('pb_url')||'https://siteshrimp.duckdns.org');
+  const[url,setUrl]=useState(()=>localStorage.getItem('pb_url')||'https://api.siteshrimp.org');
   const[saved,setSaved]=useState(false);
   const apply=()=>{
     const cleaned=url.trim().replace(/\/+$/,'');
@@ -2496,7 +2500,7 @@ function AuthScreen({onAuth,onFullSetup}){
           ))}
           </div>
         </div>
-        <div>
+        <div style={{textAlign:"center"}}>
           <button onClick={()=>setPage("auth")} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:11,padding:introPreset.btnPad,color:"#fff",fontSize:introPreset.btnFont,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:8,letterSpacing:"0.04em"}}>{t("actions.get_started")}</button>
 
           <button onClick={installable?installApp:()=>alert(t("onboarding.install_prompt"))} style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:11,padding:introPreset.btnPad,color:"rgba(255,255,255,0.82)",fontSize:introPreset.btnFont,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:9,display:"flex",alignItems:"center",justifyContent:"center",gap:introPreset.btnGap}}>
@@ -2504,10 +2508,10 @@ function AuthScreen({onAuth,onFullSetup}){
             {t("onboarding.install_app").toUpperCase()}
           </button>
 
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:4}}>
-            <div style={{color:"rgba(255,255,255,0.62)",fontSize:introPreset.footer,fontFamily:"'Barlow Condensed',sans-serif"}}>
-              {t("onboarding.free_for_all")}
-            </div>
+          <div style={{color:"rgba(255,255,255,0.62)",fontSize:introPreset.footer,fontFamily:"'Barlow Condensed',sans-serif",textAlign:"center",marginTop:4}}>
+            {t("onboarding.free_for_all")}
+          </div>
+          <div style={{display:"flex",justifyContent:"center",marginTop:8}}>
             <LangButton/>
           </div>
         </div>
@@ -3318,7 +3322,7 @@ function StorageSettings({onClose,companyId}){
     setTestingLocal(true);setLocalTestRes(null);
     try{
       // Test by calling PocketBase custom endpoint (if available) or just validate format
-      const pbUrl=localStorage.getItem('pb_url')||'https://siteshrimp.duckdns.org';
+      const pbUrl=localStorage.getItem('pb_url')||'https://api.siteshrimp.org';
       const resp=await fetch(pbUrl.replace(/\/+$/,'')+'/api/storage/test',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
@@ -3976,7 +3980,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       <VoiceField label={t("fields.what_happened")} value={form.description} onChange={v=>set("description",v)} placeholder={t("fields.description_placeholder")} multiline/>
 
       {/* ── 5. SEVERITY ── */}
-      <ComboField label={t("fields.severity")} value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder={t("fields.severity_placeholder")}/>
+      <ComboField label={t("fields.severity")} value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder={t("fields.severity_placeholder")} displayFn={sevDisplayFn}/>
 
       {/* ── MORE DETAILS accordion ── */}
       <button onClick={()=>setShowMoreDetails(!showMoreDetails)} style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:12,padding:"14px 16px",marginBottom:showMoreDetails?16:0,display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}}>
@@ -3987,7 +3991,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       {showMoreDetails&&(
         <div style={{animation:"fadeIn 0.2s ease",marginTop:showMoreDetails?0:0}}>
           {/* Work Category */}
-          <ComboField label={t("fields.work_category")} value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")}/>
+          <ComboField label={t("fields.work_category")} value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")} displayFn={workcatDisplayFn}/>
 
           {/* Entry Type */}
           <ComboField label={t("fields.entry_type")} value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder={t("fields.entry_type_placeholder")}/>
@@ -4337,10 +4341,10 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
           </div>
 
           <div style={{marginBottom:10}}>
-            <div style={lbl()}>SEVERITY</div>
+            <div style={lbl()}>{t("severity.label")}</div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {["",...SEVERITY].map(s=>(
-                <button key={s||"_none"} onClick={()=>setBulkSeverity(s)} style={{padding:"6px 10px",borderRadius:18,border:`1.5px solid ${bulkSeverity===s?(s?SEV_COLOR[s]:"rgba(0,0,0,0.3)"):"rgba(0,0,0,0.12)"}`,background:bulkSeverity===s?(s?SEV_COLOR[s]:"rgba(0,0,0,0.08)"):"#fff",color:bulkSeverity===s?(s?"#fff":"rgba(0,0,0,0.6)"):"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{s?s.toUpperCase():"— KEEP"}</button>
+                <button key={s||"_none"} onClick={()=>setBulkSeverity(s)} style={{padding:"6px 10px",borderRadius:18,border:`1.5px solid ${bulkSeverity===s?(s?SEV_COLOR[s]:"rgba(0,0,0,0.3)"):"rgba(0,0,0,0.12)"}`,background:bulkSeverity===s?(s?SEV_COLOR[s]:"rgba(0,0,0,0.08)"):"#fff",color:bulkSeverity===s?(s?"#fff":"rgba(0,0,0,0.6)"):"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{s?(SEV_I18N[s]?t(SEV_I18N[s]):s).toUpperCase():"— KEEP"}</button>
               ))}
             </div>
           </div>
@@ -4694,10 +4698,10 @@ function DefectDetail({defect,onClose,onUpdate,member,company,members=[]}){
             <VoiceField label={t("fields.what_happened")} value={editFields.description} onChange={v=>ef("description",v)} placeholder={t("fields.description_placeholder")} multiline/>
 
             {/* Severity */}
-            <ComboField label={t("fields.severity")} value={editFields.severity} onChange={v=>ef("severity",v)} options={SEVERITY} placeholder={t("fields.severity_placeholder")}/>
+            <ComboField label={t("fields.severity")} value={editFields.severity} onChange={v=>ef("severity",v)} options={SEVERITY} placeholder={t("fields.severity_placeholder")} displayFn={sevDisplayFn}/>
 
             {/* Work Category */}
-            <ComboField label={t("fields.work_category")} value={editFields.workCategory} onChange={v=>{ef("workCategory",v);ef("component","");ef("issue","");}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")}/>
+            <ComboField label={t("fields.work_category")} value={editFields.workCategory} onChange={v=>{ef("workCategory",v);ef("component","");ef("issue","");}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")} displayFn={workcatDisplayFn}/>
 
             {/* Entry Type */}
             <ComboField label={t("fields.entry_type")} value={editFields.entryType} onChange={v=>ef("entryType",v)} options={getAllEntryTypes()} placeholder={t("fields.entry_type_placeholder")}/>
@@ -4929,7 +4933,7 @@ function ProfilePanel({member,authUser,company,onClose,onSignOut}){
       // Delete member record
       if(member?.id)await DB.members.delete(member.id);
       // Delete user account via PocketBase API
-      const pbUrl=localStorage.getItem('pb_url')||'https://siteshrimp.duckdns.org';
+      const pbUrl=localStorage.getItem('pb_url')||'https://api.siteshrimp.org';
       const token=JSON.parse(localStorage.getItem('pb_auth')||'{}').token;
       if(authUser?.id&&token){
         await fetch(`${pbUrl}/api/collections/users/records/${authUser.id}`,{method:'DELETE',headers:{'Authorization':`Bearer ${token}`}});
@@ -8684,7 +8688,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
             {/* Title */}
             <input value={qTitle} onChange={e=>setQTitle(e.target.value)} placeholder="Defect title..." style={{width:"100%",padding:12,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",marginBottom:12,boxSizing:"border-box"}}/>
             {/* Severity */}
-            <ComboField label={t("fields.severity")} value={qSev} onChange={v=>setQSev(v)} options={SEVERITY} placeholder={t("fields.severity_placeholder")}/>
+            <ComboField label={t("fields.severity")} value={qSev} onChange={v=>setQSev(v)} options={SEVERITY} placeholder={t("fields.severity_placeholder")} displayFn={sevDisplayFn}/>
             {/* Actions */}
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>{setQuickCreate(false);setQTitle("");setQPhoto(null);}} style={{flex:1,padding:12,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.back")}</button>
@@ -8969,7 +8973,7 @@ function App(){
     setInviteCode(inv);
     // Init PocketBase — must complete before auth callbacks fire
     let unsub;
-    DB.init(typeof PB_URL!=='undefined'?PB_URL:'https://siteshrimp.duckdns.org').then(()=>{
+    DB.init(typeof PB_URL!=='undefined'?PB_URL:'https://api.siteshrimp.org').then(()=>{
       unsub=DB.auth.onAuthStateChanged(async u=>{
         setAuthUser(u);
         setAuthLoading(false); // unblock UI immediately; company recovery runs in background

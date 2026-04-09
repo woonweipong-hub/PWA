@@ -129,8 +129,8 @@ fi
 echo ""
 echo "── SiteShrimp Connection (Read-Only) ──────────────"
 echo ""
-read -p "PocketBase URL (e.g., https://siteshrimp.duckdns.org): " PB_URL
-PB_URL=${PB_URL:-https://siteshrimp.duckdns.org}
+read -p "PocketBase URL (e.g., https://api.siteshrimp.org): " PB_URL
+PB_URL=${PB_URL:-https://api.siteshrimp.org}
 
 echo ""
 echo "Create a read-only user in PocketBase first (see SETUP.md)."

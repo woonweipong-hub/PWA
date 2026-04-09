@@ -676,5 +676,14 @@
     "description": "BESKRIVELSE",
     "timeline": "TIDSLINJE",
     "assigned": "Tildelt"
+  },
+  "work_categories": {
+    "landed": "Bygningsfejl (Lavbyggeri)",
+    "highrise": "Bygningsfejl (Højbyggeri)",
+    "construction": "Byggeplads",
+    "interior": "Indretningsarbejde",
+    "facilities": "Ejendomsforvaltning",
+    "infrastructure": "Infrastrukturarbejde",
+    "others": "Andet"
   }
 }

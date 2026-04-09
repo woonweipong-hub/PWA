@@ -676,5 +676,14 @@
     "description": "KUVAUS",
     "timeline": "AIKAJANA",
     "assigned": "Vastuuhenkilö"
+  },
+  "work_categories": {
+    "landed": "Rakennusvirheet (Matala)",
+    "highrise": "Rakennusvirheet (Korkea)",
+    "construction": "Rakennustyömaa",
+    "interior": "Sisustustyöt",
+    "facilities": "Kiinteistöhallinta",
+    "infrastructure": "Infrastruktuurirakentaminen",
+    "others": "Muut"
   }
 }

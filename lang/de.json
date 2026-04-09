@@ -676,5 +676,14 @@
     "description": "BESCHREIBUNG",
     "timeline": "ZEITVERLAUF",
     "assigned": "Zugewiesen"
+  },
+  "work_categories": {
+    "landed": "Baumängel (Flachbau)",
+    "highrise": "Baumängel (Hochbau)",
+    "construction": "Baustelle",
+    "interior": "Innenausbau",
+    "facilities": "Gebäudemanagement",
+    "infrastructure": "Infrastrukturarbeiten",
+    "others": "Sonstige"
   }
 }

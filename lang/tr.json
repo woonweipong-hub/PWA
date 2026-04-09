@@ -676,5 +676,14 @@
     "description": "AÇIKLAMA",
     "timeline": "ZAMAN ÇİZELGESİ",
     "assigned": "Atanan"
+  },
+  "work_categories": {
+    "landed": "Bina Kusurları (Alçak Katlı)",
+    "highrise": "Bina Kusurları (Yüksek Katlı)",
+    "construction": "Şantiye",
+    "interior": "İç Mekan İşleri",
+    "facilities": "Tesis Yönetimi",
+    "infrastructure": "Altyapı İşleri",
+    "others": "Diğer"
   }
 }

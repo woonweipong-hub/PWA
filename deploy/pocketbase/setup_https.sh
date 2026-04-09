@@ -7,11 +7,11 @@
 #   2. DuckDNS subdomain created and pointing to this VM's IP
 #
 # Usage:
-#   DUCKDNS_DOMAIN=siteshrimp.duckdns.org DUCKDNS_TOKEN=your-token ./setup_https.sh
+#   DUCKDNS_DOMAIN=api.siteshrimp.org DUCKDNS_TOKEN=your-token ./setup_https.sh
 
 set -e
 
-DOMAIN="${DUCKDNS_DOMAIN:-siteshrimp.duckdns.org}"
+DOMAIN="${DUCKDNS_DOMAIN:-api.siteshrimp.org}"
 DUCKDNS_TOKEN="${DUCKDNS_TOKEN:-}"
 
 echo "=== SiteShrimp HTTPS Setup ==="

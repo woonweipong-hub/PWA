@@ -80,6 +80,15 @@
     "observation": "Observation",
     "label": "SEVERITY"
   },
+  "work_categories": {
+    "landed": "Building Defects (Landed)",
+    "highrise": "Building Defects (Highrise)",
+    "construction": "Construction Site",
+    "interior": "Interior Works",
+    "facilities": "Facilities Management",
+    "infrastructure": "Infrastructure Works",
+    "others": "Others"
+  },
   "roles": {
     "admin": "Admin",
     "manager": "Manager",

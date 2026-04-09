@@ -676,5 +676,14 @@
     "description": "PENERANGAN",
     "timeline": "GARIS MASA",
     "assigned": "Ditugaskan"
+  },
+  "work_categories": {
+    "landed": "Kecacatan Bangunan (Bertanah)",
+    "highrise": "Kecacatan Bangunan (Bertingkat)",
+    "construction": "Tapak Pembinaan",
+    "interior": "Kerja Dalaman",
+    "facilities": "Pengurusan Fasiliti",
+    "infrastructure": "Kerja Infrastruktur",
+    "others": "Lain-lain"
   }
 }
