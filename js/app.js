@@ -2511,7 +2511,7 @@ function AuthScreen({onAuth,onFullSetup}){
           <div style={{display:"flex",justifyContent:"center",marginTop:8}}>
             <LangButton/>
           </div>
-          <div style={{color:"rgba(255,255,255,0.62)",fontSize:introPreset.footer,fontFamily:"'Barlow Condensed',sans-serif",textAlign:"center",marginTop:24}}>
+          <div style={{color:"rgba(255,255,255,0.62)",fontSize:introPreset.footer,fontFamily:"'Barlow Condensed',sans-serif",textAlign:"center",marginTop:48}}>
             {t("onboarding.free_for_all")}
           </div>
         </div>
