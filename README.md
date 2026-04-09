@@ -60,16 +60,16 @@ When every item shows a green ✓, the setup badge disappears.
 
 ---
 
-## Features (125+)
+## Features (130+)
 
 ### Entry Logging
 
 | Feature | Description |
 |---------|-------------|
-| **6 Work Categories** | Building Defects (Landed), Building Defects (Highrise), Construction Site, Interior Works, Infrastructure Works (Roads/Drainage/Linkway), Others — each filters the Component dropdown to just the relevant groups so users aren't flooded with irrelevant items. Last-used category is remembered per device. |
+| **7 Work Categories** | Building Defects (Landed), Building Defects (Highrise), Construction Site, Interior Works, Facilities Management, Infrastructure Works (Roads/Drainage/Linkway), Others — each filters the Component dropdown to just the relevant groups so users aren't flooded with irrelevant items. Last-used category is remembered per device. |
 | **4 Default Entry Types** | Defect, Observation, Update, Instruction |
 | **Custom Entry Types** | Create your own (Site Checks, Safety Audit, Snag List, etc.) — icon + color picker, shared across team |
-| **Component + Issue Selector** | 130+ building/infra components, 600+ predefined issues — tap to select, minimal typing. Includes Roads (asphalt, kerb, pothole), Drainage (box drain, gully, manhole), Linkway (roof, column, paving) and Site & Safety (scaffold, PPE, formwork) |
+| **Component + Issue Selector** | 158 building/infra components across 19 groups, 296 unique predefined issues — tap to select, minimal typing. Includes Roads, Drainage, Linkway, Site & Safety, and FM (Building Services, Common Areas, Amenities). All translated in 22 languages. |
 | **Low-friction Submit** | A description **or** a photo is enough — title and location are auto-generated so field users can capture first and fill the rest later via Review comments |
 | **AI Photo Analysis** | Snap a photo, AI auto-fills title, severity, description |
 | **AI Trade + Assignee Suggestion** | Auto-assigns a trade and suggested assignee from the analyzed photo |
@@ -152,9 +152,12 @@ When every item shows a green ✓, the setup badge disappears.
 | Feature | Description |
 |---------|-------------|
 | **Site Report** | Filtered statistics with severity/status charts |
+| **Section-Aware Tally** | Stats panel shows separate tallies per selected section (defects, drawings, comparisons) with section-appropriate colors. Severity/status breakdowns only shown when defects are included. |
 | **Filters** | Severity, status, assignee, and date range |
-| **Email Reports** | HTML report via EmailJS with per-section opt-in (Defects / Drawings / Comparisons) |
+| **Email Reports** | HTML report via EmailJS with per-section opt-in (Defects / Drawings / Comparisons). All values translated to user's language. |
 | **Email Preview** | See exactly what will go out before sending |
+| **Contract Advisor** | AI-powered defect-to-clause mapping using PSSCOC/REDAS/SIA contract PDFs with risk notes and recommended next steps |
+| **Google Sheets Export** | Push report data directly to a Google Spreadsheet (new tab per export) |
 | **EXPORT (all-in-one CSV)** | Single tap from Report — combined CSV with defect entries, drawing annotations (notes + markup counts), and saved PDF comparisons |
 | **Dn Menu — Markup CSV / PDF** | Export all drawing annotations |
 | **Dn Menu — Compare CSV / PDF** | Export saved PDF comparisons |
@@ -162,6 +165,16 @@ When every item shows a green ✓, the setup badge disappears.
 | **Dn Menu — All-in-One** | CSV and PDF in a single tap |
 | **Annotated Drawings in PDF** | Markup, Compare, and All PDF exports embed rendered drawing pages with pins, notes and markup burned in (not just tables) |
 | **Per-Drawing PDF** | Export a single drawing's annotated pages + annotation list from the viewer |
+
+### Multi-Language (22 Languages)
+
+| Feature | Description |
+|---------|-------------|
+| **22 Languages** | English, 简体中文, 繁體中文, Bahasa Melayu, Bahasa Indonesia, हिन्दी, தமிழ், ไทย, Tiếng Việt, বাংলা, 日本語, 한국어, Deutsch, Français, Español, Português, Italiano, Türkçe, Svenska, Norsk, Dansk, Suomi |
+| **Full UI Translation** | 617 UI keys — every label, button, placeholder, status, nav item, error message |
+| **Dropdown Translation** | 539 construction terms (components, issues, levels, zones, rooms, durations, costs, entry types) displayed in user's language while stored in English |
+| **Language Selector** | Settings → Language with flag + native name |
+| **Instant English** | English inlined for zero-delay render; other languages lazy-loaded |
 
 ### Storage Options
 
@@ -345,9 +358,13 @@ defects: {
 SiteShrimp/
   index.html              # App shell + CDN libs (React, Babel, PDF.js, EmailJS)
   js/
-    app.js                # React components + business logic
+    app.js                # React components + business logic (source JSX)
+    app.compiled.js       # Babel-compiled output (served to browser)
     constants.js          # Entry types, components, issues, locations, statuses
     db.js                 # PocketBase data layer + Google Drive module
+    lang.js               # i18n helper — t(), tOpt(), language loading
+  lang/
+    en.json ... fi.json   # 22 language packs (1,158 keys each)
   manifest.json           # Install config
   sw.js                   # Service worker (offline cache)
   icons/
@@ -392,14 +409,16 @@ The server hook supports all three AI providers via environment variables:
 ### Ideas
 - [ ] QR code scanning for location / asset tagging
 - [ ] Integration with project management tools (Procore, Aconex)
-- [ ] Multi-language support (Mandarin, Malay, Tamil, Thai)
 - [ ] Handover checklist templates
 - [ ] Automated follow-up reminders (overdue entries)
 - [ ] Per-page markup tracking on multi-page drawings
 - [ ] Push notifications (browser push for status changes and comments)
 - [ ] Full audit trail view (who changed what and when) beyond comparison locks
+- [ ] Dark mode
+- [ ] Recurring inspection schedules
+- [ ] Saved filter presets in Review
 
-Most of the original roadmap (drawings/pins, photo annotation, PDF reports, offline queue, search, profile editing, location/component presets) has already shipped — see the Features list above.
+Most of the original roadmap (drawings/pins, photo annotation, PDF reports, offline queue, search, profile editing, location/component presets, multi-language, Google Sheets export) has already shipped — see the Features list above.
 
 ---
 

@@ -1412,9 +1412,15 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   doc.setFontSize(11);doc.setFont(undefined,"normal");doc.setTextColor(200);
   doc.text(`${projectName||"Project"} — ${now.toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}`,margin,40);
 
-  // Entry count badge
+  // Entry count badge — show combined tally
+  const drawingCount=(drawings||[]).length;
+  const comparisonCount=(savedComparisons||[]).length;
+  const parts=[];
+  if(total>0)parts.push(`${total} entries`);
+  if(drawingCount>0)parts.push(`${drawingCount} drawings`);
+  if(comparisonCount>0)parts.push(`${comparisonCount} comparisons`);
   doc.setFontSize(9);doc.setTextColor(255,107,0);
-  doc.text(`${total} entries`,margin,48);
+  doc.text(parts.length>0?parts.join(" · "):"No sections selected",margin,48);
   doc.setTextColor(0);
   y=62;
 
@@ -1423,24 +1429,41 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   // ═══════════════════════════════════════════════════════════════════
   heading("EXECUTIVE SUMMARY",orange);
 
-  // Total entries — big number
-  doc.setFontSize(9);doc.setFont(undefined,"bold");doc.setTextColor(100);
-  doc.text("TOTAL ENTRIES",margin,y);
-  doc.setFontSize(28);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
-  doc.text(String(total),margin,y+12);
-  doc.setTextColor(0);
-
+  // Show tallies for each included section
+  let xOff=margin;
+  if(total>0){
+    doc.setFontSize(9);doc.setFont(undefined,"bold");doc.setTextColor(100);
+    doc.text("DEFECT ENTRIES",xOff,y);
+    doc.setFontSize(28);doc.setFont(undefined,"bold");doc.setTextColor(255,59,48);
+    doc.text(String(total),xOff,y+12);
+    xOff+=45;
+  }
+  if(drawingCount>0){
+    doc.setFontSize(9);doc.setFont(undefined,"bold");doc.setTextColor(100);
+    doc.text("PDF DRAWINGS",xOff,y);
+    doc.setFontSize(28);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
+    doc.text(String(drawingCount),xOff,y+12);
+    xOff+=45;
+  }
+  if(comparisonCount>0){
+    doc.setFontSize(9);doc.setFont(undefined,"bold");doc.setTextColor(100);
+    doc.text("COMPARISONS",xOff,y);
+    doc.setFontSize(28);doc.setFont(undefined,"bold");doc.setTextColor(88,86,214);
+    doc.text(String(comparisonCount),xOff,y+12);
+    xOff+=45;
+  }
   // Overdue count
   const overdue=(defects||[]).filter(d=>d.dueDate&&new Date(d.dueDate)<now&&!["Verified","Closed"].includes(d.status)).length;
   if(overdue>0){
     doc.setFontSize(9);doc.setFont(undefined,"bold");doc.setTextColor(100);
-    doc.text("OVERDUE",margin+40,y);
+    doc.text("OVERDUE",xOff,y);
     doc.setFontSize(28);doc.setFont(undefined,"bold");doc.setTextColor(255,59,48);
-    doc.text(String(overdue),margin+40,y+12);
-    doc.setTextColor(0);
+    doc.text(String(overdue),xOff,y+12);
   }
+  doc.setTextColor(0);
   y+=18;
 
+  if(total>0){
   // Severity breakdown — horizontal bar chart
   const bySev={};(defects||[]).forEach(d=>{bySev[d.severity]=(bySev[d.severity]||0)+1;});
   doc.setFontSize(8);doc.setFont(undefined,"bold");doc.setTextColor(100);
@@ -1472,6 +1495,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     bx+=bw+3;
   }
   y+=10;
+  }
 
   // ── Cost Summary ──
   const withCost=(defects||[]).filter(d=>d.costAmount&&String(d.costAmount).trim());
@@ -2033,15 +2057,15 @@ function generateEmailHTML(defects,projectName,companyName,opts={}){
   // Entry type summary
   const typeCounts={};
   defects.forEach(d=>{const t=d.entryType||"Defect";typeCounts[t]=(typeCounts[t]||0)+1;});
-  const typeSummary=Object.entries(typeCounts).map(([t,c])=>`<span style="display:inline-block;margin:2px 4px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:bold;color:${typeColor(t)};background:${typeBg(t)}">${typeIcon(t)} ${t} (${c})</span>`).join("");
+  const typeSummary=Object.entries(typeCounts).map(([t,c])=>`<span style="display:inline-block;margin:2px 4px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:bold;color:${typeColor(t)};background:${typeBg(t)}">${typeIcon(t)} ${tOpt(t)} (${c})</span>`).join("");
 
   const row=(label,val)=>val?`<tr><td style="padding:2px 8px 2px 0;color:#999;white-space:nowrap;vertical-align:top">${label}</td><td>${val}</td></tr>`:"";
 
   const defectRows=defects.map(d=>{
     const dt=(d.createdAt||d.created)?new Date(d.createdAt||d.created).toLocaleDateString("en-GB"):"—";
-    const entryTypeBadge=d.entryType?`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;color:${typeColor(d.entryType)};background:${typeBg(d.entryType)};margin-right:6px">${typeIcon(d.entryType)} ${d.entryType}</span>`:"";
-    const sevBadge=`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;color:${SEV_COLOR[d.severity]};background:${SEV_BG[d.severity]}">${d.severity}</span>`;
-    const statusBadge=`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;color:${STATUS_COLOR[d.status]||"#8e8e93"};background:rgba(0,0,0,0.06)">${d.status}</span>`;
+    const entryTypeBadge=d.entryType?`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;color:${typeColor(d.entryType)};background:${typeBg(d.entryType)};margin-right:6px">${typeIcon(d.entryType)} ${tOpt(d.entryType)}</span>`:"";
+    const sevBadge=`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;color:${SEV_COLOR[d.severity]};background:${SEV_BG[d.severity]}">${SEV_I18N[d.severity]?t(SEV_I18N[d.severity]):d.severity}</span>`;
+    const statusBadge=`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;color:${STATUS_COLOR[d.status]||"#8e8e93"};background:rgba(0,0,0,0.06)">${STATUS_I18N[d.status]?t(STATUS_I18N[d.status]):d.status}</span>`;
     const comments=(d.comments||[]).map(c=>`<div style="padding:6px 10px;background:#f5f5f5;border-radius:6px;font-size:12px;margin:4px 0"><b style="color:#ff6b00">${sanitize(c.by)}:</b> ${sanitize(c.text)}</div>`).join("");
     const photoNote=d.photo?`<div style="font-size:11px;color:#888;font-style:italic;margin-top:6px;padding:6px 8px;background:#f5f5f5;border-radius:6px">📷 ${Array.isArray(d.photo)?d.photo.length:1} photo(s) — view in SiteShrimp app</div>`:"";
 
@@ -2051,14 +2075,14 @@ function generateEmailHTML(defects,projectName,companyName,opts={}){
       <table style="font-size:12px;color:#555;margin-bottom:6px"><tbody>
         ${row("📍 Location",d.location)}
         ${row("👤 Assigned",d.assignee)}
-        ${row("🔧 Component",d.component?(d.component+(d.issue?" — "+d.issue:"")):"") }
-        ${row("🏗 Trade",d.trade)}
-        ${row("✍️ By",d.loggedBy?(d.loggedBy+(d.loggedByRole?" ("+d.loggedByRole+")":"")):"") }
-        ${row("📅 Date",dt)}
-        ${row("⏰ Due",d.dueDate)}
-        ${row("⏱ Duration",d.duration)}
-        ${row("💰 Cost",d.costImpact?(d.costImpact+(d.costAmount?" — $"+d.costAmount:"")):"") }
-        ${row("📋 Responsible",d.costResponsible)}
+        ${row("🔧 "+t("fields.component"),d.component?(tOpt(d.component)+(d.issue?" — "+tOpt(d.issue):"")):"") }
+        ${row("🏗 "+t("fields.trade"),d.trade?tOpt(d.trade):"")}
+        ${row("✍️ "+t("fields.logged_by"),d.loggedBy?(d.loggedBy+(d.loggedByRole?" ("+d.loggedByRole+")":"")):"") }
+        ${row("📅 "+t("fields.date"),dt)}
+        ${row("⏰ "+t("fields.due_date"),d.dueDate)}
+        ${row("⏱ "+t("fields.duration"),d.duration?tOpt(d.duration):"")}
+        ${row("💰 "+t("fields.cost_impact"),d.costImpact?(tOpt(d.costImpact)+(d.costAmount?" — $"+d.costAmount:"")):"") }
+        ${row("📋 "+t("fields.cost_responsible"),d.costResponsible?tOpt(d.costResponsible):"")}
       </tbody></table>
       ${d.description?`<div style="font-size:13px;color:#444;padding:8px;background:#f9f9f9;border-radius:6px;margin-bottom:6px">${sanitize(d.description)}</div>`:""}
       ${photoNote}
@@ -2209,7 +2233,7 @@ function ComboField({label,value,onChange,options,placeholder,grouped,displayFn}
       <div style={{display:"flex",gap:8,alignItems:"center"}}>
         <input value={_d(value)} onChange={e=>onChange(e.target.value)} placeholder={placeholder||"Type or tap LIST..."} style={{...inp,flex:1}} readOnly={!!displayFn}/>
         <MicBtn onResult={t=>onChange(t)} currentValue={value}/>
-        <button onClick={()=>{setSearch("");setOpen(true);}} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"8px 10px",fontSize:11,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,flexShrink:0}}>LIST ▼</button>
+        <button onClick={()=>{setSearch("");setOpen(true);}} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"8px 10px",fontSize:11,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,flexShrink:0}}>{t("actions.list")}</button>
       </div>
     </div>
   );
@@ -2217,30 +2241,30 @@ function ComboField({label,value,onChange,options,placeholder,grouped,displayFn}
   // Expanded dropdown — grouped options (e.g. COMPONENT_GROUPS)
   if(grouped){
     const filteredGroups=search
-      ?Object.fromEntries(Object.entries(grouped).map(([g,items])=>[g,items.filter(it=>it.toLowerCase().includes(search.toLowerCase()))]).filter(([,items])=>items.length>0))
+      ?Object.fromEntries(Object.entries(grouped).map(([g,items])=>[g,items.filter(it=>{const q=search.toLowerCase();return it.toLowerCase().includes(q)||_d(it).toLowerCase().includes(q);})]).filter(([,items])=>items.length>0))
       :grouped;
     return(
       <div style={{marginBottom:16}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
           <label style={{...lbl(),marginBottom:0}}>{label}</label>
-          <button onClick={()=>setOpen(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"rgba(0,0,0,0.5)"}}>▲ CLOSE</button>
+          <button onClick={()=>setOpen(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"rgba(0,0,0,0.5)"}}>{t("actions.close_list")}</button>
         </div>
         <div style={{display:"flex",gap:8,marginBottom:8}}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search list..." style={{...inp,flex:1,fontSize:13}}/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t("fields.search_list")} style={{...inp,flex:1,fontSize:13}}/>
           <MicBtn onResult={t=>setSearch(t)} currentValue={search}/>
         </div>
         <div style={{maxHeight:200,overflowY:"auto",borderRadius:10,border:"1px solid rgba(0,0,0,0.08)"}}>
           {Object.entries(filteredGroups).map(([group,items])=>(
             <div key={group}>
-              <div style={{padding:"6px 12px",background:"#f5f5f5",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",position:"sticky",top:0,zIndex:2,borderBottom:"1px solid rgba(0,0,0,0.06)"}}>{group.toUpperCase()}</div>
+              <div style={{padding:"6px 12px",background:"#f5f5f5",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",position:"sticky",top:0,zIndex:2,borderBottom:"1px solid rgba(0,0,0,0.06)"}}>{_d(group).toUpperCase()}</div>
               {items.map(it=>(
                 <div key={it} onClick={()=>{onChange(it);setOpen(false);setSearch("");}} style={{padding:"10px 12px",cursor:"pointer",background:value===it?"rgba(255,107,0,0.08)":"#fff",borderBottom:"1px solid rgba(0,0,0,0.04)",fontSize:14,color:value===it?"#ff6b00":"#1a1a1a",fontWeight:value===it?700:400}}>
-                  {it}
+                  {_d(it)}
                 </div>
               ))}
             </div>
           ))}
-          {Object.keys(filteredGroups).length===0&&<div style={{padding:16,textAlign:"center",color:"rgba(0,0,0,0.3)",fontSize:13}}>No match</div>}
+          {Object.keys(filteredGroups).length===0&&<div style={{padding:16,textAlign:"center",color:"rgba(0,0,0,0.3)",fontSize:13}}>{t("messages.no_match")}</div>}
         </div>
       </div>
     );
@@ -2254,10 +2278,10 @@ function ComboField({label,value,onChange,options,placeholder,grouped,displayFn}
     <div style={{marginBottom:16}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
         <label style={{...lbl(),marginBottom:0}}>{label}</label>
-        <button onClick={()=>setOpen(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"rgba(0,0,0,0.5)"}}>▲ CLOSE</button>
+        <button onClick={()=>setOpen(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"4px 10px",fontSize:10,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"rgba(0,0,0,0.5)"}}>{t("actions.close_list")}</button>
       </div>
       <div style={{display:"flex",gap:8,marginBottom:8}}>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search list..." style={{...inp,flex:1,fontSize:13}}/>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t("fields.search_list")} style={{...inp,flex:1,fontSize:13}}/>
         <MicBtn onResult={t=>setSearch(t)} currentValue={search}/>
       </div>
       <div style={{maxHeight:200,overflowY:"auto",borderRadius:10,border:"1px solid rgba(0,0,0,0.08)"}}>
@@ -2266,7 +2290,7 @@ function ComboField({label,value,onChange,options,placeholder,grouped,displayFn}
             {_d(opt)}
           </div>
         ))}
-        {filtered.length===0&&<div style={{padding:16,textAlign:"center",color:"rgba(0,0,0,0.3)",fontSize:13}}>No match</div>}
+        {filtered.length===0&&<div style={{padding:16,textAlign:"center",color:"rgba(0,0,0,0.3)",fontSize:13}}>{t("messages.no_match")}</div>}
       </div>
     </div>
   );
@@ -3600,7 +3624,7 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
             <StatusChip s={d.status}/>
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            {d.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(d.entryType),background:typeBg(d.entryType),padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(d.entryType)} {d.entryType.toUpperCase()}</span>}
+            {d.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(d.entryType),background:typeBg(d.entryType),padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(d.entryType)} {tOpt(d.entryType).toUpperCase()}</span>}
             <SevChip s={d.severity}/>
             <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>📍 {d.location}</span>
             <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>→ {d.assignee}</span>
@@ -3994,21 +4018,21 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           <ComboField label={t("fields.work_category")} value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")} displayFn={workcatDisplayFn}/>
 
           {/* Entry Type */}
-          <ComboField label={t("fields.entry_type")} value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder={t("fields.entry_type_placeholder")}/>
+          <ComboField label={t("fields.entry_type")} value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder={t("fields.entry_type_placeholder")} displayFn={tOpt}/>
           <div style={{marginTop:-10,marginBottom:12}}><button onClick={()=>setShowTypeManager(true)} style={{background:"none",border:"none",fontSize:11,color:"rgba(255,107,0,0.7)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:0}}>⚙ Manage custom types</button></div>
 
           {/* Item / Part (was Component) */}
-          <ComboField label={t("fields.item_part")} value={form.component} onChange={v=>{set("component",v);set("issue","");}} grouped={activeComponentGroups} placeholder={t("fields.item_part_placeholder")}/>
+          <ComboField label={t("fields.item_part")} value={form.component} onChange={v=>{set("component",v);set("issue","");}} grouped={activeComponentGroups} placeholder={t("fields.item_part_placeholder")} displayFn={tOpt}/>
 
           {/* Issue (filtered by selected component) */}
           {form.component&&(
-            <ComboField label={t("fields.issue")} value={form.issue} onChange={v=>{set("issue",v);if(!form.title)set("title",form.component+" — "+v);}} options={COMPONENT_ISSUES[form.component]||COMPONENT_ISSUES["General"]} placeholder={t("fields.issue_placeholder")}/>
+            <ComboField label={t("fields.issue")} value={form.issue} onChange={v=>{set("issue",v);if(!form.title)set("title",form.component+" — "+v);}} options={COMPONENT_ISSUES[form.component]||COMPONENT_ISSUES["General"]} placeholder={t("fields.issue_placeholder")} displayFn={tOpt}/>
           )}
 
           {/* Location hierarchy */}
-          <ComboField label={t("fields.level_floor")} value={form.locationLevel} onChange={v=>set("locationLevel",v)} options={DEFAULT_LEVELS} placeholder={t("fields.level_floor_placeholder")}/>
-          <ComboField label={t("fields.zone")} value={form.locationZone} onChange={v=>set("locationZone",v)} options={DEFAULT_ZONES} placeholder={t("fields.zone_placeholder")}/>
-          <ComboField label={t("fields.room_area")} value={form.locationSubzone} onChange={v=>set("locationSubzone",v)} options={DEFAULT_SUBZONES} placeholder={t("fields.room_area_placeholder")}/>
+          <ComboField label={t("fields.level_floor")} value={form.locationLevel} onChange={v=>set("locationLevel",v)} options={DEFAULT_LEVELS} placeholder={t("fields.level_floor_placeholder")} displayFn={tOpt}/>
+          <ComboField label={t("fields.zone")} value={form.locationZone} onChange={v=>set("locationZone",v)} options={DEFAULT_ZONES} placeholder={t("fields.zone_placeholder")} displayFn={tOpt}/>
+          <ComboField label={t("fields.room_area")} value={form.locationSubzone} onChange={v=>set("locationSubzone",v)} options={DEFAULT_SUBZONES} placeholder={t("fields.room_area_placeholder")} displayFn={tOpt}/>
           <VoiceField label={t("fields.grid_ref")} value={form.locationGrid} onChange={v=>set("locationGrid",v)} placeholder={t("fields.grid_ref_placeholder")}/>
 
           {/* Assignee */}
@@ -4020,12 +4044,12 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
               <label style={lbl()}>{t("log.due_date")}</label>
               <input type="date" value={form.dueDate} onChange={e=>set("dueDate",e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
             </div>
-            <ComboField label={t("fields.time_needed")} value={form.duration} onChange={v=>set("duration",v)} options={DURATION_OPTIONS} placeholder={t("fields.time_needed_placeholder")}/>
-            <ComboField label={t("fields.cost_change")} value={form.costImpact} onChange={v=>set("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder={t("fields.cost_change_placeholder")}/>
+            <ComboField label={t("fields.time_needed")} value={form.duration} onChange={v=>set("duration",v)} options={DURATION_OPTIONS} placeholder={t("fields.time_needed_placeholder")} displayFn={tOpt}/>
+            <ComboField label={t("fields.cost_change")} value={form.costImpact} onChange={v=>set("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder={t("fields.cost_change_placeholder")} displayFn={tOpt}/>
             {form.costImpact&&form.costImpact!=="No change"&&form.costImpact!=="To be confirmed by QS"&&(
               <>
                 <VoiceField label={t("fields.cost_amount")} value={form.costAmount} onChange={v=>set("costAmount",v)} placeholder={t("fields.cost_amount_placeholder")}/>
-                <ComboField label={t("fields.cost_responsible")} value={form.costResponsible} onChange={v=>set("costResponsible",v)} options={COST_RESPONSIBLE_OPTIONS} placeholder={t("fields.cost_responsible_placeholder")}/>
+                <ComboField label={t("fields.cost_responsible")} value={form.costResponsible} onChange={v=>set("costResponsible",v)} options={COST_RESPONSIBLE_OPTIONS} placeholder={t("fields.cost_responsible_placeholder")} displayFn={tOpt}/>
                 <VoiceField label={t("fields.cost_remarks")} value={form.costRemarks} onChange={v=>set("costRemarks",v)} placeholder={t("fields.cost_remarks_placeholder")} multiline/>
               </>
             )}
@@ -4306,7 +4330,7 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
               <StatusChip s={d.status}/>
             </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:4}}>
-              {d.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(d.entryType),background:typeBg(d.entryType),padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(d.entryType)} {d.entryType.toUpperCase()}</span>}
+              {d.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(d.entryType),background:typeBg(d.entryType),padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(d.entryType)} {tOpt(d.entryType).toUpperCase()}</span>}
               <SevChip s={d.severity}/>
               <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>📍 <Highlight text={d.location} query={q}/></span>
             </div>
@@ -4354,7 +4378,7 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               <button onClick={()=>setBulkDuration("")} style={{padding:"6px 10px",borderRadius:18,border:`1.5px solid ${bulkDuration===""?"rgba(0,0,0,0.3)":"rgba(0,0,0,0.12)"}`,background:bulkDuration===""?"rgba(0,0,0,0.08)":"#fff",color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>— KEEP</button>
               {DURATION_OPTIONS.map(d=>(
-                <button key={d} onClick={()=>setBulkDuration(d)} style={{padding:"6px 10px",borderRadius:18,border:`1.5px solid ${bulkDuration===d?"#ff6b00":"rgba(0,0,0,0.12)"}`,background:bulkDuration===d?"rgba(255,107,0,0.08)":"#fff",color:bulkDuration===d?"#ff6b00":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{d}</button>
+                <button key={d} onClick={()=>setBulkDuration(d)} style={{padding:"6px 10px",borderRadius:18,border:`1.5px solid ${bulkDuration===d?"#ff6b00":"rgba(0,0,0,0.12)"}`,background:bulkDuration===d?"rgba(255,107,0,0.08)":"#fff",color:bulkDuration===d?"#ff6b00":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{tOpt(d)}</button>
               ))}
             </div>
           </div>
@@ -4707,17 +4731,17 @@ function DefectDetail({defect,onClose,onUpdate,member,company,members=[]}){
             <ComboField label={t("fields.entry_type")} value={editFields.entryType} onChange={v=>ef("entryType",v)} options={getAllEntryTypes()} placeholder={t("fields.entry_type_placeholder")}/>
 
             {/* Item / Part */}
-            <ComboField label={t("fields.item_part")} value={editFields.component} onChange={v=>{ef("component",v);ef("issue","");}} grouped={editComponentGroups} placeholder={t("fields.item_part_placeholder")}/>
+            <ComboField label={t("fields.item_part")} value={editFields.component} onChange={v=>{ef("component",v);ef("issue","");}} grouped={editComponentGroups} placeholder={t("fields.item_part_placeholder")} displayFn={tOpt}/>
 
             {/* Issue (filtered by component) */}
             {editFields.component&&(
-              <ComboField label={t("fields.issue")} value={editFields.issue} onChange={v=>ef("issue",v)} options={COMPONENT_ISSUES[editFields.component]||COMPONENT_ISSUES["General"]} placeholder={t("fields.issue_placeholder")}/>
+              <ComboField label={t("fields.issue")} value={editFields.issue} onChange={v=>ef("issue",v)} options={COMPONENT_ISSUES[editFields.component]||COMPONENT_ISSUES["General"]} placeholder={t("fields.issue_placeholder")} displayFn={tOpt}/>
             )}
 
             {/* Location hierarchy */}
-            <ComboField label={t("fields.level_floor")} value={editFields.locationLevel} onChange={v=>ef("locationLevel",v)} options={DEFAULT_LEVELS} placeholder={t("fields.level_floor_placeholder")}/>
-            <ComboField label={t("fields.zone")} value={editFields.locationZone} onChange={v=>ef("locationZone",v)} options={DEFAULT_ZONES} placeholder={t("fields.zone_placeholder")}/>
-            <ComboField label={t("fields.room_area")} value={editFields.locationSubzone} onChange={v=>ef("locationSubzone",v)} options={DEFAULT_SUBZONES} placeholder={t("fields.room_area_placeholder")}/>
+            <ComboField label={t("fields.level_floor")} value={editFields.locationLevel} onChange={v=>ef("locationLevel",v)} options={DEFAULT_LEVELS} placeholder={t("fields.level_floor_placeholder")} displayFn={tOpt}/>
+            <ComboField label={t("fields.zone")} value={editFields.locationZone} onChange={v=>ef("locationZone",v)} options={DEFAULT_ZONES} placeholder={t("fields.zone_placeholder")} displayFn={tOpt}/>
+            <ComboField label={t("fields.room_area")} value={editFields.locationSubzone} onChange={v=>ef("locationSubzone",v)} options={DEFAULT_SUBZONES} placeholder={t("fields.room_area_placeholder")} displayFn={tOpt}/>
             <VoiceField label={t("fields.grid_ref")} value={editFields.locationGrid} onChange={v=>ef("locationGrid",v)} placeholder={t("fields.grid_ref_placeholder")}/>
 
             {/* Assignee */}
@@ -4729,12 +4753,12 @@ function DefectDetail({defect,onClose,onUpdate,member,company,members=[]}){
                 <label style={lbl()}>{t("log.due_date")}</label>
                 <input type="date" value={editFields.dueDate} onChange={e=>ef("dueDate",e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
               </div>
-              <ComboField label={t("fields.time_needed")} value={editFields.duration} onChange={v=>ef("duration",v)} options={DURATION_OPTIONS} placeholder={t("fields.time_needed_placeholder")}/>
-              <ComboField label={t("fields.cost_change")} value={editFields.costImpact} onChange={v=>ef("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder={t("fields.cost_change_placeholder")}/>
+              <ComboField label={t("fields.time_needed")} value={editFields.duration} onChange={v=>ef("duration",v)} options={DURATION_OPTIONS} placeholder={t("fields.time_needed_placeholder")} displayFn={tOpt}/>
+              <ComboField label={t("fields.cost_change")} value={editFields.costImpact} onChange={v=>ef("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder={t("fields.cost_change_placeholder")} displayFn={tOpt}/>
               {editFields.costImpact&&editFields.costImpact!=="No change"&&editFields.costImpact!=="To be confirmed by QS"&&(
                 <>
                   <VoiceField label={t("fields.cost_amount")} value={editFields.costAmount} onChange={v=>ef("costAmount",v)} placeholder={t("fields.cost_amount_placeholder")}/>
-                  <ComboField label={t("fields.cost_responsible")} value={editFields.costResponsible} onChange={v=>ef("costResponsible",v)} options={COST_RESPONSIBLE_OPTIONS} placeholder={t("fields.cost_responsible_placeholder")}/>
+                  <ComboField label={t("fields.cost_responsible")} value={editFields.costResponsible} onChange={v=>ef("costResponsible",v)} options={COST_RESPONSIBLE_OPTIONS} placeholder={t("fields.cost_responsible_placeholder")} displayFn={tOpt}/>
                   <VoiceField label={t("fields.cost_remarks")} value={editFields.costRemarks} onChange={v=>ef("costRemarks",v)} placeholder={t("fields.cost_remarks_placeholder")} multiline/>
                 </>
               )}
@@ -4748,7 +4772,7 @@ function DefectDetail({defect,onClose,onUpdate,member,company,members=[]}){
         ):(
           <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,borderLeft:`5px solid ${SEV_COLOR[defect.severity]}`}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:20,color:"#1a1a1a",marginBottom:10}}>{defect.title}</div>
-            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>{defect.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(defect.entryType),background:typeBg(defect.entryType),padding:"3px 10px",borderRadius:12,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(defect.entryType)} {defect.entryType.toUpperCase()}</span>}<SevChip s={defect.severity}/><StatusChip s={status}/></div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>{defect.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(defect.entryType),background:typeBg(defect.entryType),padding:"3px 10px",borderRadius:12,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(defect.entryType)} {tOpt(defect.entryType).toUpperCase()}</span>}<SevChip s={defect.severity}/><StatusChip s={status}/></div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
               {[["📍 "+t("fields.location"),defect.location],["👤 "+t("detail.assigned"),defect.assignee],["📁 "+t("fields.project_name"),defect.projectName||"—"],["🗓 "+t("fields.date"),defect.created?new Date(defect.created).toLocaleDateString():"—"],["✍️ "+t("fields.logged_by"),defect.loggedBy],["🔑 "+t("fields.role"),defect.loggedByRole||"—"]].map(([l,v])=>(
                 <div key={l}><div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em"}}>{l}</div><div style={{fontSize:13,color:"#1a1a1a",marginTop:2}}>{v||"—"}</div></div>
@@ -5347,11 +5371,29 @@ function Report({defects,onEmailSetup,currentProject,company}){
         </div>
       )}
 
+      {/* Report tally — shows totals for all selected sections */}
       <div style={{background:"#1a1a1a",borderRadius:14,padding:20,marginBottom:16}}>
-        <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:4}}>{t("report.total_defects")}</div>
-        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:56,fontWeight:800,color:"#ff6b00",lineHeight:1}}>{total}</div>
+        <div style={{display:"flex",gap:16,alignItems:"flex-end",flexWrap:"wrap"}}>
+          {incDefects&&<div style={{flex:1,minWidth:80}}>
+            <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:4}}>{t("report.defect_entries").toUpperCase()}</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:48,fontWeight:800,color:"#ff3b30",lineHeight:1}}>{total}</div>
+          </div>}
+          {incDrawings&&<div style={{flex:1,minWidth:80}}>
+            <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:4}}>{t("report.pdf_drawings").toUpperCase()}</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:48,fontWeight:800,color:"#ff6b00",lineHeight:1}}>{drawingsWithAnnotations.length}</div>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",marginTop:4}}>{totalPins} {t("report.pins")} · {totalMarkups} {t("report.markups")} · {totalNotes} {t("report.notes")}</div>
+          </div>}
+          {incComparisons&&<div style={{flex:1,minWidth:80}}>
+            <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:4}}>{t("report.saved_comparisons").toUpperCase()}</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:48,fontWeight:800,color:"#5856d6",lineHeight:1}}>{savedComparisons.length}</div>
+          </div>}
+          {!incDefects&&!incDrawings&&!incComparisons&&<div>
+            <div style={{fontSize:13,color:"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("report.no_sections_selected")}</div>
+          </div>}
+        </div>
       </div>
 
+      {incDefects&&<>
       <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14}}>
         <div style={lbl()}>{t("report.by_severity")}</div>
         {bySev.map(({s,count})=>(
@@ -5393,6 +5435,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
           ))}
         </div>
       )}
+      </>}
 
       {showContractAdvisor&&(
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,border:"2px solid rgba(88,86,214,0.2)"}}>
@@ -9478,26 +9521,29 @@ function App(){
                     ]],
                     ["First-Time Setup",[
                       ["","1. Sign up and create your company."],
-                      ["","2. Connect AI and Telegram from the header."],
-                      ["","3. Invite your team in Team Management (Admin only)."],
-                      ["","4. Create or select a project before logging entries."],
+                      ["","2. Tap ⚙ Settings — follow the progress badge to configure Projects, Team, AI, Telegram, and Storage."],
+                      ["","3. Choose your language from Settings → Language (22 languages available)."],
+                      ["","4. Invite your team via Settings → Team (Admin only)."],
+                      ["","5. Create or select a project, then start logging entries."],
                     ]],
                     ["Main Navigation",[
-                      ["Dashboard","View active items, status counts, severity summary, alerts, and recent entries."],
-                      ["Log (+)","Create a new entry with photos, voice input, and AI-assisted filling."],
-                      ["Defects","Browse, search, and filter entries by keyword, location, assignee, status, severity, or type."],
-                      ["Report","Review charts, filtered statistics, and export or email reports."],
-                      ["Admin","Manage analytics, projects, team settings, and system controls (Admin only)."],
+                      ["Dashboard","View active items, status counts, severity summary, alerts, and recent entries. AI Query bar for natural-language search."],
+                      ["Log (+)","Create a new entry with photos, voice input, and AI-assisted filling. Choose from 7 work categories."],
+                      ["Tag","Upload floor plans, pin defects on drawings, compare PDF revisions, and annotate with markup + photo overlays."],
+                      ["Review","Browse, search, filter, and batch-update entries. AI natural-language search, verification photos, before/after slider."],
+                      ["Report","Section-aware tally, filtered stats, email reports, Contract Advisor, CSV/PDF/Google Sheets export."],
                     ]],
                     [t("log.logging_entry"),[
-                      ["","1. Choose an entry type such as Defect, Observation, Instruction, or Update."],
-                      ["","2. Add or capture photos on site."],
-                      ["","3. Use AI analysis to suggest the title, severity, description, trade, and assignee."],
-                      ["","4. Fill in component, issue, and location details."],
-                      ["","5. Submit the entry, or continue in batch mode if logging multiple items in the same area."],
+                      ["","1. Pick a work category (Landed, Highrise, Construction, Interior, FM, Infra, or Others)."],
+                      ["","2. Choose an entry type such as Defect, Observation, Instruction, or Update."],
+                      ["","3. Add or capture photos on site. A description OR a photo is enough to submit."],
+                      ["","4. Use AI analysis to suggest the title, severity, description, trade, and assignee."],
+                      ["","5. Select component (158 options) and issue (296 options) from the translated dropdown lists."],
+                      ["","6. Fill in location (Level > Zone > Room > Grid), cost, and time tracking."],
+                      ["","7. Submit the entry, or continue in batch mode if logging multiple items in the same area."],
                     ]],
-                    ["Drawings",[
-                      ["","Open Drawings Tagging from the Dashboard to upload or view drawings. You can place pins on plans, link them to existing entries, create entries directly from a drawing, use the heatmap to spot problem areas, and overlay site photos onto PDF comparisons with markup on top."],
+                    ["Tag & Compare",[
+                      ["","Open the Tag tab to upload floor plans (JPG, PNG, WEBP, TIF, PDF). Place pins on plans, create entries directly from a drawing, use the heatmap to spot problem areas, and compare PDF revisions with added/removed line detection. Overlay site photos onto comparisons with full markup tools (freehand, arrow, circle, text, select/move/delete)."],
                     ]],
                     [t("status.flow_title"),[
                       [t("status.open"),t("status.open_desc")],
@@ -9506,24 +9552,29 @@ function App(){
                       [t("status.verified"),t("status.verified_desc")],
                       [t("status.closed"),t("status.closed_desc")],
                     ]],
-                    ["Header Tools",[
+                    ["Top Bar & Menus",[
                       ["Project selector","Switch between projects or create a new one."],
-                      ["Active count","Shows how many items are still active."],
-                      ["AI Search","Search in natural language, such as 'show critical plumbing in Block A'."],
-                      ["AI Setup","Connect and configure your preferred AI provider."],
-                      ["Telegram","Receive notifications when items are logged or updated."],
-                      ["Storage","Choose where photos and files are stored."],
-                      ["Team","Invite members and manage roles."],
-                      ["Help","Open this guide."],
-                      ["Feedback","Send suggestions or report bugs."],
-                      ["Profile","Manage your account settings and sign out."],
+                      ["⚙ Settings dropdown","All one-time setup: Projects, Team, AI, Telegram, Storage, Language. Shows progress badge (e.g. 3/4)."],
+                      ["Avatar menu","Profile, Admin Analytics (admin), Help & Features, Feedback, Sign Out."],
+                      ["AI Query bar","Shown on Dashboard and Report. Ask questions like 'show critical plumbing in Block A'."],
+                    ]],
+                    ["Settings Items",[
+                      ["Projects","Create, switch, archive, or restore projects."],
+                      ["Team","Invite members (link + code), assign roles, remove members."],
+                      ["AI Setup","Connect Gemini (free), Ollama (local), or OpenAI/GPT for photo analysis and search."],
+                      ["Telegram","Real-time alerts to your team group when items are logged or updated."],
+                      ["Storage","Choose PocketBase (default), local path, or Google Drive."],
+                      ["Language","Pick from 22 languages. All UI labels, dropdowns, and reports are translated."],
                     ]],
                     [t("help.practical_tips"),[
                       [t("messages.offline_use"),t("messages.offline_continue")],
                       ["Multiple projects","Use the project selector to switch between project workspaces."],
-                      ["CSV export","Use the Report tab to download filtered data for sharing or analysis."],
+                      ["Export options","Report tab: CSV, PDF, Google Sheets, or all-in-one. Choose which sections (defects, drawings, comparisons) to include."],
+                      ["Contract Advisor","From the Report tab, tap ADVISOR to get AI-powered clause-to-defect mapping using contract PDFs."],
                       [t("onboarding.voice_input"),t("onboarding.voice_tip")],
                       [t("log.batch_logging"),t("log.reuse_location_tip")],
+                      ["Language","Switch language anytime from Settings → Language. All dropdowns (components, issues, levels, costs) are translated."],
+                      ["Batch update","In Review, tap ✓ SELECT to pick multiple entries, then update status, severity, assignee, or duration in one go."],
                     ]],
                   ].map(([section,items])=>(
                     <div key={section} style={{marginBottom:24}}>
@@ -9545,7 +9596,7 @@ function App(){
                   {/* Intro */}
                   <div style={{background:"rgba(52,168,83,0.08)",border:"1px solid rgba(52,168,83,0.2)",borderRadius:12,padding:16,marginBottom:20}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:800,color:"#34a853",marginBottom:6}}>OWN YOUR DATA</div>
-                    <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7}}>SiteShrimp is designed for self-hosting. You control your backend, storage, AI, and reporting. No vendor lock-in, no recurring fees.</div>
+                    <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7}}>SiteShrimp is designed for self-hosting. You control your backend, storage, AI, language, and reporting. No vendor lock-in, no recurring fees. 22 languages built in.</div>
                   </div>
 
                   {/* PocketBase */}
@@ -9587,7 +9638,7 @@ function App(){
                       ),
                       // Google Sheets Section
                       React.createElement(Section,{icon:"📊",title:"GOOGLE SHEETS — LIVE REPORTS",color:"#34a853"},
-                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"Export your defect reports directly into Google Sheets. Each export creates a new tab with summary stats and full data."),
+                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"Export filtered defect reports directly into Google Sheets. Each export creates a new tab with summary stats (severity, status, cost breakdown) and full data rows. Also export as CSV, PDF, or all-in-one bundle from the Report tab."),
                         React.createElement(Step,{n:"1"},React.createElement(React.Fragment,null,"Go to ",React.createElement(Link,{href:"https://console.cloud.google.com/"},"Google Cloud Console"))),
                         React.createElement(Step,{n:"2"},"Create a project (or use an existing one)"),
                         React.createElement(Step,{n:"3"},React.createElement(React.Fragment,null,"Enable ",React.createElement(Link,{href:"https://console.cloud.google.com/apis/library/sheets.googleapis.com"},"Google Sheets API")," and ",React.createElement(Link,{href:"https://console.cloud.google.com/apis/library/drive.googleapis.com"},"Google Drive API"))),
@@ -9601,7 +9652,7 @@ function App(){
                       ),
                       // AI Section
                       React.createElement(Section,{icon:"🤖",title:"AI — YOUR OWN MODELS",color:"#5856d6"},
-                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"Use any AI provider for photo analysis, smart search, and contract advisory. You choose the model, you control the cost."),
+                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"Use any AI provider for photo analysis, auto-fill (title, severity, trade, assignee), natural-language search, PDF diff reports, and Contract Advisor (clause-to-defect mapping using PSSCOC/REDAS/SIA). You choose the model, you control the cost."),
                         React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:8}},
                           React.createElement("div",{style:{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"10px 12px"}},
                             React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"#5856d6",marginBottom:4}},"GOOGLE GEMINI (Free)"),
@@ -9627,7 +9678,7 @@ function App(){
                       ),
                       // Email Section
                       React.createElement(Section,{icon:"📧",title:"EMAIL — SMTP REPORTS",color:"#ff3b30"},
-                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"Send HTML email reports directly from the app. Uses your own email provider."),
+                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"Send translated HTML email reports directly from the app. Choose which sections to include (defects, drawings, comparisons). Uses your own email provider via SMTP."),
                         React.createElement(Step,{n:"1"},"Settings ⚙ → open the Report tab"),
                         React.createElement(Step,{n:"2"},"Click 📧 EMAIL → Edit Recipients → choose your email provider"),
                         React.createElement(Step,{n:"3"},React.createElement(React.Fragment,null,"For Gmail: ",React.createElement(Link,{href:"https://myaccount.google.com/apppasswords"},"Generate App Password")," (requires 2-Step Verification)")),
@@ -9643,10 +9694,35 @@ function App(){
                         ),
                         React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.3)",marginTop:8}},"Configure in Settings ⚙ → Storage")
                       ),
+                      // Language Section
+                      React.createElement(Section,{icon:"🌐",title:"LANGUAGE — 22 LANGUAGES BUILT IN",color:"#00bcd4"},
+                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"The entire app is translated into 22 languages — UI labels, buttons, dropdown options (158 components, 296 issues, levels, zones, rooms, durations, costs), and email reports. Switch anytime from Settings → Language."),
+                        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+                          React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.4)",lineHeight:1.6}},"• English, 简体中文, 繁體中文, Bahasa Melayu, Bahasa Indonesia"),
+                          React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.4)",lineHeight:1.6}},"• हिन्दी, தமிழ், ไทย, Tiếng Việt, বাংলা"),
+                          React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.4)",lineHeight:1.6}},"• 日本語, 한국어"),
+                          React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.4)",lineHeight:1.6}},"• Deutsch, Français, Español, Português, Italiano"),
+                          React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.4)",lineHeight:1.6}},"• Türkçe, Svenska, Norsk, Dansk, Suomi")
+                        ),
+                        React.createElement("div",{style:{background:"rgba(0,188,212,0.1)",borderRadius:8,padding:"10px 12px",marginTop:10}},
+                          React.createElement("div",{style:{fontSize:11,color:"#00bcd4",fontWeight:600}},"All construction terms use proper industry vocabulary per language. Values stored in English for data consistency; display is translated.")
+                        )
+                      ),
+                      // Frontend Hosting Section
+                      React.createElement(Section,{icon:"🌍",title:"FRONTEND — DEPLOY ANYWHERE",color:"#607d8b"},
+                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"SiteShrimp is a static site (HTML + JS + CSS). Host it on any static hosting provider. No server-side rendering needed."),
+                        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+                          React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.4)",lineHeight:1.6}},React.createElement(React.Fragment,null,"• ",React.createElement(Link,{href:"https://pages.github.com/"},"GitHub Pages")," — free, auto-deploy from main branch")),
+                          React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.4)",lineHeight:1.6}},React.createElement(React.Fragment,null,"• ",React.createElement(Link,{href:"https://pages.cloudflare.com/"},"Cloudflare Pages")," — free, fast global CDN")),
+                          React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.4)",lineHeight:1.6}},React.createElement(React.Fragment,null,"• ",React.createElement(Link,{href:"https://vercel.com/"},"Vercel")," / ",React.createElement(Link,{href:"https://www.netlify.com/"},"Netlify")," — free tier, one-click deploy")),
+                          React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.4)",lineHeight:1.6}},"• Any web server (Nginx, Apache, Caddy) — just serve the files")
+                        ),
+                        React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.3)",marginTop:8}},"Push to your repo and the frontend updates automatically. Backend (PocketBase) runs separately on your VM.")
+                      ),
                       // Summary
                       React.createElement("div",{style:{background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:12,padding:16,textAlign:"center"}},
                         React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#ff6b00",marginBottom:6}},"SELF-HOSTED. SELF-CONTROLLED."),
-                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.4)",lineHeight:1.7}},"Your backend. Your AI. Your storage. Your reports. No subscription fees. No data lock-in. Built for teams that own their tools.")
+                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.4)",lineHeight:1.7}},"Your backend. Your AI. Your storage. Your language. Your reports. No subscription fees. No data lock-in. Built for teams that own their tools.")
                       )
                     );
                   })()}
@@ -9657,18 +9733,19 @@ function App(){
               {helpTab==="features"&&(
                 <div>
                   {(()=>{const fc=[
-                    ["Navigation",["Minimal top bar: Project selector, Settings dropdown, Avatar dropdown","Bottom nav: Dashboard → Log → Drawings → Review → Report","Operational flow order: see state → capture → tag → act → share","Settings dropdown with setup-progress badge (N/4 configured)","Settings menu groups: PROJECT (Projects, Team) + ENHANCE (AI, Telegram, Storage)","Avatar menu: Profile, Admin Analytics (admin), Help, Feedback, Sign Out","Setup progress ✓ / — indicators on each Settings item","Inline AI Search 💬 button next to the Review search bar"]],
+                    ["Navigation",["Minimal top bar: Project selector, Settings dropdown, Avatar dropdown","Bottom nav: Dashboard → Log → Tag → Review → Report","Operational flow order: see state → capture → tag → act → share","Settings dropdown with setup-progress badge (N/4 configured)","Settings menu groups: PROJECT (Projects, Team) + ENHANCE (AI, Telegram, Storage, Language)","Avatar menu: Profile, Admin Analytics (admin), Help, Feedback, Sign Out","Setup progress ✓ / — indicators on each Settings item","Inline AI Query bar on Dashboard and Report tabs"]],
                     ["Auth & Onboarding",["Login / Sign up","Password reset","Password visibility toggle","One-step registration + company setup","Auto-recover session","Install as app","Server URL config"]],
                     ["Team",["Invite members (link + code)","Role-based access (Admin, Manager, Inspector, Viewer)","Edit roles / remove members","Permission matrix display"]],
                     ["Projects",["Create / rename projects","Switch active project","Archive / restore projects"]],
-                    ["Entry Logging",["Log with title, severity, location","4 default types + custom entry types","Custom type manager (icon & color picker)","Multi-level location (Level > Zone > Room > Grid)","Snap / upload up to 10 photos","Photo markup editor (arrows, circles, freehand, text)","Markup scales correctly on save (pen, text, arrows)","Edit / delete text annotations on markup","AI photo analysis (Gemini, Ollama, GPT)","AI auto-assign trade + suggested assignee","AI safety risk scoring (auto-escalate Critical)","Duplicate detection (similarity check on submit)","Voice-to-text input (title, description, search)","Component + issue selector (93 / 517)","Assign to team member","Cost & time tracking fields","Batch logging mode (same location)"]],
-                    ["Review",["Full-text search with highlighting","AI natural language search (voice + text)","Filter by status, severity, entry type","Collapsible filters with clear button","Entry type badges on list & detail","Detail view with all fields + photos","Update status workflow (5 stages)","Verification photo on Close / Verify","Before / after photo comparison slider","Resolution timeline (visual, color-coded)","Photo comments in timeline","Markup on comment photos (tap to annotate)","Edit own comments inline (with edited indicator)","Quick reactions (thumbs, check, warn, fix)","Delete entry (Admin only)","Telegram alerts on new entry & status change"]],
-                    ["Drawings Tagging",["Upload floor plans (JPG, PNG, TIF, PDF)","PDF rendering via PDF.js with page navigation","Zoom, pan & pinch-to-zoom (mobile)","Ring-style defect pins with severity initial","Critical pin pulse animation","Pin tooltip with entry details + remove","Quick-pin: create entry directly from drawing","Defect heatmap overlay (severity-weighted)","Drawing-level markup (freehand, arrows, circles, text)","Drawing notes — pinned text with author + timestamp","Markup color picker + undo / clear","Pin count & severity badges on cards","PDF thumbnail preview in list","Diff dropdown: Single (PDFs) and Batch (Folders) in one menu","Single PDF diff with visual overlay of changes","Compare markup — draw on top of the diff (freehand, arrow, circle, text)","Compare markup: select and drag to reposition any stroke","Compare markup: 4 text size presets (S/M/L/XL)","Compare markup: 9-way text alignment via 3x3 grid menu","Compare markup: color picker retargets selected stroke","Compare markup: delete individual strokes without clearing all","Compare markup: overlay site photos onto the diff (capture or pick from device)","Compare markup: drag photos to reposition, +/− to resize, markup on top","AI diff report with lock / approve audit trail","Saved comparisons with overlay thumbnails (markup composited in)","Batch PDFs Comparison (folder vs folder)","Batch completeness check (missing / extra files)","Batch content comparison (per-file diff with detail)","Batch export (CSV + PDF with per-file changes)","Editable set labels (Tender, As-Built, M&E, etc.)"]],
+                    ["Entry Logging",["7 Work Categories (Landed, Highrise, Construction, Interior, FM, Infra, Others)","Log with title, severity, location","4 default types + custom entry types","Custom type manager (icon & color picker)","Multi-level location (Level > Zone > Room > Grid)","Low-friction submit: description OR photo is enough","Snap / upload up to 10 photos","Photo markup editor (arrows, circles, freehand, text)","Markup scales correctly on save (pen, text, arrows)","Edit / delete text annotations on markup","AI photo analysis (Gemini, Ollama, GPT)","AI auto-assign trade + suggested assignee","AI safety risk scoring (auto-escalate Critical)","Duplicate detection (similarity check on submit)","Voice-to-text input (title, description, search)","Component + issue selector (158 / 296 across 19 groups)","Assign to team member","Cost & time tracking fields","Batch logging mode (same location)"]],
+                    ["Review",["Full-text search with highlighting","AI natural language search (voice + text)","Filter by status, severity, entry type","Collapsible filters with clear button","Batch update (Status, Severity, Assignee, Duration, Target Date)","Entry type badges on list & detail (translated)","Detail view with all fields + photos","Update status workflow (5 stages)","Verification photo on Close / Verify","Before / after photo comparison slider","Resolution timeline (visual, color-coded)","Photo comments in timeline","Markup on comment photos (tap to annotate)","Edit own comments inline (with edited indicator)","Quick reactions (thumbs, check, warn, fix)","Delete entry (Admin only)","Telegram alerts on new entry & status change"]],
+                    ["Tag & Compare",["Upload floor plans (JPG, PNG, WEBP, TIF, PDF)","PDF rendering via PDF.js with page navigation","Zoom, pan & pinch-to-zoom (mobile)","Ring-style defect pins with severity initial","Critical pin pulse animation","Pin tooltip with entry details + remove","Quick-pin: create entry directly from drawing","Defect heatmap overlay (severity-weighted)","Drawing-level markup (freehand, arrows, circles, text)","Drawing notes — pinned text with author + timestamp","Markup color picker + undo / clear","Pin count & severity badges on cards","PDF thumbnail preview in list","Diff dropdown: Single (PDFs) and Batch (Folders) in one menu","Single PDF diff with visual overlay of changes","Compare markup — draw on top of the diff (freehand, arrow, circle, text)","Compare markup: select and drag to reposition any stroke","Compare markup: 4 text size presets (S/M/L/XL)","Compare markup: 9-way text alignment via 3x3 grid menu","Compare markup: color picker retargets selected stroke","Compare markup: delete individual strokes without clearing all","Compare markup: overlay site photos onto the diff (capture or pick from device)","Compare markup: drag photos to reposition, +/− to resize, markup on top","AI diff report with lock / approve audit trail","Saved comparisons with overlay thumbnails (markup composited in)","Batch PDFs Comparison (folder vs folder)","Batch completeness check (missing / extra files)","Batch content comparison (per-file diff with detail)","Batch export (CSV + PDF with per-file changes)","Editable set labels (Tender, As-Built, M&E, etc.)"]],
                     ["Dashboard",["Real-time status counts (5 stages)","Critical alerts banner","Severity breakdown chart","Recent entries with type badges","Live sync indicator + queue count"]],
                     ["Admin Analytics",["Entries today / week / month / all time","Active users — who submitted today & this week","Per-user ranking bar chart","Photos stats (total & avg per entry)","Entries by entry type breakdown","Entries by project breakdown","AI usage stats (daily limit, coverage, provider)"]],
-                    ["Reports & Exports",["Site report with charts + entry list","Filter by severity / status / assignee / date","Email content sections (defects, drawings, comparisons)","Email preview with opt-in/out per section","Email report via PocketBase SMTP","Dn menu: Markup CSV / PDF export","Dn menu: Compare CSV / PDF export","Dn menu: All CSV / PDF export","Dn menu: All-in-One (CSV + PDF in one tap)","Annotated drawings embedded in PDF exports (pins, notes, markup burned in)","Per-drawing PDF export from the viewer"]],
+                    ["Reports & Exports",["Site report with section-aware tally (defects, drawings, comparisons)","Conditional severity / status / assignee breakdowns","Filter by severity / status / assignee / date","Email content sections (defects, drawings, comparisons)","Email preview with opt-in/out per section","Translated email reports (all values in user's language)","Email report via PocketBase SMTP","Contract Advisor — AI clause-to-defect mapping (PSSCOC/REDAS/SIA)","Google Sheets export (new tab per export)","EXPORT all-in-one CSV (defects + annotations + comparisons)","Dn menu: Markup CSV / PDF export","Dn menu: Compare CSV / PDF export","Dn menu: All CSV / PDF export","Dn menu: All-in-One (CSV + PDF in one tap)","Annotated drawings embedded in PDF exports (pins, notes, markup burned in)","Per-drawing PDF export from the viewer"]],
+                    ["Multi-Language (i18n)",["22 languages (EN, ZH, ZH-TW, MS, ID, HI, TA, TH, VI, BN, JA, KO, DE, FR, ES, PT, IT, TR, SV, NO, DA, FI)","Full UI translation (617 keys — labels, buttons, placeholders, errors)","Dropdown option translation (539 terms — components, issues, levels, zones, durations, costs)","Construction industry terminology per language","Language selector with flags + native names","Instant English (inlined) + lazy-loaded language packs","Fallback chain: language → English → raw key"]],
                     ["Storage",["PocketBase (default server)","Local path (self-hosted server / machine)","Google Drive (OAuth, personal cloud)"]],
-                    ["Setup & Integrations",["Single Settings dropdown for all one-time setup","AI multi-provider setup + test (Gemini, Ollama, OpenAI)","Telegram bot setup + test","Storage mode selector (PocketBase, local path, Google Drive)","Daily AI usage limit","Email report config (inside Report tab)","Green ✓ check per configured integration"]],
+                    ["Setup & Integrations",["Single Settings dropdown for all one-time setup","AI multi-provider setup + test (Gemini, Ollama, OpenAI)","Telegram bot setup + test","Storage mode selector (PocketBase, local path, Google Drive)","Language selector (22 languages)","Daily AI usage limit","Email report config (inside Report tab)","Green ✓ check per configured integration"]],
                     ["Offline",["Save entries to IndexedDB when offline","Queued badge in header + Dashboard","Auto-sync when back online","Manual sync tap","Queued / synced status indicator"]],
                     ["Account",["Edit display name + job title","Change email","Change password"]],
                     ["Other",["Comprehensive help guide","Feedback form (suggestion, bug, praise)","Cached app shell (service worker)","Photo compression (auto-resize)","Hover-to-open dropdowns (desktop) + tap-to-open (mobile)"]],
@@ -9692,7 +9769,7 @@ function App(){
               )}
 
               <div style={{textAlign:"center",marginTop:20}}>
-                <div style={{fontSize:11,color:"rgba(255,255,255,0.2)",fontFamily:"'Barlow Condensed',sans-serif"}}>SiteShrimp v2 — Built for teams that deliver</div>
+                <div style={{fontSize:11,color:"rgba(255,255,255,0.2)",fontFamily:"'Barlow Condensed',sans-serif"}}>SiteShrimp v2.1 — Built for teams that deliver</div>
                 <button onClick={()=>setShowHelp(false)} style={{marginTop:16,background:"#ff6b00",border:"none",borderRadius:10,padding:"12px 32px",color:"#fff",fontSize:14,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>{t("actions.ok")}</button>
               </div>
             </div>

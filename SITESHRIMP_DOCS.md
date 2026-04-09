@@ -1,7 +1,7 @@
 # SiteShrimp v2 — Full Documentation
 
-**Version:** 2.0  
-**Stack:** PocketBase · React 18 · Babel · Gemini AI · Telegram · EmailJS  
+**Version:** 2.1  
+**Stack:** PocketBase · React 18 · Babel · Gemini/Ollama/GPT AI · Telegram · EmailJS · 22-language i18n  
 **Live URL:** https://siteshrimp.org  
 **PocketBase URL:** https://api.siteshrimp.org  
 **GitHub:** Private repository  
@@ -36,13 +36,15 @@ SiteShrimp is a mobile-first Progressive Web App for construction site defect tr
 - **Multi-tenant** — Each company has completely isolated data; companies cannot see each other
 - **Role-based access** — Admin, Manager, Inspector, Viewer with different permissions
 - **Multi-project** — Each company manages multiple construction projects
-- **AI photo analysis** — Google Gemini auto-fills defect title, severity, description from photos (client-side + server-side hooks)
+- **AI photo analysis** — Gemini, Ollama, or OpenAI/GPT auto-fills defect title, severity, description from photos
+- **22-language i18n** — Full UI and dropdown translation for 22 languages (EN, ZH, ZH-TW, MS, ID, HI, TA, TH, VI, BN, JA, KO, DE, FR, ES, PT, IT, TR, SV, NO, DA, FI)
 - **Voice input** — Speak to fill any text field
 - **Telegram notifications** — New defects and status changes sent to team group with photo
-- **Email reports** — Filtered HTML report sent to multiple recipients via EmailJS
-- **CSV export** — Download filtered defects for Google Sheets / Excel
+- **Email reports** — Filtered HTML report sent to multiple recipients, translated to user's language
+- **Multi-format export** — CSV, PDF, Google Sheets, all-in-one bundles
+- **Contract Advisor** — AI-powered defect-to-clause mapping using contract PDFs
 - **Batch logging** — Quickly log multiple defects at same location in one session
-- **Offline support** — App shell cached; works without internet connection
+- **Offline support** — IndexedDB queue, auto-sync when back online
 
 ---
 
@@ -76,8 +78,8 @@ SiteShrimp is a mobile-first Progressive Web App for construction site defect tr
 ```
 
 ### Design Decisions
-- **Single HTML file + JS files** — No build step, deployable anywhere, easy to update
-- **Babel standalone** — JSX compiled in-browser; acceptable for this scale
+- **Single HTML file + JS files** — Pre-compiled via Babel CLI (`npm run build`), deployable anywhere
+- **Babel CLI** — JSX pre-compiled to `app.compiled.js`; cache-busted via version query string
 - **PocketBase** — Self-hosted backend on a VM (DuckDNS domain), handles auth + database + file storage + real-time SSE
 - **db.js abstraction layer** — All UI code calls `DB.*` methods; PocketBase REST API details are encapsulated
 - **Each company = own set of records filtered by companyId** — Full data isolation via collection-level filters
@@ -89,29 +91,33 @@ SiteShrimp is a mobile-first Progressive Web App for construction site defect tr
 
 ```
 SiteShrimp/
-├── index.html          ← HTML shell: loads React, Babel, EmailJS, inits PocketBase via DB.init()
+├── index.html              ← HTML shell: loads React, CDN libs, inits PocketBase
 ├── js/
-│   ├── app.js          ← All React components, business logic (1900+ lines)
-│   ├── db.js           ← PocketBase data layer: auth, CRUD, SSE subscriptions (380 lines)
-│   └── constants.js    ← Config, roles, severity levels, localStorage keys (320 lines)
-├── manifest.json       ← App install config (name, icons, theme colour)
-├── sw.js               ← Service worker: caches app shell, enables offline
+│   ├── app.js              ← React components + business logic (source JSX)
+│   ├── app.compiled.js     ← Babel-compiled output (served to browser)
+│   ├── db.js               ← PocketBase data layer: auth, CRUD, SSE subscriptions
+│   ├── constants.js        ← Entry types, components, issues, locations, statuses
+│   └── lang.js             ← i18n helper: t(), tOpt(), language loading (22 languages)
+├── lang/
+│   ├── en.json … fi.json   ← 22 language packs (1,158 keys each)
+├── manifest.json            ← App install config (name, icons, theme colour)
+├── sw.js                    ← Service worker: caches app shell, enables offline
 ├── icons/
-│   ├── icon-192.png    ← App icon (home screen, splash)
-│   └── icon-512.png    ← App icon (large)
+│   ├── icon-192.png         ← App icon (home screen, splash)
+│   └── icon-512.png         ← App icon (large)
 ├── deploy/
 │   └── pocketbase/
 │       └── pb_hooks/
-│           └── main.pb.js  ← Server-side hooks (defect ID generation, Gemini AI analysis)
-└── css/                ← Legacy (styles now inline in app.js)
+│           └── main.pb.js   ← Server-side hooks (defect ID generation, AI analysis)
+└── css/                     ← Legacy (styles now inline in app.js)
 ```
 
 ### index.html responsibilities
-- Loads all CDN scripts in correct order (React, Babel, EmailJS)
+- Loads CDN scripts (React, PDF.js, jsPDF, EmailJS)
+- Loads `js/constants.js`, `js/lang.js`, `js/app.compiled.js` in order
 - Sets `PB_URL` from localStorage or defaults to `https://api.siteshrimp.org`
 - Registers service worker
 - Provides `<div id="root">` mount point
-- Loads `js/app.js` as `type="text/babel"`
 
 ### db.js — PocketBase Data Layer
 - Encapsulates all PocketBase REST API calls
@@ -364,46 +370,74 @@ Configure these rules in the PocketBase Admin dashboard at `https://api.siteshri
 - 6 most recent defects
 - Live sync indicator + AI/TG badges
 
-### Log Defect
+### Log Entry
+- **7 Work Categories** — Building Defects (Landed/Highrise), Construction Site, Interior Works, Facilities Management, Infrastructure Works, Others — narrows component dropdown per category
+- **4 default + custom entry types** — Defect, Observation, Update, Instruction + user-defined types
+- **158 components / 296 issues** across 19 groups — tap to select, minimal typing
 - Voice input on all text fields (tap mic icon)
-- Direct camera access
-- AI photo analysis (Gemini) — auto-fills title, severity, description
+- Direct camera access (up to 10 photos per entry with markup editor)
+- AI photo analysis (Gemini / Ollama / GPT) — auto-fills title, severity, description, trade, assignee
+- AI safety risk scoring — auto-escalates to Critical when risk detected
+- Duplicate detection — similarity check on submit
 - Severity selector: Critical / Major / Minor / Observation
-- Assignee dropdown from company members
-- Batch mode: log multiple defects at same location quickly
-- Session counter
+- Multi-level location hierarchy: Level > Zone > Room/Area > Grid
+- Cost tracking: impact type, responsible party, amount, remarks
+- Time tracking: target date, estimated duration
+- Batch mode: log multiple entries at same location quickly
+- Low-friction submit — a description OR a photo is enough
 
-### Defects List
-- Filter by Status + Severity
-- Colour-coded by severity
+### Review (Entry Management)
+
+- Full-text search with keyword highlighting
+- AI natural-language search (voice + text) — "show critical plumbing open this week"
+- Filter by status, severity, entry type
+- Batch update — select multiple entries, update status/severity/assignee/duration/target date in one go
+- Color-coded entry type badges (Defect, Observation, Update, Instruction) — translated per language
 - Tap to open full detail
 
-### Defect Detail
-- All defect fields + project name
-- Photo (full width, supports multiple)
-- Status update (Inspector+)
-- Comments with role badge and voice input
+### Entry Detail
+
+- All entry fields + project name
+- Photos (multiple, full width, with markup)
+- Status workflow: Open → In Progress → Done → Verified → Closed
+- Verification photo required on Close/Verify + before/after comparison slider
+- Visual, color-coded resolution timeline with photo comments + quick reactions
+- Inline comment editing with role badges
 - Delete (Admin only, with confirm dialog)
 - Telegram notification on status change + comments
 
+### Tag & Compare (Drawings)
+
+- Upload JPG, PNG, WEBP, TIFF, PDF (multi-page via PDF.js, max 50MB)
+- Zoom, pan, pinch-to-zoom on mobile
+- Ring-style defect pins with severity initial + pulse animation for Critical
+- Quick-pin — create entry directly from floor plan
+- Defect heatmap overlay (severity-weighted)
+- Drawing markup (freehand, arrows, circles, text) with color picker + undo/clear
+- Drawing notes — pinned text notes with author + timestamp
+- Single PDF diff — compare two drawings with added/removed line detection
+- Batch folder comparison — diff two folders of PDFs
+- Compare markup tools: select/move/delete, text size presets, 9-way alignment, color retarget, photo overlay
+- Saved comparisons per project with composite thumbnails
+
 ### Report
-- 5 filter types: Severity, Status, Assignee, Date From, Date To
-- Active filter count badge
-- Summary stats + severity chart + status tiles + assignee table
-- EMAIL REPORT (filtered, HTML format)
-- CSV EXPORT (filtered, spreadsheet-ready)
 
-### Profile Dropdown
-- Name, email, role, job title
-- Email settings shortcut
-- Sign out
+- Section-aware tally — separate counts for selected sections (defects, drawings, comparisons)
+- Severity/status/assignee breakdowns (shown only when defects selected)
+- Filters: severity, status, assignee, date range
+- Email reports — HTML via EmailJS with per-section opt-in, translated to user's language
+- Email preview — see exactly what will go out
+- Contract Advisor — AI-powered defect-to-clause mapping (PSSCOC/REDAS/SIA)
+- Export: CSV, PDF, Google Sheets, all-in-one bundles
+- Annotated drawings embedded in PDF exports (pins, notes, markup burned in)
 
-### Header
-- Company name + project switcher
-- Open count
-- AI + Telegram setup buttons
-- Team management (Admin)
-- Profile avatar
+### Navigation
+
+- **Top bar (3 controls):** Project selector · ⚙ Settings (with progress badge) · Avatar menu
+- **Bottom nav (5 tabs):** Dashboard → Log → Tag → Review → Report
+- **Settings dropdown:** Projects, Team, AI, Telegram, Storage, Language — with DONE/TODO/OPT pills
+- **Avatar dropdown:** Profile, Admin Analytics, Help, Feedback, Sign Out
+- **AI Query bar:** one-tap natural-language search on Dashboard and Report tabs
 
 ---
 
@@ -518,34 +552,35 @@ Auto-deploys from `main` branch. Push to GitHub — live in ~1 minute.
 | Issue | Detail | Workaround |
 |---|---|---|
 | Email photos excluded | Base64 exceeds EmailJS 50KB free limit | Email shows "Photo in app" note |
-| Gemini key per-device | Stored in localStorage, not shared | Each user enters own free key |
+| AI key per-device | Stored in localStorage, not shared | Each user enters own free key |
 | Voice: Firefox | Web Speech API not supported | Mic button auto-hidden |
-| Offline submissions | Cannot save defects without internet | Planned: offline queue |
 | Telegram caption limit | 1024 chars max | Long names auto-truncated by Telegram |
 | PocketBase VM uptime | VM may sleep/restart | Check VM status if app shows timeout errors |
 | API timeout | 12-second timeout on all PocketBase calls | Increase in db.js if VM is slow |
+| Drawing markup per-page | Multi-page PDF markup not page-aware | Planned: per-page markup tracking |
 
 ---
 
 ## 14. Future Roadmap
 
 ### Near Term
-- Push notifications — alerts when app is closed
-- Offline submission queue (IndexedDB)
-- PDF report export
-- Multiple photos per defect (partially implemented — PB supports it)
+- Push notifications — browser push for status changes, comments, assignments
+- Per-page markup tracking on multi-page drawings
+- Batch comparison PDF parity — embed diff thumbnails in batch PDF exports
+- Dark mode
 
 ### Medium Term
-- Custom defect categories per company
-- Target completion dates
-- QR codes per location for quick logging
-- Admin web dashboard (not just mobile)
+- QR code scanning for location / asset tagging
+- Recurring inspection schedules
+- Handover checklist templates
+- Saved filter presets in Review (e.g. "My Open Critical")
+- First-run setup wizard
 
 ### Long Term
-- Google Sheets auto-sync
-- WhatsApp notifications (alternative to Telegram)
-- Multi-language (BM, Chinese, Tamil)
-- API for BIM software integration
+- Integration with Procore, Aconex, BIM360
+- Predictive analytics (forecast defect rates by trade/area)
+- AI inspection checklist generation based on project stage
+- OpenClaw integration (read-only Telegram bot for natural-language queries)
 
 ---
 
@@ -595,4 +630,4 @@ For a fully independent setup:
 
 ---
 
-*SiteShrimp v2 · Built with PocketBase + React + Gemini AI · MIT License*
+*SiteShrimp v2.1 · Built with PocketBase + React + AI (Gemini/Ollama/GPT) · 22-language i18n · Free for all users*
