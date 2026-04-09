@@ -5378,9 +5378,9 @@ function Report({defects,onEmailSetup,currentProject,company}){
       {byAssignee.length>0&&(
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14}}>
           <div style={lbl()}>{t("report.by_assignee")}</div>
-          {byAssignee.map(({t,open,total:tot})=>(
-            <div key={t} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid rgba(0,0,0,0.05)"}}>
-              <span style={{fontSize:13,color:"#1a1a1a"}}>{t}</span>
+          {byAssignee.map(({t:name,open,total:tot})=>(
+            <div key={name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid rgba(0,0,0,0.05)"}}>
+              <span style={{fontSize:13,color:"#1a1a1a"}}>{name}</span>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                 {open>0&&<span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"#ff3b30",background:"rgba(255,59,48,0.1)",padding:"2px 8px",borderRadius:10}}>{open} {t("status.open").toLowerCase()}</span>}
                 <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,color:"rgba(0,0,0,0.4)"}}>{tot} {t("report.total")}</span>
