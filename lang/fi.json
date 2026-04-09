@@ -233,7 +233,9 @@
     "severity_label": "VAKAVUUS",
     "status_label": "STATUS",
     "assignee_label": "MÄÄRÄYS",
-    "date_range": "DATE RANGE"
+    "date_range": "DATE RANGE",
+    "by_assignee": "VASTUUHENKILÖN MUKAAN",
+    "total": "yhteensä"
   },
   "dashboard": {
     "title": "Kojelauta",
@@ -668,5 +670,11 @@
     "title": "🌐 KIELI",
     "select": "Valitse kieli",
     "current": "Nykyinen kieli"
+  },
+  "detail": {
+    "update_status": "PÄIVITÄ TILA",
+    "description": "KUVAUS",
+    "timeline": "AIKAJANA",
+    "assigned": "Vastuuhenkilö"
   }
 }

@@ -233,7 +233,9 @@
     "severity_label": "ALVARLIGHET",
     "status_label": "STATUS",
     "assignee_label": "TILTAKER",
-    "date_range": "DATOintervall"
+    "date_range": "DATOintervall",
+    "by_assignee": "ETTER ANSVARLIG",
+    "total": "totalt"
   },
   "dashboard": {
     "title": "Dashbord",
@@ -668,5 +670,11 @@
     "title": "🌐 SPRÅK",
     "select": "Velg språk",
     "current": "Nåværende språk"
+  },
+  "detail": {
+    "update_status": "OPPDATER STATUS",
+    "description": "BESKRIVELSE",
+    "timeline": "TIDSLINJE",
+    "assigned": "Tildelt"
   }
 }

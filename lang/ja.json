@@ -233,7 +233,9 @@
     "severity_label": "重大度",
     "status_label": "状態",
     "assignee_label": "譲受人",
-    "date_range": "日付範囲"
+    "date_range": "日付範囲",
+    "by_assignee": "担当者別",
+    "total": "合計"
   },
   "dashboard": {
     "title": "ダッシュボード",
@@ -668,5 +670,11 @@
     "title": "🌐 言語",
     "select": "言語を選択",
     "current": "現在の言語"
+  },
+  "detail": {
+    "update_status": "ステータス更新",
+    "description": "説明",
+    "timeline": "タイムライン",
+    "assigned": "担当者"
   }
 }

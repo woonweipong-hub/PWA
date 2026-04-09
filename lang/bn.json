@@ -233,7 +233,9 @@
     "severity_label": "তীব্রতা",
     "status_label": "স্ট্যাটাস",
     "assignee_label": "অর্পণ",
-    "date_range": "তারিখ রেঞ্জ"
+    "date_range": "তারিখ রেঞ্জ",
+    "by_assignee": "অ্যাসাইনি অনুযায়ী",
+    "total": "মোট"
   },
   "dashboard": {
     "title": "ড্যাশবোর্ড",
@@ -668,5 +670,11 @@
     "title": "🌐 ভাষা",
     "select": "ভাষা নির্বাচন",
     "current": "বর্তমান ভাষা"
+  },
+  "detail": {
+    "update_status": "স্ট্যাটাস আপডেট করুন",
+    "description": "বিবরণ",
+    "timeline": "টাইমলাইন",
+    "assigned": "নির্ধারিত"
   }
 }

@@ -233,7 +233,9 @@
     "severity_label": "GRAVEDAD",
     "status_label": "ESTADO",
     "assignee_label": "CESIONARIA",
-    "date_range": "RANGO DE FECHAS"
+    "date_range": "RANGO DE FECHAS",
+    "by_assignee": "POR ASIGNADO",
+    "total": "total"
   },
   "dashboard": {
     "title": "Panel",
@@ -668,5 +670,11 @@
     "title": "🌐 IDIOMA",
     "select": "Seleccionar idioma",
     "current": "Idioma actual"
+  },
+  "detail": {
+    "update_status": "ACTUALIZAR ESTADO",
+    "description": "DESCRIPCIÓN",
+    "timeline": "CRONOLOGÍA",
+    "assigned": "Asignado"
   }
 }

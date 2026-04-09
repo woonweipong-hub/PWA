@@ -193,6 +193,12 @@
     "type_label": "TYPE",
     "status_label": "STATUS"
   },
+  "detail": {
+    "update_status": "UPDATE STATUS",
+    "description": "DESCRIPTION",
+    "timeline": "TIMELINE",
+    "assigned": "Assigned"
+  },
   "report": {
     "title": "Report",
     "site_report": "SITE REPORT",
@@ -224,6 +230,8 @@
     "total_defects": "TOTAL DEFECTS",
     "by_severity": "BY SEVERITY",
     "by_status": "BY STATUS",
+    "by_assignee": "BY ASSIGNEE",
+    "total": "total",
     "email_preview": "EMAIL PREVIEW",
     "pins": "pins",
     "markups": "markups",

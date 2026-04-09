@@ -233,7 +233,9 @@
     "severity_label": "심각성",
     "status_label": "상태",
     "assignee_label": "양수인",
-    "date_range": "기간"
+    "date_range": "기간",
+    "by_assignee": "담당자별",
+    "total": "합계"
   },
   "dashboard": {
     "title": "대시보드",
@@ -668,5 +670,11 @@
     "title": "🌐 언어",
     "select": "언어 선택",
     "current": "현재 언어"
+  },
+  "detail": {
+    "update_status": "상태 업데이트",
+    "description": "설명",
+    "timeline": "타임라인",
+    "assigned": "담당자"
   }
 }

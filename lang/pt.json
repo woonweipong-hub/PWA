@@ -233,7 +233,9 @@
     "severity_label": "GRAVIDADE",
     "status_label": "STATUS",
     "assignee_label": "CESSIONÁRIA",
-    "date_range": "INTERVALO DE DATA"
+    "date_range": "INTERVALO DE DATA",
+    "by_assignee": "POR RESPONSÁVEL",
+    "total": "total"
   },
   "dashboard": {
     "title": "Painel",
@@ -668,5 +670,11 @@
     "title": "🌐 IDIOMA",
     "select": "Selecionar idioma",
     "current": "Idioma atual"
+  },
+  "detail": {
+    "update_status": "ATUALIZAR STATUS",
+    "description": "DESCRIÇÃO",
+    "timeline": "CRONOLOGIA",
+    "assigned": "Atribuído"
   }
 }

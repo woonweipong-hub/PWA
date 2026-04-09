@@ -233,7 +233,9 @@
     "severity_label": "ความรุนแรง",
     "status_label": "สถานะ",
     "assignee_label": "ผู้รับมอบหมาย",
-    "date_range": "ช่วงวันที่"
+    "date_range": "ช่วงวันที่",
+    "by_assignee": "ตามผู้รับผิดชอบ",
+    "total": "ทั้งหมด"
   },
   "dashboard": {
     "title": "แดชบอร์ด",
@@ -668,5 +670,11 @@
     "title": "🌐 ภาษา",
     "select": "เลือกภาษา",
     "current": "ภาษาปัจจุบัน"
+  },
+  "detail": {
+    "update_status": "อัปเดตสถานะ",
+    "description": "รายละเอียด",
+    "timeline": "ไทม์ไลน์",
+    "assigned": "มอบหมายให้"
   }
 }

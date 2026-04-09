@@ -233,7 +233,9 @@
     "severity_label": "KETERANGAN",
     "status_label": "STATUS",
     "assignee_label": "PENOLAKAN",
-    "date_range": "Julat TARIKH"
+    "date_range": "Julat TARIKH",
+    "by_assignee": "MENGIKUT PENERIMA",
+    "total": "jumlah"
   },
   "dashboard": {
     "title": "Papan Pemuka",
@@ -668,5 +670,11 @@
     "title": "🌐 BAHASA",
     "select": "Pilih bahasa",
     "current": "Bahasa semasa"
+  },
+  "detail": {
+    "update_status": "KEMASKINI STATUS",
+    "description": "PENERANGAN",
+    "timeline": "GARIS MASA",
+    "assigned": "Ditugaskan"
   }
 }

@@ -193,6 +193,12 @@
     "type_label": "類型",
     "status_label": "地位"
   },
+  "detail": {
+    "update_status": "更新狀態",
+    "description": "描述",
+    "timeline": "時間軸",
+    "assigned": "負責人"
+  },
   "report": {
     "title": "報告",
     "site_report": "現場報告",
@@ -224,6 +230,8 @@
     "total_defects": "總缺陷數",
     "by_severity": "按嚴重程度",
     "by_status": "按狀態",
+    "by_assignee": "按負責人",
+    "total": "總計",
     "email_preview": "電子郵件預覽",
     "pins": "針腳",
     "markups": "加價",

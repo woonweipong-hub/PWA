@@ -193,6 +193,12 @@
     "type_label": "类型",
     "status_label": "地位"
   },
+  "detail": {
+    "update_status": "更新状态",
+    "description": "描述",
+    "timeline": "时间轴",
+    "assigned": "负责人"
+  },
   "report": {
     "title": "报告",
     "site_report": "现场报告",
@@ -224,6 +230,8 @@
     "total_defects": "总缺陷数",
     "by_severity": "按严重程度",
     "by_status": "按状态",
+    "by_assignee": "按负责人",
+    "total": "总计",
     "email_preview": "电子邮件预览",
     "pins": "针脚",
     "markups": "加价",

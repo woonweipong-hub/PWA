@@ -233,7 +233,9 @@
     "severity_label": "ŞİDDET",
     "status_label": "DURUM",
     "assignee_label": "GÖREVLENDİRİLEN",
-    "date_range": "TARİH ARALIĞI"
+    "date_range": "TARİH ARALIĞI",
+    "by_assignee": "SORUMLUYA GÖRE",
+    "total": "toplam"
   },
   "dashboard": {
     "title": "Kontrol Paneli",
@@ -668,5 +670,11 @@
     "title": "🌐 DİL",
     "select": "Dil seçin",
     "current": "Mevcut dil"
+  },
+  "detail": {
+    "update_status": "DURUMU GÜNCELLE",
+    "description": "AÇIKLAMA",
+    "timeline": "ZAMAN ÇİZELGESİ",
+    "assigned": "Atanan"
   }
 }

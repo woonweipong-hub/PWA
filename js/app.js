@@ -934,7 +934,9 @@ async function analyzeWithGemini(apiKey,base64Image){
       ]}]})
     });
     const data=await res.json();
-    const text=data.candidates?.[0]?.content?.parts?.[0]?.text||"{}";
+    const parts=data.candidates?.[0]?.content?.parts||[];
+    const nonThought=parts.filter(p=>p.text&&!p.thought);
+    const text=(nonThought.length?nonThought.pop():parts.filter(p=>p.text).pop()||{}).text||"{}";
     return JSON.parse(text.replace(/```json|```/g,"").trim());
   }catch{return null;}
 }
@@ -3020,11 +3022,11 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
       </div>
 
       <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
-        <Card label="OPEN" value={open} color="#ff3b30"/>
-        <Card label="IN PROG" value={inprog} color="#ff9500"/>
-        <Card label="DONE" value={done} color="#34aadc"/>
-        <Card label="VERIFIED" value={verified} color="#30d158"/>
-        <Card label="CLOSED" value={closed} color="#8e8e93"/>
+        <Card label={t("status.open_short")} value={open} color="#ff3b30"/>
+        <Card label={t("status.in_progress_short")} value={inprog} color="#ff9500"/>
+        <Card label={t("status.done_short")} value={done} color="#34aadc"/>
+        <Card label={t("status.verified_short")} value={verified} color="#30d158"/>
+        <Card label={t("status.closed_short")} value={closed} color="#8e8e93"/>
       </div>
 
       {critical>0&&(
@@ -3050,7 +3052,7 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
           {sevData.map(({s,count})=>(
             <div key={s} style={{marginBottom:8}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:SEV_COLOR[s]}}>{s.toUpperCase()}</span>
+                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:SEV_COLOR[s]}}>{(SEV_I18N[s]?t(SEV_I18N[s]):s).toUpperCase()}</span>
                 <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12}}>{count}</span>
               </div>
               <div style={{background:"rgba(0,0,0,0.06)",borderRadius:4,height:5,overflow:"hidden"}}>
@@ -3150,7 +3152,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
     try{
       const compressed=await compressPhoto(form.photos[0],600,0.7);
       const result=await analyzePhoto(compressed||form.photos[0]);
-      if(result){
+      if(result&&(result.title||result.description)){
         local.set(AI_LIMIT_KEY,{date:today,count:todayCount+1});
         setAiResult(result);
         if(result.title)set("title",result.title);
@@ -3742,15 +3744,15 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
             <div style={lbl()}>{t("review.status_label")}</div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {["All",...STATUS].map(s=>(
-                <button key={s} onClick={()=>setFilter(s)} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${filter===s?"#ff6b00":"rgba(0,0,0,0.12)"}`,background:filter===s?"#ff6b00":"#fff",color:filter===s?"#fff":"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{s.toUpperCase()}</button>
+                <button key={s} onClick={()=>setFilter(s)} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${filter===s?"#ff6b00":"rgba(0,0,0,0.12)"}`,background:filter===s?"#ff6b00":"#fff",color:filter===s?"#fff":"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{s==="All"?"ALL":(STATUS_I18N[s]?t(STATUS_I18N[s]):s).toUpperCase()}</button>
               ))}
             </div>
           </div>
           <div>
-            <div style={lbl()}>SEVERITY</div>
+            <div style={lbl()}>{t("severity.label")}</div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {["All",...SEVERITY].map(s=>(
-                <button key={s} onClick={()=>setSevF(s)} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${sevF===s?"#1a1a1a":"rgba(0,0,0,0.12)"}`,background:sevF===s?"#1a1a1a":"#fff",color:sevF===s?"#fff":"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{s.toUpperCase()}</button>
+                <button key={s} onClick={()=>setSevF(s)} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${sevF===s?"#1a1a1a":"rgba(0,0,0,0.12)"}`,background:sevF===s?"#1a1a1a":"#fff",color:sevF===s?"#fff":"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{s==="All"?"ALL":(SEV_I18N[s]?t(SEV_I18N[s]):s).toUpperCase()}</button>
               ))}
             </div>
           </div>
@@ -4224,13 +4226,13 @@ function DefectDetail({defect,onClose,onUpdate,member,company,members=[]}){
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:20,color:"#1a1a1a",marginBottom:10}}>{defect.title}</div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>{defect.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(defect.entryType),background:typeBg(defect.entryType),padding:"3px 10px",borderRadius:12,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(defect.entryType)} {defect.entryType.toUpperCase()}</span>}<SevChip s={defect.severity}/><StatusChip s={status}/></div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              {[["📍 Location",defect.location],["👤 Assigned",defect.assignee],["📁 Project",defect.projectName||"—"],["🗓 Date",defect.created?new Date(defect.created).toLocaleDateString():"—"],["✍️ Logged by",defect.loggedBy],["🔑 Role",defect.loggedByRole||"—"]].map(([l,v])=>(
+              {[["📍 "+t("fields.location"),defect.location],["👤 "+t("detail.assigned"),defect.assignee],["📁 "+t("fields.project_name"),defect.projectName||"—"],["🗓 "+t("fields.date"),defect.created?new Date(defect.created).toLocaleDateString():"—"],["✍️ "+t("fields.logged_by"),defect.loggedBy],["🔑 "+t("fields.role"),defect.loggedByRole||"—"]].map(([l,v])=>(
                 <div key={l}><div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em"}}>{l}</div><div style={{fontSize:13,color:"#1a1a1a",marginTop:2}}>{v||"—"}</div></div>
               ))}
             </div>
             {defect.description&&(
               <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid rgba(0,0,0,0.06)"}}>
-                <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:4}}>DESCRIPTION</div>
+                <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:4}}>{t("detail.description")}</div>
                 <div style={{fontSize:13,color:"#444",lineHeight:1.5}}>{defect.description}</div>
               </div>
             )}
@@ -4254,10 +4256,10 @@ function DefectDetail({defect,onClose,onUpdate,member,company,members=[]}){
 
         {canUpdate&&(
           <div style={{marginBottom:14}}>
-            <div style={lbl()}>UPDATE STATUS</div>
+            <div style={lbl()}>{t("detail.update_status")}</div>
             <div style={{display:"flex",gap:8}}>
               {STATUS.map(s=>(
-                <button key={s} onClick={()=>updateStatus(s)} style={{flex:1,padding:"10px 4px",borderRadius:10,border:`2px solid ${status===s?STATUS_COLOR[s]:"rgba(0,0,0,0.1)"}`,background:status===s?STATUS_COLOR[s]+"20":"#fff",color:status===s?STATUS_COLOR[s]:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{s.toUpperCase()}</button>
+                <button key={s} onClick={()=>updateStatus(s)} style={{flex:1,padding:"10px 4px",borderRadius:10,border:`2px solid ${status===s?STATUS_COLOR[s]:"rgba(0,0,0,0.1)"}`,background:status===s?STATUS_COLOR[s]+"20":"#fff",color:status===s?STATUS_COLOR[s]:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{(STATUS_I18N[s]?t(STATUS_I18N[s]):s).toUpperCase()}</button>
               ))}
             </div>
           </div>
@@ -4279,7 +4281,7 @@ function DefectDetail({defect,onClose,onUpdate,member,company,members=[]}){
         )}
 
         <div>
-          <div style={lbl()}>TIMELINE ({(latestRef.current.comments||[]).length})</div>
+          <div style={lbl()}>{t("detail.timeline")} ({(latestRef.current.comments||[]).length})</div>
           {(latestRef.current.comments||[]).map((c,i)=>{
             const isVerify=c.text?.startsWith("✅");
             const isStatus=c.text?.startsWith("✅")||c.text?.startsWith("🔄");
@@ -4735,8 +4737,8 @@ function Report({defects,onEmailSetup,currentProject,company}){
 
       {showFilters&&(
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14}}>
-          <div style={{marginBottom:12}}><div style={lbl()}>{t("report.severity_label")}</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{SEVERITY.map(s=><Chip key={s} label={s.toUpperCase()} active={sevFilter.includes(s)} color={SEV_COLOR[s]} onClick={()=>toggleArr(sevFilter,setSevFilter,s)}/>)}</div></div>
-          <div style={{marginBottom:12}}><div style={lbl()}>{t("report.status_label")}</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{STATUS.map(s=><Chip key={s} label={s.toUpperCase()} active={statusFilter.includes(s)} color={STATUS_COLOR[s]} onClick={()=>toggleArr(statusFilter,setStatusFilter,s)}/>)}</div></div>
+          <div style={{marginBottom:12}}><div style={lbl()}>{t("report.severity_label")}</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{SEVERITY.map(s=><Chip key={s} label={(SEV_I18N[s]?t(SEV_I18N[s]):s).toUpperCase()} active={sevFilter.includes(s)} color={SEV_COLOR[s]} onClick={()=>toggleArr(sevFilter,setSevFilter,s)}/>)}</div></div>
+          <div style={{marginBottom:12}}><div style={lbl()}>{t("report.status_label")}</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{STATUS.map(s=><Chip key={s} label={(STATUS_I18N[s]?t(STATUS_I18N[s]):s).toUpperCase()} active={statusFilter.includes(s)} color={STATUS_COLOR[s]} onClick={()=>toggleArr(statusFilter,setStatusFilter,s)}/>)}</div></div>
           {allAssignees.length>0&&<div style={{marginBottom:12}}><div style={lbl()}>{t("report.assignee_label")}</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{allAssignees.map(t=><Chip key={t} label={t} active={assigneeFilter.includes(t)} onClick={()=>toggleArr(assigneeFilter,setAssigneeFilter,t)}/>)}</div></div>}
           <div><div style={lbl()}>{t("report.date_range")}</div><div style={{display:"flex",gap:8,alignItems:"center"}}><input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{...inp,flex:1,fontSize:13}}/><span style={{color:"rgba(0,0,0,0.3)",fontSize:12}}>to</span><input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{...inp,flex:1,fontSize:13}}/></div></div>
         </div>
@@ -4830,7 +4832,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
         {bySev.map(({s,count})=>(
           <div key={s} style={{marginBottom:10}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:SEV_COLOR[s]}}>{s.toUpperCase()}</span>
+              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:SEV_COLOR[s]}}>{(SEV_I18N[s]?t(SEV_I18N[s]):s).toUpperCase()}</span>
               <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13}}>{count}</span>
             </div>
             <div style={{background:"rgba(0,0,0,0.06)",borderRadius:4,height:6,overflow:"hidden"}}>
@@ -4846,7 +4848,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
           {byStatus.map(({s,count})=>(
             <div key={s} style={{flex:1,textAlign:"center",padding:"12px 8px",background:STATUS_COLOR[s]+"12",borderRadius:10}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:STATUS_COLOR[s]}}>{count}</div>
-              <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em"}}>{s.toUpperCase()}</div>
+              <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em"}}>{(STATUS_I18N[s]?t(STATUS_I18N[s]):s).toUpperCase()}</div>
             </div>
           ))}
         </div>
@@ -4854,13 +4856,13 @@ function Report({defects,onEmailSetup,currentProject,company}){
 
       {byAssignee.length>0&&(
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14}}>
-          <div style={lbl()}>BY ASSIGNEE</div>
+          <div style={lbl()}>{t("report.by_assignee")}</div>
           {byAssignee.map(({t,open,total:tot})=>(
             <div key={t} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid rgba(0,0,0,0.05)"}}>
               <span style={{fontSize:13,color:"#1a1a1a"}}>{t}</span>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                {open>0&&<span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"#ff3b30",background:"rgba(255,59,48,0.1)",padding:"2px 8px",borderRadius:10}}>{open} open</span>}
-                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,color:"rgba(0,0,0,0.4)"}}>{tot} total</span>
+                {open>0&&<span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"#ff3b30",background:"rgba(255,59,48,0.1)",padding:"2px 8px",borderRadius:10}}>{open} {t("status.open").toLowerCase()}</span>}
+                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,color:"rgba(0,0,0,0.4)"}}>{tot} {t("report.total")}</span>
               </div>
             </div>
           ))}

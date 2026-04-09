@@ -233,7 +233,9 @@
     "severity_label": "SCHWERE",
     "status_label": "STATUS",
     "assignee_label": "ABTRETUNGSEMPFÄNGERIN",
-    "date_range": "DATUMSBEREICH"
+    "date_range": "DATUMSBEREICH",
+    "by_assignee": "NACH ZUSTÄNDIGEM",
+    "total": "gesamt"
   },
   "dashboard": {
     "title": "Armaturenbrett",
@@ -668,5 +670,11 @@
     "title": "🌐 SPRACHE",
     "select": "Sprache wählen",
     "current": "Aktuelle Sprache"
+  },
+  "detail": {
+    "update_status": "STATUS AKTUALISIEREN",
+    "description": "BESCHREIBUNG",
+    "timeline": "ZEITVERLAUF",
+    "assigned": "Zugewiesen"
   }
 }

@@ -233,7 +233,9 @@
     "severity_label": "GRAVITÉ",
     "status_label": "STATUT",
     "assignee_label": "CESSIONNAIRE",
-    "date_range": "PLAGE DE DATES"
+    "date_range": "PLAGE DE DATES",
+    "by_assignee": "PAR ASSIGNÉ",
+    "total": "total"
   },
   "dashboard": {
     "title": "Tableau de bord",
@@ -668,5 +670,11 @@
     "title": "🌐 LANGUE",
     "select": "Sélectionner la langue",
     "current": "Langue actuelle"
+  },
+  "detail": {
+    "update_status": "METTRE À JOUR LE STATUT",
+    "description": "DESCRIPTION",
+    "timeline": "CHRONOLOGIE",
+    "assigned": "Assigné"
   }
 }

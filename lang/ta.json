@@ -233,7 +233,9 @@
     "severity_label": "தீவிரம்",
     "status_label": "நிலை",
     "assignee_label": "ஒதுக்கப்பட்டவர்",
-    "date_range": "தேதி வரம்பு"
+    "date_range": "தேதி வரம்பு",
+    "by_assignee": "ஒதுக்கப்பட்டவர் படி",
+    "total": "மொத்தம்"
   },
   "dashboard": {
     "title": "டாஷ்போர்டு",
@@ -668,5 +670,11 @@
     "title": "🌐 மொழி",
     "select": "மொழி தேர்வு",
     "current": "தற்போதைய மொழி"
+  },
+  "detail": {
+    "update_status": "நிலையைப் புதுப்பிக்கவும்",
+    "description": "விவரம்",
+    "timeline": "காலவரிசை",
+    "assigned": "ஒதுக்கப்பட்டது"
   }
 }

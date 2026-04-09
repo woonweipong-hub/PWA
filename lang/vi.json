@@ -233,7 +233,9 @@
     "severity_label": "MỨC ĐỘ NGHIÊM TRỌNG",
     "status_label": "TRẠNG THÁI",
     "assignee_label": "NGƯỜI ĐƯỢC CHUYỂN PHÁP",
-    "date_range": "PHẠM VI NGÀY"
+    "date_range": "PHẠM VI NGÀY",
+    "by_assignee": "THEO NGƯỜI PHỤ TRÁCH",
+    "total": "tổng"
   },
   "dashboard": {
     "title": "Bảng điều khiển",
@@ -668,5 +670,11 @@
     "title": "🌐 NGÔN NGỮ",
     "select": "Chọn ngôn ngữ",
     "current": "Ngôn ngữ hiện tại"
+  },
+  "detail": {
+    "update_status": "CẬP NHẬT TRẠNG THÁI",
+    "description": "MÔ TẢ",
+    "timeline": "DÒNG THỜI GIAN",
+    "assigned": "Phụ trách"
   }
 }

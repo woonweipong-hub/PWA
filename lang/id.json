@@ -233,7 +233,9 @@
     "severity_label": "KERASNYA",
     "status_label": "STATUS",
     "assignee_label": "PENERIMA TUGAS",
-    "date_range": "RENTANG TANGGAL"
+    "date_range": "RENTANG TANGGAL",
+    "by_assignee": "BERDASARKAN PENERIMA",
+    "total": "total"
   },
   "dashboard": {
     "title": "Dasbor",
@@ -668,5 +670,11 @@
     "title": "🌐 BAHASA",
     "select": "Pilih bahasa",
     "current": "Bahasa saat ini"
+  },
+  "detail": {
+    "update_status": "PERBARUI STATUS",
+    "description": "DESKRIPSI",
+    "timeline": "KRONOLOGI",
+    "assigned": "Ditugaskan"
   }
 }

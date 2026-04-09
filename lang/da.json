@@ -233,7 +233,9 @@
     "severity_label": "ALVARLIGHED",
     "status_label": "STATUS",
     "assignee_label": "OVERDRAGENDE",
-    "date_range": "DATOintervall"
+    "date_range": "DATOintervall",
+    "by_assignee": "EFTER ANSVARLIG",
+    "total": "total"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -668,5 +670,11 @@
     "title": "🌐 SPROG",
     "select": "Vælg sprog",
     "current": "Nuværende sprog"
+  },
+  "detail": {
+    "update_status": "OPDATER STATUS",
+    "description": "BESKRIVELSE",
+    "timeline": "TIDSLINJE",
+    "assigned": "Tildelt"
   }
 }

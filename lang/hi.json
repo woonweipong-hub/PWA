@@ -233,7 +233,9 @@
     "severity_label": "गंभीरता",
     "status_label": "स्थिति",
     "assignee_label": "संपत्ति-भागी",
-    "date_range": "तिथि सीमा"
+    "date_range": "तिथि सीमा",
+    "by_assignee": "असाइनी द्वारा",
+    "total": "कुल"
   },
   "dashboard": {
     "title": "डैशबोर्ड",
@@ -668,5 +670,11 @@
     "title": "🌐 भाषा",
     "select": "भाषा चुनें",
     "current": "वर्तमान भाषा"
+  },
+  "detail": {
+    "update_status": "स्थिति अपडेट करें",
+    "description": "विवरण",
+    "timeline": "समयरेखा",
+    "assigned": "सौंपा गया"
   }
 }

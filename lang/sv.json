@@ -233,7 +233,9 @@
     "severity_label": "STRÄNGHET",
     "status_label": "STATUS",
     "assignee_label": "UTVECKLARE",
-    "date_range": "DATUMintervall"
+    "date_range": "DATUMintervall",
+    "by_assignee": "PER ANSVARIG",
+    "total": "totalt"
   },
   "dashboard": {
     "title": "Instrumentpanel",
@@ -668,5 +670,11 @@
     "title": "🌐 SPRÅK",
     "select": "Välj språk",
     "current": "Nuvarande språk"
+  },
+  "detail": {
+    "update_status": "UPPDATERA STATUS",
+    "description": "BESKRIVNING",
+    "timeline": "TIDSLINJE",
+    "assigned": "Tilldelad"
   }
 }
