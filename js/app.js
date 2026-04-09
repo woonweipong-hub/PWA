@@ -1853,6 +1853,151 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   doc.save(`SiteShrimp_Report_${(projectName||"Export").replace(/\s/g,"_")}_${now.toLocaleDateString("en-GB").replace(/\//g,"-")}.pdf`);
 }
 
+// ── Google Sheets Export ───────────────────────────────────────────
+// Uses Google Sheets API v4 with OAuth2 access token
+// User provides their own Google Client ID (self-hosted)
+
+const GSHEET_KEY="sdt-gsheet-v1";
+let _gsheetToken=null;
+
+function getGSheetConfig(){return JSON.parse(localStorage.getItem(GSHEET_KEY)||"null");}
+function saveGSheetConfig(cfg){localStorage.setItem(GSHEET_KEY,JSON.stringify(cfg));}
+
+async function gsheetAuth(clientId){
+  return new Promise((resolve,reject)=>{
+    if(!window.google?.accounts?.oauth2){
+      // Load Google Identity Services script dynamically
+      const s=document.createElement("script");
+      s.src="https://accounts.google.com/gsi/client";
+      s.onload=()=>doAuth();
+      s.onerror=()=>reject(new Error("Failed to load Google auth"));
+      document.head.appendChild(s);
+    }else doAuth();
+    function doAuth(){
+      const client=google.accounts.oauth2.initTokenClient({
+        client_id:clientId,
+        scope:"https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file",
+        callback:(resp)=>{
+          if(resp.error)reject(new Error(resp.error));
+          else{_gsheetToken=resp.access_token;resolve(resp.access_token);}
+        }
+      });
+      client.requestAccessToken();
+    }
+  });
+}
+
+async function exportToGoogleSheets(defects,projectName,companyName){
+  const cfg=getGSheetConfig();
+  if(!cfg?.clientId)throw new Error("Google Sheets not configured. Set up Client ID in Settings.");
+  // Auth
+  if(!_gsheetToken)await gsheetAuth(cfg.clientId);
+  const token=_gsheetToken;
+  const headers={"Authorization":"Bearer "+token,"Content-Type":"application/json"};
+
+  // Prepare data rows
+  const fmtDate=d=>d?new Date(d).toLocaleDateString("en-GB"):"";
+  const headerRow=["ID","Type","Title","Location","Severity","Status","Assignee","Trade","Logged By","Date","Due Date","Duration","Cost Impact","Cost Amount","Cost Responsible","Description","Comments"];
+  const dataRows=defects.map(d=>[
+    d.defect_id||d.id||"",
+    d.entryType||"Defect",
+    d.title||"",
+    d.location||"",
+    d.severity||"",
+    d.status||"",
+    d.assignee||"",
+    d.component||d.trade||"",
+    d.loggedBy||"",
+    fmtDate(d.createdAt||d.created),
+    fmtDate(d.dueDate),
+    d.duration||"",
+    d.costImpact||"",
+    d.costAmount||"",
+    d.costResponsible||"",
+    d.description||"",
+    (d.comments||[]).map(c=>`${c.author||""}: ${c.text||""}`).join(" | ")
+  ]);
+
+  // Summary rows
+  const total=defects.length;
+  const bySev={};defects.forEach(d=>{bySev[d.severity]=(bySev[d.severity]||0)+1;});
+  const byStat={};defects.forEach(d=>{byStat[d.status]=(byStat[d.status]||0)+1;});
+  const overdue=defects.filter(d=>d.dueDate&&new Date(d.dueDate)<new Date()&&!["Verified","Closed"].includes(d.status)).length;
+  const withCost=defects.filter(d=>d.costAmount&&String(d.costAmount).trim());
+  const totalCost=withCost.reduce((s,d)=>s+(parseFloat(String(d.costAmount).replace(/[^0-9.\-]/g,""))||0),0);
+
+  const summaryRows=[
+    ["SITE REPORT — "+new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})],
+    [companyName||"","Project: "+(projectName||"")],
+    [],
+    ["SUMMARY"],
+    ["Total Entries",total,"Overdue",overdue],
+    ["By Severity",...SEVERITY.map(s=>`${s}: ${bySev[s]||0}`)],
+    ["By Status",...STATUS.map(s=>`${s}: ${byStat[s]||0}`)],
+    ...(totalCost>0?[["Total Cost Impact","$"+totalCost.toLocaleString("en",{minimumFractionDigits:2}),`${withCost.length} entries with cost`]]:[]),
+    [],
+    headerRow,
+    ...dataRows
+  ];
+
+  // Create or update spreadsheet
+  let spreadsheetId=cfg.spreadsheetId;
+  const sheetTitle=`${projectName||"Report"} — ${new Date().toLocaleDateString("en-GB")}`;
+
+  if(!spreadsheetId){
+    // Create new spreadsheet
+    const createResp=await fetch("https://sheets.googleapis.com/v4/spreadsheets",{
+      method:"POST",headers,
+      body:JSON.stringify({
+        properties:{title:`SiteShrimp — ${projectName||"Report"}`},
+        sheets:[{properties:{title:sheetTitle}}]
+      })
+    });
+    if(!createResp.ok){const e=await createResp.json();throw new Error(e.error?.message||"Failed to create spreadsheet");}
+    const created=await createResp.json();
+    spreadsheetId=created.spreadsheetId;
+    saveGSheetConfig({...cfg,spreadsheetId});
+  }else{
+    // Add new sheet tab for this export
+    try{
+      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,{
+        method:"POST",headers,
+        body:JSON.stringify({requests:[{addSheet:{properties:{title:sheetTitle}}}]})
+      });
+    }catch(e){/* sheet name may already exist, will overwrite */}
+  }
+
+  // Write data
+  const writeResp=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'${encodeURIComponent(sheetTitle)}'!A1?valueInputOption=USER_ENTERED`,{
+    method:"PUT",headers,
+    body:JSON.stringify({range:`'${sheetTitle}'!A1`,majorDimension:"ROWS",values:summaryRows})
+  });
+  if(!writeResp.ok){const e=await writeResp.json();throw new Error(e.error?.message||"Failed to write data");}
+
+  // Format header row — bold + orange background
+  // Find header row index (summary rows before data)
+  const headerRowIdx=summaryRows.indexOf(headerRow);
+  try{
+    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,{
+      method:"POST",headers,
+      body:JSON.stringify({requests:[
+        // Bold + orange header row
+        {repeatCell:{range:{sheetId:0,startRowIndex:headerRowIdx,endRowIndex:headerRowIdx+1,startColumnIndex:0,endColumnIndex:headerRow.length},
+          cell:{userEnteredFormat:{backgroundColor:{red:1,green:0.42,blue:0},textFormat:{bold:true,foregroundColor:{red:1,green:1,blue:1}}}},
+          fields:"userEnteredFormat(backgroundColor,textFormat)"}},
+        // Bold title row
+        {repeatCell:{range:{sheetId:0,startRowIndex:0,endRowIndex:1,startColumnIndex:0,endColumnIndex:1},
+          cell:{userEnteredFormat:{textFormat:{bold:true,fontSize:14}}},
+          fields:"userEnteredFormat(textFormat)"}},
+        // Auto-resize columns
+        {autoResizeDimensions:{dimensions:{sheetId:0,dimension:"COLUMNS",startIndex:0,endIndex:headerRow.length}}}
+      ]})
+    });
+  }catch(e){/* formatting is optional, data is already written */}
+
+  return{spreadsheetId,url:`https://docs.google.com/spreadsheets/d/${spreadsheetId}`};
+}
+
 async function sendTelegram(token,chatId,text){
   try{
     const r=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
@@ -3290,8 +3435,73 @@ function StorageSettings({onClose,companyId}){
           </div>
         )}
 
+        {/* Google Sheets Integration */}
+        <GoogleSheetsSetup gClientId={gClientId}/>
+
         {/* Save button */}
         <button onClick={save} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:10,padding:14,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{saved?"✓ SAVED":"SAVE SETTINGS"}</button>
+      </div>
+    </div>
+  );
+}
+
+function GoogleSheetsSetup({gClientId}){
+  const cfg=getGSheetConfig()||{};
+  const[clientId,setClientId]=useState(cfg.clientId||"");
+  const[saved,setSaved]=useState(false);
+  const hasLinkedSheet=!!cfg.spreadsheetId;
+  // Use Google Drive's Client ID if available and not manually set
+  const effectiveId=clientId.trim()||gClientId||"";
+
+  const save=()=>{
+    saveGSheetConfig({...cfg,clientId:effectiveId});
+    setSaved(true);setTimeout(()=>setSaved(false),2000);
+  };
+
+  const unlinkSheet=()=>{
+    const c=getGSheetConfig()||{};
+    delete c.spreadsheetId;
+    saveGSheetConfig(c);
+    window.location.reload();
+  };
+
+  return(
+    <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+        <span style={{fontSize:20}}>📊</span>
+        <div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#1a1a1a"}}>GOOGLE SHEETS EXPORT</div>
+          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>Export reports directly to Google Spreadsheets</div>
+        </div>
+      </div>
+      <div style={{background:"rgba(52,168,83,0.06)",border:"1px solid rgba(52,168,83,0.15)",borderRadius:8,padding:"10px 12px",marginBottom:14}}>
+        <div style={{fontSize:12,color:"#1a7a35",lineHeight:1.5}}>
+          Uses the same Google Client ID as Google Drive. Export from the Report tab → Export ▾ → Google Sheets.
+          {gClientId&&!clientId.trim()&&<><br/><b style={{color:"#34a853"}}>✓ Using Google Drive Client ID</b></>}
+        </div>
+      </div>
+      {!gClientId&&(
+        <>
+          <label style={lbl()}>GOOGLE CLIENT ID</label>
+          <input value={clientId} onChange={e=>setClientId(e.target.value)} placeholder="123456789.apps.googleusercontent.com" style={{...inp,width:"100%",flex:"unset",marginBottom:10,fontSize:12}}/>
+          <div style={{fontSize:11,color:"rgba(0,0,0,0.3)",marginBottom:12,lineHeight:1.5}}>
+            Same Client ID used for Google Drive. Make sure Google Sheets API is also enabled in your Google Cloud project.
+          </div>
+        </>
+      )}
+      {hasLinkedSheet&&(
+        <div style={{display:"flex",alignItems:"center",gap:10,background:"rgba(52,168,83,0.08)",border:"1px solid rgba(52,168,83,0.2)",borderRadius:10,padding:"12px 14px",marginBottom:14}}>
+          <span style={{fontSize:18}}>📗</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#1a7a35"}}>Spreadsheet linked</div>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>New exports will add tabs to the existing spreadsheet</div>
+          </div>
+          <button onClick={()=>window.open(`https://docs.google.com/spreadsheets/d/${cfg.spreadsheetId}`,"_blank")} style={{background:"#34a853",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>OPEN</button>
+          <button onClick={unlinkSheet} style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:8,padding:"6px 10px",color:"#cc0000",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>UNLINK</button>
+        </div>
+      )}
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={save} disabled={!effectiveId} style={{flex:1,background:effectiveId?"#34a853":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:13,color:effectiveId?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{saved?"✓ SAVED":"SAVE"}</button>
       </div>
     </div>
   );
@@ -5031,7 +5241,8 @@ function Report({defects,onEmailSetup,currentProject,company}){
             <div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(0,0,0,0.08)",zIndex:20,minWidth:160,overflow:"hidden"}}>
               <button onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📄 {t("report.export_csv")}</button>
               <button onClick={()=>{setShowExportMenu(false);exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary).catch(e=>console.error("PDF export error:",e));}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📕 {t("report.export_pdf")}</button>
-              <button onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);setTimeout(()=>{exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary).catch(e=>console.error("PDF export error:",e));},600);}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#ff6b00"}}>📊 {t("report.export_all")}</button>
+              <button onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);setTimeout(()=>{exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary).catch(e=>console.error("PDF export error:",e));},600);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#ff6b00"}}>📊 {t("report.export_all")}</button>
+              <button onClick={async()=>{setShowExportMenu(false);try{const result=await exportToGoogleSheets(incDefects?filtered:[],currentProject?.name,company?.companyName);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
             </div>
           )}
         </div>
