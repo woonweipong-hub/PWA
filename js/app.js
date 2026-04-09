@@ -9456,6 +9456,7 @@ function App(){
               <button onClick={()=>setShowHelp(false)} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.back")}</button>
               <div style={{display:"flex",gap:0,flex:1}}>
                 <button onClick={()=>setHelpTab("help")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="help"?"2px solid #ff6b00":"2px solid transparent",color:helpTab==="help"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{t("help.title").toUpperCase()}</button>
+                <button onClick={()=>setHelpTab("hosting")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="hosting"?"2px solid #34a853":"2px solid transparent",color:helpTab==="hosting"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>HOSTING</button>
                 <button onClick={()=>setHelpTab("features")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="features"?"2px solid #ff6b00":"2px solid transparent",color:helpTab==="features"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{t("help.features")}</button>
               </div>
             </div>
@@ -9531,6 +9532,120 @@ function App(){
                       ))}
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* ── HOSTING TAB ── */}
+              {helpTab==="hosting"&&(
+                <div>
+                  {/* Intro */}
+                  <div style={{background:"rgba(52,168,83,0.08)",border:"1px solid rgba(52,168,83,0.2)",borderRadius:12,padding:16,marginBottom:20}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:800,color:"#34a853",marginBottom:6}}>OWN YOUR DATA</div>
+                    <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7}}>SiteShrimp is designed for self-hosting. You control your backend, storage, AI, and reporting. No vendor lock-in, no recurring fees.</div>
+                  </div>
+
+                  {/* PocketBase */}
+                  {(()=>{
+                    const Link=({href,children})=>React.createElement("a",{href,target:"_blank",rel:"noopener",style:{color:"#ff6b00",textDecoration:"underline",fontWeight:600}},children);
+                    const Step=({n,children})=>React.createElement("div",{style:{display:"flex",gap:10,marginBottom:10,alignItems:"flex-start"}},
+                      React.createElement("div",{style:{width:22,height:22,borderRadius:"50%",background:"#ff6b00",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff"}},n),
+                      React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.55)",lineHeight:1.6,paddingTop:2}},children)
+                    );
+                    const Section=({icon,title,color,children})=>React.createElement("div",{style:{background:"rgba(255,255,255,0.04)",borderRadius:14,padding:16,marginBottom:16,borderLeft:"4px solid "+color}},
+                      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:12}},
+                        React.createElement("span",{style:{fontSize:20}},icon),
+                        React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color}},title)
+                      ),
+                      children
+                    );
+
+                    return React.createElement(React.Fragment,null,
+                      // PocketBase Section
+                      React.createElement(Section,{icon:"🗄",title:"POCKETBASE — YOUR BACKEND",color:"#ff6b00"},
+                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"PocketBase is a single-file backend. Download, run, and your app has authentication, database, and file storage."),
+                        React.createElement(Step,{n:"1"},React.createElement(React.Fragment,null,"Download PocketBase from ",React.createElement(Link,{href:"https://pocketbase.io/docs"},"pocketbase.io/docs"))),
+                        React.createElement(Step,{n:"2"},"Unzip and run: ./pocketbase serve"),
+                        React.createElement(Step,{n:"3"},React.createElement(React.Fragment,null,"Open ",React.createElement(Link,{href:"http://127.0.0.1:8090/_/"},"127.0.0.1:8090/_/")," to create your admin account")),
+                        React.createElement(Step,{n:"4"},"In SiteShrimp → Settings ⚙ → Server URL → enter your PocketBase address"),
+                        React.createElement("div",{style:{background:"rgba(255,149,0,0.1)",borderRadius:8,padding:"10px 12px",marginTop:10}},
+                          React.createElement("div",{style:{fontSize:11,color:"#ff9500",lineHeight:1.6,fontWeight:600}},"HOSTING OPTIONS"),
+                          React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.4)",lineHeight:1.7,marginTop:4}},
+                            React.createElement(React.Fragment,null,
+                              "• Your own laptop/PC (for testing)\n",
+                              "• ",React.createElement(Link,{href:"https://cloud.google.com/free"},"Google Cloud (GCP)")," — free tier VM\n",
+                              "• ",React.createElement(Link,{href:"https://www.oracle.com/cloud/free/"},"Oracle Cloud")," — always-free ARM VM\n",
+                              "• ",React.createElement(Link,{href:"https://www.vultr.com/"},"Vultr")," / ",React.createElement(Link,{href:"https://www.digitalocean.com/"},"DigitalOcean")," — $5/mo VPS\n",
+                              "• ",React.createElement(Link,{href:"https://fly.io/"},"Fly.io")," — free tier with auto-deploy\n",
+                              "• ",React.createElement(Link,{href:"https://railway.app/"},"Railway")," — one-click deploy"
+                            )
+                          )
+                        )
+                      ),
+                      // Google Sheets Section
+                      React.createElement(Section,{icon:"📊",title:"GOOGLE SHEETS — LIVE REPORTS",color:"#34a853"},
+                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"Export your defect reports directly into Google Sheets. Each export creates a new tab with summary stats and full data."),
+                        React.createElement(Step,{n:"1"},React.createElement(React.Fragment,null,"Go to ",React.createElement(Link,{href:"https://console.cloud.google.com/"},"Google Cloud Console"))),
+                        React.createElement(Step,{n:"2"},"Create a project (or use an existing one)"),
+                        React.createElement(Step,{n:"3"},React.createElement(React.Fragment,null,"Enable ",React.createElement(Link,{href:"https://console.cloud.google.com/apis/library/sheets.googleapis.com"},"Google Sheets API")," and ",React.createElement(Link,{href:"https://console.cloud.google.com/apis/library/drive.googleapis.com"},"Google Drive API"))),
+                        React.createElement(Step,{n:"4"},React.createElement(React.Fragment,null,"Go to ",React.createElement(Link,{href:"https://console.cloud.google.com/apis/credentials"},"Credentials")," → Create OAuth 2.0 Client ID (Web)")),
+                        React.createElement(Step,{n:"5"},"Add your SiteShrimp URL as Authorized JavaScript Origin"),
+                        React.createElement(Step,{n:"6"},"Copy the Client ID → Settings ⚙ → Storage → Google Sheets section"),
+                        React.createElement(Step,{n:"7"},"Report tab → Export ▾ → Google Sheets → Sign in & export"),
+                        React.createElement("div",{style:{background:"rgba(52,168,83,0.1)",borderRadius:8,padding:"10px 12px",marginTop:10}},
+                          React.createElement("div",{style:{fontSize:11,color:"#34a853",fontWeight:600}},"Your spreadsheet is in YOUR Google Drive. Share it with your team, add charts, or connect to other tools.")
+                        )
+                      ),
+                      // AI Section
+                      React.createElement(Section,{icon:"🤖",title:"AI — YOUR OWN MODELS",color:"#5856d6"},
+                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"Use any AI provider for photo analysis, smart search, and contract advisory. You choose the model, you control the cost."),
+                        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+                          React.createElement("div",{style:{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"10px 12px"}},
+                            React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"#5856d6",marginBottom:4}},"GOOGLE GEMINI (Free)"),
+                            React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.4)",lineHeight:1.6}},React.createElement(React.Fragment,null,"Get a free API key from ",React.createElement(Link,{href:"https://aistudio.google.com/apikey"},"Google AI Studio"),". 1,500 analyses/day free."))
+                          ),
+                          React.createElement("div",{style:{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"10px 12px"}},
+                            React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"#5856d6",marginBottom:4}},"OLLAMA (Local / Private)"),
+                            React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.4)",lineHeight:1.6}},React.createElement(React.Fragment,null,"Run AI on your own machine. Install from ",React.createElement(Link,{href:"https://ollama.ai/"},"ollama.ai"),", then: ollama pull llava"))
+                          ),
+                          React.createElement("div",{style:{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"10px 12px"}},
+                            React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"#5856d6",marginBottom:4}},"OPENAI / GPT (or Compatible)"),
+                            React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.4)",lineHeight:1.6}},React.createElement(React.Fragment,null,"Use ",React.createElement(Link,{href:"https://platform.openai.com/api-keys"},"OpenAI"),", ",React.createElement(Link,{href:"https://azure.microsoft.com/en-us/products/ai-services/openai-service"},"Azure OpenAI"),", ",React.createElement(Link,{href:"https://lmstudio.ai/"},"LM Studio"),", or any OpenAI-compatible API."))
+                          )
+                        )
+                      ),
+                      // Telegram Section
+                      React.createElement(Section,{icon:"📢",title:"TELEGRAM — INSTANT ALERTS",color:"#0088cc"},
+                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"Get real-time notifications in your team's Telegram group when defects are logged, status changes, or comments are added."),
+                        React.createElement(Step,{n:"1"},React.createElement(React.Fragment,null,"Open Telegram → search ",React.createElement(Link,{href:"https://t.me/BotFather"},"@BotFather")," → /newbot → follow steps → copy Bot Token")),
+                        React.createElement(Step,{n:"2"},"Create a group → add your bot → promote to Admin"),
+                        React.createElement(Step,{n:"3"},React.createElement(React.Fragment,null,"Forward a message from the group to ",React.createElement(Link,{href:"https://t.me/userinfobot"},"@userinfobot")," → get Chat ID")),
+                        React.createElement(Step,{n:"4"},"Settings ⚙ → Telegram → paste Bot Token + Chat ID → Test")
+                      ),
+                      // Email Section
+                      React.createElement(Section,{icon:"📧",title:"EMAIL — SMTP REPORTS",color:"#ff3b30"},
+                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"Send HTML email reports directly from the app. Uses your own email provider."),
+                        React.createElement(Step,{n:"1"},"Settings ⚙ → open the Report tab"),
+                        React.createElement(Step,{n:"2"},"Click 📧 EMAIL → Edit Recipients → choose your email provider"),
+                        React.createElement(Step,{n:"3"},React.createElement(React.Fragment,null,"For Gmail: ",React.createElement(Link,{href:"https://myaccount.google.com/apppasswords"},"Generate App Password")," (requires 2-Step Verification)")),
+                        React.createElement(Step,{n:"4"},"Enter email + app password → Save → Test")
+                      ),
+                      // Storage Section
+                      React.createElement(Section,{icon:"💾",title:"STORAGE — YOUR FILES",color:"#ff9500"},
+                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"Choose where photos and files are stored. All options keep data under your control."),
+                        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+                          React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.4)",lineHeight:1.6}},"• PocketBase (default) — files stored on your PocketBase server"),
+                          React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.4)",lineHeight:1.6}},"• Local Path — save to any folder on your server or machine"),
+                          React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.4)",lineHeight:1.6}},React.createElement(React.Fragment,null,"• ",React.createElement(Link,{href:"https://drive.google.com/"},"Google Drive")," — photos in your personal Drive"))
+                        ),
+                        React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.3)",marginTop:8}},"Configure in Settings ⚙ → Storage")
+                      ),
+                      // Summary
+                      React.createElement("div",{style:{background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:12,padding:16,textAlign:"center"}},
+                        React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#ff6b00",marginBottom:6}},"SELF-HOSTED. SELF-CONTROLLED."),
+                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.4)",lineHeight:1.7}},"Your backend. Your AI. Your storage. Your reports. No subscription fees. No data lock-in. Built for teams that own their tools.")
+                      )
+                    );
+                  })()}
                 </div>
               )}
 
