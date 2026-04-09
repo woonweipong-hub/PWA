@@ -1347,7 +1347,7 @@ function exportReportAll(defects,drawings,savedComparisons,projectName){
   a.click();
 }
 
-// Full report export — PDF version with summary stats + defect table
+// Full report export — PDF version with professional layout
 async function exportReportPdf(defects,drawings,savedComparisons,projectName,companyName,allPins,contractAdvisory){
   const doc=new jspdf.jsPDF("p","mm","a4");
   const pageW=doc.internal.pageSize.getWidth();
@@ -1355,64 +1355,401 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   const margin=14;
   const contentW=pageW-margin*2;
   let y=18;
-  const footer=()=>{doc.setFontSize(8);doc.setTextColor(150);doc.text("SiteShrimp Report",margin,pageH-8);doc.setTextColor(0);};
-  // Title
-  doc.setFontSize(18);doc.setFont(undefined,"bold");
-  doc.text("SITE REPORT",margin,y);y+=8;
-  doc.setFontSize(10);doc.setFont(undefined,"normal");doc.setTextColor(100);
-  doc.text(`${projectName||""}${companyName?" · "+companyName:""} · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}`,margin,y);y+=10;
+  const orange=[255,107,0],purple=[88,86,214];
+  const sevRGB={Critical:[255,59,48],Major:[255,149,0],Minor:[230,184,0],Observation:[52,170,220]};
+  const statRGB={Open:[255,59,48],"In Progress":[255,149,0],Done:[52,170,220],Verified:[48,209,88],Closed:[142,142,147]};
+  const fmtDate=d=>d?new Date(d).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):"—";
+  const total=(defects||[]).length;
+  const now=new Date();
+
+  // ── Helper: draw colored badge ──
+  const badge=(text,x,yy,rgb,w)=>{
+    doc.setFontSize(7);doc.setFont(undefined,"bold");
+    const bw=w||doc.getTextWidth(text)+6;
+    doc.setFillColor(rgb[0],rgb[1],rgb[2]);doc.roundedRect(x,yy-3.5,bw,5,1.5,1.5,"F");
+    doc.setTextColor(255);
+    doc.text(text,x+bw/2,yy-0.5,{align:"center"});doc.setTextColor(0);
+    return bw;
+  };
+
+  // ── Helper: check page break ──
+  const checkPage=(need)=>{if(y+need>pageH-15){doc.addPage();y=18;return true;}return false;};
+
+  // ── Helper: section heading ──
+  const heading=(text,rgb)=>{
+    checkPage(16);
+    doc.setFillColor(rgb[0],rgb[1],rgb[2]);doc.roundedRect(margin,y-1,contentW,8,2,2,"F");
+    doc.setFontSize(11);doc.setFont(undefined,"bold");doc.setTextColor(255);
+    doc.text(text,margin+4,y+4.5);doc.setTextColor(0);y+=12;
+  };
+
+  // ── Helper: label + value pair ──
+  const field=(lbl,val,x,yy,w)=>{
+    doc.setFontSize(6.5);doc.setFont(undefined,"bold");doc.setTextColor(140);
+    doc.text(lbl.toUpperCase(),x,yy);
+    doc.setFontSize(8);doc.setFont(undefined,"normal");doc.setTextColor(40);
+    const lines=doc.splitTextToSize(String(val||"—"),w-2);
+    doc.text(lines[0],x,yy+3.5);doc.setTextColor(0);
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // PAGE 1 — COVER / HEADER
+  // ═══════════════════════════════════════════════════════════════════
+  // Dark header band
+  doc.setFillColor(26,26,26);doc.rect(0,0,pageW,52,"F");
+  // Orange accent line
+  doc.setFillColor(255,107,0);doc.rect(0,52,pageW,1.5,"F");
+
+  // Company name
+  doc.setFontSize(10);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
+  doc.text((companyName||"SITESHRIMP").toUpperCase(),margin,16);
+
+  // Report title
+  doc.setFontSize(24);doc.setFont(undefined,"bold");doc.setTextColor(255);
+  doc.text("SITE REPORT",margin,30);
+
+  // Project + date
+  doc.setFontSize(11);doc.setFont(undefined,"normal");doc.setTextColor(200);
+  doc.text(`${projectName||"Project"} — ${now.toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}`,margin,40);
+
+  // Entry count badge
+  doc.setFontSize(9);doc.setTextColor(255,107,0);
+  doc.text(`${total} entries`,margin,48);
+  doc.setTextColor(0);
+  y=62;
+
+  // ═══════════════════════════════════════════════════════════════════
+  // EXECUTIVE SUMMARY
+  // ═══════════════════════════════════════════════════════════════════
+  heading("EXECUTIVE SUMMARY",orange);
+
+  // Total entries — big number
+  doc.setFontSize(9);doc.setFont(undefined,"bold");doc.setTextColor(100);
+  doc.text("TOTAL ENTRIES",margin,y);
+  doc.setFontSize(28);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
+  doc.text(String(total),margin,y+12);
   doc.setTextColor(0);
 
-  // Summary stats
-  const total=(defects||[]).length;
-  const bySev={};const byStat={};
-  (defects||[]).forEach(d=>{bySev[d.severity]=(bySev[d.severity]||0)+1;byStat[d.status]=(byStat[d.status]||0)+1;});
-  doc.setFontSize(12);doc.setFont(undefined,"bold");
-  doc.text("SUMMARY",margin,y);y+=6;
-  doc.setFontSize(10);doc.setFont(undefined,"normal");
-  doc.text(`Total Entries: ${total}`,margin,y);y+=5;
-  doc.text(`By Severity: ${Object.entries(bySev).map(([k,v])=>`${k}: ${v}`).join("  |  ")}`,margin,y);y+=5;
-  doc.text(`By Status: ${Object.entries(byStat).map(([k,v])=>`${k}: ${v}`).join("  |  ")}`,margin,y);y+=10;
+  // Overdue count
+  const overdue=(defects||[]).filter(d=>d.dueDate&&new Date(d.dueDate)<now&&!["Verified","Closed"].includes(d.status)).length;
+  if(overdue>0){
+    doc.setFontSize(9);doc.setFont(undefined,"bold");doc.setTextColor(100);
+    doc.text("OVERDUE",margin+40,y);
+    doc.setFontSize(28);doc.setFont(undefined,"bold");doc.setTextColor(255,59,48);
+    doc.text(String(overdue),margin+40,y+12);
+    doc.setTextColor(0);
+  }
+  y+=18;
 
-  // Defect entries table
+  // Severity breakdown — horizontal bar chart
+  const bySev={};(defects||[]).forEach(d=>{bySev[d.severity]=(bySev[d.severity]||0)+1;});
+  doc.setFontSize(8);doc.setFont(undefined,"bold");doc.setTextColor(100);
+  doc.text("BY SEVERITY",margin,y);y+=5;
+  const barMaxW=contentW*0.6;
+  for(const sev of SEVERITY){
+    const cnt=bySev[sev]||0;if(cnt===0)continue;
+    const rgb=sevRGB[sev]||[100,100,100];
+    const barW=total>0?(cnt/total)*barMaxW:0;
+    doc.setFontSize(7);doc.setFont(undefined,"bold");doc.setTextColor(rgb[0],rgb[1],rgb[2]);
+    doc.text(sev.toUpperCase(),margin,y+2.5);
+    doc.setFillColor(rgb[0],rgb[1],rgb[2]);doc.roundedRect(margin+28,y,barW,4,1,1,"F");
+    doc.setFontSize(7);doc.setFont(undefined,"bold");doc.setTextColor(40);
+    doc.text(String(cnt),margin+28+barW+3,y+3);
+    y+=7;
+  }
+  y+=4;
+
+  // Status breakdown — inline badges
+  const byStat={};(defects||[]).forEach(d=>{byStat[d.status]=(byStat[d.status]||0)+1;});
+  doc.setFontSize(8);doc.setFont(undefined,"bold");doc.setTextColor(100);
+  doc.text("BY STATUS",margin,y);y+=5;
+  let bx=margin;
+  for(const stat of STATUS){
+    const cnt=byStat[stat]||0;
+    const rgb=statRGB[stat]||[100,100,100];
+    const label=`${stat}: ${cnt}`;
+    const bw=badge(label,bx,y+3,rgb);
+    bx+=bw+3;
+  }
+  y+=10;
+
+  // ── Cost Summary ──
+  const withCost=(defects||[]).filter(d=>d.costAmount&&String(d.costAmount).trim());
+  if(withCost.length>0){
+    checkPage(30);
+    doc.setFontSize(8);doc.setFont(undefined,"bold");doc.setTextColor(100);
+    doc.text("COST SUMMARY",margin,y);y+=5;
+    // By trade
+    const costByTrade={};const costBySev={};const costByResp={};
+    withCost.forEach(d=>{
+      const amt=parseFloat(String(d.costAmount).replace(/[^0-9.\-]/g,""))||0;
+      const trade=d.component||d.trade||"Unspecified";
+      const sev=d.severity||"Unspecified";
+      const resp=d.costResponsible||"Unspecified";
+      costByTrade[trade]=(costByTrade[trade]||0)+amt;
+      costBySev[sev]=(costBySev[sev]||0)+amt;
+      costByResp[resp]=(costByResp[resp]||0)+amt;
+    });
+    const totalCost=withCost.reduce((s,d)=>s+(parseFloat(String(d.costAmount).replace(/[^0-9.\-]/g,""))||0),0);
+    doc.setFontSize(8);doc.setFont(undefined,"normal");doc.setTextColor(40);
+    doc.text(`Total Cost Impact: $${totalCost.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2})} across ${withCost.length} entries`,margin,y);y+=5;
+
+    // Cost table
+    const costHeaders=[["Trade","Cost","Entries"]];
+    const costRows=Object.entries(costByTrade).sort((a,b)=>b[1]-a[1]).map(([trade,amt])=>[
+      trade,
+      "$"+amt.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2}),
+      String(withCost.filter(d=>(d.component||d.trade||"Unspecified")===trade).length)
+    ]);
+    doc.autoTable({startY:y,head:costHeaders,body:costRows,margin:{left:margin,right:margin},
+      styles:{fontSize:7,cellPadding:2},headStyles:{fillColor:orange,textColor:255,fontStyle:"bold"},
+      alternateRowStyles:{fillColor:[252,250,247]},tableWidth:contentW*0.6});
+    y=doc.lastAutoTable.finalY+4;
+
+    // Cost by responsible party
+    if(Object.keys(costByResp).length>0){
+      const respHeaders=[["Responsible Party","Cost"]];
+      const respRows=Object.entries(costByResp).sort((a,b)=>b[1]-a[1]).map(([r,amt])=>[
+        r,"$"+amt.toLocaleString("en",{minimumFractionDigits:2,maximumFractionDigits:2})
+      ]);
+      doc.autoTable({startY:y,head:respHeaders,body:respRows,margin:{left:margin,right:margin},
+        styles:{fontSize:7,cellPadding:2},headStyles:{fillColor:[80,80,80],textColor:255,fontStyle:"bold"},
+        tableWidth:contentW*0.5});
+      y=doc.lastAutoTable.finalY+6;
+    }
+  }
+  y+=4;
+
+  // ═══════════════════════════════════════════════════════════════════
+  // DEFECT SUMMARY TABLE — quick reference
+  // ═══════════════════════════════════════════════════════════════════
   if(defects&&defects.length>0){
-    doc.setFontSize(12);doc.setFont(undefined,"bold");
-    doc.text("DEFECT ENTRIES",margin,y);y+=2;
-    const headers=[["ID","Type","Title","Component","Location","Severity","Status","Assignee","Date"]];
-    const rows=(defects||[]).map(d=>[
-      d.defect_id||d.id||"",
+    checkPage(20);
+    heading("ENTRY SUMMARY",orange);
+    const headers=[["#","Type","Title","Location","Severity","Status","Assignee","Date"]];
+    const rows=(defects||[]).map((d,i)=>[
+      d.defect_id||String(i+1),
       d.entryType||"Defect",
-      (d.title||"").substring(0,40),
-      d.component||"",
-      d.location||"",
+      (d.title||"").substring(0,55),
+      (d.location||"").substring(0,25),
       d.severity||"",
       d.status||"",
-      d.assignee||"",
-      (d.createdAt||d.created)?new Date(d.createdAt||d.created).toLocaleDateString("en-GB"):""
+      (d.assignee||"").substring(0,18),
+      fmtDate(d.createdAt||d.created)
     ]);
-    doc.autoTable({startY:y,head:headers,body:rows,margin:{left:margin,right:margin},styles:{fontSize:7,cellPadding:2},headStyles:{fillColor:[255,107,0],textColor:255,fontStyle:"bold"},alternateRowStyles:{fillColor:[252,250,247]},didDrawPage:footer});
+    doc.autoTable({startY:y,head:headers,body:rows,margin:{left:margin,right:margin},
+      styles:{fontSize:6.5,cellPadding:1.8},
+      headStyles:{fillColor:orange,textColor:255,fontStyle:"bold"},
+      alternateRowStyles:{fillColor:[252,250,247]},
+      columnStyles:{
+        0:{cellWidth:12},1:{cellWidth:14},2:{cellWidth:50},3:{cellWidth:28},
+        4:{cellWidth:16},5:{cellWidth:18},6:{cellWidth:22},7:{cellWidth:18}
+      },
+      didParseCell:(data)=>{
+        if(data.section==="body"){
+          // Color-code severity column
+          if(data.column.index===4){
+            const rgb=sevRGB[data.cell.raw];
+            if(rgb)data.cell.styles.textColor=rgb;
+            data.cell.styles.fontStyle="bold";
+          }
+          // Color-code status column
+          if(data.column.index===5){
+            const rgb=statRGB[data.cell.raw];
+            if(rgb)data.cell.styles.textColor=rgb;
+            data.cell.styles.fontStyle="bold";
+          }
+        }
+      }
+    });
     y=doc.lastAutoTable.finalY+8;
   }
 
-  // Drawing annotations — summary table + rendered annotated images
+  // ═══════════════════════════════════════════════════════════════════
+  // DEFECT DETAIL PAGES — one block per defect with inline photo
+  // ═══════════════════════════════════════════════════════════════════
+  // Preload all defect photos in parallel for near-zero latency during render
+  const photoCache=new Map();
+  if(defects&&defects.length>0){
+    const photoPromises=[];
+    for(const d of defects){
+      if(!d.photo)continue;
+      const photos=Array.isArray(d.photo)?d.photo:[d.photo];
+      for(const src of photos.slice(0,3)){
+        if(!src||photoCache.has(src))continue;
+        photoPromises.push(new Promise(resolve=>{
+          const img=new Image();
+          img.onload=()=>{photoCache.set(src,img);resolve();};
+          img.onerror=()=>{photoCache.set(src,null);resolve();};
+          img.src=src;
+        }));
+      }
+    }
+    await Promise.all(photoPromises);
+  }
+  if(defects&&defects.length>0){
+    heading("ENTRY DETAILS",orange);
+    for(let idx=0;idx<defects.length;idx++){
+      const d=defects[idx];
+      const hasPhoto=d.photo&&(typeof d.photo==="string"||(Array.isArray(d.photo)&&d.photo.length>0));
+      const comments=(d.comments||[]).filter(c=>c.text);
+      // Estimate block height: header(20) + fields(30) + photo(~70) + desc(15) + comments(comments*8) + padding
+      const estH=30+(hasPhoto?75:0)+(d.description?15:0)+(comments.length>0?10+comments.length*7:0)+10;
+      checkPage(Math.min(estH,120));
+
+      // ── Card border + severity accent ──
+      const cardTop=y;
+      const cardPage=doc.internal.getNumberOfPages();
+      const sevColor=sevRGB[d.severity]||[100,100,100];
+
+      // Entry number + title
+      doc.setFontSize(11);doc.setFont(undefined,"bold");doc.setTextColor(26);
+      const idStr=d.defect_id||`#${idx+1}`;
+      const titleFull=`${idStr}  ${d.title||"Untitled"}`;
+      const titleLines=doc.splitTextToSize(titleFull,contentW-4);
+      doc.text(titleLines[0],margin+1,y+1);
+      if(titleLines.length>1){doc.setFontSize(9);doc.text(titleLines[1],margin+1,y+5.5);y+=10;}
+      else y+=6;
+
+      // Badges row: type + severity + status
+      let bx2=margin+1;
+      if(d.entryType){
+        const typeRGB={Defect:[255,59,48],Observation:[52,170,220],Update:[255,149,0],Instruction:[88,86,214]};
+        bx2+=badge(d.entryType.toUpperCase(),bx2,y+3,typeRGB[d.entryType]||[100,100,100])+3;
+      }
+      if(d.severity)bx2+=badge(d.severity.toUpperCase(),bx2,y+3,sevColor)+3;
+      if(d.status){
+        const stRGB=statRGB[d.status]||[100,100,100];
+        bx2+=badge(d.status.toUpperCase(),bx2,y+3,stRGB)+3;
+      }
+      // Overdue badge
+      if(d.dueDate&&new Date(d.dueDate)<now&&!["Verified","Closed"].includes(d.status)){
+        badge("OVERDUE",bx2,y+3,[200,0,0]);
+      }
+      y+=8;
+
+      // ── Fields grid (2 columns) ──
+      const col1=margin+1,col2=margin+contentW*0.5;
+      const fw=contentW*0.45;
+      field("Location",d.location,col1,y,fw);
+      field("Assigned To",d.assignee,col2,y,fw);y+=9;
+      field("Trade",d.component||d.trade,col1,y,fw);
+      field("Logged By",`${d.loggedBy||"—"}${d.loggedByRole?" ("+d.loggedByRole+")":""}`,col2,y,fw);y+=9;
+      field("Date",fmtDate(d.createdAt||d.created),col1,y,fw);
+      field("Due Date",d.dueDate?fmtDate(d.dueDate):"—",col2,y,fw);y+=9;
+      // Cost row (if present)
+      if(d.costImpact||d.costAmount||d.costResponsible){
+        field("Cost Impact",d.costImpact,col1,y,fw);
+        field("Cost Amount",d.costAmount?`$${d.costAmount}`:"—",col2,y,fw);y+=9;
+        field("Cost Responsible",d.costResponsible,col1,y,fw);
+        if(d.costRemarks)field("Cost Remarks",d.costRemarks,col2,y,fw);
+        y+=9;
+      }
+      if(d.duration){field("Duration",d.duration,col1,y,fw);y+=9;}
+
+      // ── Photo inline ──
+      if(hasPhoto){
+        const photos=Array.isArray(d.photo)?d.photo:[d.photo];
+        const validPhotos=photos.slice(0,3).filter(Boolean);
+        if(validPhotos.length===1){
+          // Single photo — full width
+          const img=photoCache.get(validPhotos[0]);
+          if(img&&img.width>0&&img.height>0){
+            checkPage(65);
+            const ratio=img.height/img.width;
+            const imgW=contentW*0.65;
+            const imgH=Math.min(imgW*ratio,60);
+            try{doc.addImage(validPhotos[0],"JPEG",margin+1,y,imgW,imgH);}catch(e){/* skip */}
+            y+=imgH+3;
+          }
+        }else if(validPhotos.length>1){
+          // Multiple photos — side by side
+          checkPage(65);
+          const gap=4;
+          const imgW=(contentW-gap*(validPhotos.length-1))/validPhotos.length;
+          let maxH=0;
+          for(let pi=0;pi<validPhotos.length;pi++){
+            const img=photoCache.get(validPhotos[pi]);
+            if(img&&img.width>0&&img.height>0){
+              const ratio=img.height/img.width;
+              const imgH=Math.min(imgW*ratio,60);
+              try{doc.addImage(validPhotos[pi],"JPEG",margin+1+pi*(imgW+gap),y,imgW,imgH);}catch(e){/* skip */}
+              if(imgH>maxH)maxH=imgH;
+            }
+          }
+          y+=maxH+3;
+        }
+        y+=2;
+      }
+
+      // ── Description ──
+      if(d.description){
+        checkPage(12);
+        doc.setFillColor(248,248,246);doc.roundedRect(margin+1,y-1,contentW-2,0.5,0,0,"F");// subtle divider
+        y+=2;
+        doc.setFontSize(6.5);doc.setFont(undefined,"bold");doc.setTextColor(140);
+        doc.text("DESCRIPTION",margin+1,y);y+=3.5;
+        doc.setFontSize(8);doc.setFont(undefined,"normal");doc.setTextColor(60);
+        const descLines=doc.splitTextToSize(d.description,contentW-4);
+        for(const line of descLines.slice(0,6)){// max 6 lines
+          doc.text(line,margin+1,y);y+=3.5;
+        }
+        if(descLines.length>6){doc.setTextColor(140);doc.text("...",margin+1,y);y+=3.5;}
+        doc.setTextColor(0);y+=2;
+      }
+
+      // ── Comments timeline ──
+      if(comments.length>0){
+        checkPage(10+comments.length*6);
+        doc.setFontSize(6.5);doc.setFont(undefined,"bold");doc.setTextColor(140);
+        doc.text(`COMMENTS (${comments.length})`,margin+1,y);y+=4;
+        for(const c of comments.slice(0,8)){// max 8 comments
+          checkPage(8);
+          doc.setFontSize(7);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
+          const cDate=c.created?new Date(c.created).toLocaleDateString("en-GB",{day:"numeric",month:"short"}):"";
+          doc.text(`${c.author||"User"} ${cDate?("("+cDate+")"):""}`,margin+3,y);
+          doc.setFont(undefined,"normal");doc.setTextColor(60);
+          const cLines=doc.splitTextToSize(c.text,contentW-8);
+          doc.text(cLines[0],margin+3,y+3.5);
+          y+=8;
+        }
+        if(comments.length>8){doc.setFontSize(6);doc.setTextColor(140);doc.text(`+ ${comments.length-8} more comments`,margin+3,y);y+=4;}
+        doc.setTextColor(0);
+      }
+
+      // ── Card bottom border ──
+      y+=3;
+      doc.setDrawColor(230);doc.setLineWidth(0.3);
+      doc.line(margin,y,margin+contentW,y);
+      doc.setDrawColor(0);
+      y+=6;
+
+      // Severity accent left border — only if card stayed on same page
+      if(doc.internal.getNumberOfPages()===cardPage){
+        doc.setFillColor(sevColor[0],sevColor[1],sevColor[2]);
+        doc.rect(margin-1,cardTop-3,1.5,y-cardTop-1,"F");
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // DRAWING ANNOTATIONS
+  // ═══════════════════════════════════════════════════════════════════
   if(drawings&&drawings.length>0){
     const annotated=drawings.filter(d=>{const n=getDrawingNotes(d.id)||[];const m=getDrawingMarkup(d.id)||[];return n.length>0||m.length>0;});
     if(annotated.length>0){
-      if(y>250){doc.addPage();y=18;}
-      doc.setFontSize(12);doc.setFont(undefined,"bold");
-      doc.text("DRAWING ANNOTATIONS",margin,y);y+=2;
+      doc.addPage();y=18;
+      heading("DRAWING ANNOTATIONS",orange);
       const dHeaders=[["Drawing","Notes","Markups"]];
       const dRows=annotated.map(d=>[d.name||"",(getDrawingNotes(d.id)||[]).length.toString(),(getDrawingMarkup(d.id)||[]).length.toString()]);
-      doc.autoTable({startY:y,head:dHeaders,body:dRows,margin:{left:margin,right:margin},styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:[255,107,0],textColor:255,fontStyle:"bold"}});
+      doc.autoTable({startY:y,head:dHeaders,body:dRows,margin:{left:margin,right:margin},styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:orange,textColor:255,fontStyle:"bold"}});
       y=doc.lastAutoTable.finalY+8;
 
-      // Render and embed annotated drawing images
       for(const d of annotated){
         try{
           const pages=await renderDrawingAnnotatedPages(d,defects,allPins||[]);
           if(!pages||pages.length===0)continue;
           for(const pg of pages){
-            // Start each drawing image on a new page for clarity
             doc.addPage();y=18;
             doc.setFontSize(11);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
             doc.text(`${d.name||"Drawing"}${pages.length>1?" — Page "+pg.pageNum:""}`,margin,y);
@@ -1420,7 +1757,6 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
             doc.setFontSize(8);doc.setFont(undefined,"normal");
             const notes=getDrawingNotes(d.id)||[];const markups=getDrawingMarkup(d.id)||[];
             doc.text(`${notes.length} note(s), ${markups.length} markup(s)`,margin,y);y+=6;
-            // Determine image dimensions to fit page width
             const img=new Image();
             await new Promise((resolve)=>{img.onload=resolve;img.onerror=resolve;img.src=pg.dataUrl;});
             if(img.width>0&&img.height>0){
@@ -1431,23 +1767,22 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
               doc.addImage(pg.dataUrl,"JPEG",margin,y,Math.min(imgW,actualW),imgH);
               y+=imgH+4;
             }
-            footer();
           }
         }catch(e){console.warn("exportReportPdf: failed to render drawing",d.name,e);}
       }
     }
   }
 
-  // Saved comparisons — summary table + overlay images with markup
+  // ═══════════════════════════════════════════════════════════════════
+  // SAVED COMPARISONS
+  // ═══════════════════════════════════════════════════════════════════
   if(savedComparisons&&savedComparisons.length>0){
-    if(y>250){doc.addPage();y=18;}
-    doc.setFontSize(12);doc.setFont(undefined,"bold");
-    doc.text("SAVED COMPARISONS",margin,y);y+=2;
+    doc.addPage();y=18;
+    heading("SAVED COMPARISONS",purple);
     const cHeaders=[["Base","Target","Added","Removed","AI Report","Date"]];
-    const cRows=savedComparisons.map(sc=>[sc.baseName||"",sc.targetName||"",String(sc.totalAdded||0),String(sc.totalRemoved||0),sc.aiReport?"Yes":"No",sc.savedAt?new Date(sc.savedAt).toLocaleDateString("en-GB"):""]);
-    doc.autoTable({startY:y,head:cHeaders,body:cRows,margin:{left:margin,right:margin},styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:[88,86,214],textColor:255,fontStyle:"bold"}});
+    const cRows=savedComparisons.map(sc=>[sc.baseName||"",sc.targetName||"","+"+String(sc.totalAdded||0),"-"+String(sc.totalRemoved||0),sc.aiReport?"Yes":"No",fmtDate(sc.savedAt)]);
+    doc.autoTable({startY:y,head:cHeaders,body:cRows,margin:{left:margin,right:margin},styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:purple,textColor:255,fontStyle:"bold"}});
     y=doc.lastAutoTable.finalY+8;
-    // Embed comparison overlay images (with markup burned in)
     for(const sc of savedComparisons){
       if(!sc.overlayThumb)continue;
       try{
@@ -1459,88 +1794,63 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
           doc.text(`${sc.baseName||"Base"} vs ${sc.targetName||"Target"}`,margin,y);
           doc.setTextColor(0);y+=6;
           doc.setFontSize(8);doc.setFont(undefined,"normal");
-          doc.text(`+${sc.totalAdded||0} added, -${sc.totalRemoved||0} removed${sc.savedAt?" · "+new Date(sc.savedAt).toLocaleDateString("en-GB"):""}`,margin,y);y+=6;
+          doc.text(`+${sc.totalAdded||0} added, -${sc.totalRemoved||0} removed${sc.savedAt?" · "+fmtDate(sc.savedAt):""}`,margin,y);y+=6;
           const ratio=img.height/img.width;
           const imgW=contentW;
           const imgH=Math.min(imgW*ratio,pageH-y-margin-10);
           const actualW=imgH/(ratio||1);
           doc.addImage(sc.overlayThumb,"JPEG",margin,y,Math.min(imgW,actualW),imgH);
           y+=imgH+4;
-          // Embed AI report text if present
           if(sc.aiReport){
-            y+=4;
-            doc.setFontSize(9);doc.setFont(undefined,"bold");doc.text("AI Diff Report:",margin,y);y+=5;
+            y+=4;doc.setFontSize(9);doc.setFont(undefined,"bold");doc.text("AI Diff Report:",margin,y);y+=5;
             doc.setFont(undefined,"normal");doc.setFontSize(8);
             const rptLines=doc.splitTextToSize(sc.aiReport,contentW);
-            for(const rl of rptLines){
-              if(y>pageH-15){doc.addPage();y=18;footer();}
-              doc.text(rl,margin,y);y+=3.8;
-            }
+            for(const rl of rptLines){if(y>pageH-15){doc.addPage();y=18;}doc.text(rl,margin,y);y+=3.8;}
           }
-          footer();
         }
       }catch(e){console.warn("PDF: failed to embed comparison overlay",e);}
     }
   }
 
-  // Defect entry photos — embed each entry's photos
-  if(defects&&defects.length>0){
-    const withPhotos=(defects||[]).filter(d=>d.photo&&(typeof d.photo==="string"||(Array.isArray(d.photo)&&d.photo.length>0)));
-    if(withPhotos.length>0){
-      doc.addPage();y=18;
-      doc.setFontSize(12);doc.setFont(undefined,"bold");
-      doc.text("ENTRY PHOTOS",margin,y);y+=8;
-      for(const d of withPhotos){
-        const photos=Array.isArray(d.photo)?d.photo:[d.photo];
-        for(const photoSrc of photos){
-          if(!photoSrc)continue;
-          try{
-            const img=new Image();
-            await new Promise(resolve=>{img.onload=resolve;img.onerror=resolve;img.src=photoSrc;});
-            if(img.width>0&&img.height>0){
-              if(y>pageH-80){doc.addPage();y=18;footer();}
-              doc.setFontSize(9);doc.setFont(undefined,"bold");
-              doc.text(`${(d.title||"Entry").substring(0,60)} — ${d.severity||""} [${d.status||""}]`,margin,y);y+=5;
-              doc.setFontSize(7);doc.setFont(undefined,"normal");doc.setTextColor(100);
-              doc.text(`${d.location||""} · ${d.assignee||""} · ${d.created?new Date(d.created).toLocaleDateString("en-GB"):""}`,margin,y);y+=5;
-              doc.setTextColor(0);
-              const ratio=img.height/img.width;
-              const imgW=Math.min(contentW,120);
-              const imgH=Math.min(imgW*ratio,100);
-              doc.addImage(photoSrc,"JPEG",margin,y,imgW,imgH);
-              y+=imgH+8;
-            }
-          }catch(e){/* skip failed photos */}
-        }
-      }
-      footer();
-    }
-  }
-
-  // Contract Advisory section
+  // ═══════════════════════════════════════════════════════════════════
+  // CONTRACT ADVISORY
+  // ═══════════════════════════════════════════════════════════════════
   if(contractAdvisory){
     doc.addPage();y=18;
-    doc.setFontSize(14);doc.setFont(undefined,"bold");doc.setTextColor(88,86,214);
-    doc.text("CONTRACT CLAUSE ADVISORY",margin,y);y+=7;
-    doc.setTextColor(0);doc.setFontSize(9);doc.setFont(undefined,"normal");
-    // Word-wrap the advisory text
+    heading("CONTRACT CLAUSE ADVISORY",purple);
+    doc.setFontSize(9);doc.setFont(undefined,"normal");doc.setTextColor(0);
     const lines=doc.splitTextToSize(contractAdvisory,contentW);
     for(const line of lines){
-      if(y>pageH-15){doc.addPage();y=18;footer();}
+      if(y>pageH-15){doc.addPage();y=18;}
       doc.text(line,margin,y);y+=4.2;
     }
-    // Disclaimer
-    y+=4;
-    if(y>pageH-25){doc.addPage();y=18;}
+    y+=4;checkPage(20);
     doc.setFontSize(7);doc.setTextColor(150);
     const disc="Disclaimer: This advisory is generated by AI for reference only. It is not legal advice. Always verify clause references against your actual contract documents and consult qualified professionals before acting on contractual matters.";
     const discLines=doc.splitTextToSize(disc,contentW);
     for(const dl of discLines){doc.text(dl,margin,y);y+=3.5;}
     doc.setTextColor(0);
-    footer();
   }
 
-  doc.save(`SiteShrimp_Report_${(projectName||"Export").replace(/\s/g,"_")}_${new Date().toLocaleDateString("en-GB").replace(/\//g,"-")}.pdf`);
+  // ═══════════════════════════════════════════════════════════════════
+  // PAGE NUMBERS — "Page X of Y" + footer on all pages
+  // ═══════════════════════════════════════════════════════════════════
+  const totalPages=doc.internal.getNumberOfPages();
+  for(let i=1;i<=totalPages;i++){
+    doc.setPage(i);
+    doc.setFontSize(7);doc.setFont(undefined,"normal");doc.setTextColor(160);
+    doc.text(`Page ${i} of ${totalPages}`,pageW-margin,pageH-7,{align:"right"});
+    // Left footer: company + project
+    doc.text(`${companyName||"SiteShrimp"} — ${projectName||"Report"}`,margin,pageH-7);
+    // Subtle top line on pages after cover
+    if(i>1){
+      doc.setDrawColor(230);doc.setLineWidth(0.3);
+      doc.line(margin,10,pageW-margin,10);doc.setDrawColor(0);
+    }
+    doc.setTextColor(0);
+  }
+
+  doc.save(`SiteShrimp_Report_${(projectName||"Export").replace(/\s/g,"_")}_${now.toLocaleDateString("en-GB").replace(/\//g,"-")}.pdf`);
 }
 
 async function sendTelegram(token,chatId,text){
