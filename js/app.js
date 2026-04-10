@@ -1760,12 +1760,22 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   // DRAWING ANNOTATIONS
   // ═══════════════════════════════════════════════════════════════════
   if(drawings&&drawings.length>0){
-    const annotated=drawings.filter(d=>{const n=getDrawingNotes(d.id)||[];const m=getDrawingMarkup(d.id)||[];return n.length>0||m.length>0;});
+    const annotated=drawings.filter(d=>{
+      const n=getDrawingNotes(d.id)||[];
+      const m=getDrawingMarkup(d.id)||[];
+      const p=(allPins||[]).filter(pin=>pin.drawingId===d.id);
+      return n.length>0||m.length>0||p.length>0;
+    });
     if(annotated.length>0){
       doc.addPage();y=18;
       heading("DRAWING ANNOTATIONS",orange);
-      const dHeaders=[["Drawing","Notes","Markups"]];
-      const dRows=annotated.map(d=>[d.name||"",(getDrawingNotes(d.id)||[]).length.toString(),(getDrawingMarkup(d.id)||[]).length.toString()]);
+      const dHeaders=[["Drawing","Pins","Notes","Markups"]];
+      const dRows=annotated.map(d=>[
+        d.name||"",
+        String((allPins||[]).filter(p=>p.drawingId===d.id).length),
+        String((getDrawingNotes(d.id)||[]).length),
+        String((getDrawingMarkup(d.id)||[]).length)
+      ]);
       doc.autoTable({startY:y,head:dHeaders,body:dRows,margin:{left:margin,right:margin},styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:orange,textColor:255,fontStyle:"bold"}});
       y=doc.lastAutoTable.finalY+8;
 
@@ -1780,7 +1790,8 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
             doc.setTextColor(0);y+=6;
             doc.setFontSize(8);doc.setFont(undefined,"normal");
             const notes=getDrawingNotes(d.id)||[];const markups=getDrawingMarkup(d.id)||[];
-            doc.text(`${notes.length} note(s), ${markups.length} markup(s)`,margin,y);y+=6;
+            const drawingPins=(allPins||[]).filter(p=>p.drawingId===d.id);
+            doc.text(`${drawingPins.length} pin(s), ${notes.length} note(s), ${markups.length} markup(s)`,margin,y);y+=6;
             const img=new Image();
             await new Promise((resolve)=>{img.onload=resolve;img.onerror=resolve;img.src=pg.dataUrl;});
             if(img.width>0&&img.height>0){
@@ -5372,27 +5383,28 @@ function Report({defects,onEmailSetup,currentProject,company}){
       )}
 
       {/* Report tally — shows totals for all selected sections */}
-      <div style={{background:"#1a1a1a",borderRadius:14,padding:20,marginBottom:16}}>
-        <div style={{display:"flex",gap:12,alignItems:"stretch",flexWrap:"wrap"}}>
-          {incDefects&&<div style={{flex:1,minWidth:90,display:"flex",flexDirection:"column"}}>
-            <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6,minHeight:28,lineHeight:1.25}}>{t("report.defect_entries").toUpperCase()}</div>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:44,fontWeight:800,color:"#ff3b30",lineHeight:1}}>{total}</div>
-            <div style={{fontSize:10,color:"rgba(255,255,255,0)",fontFamily:"'Barlow Condensed',sans-serif",marginTop:4,minHeight:14}}>&nbsp;</div>
+      <div style={{background:"#1a1a1a",borderRadius:14,padding:"14px 16px",marginBottom:16}}>
+        {(() => {
+          const tallyCols = (incDefects?1:0)+(incDrawings?1:0)+(incComparisons?1:0);
+          if(!tallyCols) return <div style={{fontSize:13,color:"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("report.no_sections_selected")}</div>;
+          return (
+        <div style={{display:"grid",gridTemplateColumns:`repeat(${tallyCols}, minmax(0, 1fr))`,gap:10,alignItems:"start"}}>
+          {incDefects&&<div style={{minWidth:0}}>
+            <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",minHeight:24,lineHeight:1.15,display:"flex",alignItems:"flex-end"}}>{t("report.defect_entries").toUpperCase()}</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:44,fontWeight:800,color:"#ff3b30",lineHeight:1,marginTop:2}}>{total}</div>
           </div>}
-          {incDrawings&&<div style={{flex:1,minWidth:90,display:"flex",flexDirection:"column"}}>
-            <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6,minHeight:28,lineHeight:1.25}}>{t("report.pdf_drawings").toUpperCase()}</div>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:44,fontWeight:800,color:"#ff6b00",lineHeight:1}}>{drawingsWithAnnotations.length}</div>
-            <div style={{fontSize:10,color:"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",marginTop:4,minHeight:14,lineHeight:1.3}}>{totalPins} {t("report.pins")} · {totalMarkups} {t("report.markups")} · {totalNotes} {t("report.notes")}</div>
+          {incDrawings&&<div style={{minWidth:0}}>
+            <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",minHeight:24,lineHeight:1.15,display:"flex",alignItems:"flex-end"}}>{t("report.pdf_drawings").toUpperCase()}</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:44,fontWeight:800,color:"#ff6b00",lineHeight:1,marginTop:2}}>{drawingsWithAnnotations.length}</div>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",marginTop:2,lineHeight:1.2,overflowWrap:"anywhere"}}>{totalPins} {t("report.pins")} · {totalMarkups} {t("report.markups")} · {totalNotes} {t("report.notes")}</div>
           </div>}
-          {incComparisons&&<div style={{flex:1,minWidth:90,display:"flex",flexDirection:"column"}}>
-            <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6,minHeight:28,lineHeight:1.25}}>{t("report.saved_comparisons").toUpperCase()}</div>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:44,fontWeight:800,color:"#5856d6",lineHeight:1}}>{savedComparisons.length}</div>
-            <div style={{fontSize:10,color:"rgba(255,255,255,0)",fontFamily:"'Barlow Condensed',sans-serif",marginTop:4,minHeight:14}}>&nbsp;</div>
-          </div>}
-          {!incDefects&&!incDrawings&&!incComparisons&&<div>
-            <div style={{fontSize:13,color:"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("report.no_sections_selected")}</div>
+          {incComparisons&&<div style={{minWidth:0}}>
+            <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",minHeight:24,lineHeight:1.15,display:"flex",alignItems:"flex-end"}}>{t("report.saved_comparisons").toUpperCase()}</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:44,fontWeight:800,color:"#5856d6",lineHeight:1,marginTop:2}}>{savedComparisons.length}</div>
           </div>}
         </div>
+          );
+        })()}
       </div>
 
       {incDefects&&<>
