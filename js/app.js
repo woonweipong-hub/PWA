@@ -5383,7 +5383,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
       )}
 
       {/* Report tally — shows totals for all selected sections */}
-      <div style={{background:"#1a1a1a",borderRadius:14,padding:"14px 16px",marginBottom:16}}>
+      <div style={{background:"#1a1a1a",borderRadius:14,padding:"7px 8px",marginBottom:16}}>
         {(() => {
           const tallyCols = (incDefects?1:0)+(incDrawings?1:0)+(incComparisons?1:0);
           if(!tallyCols) return <div style={{fontSize:13,color:"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("report.no_sections_selected")}</div>;
