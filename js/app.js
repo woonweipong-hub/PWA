@@ -1348,7 +1348,7 @@ function exportReportAll(defects,drawings,savedComparisons,projectName){
 }
 
 // Full report export — PDF version with professional layout
-async function exportReportPdf(defects,drawings,savedComparisons,projectName,companyName,allPins,contractAdvisory){
+async function exportReportPdf(defects,drawings,savedComparisons,projectName,companyName,allPins,contractAdvisory,allDefectsForPins){
   const doc=new jspdf.jsPDF("p","mm","a4");
   const pageW=doc.internal.pageSize.getWidth();
   const pageH=doc.internal.pageSize.getHeight();
@@ -1781,7 +1781,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
 
       for(const d of annotated){
         try{
-          const pages=await renderDrawingAnnotatedPages(d,defects,allPins||[]);
+          const pages=await renderDrawingAnnotatedPages(d,(allDefectsForPins&&allDefectsForPins.length?allDefectsForPins:defects),allPins||[]);
           if(!pages||pages.length===0)continue;
           for(const pg of pages){
             doc.addPage();y=18;
@@ -5279,8 +5279,8 @@ function Report({defects,onEmailSetup,currentProject,company}){
           {showExportMenu&&(
             <div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(0,0,0,0.08)",zIndex:20,minWidth:160,overflow:"hidden"}}>
               <button onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📄 {t("report.export_csv")}</button>
-              <button onClick={()=>{setShowExportMenu(false);exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary).catch(e=>console.error("PDF export error:",e));}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📕 {t("report.export_pdf")}</button>
-              <button onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);setTimeout(()=>{exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary).catch(e=>console.error("PDF export error:",e));},600);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#ff6b00"}}>📊 {t("report.export_all")}</button>
+              <button onClick={()=>{setShowExportMenu(false);exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects).catch(e=>console.error("PDF export error:",e));}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📕 {t("report.export_pdf")}</button>
+              <button onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);setTimeout(()=>{exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects).catch(e=>console.error("PDF export error:",e));},600);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#ff6b00"}}>📊 {t("report.export_all")}</button>
               <button onClick={async()=>{setShowExportMenu(false);try{const result=await exportToGoogleSheets(incDefects?filtered:[],currentProject?.name,company?.companyName);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
             </div>
           )}
