@@ -2552,7 +2552,7 @@ function AuthScreen({onAuth,onFullSetup}){
           <img src="icons/icon-192.png" alt="SiteShrimp" style={{width:44,height:44,borderRadius:8,boxShadow:"0 4px 14px rgba(255,107,0,0.3)",flexShrink:0}}/>
           <div>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#fff",lineHeight:1}}>SITESHRIMP</div>
-            <div style={{color:"rgba(255,255,255,0.45)",fontSize:12}}>Construction Site Tracker</div>
+            <div style={{color:"rgba(255,255,255,0.45)",fontSize:12}}>Defects, Site and FM Issues Tracker (incl. Renovation)</div>
           </div>
         </div>
 
@@ -9514,10 +9514,17 @@ function App(){
                 <div>
                   {[
                     ["The Problem",[
-                      ["","Construction site management remains fragmented. Defects, site inspections, safety checks, and progress updates are often tracked across disconnected tools, creating lost records, delayed action, and unnecessary reporting effort."],
+                      ["","Managing defects, site issues, facilities problems, and renovation works remains fragmented. Whether you run a new build, a fit-out, an FM team, or a home renovation, inspections, punch lists, safety checks, and progress updates are tracked across disconnected tools — creating lost records, delayed action, and unnecessary reporting effort."],
                     ]],
                     ["What SiteShrimp Does",[
-                      ["","SiteShrimp helps teams manage defects, inspections, progress updates, safety audits, and site feedback in one place. It makes site reporting faster, clearer, and more accountable with photos, voice input, and AI-assisted workflows."],
+                      ["","SiteShrimp is for anyone who needs to log, track, and close out issues on a physical site — construction defects, building upkeep, FM work orders, renovation punch lists, interior fit-outs, and infrastructure works. It brings photos, voice input, and AI-assisted workflows into one place so site reporting is faster, clearer, and more accountable."],
+                    ]],
+                    ["Who It's For",[
+                      ["Developers & Contractors","Track defects and progress across new-build projects."],
+                      ["FM & Building Owners","Log recurring maintenance issues, service requests, and condition surveys."],
+                      ["Renovation & Interior Teams","Manage punch lists, snagging, and handover items for fit-outs and home renovations."],
+                      ["Consultants & Inspectors","Record site observations, safety findings, and instructions with photo evidence."],
+                      ["SMEs & Solo Users","Free to use, self-hosted if you prefer, no per-seat pricing."],
                     ]],
                     ["First-Time Setup",[
                       ["","1. Sign up and create your company."],
@@ -9528,22 +9535,22 @@ function App(){
                     ]],
                     ["Main Navigation",[
                       ["Dashboard","View active items, status counts, severity summary, alerts, and recent entries. AI Query bar for natural-language search."],
-                      ["Log (+)","Create a new entry with photos, voice input, and AI-assisted filling. Choose from 7 work categories."],
-                      ["Tag","Upload floor plans, pin defects on drawings, compare PDF revisions, and annotate with markup + photo overlays."],
+                      ["Log (+)","Create a new entry — defect, issue, work order, observation, or update — with photos, voice input, and AI-assisted filling. Choose from 7 work categories."],
+                      ["Tag","Upload floor plans, pin issues on drawings, compare PDF revisions, and annotate with markup + photo overlays. Works for defects, FM rounds, and renovation punch lists."],
                       ["Review","Browse, search, filter, and batch-update entries. AI natural-language search, verification photos, before/after slider."],
                       ["Report","Section-aware tally, filtered stats, email reports, Contract Advisor, CSV/PDF/Google Sheets export."],
                     ]],
                     [t("log.logging_entry"),[
-                      ["","1. Pick a work category (Landed, Highrise, Construction, Interior, FM, Infra, or Others)."],
-                      ["","2. Choose an entry type such as Defect, Observation, Instruction, or Update."],
+                      ["","1. Pick a work category that fits your site — Building Defects (Landed or Highrise), Construction, Interior/Renovation, Facilities Management, Infrastructure, or Others."],
+                      ["","2. Choose an entry type such as Defect, Observation, Instruction, Work Order, or Update."],
                       ["","3. Add or capture photos on site. A description OR a photo is enough to submit."],
                       ["","4. Use AI analysis to suggest the title, severity, description, trade, and assignee."],
-                      ["","5. Select component (158 options) and issue (296 options) from the translated dropdown lists."],
+                      ["","5. Select component (158 options) and issue (296 options) from the translated dropdown lists — covers building, MEP, finishes, FM, and renovation items."],
                       ["","6. Fill in location (Level > Zone > Room > Grid), cost, and time tracking."],
                       ["","7. Submit the entry, or continue in batch mode if logging multiple items in the same area."],
                     ]],
                     ["Tag & Compare",[
-                      ["","Open the Tag tab to upload floor plans (JPG, PNG, WEBP, TIF, PDF). Place pins on plans, create entries directly from a drawing, use the heatmap to spot problem areas, and compare PDF revisions with added/removed line detection. Overlay site photos onto comparisons with full markup tools (freehand, arrow, circle, text, select/move/delete)."],
+                      ["","Open the Tag tab to upload floor plans (JPG, PNG, WEBP, TIF, PDF). Place pins on plans, create entries directly from a drawing, use the heatmap to spot problem areas, and compare PDF revisions with added/removed line detection. Useful for defect walks, FM inspections, and renovation snagging. Overlay site photos onto comparisons with full markup tools (freehand, arrow, circle, text, select/move/delete)."],
                     ]],
                     [t("status.flow_title"),[
                       [t("status.open"),t("status.open_desc")],
@@ -9568,9 +9575,9 @@ function App(){
                     ]],
                     [t("help.practical_tips"),[
                       [t("messages.offline_use"),t("messages.offline_continue")],
-                      ["Multiple projects","Use the project selector to switch between project workspaces."],
+                      ["Multiple projects","Use the project selector to switch between sites, buildings, or renovation jobs."],
                       ["Export options","Report tab: CSV, PDF, Google Sheets, or all-in-one. Choose which sections (defects, drawings, comparisons) to include."],
-                      ["Contract Advisor","From the Report tab, tap ADVISOR to get AI-powered clause-to-defect mapping using contract PDFs."],
+                      ["Contract Advisor","From the Report tab, tap ADVISOR to get AI-powered clause-to-issue mapping using contract or scope-of-work PDFs — useful for defect claims, FM SLAs, and renovation variation disputes."],
                       [t("onboarding.voice_input"),t("onboarding.voice_tip")],
                       [t("log.batch_logging"),t("log.reuse_location_tip")],
                       ["Language","Switch language anytime from Settings → Language. All dropdowns (components, issues, levels, costs) are translated."],
