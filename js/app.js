@@ -8005,7 +8005,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   const hitResizeHandle=(p,idx)=>{
     const s=markupStrokes[idx];if(!s||s.type!=="photo")return false;
     const hx=s.pos.x+s.w,hy=s.pos.y+s.h;
-    return Math.abs(p.x-hx)<2.2&&Math.abs(p.y-hy)<2.2;
+    return Math.abs(p.x-hx)<3.8&&Math.abs(p.y-hy)<3.8;
   };
 
   const onMarkupDown=e=>{
@@ -8208,6 +8208,17 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     setMarkupStrokes(s=>s.filter((_,i)=>i!==markupSelectedIdx));
     setMarkupSelectedIdx(null);
   };
+  // Scale the currently selected photo by a multiplier (preserves aspect, clamps size)
+  const scaleSelectedPhoto=(mult)=>{
+    if(markupSelectedIdx==null)return;
+    setMarkupStrokes(strokes=>strokes.map((s,i)=>{
+      if(i!==markupSelectedIdx||s.type!=="photo")return s;
+      const aspect=s.h/s.w;
+      const nw=Math.max(5,Math.min(100-s.pos.x,s.w*mult));
+      const nh=Math.min(100-s.pos.y,nw*aspect);
+      return{...s,w:nw,h:nh};
+    }));
+  };
 
   const addNote=()=>{
     if(!pendingNotePos||!noteText.trim())return;
@@ -8326,7 +8337,10 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       return <g key={i}>
         <image href={s.dataUrl} x={s.pos.x} y={s.pos.y} width={s.w} height={s.h} preserveAspectRatio="xMidYMid meet"/>
         <rect x={s.pos.x} y={s.pos.y} width={s.w} height={s.h} fill="none" stroke={isSel?"#5856d6":"rgba(255,255,255,0.85)"} strokeWidth={isSel?"0.5":"0.25"} strokeDasharray={isSel?"1 0.6":undefined}/>
-        {isSel&&<rect x={s.pos.x+s.w-1.8} y={s.pos.y+s.h-1.8} width={1.8} height={1.8} fill="#5856d6" stroke="#fff" strokeWidth="0.2"/>}
+        {isSel&&<>
+          <circle cx={s.pos.x+s.w} cy={s.pos.y+s.h} r="2.4" fill="#5856d6" stroke="#fff" strokeWidth="0.45"/>
+          <path d={`M${s.pos.x+s.w-1.1} ${s.pos.y+s.h+0.2} L${s.pos.x+s.w+0.2} ${s.pos.y+s.h-1.1} M${s.pos.x+s.w-0.3} ${s.pos.y+s.h+0.9} L${s.pos.x+s.w+0.9} ${s.pos.y+s.h-0.3}`} stroke="#fff" strokeWidth="0.35" strokeLinecap="round"/>
+        </>}
       </g>;
     }
     return null;
@@ -8474,28 +8488,28 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       {markupMode&&(
         <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:6,background:"#1a1a1a",borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0,flexWrap:"wrap"}}>
           {[{id:"select",label:null,title:"Select, move, resize"},{id:"freehand",label:"✏",title:"Freehand"},{id:"highlight",label:null,title:"Highlight Marker"},{id:"line",label:null,title:"Line"},{id:"arrow",label:"↗",title:"Arrow"},{id:"polyline",label:null,title:"Polyline / Polygon"},{id:"circle",label:null,title:"Circle"},{id:"rect",label:null,title:"Rectangle"},{id:"cloud",label:null,title:"Revision Cloud"},{id:"dimension",label:null,title:"Dimension line"},{id:"text",label:"T",title:"Text"},{id:"callout",label:null,title:"Callout / Leader Note"},{id:"stamp",label:"⊞",title:"Stamp"}].map(t=>(
-            <button key={t.id} onClick={()=>{setMarkupTool(t.id);if(t.id!=="select")setMarkupSelectedIdx(null);}} title={t.title} style={{width:36,height:36,borderRadius:8,border:markupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:markupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              {t.id==="select"?<svg width="20" height="20" viewBox="0 0 20 20"><path d="M4 2 L4 15 L7.5 12 L10 17 L12 16 L9.5 11 L14 11 Z" fill="#fff" stroke="#fff" strokeWidth="0.8" strokeLinejoin="round"/></svg>
-              :t.id==="highlight"?<svg width="20" height="20" viewBox="0 0 20 20"><rect x="2" y="7" width="16" height="6" rx="1" fill="#fff" opacity="0.5"/><line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="4" strokeLinecap="round" opacity="0.4"/></svg>
-              :t.id==="polyline"?<svg width="20" height="20" viewBox="0 0 20 20"><polyline points="2,16 7,4 13,14 18,6" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              :t.id==="circle"?<svg width="20" height="20" viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="8" ry="8" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
-              :t.id==="rect"?<svg width="20" height="20" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
-              :t.id==="cloud"?<svg width="20" height="20" viewBox="0 0 20 20"><path d="M4,14 A3,3 0 0,1 4,8 A4,4 0 0,1 8,5 A4,4 0 0,1 14,5 A4,4 0 0,1 17,8 A3,3 0 0,1 17,14 Z" fill="none" stroke="#fff" strokeWidth="1.2"/></svg>
-              :t.id==="line"?<svg width="20" height="20" viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
-              :t.id==="dimension"?<svg width="20" height="20" viewBox="0 0 20 20"><line x1="3" y1="10" x2="17" y2="10" stroke="#fff" strokeWidth="1"/><line x1="3" y1="6" x2="3" y2="14" stroke="#fff" strokeWidth="1.5"/><line x1="17" y1="6" x2="17" y2="14" stroke="#fff" strokeWidth="1.5"/><text x="10" y="8" fill="#fff" fontSize="6" textAnchor="middle" fontFamily="sans-serif">d</text></svg>
-              :t.id==="callout"?<svg width="20" height="20" viewBox="0 0 20 20"><line x1="3" y1="16" x2="10" y2="6" stroke="#fff" strokeWidth="1.2"/><rect x="9" y="2" width="9" height="7" rx="1.5" fill="none" stroke="#fff" strokeWidth="1.2"/><text x="13.5" y="7.5" fill="#fff" fontSize="5" textAnchor="middle" fontFamily="sans-serif">A</text></svg>
+            <button key={t.id} onClick={()=>{setMarkupTool(t.id);if(t.id!=="select")setMarkupSelectedIdx(null);}} title={t.title} style={{width:32,height:32,borderRadius:7,border:markupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:markupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              {t.id==="select"?<svg width="16" height="16" viewBox="0 0 20 20"><path d="M4 2 L4 15 L7.5 12 L10 17 L12 16 L9.5 11 L14 11 Z" fill="#fff" stroke="#fff" strokeWidth="0.8" strokeLinejoin="round"/></svg>
+              :t.id==="highlight"?<svg width="16" height="16" viewBox="0 0 20 20"><rect x="2" y="7" width="16" height="6" rx="1" fill="#fff" opacity="0.5"/><line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="4" strokeLinecap="round" opacity="0.4"/></svg>
+              :t.id==="polyline"?<svg width="16" height="16" viewBox="0 0 20 20"><polyline points="2,16 7,4 13,14 18,6" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              :t.id==="circle"?<svg width="16" height="16" viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="8" ry="8" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
+              :t.id==="rect"?<svg width="16" height="16" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
+              :t.id==="cloud"?<svg width="16" height="16" viewBox="0 0 20 20"><path d="M4,14 A3,3 0 0,1 4,8 A4,4 0 0,1 8,5 A4,4 0 0,1 14,5 A4,4 0 0,1 17,8 A3,3 0 0,1 17,14 Z" fill="none" stroke="#fff" strokeWidth="1.2"/></svg>
+              :t.id==="line"?<svg width="16" height="16" viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              :t.id==="dimension"?<svg width="16" height="16" viewBox="0 0 20 20"><line x1="3" y1="10" x2="17" y2="10" stroke="#fff" strokeWidth="1"/><line x1="3" y1="6" x2="3" y2="14" stroke="#fff" strokeWidth="1.5"/><line x1="17" y1="6" x2="17" y2="14" stroke="#fff" strokeWidth="1.5"/><text x="10" y="8" fill="#fff" fontSize="6" textAnchor="middle" fontFamily="sans-serif">d</text></svg>
+              :t.id==="callout"?<svg width="16" height="16" viewBox="0 0 20 20"><line x1="3" y1="16" x2="10" y2="6" stroke="#fff" strokeWidth="1.2"/><rect x="9" y="2" width="9" height="7" rx="1.5" fill="none" stroke="#fff" strokeWidth="1.2"/><text x="13.5" y="7.5" fill="#fff" fontSize="5" textAnchor="middle" fontFamily="sans-serif">A</text></svg>
               :t.label}
             </button>
           ))}
-          <button onClick={()=>markupPhotoRef.current?.click()} title="Add photo — drag on drawing to place" style={{width:36,height:36,borderRadius:8,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>📷</button>
+          <button onClick={()=>markupPhotoRef.current?.click()} title="Add photo — drag on drawing to place" style={{width:32,height:32,borderRadius:7,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>📷</button>
           <input ref={markupPhotoRef} type="file" accept="image/*" capture="environment" onChange={handleMarkupPhotoFile} style={{display:"none"}}/>
-          <div style={{width:1,height:24,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
+          <div style={{width:1,height:22,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
           {/* Color — consolidated swatch dropdown */}
           {(()=>{
             const COLORS=["#ff3b30","#ff9500","#ffcc00","#34c759","#fff"];
             return <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(dvColorTimer.current);setShowDvColorMenu(true);}} onMouseLeave={()=>{dvColorTimer.current=setTimeout(()=>setShowDvColorMenu(false),250);}}>
-              <button onClick={()=>setShowDvColorMenu(v=>!v)} title="Color" style={{width:36,height:36,borderRadius:8,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
-                <span style={{width:18,height:18,borderRadius:"50%",background:markupColor,border:"1.5px solid rgba(0,0,0,0.5)",boxShadow:"0 0 0 1px rgba(255,255,255,0.4) inset"}}/>
+              <button onClick={()=>setShowDvColorMenu(v=>!v)} title="Color" style={{width:32,height:32,borderRadius:7,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+                <span style={{width:16,height:16,borderRadius:"50%",background:markupColor,border:"1.5px solid rgba(0,0,0,0.5)",boxShadow:"0 0 0 1px rgba(255,255,255,0.4) inset"}}/>
               </button>
               {showDvColorMenu&&<div onMouseEnter={()=>clearTimeout(dvColorTimer.current)} onMouseLeave={()=>{dvColorTimer.current=setTimeout(()=>setShowDvColorMenu(false),250);}} style={{position:"absolute",top:"100%",left:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:8,zIndex:100,boxShadow:"0 4px 12px rgba(0,0,0,0.4)",display:"flex",gap:6}}>
                 {COLORS.map(c=>(
@@ -8505,8 +8519,8 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
             </div>;
           })()}
           {/* Line style toggle — solid / dotted */}
-          <button onClick={()=>setMarkupLineStyle(s=>s==="solid"?"dotted":"solid")} title={markupLineStyle==="solid"?"Solid line (tap for dotted)":"Dotted line (tap for solid)"} style={{width:36,height:36,borderRadius:8,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <svg width="20" height="20" viewBox="0 0 20 20">
+          <button onClick={()=>setMarkupLineStyle(s=>s==="solid"?"dotted":"solid")} title={markupLineStyle==="solid"?"Solid line (tap for dotted)":"Dotted line (tap for solid)"} style={{width:32,height:32,borderRadius:7,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <svg width="16" height="16" viewBox="0 0 20 20">
               {markupLineStyle==="solid"
                 ?<line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
                 :<line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeDasharray="3 3"/>}
@@ -8519,7 +8533,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
             const activeSize=(sel&&sel.type==="text")?(sel.fontSize||2.4):markupTextSize;
             const activeLabel=SIZES.find(s=>Math.abs(activeSize-s.v)<0.01)?.id||"M";
             return <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(dvSizeTimer.current);setShowDvSizeMenu(true);}} onMouseLeave={()=>{dvSizeTimer.current=setTimeout(()=>setShowDvSizeMenu(false),250);}}>
-              <button onClick={()=>setShowDvSizeMenu(v=>!v)} title={`Text size ${activeLabel}`} style={{minWidth:36,height:36,padding:"0 8px",borderRadius:8,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{activeLabel}</button>
+              <button onClick={()=>setShowDvSizeMenu(v=>!v)} title={`Text size ${activeLabel}`} style={{minWidth:32,height:32,padding:"0 7px",borderRadius:7,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{activeLabel}</button>
               {showDvSizeMenu&&<div onMouseEnter={()=>clearTimeout(dvSizeTimer.current)} onMouseLeave={()=>{dvSizeTimer.current=setTimeout(()=>setShowDvSizeMenu(false),250);}} style={{position:"absolute",top:"100%",left:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:8,zIndex:100,boxShadow:"0 4px 12px rgba(0,0,0,0.4)",display:"flex",gap:4}}>
                 {SIZES.map(sz=>{
                   const isActive=activeLabel===sz.id;
@@ -8579,6 +8593,12 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
             </>
           )}
           <div style={{flex:1}}/>
+          {markupSelectedIdx!=null&&markupTool==="select"&&markupStrokes[markupSelectedIdx]?.type==="photo"&&(
+            <>
+              <button onClick={()=>scaleSelectedPhoto(0.85)} title="Scale down" style={{background:"rgba(88,86,214,0.22)",border:"1px solid rgba(88,86,214,0.4)",borderRadius:8,width:30,height:28,color:"#c9c7ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+              <button onClick={()=>scaleSelectedPhoto(1.18)} title="Scale up" style={{background:"rgba(88,86,214,0.22)",border:"1px solid rgba(88,86,214,0.4)",borderRadius:8,width:30,height:28,color:"#c9c7ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+            </>
+          )}
           {markupSelectedIdx!=null&&markupTool==="select"&&(
             <button onClick={deleteSelectedMarkup} style={{background:"rgba(255,59,48,0.25)",border:"1px solid rgba(255,59,48,0.45)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{t("actions.delete")}</button>
           )}
