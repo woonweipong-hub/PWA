@@ -1,6 +1,8 @@
 {
   "scripts": {
-    "build": "babel --presets @babel/preset-react js/app.js -o js/app.compiled.js",
+    "build": "babel --presets @babel/preset-react js/app.js -o js/app.compiled.js && node tools/bump-cache.js",
+    "bump-cache": "node tools/bump-cache.js",
+    "check:i18n": "node tools/check-i18n.js",
     "translate": "node tools/translate.js"
   },
   "devDependencies": {
