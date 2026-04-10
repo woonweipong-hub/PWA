@@ -2552,7 +2552,7 @@ function AuthScreen({onAuth,onFullSetup}){
           <img src="icons/icon-192.png" alt="SiteShrimp" style={{width:44,height:44,borderRadius:8,boxShadow:"0 4px 14px rgba(255,107,0,0.3)",flexShrink:0}}/>
           <div>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:"#fff",lineHeight:1}}>SITESHRIMP</div>
-            <div style={{color:"rgba(255,255,255,0.45)",fontSize:12}}>Defects, Site and FM Issues Tracker (incl. Renovation)</div>
+            <div style={{color:"rgba(255,255,255,0.45)",fontSize:12}}>{t("help.tracker_tagline")}</div>
           </div>
         </div>
 
@@ -5373,19 +5373,21 @@ function Report({defects,onEmailSetup,currentProject,company}){
 
       {/* Report tally — shows totals for all selected sections */}
       <div style={{background:"#1a1a1a",borderRadius:14,padding:20,marginBottom:16}}>
-        <div style={{display:"flex",gap:16,alignItems:"flex-end",flexWrap:"wrap"}}>
-          {incDefects&&<div style={{flex:1,minWidth:80}}>
-            <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:4}}>{t("report.defect_entries").toUpperCase()}</div>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:48,fontWeight:800,color:"#ff3b30",lineHeight:1}}>{total}</div>
+        <div style={{display:"flex",gap:12,alignItems:"stretch",flexWrap:"wrap"}}>
+          {incDefects&&<div style={{flex:1,minWidth:90,display:"flex",flexDirection:"column"}}>
+            <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6,minHeight:28,lineHeight:1.25}}>{t("report.defect_entries").toUpperCase()}</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:44,fontWeight:800,color:"#ff3b30",lineHeight:1}}>{total}</div>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0)",fontFamily:"'Barlow Condensed',sans-serif",marginTop:4,minHeight:14}}>&nbsp;</div>
           </div>}
-          {incDrawings&&<div style={{flex:1,minWidth:80}}>
-            <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:4}}>{t("report.pdf_drawings").toUpperCase()}</div>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:48,fontWeight:800,color:"#ff6b00",lineHeight:1}}>{drawingsWithAnnotations.length}</div>
-            <div style={{fontSize:10,color:"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",marginTop:4}}>{totalPins} {t("report.pins")} · {totalMarkups} {t("report.markups")} · {totalNotes} {t("report.notes")}</div>
+          {incDrawings&&<div style={{flex:1,minWidth:90,display:"flex",flexDirection:"column"}}>
+            <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6,minHeight:28,lineHeight:1.25}}>{t("report.pdf_drawings").toUpperCase()}</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:44,fontWeight:800,color:"#ff6b00",lineHeight:1}}>{drawingsWithAnnotations.length}</div>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",marginTop:4,minHeight:14,lineHeight:1.3}}>{totalPins} {t("report.pins")} · {totalMarkups} {t("report.markups")} · {totalNotes} {t("report.notes")}</div>
           </div>}
-          {incComparisons&&<div style={{flex:1,minWidth:80}}>
-            <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:4}}>{t("report.saved_comparisons").toUpperCase()}</div>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:48,fontWeight:800,color:"#5856d6",lineHeight:1}}>{savedComparisons.length}</div>
+          {incComparisons&&<div style={{flex:1,minWidth:90,display:"flex",flexDirection:"column"}}>
+            <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6,minHeight:28,lineHeight:1.25}}>{t("report.saved_comparisons").toUpperCase()}</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:44,fontWeight:800,color:"#5856d6",lineHeight:1}}>{savedComparisons.length}</div>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0)",fontFamily:"'Barlow Condensed',sans-serif",marginTop:4,minHeight:14}}>&nbsp;</div>
           </div>}
           {!incDefects&&!incDrawings&&!incComparisons&&<div>
             <div style={{fontSize:13,color:"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("report.no_sections_selected")}</div>
@@ -9513,18 +9515,18 @@ function App(){
               {helpTab==="help"&&(
                 <div>
                   {[
-                    ["The Problem",[
-                      ["","Managing defects, site issues, facilities problems, and renovation works remains fragmented. Whether you run a new build, a fit-out, an FM team, or a home renovation, inspections, punch lists, safety checks, and progress updates are tracked across disconnected tools — creating lost records, delayed action, and unnecessary reporting effort."],
+                    [t("help.problem"),[
+                      ["",t("help.problem_desc")],
                     ]],
-                    ["What SiteShrimp Does",[
-                      ["","SiteShrimp is for anyone who needs to log, track, and close out issues on a physical site — construction defects, building upkeep, FM work orders, renovation punch lists, interior fit-outs, and infrastructure works. It brings photos, voice input, and AI-assisted workflows into one place so site reporting is faster, clearer, and more accountable."],
+                    [t("help.what_it_does"),[
+                      ["",t("help.what_it_does_desc")],
                     ]],
-                    ["Who It's For",[
-                      ["Developers & Contractors","Track defects and progress across new-build projects."],
-                      ["FM & Building Owners","Log recurring maintenance issues, service requests, and condition surveys."],
-                      ["Renovation & Interior Teams","Manage punch lists, snagging, and handover items for fit-outs and home renovations."],
-                      ["Consultants & Inspectors","Record site observations, safety findings, and instructions with photo evidence."],
-                      ["SMEs & Solo Users","Free to use, self-hosted if you prefer, no per-seat pricing."],
+                    [t("help.who_its_for"),[
+                      [t("help.audience_developers"),t("help.audience_developers_desc")],
+                      [t("help.audience_fm"),t("help.audience_fm_desc")],
+                      [t("help.audience_renovation"),t("help.audience_renovation_desc")],
+                      [t("help.audience_consultants"),t("help.audience_consultants_desc")],
+                      [t("help.audience_smes"),t("help.audience_smes_desc")],
                     ]],
                     ["First-Time Setup",[
                       ["","1. Sign up and create your company."],
