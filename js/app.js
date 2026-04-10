@@ -7879,8 +7879,21 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   const[viewMode,setViewMode]=useState(false);
 
   // Zoom controls
-  const zoomIn=()=>setScale(s=>Math.min(s+0.3,5));
-  const zoomOut=()=>setScale(s=>Math.max(s-0.3,0.5));
+  // Zoom around the center of the visible canvas area so content stays put
+  const zoomBy=(delta)=>{
+    const el=containerRef.current;
+    const r=el?el.getBoundingClientRect():{width:0,height:0};
+    const cx=r.width/2,cy=r.height/2;
+    setScale(prev=>{
+      const next=Math.min(Math.max(prev+delta,0.5),5);
+      if(next===prev)return prev;
+      const ratio=next/prev;
+      setOffset(o=>({x:cx-(cx-o.x)*ratio,y:cy-(cy-o.y)*ratio}));
+      return next;
+    });
+  };
+  const zoomIn=()=>zoomBy(0.3);
+  const zoomOut=()=>zoomBy(-0.3);
   const resetZoom=()=>{setScale(1);setOffset({x:0,y:0});};
 
   // Mouse-wheel zoom at cursor position (desktop) — attached via useEffect for {passive:false}
@@ -7927,12 +7940,16 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   const onPointerDown=e=>{
     pointerCount.current++;
     if(viewMode)handleDoubleTap();
+    // Second pointer lands → cancel any in-progress pan so pinch takes over cleanly
+    if(pointerCount.current>=2){dragRef.current=null;return;}
     const needMultiTouch=markupMode||placing;
-    if(!needMultiTouch||pointerCount.current>=2){
+    if(!needMultiTouch){
       dragRef.current={startX:e.clientX-offset.x,startY:e.clientY-offset.y};
     }
   };
   const onPointerMove=e=>{
+    // When 2+ fingers are down, onTouchMove handles pinch+pan; skip pointer pan to avoid jitter
+    if(pointerCount.current>=2)return;
     if(dragRef.current){setOffset({x:e.clientX-dragRef.current.startX,y:e.clientY-dragRef.current.startY});}
   };
   const onPointerUp=()=>{pointerCount.current=Math.max(0,pointerCount.current-1);if(pointerCount.current===0)dragRef.current=null;};
@@ -8433,23 +8450,6 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
         </button>
       </div>
 
-      {/* Zoom controls — pushed down when the markup toolbar (and pending photo banner) are visible */}
-      <div style={{position:"absolute",right:12,top:markupMode?(pendingPhoto?170:124):70,zIndex:10,display:"flex",flexDirection:"column",gap:6}}>
-        <button onClick={zoomIn} style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
-        <button onClick={resetZoom} style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{Math.round(scale*100)}%</button>
-        <button onClick={zoomOut} style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
-        {pagePins.length>0&&<button onClick={()=>setShowHeatmap(!showHeatmap)} style={{width:36,height:36,borderRadius:10,background:showHeatmap?"rgba(255,59,48,0.6)":"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",marginTop:4}} title="Heatmap">🔥</button>}
-      </div>
-
-      {/* PDF page navigation — pushed down when the markup toolbar (and pending photo banner) are visible */}
-      {isPdf&&pdfPageCount>1&&(
-        <div style={{position:"absolute",left:12,top:markupMode?(pendingPhoto?170:124):70,zIndex:10,display:"flex",flexDirection:"column",gap:6}}>
-          <button onClick={prevPage} disabled={currentPage<=1} style={{width:36,height:36,borderRadius:10,background:currentPage<=1?"rgba(0,0,0,0.3)":"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:16,cursor:currentPage<=1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>▲</button>
-          <div style={{width:36,height:36,borderRadius:10,background:"rgba(0,0,0,0.6)",color:"#fff",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{currentPage}</div>
-          <button onClick={nextPage} disabled={currentPage>=pdfPageCount} style={{width:36,height:36,borderRadius:10,background:currentPage>=pdfPageCount?"rgba(0,0,0,0.3)":"rgba(0,0,0,0.6)",border:"none",color:"#fff",fontSize:16,cursor:currentPage>=pdfPageCount?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>▼</button>
-        </div>
-      )}
-
       {/* Placing mode indicator */}
       {placing&&!viewMode&&<div style={{background:"#ff6b00",padding:"8px 16px",textAlign:"center",color:"#fff",fontSize:12,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",flexShrink:0}}>TAP ON THE DRAWING TO PLACE A PIN</div>}
       {viewMode&&<div style={{background:"#34c759",padding:"6px 16px",textAlign:"center",color:"#fff",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",flexShrink:0}}>VIEW MODE — pinch or scroll to zoom · drag to pan · tap VIEW to exit</div>}
@@ -8584,6 +8584,21 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       <div ref={containerRef} style={{flex:1,overflow:"hidden",position:"relative",cursor:markupMode?"crosshair":placing&&!viewMode?"crosshair":"grab",touchAction:"none"}}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
         onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+        {/* Zoom controls — inside the canvas so they never overlap toolbars */}
+        <div style={{position:"absolute",right:10,top:10,zIndex:10,display:"flex",flexDirection:"column",gap:5,pointerEvents:"auto"}} onPointerDown={e=>e.stopPropagation()} onTouchStart={e=>e.stopPropagation()}>
+          <button onClick={zoomIn} style={{width:34,height:34,borderRadius:10,background:"rgba(0,0,0,0.62)",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 6px rgba(0,0,0,0.35)"}}>+</button>
+          <button onClick={resetZoom} style={{width:34,height:34,borderRadius:10,background:"rgba(0,0,0,0.62)",border:"none",color:"#fff",fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,boxShadow:"0 2px 6px rgba(0,0,0,0.35)"}}>{Math.round(scale*100)}%</button>
+          <button onClick={zoomOut} style={{width:34,height:34,borderRadius:10,background:"rgba(0,0,0,0.62)",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 6px rgba(0,0,0,0.35)"}}>−</button>
+          {pagePins.length>0&&<button onClick={()=>setShowHeatmap(!showHeatmap)} style={{width:34,height:34,borderRadius:10,background:showHeatmap?"rgba(255,59,48,0.6)":"rgba(0,0,0,0.62)",border:"none",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",marginTop:4,boxShadow:"0 2px 6px rgba(0,0,0,0.35)"}} title="Heatmap">🔥</button>}
+        </div>
+        {/* PDF page navigation — also inside the canvas */}
+        {isPdf&&pdfPageCount>1&&(
+          <div style={{position:"absolute",left:10,top:10,zIndex:10,display:"flex",flexDirection:"column",gap:5,pointerEvents:"auto"}} onPointerDown={e=>e.stopPropagation()} onTouchStart={e=>e.stopPropagation()}>
+            <button onClick={prevPage} disabled={currentPage<=1} style={{width:34,height:34,borderRadius:10,background:currentPage<=1?"rgba(0,0,0,0.3)":"rgba(0,0,0,0.62)",border:"none",color:"#fff",fontSize:16,cursor:currentPage<=1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 6px rgba(0,0,0,0.35)"}}>▲</button>
+            <div style={{width:34,height:34,borderRadius:10,background:"rgba(0,0,0,0.62)",color:"#fff",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,boxShadow:"0 2px 6px rgba(0,0,0,0.35)"}}>{currentPage}</div>
+            <button onClick={nextPage} disabled={currentPage>=pdfPageCount} style={{width:34,height:34,borderRadius:10,background:currentPage>=pdfPageCount?"rgba(0,0,0,0.3)":"rgba(0,0,0,0.62)",border:"none",color:"#fff",fontSize:16,cursor:currentPage>=pdfPageCount?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 6px rgba(0,0,0,0.35)"}}>▼</button>
+          </div>
+        )}
         {isImage?(
           <div style={{position:"relative",transform:`scale(${scale}) translate(${offset.x/scale}px,${offset.y/scale}px)`,transformOrigin:"0 0",transition:dragRef.current?"none":"transform 0.15s ease",maxWidth:"100%",margin:"0 auto"}}>
             <img ref={imgRef} src={fileUrl} alt={drawing.name} onClick={markupMode?undefined:handleDrawingClick}
