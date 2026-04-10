@@ -1348,7 +1348,8 @@ function exportReportAll(defects,drawings,savedComparisons,projectName){
 }
 
 // Full report export — PDF version with professional layout
-async function exportReportPdf(defects,drawings,savedComparisons,projectName,companyName,allPins,contractAdvisory,allDefectsForPins){
+async function exportReportPdf(defects,drawings,savedComparisons,projectName,companyName,allPins,contractAdvisory,allDefectsForPins,onProgress){
+  if(typeof onProgress==="function")onProgress("Preparing report…");
   const doc=new jspdf.jsPDF("p","mm","a4");
   const pageW=doc.internal.pageSize.getWidth();
   const pageH=doc.internal.pageSize.getHeight();
@@ -1779,8 +1780,11 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
       doc.autoTable({startY:y,head:dHeaders,body:dRows,margin:{left:margin,right:margin},styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:orange,textColor:255,fontStyle:"bold"}});
       y=doc.lastAutoTable.finalY+8;
 
+      let drawingIdx=0;
       for(const d of annotated){
+        drawingIdx++;
         try{
+          if(typeof onProgress==="function")onProgress(`Rendering drawing ${drawingIdx}/${annotated.length}…`);
           const pages=await renderDrawingAnnotatedPages(d,(allDefectsForPins&&allDefectsForPins.length?allDefectsForPins:defects),allPins||[]);
           if(!pages||pages.length===0)continue;
           for(const pg of pages){
@@ -1885,6 +1889,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     doc.setTextColor(0);
   }
 
+  if(typeof onProgress==="function")onProgress("Saving PDF…");
   doc.save(`SiteShrimp_Report_${(projectName||"Export").replace(/\s/g,"_")}_${now.toLocaleDateString("en-GB").replace(/\//g,"-")}.pdf`);
 }
 
@@ -2129,15 +2134,24 @@ function generateEmailHTML(defects,projectName,companyName,opts={}){
   </body></html>`;
 }
 
-function generateDrawingsEmailHTML(drawings){
+function generateDrawingsEmailHTML(drawings,allPins,allDefects){
   if(!drawings||!drawings.length)return"";
+  const pinsAll=allPins||[];
+  const defectsAll=allDefects||[];
   let html=`<div style="background:#fff;padding:18px;border-radius:12px;margin-bottom:14px"><div style="font-size:10px;font-weight:bold;color:#999;letter-spacing:2px;margin-bottom:12px">📐 DRAWING ANNOTATIONS</div>`;
   drawings.forEach(d=>{
     const notes=getDrawingNotes(d.id);
     const markups=getDrawingMarkup(d.id);
-    const total=notes.length+markups.length;
+    const dPins=pinsAll.filter(p=>p.drawingId===d.id);
+    const total=notes.length+markups.length+dPins.length;
     if(total===0)return;
     html+=`<div style="margin-bottom:12px;padding:12px;border:1px solid #e5e5e5;border-radius:8px;border-left:4px solid #ff6b00"><div style="font-weight:bold;font-size:13px;margin-bottom:6px">${sanitize(d.name)} <span style="color:#999;font-weight:normal;font-size:11px">(${total} annotation${total>1?"s":""})</span></div>`;
+    dPins.forEach(p=>{
+      const df=defectsAll.find(x=>x.id===p.entryId);
+      const sev=df?.severity||"—";
+      const sevColor=SEV_COLOR&&SEV_COLOR[sev]?SEV_COLOR[sev]:"#ff3b30";
+      html+=`<div style="font-size:12px;padding:4px 8px;margin:3px 0;background:#fff3f3;border-radius:4px"><span style="color:${sevColor};font-weight:bold">PIN:</span> ${sanitize(df?.title||"Linked entry")} <span style="color:#999;font-size:10px">— ${sanitize(sev)}${df?.status?" · "+sanitize(df.status):""}</span></div>`;
+    });
     notes.forEach(n=>{html+=`<div style="font-size:12px;padding:4px 8px;margin:3px 0;background:#f5f3ff;border-radius:4px"><span style="color:#5856d6;font-weight:bold">NOTE:</span> ${sanitize(n.text)} <span style="color:#999;font-size:10px">— ${sanitize(n.createdBy||"")}</span></div>`;});
     markups.filter(s=>s.type==="text"&&s.text).forEach(s=>{html+=`<div style="font-size:12px;padding:4px 8px;margin:3px 0;background:#fff8f3;border-radius:4px"><span style="color:#ff6b00;font-weight:bold">MARKUP:</span> ${sanitize(s.text)}</div>`;});
     const nonText=markups.filter(s=>s.type!=="text");
@@ -2322,6 +2336,7 @@ function SettingsBack({onClose,title}){
 // (same key as index.html reads on startup).
 function ServerUrlConfig(){
   const[open,setOpen]=useState(false);
+  const[showGuide,setShowGuide]=useState(false);
   const[url,setUrl]=useState(()=>localStorage.getItem('pb_url')||'https://api.siteshrimp.org');
   const[saved,setSaved]=useState(false);
   const apply=()=>{
@@ -2331,6 +2346,10 @@ function ServerUrlConfig(){
     setSaved(true);
     setTimeout(()=>window.location.reload(),800);
   };
+  const reset=()=>{
+    setUrl('https://api.siteshrimp.org');
+  };
+  const linkStyle={color:'#ff6b00',textDecoration:'underline',fontWeight:600};
   return(
     <div style={{marginTop:16}}>
       <button onClick={()=>setOpen(o=>!o)} style={{background:'none',border:'none',color:'rgba(255,255,255,0.25)',fontSize:12,cursor:'pointer',width:'100%',textAlign:'center',fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:'0.06em',padding:'4px 0'}}>
@@ -2345,7 +2364,23 @@ function ServerUrlConfig(){
               {saved?'✓':t("actions.set")}
             </button>
           </div>
-          <div style={{fontSize:11,color:'rgba(255,255,255,0.2)',marginTop:6}}>Changing URL will reload the app.</div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:6}}>
+            <button onClick={reset} style={{background:'none',border:'none',color:'rgba(255,255,255,0.3)',fontSize:11,cursor:'pointer',padding:0,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>↺ reset to default</button>
+            <span style={{fontSize:11,color:'rgba(255,255,255,0.2)'}}>Reloads on save</span>
+          </div>
+          <button onClick={()=>setShowGuide(g=>!g)} style={{background:'none',border:'none',color:'#ff6b00',fontSize:11,cursor:'pointer',width:'100%',textAlign:'left',padding:'8px 0 0',fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
+            {showGuide?'▼':'▶'} How do I run my own PocketBase?
+          </button>
+          {showGuide&&(
+            <div style={{marginTop:6,padding:'10px 12px',background:'rgba(255,107,0,0.06)',borderRadius:8,border:'1px solid rgba(255,107,0,0.15)',fontSize:11,color:'rgba(255,255,255,0.55)',lineHeight:1.7}}>
+              <div style={{color:'#ff9500',fontWeight:700,marginBottom:6}}>QUICK START</div>
+              <div style={{marginBottom:4}}>1. Download from <a href="https://pocketbase.io/docs" target="_blank" rel="noopener" style={linkStyle}>pocketbase.io/docs</a></div>
+              <div style={{marginBottom:4}}>2. Unzip and run <code style={{background:'rgba(0,0,0,0.4)',padding:'1px 5px',borderRadius:4}}>./pocketbase serve</code></div>
+              <div style={{marginBottom:4}}>3. Open <code style={{background:'rgba(0,0,0,0.4)',padding:'1px 5px',borderRadius:4}}>http://127.0.0.1:8090/_/</code> and create an admin</div>
+              <div style={{marginBottom:4}}>4. Paste that URL above and click Set</div>
+              <div style={{marginTop:8,paddingTop:8,borderTop:'1px dashed rgba(255,255,255,0.1)',fontSize:10,color:'rgba(255,255,255,0.4)'}}>For public access over HTTPS, put PocketBase behind a reverse proxy (Caddy, Nginx, or <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/" target="_blank" rel="noopener" style={linkStyle}>Cloudflare Tunnel</a>). Full hosting guide available in Help → Hosting after you sign in.</div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -5104,6 +5139,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
   const[sevFilter,setSevFilter]=useState([]);const[statusFilter,setStatusFilter]=useState([]);
   const[assigneeFilter,setAssigneeFilter]=useState([]);const[dateFrom,setDateFrom]=useState("");const[dateTo,setDateTo]=useState("");
   const[showPreview,setShowPreview]=useState(false);
+  const[pdfExport,setPdfExport]=useState({active:false,label:""});
   // Section toggles for email content
   const[incDefects,setIncDefects]=useState(true);
   const[incDrawings,setIncDrawings]=useState(true);
@@ -5152,7 +5188,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
   });
 
   const buildEmailOpts=()=>({
-    drawingsHtml:incDrawings?generateDrawingsEmailHTML(reportDrawings):"",
+    drawingsHtml:incDrawings?generateDrawingsEmailHTML(reportDrawings,reportPins,defects):"",
     comparisonsHtml:incComparisons?generateComparisonsEmailHTML(savedComparisons):""
   });
 
@@ -5275,12 +5311,12 @@ function Report({defects,onEmailSetup,currentProject,company}){
         <button onClick={()=>setShowContractAdvisor(v=>!v)} style={{flex:1,background:showContractAdvisor?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"10px 6px",color:showContractAdvisor?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>⚖️ {t("report.advisor")}</button>
         <button onClick={()=>setShowPreview(p=>!p)} style={{flex:1,background:showPreview?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"10px 6px",color:showPreview?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>👁 {t("report.preview")}</button>
         <div style={{position:"relative",flex:1,display:"flex"}}>
-          <button onClick={()=>setShowExportMenu(m=>!m)} style={{flex:1,background:showExportMenu?"#1a1a1a":"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"10px 6px",color:showExportMenu?"#fff":"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>📊 {t("report.export_btn")}</button>
+          <button disabled={pdfExport.active} onClick={()=>setShowExportMenu(m=>!m)} style={{flex:1,background:pdfExport.active?"rgba(255,107,0,0.15)":(showExportMenu?"#1a1a1a":"rgba(0,0,0,0.07)"),border:"none",borderRadius:10,padding:"10px 6px",color:pdfExport.active?"#ff6b00":(showExportMenu?"#fff":"#1a1a1a"),fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:pdfExport.active?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>{pdfExport.active?<><Spin size={12}/> {pdfExport.label||"Exporting…"}</>:<>📊 {t("report.export_btn")}</>}</button>
           {showExportMenu&&(
             <div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(0,0,0,0.08)",zIndex:20,minWidth:160,overflow:"hidden"}}>
-              <button onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📄 {t("report.export_csv")}</button>
-              <button onClick={()=>{setShowExportMenu(false);exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects).catch(e=>console.error("PDF export error:",e));}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a"}}>📕 {t("report.export_pdf")}</button>
-              <button onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);setTimeout(()=>{exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects).catch(e=>console.error("PDF export error:",e));},600);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#ff6b00"}}>📊 {t("report.export_all")}</button>
+              <button disabled={pdfExport.active} onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}));}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")}</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);setPdfExport({active:true,label:"Preparing report…"});try{await new Promise(r=>setTimeout(r,600));await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}));}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
               <button onClick={async()=>{setShowExportMenu(false);try{const result=await exportToGoogleSheets(incDefects?filtered:[],currentProject?.name,company?.companyName);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
             </div>
           )}
@@ -6552,7 +6588,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
   };
 
   const exportMarkupsPdf=async()=>{
-    const markedUp=drawings.filter(d=>getDrawingMarkup(d.id).length>0||getDrawingNotes(d.id).length>0);
+    const markedUp=drawings.filter(d=>getDrawingMarkup(d.id).length>0||getDrawingNotes(d.id).length>0||allPins.some(p=>p.drawingId===d.id));
     if(!markedUp.length){alert("No markup annotations to export.");return;}
     const w=window.open("","_blank");if(!w){alert("Popup blocked.");return;}
     w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileTimestamp()}-Markup Annotations</title><style>body{font-family:Arial,sans-serif;padding:22px;color:#111;max-width:900px;margin:0 auto}h1{margin:0 0 4px;font-size:20px}.meta{font-size:12px;color:#444;margin-bottom:10px}.loading{padding:40px;text-align:center;color:#888;font-size:14px}</style></head><body><div class="loading">Rendering annotated drawings… please wait.</div></body></html>`);
@@ -6562,7 +6598,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       for(const d of markedUp){
         rendered[d.id]=await renderDrawingAnnotatedPages(d,defects,allPins);
       }
-      const annotationListHtml=generateDrawingsEmailHTML(drawings);
+      const annotationListHtml=generateDrawingsEmailHTML(drawings,allPins,defects);
       let imagesHtml="";
       markedUp.forEach(d=>{
         const pages=rendered[d.id]||[];
@@ -9638,21 +9674,45 @@ function App(){
                     return React.createElement(React.Fragment,null,
                       // PocketBase Section
                       React.createElement(Section,{icon:"🗄",title:"POCKETBASE — YOUR BACKEND",color:"#ff6b00"},
-                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"PocketBase is a single-file backend. Download, run, and your app has authentication, database, and file storage."),
-                        React.createElement(Step,{n:"1"},React.createElement(React.Fragment,null,"Download PocketBase from ",React.createElement(Link,{href:"https://pocketbase.io/docs"},"pocketbase.io/docs"))),
-                        React.createElement(Step,{n:"2"},"Unzip and run: ./pocketbase serve"),
-                        React.createElement(Step,{n:"3"},React.createElement(React.Fragment,null,"Open ",React.createElement(Link,{href:"http://127.0.0.1:8090/_/"},"127.0.0.1:8090/_/")," to create your admin account")),
-                        React.createElement(Step,{n:"4"},"In SiteShrimp → Settings ⚙ → Server URL → enter your PocketBase address"),
-                        React.createElement("div",{style:{background:"rgba(255,149,0,0.1)",borderRadius:8,padding:"10px 12px",marginTop:10}},
-                          React.createElement("div",{style:{fontSize:11,color:"#ff9500",lineHeight:1.6,fontWeight:600}},"HOSTING OPTIONS"),
+                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"PocketBase is a single-file backend. One executable gives you authentication, database, file storage, and real-time sync. Perfect for small teams or private deployments."),
+                        React.createElement("div",{style:{fontSize:11,color:"#ff9500",fontWeight:700,marginBottom:6,letterSpacing:"0.06em"}},"QUICK START (5 MINUTES)"),
+                        React.createElement(Step,{n:"1"},React.createElement(React.Fragment,null,"Download the binary for your OS from ",React.createElement(Link,{href:"https://pocketbase.io/docs/"},"pocketbase.io/docs"),".")),
+                        React.createElement(Step,{n:"2"},React.createElement(React.Fragment,null,"Unzip it, then run:",React.createElement("pre",{style:{background:"rgba(0,0,0,0.4)",borderRadius:6,padding:"6px 10px",fontSize:11,color:"#ff9500",marginTop:4,overflowX:"auto"}},"./pocketbase serve"))),
+                        React.createElement(Step,{n:"3"},React.createElement(React.Fragment,null,"Open ",React.createElement(Link,{href:"http://127.0.0.1:8090/_/"},"http://127.0.0.1:8090/_/")," and create your admin account.")),
+                        React.createElement(Step,{n:"4"},React.createElement(React.Fragment,null,"On the SiteShrimp login page, expand ⚙ ",React.createElement("b",null,"Change server URL")," and paste your PocketBase address (e.g. ",React.createElement("code",{style:{background:"rgba(0,0,0,0.4)",padding:"1px 5px",borderRadius:4,fontSize:11}},"http://127.0.0.1:8090"),"), then Set.")),
+                        React.createElement(Step,{n:"5"},"Log in and the app will auto-create the collections it needs on first use."),
+
+                        React.createElement("div",{style:{fontSize:11,color:"#ff9500",fontWeight:700,marginTop:16,marginBottom:6,letterSpacing:"0.06em"}},"PUBLIC HTTPS — PICK ONE"),
+                        React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.45)",lineHeight:1.7,marginBottom:8}},"PocketBase speaks HTTP out of the box. For phones outside your LAN, put it behind HTTPS using any of:"),
+                        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:5}},
+                          React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.45)",lineHeight:1.6}},React.createElement(React.Fragment,null,"• ",React.createElement(Link,{href:"https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/"},"Cloudflare Tunnel")," — free, no open ports, handles TLS automatically")),
+                          React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.45)",lineHeight:1.6}},React.createElement(React.Fragment,null,"• ",React.createElement(Link,{href:"https://caddyserver.com/docs/quick-starts/reverse-proxy"},"Caddy")," — one-liner reverse proxy with automatic Let's Encrypt certs")),
+                          React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.45)",lineHeight:1.6}},React.createElement(React.Fragment,null,"• ",React.createElement(Link,{href:"https://nginx.org/en/docs/http/configuring_https_servers.html"},"Nginx")," + ",React.createElement(Link,{href:"https://certbot.eff.org/"},"Certbot")," — traditional stack if you already run Nginx")),
+                          React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.45)",lineHeight:1.6}},"• Use PocketBase's built-in auto-TLS: ",React.createElement("code",{style:{background:"rgba(0,0,0,0.4)",padding:"1px 5px",borderRadius:4,fontSize:11}},"./pocketbase serve --https=yourdomain.com:443"))
+                        ),
+
+                        React.createElement("div",{style:{fontSize:11,color:"#ff9500",fontWeight:700,marginTop:16,marginBottom:6,letterSpacing:"0.06em"}},"KEEP IT RUNNING"),
+                        React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.45)",lineHeight:1.7,marginBottom:8}},"When you close the terminal, PocketBase stops. Run it as a service so it survives reboots:"),
+                        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:5}},
+                          React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.45)",lineHeight:1.6}},React.createElement(React.Fragment,null,"• ",React.createElement("b",null,"Linux")," — create a ",React.createElement(Link,{href:"https://pocketbase.io/docs/going-to-production/"},"systemd unit")," (recommended for GCP/Oracle/DigitalOcean VMs)")),
+                          React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.45)",lineHeight:1.6}},React.createElement(React.Fragment,null,"• ",React.createElement("b",null,"Windows")," — use ",React.createElement(Link,{href:"https://nssm.cc/"},"NSSM")," to install it as a Windows service")),
+                          React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.45)",lineHeight:1.6}},React.createElement(React.Fragment,null,"• ",React.createElement("b",null,"macOS")," — create a launchd plist in ~/Library/LaunchAgents")),
+                          React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.45)",lineHeight:1.6}},React.createElement(React.Fragment,null,"• ",React.createElement("b",null,"Docker")," — official image at ",React.createElement(Link,{href:"https://hub.docker.com/r/spectado/pocketbase"},"hub.docker.com/r/spectado/pocketbase")))
+                        ),
+
+                        React.createElement("div",{style:{fontSize:11,color:"#ff9500",fontWeight:700,marginTop:16,marginBottom:6,letterSpacing:"0.06em"}},"BACKUP YOUR DATA"),
+                        React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.45)",lineHeight:1.7}},React.createElement(React.Fragment,null,"All data lives in the ",React.createElement("code",{style:{background:"rgba(0,0,0,0.4)",padding:"1px 5px",borderRadius:4,fontSize:11}},"pb_data/")," folder (SQLite + uploaded files). Copy this folder to back up. PocketBase Admin UI also has a one-click Backup button under Settings.")),
+
+                        React.createElement("div",{style:{background:"rgba(255,149,0,0.1)",borderRadius:8,padding:"10px 12px",marginTop:12}},
+                          React.createElement("div",{style:{fontSize:11,color:"#ff9500",lineHeight:1.6,fontWeight:600}},"WHERE TO HOST"),
                           React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.4)",lineHeight:1.7,marginTop:4}},
                             React.createElement(React.Fragment,null,
-                              "• Your own laptop/PC (for testing)\n",
-                              "• ",React.createElement(Link,{href:"https://cloud.google.com/free"},"Google Cloud (GCP)")," — free tier VM\n",
-                              "• ",React.createElement(Link,{href:"https://www.oracle.com/cloud/free/"},"Oracle Cloud")," — always-free ARM VM\n",
-                              "• ",React.createElement(Link,{href:"https://www.vultr.com/"},"Vultr")," / ",React.createElement(Link,{href:"https://www.digitalocean.com/"},"DigitalOcean")," — $5/mo VPS\n",
+                              "• Your own laptop/PC (testing, LAN-only use)\n",
+                              "• ",React.createElement(Link,{href:"https://cloud.google.com/free"},"Google Cloud (GCP)")," — free e2-micro VM\n",
+                              "• ",React.createElement(Link,{href:"https://www.oracle.com/cloud/free/"},"Oracle Cloud")," — always-free ARM Ampere VMs (4 CPU / 24 GB RAM!)\n",
+                              "• ",React.createElement(Link,{href:"https://www.vultr.com/"},"Vultr")," / ",React.createElement(Link,{href:"https://www.digitalocean.com/"},"DigitalOcean")," / ",React.createElement(Link,{href:"https://www.hetzner.com/cloud"},"Hetzner")," — $4–6/mo VPS\n",
                               "• ",React.createElement(Link,{href:"https://fly.io/"},"Fly.io")," — free tier with auto-deploy\n",
-                              "• ",React.createElement(Link,{href:"https://railway.app/"},"Railway")," — one-click deploy"
+                              "• ",React.createElement(Link,{href:"https://railway.app/"},"Railway")," / ",React.createElement(Link,{href:"https://www.pockethost.io/"},"PocketHost")," — one-click managed PocketBase"
                             )
                           )
                         )
