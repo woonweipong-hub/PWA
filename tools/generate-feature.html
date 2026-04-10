@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head><title>Resize to Feature Graphic 1024×500</title></head>
+<body style="margin:0;background:#222;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh">
+<p>Processing Head.JPG → 1024 × 500...</p>
+<canvas id="c" width="1024" height="500" style="border:1px solid #555"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = 1024, H = 500;
+
+const img = new Image();
+img.onload = () => {
+  // Sample background color from edges
+  const tmp = document.createElement('canvas');
+  tmp.width = img.width; tmp.height = img.height;
+  const tctx = tmp.getContext('2d');
+  tctx.drawImage(img, 0, 0);
+
+  const samples = [];
+  const pts = [
+    [2,2],[img.width-3,2],[2,img.height-3],[img.width-3,img.height-3],
+    [Math.floor(img.width/2),2],[2,Math.floor(img.height/2)],
+    [img.width-3,Math.floor(img.height/2)],[Math.floor(img.width/2),img.height-3]
+  ];
+  for (const [x,y] of pts) {
+    const d = tctx.getImageData(x,y,1,1).data;
+    samples.push([d[0],d[1],d[2]]);
+  }
+  const avg = samples.reduce((a,c)=>[a[0]+c[0],a[1]+c[1],a[2]+c[2]],[0,0,0]);
+  const bgColor = `rgb(${Math.round(avg[0]/samples.length)},${Math.round(avg[1]/samples.length)},${Math.round(avg[2]/samples.length)})`;
+
+  // Fill background
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  // Scale proportionally
+  const scale = Math.min(W / img.width, H / img.height);
+  const drawW = img.width * scale;
+  const drawH = img.height * scale;
+  const drawX = (W - drawW) / 2;
+  const drawY = (H - drawH) / 2;
+
+  // Draw image centered
+  ctx.drawImage(img, drawX, drawY, drawW, drawH);
+
+  // Feather edges if needed
+  const feather = 20;
+  if (drawH < H) {
+    const tf = ctx.createLinearGradient(0, drawY, 0, drawY + feather);
+    tf.addColorStop(0, bgColor); tf.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = tf; ctx.fillRect(drawX, drawY, drawW, feather);
+    const bf = ctx.createLinearGradient(0, drawY + drawH - feather, 0, drawY + drawH);
+    bf.addColorStop(0, 'rgba(0,0,0,0)'); bf.addColorStop(1, bgColor);
+    ctx.fillStyle = bf; ctx.fillRect(drawX, drawY + drawH - feather, drawW, feather);
+  }
+  if (drawW < W) {
+    const lf = ctx.createLinearGradient(drawX, 0, drawX + feather, 0);
+    lf.addColorStop(0, bgColor); lf.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = lf; ctx.fillRect(drawX, drawY, feather, drawH);
+    const rf = ctx.createLinearGradient(drawX + drawW - feather, 0, drawX + drawW, 0);
+    rf.addColorStop(0, 'rgba(0,0,0,0)'); rf.addColorStop(1, bgColor);
+    ctx.fillStyle = rf; ctx.fillRect(drawX + drawW - feather, drawY, feather, drawH);
+  }
+
+  // Auto-download
+  setTimeout(() => {
+    const link = document.createElement('a');
+    link.download = 'Feature.jpg';
+    link.href = canvas.toDataURL('image/jpeg', 0.92);
+    link.click();
+    document.querySelector('p').textContent = 'Done! Feature.jpg downloaded (1024×500).';
+  }, 500);
+};
+
+img.onerror = () => {
+  document.querySelector('p').innerHTML = 'Could not load Head.JPG. <label style="color:#ff6b00;cursor:pointer;text-decoration:underline">Click to select it<input type="file" accept="image/*" style="display:none" id="pick"></label>';
+  document.getElementById('pick').onchange = e => {
+    if (e.target.files[0]) img.src = URL.createObjectURL(e.target.files[0]);
+  };
+};
+
+img.src = 'Head.JPG';
+</script>
+</body>
+</html>
