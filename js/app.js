@@ -9684,6 +9684,8 @@ function App(){
                       [t("log.batch_logging"),t("log.reuse_location_tip")],
                       [t("help.tip_language"),t("help.tip_language_desc")],
                       [t("help.tip_batch_update"),t("help.tip_batch_update_desc")],
+                      [t("help.tip_drawing_gestures"),t("help.tip_drawing_gestures_desc")],
+                      [t("help.tip_photo_scale"),t("help.tip_photo_scale_desc")],
                     ]],
                   ].map(([section,items])=>(
                     <div key={section} style={{marginBottom:24}}>

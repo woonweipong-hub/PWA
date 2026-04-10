@@ -685,7 +685,11 @@
     "tip_language": "Sprog",
     "tip_language_desc": "Skift sprog når som helst fra Indstillinger → Sprog. Alle dropdowns (komponenter, problemer, niveauer, omkostninger) er oversat.",
     "tip_batch_update": "Batch-opdatering",
-    "tip_batch_update_desc": "I Gennemgå tryk på ✓ SELECT for at vælge flere poster, og opdater derefter status, alvorsgrad, ansvarlig eller varighed på én gang."
+    "tip_batch_update_desc": "I Gennemgå tryk på ✓ SELECT for at vælge flere poster, og opdater derefter status, alvorsgrad, ansvarlig eller varighed på én gang.",
+    "tip_drawing_gestures": "Tegningsbevægelser",
+    "tip_drawing_gestures_desc": "Knib med to fingre for at zoome og panorere hvor som helst på en tegning — det virker nu selv mens du markerer. + / − -knapperne zoomer mod midten af din visning.",
+    "tip_photo_scale": "Skaler fotos på tegninger",
+    "tip_photo_scale_desc": "Efter du har placeret et foto på en tegning, tryk for at vælge det og brug de lilla − / + -knapper i markeringsværktøjslinjen til at ændre størrelse. Du kan også trække hjørnehåndtaget."
   },
   "feedback": {
     "title": "Feedback",

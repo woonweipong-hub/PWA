@@ -685,7 +685,11 @@
     "tip_language": "Ngôn ngữ",
     "tip_language_desc": "Thay đổi ngôn ngữ bất cứ lúc nào từ Cài đặt → Ngôn ngữ. Tất cả dropdown (thành phần, vấn đề, mức, chi phí) đều được dịch.",
     "tip_batch_update": "Cập nhật hàng loạt",
-    "tip_batch_update_desc": "Trong Xem xét, nhấn ✓ SELECT để chọn nhiều mục, sau đó cập nhật trạng thái, mức độ nghiêm trọng, người được giao hoặc thời lượng cùng lúc."
+    "tip_batch_update_desc": "Trong Xem xét, nhấn ✓ SELECT để chọn nhiều mục, sau đó cập nhật trạng thái, mức độ nghiêm trọng, người được giao hoặc thời lượng cùng lúc.",
+    "tip_drawing_gestures": "Cử chỉ trên bản vẽ",
+    "tip_drawing_gestures_desc": "Chụm hai ngón tay để thu phóng và di chuyển ở bất kỳ đâu trên bản vẽ — nay hoạt động ngay cả khi bạn đang đánh dấu. Nút + / − thu phóng về giữa chế độ xem của bạn.",
+    "tip_photo_scale": "Điều chỉnh kích thước ảnh trên bản vẽ",
+    "tip_photo_scale_desc": "Sau khi đặt ảnh lên bản vẽ, chạm để chọn rồi dùng các nút tím − / + trong thanh công cụ đánh dấu để đổi kích thước. Bạn cũng có thể kéo tay cầm ở góc."
   },
   "feedback": {
     "title": "Phản hồi",

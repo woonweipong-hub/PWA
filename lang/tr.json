@@ -685,7 +685,11 @@
     "tip_language": "Dil",
     "tip_language_desc": "Ayarlar → Dil bölümünden dilinizi istediğiniz zaman değiştirin. Tüm açılır menüler (bileşenler, sorunlar, seviyeler, maliyetler) çevrilir.",
     "tip_batch_update": "Toplu güncelleme",
-    "tip_batch_update_desc": "İncele'de, birden fazla kayıt seçmek için ✓ SELECT'e dokunun, ardından durumu, önem derecesini, atananı veya süreyi tek seferde güncelleyin."
+    "tip_batch_update_desc": "İncele'de, birden fazla kayıt seçmek için ✓ SELECT'e dokunun, ardından durumu, önem derecesini, atananı veya süreyi tek seferde güncelleyin.",
+    "tip_drawing_gestures": "Çizim hareketleri",
+    "tip_drawing_gestures_desc": "Çizimde herhangi bir yerde yakınlaştırmak ve kaydırmak için iki parmağınızla sıkıştırın — artık işaretleme sırasında bile çalışır. + / − düğmeleri görünümünüzün ortasına doğru yakınlaştırır.",
+    "tip_photo_scale": "Çizimlerdeki fotoğrafları ölçeklendir",
+    "tip_photo_scale_desc": "Çizime bir fotoğraf yerleştirdikten sonra seçmek için dokunun ve işaretleme araç çubuğundaki mor − / + düğmelerini kullanarak yeniden boyutlandırın. Köşe tutamacını da sürükleyebilirsiniz."
   },
   "feedback": {
     "title": "Geri Bildirim",

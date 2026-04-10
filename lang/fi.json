@@ -685,7 +685,11 @@
     "tip_language": "Kieli",
     "tip_language_desc": "Vaihda kieltä milloin tahansa kohdasta Asetukset → Kieli. Kaikki pudotusvalikot (komponentit, ongelmat, tasot, kustannukset) on käännetty.",
     "tip_batch_update": "Eräpäivitys",
-    "tip_batch_update_desc": "Tarkista-välilehdellä napauta ✓ SELECT valitaksesi useita merkintöjä ja päivitä sitten tila, vakavuus, vastuuhenkilö tai kesto kerralla."
+    "tip_batch_update_desc": "Tarkista-välilehdellä napauta ✓ SELECT valitaksesi useita merkintöjä ja päivitä sitten tila, vakavuus, vastuuhenkilö tai kesto kerralla.",
+    "tip_drawing_gestures": "Piirustuseleet",
+    "tip_drawing_gestures_desc": "Nipistä kahdella sormella zoomataksesi ja siirtyäksesi missä tahansa piirustuksessa — toimii nyt jopa merkintöjen aikana. + / − -painikkeet zoomaavat näkymän keskelle.",
+    "tip_photo_scale": "Skaalaa kuvia piirustuksissa",
+    "tip_photo_scale_desc": "Napauta piirustukseen sijoitettua valokuvaa valitaksesi sen ja käytä merkintätyökalurivin violetteja − / + -painikkeita koon muuttamiseen. Voit myös vetää kulmakahvasta."
   },
   "feedback": {
     "title": "Palaute",

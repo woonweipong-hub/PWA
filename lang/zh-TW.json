@@ -700,7 +700,11 @@
     "tip_language": "語言",
     "tip_language_desc": "隨時從設定 → 語言切換語言。所有下拉選單（構件、問題、樓層、成本）皆已翻譯。",
     "tip_batch_update": "批次更新",
-    "tip_batch_update_desc": "在檢閱中點擊 ✓ SELECT 以選取多個項目，然後一次更新狀態、嚴重程度、負責人或持續時間。"
+    "tip_batch_update_desc": "在檢閱中點擊 ✓ SELECT 以選取多個項目，然後一次更新狀態、嚴重程度、負責人或持續時間。",
+    "tip_drawing_gestures": "圖紙手勢",
+    "tip_drawing_gestures_desc": "用兩根手指捏合即可在圖紙上任意位置縮放和平移——現在標註時也能使用。+ / − 按鈕會以檢視中心為焦點進行縮放。",
+    "tip_photo_scale": "縮放圖紙上的照片",
+    "tip_photo_scale_desc": "在圖紙上放置照片後，點擊選取，然後使用標註工具列中的紫色 − / + 按鈕調整大小。也可以拖動角落控點。"
   },
   "feedback": {
     "title": "意見回饋",

@@ -700,7 +700,11 @@
     "tip_language": "语言",
     "tip_language_desc": "随时从设置 → 语言切换语言。所有下拉菜单（构件、问题、楼层、成本）均已翻译。",
     "tip_batch_update": "批量更新",
-    "tip_batch_update_desc": "在审核中点击 ✓ SELECT 以选择多个条目，然后一次性更新状态、严重程度、负责人或持续时间。"
+    "tip_batch_update_desc": "在审核中点击 ✓ SELECT 以选择多个条目，然后一次性更新状态、严重程度、负责人或持续时间。",
+    "tip_drawing_gestures": "图纸手势",
+    "tip_drawing_gestures_desc": "用两根手指捏合即可在图纸上任意位置缩放和平移——现在标注时也能使用。+ / − 按钮会以视图中心为焦点进行缩放。",
+    "tip_photo_scale": "缩放图纸上的照片",
+    "tip_photo_scale_desc": "在图纸上放置照片后，点击选中，然后使用标注工具栏中的紫色 − / + 按钮调整大小。也可以拖动角落手柄。"
   },
   "feedback": {
     "title": "反馈",

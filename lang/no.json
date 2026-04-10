@@ -685,7 +685,11 @@
     "tip_language": "Språk",
     "tip_language_desc": "Bytt språk når som helst fra Innstillinger → Språk. Alle nedtrekksmenyer (komponenter, problemer, nivåer, kostnader) er oversatt.",
     "tip_batch_update": "Batch-oppdatering",
-    "tip_batch_update_desc": "I Gjennomgå trykk på ✓ SELECT for å velge flere oppføringer, og oppdater deretter status, alvorlighetsgrad, ansvarlig eller varighet på én gang."
+    "tip_batch_update_desc": "I Gjennomgå trykk på ✓ SELECT for å velge flere oppføringer, og oppdater deretter status, alvorlighetsgrad, ansvarlig eller varighet på én gang.",
+    "tip_drawing_gestures": "Tegningsgester",
+    "tip_drawing_gestures_desc": "Klyp med to fingre for å zoome og panorere hvor som helst på en tegning — fungerer nå selv mens du markerer. + / − -knappene zoomer mot midten av visningen din.",
+    "tip_photo_scale": "Skaler bilder på tegninger",
+    "tip_photo_scale_desc": "Etter å ha plassert et bilde på en tegning, trykk for å velge det og bruk de lilla − / + -knappene i markeringsverktøylinjen for å endre størrelse. Du kan også dra hjørnehåndtaket."
   },
   "feedback": {
     "title": "Tilbakemelding",

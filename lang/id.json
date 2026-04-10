@@ -685,7 +685,11 @@
     "tip_language": "Bahasa",
     "tip_language_desc": "Ganti bahasa kapan saja dari Pengaturan → Bahasa. Semua dropdown (komponen, masalah, level, biaya) diterjemahkan.",
     "tip_batch_update": "Pembaruan massal",
-    "tip_batch_update_desc": "Di Tinjau, ketuk ✓ SELECT untuk memilih beberapa entri, lalu perbarui status, tingkat keparahan, penerima tugas, atau durasi sekaligus."
+    "tip_batch_update_desc": "Di Tinjau, ketuk ✓ SELECT untuk memilih beberapa entri, lalu perbarui status, tingkat keparahan, penerima tugas, atau durasi sekaligus.",
+    "tip_drawing_gestures": "Gerakan pada gambar",
+    "tip_drawing_gestures_desc": "Cubit dengan dua jari untuk memperbesar dan menggeser di mana saja pada gambar — kini berfungsi bahkan saat Anda memberi markup. Tombol + / − memperbesar ke tengah tampilan Anda.",
+    "tip_photo_scale": "Ubah ukuran foto pada gambar",
+    "tip_photo_scale_desc": "Setelah menempatkan foto pada gambar, ketuk untuk memilihnya lalu gunakan tombol ungu − / + di bilah alat markup untuk mengubah ukuran. Anda juga dapat menyeret pegangan sudut."
   },
   "feedback": {
     "title": "Umpan Balik",

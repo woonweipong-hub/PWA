@@ -685,7 +685,11 @@
     "tip_language": "Språk",
     "tip_language_desc": "Byt språk när som helst från Inställningar → Språk. Alla rullgardinsmenyer (komponenter, problem, nivåer, kostnader) är översatta.",
     "tip_batch_update": "Batchuppdatering",
-    "tip_batch_update_desc": "I Granska tryck på ✓ SELECT för att välja flera poster och uppdatera sedan status, allvarlighetsgrad, ansvarig eller varaktighet på en gång."
+    "tip_batch_update_desc": "I Granska tryck på ✓ SELECT för att välja flera poster och uppdatera sedan status, allvarlighetsgrad, ansvarig eller varaktighet på en gång.",
+    "tip_drawing_gestures": "Ritningsgester",
+    "tip_drawing_gestures_desc": "Nyp med två fingrar för att zooma och panorera var som helst på en ritning — fungerar nu även medan du markerar. + / − -knapparna zoomar mot mitten av din vy.",
+    "tip_photo_scale": "Skala foton på ritningar",
+    "tip_photo_scale_desc": "Efter att du placerat ett foto på en ritning, tryck för att välja det och använd de lila − / + -knapparna i markeringsverktygsfältet för att ändra storlek. Du kan också dra i hörnhandtaget."
   },
   "feedback": {
     "title": "Feed-back",

@@ -685,7 +685,11 @@
     "tip_language": "Idioma",
     "tip_language_desc": "Muda de idioma a qualquer momento em Definições → Idioma. Todas as listas pendentes (componentes, ocorrências, níveis, custos) estão traduzidas.",
     "tip_batch_update": "Atualização em lote",
-    "tip_batch_update_desc": "Na Revisão, toca em ✓ SELECT para escolher várias entradas e depois atualiza estado, gravidade, responsável ou duração de uma só vez."
+    "tip_batch_update_desc": "Na Revisão, toca em ✓ SELECT para escolher várias entradas e depois atualiza estado, gravidade, responsável ou duração de uma só vez.",
+    "tip_drawing_gestures": "Gestos em desenhos",
+    "tip_drawing_gestures_desc": "Belisca com dois dedos para ampliar e mover em qualquer parte do desenho — agora funciona mesmo durante a marcação. Os botões + / − ampliam em direção ao centro da tua vista.",
+    "tip_photo_scale": "Dimensionar fotos em desenhos",
+    "tip_photo_scale_desc": "Depois de colocar uma foto num desenho, toca para a selecionar e usa os botões roxos − / + na barra de marcação para redimensionar. Também podes arrastar a pega do canto."
   },
   "feedback": {
     "title": "Opinião",

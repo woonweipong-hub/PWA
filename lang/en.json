@@ -700,7 +700,11 @@
     "tip_language": "Language",
     "tip_language_desc": "Switch language anytime from Settings → Language. All dropdowns (components, issues, levels, costs) are translated.",
     "tip_batch_update": "Batch update",
-    "tip_batch_update_desc": "In Review, tap ✓ SELECT to pick multiple entries, then update status, severity, assignee, or duration in one go."
+    "tip_batch_update_desc": "In Review, tap ✓ SELECT to pick multiple entries, then update status, severity, assignee, or duration in one go.",
+    "tip_drawing_gestures": "Drawing gestures",
+    "tip_drawing_gestures_desc": "Pinch with two fingers to zoom and pan anywhere on a drawing — it now works even while you are marking up. The + / − buttons zoom toward the middle of your view.",
+    "tip_photo_scale": "Scale photos on drawings",
+    "tip_photo_scale_desc": "After placing a photo on a drawing, tap to select it and use the purple − / + buttons in the markup toolbar to resize. You can also drag the corner handle."
   },
   "feedback": {
     "title": "Feedback",

@@ -685,7 +685,11 @@
     "tip_language": "Idioma",
     "tip_language_desc": "Cambia de idioma en cualquier momento desde Ajustes → Idioma. Todos los desplegables (componentes, incidencias, niveles, costes) están traducidos.",
     "tip_batch_update": "Actualización por lotes",
-    "tip_batch_update_desc": "En Revisar, pulsa ✓ SELECT para elegir varias entradas y luego actualiza estado, severidad, responsable o duración de una vez."
+    "tip_batch_update_desc": "En Revisar, pulsa ✓ SELECT para elegir varias entradas y luego actualiza estado, severidad, responsable o duración de una vez.",
+    "tip_drawing_gestures": "Gestos en planos",
+    "tip_drawing_gestures_desc": "Pellizca con dos dedos para hacer zoom y moverte en cualquier parte del plano — ahora funciona incluso mientras marcas. Los botones + / − hacen zoom hacia el centro de tu vista.",
+    "tip_photo_scale": "Escalar fotos en los planos",
+    "tip_photo_scale_desc": "Tras colocar una foto en un plano, tócala para seleccionarla y usa los botones morados − / + en la barra de marcado para cambiar el tamaño. También puedes arrastrar el tirador de esquina."
   },
   "feedback": {
     "title": "Comentarios",

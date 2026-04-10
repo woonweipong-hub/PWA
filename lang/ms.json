@@ -685,7 +685,11 @@
     "tip_language": "Bahasa",
     "tip_language_desc": "Tukar bahasa bila-bila masa dari Tetapan → Bahasa. Semua dropdown (komponen, isu, aras, kos) diterjemahkan.",
     "tip_batch_update": "Kemas kini kelompok",
-    "tip_batch_update_desc": "Dalam Semak, ketik ✓ SELECT untuk memilih beberapa entri, kemudian kemas kini status, tahap keterukan, penerima tugas atau tempoh sekaligus."
+    "tip_batch_update_desc": "Dalam Semak, ketik ✓ SELECT untuk memilih beberapa entri, kemudian kemas kini status, tahap keterukan, penerima tugas atau tempoh sekaligus.",
+    "tip_drawing_gestures": "Gerak isyarat lukisan",
+    "tip_drawing_gestures_desc": "Cubit dengan dua jari untuk zum dan geser di mana-mana pada lukisan — kini berfungsi walaupun semasa anda menanda. Butang + / − akan zum ke tengah paparan anda.",
+    "tip_photo_scale": "Skalakan foto pada lukisan",
+    "tip_photo_scale_desc": "Selepas meletakkan foto pada lukisan, ketik untuk memilihnya dan gunakan butang ungu − / + dalam bar alat tanda untuk mengubah saiz. Anda juga boleh menyeret pemegang sudut."
   },
   "feedback": {
     "title": "Maklum Balas",

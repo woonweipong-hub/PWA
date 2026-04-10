@@ -685,7 +685,11 @@
     "tip_language": "Langue",
     "tip_language_desc": "Change de langue à tout moment depuis Paramètres → Langue. Toutes les listes déroulantes (composants, problèmes, niveaux, coûts) sont traduites.",
     "tip_batch_update": "Mise à jour par lot",
-    "tip_batch_update_desc": "Dans Revue, appuie sur ✓ SELECT pour choisir plusieurs entrées, puis mets à jour statut, gravité, affectataire ou durée en une seule fois."
+    "tip_batch_update_desc": "Dans Revue, appuie sur ✓ SELECT pour choisir plusieurs entrées, puis mets à jour statut, gravité, affectataire ou durée en une seule fois.",
+    "tip_drawing_gestures": "Gestes sur les plans",
+    "tip_drawing_gestures_desc": "Pince avec deux doigts pour zoomer et te déplacer n'importe où sur un plan — fonctionne maintenant même pendant le marquage. Les boutons + / − zooment vers le centre de ta vue.",
+    "tip_photo_scale": "Redimensionner les photos sur les plans",
+    "tip_photo_scale_desc": "Après avoir placé une photo sur un plan, touche pour la sélectionner et utilise les boutons violets − / + de la barre de marquage pour la redimensionner. Tu peux aussi faire glisser la poignée d'angle."
   },
   "feedback": {
     "title": "Avis",

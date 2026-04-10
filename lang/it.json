@@ -685,7 +685,11 @@
     "tip_language": "Lingua",
     "tip_language_desc": "Cambia lingua in qualsiasi momento da Impostazioni → Lingua. Tutti i menu a tendina (componenti, problemi, livelli, costi) sono tradotti.",
     "tip_batch_update": "Aggiornamento in blocco",
-    "tip_batch_update_desc": "In Revisione, tocca ✓ SELECT per scegliere più voci, poi aggiorna stato, gravità, assegnatario o durata in un colpo solo."
+    "tip_batch_update_desc": "In Revisione, tocca ✓ SELECT per scegliere più voci, poi aggiorna stato, gravità, assegnatario o durata in un colpo solo.",
+    "tip_drawing_gestures": "Gesti sui disegni",
+    "tip_drawing_gestures_desc": "Pizzica con due dita per ingrandire e spostare in qualsiasi punto del disegno — ora funziona anche mentre crei i markup. I pulsanti + / − ingrandiscono verso il centro della vista.",
+    "tip_photo_scale": "Ridimensiona foto sui disegni",
+    "tip_photo_scale_desc": "Dopo aver posizionato una foto su un disegno, tocca per selezionarla e usa i pulsanti viola − / + nella barra dei markup per ridimensionare. Puoi anche trascinare la maniglia d'angolo."
   },
   "feedback": {
     "title": "Feedback",

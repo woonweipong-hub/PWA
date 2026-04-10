@@ -685,7 +685,11 @@
     "tip_language": "Sprache",
     "tip_language_desc": "Sprache jederzeit über Einstellungen → Sprache wechseln. Alle Dropdowns (Bauteile, Probleme, Ebenen, Kosten) werden übersetzt.",
     "tip_batch_update": "Stapel-Aktualisierung",
-    "tip_batch_update_desc": "Tippe in Prüfen auf ✓ SELECT, um mehrere Einträge auszuwählen, und aktualisiere Status, Schweregrad, Zuständigen oder Dauer in einem Schritt."
+    "tip_batch_update_desc": "Tippe in Prüfen auf ✓ SELECT, um mehrere Einträge auszuwählen, und aktualisiere Status, Schweregrad, Zuständigen oder Dauer in einem Schritt.",
+    "tip_drawing_gestures": "Zeichnungsgesten",
+    "tip_drawing_gestures_desc": "Zoome und verschiebe überall in der Zeichnung mit zwei Fingern — funktioniert jetzt auch beim Markieren. Die + / − -Tasten zoomen zur Mitte der Ansicht.",
+    "tip_photo_scale": "Fotos auf Zeichnungen skalieren",
+    "tip_photo_scale_desc": "Tippe nach dem Platzieren eines Fotos auf einer Zeichnung zum Auswählen und verwende die lila − / + -Tasten in der Markup-Leiste zum Ändern der Größe. Du kannst auch den Eckgriff ziehen."
   },
   "feedback": {
     "title": "Rückmeldung",
