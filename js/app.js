@@ -8009,7 +8009,16 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   };
 
   const onMarkupDown=e=>{
-    if(!markupMode)return;e.preventDefault();e.stopPropagation();
+    if(!markupMode)return;
+    // Two-finger gesture: abort any in-progress stroke and let the container's
+    // pinch/pan handler take over — matches view-mode behavior.
+    if(e.touches&&e.touches.length>=2){
+      setMarkupCurrent(null);
+      photoDragRef.current=null;
+      setPhotoPlaceRect(null);
+      return;
+    }
+    e.preventDefault();e.stopPropagation();
     const p=getMarkupPos(e);if(!p)return;
     // Drag to place a pending photo (rubber-band rect)
     if(pendingPhoto){
@@ -8082,6 +8091,13 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   };
   const onMarkupMove=e=>{
     if(!markupMode)return;
+    // Two-finger gesture mid-stroke: cancel the stroke so pinch/pan can run.
+    if(e.touches&&e.touches.length>=2){
+      if(markupCurrent)setMarkupCurrent(null);
+      if(photoDragRef.current)photoDragRef.current=null;
+      if(photoPlaceRect)setPhotoPlaceRect(null);
+      return;
+    }
     const p=getMarkupPos(e);if(!p)return;
     // Rubber-band rect while placing a new photo
     if(pendingPhoto&&photoPlaceRect){
