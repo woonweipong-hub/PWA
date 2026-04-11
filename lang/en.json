@@ -743,6 +743,13 @@
     "report_title": "Report without rework",
     "report_desc": "Export CSV and share polished reports fast.",
     "install_prompt": "To install:\n\nAndroid: Menu (⋮) → Add to Home Screen\n\niPhone: Share (↑) → Add to Home Screen",
+    "ios_banner_title": "Using an iPhone?",
+    "ios_banner_subtitle": "Tap here to install SiteShrimp as an app",
+    "ios_guide_title": "Install on iPhone",
+    "ios_step_1": "Tap the Share button at the bottom of Safari",
+    "ios_step_2": "Scroll down and tap \"Add to Home Screen\"",
+    "ios_step_3": "Tap \"Add\" — SiteShrimp will appear on your Home Screen",
+    "ios_note": "Must use Safari — Chrome and other browsers cannot install apps on iOS",
     "free_for_all": "Free for all Users."
   },
   "avatar_menu": {

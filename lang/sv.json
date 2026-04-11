@@ -728,6 +728,13 @@
     "report_title": "Rapporter utan omarbete",
     "report_desc": "Exportera CSV och dela snygga rapporter snabbt.",
     "install_prompt": "För att installera:\n\nAndroid: Meny (⋮) → Lägg till på startskärmen\n\niPhone: Dela (↑) → Lägg till på hemskärmen",
+    "ios_banner_title": "Använder du en iPhone?",
+    "ios_banner_subtitle": "Tryck här för att installera SiteShrimp som en app",
+    "ios_guide_title": "Installera på iPhone",
+    "ios_step_1": "Tryck på Dela-knappen längst ner i Safari",
+    "ios_step_2": "Bläddra ner och tryck på \"Lägg till på hemskärmen\"",
+    "ios_step_3": "Tryck på \"Lägg till\" — SiteShrimp visas på din hemskärm",
+    "ios_note": "Safari krävs — Chrome och andra webbläsare kan inte installera appar på iOS",
     "free_for_all": "Gratis för alla användare."
   },
   "avatar_menu": {

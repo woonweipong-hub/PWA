@@ -470,6 +470,7 @@ function PhotoMarkup({src,onSave,onCancel}){
   const[calloutTextInput,setCalloutTextInput]=useState(null);
   const imgRef=useRef(new Image());
   const sizeRef=useRef({w:0,h:0});
+  const dragRef=useRef(null); // {idx, startPos, origStroke}
   const STAMP_PRESETS=["APPROVED","REJECTED","REVIEWED","HOLD","FOR CONSTRUCTION","PRELIMINARY","DRAFT","SUPERSEDED","NOT FOR CONSTRUCTION"];
   const addStroke=(s)=>{setStrokes(prev=>[...prev,s]);setRedoStack([]);};
   const undo=()=>{setStrokes(s=>{if(!s.length)return s;setRedoStack(r=>[...r,s[s.length-1]]);return s.slice(0,-1);});};
@@ -701,6 +702,8 @@ function PhotoMarkup({src,onSave,onCancel}){
     if(tool==="select"){
       const hit=hitTestStroke(p);
       setSelectedIdx(hit>=0?hit:null);
+      if(hit>=0)dragRef.current={idx:hit,startPos:p,origStroke:JSON.parse(JSON.stringify(strokes[hit]))};
+      else dragRef.current=null;
       return;
     }
     if(tool==="text"){
@@ -721,6 +724,20 @@ function PhotoMarkup({src,onSave,onCancel}){
     else setCurrent({type:tool,color,lineStyle,start:p,end:p});
   };
   const onMove=e=>{
+    if(dragRef.current){
+      e.preventDefault();
+      const p=getPos(e);
+      const dx=p.x-dragRef.current.startPos.x,dy=p.y-dragRef.current.startPos.y;
+      const orig=dragRef.current.origStroke;
+      setStrokes(s=>s.map((st,i)=>{
+        if(i!==dragRef.current.idx)return st;
+        if(orig.pos)return{...st,pos:{x:orig.pos.x+dx,y:orig.pos.y+dy}};
+        if(orig.start&&orig.end)return{...st,start:{x:orig.start.x+dx,y:orig.start.y+dy},end:{x:orig.end.x+dx,y:orig.end.y+dy}};
+        if(orig.points)return{...st,points:orig.points.map(pt=>({x:pt.x+dx,y:pt.y+dy}))};
+        return st;
+      }));
+      return;
+    }
     if(!current)return;
     e.preventDefault();
     const p=getPos(e);
@@ -728,6 +745,7 @@ function PhotoMarkup({src,onSave,onCancel}){
     else setCurrent(c=>({...c,end:p}));
   };
   const onUp=()=>{
+    dragRef.current=null;
     if(current){
       if(current.type==="dimension"){
         const label=prompt(t("markup.enter_dimension"))||"";
@@ -820,7 +838,7 @@ function PhotoMarkup({src,onSave,onCancel}){
       <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:6,borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0,flexWrap:"wrap"}}>
         {TOOLS.map(t=>(
           <button key={t.id} onClick={()=>{setTool(t.id);if(t.id!=="select")setSelectedIdx(null);}} title={t.title} style={{width:36,height:36,borderRadius:8,border:tool===t.id?"2px solid #ff6b00":"2px solid rgba(255,255,255,0.15)",background:tool===t.id?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            {t.id==="select"?"▢"
+            {t.id==="select"?<svg width="16" height="16" viewBox="0 0 20 20"><path d="M4 2 L4 15 L7.5 12 L10 17 L12 16 L9.5 11 L14 11 Z" fill="#fff" stroke="#fff" strokeWidth="0.8" strokeLinejoin="round"/></svg>
             :t.id==="freehand"?"✏"
             :t.id==="highlight"?<svg width="20" height="20" viewBox="0 0 20 20"><rect x="2" y="7" width="16" height="6" rx="1" fill="#fff" opacity="0.5"/><line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="4" strokeLinecap="round" opacity="0.4"/></svg>
             :t.id==="line"?<svg width="20" height="20" viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
@@ -2422,7 +2440,11 @@ function AuthScreen({onAuth,onFullSetup}){
   const[code,setCode]=useState("");const[showInvite,setShowInvite]=useState(false);
   const[err,setErr]=useState("");const[loading,setLoading]=useState(false);const[step,setStep]=useState("");const[showPw,setShowPw]=useState(false);
   const[installable,setInstallable]=useState(!!_deferredInstallPrompt);
+  const[showIOSGuide,setShowIOSGuide]=useState(false);
   const[viewportH,setViewportH]=useState(window.innerHeight||800);
+  const isIOS=useMemo(()=>/iPad|iPhone|iPod/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&"ontouchend"in document),[]);
+  const isStandalone=useMemo(()=>window.matchMedia("(display-mode:standalone)").matches||navigator.standalone===true,[]);
+  const showIOSBanner=isIOS&&!isStandalone;
   const inv=new URLSearchParams(window.location.search).get("invite")||"";
 
   useEffect(()=>{if(inv){setPage("auth");setMode("register");setShowInvite(true);setCode(inv);}},[]);
@@ -2573,10 +2595,22 @@ function AuthScreen({onAuth,onFullSetup}){
         <div style={{textAlign:"center"}}>
           <button onClick={()=>setPage("auth")} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:11,padding:introPreset.btnPad,color:"#fff",fontSize:introPreset.btnFont,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:8,letterSpacing:"0.04em"}}>{t("actions.get_started")}</button>
 
-          <button onClick={installable?installApp:()=>alert(t("onboarding.install_prompt"))} style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:11,padding:introPreset.btnPad,color:"rgba(255,255,255,0.82)",fontSize:introPreset.btnFont,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:9,display:"flex",alignItems:"center",justifyContent:"center",gap:introPreset.btnGap}}>
+          <button onClick={installable?installApp:()=>setShowIOSGuide(true)} style={{width:"100%",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:11,padding:introPreset.btnPad,color:"rgba(255,255,255,0.82)",fontSize:introPreset.btnFont,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",marginBottom:9,display:"flex",alignItems:"center",justifyContent:"center",gap:introPreset.btnGap}}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(255,255,255,0.82)" strokeWidth="2" strokeLinecap="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(255,255,255,0.82)" strokeWidth="2" strokeLinecap="round"/></svg>
             {t("onboarding.install_app").toUpperCase()}
           </button>
+
+          {showIOSBanner&&!showIOSGuide&&(
+            <div onClick={()=>setShowIOSGuide(true)} style={{background:"rgba(0,122,255,0.12)",border:"1px solid rgba(0,122,255,0.3)",borderRadius:10,padding:"10px 14px",marginBottom:9,cursor:"pointer",display:"flex",alignItems:"center",gap:10,textAlign:"left"}}>
+              <span style={{fontSize:22,flexShrink:0}}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M17 2H7a3 3 0 00-3 3v14a3 3 0 003 3h10a3 3 0 003-3V5a3 3 0 00-3-3z" stroke="rgba(0,122,255,0.9)" strokeWidth="1.5"/><circle cx="12" cy="18" r="1" fill="rgba(0,122,255,0.9)"/></svg>
+              </span>
+              <div>
+                <div style={{color:"rgba(255,255,255,0.9)",fontSize:introPreset.featTitle,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>{t("onboarding.ios_banner_title")}</div>
+                <div style={{color:"rgba(255,255,255,0.5)",fontSize:introPreset.featDesc}}>{t("onboarding.ios_banner_subtitle")}</div>
+              </div>
+            </div>
+          )}
 
           <div style={{display:"flex",justifyContent:"center",marginTop:8}}>
             <LangButton/>
@@ -2586,6 +2620,30 @@ function AuthScreen({onAuth,onFullSetup}){
           </div>
         </div>
       </div>
+
+      {showIOSGuide&&(
+        <div onClick={()=>setShowIOSGuide(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:9999,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:16}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#2a2a2a",borderRadius:16,padding:"22px 20px",maxWidth:360,width:"100%",marginBottom:16,boxShadow:"0 8px 32px rgba(0,0,0,0.5)"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <div style={{color:"#fff",fontSize:18,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>{t("onboarding.ios_guide_title")}</div>
+              <button onClick={()=>setShowIOSGuide(false)} style={{background:"none",border:"none",color:"rgba(255,255,255,0.5)",fontSize:22,cursor:"pointer",padding:"0 4px"}}>&times;</button>
+            </div>
+            {[
+              {step:"1",icon:(<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#007AFF" strokeWidth="2" strokeLinecap="round"/></svg>),text:t("onboarding.ios_step_1")},
+              {step:"2",icon:(<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="4" stroke="#007AFF" strokeWidth="2"/><path d="M12 8v8m-4-4h8" stroke="#007AFF" strokeWidth="2" strokeLinecap="round"/></svg>),text:t("onboarding.ios_step_2")},
+              {step:"3",icon:(<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#34C759" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>),text:t("onboarding.ios_step_3")},
+            ].map(({step,icon,text})=>(
+              <div key={step} style={{display:"flex",gap:12,alignItems:"flex-start",marginBottom:14}}>
+                <div style={{width:36,height:36,background:"rgba(255,255,255,0.08)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  {icon}
+                </div>
+                <div style={{color:"rgba(255,255,255,0.85)",fontSize:14.5,lineHeight:1.45,paddingTop:6}}><b style={{color:"#fff"}}>{step}.</b> {text}</div>
+              </div>
+            ))}
+            <div style={{color:"rgba(255,255,255,0.4)",fontSize:12.5,textAlign:"center",marginTop:4,lineHeight:1.4}}>{t("onboarding.ios_note")}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 

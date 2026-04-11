@@ -728,6 +728,13 @@
     "report_title": "Yeniden iş olmadan rapor",
     "report_desc": "CSV dışa aktarın ve cilalı raporları hızla paylaşın.",
     "install_prompt": "Yüklemek için:\n\nAndroid: Menü (⋮) → Ana Ekrana Ekle\n\niPhone: Paylaş (↑) → Ana Ekrana Ekle",
+    "ios_banner_title": "iPhone mu kullanıyorsunuz?",
+    "ios_banner_subtitle": "SiteShrimp'i uygulama olarak yüklemek için buraya dokunun",
+    "ios_guide_title": "iPhone'a yükle",
+    "ios_step_1": "Safari'nin altındaki Paylaş düğmesine dokunun",
+    "ios_step_2": "Aşağı kaydırın ve \"Ana Ekrana Ekle\" seçeneğine dokunun",
+    "ios_step_3": "\"Ekle\" seçeneğine dokunun — SiteShrimp Ana Ekranınızda görünecektir",
+    "ios_note": "Safari kullanılmalıdır — Chrome ve diğer tarayıcılar iOS'ta uygulama yükleyemez",
     "free_for_all": "Tüm kullanıcılar için ücretsiz."
   },
   "avatar_menu": {

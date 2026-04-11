@@ -728,6 +728,13 @@
     "report_title": "Berichte ohne Nacharbeit",
     "report_desc": "CSV exportieren und fertige Berichte schnell teilen.",
     "install_prompt": "Zum Installieren:\n\nAndroid: Menü (⋮) → Zum Startbildschirm hinzufügen\n\niPhone: Teilen (↑) → Zum Home-Bildschirm",
+    "ios_banner_title": "iPhone nutzen?",
+    "ios_banner_subtitle": "Hier tippen, um SiteShrimp als App zu installieren",
+    "ios_guide_title": "Auf dem iPhone installieren",
+    "ios_step_1": "Tippe auf die Teilen-Taste unten in Safari",
+    "ios_step_2": "Scrolle nach unten und tippe auf \"Zum Home-Bildschirm\"",
+    "ios_step_3": "Tippe auf \"Hinzufügen\" — SiteShrimp erscheint auf deinem Home-Bildschirm",
+    "ios_note": "Safari erforderlich — Chrome und andere Browser können auf iOS keine Apps installieren",
     "free_for_all": "Kostenlos für alle Nutzer."
   },
   "avatar_menu": {

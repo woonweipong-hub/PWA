@@ -728,6 +728,13 @@
     "report_title": "Raportit ilman uudelleentyötä",
     "report_desc": "Vie CSV ja jaa viimeistellyt raportit nopeasti.",
     "install_prompt": "Asentaaksesi:\n\nAndroid: Valikko (⋮) → Lisää aloitusnäytölle\n\niPhone: Jaa (↑) → Lisää Koti-valikkoon",
+    "ios_banner_title": "Käytätkö iPhonea?",
+    "ios_banner_subtitle": "Napauta tästä asentaaksesi SiteShrimp sovelluksena",
+    "ios_guide_title": "Asenna iPhonelle",
+    "ios_step_1": "Napauta Jaa-painiketta Safarin alaosassa",
+    "ios_step_2": "Vieritä alas ja napauta \"Lisää Koti-valikkoon\"",
+    "ios_step_3": "Napauta \"Lisää\" — SiteShrimp ilmestyy kotinäytöllesi",
+    "ios_note": "Safari on pakollinen — Chrome ja muut selaimet eivät voi asentaa sovelluksia iOS:lle",
     "free_for_all": "Ilmainen kaikille käyttäjille."
   },
   "avatar_menu": {

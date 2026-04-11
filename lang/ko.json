@@ -728,6 +728,13 @@
     "report_title": "재작업 없는 보고서",
     "report_desc": "CSV를 내보내고 완성된 보고서를 빠르게 공유하세요.",
     "install_prompt": "설치 방법:\n\nAndroid: 메뉴 (⋮) → 홈 화면에 추가\n\niPhone: 공유 (↑) → 홈 화면에 추가",
+    "ios_banner_title": "iPhone을 사용하시나요?",
+    "ios_banner_subtitle": "여기를 탭하여 SiteShrimp를 앱으로 설치하세요",
+    "ios_guide_title": "iPhone에 설치",
+    "ios_step_1": "Safari 하단의 공유 버튼을 탭하세요",
+    "ios_step_2": "아래로 스크롤하여 \"홈 화면에 추가\"를 탭하세요",
+    "ios_step_3": "\"추가\"를 탭하세요 — SiteShrimp가 홈 화면에 나타납니다",
+    "ios_note": "Safari를 사용해야 합니다 — Chrome 및 다른 브라우저에서는 iOS에 앱을 설치할 수 없습니다",
     "free_for_all": "모든 사용자에게 무료."
   },
   "avatar_menu": {

@@ -743,6 +743,13 @@
     "report_title": "无需返工的报告",
     "report_desc": "导出CSV并快速分享精美报告。",
     "install_prompt": "安装方法：\n\n安卓：菜单 (⋮) → 添加到主屏幕\n\niPhone：分享 (↑) → 添加到主屏幕",
+    "ios_banner_title": "正在使用 iPhone？",
+    "ios_banner_subtitle": "点击此处将 SiteShrimp 安装为应用",
+    "ios_guide_title": "在 iPhone 上安装",
+    "ios_step_1": "点击 Safari 底部的分享按钮",
+    "ios_step_2": "向下滚动并点击\"添加到主屏幕\"",
+    "ios_step_3": "点击\"添加\" — SiteShrimp 将出现在您的主屏幕上",
+    "ios_note": "必须使用 Safari — Chrome 和其他浏览器无法在 iOS 上安装应用",
     "free_for_all": "对所有用户免费。"
   },
   "avatar_menu": {

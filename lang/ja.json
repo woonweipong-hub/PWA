@@ -728,6 +728,13 @@
     "report_title": "やり直し不要のレポート",
     "report_desc": "CSVをエクスポートし、整ったレポートをすばやく共有。",
     "install_prompt": "インストール方法：\n\nAndroid: メニュー (⋮) → ホーム画面に追加\n\niPhone: 共有 (↑) → ホーム画面に追加",
+    "ios_banner_title": "iPhoneをお使いですか？",
+    "ios_banner_subtitle": "ここをタップしてSiteShrimpをアプリとしてインストール",
+    "ios_guide_title": "iPhoneにインストール",
+    "ios_step_1": "Safariの下部にある共有ボタンをタップ",
+    "ios_step_2": "下にスクロールして「ホーム画面に追加」をタップ",
+    "ios_step_3": "「追加」をタップ — SiteShrimpがホーム画面に表示されます",
+    "ios_note": "Safariが必要です — Chromeや他のブラウザではiOSにアプリをインストールできません",
     "free_for_all": "全ユーザー無料。"
   },
   "avatar_menu": {

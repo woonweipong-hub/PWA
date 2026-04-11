@@ -728,6 +728,13 @@
     "report_title": "Reportes sin retrabajo",
     "report_desc": "Exporte CSV y comparta reportes pulidos rápidamente.",
     "install_prompt": "Para instalar:\n\nAndroid: Menú (⋮) → Añadir a pantalla de inicio\n\niPhone: Compartir (↑) → Añadir a pantalla de inicio",
+    "ios_banner_title": "¿Usas un iPhone?",
+    "ios_banner_subtitle": "Toca aquí para instalar SiteShrimp como app",
+    "ios_guide_title": "Instalar en iPhone",
+    "ios_step_1": "Toca el botón Compartir en la parte inferior de Safari",
+    "ios_step_2": "Desplázate hacia abajo y toca \"Añadir a pantalla de inicio\"",
+    "ios_step_3": "Toca \"Añadir\" — SiteShrimp aparecerá en tu pantalla de inicio",
+    "ios_note": "Debes usar Safari — Chrome y otros navegadores no pueden instalar apps en iOS",
     "free_for_all": "Gratis para todos los usuarios."
   },
   "avatar_menu": {

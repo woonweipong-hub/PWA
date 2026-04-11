@@ -728,6 +728,13 @@
     "report_title": "Laporan tanpa kerja semula",
     "report_desc": "Eksport CSV dan kongsi laporan kemas dengan pantas.",
     "install_prompt": "Untuk memasang:\n\nAndroid: Menu (⋮) → Tambah ke Skrin Utama\n\niPhone: Kongsi (↑) → Tambah ke Skrin Utama",
+    "ios_banner_title": "Menggunakan iPhone?",
+    "ios_banner_subtitle": "Ketik di sini untuk memasang SiteShrimp sebagai aplikasi",
+    "ios_guide_title": "Pasang di iPhone",
+    "ios_step_1": "Ketik butang Kongsi di bahagian bawah Safari",
+    "ios_step_2": "Tatal ke bawah dan ketik \"Tambah ke Skrin Utama\"",
+    "ios_step_3": "Ketik \"Tambah\" — SiteShrimp akan muncul di Skrin Utama anda",
+    "ios_note": "Mesti menggunakan Safari — Chrome dan pelayar lain tidak boleh memasang aplikasi di iOS",
     "free_for_all": "Percuma untuk semua Pengguna."
   },
   "avatar_menu": {

@@ -728,6 +728,13 @@
     "report_title": "Báo cáo không cần làm lại",
     "report_desc": "Xuất CSV và chia sẻ báo cáo hoàn chỉnh nhanh chóng.",
     "install_prompt": "Để cài đặt:\n\nAndroid: Menu (⋮) → Thêm vào Màn hình chính\n\niPhone: Chia sẻ (↑) → Thêm vào Màn hình chính",
+    "ios_banner_title": "Đang dùng iPhone?",
+    "ios_banner_subtitle": "Nhấn vào đây để cài đặt SiteShrimp như một ứng dụng",
+    "ios_guide_title": "Cài đặt trên iPhone",
+    "ios_step_1": "Nhấn nút Chia sẻ ở cuối Safari",
+    "ios_step_2": "Cuộn xuống và nhấn \"Thêm vào Màn hình chính\"",
+    "ios_step_3": "Nhấn \"Thêm\" — SiteShrimp sẽ xuất hiện trên Màn hình chính của bạn",
+    "ios_note": "Phải sử dụng Safari — Chrome và các trình duyệt khác không thể cài đặt ứng dụng trên iOS",
     "free_for_all": "Miễn phí cho tất cả Người dùng."
   },
   "avatar_menu": {
