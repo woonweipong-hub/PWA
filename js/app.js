@@ -6035,14 +6035,39 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
         });
       }
       setStatus("ready");
+      const nudge=()=>{try{g.event.trigger(map,"resize");}catch{}};
+      setTimeout(nudge,80);
+      let ro=null;
+      if(window.ResizeObserver&&mapRef.current){ro=new ResizeObserver(nudge);ro.observe(mapRef.current);}
+      window.addEventListener("resize",nudge);
+      window.addEventListener("orientationchange",nudge);
+      map._siteshrimpCleanupResize=()=>{
+        try{ro&&ro.disconnect();}catch{}
+        window.removeEventListener("resize",nudge);
+        window.removeEventListener("orientationchange",nudge);
+      };
     }).catch(()=>setStatus("error"));
-    return()=>{cancelled=true;};
+    return()=>{
+      cancelled=true;
+      if(mapObj.current&&mapObj.current._siteshrimpCleanupResize){try{mapObj.current._siteshrimpCleanupResize();}catch{}}
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[provider,currentProject?.id]);
 
   // Keep pinMode in a ref so map click handlers see the latest value
   const pinModeRef=useRef(pinMode);
   useEffect(()=>{pinModeRef.current=pinMode;},[pinMode]);
+  // When siblings (Quick Log card, markup palette) mount/unmount, the map
+  // container can resize — tell Leaflet / gmaps so tiles don't sit offset.
+  useEffect(()=>{
+    if(!mapObj.current)return;
+    const run=()=>{
+      try{if(provider==="osm"&&mapObj.current.invalidateSize)mapObj.current.invalidateSize();}catch{}
+      try{if(provider==="gmaps"&&window.google?.maps)window.google.maps.event.trigger(mapObj.current,"resize");}catch{}
+    };
+    run();setTimeout(run,200);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[pendingPin,markupTool,showList]);
   const markupToolRef=useRef(markupTool);
   useEffect(()=>{markupToolRef.current=markupTool;},[markupTool]);
   // pendingPhoto is read from the long-lived map click handler registered
@@ -6609,10 +6634,28 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
         });
       }
       setStatus("ready");
-      // Leaflet renders blank if container sized post-mount; nudge after paint
-      setTimeout(()=>{try{map.invalidateSize();}catch{}},60);
+      // Leaflet renders blank if container sized post-mount. Nudge after the
+      // first paint, then whenever the container resizes (orientation change,
+      // keyboard, Quick Log card appears/disappears, browser chrome hide/show).
+      const nudge=()=>{try{map.invalidateSize();}catch{}};
+      setTimeout(nudge,60);setTimeout(nudge,400);
+      let ro=null;
+      if(window.ResizeObserver){ro=new ResizeObserver(nudge);ro.observe(mapRef.current);}
+      window.addEventListener("resize",nudge);
+      window.addEventListener("orientationchange",nudge);
+      map._siteshrimpCleanupResize=()=>{
+        try{ro&&ro.disconnect();}catch{}
+        window.removeEventListener("resize",nudge);
+        window.removeEventListener("orientationchange",nudge);
+      };
     }).catch(()=>setStatus("error"));
-    return()=>{cancelled=true;if(mapObj.current&&mapObj.current.remove)try{mapObj.current.remove();}catch{}};
+    return()=>{
+      cancelled=true;
+      if(mapObj.current){
+        try{mapObj.current._siteshrimpCleanupResize&&mapObj.current._siteshrimpCleanupResize();}catch{}
+        try{mapObj.current.remove&&mapObj.current.remove();}catch{}
+      }
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[provider,currentProject?.id]);
 
