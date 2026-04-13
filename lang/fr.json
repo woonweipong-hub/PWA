@@ -554,7 +554,18 @@
     "coords_copied": "Coordonnées copiées",
     "map_pin_desc": "Épingle de localisation marquée par GPS",
     "open_in_maps": "Ouvrir dans Google Maps",
-    "no_api_key": "Ajoutez une clé API Google Maps dans Paramètres → Cartes pour activer le marquage de localisation sur la carte."
+    "no_api_key": "Ajoutez une clé API Google Maps dans Paramètres → Cartes pour activer le marquage de localisation sur la carte.",
+    "submode_drawing": "Étiquette sur le dessin",
+    "submode_map": "Marquer sur la carte",
+    "submode_compare": "Comparer les modifications",
+    "save_default_view": "ENREGISTRER PAR DÉFAUT DU PROJET",
+    "default_saved": "✓ Vue par défaut enregistrée pour ce projet",
+    "drop_pin_hint": "Appuyez sur la carte pour déposer une épingle et créer une entrée",
+    "sdk_loading": "Chargement de Google Maps…",
+    "sdk_failed": "Impossible de charger Google Maps. Vérifiez votre clé API dans Paramètres → Cartes.",
+    "test_key": "CLÉ DE TEST",
+    "test_ok": "✓ La clé API fonctionne",
+    "test_failed": "✗ Clé API invalide ou restreinte"
   },
   "export": {
     "markups_header": "MARQUAGES",

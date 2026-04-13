@@ -554,7 +554,18 @@
     "coords_copied": "Koordinaatit kopioitu",
     "map_pin_desc": "GPS-merkitty sijaintinasta",
     "open_in_maps": "Avaa Google Mapsissa",
-    "no_api_key": "Lisää Google Maps API -avain kohdassa Asetukset → Kartat ottaaksesi kartan sijainnin merkitsemisen käyttöön."
+    "no_api_key": "Lisää Google Maps API -avain kohdassa Asetukset → Kartat ottaaksesi kartan sijainnin merkitsemisen käyttöön.",
+    "submode_drawing": "Tag piirustus",
+    "submode_map": "Tag kartalla",
+    "submode_compare": "Vertaa muutoksia",
+    "save_default_view": "TALLENNA PROJEKTIN OLETUSASETUKSESTA",
+    "default_saved": "✓ Oletusnäkymä tallennettu tälle projektille",
+    "drop_pin_hint": "Napauta karttaa pudottaaksesi merkki ja luodaksesi merkinnän",
+    "sdk_loading": "Ladataan Google Mapsia…",
+    "sdk_failed": "Google Mapsia ei voitu ladata. Tarkista API-avaimesi kohdasta Asetukset → Kartat.",
+    "test_key": "TESTIAvain",
+    "test_ok": "✓ API-avain toimii",
+    "test_failed": "✗ API-avain on virheellinen tai rajoitettu"
   },
   "export": {
     "markups_header": "MARKUPS",

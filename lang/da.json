@@ -554,7 +554,18 @@
     "coords_copied": "Koordinater kopieret",
     "map_pin_desc": "GPS-mærket positionsnål",
     "open_in_maps": "Åbn i Google Maps",
-    "no_api_key": "Tilføj en Google Maps API-nøgle i Indstillinger → Kort for at aktivere kortplaceringsmærkning."
+    "no_api_key": "Tilføj en Google Maps API-nøgle i Indstillinger → Kort for at aktivere kortplaceringsmærkning.",
+    "submode_drawing": "Tag på tegning",
+    "submode_map": "Tag på kortet",
+    "submode_compare": "Sammenlign ændringer",
+    "save_default_view": "GEM SOM PROJEKT STANDARD",
+    "default_saved": "✓ Standardvisning gemt for dette projekt",
+    "drop_pin_hint": "Tryk på kortet for at slippe en nål og oprette en post",
+    "sdk_loading": "Indlæser Google Maps...",
+    "sdk_failed": "Kunne ikke indlæse Google Maps. Tjek din API-nøgle i Indstillinger → Kort.",
+    "test_key": "TEST NØGLE",
+    "test_ok": "✓ API-nøgle virker",
+    "test_failed": "✗ API-nøgle ugyldig eller begrænset"
   },
   "export": {
     "markups_header": "MARKUPS",

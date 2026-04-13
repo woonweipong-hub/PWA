@@ -554,7 +554,18 @@
     "coords_copied": "Koordinater kopierade",
     "map_pin_desc": "GPS-märkt platsnål",
     "open_in_maps": "Öppna i Google Maps",
-    "no_api_key": "Lägg till en Google Maps API-nyckel i Inställningar → Kartor för att aktivera kartplatstaggning."
+    "no_api_key": "Lägg till en Google Maps API-nyckel i Inställningar → Kartor för att aktivera kartplatstaggning.",
+    "submode_drawing": "Tagga på ritning",
+    "submode_map": "Tagga på kartan",
+    "submode_compare": "Jämför ändringar",
+    "save_default_view": "SPARA SOM PROJEKT STANDARD",
+    "default_saved": "✓ Standardvy sparad för detta projekt",
+    "drop_pin_hint": "Tryck på kartan för att släppa en nål och skapa en post",
+    "sdk_loading": "Laddar Google Maps...",
+    "sdk_failed": "Det gick inte att ladda Google Maps. Kontrollera din API-nyckel i Inställningar → Kartor.",
+    "test_key": "TESTNYCKEL",
+    "test_ok": "✓ API-nyckel fungerar",
+    "test_failed": "✗ API-nyckel ogiltig eller begränsad"
   },
   "export": {
     "markups_header": "MARKUPS",

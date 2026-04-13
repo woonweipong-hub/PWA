@@ -554,7 +554,18 @@
     "coords_copied": "Koordinatlar kopyalandı",
     "map_pin_desc": "GPS etiketli konum pini",
     "open_in_maps": "Google Haritalar'da aç",
-    "no_api_key": "Harita konumu etiketlemeyi etkinleştirmek için Ayarlar → Haritalar'a bir Google Haritalar API anahtarı ekleyin."
+    "no_api_key": "Harita konumu etiketlemeyi etkinleştirmek için Ayarlar → Haritalar'a bir Google Haritalar API anahtarı ekleyin.",
+    "submode_drawing": "Çizimdeki Etiket",
+    "submode_map": "Haritada Etiketle",
+    "submode_compare": "Değişiklikleri Karşılaştır",
+    "save_default_view": "PROJE VARSAYILANI OLARAK KAYDET",
+    "default_saved": "✓ Bu proje için kaydedilen varsayılan görünüm",
+    "drop_pin_hint": "Bir raptiye bırakmak ve bir giriş oluşturmak için haritaya dokunun",
+    "sdk_loading": "Google Haritalar yükleniyor…",
+    "sdk_failed": "Google Haritalar yüklenemedi. Ayarlar → Haritalar'da API anahtarınızı kontrol edin.",
+    "test_key": "TEST ANAHTARI",
+    "test_ok": "✓ API anahtarı çalışır",
+    "test_failed": "✗ API anahtarı geçersiz veya kısıtlı"
   },
   "export": {
     "markups_header": "İŞARETLEYİCİLER",

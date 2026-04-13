@@ -554,7 +554,18 @@
     "coords_copied": "Koordinaten kopiert",
     "map_pin_desc": "GPS-gekennzeichneter Standort-Pin",
     "open_in_maps": "In Google Maps öffnen",
-    "no_api_key": "Fügen Sie unter Einstellungen → Karten einen Google Maps-API-Schlüssel hinzu, um die Markierung des Kartenstandorts zu aktivieren."
+    "no_api_key": "Fügen Sie unter Einstellungen → Karten einen Google Maps-API-Schlüssel hinzu, um die Markierung des Kartenstandorts zu aktivieren.",
+    "submode_drawing": "Tag auf Zeichnung",
+    "submode_map": "Tag auf der Karte",
+    "submode_compare": "Änderungen vergleichen",
+    "save_default_view": "ALS PROJEKTSTANDARD SPEICHERN",
+    "default_saved": "✓ Standardansicht für dieses Projekt gespeichert",
+    "drop_pin_hint": "Tippen Sie auf die Karte, um eine Stecknadel zu setzen und einen Eintrag zu erstellen",
+    "sdk_loading": "Google Maps wird geladen…",
+    "sdk_failed": "Google Maps konnte nicht geladen werden. Überprüfen Sie Ihren API-Schlüssel unter Einstellungen → Karten.",
+    "test_key": "TEST-SCHLÜSSEL",
+    "test_ok": "✓ API-Schlüssel funktioniert",
+    "test_failed": "✗ API-Schlüssel ungültig oder eingeschränkt"
   },
   "export": {
     "markups_header": "MARKUPS",

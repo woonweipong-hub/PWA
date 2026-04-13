@@ -554,7 +554,18 @@
     "coords_copied": "Coordenadas copiadas",
     "map_pin_desc": "Pin de ubicación con etiqueta GPS",
     "open_in_maps": "Abierta en Google Maps",
-    "no_api_key": "Agregue una clave API de Google Maps en Configuración → Mapas para habilitar el etiquetado de ubicación en el mapa."
+    "no_api_key": "Agregue una clave API de Google Maps en Configuración → Mapas para habilitar el etiquetado de ubicación en el mapa.",
+    "submode_drawing": "Etiqueta en el dibujo",
+    "submode_map": "Etiquetar en el mapa",
+    "submode_compare": "Comparar cambios",
+    "save_default_view": "GUARDAR COMO PREDETERMINADO DEL PROYECTO",
+    "default_saved": "✓ Vista predeterminada guardada para este proyecto",
+    "drop_pin_hint": "Toca el mapa para colocar un marcador y crear una entrada.",
+    "sdk_loading": "Cargando Google Maps…",
+    "sdk_failed": "No se pudo cargar Google Maps. Verifique su clave API en Configuración → Mapas.",
+    "test_key": "LLAVE DE PRUEBA",
+    "test_ok": "✓ La clave API funciona",
+    "test_failed": "✗ Clave API no válida o restringida"
   },
   "export": {
     "markups_header": "MARCACIONES",

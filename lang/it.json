@@ -554,7 +554,18 @@
     "coords_copied": "Coordinate copiate",
     "map_pin_desc": "Perno di posizione con tag GPS",
     "open_in_maps": "Apri in Google Maps",
-    "no_api_key": "Aggiungi una chiave API di Google Maps in Impostazioni → Mappe per abilitare il tagging della posizione sulla mappa."
+    "no_api_key": "Aggiungi una chiave API di Google Maps in Impostazioni → Mappe per abilitare il tagging della posizione sulla mappa.",
+    "submode_drawing": "Etichetta sul disegno",
+    "submode_map": "Etichetta sulla mappa",
+    "submode_compare": "Confronta le modifiche",
+    "save_default_view": "SALVA COME PREDEFINITO DEL PROGETTO",
+    "default_saved": "✓ Vista predefinita salvata per questo progetto",
+    "drop_pin_hint": "Tocca la mappa per inserire un segnaposto e creare una voce",
+    "sdk_loading": "Caricamento di Google Maps...",
+    "sdk_failed": "Impossibile caricare Google Maps. Controlla la tua chiave API in Impostazioni → Mappe.",
+    "test_key": "CHIAVE DI PROVA",
+    "test_ok": "✓ La chiave API funziona",
+    "test_failed": "✗ Chiave API non valida o limitata"
   },
   "export": {
     "markups_header": "MARKUP",

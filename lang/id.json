@@ -554,7 +554,18 @@
     "coords_copied": "Koordinat disalin",
     "map_pin_desc": "Pin lokasi yang diberi tag GPS",
     "open_in_maps": "Buka di Google Maps",
-    "no_api_key": "Tambahkan kunci API Google Maps di Pengaturan → Peta untuk mengaktifkan penandaan lokasi peta."
+    "no_api_key": "Tambahkan kunci API Google Maps di Pengaturan → Peta untuk mengaktifkan penandaan lokasi peta.",
+    "submode_drawing": "Tandai pada Gambar",
+    "submode_map": "Tandai di Peta",
+    "submode_compare": "Bandingkan Perubahan",
+    "save_default_view": "SIMPAN SEBAGAI DEFAULT PROYEK",
+    "default_saved": "✓ Tampilan default disimpan untuk proyek ini",
+    "drop_pin_hint": "Ketuk peta untuk menjatuhkan pin dan membuat entri",
+    "sdk_loading": "Memuat Google Maps…",
+    "sdk_failed": "Tidak dapat memuat Google Maps. Periksa kunci API Anda di Pengaturan → Peta.",
+    "test_key": "KUNCI UJI",
+    "test_ok": "✓ Kunci API berfungsi",
+    "test_failed": "✗ Kunci API tidak valid atau dibatasi"
   },
   "export": {
     "markups_header": "MARKUPS",

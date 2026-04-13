@@ -554,7 +554,18 @@
     "coords_copied": "座標をコピーしました",
     "map_pin_desc": "GPSタグ付き位置ピン",
     "open_in_maps": "Google マップで開く",
-    "no_api_key": "[設定] → [マップ] で Google Maps API キーを追加して、地図上の位置のタグ付けを有効にします。"
+    "no_api_key": "[設定] → [マップ] で Google Maps API キーを追加して、地図上の位置のタグ付けを有効にします。",
+    "submode_drawing": "描画上のタグ",
+    "submode_map": "地図上のタグ",
+    "submode_compare": "変更の比較",
+    "save_default_view": "プロジェクトのデフォルトとして保存",
+    "default_saved": "✓ このプロジェクト用に保存されたデフォルトのビュー",
+    "drop_pin_hint": "地図をタップしてピンをドロップし、エントリを作成します",
+    "sdk_loading": "Google マップを読み込み中…",
+    "sdk_failed": "Google マップを読み込めませんでした。 「設定」→「マップ」で API キーを確認してください。",
+    "test_key": "テストキー",
+    "test_ok": "✓ APIキーが機能する",
+    "test_failed": "✗ API キーが無効または制限されています"
   },
   "export": {
     "markups_header": "マークアップ",

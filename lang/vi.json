@@ -554,7 +554,18 @@
     "coords_copied": "Đã sao chép tọa độ",
     "map_pin_desc": "Ghim vị trí được gắn thẻ GPS",
     "open_in_maps": "Mở trong Google Maps",
-    "no_api_key": "Thêm khóa API Google Maps trong Cài đặt → Bản đồ để bật gắn thẻ vị trí trên bản đồ."
+    "no_api_key": "Thêm khóa API Google Maps trong Cài đặt → Bản đồ để bật gắn thẻ vị trí trên bản đồ.",
+    "submode_drawing": "Gắn thẻ vào bản vẽ",
+    "submode_map": "Gắn thẻ trên bản đồ",
+    "submode_compare": "So sánh các thay đổi",
+    "save_default_view": "LƯU LÀM MẶC ĐỊNH DỰ ÁN",
+    "default_saved": "✓ Chế độ xem mặc định được lưu cho dự án này",
+    "drop_pin_hint": "Nhấn vào bản đồ để thả ghim và tạo mục nhập",
+    "sdk_loading": "Đang tải Google Maps…",
+    "sdk_failed": "Không thể tải Google Maps. Kiểm tra khóa API của bạn trong Cài đặt → Bản đồ.",
+    "test_key": "KHÓA KIỂM TRA",
+    "test_ok": "✓ Khóa API hoạt động",
+    "test_failed": "✗ Khóa API không hợp lệ hoặc bị hạn chế"
   },
   "export": {
     "markups_header": "ĐÁNH DẤU",

@@ -554,7 +554,18 @@
     "coords_copied": "坐标已复制",
     "map_pin_desc": "GPS 标记的位置图钉",
     "open_in_maps": "在 Google 地图中打开",
-    "no_api_key": "在“设置”→“地图”中添加 Google 地图 API 密钥以启用地图位置标记。"
+    "no_api_key": "在“设置”→“地图”中添加 Google 地图 API 密钥以启用地图位置标记。",
+    "submode_drawing": "图纸上的标签",
+    "submode_map": "地图上的标记",
+    "submode_compare": "比较变化",
+    "save_default_view": "另存为项目默认值",
+    "default_saved": "✓ 为该项目保存默认视图",
+    "drop_pin_hint": "点击地图以放置图钉并创建条目",
+    "sdk_loading": "正在加载谷歌地图...",
+    "sdk_failed": "无法加载 Google 地图。 在“设置”→“地图”中检查您的 API 密钥。",
+    "test_key": "测试键",
+    "test_ok": "✓ API 密钥有效",
+    "test_failed": "✗ API 密钥无效或受限"
   },
   "export": {
     "markups_header": "加价",
