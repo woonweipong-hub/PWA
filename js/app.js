@@ -5940,10 +5940,15 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
       }
       if(canEdit){
         map.addListener("click",e=>{
+          const tool=markupToolRef.current;
+          if(tool){handleGmapsMarkupClick(e.latLng,map,g,tool);return;}
           if(!pinModeRef.current)return;
           setPendingPin({lat:e.latLng.lat(),lng:e.latLng.lng()});
           if(markersRef.current.pending)markersRef.current.pending.setMap(null);
           markersRef.current.pending=new g.Marker({position:e.latLng,map,icon:{path:g.SymbolPath.CIRCLE,scale:10,fillColor:"#ff6b00",fillOpacity:1,strokeColor:"#fff",strokeWeight:3},zIndex:9999});
+        });
+        map.addListener("dblclick",()=>{
+          if(markupToolRef.current==="line"&&markupDrawRef.current?.points?.length>=2)finishPolyline();
         });
       }
       setStatus("ready");
@@ -5994,10 +5999,50 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
     const d=markupDrawRef.current;
     if(!d||d.tool!=="line"||!d.points||d.points.length<2)return;
     addMarkup({id:"mm_"+Date.now(),type:"line",points:d.points,color:"#ff6b00"});
-    if(d.tempLayer&&mapObj.current)mapObj.current.removeLayer(d.tempLayer);
+    // Clean up temp preview — Leaflet uses removeLayer, gmaps uses setMap(null)
+    if(d.tempLayer){
+      if(d.tempLayer.setMap)try{d.tempLayer.setMap(null);}catch{}
+      else if(mapObj.current&&mapObj.current.removeLayer)try{mapObj.current.removeLayer(d.tempLayer);}catch{}
+    }
     markupDrawRef.current=null;
     setMarkupTool(null);
   };
+  const handleGmapsMarkupClick=(latLng,map,g,tool)=>{
+    const pt={lat:latLng.lat(),lng:latLng.lng()};
+    if(tool==="text"){
+      const label=prompt("Text label:");
+      if(label&&label.trim()){
+        addMarkup({id:"mm_"+Date.now(),type:"text",pos:pt,text:label.trim(),color:"#ff6b00"});
+      }
+      setMarkupTool(null);return;
+    }
+    if(tool==="rect"||tool==="circle"){
+      const d=markupDrawRef.current;
+      if(!d||d.tool!==tool){markupDrawRef.current={tool,first:pt};return;}
+      const a=d.first,b=pt;
+      if(tool==="rect"){
+        addMarkup({id:"mm_"+Date.now(),type:"rect",a,b,color:"#ff6b00"});
+      }else{
+        const R=6371000;
+        const dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;
+        const la1=a.lat*Math.PI/180,la2=b.lat*Math.PI/180;
+        const hav=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
+        const radius=2*R*Math.atan2(Math.sqrt(hav),Math.sqrt(1-hav));
+        addMarkup({id:"mm_"+Date.now(),type:"circle",center:a,radius,color:"#ff6b00"});
+      }
+      markupDrawRef.current=null;setMarkupTool(null);return;
+    }
+    if(tool==="line"){
+      const d=markupDrawRef.current;
+      const pts=d?.points||[];
+      const next=[...pts,pt];
+      if(d?.tempLayer)try{d.tempLayer.setMap(null);}catch{}
+      const tempLayer=new g.Polyline({path:next.map(p=>({lat:p.lat,lng:p.lng})),strokeColor:"#ff6b00",strokeWeight:3,strokeOpacity:0.75,map:mapObj.current});
+      markupDrawRef.current={tool:"line",points:next,tempLayer};
+      return;
+    }
+  };
+
   const handleMapMarkupClick=(latlng,map,L,tool)=>{
     if(tool==="text"){
       const label=prompt("Text label:");
@@ -6038,6 +6083,19 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
     }
   };
 
+  // Update a persisted markup after a drag/move
+  const updateMarkupGeo=async(id,patch)=>{
+    setMapMarkups(prev=>prev.map(m=>m.id===id?{...m,...patch}:m));
+    if(!id||id.startsWith("mm_"))return;
+    const geo={};
+    const next={...mapMarkups.find(m=>m.id===id),...patch};
+    if(next.a)geo.a=next.a;if(next.b)geo.b=next.b;
+    if(next.center)geo.center=next.center;if(next.radius!=null)geo.radius=next.radius;
+    if(next.points)geo.points=next.points;
+    if(next.pos)geo.pos=next.pos;
+    try{await DB.mapMarkups.update(id,{geo});}catch{}
+  };
+
   // Clear all markups — deletes from DB best-effort then clears local state
   const clearAllMarkups=async()=>{
     const current=mapMarkups.slice();
@@ -6047,30 +6105,115 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
     }
   };
 
-  // Render mapMarkups as Leaflet layers
+  // ── Render mapMarkups (Leaflet) with a centroid drag-handle for move ─
   useEffect(()=>{
     if(status!=="ready"||provider!=="osm"||!mapObj.current||!window.L)return;
     const L=window.L;
     markupLayersRef.current.forEach(l=>{try{l.remove();}catch{}});
-    markupLayersRef.current=mapMarkups.map(m=>{
+    const layers=[];
+    mapMarkups.forEach(m=>{
+      let shape=null,handleLatLng=null;
       if(m.type==="rect"){
-        return L.rectangle([[m.a.lat,m.a.lng],[m.b.lat,m.b.lng]],{color:m.color,weight:2,fillOpacity:0.12}).addTo(mapObj.current);
-      }
-      if(m.type==="circle"){
-        return L.circle([m.center.lat,m.center.lng],{radius:m.radius,color:m.color,weight:2,fillOpacity:0.12}).addTo(mapObj.current);
-      }
-      if(m.type==="line"){
-        return L.polyline(m.points.map(p=>[p.lat,p.lng]),{color:m.color,weight:3}).addTo(mapObj.current);
-      }
-      if(m.type==="text"){
+        shape=L.rectangle([[m.a.lat,m.a.lng],[m.b.lat,m.b.lng]],{color:m.color,weight:2,fillOpacity:0.12}).addTo(mapObj.current);
+        handleLatLng=[(m.a.lat+m.b.lat)/2,(m.a.lng+m.b.lng)/2];
+      }else if(m.type==="circle"){
+        shape=L.circle([m.center.lat,m.center.lng],{radius:m.radius,color:m.color,weight:2,fillOpacity:0.12}).addTo(mapObj.current);
+        handleLatLng=[m.center.lat,m.center.lng];
+      }else if(m.type==="line"){
+        shape=L.polyline(m.points.map(p=>[p.lat,p.lng]),{color:m.color,weight:3}).addTo(mapObj.current);
+        const cx=m.points.reduce((a,p)=>a+p.lat,0)/m.points.length;
+        const cy=m.points.reduce((a,p)=>a+p.lng,0)/m.points.length;
+        handleLatLng=[cx,cy];
+      }else if(m.type==="text"){
         const safe=(m.text||"").replace(/</g,"&lt;");
         const icon=L.divIcon({className:"",html:`<div style="background:#fff;border:1.5px solid ${m.color};border-radius:6px;padding:2px 8px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;color:${m.color};white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.15)">${safe}</div>`,iconAnchor:[0,0]});
-        return L.marker([m.pos.lat,m.pos.lng],{icon}).addTo(mapObj.current);
+        shape=L.marker([m.pos.lat,m.pos.lng],{icon,draggable:canEdit}).addTo(mapObj.current);
+        if(canEdit)shape.on("dragend",e=>{
+          const p=e.target.getLatLng();
+          updateMarkupGeo(m.id,{pos:{lat:p.lat,lng:p.lng}});
+        });
       }
-      return null;
-    }).filter(Boolean);
+      if(shape)layers.push(shape);
+      // Draggable centroid handle for non-marker shapes
+      if(canEdit&&handleLatLng&&m.type!=="text"){
+        const hIcon=L.divIcon({className:"",html:`<div style="width:14px;height:14px;border-radius:50%;background:${m.color};border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,0.2);cursor:move"></div>`,iconSize:[14,14],iconAnchor:[7,7]});
+        const handle=L.marker(handleLatLng,{icon:hIcon,draggable:true,zIndexOffset:1000}).addTo(mapObj.current);
+        let dragStart=null;
+        handle.on("dragstart",e=>{dragStart={lat:e.target.getLatLng().lat,lng:e.target.getLatLng().lng};});
+        handle.on("drag",e=>{
+          if(!dragStart)return;
+          const cur=e.target.getLatLng();
+          const dLat=cur.lat-dragStart.lat,dLng=cur.lng-dragStart.lng;
+          if(m.type==="rect"&&shape.setBounds){
+            shape.setBounds([[m.a.lat+dLat,m.a.lng+dLng],[m.b.lat+dLat,m.b.lng+dLng]]);
+          }else if(m.type==="circle"&&shape.setLatLng){
+            shape.setLatLng([m.center.lat+dLat,m.center.lng+dLng]);
+          }else if(m.type==="line"&&shape.setLatLngs){
+            shape.setLatLngs(m.points.map(p=>[p.lat+dLat,p.lng+dLng]));
+          }
+        });
+        handle.on("dragend",e=>{
+          if(!dragStart)return;
+          const cur=e.target.getLatLng();
+          const dLat=cur.lat-dragStart.lat,dLng=cur.lng-dragStart.lng;
+          if(m.type==="rect")updateMarkupGeo(m.id,{a:{lat:m.a.lat+dLat,lng:m.a.lng+dLng},b:{lat:m.b.lat+dLat,lng:m.b.lng+dLng}});
+          else if(m.type==="circle")updateMarkupGeo(m.id,{center:{lat:m.center.lat+dLat,lng:m.center.lng+dLng}});
+          else if(m.type==="line")updateMarkupGeo(m.id,{points:m.points.map(p=>({lat:p.lat+dLat,lng:p.lng+dLng}))});
+          dragStart=null;
+        });
+        layers.push(handle);
+      }
+    });
+    markupLayersRef.current=layers;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[mapMarkups,status,provider]);
+  },[mapMarkups,status,provider,canEdit]);
+
+  // ── Render mapMarkups (Google Maps) with native draggable shapes ─────
+  useEffect(()=>{
+    if(status!=="ready"||provider!=="gmaps"||!mapObj.current||!window.google?.maps)return;
+    const g=window.google.maps;
+    markupLayersRef.current.forEach(l=>{try{l.setMap(null);}catch{}});
+    const layers=[];
+    mapMarkups.forEach(m=>{
+      let obj=null;
+      if(m.type==="rect"){
+        const bounds={north:Math.max(m.a.lat,m.b.lat),south:Math.min(m.a.lat,m.b.lat),east:Math.max(m.a.lng,m.b.lng),west:Math.min(m.a.lng,m.b.lng)};
+        obj=new g.Rectangle({bounds,strokeColor:m.color,strokeWeight:2,fillColor:m.color,fillOpacity:0.12,draggable:canEdit,map:mapObj.current});
+        if(canEdit)obj.addListener("dragend",()=>{
+          const b=obj.getBounds();const ne=b.getNorthEast(),sw=b.getSouthWest();
+          updateMarkupGeo(m.id,{a:{lat:ne.lat(),lng:ne.lng()},b:{lat:sw.lat(),lng:sw.lng()}});
+        });
+      }else if(m.type==="circle"){
+        obj=new g.Circle({center:{lat:m.center.lat,lng:m.center.lng},radius:m.radius,strokeColor:m.color,strokeWeight:2,fillColor:m.color,fillOpacity:0.12,draggable:canEdit,map:mapObj.current});
+        if(canEdit)obj.addListener("dragend",()=>{
+          const c=obj.getCenter();
+          updateMarkupGeo(m.id,{center:{lat:c.lat(),lng:c.lng()}});
+        });
+      }else if(m.type==="line"){
+        obj=new g.Polyline({path:m.points.map(p=>({lat:p.lat,lng:p.lng})),strokeColor:m.color,strokeWeight:3,draggable:canEdit,map:mapObj.current});
+        if(canEdit)obj.addListener("dragend",()=>{
+          const path=obj.getPath();const pts=[];
+          for(let i=0;i<path.getLength();i++){const p=path.getAt(i);pts.push({lat:p.lat(),lng:p.lng()});}
+          updateMarkupGeo(m.id,{points:pts});
+        });
+      }else if(m.type==="text"){
+        const safe=(m.text||"").replace(/</g,"&lt;");
+        obj=new g.Marker({
+          position:{lat:m.pos.lat,lng:m.pos.lng},
+          map:mapObj.current,
+          draggable:canEdit,
+          label:{text:safe,color:m.color,fontWeight:"800",fontSize:"12px",className:"gmaps-markup-label"},
+          icon:{path:g.SymbolPath.CIRCLE,scale:0,fillOpacity:0,strokeOpacity:0},
+        });
+        if(canEdit)obj.addListener("dragend",e=>{
+          updateMarkupGeo(m.id,{pos:{lat:e.latLng.lat(),lng:e.latLng.lng()}});
+        });
+      }
+      if(obj)layers.push(obj);
+    });
+    markupLayersRef.current=layers;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[mapMarkups,status,provider,canEdit]);
 
   // ── OSM / Leaflet path ─────────────────────────────────────────
   useEffect(()=>{
@@ -6223,7 +6366,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
             📌 ADD PIN {pinMode?"· ON":""}
           </button>
         )}
-        {canEdit&&provider==="osm"&&(
+        {canEdit&&(
           <button onClick={()=>{setMarkupTool(t=>t?null:"rect");setPinMode(false);}} style={{padding:"8px 12px",borderRadius:10,border:"1px solid "+(markupTool?"rgba(88,86,214,0.4)":"rgba(0,0,0,0.12)"),background:markupTool?"rgba(88,86,214,0.12)":"#fff",color:markupTool?"#5856d6":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
             ✏ MARKUP {markupTool?"· ON":""}
           </button>
