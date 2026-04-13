@@ -4480,6 +4480,71 @@ function MapThumb({defect}){
   );
 }
 
+// SiteCam-style consolidated map: every GPS-pinned entry shown on one map,
+// numbered + severity coloured, auto-fit to bounds, tap to open.
+function DefectsMapView({defects,onView}){
+  const mapRef=useRef(null);
+  const mapObj=useRef(null);
+  const[status,setStatus]=useState("loading");
+  const pinned=(defects||[]).map(d=>({d,c:parseDefectCoords(d)})).filter(x=>x.c);
+  useEffect(()=>{
+    if(pinned.length===0||!mapRef.current)return;
+    const provider=getMapProvider();
+    let cancelled=false;
+    (async()=>{
+      if(provider==="gmaps"){
+        try{await loadGoogleMaps(local.get(GMAPS_KEY)||"");}catch{setStatus("error");return;}
+        if(cancelled||!window.google?.maps)return;
+        const g=window.google.maps;
+        const map=new g.Map(mapRef.current,{mapTypeId:"hybrid",streetViewControl:false,fullscreenControl:false,gestureHandling:"greedy"});
+        mapObj.current=map;
+        const bounds=new g.LatLngBounds();
+        pinned.forEach(({d,c},i)=>{
+          const color=SEV_COLOR[d.severity]||"#8e8e93";
+          const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="rgba(0,0,0,0.6)" stroke="${color}" stroke-width="3"/><text x="16" y="17" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="900" fill="#fff" font-family="'Barlow Condensed',sans-serif">${i+1}</text></svg>`;
+          const m=new g.Marker({position:c,map,icon:{url:"data:image/svg+xml;utf8,"+encodeURIComponent(svg),scaledSize:new g.Size(32,32),anchor:new g.Point(16,16)},title:`${i+1}. ${d.title||"Entry"}`});
+          m.addListener("click",()=>onView(d));
+          bounds.extend(c);
+        });
+        if(pinned.length===1)map.setCenter(pinned[0].c),map.setZoom(17);
+        else map.fitBounds(bounds,40);
+      }else{
+        try{await waitForLeaflet();}catch{setStatus("error");return;}
+        if(cancelled||!window.L||!mapRef.current)return;
+        const L=window.L;
+        const map=L.map(mapRef.current,{zoomControl:true}).setView([pinned[0].c.lat,pinned[0].c.lng],15);
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,crossOrigin:"anonymous"}).addTo(map);
+        mapObj.current=map;
+        const group=[];
+        pinned.forEach(({d,c},i)=>{
+          const color=SEV_COLOR[d.severity]||"#8e8e93";
+          const html=`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="rgba(0,0,0,0.6)" stroke="${color}" stroke-width="3"/><text x="16" y="17" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="900" fill="#fff" font-family="'Barlow Condensed',sans-serif">${i+1}</text></svg>`;
+          const m=L.marker([c.lat,c.lng],{icon:L.divIcon({className:"",html,iconSize:[32,32],iconAnchor:[16,16]}),title:`${i+1}. ${d.title||"Entry"}`}).addTo(map);
+          m.on("click",()=>onView(d));
+          group.push([c.lat,c.lng]);
+        });
+        if(pinned.length>1)map.fitBounds(group,{padding:[40,40]});
+      }
+      setStatus("ready");
+      setTimeout(()=>{try{if(provider==="gmaps")window.google.maps.event.trigger(mapObj.current,"resize");else mapObj.current.invalidateSize();}catch{}},100);
+    })();
+    return()=>{cancelled=true;if(mapObj.current&&mapObj.current.remove)try{mapObj.current.remove();}catch{}};
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[defects?.length]);
+  if(pinned.length===0)return(
+    <div style={{textAlign:"center",color:"rgba(0,0,0,0.4)",padding:"40px 20px",fontSize:13,background:"#fff",borderRadius:12}}>
+      No entries have GPS coordinates yet. Drop pins in Tag on Map to see them here.
+    </div>
+  );
+  return(
+    <div style={{position:"relative",marginBottom:10,background:"#fff",borderRadius:12,overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)"}}>
+      <div ref={mapRef} style={{width:"100%",height:"min(65dvh,560px)",minHeight:320,background:"#e5e3dc"}}/>
+      <div style={{position:"absolute",top:10,left:10,background:"rgba(26,26,26,0.85)",color:"#fff",padding:"6px 12px",borderRadius:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,pointerEvents:"none"}}>{pinned.length} pinned · tap a marker to open</div>
+      {status==="error"&&<div style={{padding:20,color:"#ff3b30",textAlign:"center"}}>Could not load the map. Check your connection and provider in Settings → Maps.</div>}
+    </div>
+  );
+}
+
 function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,member,members,onBulkUpdate}){
   const[filter,setFilter]=useState("All");const[sevF,setSevF]=useState("All");const[typeF,setTypeF]=useState("All");
   const[search,setSearch]=useState("");const[showFilters,setShowFilters]=useState(false);
@@ -4489,6 +4554,7 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
   const[selectMode,setSelectMode]=useState(false);
   const[selectedIds,setSelectedIds]=useState(()=>new Set());
   const[showBulkPanel,setShowBulkPanel]=useState(false);
+  const[showMapView,setShowMapView]=useState(false);
   const[bulkStatus,setBulkStatus]=useState("");
   const[bulkSeverity,setBulkSeverity]=useState("");
   const[bulkAssignee,setBulkAssignee]=useState("");
@@ -4614,8 +4680,16 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
         </div>
       )}
 
-      {filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>{q?t("review.no_matching")+" \""+search+"\"":t("review.no_entries")}</div>}
-      {filtered.map((d,i)=>{
+      {/* View toggle: LIST | MAP (only show MAP if any entries have GPS coords) */}
+      {(()=>{const pinnable=filtered.filter(d=>parseDefectCoords(d));if(pinnable.length===0)return null;return(
+        <div style={{display:"flex",gap:4,padding:3,background:"rgba(0,0,0,0.05)",borderRadius:10,marginBottom:12,width:"max-content"}}>
+          <button onClick={()=>setShowMapView(false)} style={{padding:"6px 14px",borderRadius:7,border:"none",background:!showMapView?"#fff":"transparent",color:!showMapView?"#1a1a1a":"rgba(0,0,0,0.5)",boxShadow:!showMapView?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>📋 LIST</button>
+          <button onClick={()=>setShowMapView(true)} style={{padding:"6px 14px",borderRadius:7,border:"none",background:showMapView?"#fff":"transparent",color:showMapView?"#1a1a1a":"rgba(0,0,0,0.5)",boxShadow:showMapView?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>🗺 MAP ({pinnable.length})</button>
+        </div>
+      );})()}
+      {showMapView&&<DefectsMapView defects={filtered} onView={onView}/>}
+      {!showMapView&&filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>{q?t("review.no_matching")+" \""+search+"\"":t("review.no_entries")}</div>}
+      {!showMapView&&filtered.map((d,i)=>{
         const checked=selectedIds.has(d.id);
         return(
         <div key={d.id} className="anim" style={{animationDelay:`${i*0.04}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:`4px solid ${SEV_COLOR[d.severity]}`,display:"flex",gap:12,alignItems:"flex-start",outline:selectMode&&checked?"2px solid #ff6b00":"none"}} onClick={()=>selectMode?toggleId(d.id):onView(d)}>
