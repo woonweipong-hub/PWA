@@ -1366,7 +1366,11 @@ function exportReportAll(defects,drawings,savedComparisons,projectName){
 }
 
 // Full report export — PDF version with professional layout
-async function exportReportPdf(defects,drawings,savedComparisons,projectName,companyName,allPins,contractAdvisory,allDefectsForPins,onProgress){
+async function exportReportPdf(defects,drawings,savedComparisons,projectName,companyName,allPins,contractAdvisory,allDefectsForPins,onProgress,opts){
+  opts=opts||{};
+  const incMap=opts.incMap!==false;
+  const gmapsKey=opts.gmapsKey||"";
+  const mapDefects=incMap&&gmapsKey?(defects||[]).filter(d=>typeof d.lat==="number"&&typeof d.lng==="number"):[];
   if(typeof onProgress==="function")onProgress("Preparing report…");
   const doc=new jspdf.jsPDF("p","mm","a4");
   const pageW=doc.internal.pageSize.getWidth();
@@ -1630,6 +1634,23 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     }
     await Promise.all(photoPromises);
   }
+
+  // ── Preload static maps for map-pinned entries ─────────────────
+  const mapImgCache=new Map(); // keyed by defect.id
+  if(mapDefects.length>0){
+    if(typeof onProgress==="function")onProgress(`Fetching ${mapDefects.length} map thumbnails…`);
+    const mapPromises=mapDefects.map(d=>{
+      const z=d.mapZoom||17;
+      const url=`https://maps.googleapis.com/maps/api/staticmap?center=${d.lat},${d.lng}&zoom=${z}&size=600x240&maptype=hybrid&markers=color:red%7C${d.lat},${d.lng}&key=${encodeURIComponent(gmapsKey)}`;
+      return new Promise(resolve=>{
+        const img=new Image();img.crossOrigin="anonymous";
+        img.onload=()=>{mapImgCache.set(d.id,img);resolve();};
+        img.onerror=()=>{mapImgCache.set(d.id,null);resolve();};
+        img.src=url;
+      });
+    });
+    await Promise.all(mapPromises);
+  }
   if(defects&&defects.length>0){
     heading("ENTRY DETAILS",orange);
     for(let idx=0;idx<defects.length;idx++){
@@ -1760,6 +1781,19 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
         doc.setTextColor(0);
       }
 
+      // ── Map thumbnail (if entry has GPS coords) ──
+      const mapImg=mapImgCache.get(d.id);
+      if(mapImg&&mapImg.width>0){
+        const mw=contentW-2;
+        const mh=mw*(mapImg.height/mapImg.width);
+        checkPage(mh+8);
+        doc.setFontSize(6.5);doc.setFont(undefined,"bold");doc.setTextColor(140);
+        doc.text(`🗺 MAP LOCATION  ·  ${d.lat.toFixed(5)}, ${d.lng.toFixed(5)}`,margin+1,y);
+        doc.setTextColor(0);y+=2;
+        try{doc.addImage(mapImg,"PNG",margin+1,y,mw,mh);}catch{}
+        y+=mh+3;
+      }
+
       // ── Card bottom border ──
       y+=3;
       doc.setDrawColor(230);doc.setLineWidth(0.3);
@@ -1867,6 +1901,73 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
         }
       }catch(e){console.warn("PDF: failed to embed comparison overlay",e);}
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // MAP OVERVIEW — all GPS-pinned entries on one static map
+  // ═══════════════════════════════════════════════════════════════════
+  if(mapDefects.length>0&&gmapsKey){
+    if(typeof onProgress==="function")onProgress("Fetching overview map…");
+    // Encode all pins as color-coded markers (Google Static Maps: max ~30 markers per call
+    // before URL hits length limits; we batch color groups)
+    const bySev={Critical:"red",Major:"orange",Minor:"yellow",Observation:"blue"};
+    const groups={};
+    for(const d of mapDefects){
+      const c=bySev[d.severity]||"gray";
+      (groups[c]||(groups[c]=[])).push(`${d.lat},${d.lng}`);
+    }
+    const markerParams=Object.entries(groups).map(([color,pts])=>
+      `markers=color:${color}%7C${pts.slice(0,40).join("%7C")}`
+    ).join("&");
+    const overviewUrl=`https://maps.googleapis.com/maps/api/staticmap?size=640x480&maptype=hybrid&${markerParams}&key=${encodeURIComponent(gmapsKey)}`;
+    const overviewImg=await new Promise(resolve=>{
+      const img=new Image();img.crossOrigin="anonymous";
+      img.onload=()=>resolve(img);img.onerror=()=>resolve(null);
+      img.src=overviewUrl;
+    });
+    doc.addPage();y=18;
+    heading("ALL PINS ON MAP",orange);
+    if(overviewImg){
+      const ow=contentW;
+      const oh=ow*(overviewImg.height/overviewImg.width);
+      try{doc.addImage(overviewImg,"PNG",margin,y,ow,oh);}catch{}
+      y+=oh+4;
+    }
+    // Legend + summary
+    doc.setFontSize(8);doc.setFont(undefined,"bold");doc.setTextColor(60);
+    doc.text(`${mapDefects.length} map-pinned entries`,margin,y);y+=5;
+    doc.setFont(undefined,"normal");doc.setTextColor(80);
+    const legend=[
+      ["Critical",sevRGB.Critical],
+      ["Major",sevRGB.Major],
+      ["Minor",sevRGB.Minor],
+      ["Observation",sevRGB.Observation],
+    ];
+    let lx=margin;
+    for(const[lbl,rgb]of legend){
+      const cnt=mapDefects.filter(d=>d.severity===lbl).length;
+      if(cnt===0)continue;
+      doc.setFillColor(rgb[0],rgb[1],rgb[2]);doc.circle(lx+1.5,y-1,1.4,"F");
+      doc.setTextColor(60);doc.text(`${lbl} (${cnt})`,lx+4,y);
+      lx+=30;
+    }
+    y+=6;
+    // Per-pin table
+    const mHeaders=[["#","Title","Severity","Lat","Lng"]];
+    const mRows=mapDefects.map((d,i)=>[
+      d.defect_id||String(i+1),
+      (d.title||"").substring(0,60),
+      d.severity||"",
+      d.lat.toFixed(6),
+      d.lng.toFixed(6),
+    ]);
+    doc.autoTable({startY:y,head:mHeaders,body:mRows,margin:{left:margin,right:margin},
+      styles:{fontSize:7,cellPadding:1.8},headStyles:{fillColor:orange,textColor:255,fontStyle:"bold"},
+      alternateRowStyles:{fillColor:[252,250,247]},
+      columnStyles:{0:{cellWidth:14},1:{cellWidth:70},2:{cellWidth:22},3:{cellWidth:30},4:{cellWidth:30}},
+      didParseCell:(data)=>{if(data.section==="body"&&data.column.index===2){const rgb=sevRGB[data.cell.raw];if(rgb)data.cell.styles.textColor=rgb;data.cell.styles.fontStyle="bold";}}
+    });
+    y=doc.lastAutoTable.finalY+6;
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -5219,6 +5320,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
   const[incDefects,setIncDefects]=useState(true);
   const[incDrawings,setIncDrawings]=useState(true);
   const[incComparisons,setIncComparisons]=useState(true);
+  const[incMap,setIncMap]=useState(true);
   // Load drawings list from DB for preview
   const[reportDrawings,setReportDrawings]=useState([]);
   useEffect(()=>{
@@ -5390,8 +5492,8 @@ function Report({defects,onEmailSetup,currentProject,company}){
           {showExportMenu&&(
             <div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(0,0,0,0.08)",zIndex:20,minWidth:160,overflow:"hidden"}}>
               <button disabled={pdfExport.active} onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}));}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")}</button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);setPdfExport({active:true,label:"Preparing report…"});try{await new Promise(r=>setTimeout(r,600));await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}));}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||""});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")}</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);setPdfExport({active:true,label:"Preparing report…"});try{await new Promise(r=>setTimeout(r,600));await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||""});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
               <button onClick={async()=>{setShowExportMenu(false);try{const result=await exportToGoogleSheets(incDefects?filtered:[],currentProject?.name,company?.companyName);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
             </div>
           )}
@@ -5426,7 +5528,8 @@ function Report({defects,onEmailSetup,currentProject,company}){
         {[
           {key:"defects",val:incDefects,set:setIncDefects,icon:"📋",label:t("report.defect_entries"),count:filtered.length,color:"#ff3b30"},
           {key:"drawings",val:incDrawings,set:setIncDrawings,icon:"📐",label:t("report.pdf_drawings"),count:drawingsWithAnnotations.length,sub:`${totalPins} ${t("report.pins")} · ${totalMarkups} ${t("report.markups")} · ${totalNotes} ${t("report.notes")}`,color:"#ff6b00"},
-          {key:"comparisons",val:incComparisons,set:setIncComparisons,icon:"🔍",label:t("report.saved_comparisons"),count:savedComparisons.length,color:"#5856d6"}
+          {key:"comparisons",val:incComparisons,set:setIncComparisons,icon:"🔍",label:t("report.saved_comparisons"),count:savedComparisons.length,color:"#5856d6"},
+          {key:"map",val:incMap,set:setIncMap,icon:"🗺",label:t("maps.map_view"),count:(filtered.filter(d=>typeof d.lat==="number"&&typeof d.lng==="number")).length,color:"#34aadc",sub:local.get(GMAPS_KEY)?t("maps.all_on_map"):t("maps.no_api_key")}
         ].map(sec=>(
           <button key={sec.key} onClick={()=>sec.set(v=>!v)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",marginBottom:6,borderRadius:10,border:`1.5px solid ${sec.val?sec.color+"40":"rgba(0,0,0,0.08)"}`,background:sec.val?sec.color+"0a":"#fafafa",cursor:"pointer",textAlign:"left"}}>
             <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${sec.val?sec.color:"rgba(0,0,0,0.15)"}`,background:sec.val?sec.color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#fff",flexShrink:0}}>{sec.val?"✓":""}</div>
