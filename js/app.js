@@ -5900,10 +5900,12 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
   const[searching,setSearching]=useState(false);
   const[pinMode,setPinMode]=useState(true);
   const[showList,setShowList]=useState(false);
-  const[markupTool,setMarkupTool]=useState(null); // null | "rect" | "circle" | "line" | "text"
+  const[markupTool,setMarkupTool]=useState(null); // null | "rect" | "circle" | "line" | "text" | "arrow" | "dimension" | "stamp" | "freehand" | "photo"
   const[mapMarkups,setMapMarkups]=useState([]);   // session-only, not yet persisted
+  const[pendingPhoto,setPendingPhoto]=useState(null); // {dataUrl, aspect}
   const markupDrawRef=useRef(null);               // {tool, first:{lat,lng}, tempLayer, points[]}
   const markupLayersRef=useRef([]);
+  const photoInputRef=useRef(null);
   const provider=providerRef.current;
   const canEdit=member?.role!=="viewer";
 
@@ -5962,6 +5964,58 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
   useEffect(()=>{pinModeRef.current=pinMode;},[pinMode]);
   const markupToolRef=useRef(markupTool);
   useEffect(()=>{markupToolRef.current=markupTool;},[markupTool]);
+
+  // ── Photo tool: open file picker when activated ───────────────
+  useEffect(()=>{
+    if(markupTool!=="photo"||pendingPhoto)return;
+    photoInputRef.current?.click();
+  },[markupTool,pendingPhoto]);
+
+  const onPickMarkupPhoto=(e)=>{
+    const file=e.target.files?.[0];
+    if(!file){setMarkupTool(null);return;}
+    e.target.value="";
+    const img=new Image();
+    img.onload=()=>{
+      const maxDim=1200;
+      const sc=Math.min(1,maxDim/Math.max(img.width,img.height));
+      const cw=Math.round(img.width*sc),ch=Math.round(img.height*sc);
+      const cnv=document.createElement("canvas");
+      cnv.width=cw;cnv.height=ch;
+      cnv.getContext("2d").drawImage(img,0,0,cw,ch);
+      setPendingPhoto({dataUrl:cnv.toDataURL("image/jpeg",0.82),aspect:ch/cw});
+    };
+    img.onerror=()=>{alert("Could not load image.");setMarkupTool(null);};
+    const fr=new FileReader();
+    fr.onload=ev=>{img.src=ev.target.result;};
+    fr.readAsDataURL(file);
+  };
+
+  // ── Freehand on Leaflet: drag across map with panning disabled ─
+  useEffect(()=>{
+    if(provider!=="osm"||markupTool!=="freehand"||!mapObj.current||!window.L)return;
+    const L=window.L,map=mapObj.current;
+    map.dragging.disable();map.getContainer().style.cursor="crosshair";
+    let points=[],tempLayer=null,drawing=false;
+    const onDown=e=>{drawing=true;points=[{lat:e.latlng.lat,lng:e.latlng.lng}];if(tempLayer)tempLayer.remove();tempLayer=L.polyline([],{color:"#ff6b00",weight:3,opacity:0.85}).addTo(map);};
+    const onMove=e=>{if(!drawing)return;points.push({lat:e.latlng.lat,lng:e.latlng.lng});tempLayer.setLatLngs(points.map(p=>[p.lat,p.lng]));};
+    const onUp=()=>{
+      if(!drawing)return;
+      drawing=false;
+      if(points.length>=2){
+        addMarkup({id:"mm_"+Date.now(),type:"freehand",points:points.slice(),color:"#ff6b00"});
+      }
+      if(tempLayer){try{tempLayer.remove();}catch{}tempLayer=null;}
+      points=[];setMarkupTool(null);
+    };
+    map.on("mousedown",onDown);map.on("mousemove",onMove);map.on("mouseup",onUp);
+    return()=>{
+      map.off("mousedown",onDown);map.off("mousemove",onMove);map.off("mouseup",onUp);
+      map.dragging.enable();map.getContainer().style.cursor="";
+      if(tempLayer)try{tempLayer.remove();}catch{}
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[markupTool,provider,status]);
 
   // ── Map markup: load + persist ─────────────────────────────────
   // Stored in PocketBase `map_markups` collection with geo stored as a
@@ -6037,6 +6091,13 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
       if(label)addMarkup({id:"mm_"+Date.now(),type:"stamp",pos:pt,text:label,color:"#34c759"});
       setMarkupTool(null);return;
     }
+    if(tool==="photo"&&pendingPhoto){
+      const widthM=200,aspect=pendingPhoto.aspect||0.75,heightM=widthM*aspect;
+      const mPerDegLat=111320,mPerDegLng=111320*Math.cos(pt.lat*Math.PI/180);
+      const dLat=(heightM/2)/mPerDegLat,dLng=(widthM/2)/mPerDegLng;
+      addMarkup({id:"mm_"+Date.now(),type:"photo",a:{lat:pt.lat+dLat,lng:pt.lng-dLng},b:{lat:pt.lat-dLat,lng:pt.lng+dLng},dataUrl:pendingPhoto.dataUrl,color:"#ff6b00"});
+      setPendingPhoto(null);setMarkupTool(null);return;
+    }
     if(tool==="arrow"||tool==="dimension"){
       const d=markupDrawRef.current;
       if(!d||d.tool!==tool){markupDrawRef.current={tool,first:pt};return;}
@@ -6083,6 +6144,13 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
       const label=promptStamp();
       if(label)addMarkup({id:"mm_"+Date.now(),type:"stamp",pos:pt,text:label,color:"#34c759"});
       setMarkupTool(null);return;
+    }
+    if(tool==="photo"&&pendingPhoto){
+      const widthM=200,aspect=pendingPhoto.aspect||0.75,heightM=widthM*aspect;
+      const mPerDegLat=111320,mPerDegLng=111320*Math.cos(pt.lat*Math.PI/180);
+      const dLat=(heightM/2)/mPerDegLat,dLng=(widthM/2)/mPerDegLng;
+      addMarkup({id:"mm_"+Date.now(),type:"photo",a:{lat:pt.lat+dLat,lng:pt.lng-dLng},b:{lat:pt.lat-dLat,lng:pt.lng+dLng},dataUrl:pendingPhoto.dataUrl,color:"#ff6b00"});
+      setPendingPhoto(null);setMarkupTool(null);return;
     }
     if(tool==="arrow"||tool==="dimension"){
       const d=markupDrawRef.current;
@@ -6196,6 +6264,16 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
         const lbl=L.marker([mid.lat,mid.lng],{icon:L.divIcon({className:"",html:`<div style="background:${m.color};color:#fff;border-radius:4px;padding:1px 6px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;white-space:nowrap">${fmtMetres(dist)}</div>`,iconSize:[60,18],iconAnchor:[30,9]}),interactive:false}).addTo(mapObj.current);
         layers.push(lbl);
         handleLatLng=[mid.lat,mid.lng];
+      }else if(m.type==="freehand"&&m.points&&m.points.length>1){
+        shape=L.polyline(m.points.map(p=>[p.lat,p.lng]),{color:m.color,weight:2.5,opacity:0.9,smoothFactor:1.2}).addTo(mapObj.current);
+        const cx=m.points.reduce((a,p)=>a+p.lat,0)/m.points.length;
+        const cy=m.points.reduce((a,p)=>a+p.lng,0)/m.points.length;
+        handleLatLng=[cx,cy];
+      }else if(m.type==="photo"&&m.dataUrl&&m.a&&m.b){
+        const n=Math.max(m.a.lat,m.b.lat),s=Math.min(m.a.lat,m.b.lat);
+        const e=Math.max(m.a.lng,m.b.lng),w=Math.min(m.a.lng,m.b.lng);
+        shape=L.imageOverlay(m.dataUrl,[[s,w],[n,e]],{opacity:0.92,interactive:true}).addTo(mapObj.current);
+        handleLatLng=[(n+s)/2,(e+w)/2];
       }
       if(shape)layers.push(shape);
       // Draggable centroid handle for non-marker shapes
@@ -6216,6 +6294,12 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
             shape.setLatLngs(m.points.map(p=>[p.lat+dLat,p.lng+dLng]));
           }else if((m.type==="arrow"||m.type==="dimension")&&shape.setLatLngs){
             shape.setLatLngs([[m.a.lat+dLat,m.a.lng+dLng],[m.b.lat+dLat,m.b.lng+dLng]]);
+          }else if(m.type==="freehand"&&shape.setLatLngs){
+            shape.setLatLngs(m.points.map(p=>[p.lat+dLat,p.lng+dLng]));
+          }else if(m.type==="photo"&&shape.setBounds){
+            const n=Math.max(m.a.lat,m.b.lat),s=Math.min(m.a.lat,m.b.lat);
+            const ee=Math.max(m.a.lng,m.b.lng),w=Math.min(m.a.lng,m.b.lng);
+            shape.setBounds([[s+dLat,w+dLng],[n+dLat,ee+dLng]]);
           }
         });
         handle.on("dragend",e=>{
@@ -6226,6 +6310,8 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
           else if(m.type==="circle")updateMarkupGeo(m.id,{center:{lat:m.center.lat+dLat,lng:m.center.lng+dLng}});
           else if(m.type==="line")updateMarkupGeo(m.id,{points:m.points.map(p=>({lat:p.lat+dLat,lng:p.lng+dLng}))});
           else if(m.type==="arrow"||m.type==="dimension")updateMarkupGeo(m.id,{a:{lat:m.a.lat+dLat,lng:m.a.lng+dLng},b:{lat:m.b.lat+dLat,lng:m.b.lng+dLng}});
+          else if(m.type==="freehand")updateMarkupGeo(m.id,{points:m.points.map(p=>({lat:p.lat+dLat,lng:p.lng+dLng}))});
+          else if(m.type==="photo")updateMarkupGeo(m.id,{a:{lat:m.a.lat+dLat,lng:m.a.lng+dLng},b:{lat:m.b.lat+dLat,lng:m.b.lng+dLng}});
           dragStart=null;
         });
         layers.push(handle);
@@ -6311,6 +6397,21 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
           const b={lat:path.getAt(1).lat(),lng:path.getAt(1).lng()};
           updateMarkupGeo(m.id,{a,b,distance:haversine(a,b)});
         });
+      }else if(m.type==="freehand"&&m.points&&m.points.length>1){
+        obj=new g.Polyline({
+          path:m.points.map(p=>({lat:p.lat,lng:p.lng})),
+          strokeColor:m.color,strokeWeight:2.5,strokeOpacity:0.9,
+          draggable:canEdit,map:mapObj.current,
+        });
+        if(canEdit)obj.addListener("dragend",()=>{
+          const path=obj.getPath();const pts=[];
+          for(let i=0;i<path.getLength();i++){const p=path.getAt(i);pts.push({lat:p.lat(),lng:p.lng()});}
+          updateMarkupGeo(m.id,{points:pts});
+        });
+      }else if(m.type==="photo"&&m.dataUrl&&m.a&&m.b){
+        const bounds={north:Math.max(m.a.lat,m.b.lat),south:Math.min(m.a.lat,m.b.lat),east:Math.max(m.a.lng,m.b.lng),west:Math.min(m.a.lng,m.b.lng)};
+        obj=new g.GroundOverlay(m.dataUrl,bounds,{clickable:false,opacity:0.92,map:mapObj.current});
+        // GroundOverlay is not natively draggable — Leaflet parity only for now
       }
       if(obj)layers.push(obj);
     });
@@ -6455,6 +6556,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
 
   return(
     <div style={{display:"flex",flexDirection:"column",gap:10}}>
+      <input ref={photoInputRef} type="file" accept="image/*" onChange={onPickMarkupPhoto} style={{display:"none"}}/>
       <div style={{display:"flex",gap:8,alignItems:"center"}}>
         <form onSubmit={e=>{e.preventDefault();if(provider==="osm")searchOsm();}} style={{flex:1,display:"flex",gap:6}}>
           <input ref={searchRef} type="text" placeholder={t("maps.search_address")||"Search address or location..."} style={{flex:1,padding:"10px 12px",fontSize:13,borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",boxSizing:"border-box"}}/>
@@ -6495,11 +6597,13 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
             {id:"dimension",label:"↔ DIMENSION"},
             {id:"stamp",label:"◈ STAMP"},
             {id:"text",label:"T LABEL"},
+            {id:"freehand",label:"✎ FREEHAND"},
+            {id:"photo",label:"🖼 PHOTO"},
           ].map(tool=>(
             <button key={tool.id} onClick={()=>{markupDrawRef.current=null;setMarkupTool(tool.id);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid "+(markupTool===tool.id?"#5856d6":"rgba(88,86,214,0.25)"),background:markupTool===tool.id?"#5856d6":"#fff",color:markupTool===tool.id?"#fff":"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{tool.label}</button>
           ))}
           <span style={{fontSize:11,color:"rgba(88,86,214,0.75)",marginLeft:4,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
-            {markupTool==="rect"?"Click two opposite corners":markupTool==="circle"?"Click centre, then edge":markupTool==="line"?"Click points · double-click to finish":markupTool==="arrow"?"Click tail, then head":markupTool==="dimension"?"Click start, then end — distance auto-labelled":markupTool==="stamp"?"Click where the stamp goes":markupTool==="text"?"Click where the label goes":""}
+            {markupTool==="rect"?"Click two opposite corners":markupTool==="circle"?"Click centre, then edge":markupTool==="line"?"Click points · double-click to finish":markupTool==="arrow"?"Click tail, then head":markupTool==="dimension"?"Click start, then end — distance auto-labelled":markupTool==="stamp"?"Click where the stamp goes":markupTool==="text"?"Click where the label goes":markupTool==="freehand"?"Click-and-drag on the map to draw (OSM only)":markupTool==="photo"?"Pick an image, then click the map to place it":""}
           </span>
           <span style={{marginLeft:"auto",display:"flex",gap:6}}>
             {mapMarkups.length>0&&<button onClick={()=>{if(confirm("Clear all map markup?"))clearAllMarkups();}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid rgba(255,59,48,0.3)",background:"#fff",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>CLEAR ALL ({mapMarkups.length})</button>}
