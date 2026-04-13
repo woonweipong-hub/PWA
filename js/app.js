@@ -4539,6 +4539,67 @@ function AiSearch({defects,onApplyFilters,onClose}){
   );
 }
 
+// Module-level cache of PDF-page-1 dataURLs keyed by file URL. Lets the same
+// drawing thumbnail appear on many Review rows without re-rendering the PDF
+// for each row. Bounded at a few MB; a full app reload clears it.
+const _pdfThumbCache=new Map();
+function _renderPdfThumbDataUrl(url){
+  if(_pdfThumbCache.has(url))return _pdfThumbCache.get(url);
+  const p=(async()=>{
+    try{
+      if(!window.pdfjsLib)return null;
+      const pdfjsLib=window.pdfjsLib;
+      if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+        pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+      const doc=await pdfjsLib.getDocument(url).promise;
+      const page=await doc.getPage(1);
+      const viewport=page.getViewport({scale:0.6});
+      const canvas=document.createElement("canvas");
+      canvas.width=viewport.width;canvas.height=viewport.height;
+      await page.render({canvasContext:canvas.getContext("2d"),viewport}).promise;
+      return canvas.toDataURL("image/jpeg",0.72);
+    }catch{return null;}
+  })();
+  _pdfThumbCache.set(url,p);
+  return p;
+}
+
+// Small drawing thumbnail with a single pin dot overlaid at its saved
+// fractional position. Mirrors MapThumb — same 62×62 visual footprint.
+function DrawingPinThumb({drawing,pin,severity,title}){
+  const[src,setSrc]=useState(null);
+  const fileUrl=useMemo(()=>DB.fileUrl("drawings",drawing.id,drawing.file),[drawing.id,drawing.file]);
+  const isPdf=/\.pdf$/i.test(drawing.file||"");
+  useEffect(()=>{
+    let cancelled=false;
+    if(isPdf){
+      Promise.resolve(_renderPdfThumbDataUrl(fileUrl)).then(dataUrl=>{if(!cancelled)setSrc(dataUrl||null);});
+    }else{
+      setSrc(fileUrl);
+    }
+    return()=>{cancelled=true;};
+  },[fileUrl,isPdf]);
+  const color=SEV_COLOR[severity]||"#8e8e93";
+  return(
+    <div style={{width:62,height:62,position:"relative",borderRadius:8,overflow:"hidden",flexShrink:0,background:"#f8f8f6",border:"1px solid rgba(0,0,0,0.08)"}} title={title||"Drawing pin"}>
+      {src?<img src={src} alt="" loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>:<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,color:"rgba(0,0,0,0.25)"}}>📐</div>}
+      {typeof pin?.x==="number"&&typeof pin?.y==="number"&&(
+        <div style={{position:"absolute",left:`${pin.x}%`,top:`${pin.y}%`,transform:"translate(-50%,-50%)",width:12,height:12,borderRadius:"50%",background:color,border:"2px solid #fff",boxShadow:"0 0 0 1px rgba(0,0,0,0.35)"}}/>
+      )}
+    </div>
+  );
+}
+
+// Dispatch: render MapThumb for GPS-pinned entries, DrawingPinThumb for
+// entries pinned on a drawing, or nothing if neither applies.
+function EntryThumb({defect,drawingByEntryId}){
+  if(parseDefectCoords(defect))return <MapThumb defect={defect}/>;
+  const link=drawingByEntryId&&drawingByEntryId[defect.id];
+  if(link)return <DrawingPinThumb drawing={link.drawing} pin={link.pin} severity={defect.severity} title={`On drawing: ${link.drawing.name||""}`}/>;
+  return null;
+}
+
 // Small map thumbnail for Review rows — single OSM tile with the pin dot
 // overlaid at its exact fractional position. No external static-map service
 // required, and img cross-origin is fine for display (we aren't exporting).
@@ -4627,7 +4688,7 @@ function DefectsMapView({defects,onView}){
   );
 }
 
-function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,member,members,onBulkUpdate}){
+function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,member,members,onBulkUpdate,company,currentProject}){
   const[filter,setFilter]=useState("All");const[sevF,setSevF]=useState("All");const[typeF,setTypeF]=useState("All");
   const[search,setSearch]=useState("");const[showFilters,setShowFilters]=useState(false);
   const searchRef=useRef(null);
@@ -4661,6 +4722,32 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
     }catch(e){alert("Bulk update failed: "+e.message);}
     setBulkSaving(false);
   };
+
+  // Load drawings + pins for this project so Review rows can show a small
+  // drawing-with-pin thumbnail for entries pinned on a floor plan (parity
+  // with the MapThumb shown for GPS-pinned entries).
+  const[rvDrawings,setRvDrawings]=useState([]);
+  const[rvPins,setRvPins]=useState([]);
+  useEffect(()=>{
+    if(!company?.companyId||!currentProject?.id){setRvDrawings([]);return;}
+    DB.drawings.list(`companyId="${company.companyId}" && projectId="${currentProject.id}"`)
+      .then(items=>setRvDrawings(items||[])).catch(()=>setRvDrawings([]));
+  },[company?.companyId,currentProject?.id]);
+  useEffect(()=>{
+    if(!rvDrawings.length){setRvPins([]);return;}
+    Promise.all(rvDrawings.map(d=>DB.pins.list(`drawingId="${d.id}"`).catch(()=>[])))
+      .then(results=>setRvPins(results.flat())).catch(()=>setRvPins([]));
+  },[rvDrawings]);
+  const drawingByEntryId=useMemo(()=>{
+    const byId={};
+    const drawingMap={};rvDrawings.forEach(d=>{drawingMap[d.id]=d;});
+    rvPins.forEach(p=>{
+      if(byId[p.entryId])return; // keep first pin per entry
+      const drawing=drawingMap[p.drawingId];
+      if(drawing)byId[p.entryId]={drawing,pin:p};
+    });
+    return byId;
+  },[rvDrawings,rvPins]);
 
   // Apply NL filters from AI search
   useEffect(()=>{
@@ -4796,7 +4883,7 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
               <span>{d.created?new Date(d.created).toLocaleDateString():"Just now"}</span>
             </div>
           </div>
-          <MapThumb defect={d}/>
+          <EntryThumb defect={d} drawingByEntryId={drawingByEntryId}/>
         </div>
         );
       })}
@@ -11479,7 +11566,7 @@ function App(){
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("dashboard")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect}/>}
-        {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate}/>}
+        {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} company={company} currentProject={currentProject}/>}
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company}/>}
       </div>
 
