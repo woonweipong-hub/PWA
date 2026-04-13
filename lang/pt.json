@@ -80,6 +80,15 @@
     "observation": "Observação",
     "label": "SEVERIDADE"
   },
+  "work_categories": {
+    "landed": "Defeitos de Edifício (Baixo)",
+    "highrise": "Defeitos de Edifício (Alto)",
+    "construction": "Canteiro de Obras",
+    "interior": "Obras Interiores",
+    "facilities": "Gestão de Instalações",
+    "infrastructure": "Obras de Infraestrutura",
+    "others": "Outros"
+  },
   "roles": {
     "admin": "Administrador",
     "manager": "Gerente",
@@ -178,7 +187,11 @@
     "saving": "SALVANDO...",
     "log_another": "+ REGISTRE OUTRO AQUI",
     "listening": "AUDIÇÃO...",
-    "tap_to_speak": "TOQUE PARA FALAR"
+    "tap_to_speak": "TOQUE PARA FALAR",
+    "tag_on_map": "ETIQUETA NO MAPA",
+    "map_location": "LOCALIZAÇÃO NO MAPA",
+    "map_location_set": "Conjunto de localização do mapa",
+    "map_location_cleared": "Localização do mapa apagada"
   },
   "review": {
     "title": "Análise",
@@ -193,6 +206,12 @@
     "select": "✓ SELECIONE",
     "type_label": "TIPO",
     "status_label": "STATUS"
+  },
+  "detail": {
+    "update_status": "ATUALIZAR STATUS",
+    "description": "DESCRIÇÃO",
+    "timeline": "CRONOLOGIA",
+    "assigned": "Atribuído"
   },
   "report": {
     "title": "Relatório",
@@ -225,6 +244,8 @@
     "total_defects": "DEFEITOS TOTAIS",
     "by_severity": "POR GRAVIDADE",
     "by_status": "POR ESTADO",
+    "by_assignee": "POR RESPONSÁVEL",
+    "total": "total",
     "email_preview": "VISUALIZAÇÃO DE E-MAIL",
     "pins": "alfinetes",
     "markups": "marcações",
@@ -234,9 +255,7 @@
     "severity_label": "GRAVIDADE",
     "status_label": "STATUS",
     "assignee_label": "CESSIONÁRIA",
-    "date_range": "INTERVALO DE DATA",
-    "by_assignee": "POR RESPONSÁVEL",
-    "total": "total"
+    "date_range": "INTERVALO DE DATA"
   },
   "dashboard": {
     "title": "Painel",
@@ -365,18 +384,20 @@
     "telegram_desc": "Pings de defeitos em tempo real",
     "storage": "Armazenar",
     "storage_desc": "Back-end e hospedagem de arquivos",
+    "maps": "Mapas",
+    "maps_desc": "Fixação de localização do Google Maps",
     "language": "Idioma",
     "language_desc": "Escolha seu idioma",
     "section_project": "PROJETO",
     "section_enhance": "MELHORAR",
+    "section_app": "APLICATIVA",
+    "clear_cache": "Limpar cache e recarregar",
+    "clear_cache_desc": "Corrija problemas de carregamento atualizando todos os arquivos em cache",
     "all_set": "Tudo configurado",
     "finish_setup": "Concluir configuração",
     "done_pill": "FEITO",
     "todo_pill": "PENDENTE",
-    "opt_pill": "OPCIONAL",
-    "section_app": "APP",
-    "clear_cache": "Limpar cache e recarregar",
-    "clear_cache_desc": "Corrija problemas de carregamento atualizando todos os arquivos em cache"
+    "opt_pill": "OPCIONAL"
   },
   "team": {
     "title": "👥 GESTÃO DE EQUIPE",
@@ -509,6 +530,32 @@
     "openai_key_placeholder": "sk-...",
     "openai_model_placeholder": "gpt-4o-mini"
   },
+  "maps": {
+    "title": "CONFIGURAÇÃO DE MAPAS",
+    "api_key": "CHAVE DE API DO GOOGLE MAPS",
+    "api_key_placeholder": "AizaSy...",
+    "setup_desc": "Cole sua chave de API do Google Maps para ativar a fixação de localização GPS nas entradas.",
+    "maps_desc": "Fixe localizações GPS exatas nas entradas. Veja todos os defeitos em um mapa ao vivo.",
+    "tag_on_map": "ETIQUETA NO MAPA",
+    "tap_to_pin": "Toque no mapa para definir a localização do defeito",
+    "use_gps": "USE MEU GPS",
+    "search_address": "Pesquisar endereço ou localização...",
+    "confirm_location": "CONFIRMAR LOCALIZAÇÃO",
+    "clear_location": "LIMPAR LOCALIZAÇÃO",
+    "view_on_map": "VER NO MAPA",
+    "map_view": "VISUALIZAÇÃO DO MAPA",
+    "satellite": "Satélite",
+    "street": "Rua",
+    "my_location": "MINHA LOCALIZAÇÃO",
+    "all_on_map": "TUDO NO MAPA",
+    "nearby_issues": "PROBLEMAS PRÓXIMOS",
+    "location_saved": "✓ Localização do mapa salva",
+    "lat_lng": "Lat/Lng",
+    "coords_copied": "Coordenadas copiadas",
+    "map_pin_desc": "Pino de localização marcado com GPS",
+    "open_in_maps": "Abrir no Google Maps",
+    "no_api_key": "Adicione uma chave de API do Google Maps em Configurações → Mapas para ativar a marcação de localização no mapa."
+  },
   "export": {
     "markups_header": "MARCAÇÕES",
     "markup_csv": "Marcação CSV",
@@ -639,7 +686,7 @@
     "nav_dashboard_desc": "Mostra itens ativos, contagens de estado, resumo de gravidade, alertas e entradas recentes. Barra de consulta AI para pesquisa em linguagem natural.",
     "nav_log": "Registar (+)",
     "nav_log_desc": "Cria uma nova entrada — defeito, ocorrência, ordem de trabalho, observação ou atualização — com fotos, ditado por voz e preenchimento assistido por AI. Escolhe entre 7 categorias de trabalho.",
-    "nav_tag": "Tag",
+    "nav_tag": "Marcação",
     "nav_tag_desc": "Carrega plantas, coloca pinos de ocorrências sobre os desenhos, compara revisões PDF e anota com marcação + sobreposição de fotos. Útil para defeitos, rondas de FM e listas de retoques de remodelação.",
     "nav_review": "Revisão",
     "nav_review_desc": "Navegar, pesquisar, filtrar e atualizar entradas em lote. Pesquisa AI em linguagem natural, fotos de verificação, controlo deslizante antes/depois.",
@@ -670,7 +717,7 @@
     "set_team_desc": "Convidar membros (link + código), atribuir funções, remover membros.",
     "set_ai": "Configuração de AI",
     "set_ai_desc": "Ligar Gemini (grátis), Ollama (local) ou OpenAI/GPT para análise de fotos e pesquisa.",
-    "set_telegram": "Telegram",
+    "set_telegram": "Telegrama",
     "set_telegram_desc": "Alertas em tempo real para o grupo da equipa quando itens são registados ou atualizados.",
     "set_storage": "Armazenamento",
     "set_storage_desc": "Escolhe PocketBase (predefinido), caminho local ou Google Drive.",
@@ -680,7 +727,7 @@
     "tip_multi_projects_desc": "Usa o seletor de projeto para alternar entre obras, edifícios ou trabalhos de remodelação.",
     "tip_export": "Opções de exportação",
     "tip_export_desc": "Separador Relatório: CSV, PDF, Google Sheets ou tudo-em-um. Escolhe que secções (defeitos, desenhos, comparações) incluir.",
-    "tip_advisor": "Contract Advisor",
+    "tip_advisor": "Consultor de Contrato",
     "tip_advisor_desc": "No separador Relatório, toca em ADVISOR para obter uma correspondência cláusula-ocorrência assistida por AI a partir de PDF de contrato ou caderno de encargos — útil para reclamações de defeitos, SLA de FM e disputas de trabalhos a mais de remodelação.",
     "tip_language": "Idioma",
     "tip_language_desc": "Muda de idioma a qualquer momento em Definições → Idioma. Todas as listas pendentes (componentes, ocorrências, níveis, custos) estão traduzidas.",
@@ -689,7 +736,11 @@
     "tip_drawing_gestures": "Gestos em desenhos",
     "tip_drawing_gestures_desc": "Belisca com dois dedos para ampliar e mover em qualquer parte do desenho — agora funciona mesmo durante a marcação. Os botões + / − ampliam em direção ao centro da tua vista.",
     "tip_photo_scale": "Dimensionar fotos em desenhos",
-    "tip_photo_scale_desc": "Depois de colocar uma foto num desenho, toca para a selecionar e usa os botões roxos − / + na barra de marcação para redimensionar. Também podes arrastar a pega do canto."
+    "tip_photo_scale_desc": "Depois de colocar uma foto num desenho, toca para a selecionar e usa os botões roxos − / + na barra de marcação para redimensionar. Também podes arrastar a pega do canto.",
+    "set_maps": "Mapas",
+    "set_maps_desc": "Adicione uma chave de API do Google Maps para ativar a fixação de localização GPS nas entradas.",
+    "tip_map_tagging": "Marcação de localização no mapa",
+    "tip_map_tagging_desc": "Ao registrar uma entrada, toque em TAG ON MAP para colocar um pino GPS no Google Maps no local exato do defeito. As coordenadas salvas aparecem nos detalhes da entrada e podem ser abertas no Google Maps."
   },
   "feedback": {
     "title": "Opinião",
@@ -758,21 +809,6 @@
     "select": "Selecionar idioma",
     "current": "Idioma atual"
   },
-  "detail": {
-    "update_status": "ATUALIZAR STATUS",
-    "description": "DESCRIÇÃO",
-    "timeline": "CRONOLOGIA",
-    "assigned": "Atribuído"
-  },
-  "work_categories": {
-    "landed": "Defeitos de Edifício (Baixo)",
-    "highrise": "Defeitos de Edifício (Alto)",
-    "construction": "Canteiro de Obras",
-    "interior": "Obras Interiores",
-    "facilities": "Gestão de Instalações",
-    "infrastructure": "Obras de Infraestrutura",
-    "others": "Outros"
-  },
   "opt": {
     "Structural": "Estrutural",
     "Architectural": "Arquitetônico",
@@ -836,8 +872,8 @@
     "Diffuser/Grille": "Difusor/Grelha",
     "Thermostat": "Termostato",
     "Condensate Pipe": "Tubo de condensado",
-    "Chiller": "Chiller",
-    "Sprinkler": "Sprinkler",
+    "Chiller": "Refrigerador",
+    "Sprinkler": "Aspersor",
     "Fire Alarm": "Alarme de incêndio",
     "Extinguisher": "Extintor",
     "Hose Reel": "Carretel de mangueira",

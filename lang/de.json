@@ -80,6 +80,15 @@
     "observation": "Beobachtung",
     "label": "SCHWEREGRAD"
   },
+  "work_categories": {
+    "landed": "Baumängel (Flachbau)",
+    "highrise": "Baumängel (Hochbau)",
+    "construction": "Baustelle",
+    "interior": "Innenausbau",
+    "facilities": "Gebäudemanagement",
+    "infrastructure": "Infrastrukturarbeiten",
+    "others": "Sonstige"
+  },
   "roles": {
     "admin": "Administrator",
     "manager": "Manager",
@@ -178,7 +187,11 @@
     "saving": "SPAREN...",
     "log_another": "+ HIER EINEN ANDEREN LOGGEN",
     "listening": "HÖREN...",
-    "tap_to_speak": "TIPP ZUM SPRECHEN"
+    "tap_to_speak": "TIPP ZUM SPRECHEN",
+    "tag_on_map": "AUF DER KARTE MARKIEREN",
+    "map_location": "KARTENSTANDORT",
+    "map_location_set": "Kartenstandort festgelegt",
+    "map_location_cleared": "Kartenstandort gelöscht"
   },
   "review": {
     "title": "Überprüfen",
@@ -193,6 +206,12 @@
     "select": "✓ AUSWÄHLEN",
     "type_label": "TYP",
     "status_label": "STATUS"
+  },
+  "detail": {
+    "update_status": "STATUS AKTUALISIEREN",
+    "description": "BESCHREIBUNG",
+    "timeline": "ZEITVERLAUF",
+    "assigned": "Zugewiesen"
   },
   "report": {
     "title": "Bericht",
@@ -225,6 +244,8 @@
     "total_defects": "VOLLSTÄNDIGE MÄNGEL",
     "by_severity": "NACH SCHWERHEIT",
     "by_status": "NACH STATUS",
+    "by_assignee": "NACH ZUSTÄNDIGEM",
+    "total": "gesamt",
     "email_preview": "E-MAIL-VORSCHAU",
     "pins": "Stifte",
     "markups": "Markups",
@@ -234,9 +255,7 @@
     "severity_label": "SCHWERE",
     "status_label": "STATUS",
     "assignee_label": "ABTRETUNGSEMPFÄNGERIN",
-    "date_range": "DATUMSBEREICH",
-    "by_assignee": "NACH ZUSTÄNDIGEM",
-    "total": "gesamt"
+    "date_range": "DATUMSBEREICH"
   },
   "dashboard": {
     "title": "Armaturenbrett",
@@ -365,18 +384,20 @@
     "telegram_desc": "Echtzeit-Mängelmeldungen",
     "storage": "Speicher",
     "storage_desc": "Backend und Dateispeicherung",
+    "maps": "Karten",
+    "maps_desc": "Standortfixierung in Google Maps",
     "language": "Sprache",
     "language_desc": "Sprache wählen",
     "section_project": "PROJEKT",
     "section_enhance": "ERWEITERT",
+    "section_app": "APP",
+    "clear_cache": "Cache leeren & neu laden",
+    "clear_cache_desc": "Ladeprobleme durch Aktualisierung aller zwischengespeicherten Dateien beheben",
     "all_set": "Alles eingerichtet",
     "finish_setup": "Einrichtung abschließen",
     "done_pill": "FERTIG",
     "todo_pill": "AUSSTEHEND",
-    "opt_pill": "OPTIONAL",
-    "section_app": "APP",
-    "clear_cache": "Cache leeren & neu laden",
-    "clear_cache_desc": "Ladeprobleme durch Aktualisierung aller zwischengespeicherten Dateien beheben"
+    "opt_pill": "OPTIONAL"
   },
   "team": {
     "title": "👥 TEAMVERWALTUNG",
@@ -509,6 +530,32 @@
     "openai_key_placeholder": "sk-...",
     "openai_model_placeholder": "gpt-4o-mini"
   },
+  "maps": {
+    "title": "KARTEN-SETUP",
+    "api_key": "GOOGLE MAPS-API-SCHLÜSSEL",
+    "api_key_placeholder": "AIzaSy...",
+    "setup_desc": "Fügen Sie Ihren Google Maps-API-Schlüssel ein, um die GPS-Standortfixierung für Einträge zu aktivieren.",
+    "maps_desc": "Pinnen Sie genaue GPS-Standorte an Einträge. Sehen Sie sich alle Mängel auf einer Live-Karte an.",
+    "tag_on_map": "AUF DER KARTE MARKIEREN",
+    "tap_to_pin": "Tippen Sie auf die Karte, um den Fehlerort festzulegen",
+    "use_gps": "VERWENDEN SIE MEIN GPS",
+    "search_address": "Adresse oder Standort suchen...",
+    "confirm_location": "STANDORT BESTÄTIGEN",
+    "clear_location": "KLARER STANDORT",
+    "view_on_map": "AUF DER KARTE ANZEIGEN",
+    "map_view": "KARTENANSICHT",
+    "satellite": "Satellit",
+    "street": "Straße",
+    "my_location": "MEIN STANDORT",
+    "all_on_map": "ALLES AUF DER KARTE",
+    "nearby_issues": "FRAGEN IN DER NÄHE",
+    "location_saved": "✓ Kartenstandort gespeichert",
+    "lat_lng": "Lat/Lng",
+    "coords_copied": "Koordinaten kopiert",
+    "map_pin_desc": "GPS-gekennzeichneter Standort-Pin",
+    "open_in_maps": "In Google Maps öffnen",
+    "no_api_key": "Fügen Sie unter Einstellungen → Karten einen Google Maps-API-Schlüssel hinzu, um die Markierung des Kartenstandorts zu aktivieren."
+  },
   "export": {
     "markups_header": "MARKUPS",
     "markup_csv": "Markup-CSV",
@@ -635,11 +682,11 @@
     "setup_4": "4. Lade dein Team über Einstellungen → Team ein (nur Admin).",
     "setup_5": "5. Erstelle oder wähle ein Projekt und beginne mit der Erfassung von Einträgen.",
     "main_nav": "Hauptnavigation",
-    "nav_dashboard": "Dashboard",
+    "nav_dashboard": "Armaturenbrett",
     "nav_dashboard_desc": "Aktive Posten, Statuszahlen, Schweregrad-Übersicht, Warnungen und letzte Einträge anzeigen. AI-Abfrageleiste für natürlichsprachliche Suche.",
     "nav_log": "Erfassen (+)",
     "nav_log_desc": "Neuen Eintrag erstellen — Mangel, Problem, Arbeitsauftrag, Beobachtung oder Update — mit Fotos, Spracheingabe und AI-gestütztem Ausfüllen. Auswahl aus 7 Arbeitskategorien.",
-    "nav_tag": "Tag",
+    "nav_tag": "Etikett",
     "nav_tag_desc": "Grundrisse hochladen, Mängel auf Zeichnungen markieren, PDF-Revisionen vergleichen und mit Markup + Fotoüberlagerungen annotieren. Geeignet für Mängel, FM-Rundgänge und Renovierungs-Punch-Listen.",
     "nav_review": "Prüfen",
     "nav_review_desc": "Einträge durchsuchen, filtern und stapelweise aktualisieren. AI-Suche in natürlicher Sprache, Verifikationsfotos, Vorher/Nachher-Schieberegler.",
@@ -670,7 +717,7 @@
     "set_team_desc": "Mitglieder einladen (Link + Code), Rollen zuweisen, Mitglieder entfernen.",
     "set_ai": "AI-Einrichtung",
     "set_ai_desc": "Gemini (kostenlos), Ollama (lokal) oder OpenAI/GPT für Fotoanalyse und Suche verbinden.",
-    "set_telegram": "Telegram",
+    "set_telegram": "Telegramm",
     "set_telegram_desc": "Echtzeit-Benachrichtigungen an deine Team-Gruppe, wenn Posten erfasst oder aktualisiert werden.",
     "set_storage": "Speicher",
     "set_storage_desc": "Wähle PocketBase (Standard), lokalen Pfad oder Google Drive.",
@@ -680,7 +727,7 @@
     "tip_multi_projects_desc": "Nutze die Projektauswahl, um zwischen Baustellen, Gebäuden oder Renovierungsaufträgen zu wechseln.",
     "tip_export": "Exportoptionen",
     "tip_export_desc": "Bericht-Tab: CSV, PDF, Google Sheets oder alles in einem. Wähle, welche Abschnitte (Mängel, Zeichnungen, Vergleiche) enthalten sein sollen.",
-    "tip_advisor": "Contract Advisor",
+    "tip_advisor": "Vertragsberater",
     "tip_advisor_desc": "Tippe im Bericht-Tab auf ADVISOR, um AI-gestützte Klausel-zu-Mangel-Zuordnung mit Vertrags- oder Leistungsverzeichnis-PDFs zu erhalten — nützlich für Mängelansprüche, FM-SLAs und Renovierungs-Nachtragsstreitigkeiten.",
     "tip_language": "Sprache",
     "tip_language_desc": "Sprache jederzeit über Einstellungen → Sprache wechseln. Alle Dropdowns (Bauteile, Probleme, Ebenen, Kosten) werden übersetzt.",
@@ -689,7 +736,11 @@
     "tip_drawing_gestures": "Zeichnungsgesten",
     "tip_drawing_gestures_desc": "Zoome und verschiebe überall in der Zeichnung mit zwei Fingern — funktioniert jetzt auch beim Markieren. Die + / − -Tasten zoomen zur Mitte der Ansicht.",
     "tip_photo_scale": "Fotos auf Zeichnungen skalieren",
-    "tip_photo_scale_desc": "Tippe nach dem Platzieren eines Fotos auf einer Zeichnung zum Auswählen und verwende die lila − / + -Tasten in der Markup-Leiste zum Ändern der Größe. Du kannst auch den Eckgriff ziehen."
+    "tip_photo_scale_desc": "Tippe nach dem Platzieren eines Fotos auf einer Zeichnung zum Auswählen und verwende die lila − / + -Tasten in der Markup-Leiste zum Ändern der Größe. Du kannst auch den Eckgriff ziehen.",
+    "set_maps": "Karten",
+    "set_maps_desc": "Fügen Sie einen Google Maps-API-Schlüssel hinzu, um die GPS-Standortfixierung für Einträge zu aktivieren.",
+    "tip_map_tagging": "Markierung des Kartenstandorts",
+    "tip_map_tagging_desc": "Tippen Sie beim Protokollieren eines Eintrags auf „AUF KARTE TAGIEREN“, um einen GPS-Pin in Google Maps an der genauen Fehlerstelle abzulegen. Gespeicherte Koordinaten erscheinen im Eintragsdetail und können in Google Maps geöffnet werden."
   },
   "feedback": {
     "title": "Rückmeldung",
@@ -757,21 +808,6 @@
     "title": "🌐 SPRACHE",
     "select": "Sprache wählen",
     "current": "Aktuelle Sprache"
-  },
-  "detail": {
-    "update_status": "STATUS AKTUALISIEREN",
-    "description": "BESCHREIBUNG",
-    "timeline": "ZEITVERLAUF",
-    "assigned": "Zugewiesen"
-  },
-  "work_categories": {
-    "landed": "Baumängel (Flachbau)",
-    "highrise": "Baumängel (Hochbau)",
-    "construction": "Baustelle",
-    "interior": "Innenausbau",
-    "facilities": "Gebäudemanagement",
-    "infrastructure": "Infrastrukturarbeiten",
-    "others": "Sonstige"
   },
   "opt": {
     "Structural": "Tragwerk",

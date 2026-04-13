@@ -80,6 +80,15 @@
     "observation": "Gözlem",
     "label": "CİDDİYET"
   },
+  "work_categories": {
+    "landed": "Bina Kusurları (Alçak Katlı)",
+    "highrise": "Bina Kusurları (Yüksek Katlı)",
+    "construction": "Şantiye",
+    "interior": "İç Mekan İşleri",
+    "facilities": "Tesis Yönetimi",
+    "infrastructure": "Altyapı İşleri",
+    "others": "Diğer"
+  },
   "roles": {
     "admin": "Yönetici",
     "manager": "Müdür",
@@ -178,7 +187,11 @@
     "saving": "KAYDEDİLİYOR...",
     "log_another": "+ BURAYA BAŞKA BİR OTURUM AÇ",
     "listening": "DİNLEME...",
-    "tap_to_speak": "KONUŞMAK İÇİN DOKUNUN"
+    "tap_to_speak": "KONUŞMAK İÇİN DOKUNUN",
+    "tag_on_map": "HARİTADA ETİKETLE",
+    "map_location": "HARİTA KONUMU",
+    "map_location_set": "Harita konumu seti",
+    "map_location_cleared": "Harita konumu temizlendi"
   },
   "review": {
     "title": "Gözden geçirmek",
@@ -193,6 +206,12 @@
     "select": "✓ SEÇ",
     "type_label": "TİP",
     "status_label": "DURUM"
+  },
+  "detail": {
+    "update_status": "DURUMU GÜNCELLE",
+    "description": "AÇIKLAMA",
+    "timeline": "ZAMAN ÇİZELGESİ",
+    "assigned": "Atanan"
   },
   "report": {
     "title": "Rapor",
@@ -225,6 +244,8 @@
     "total_defects": "TOPLAM KUSURLAR",
     "by_severity": "ÖNEME GÖRE",
     "by_status": "DURUMA GÖRE",
+    "by_assignee": "SORUMLUYA GÖRE",
+    "total": "toplam",
     "email_preview": "E-POSTA ÖNİZLEMESİ",
     "pins": "iğneler",
     "markups": "işaretlemeler",
@@ -234,9 +255,7 @@
     "severity_label": "ŞİDDET",
     "status_label": "DURUM",
     "assignee_label": "GÖREVLENDİRİLEN",
-    "date_range": "TARİH ARALIĞI",
-    "by_assignee": "SORUMLUYA GÖRE",
-    "total": "toplam"
+    "date_range": "TARİH ARALIĞI"
   },
   "dashboard": {
     "title": "Kontrol Paneli",
@@ -365,18 +384,20 @@
     "telegram_desc": "Gerçek zamanlı kusur ping'leri",
     "storage": "Depolamak",
     "storage_desc": "Arka uç ve dosya barındırma",
+    "maps": "Haritalar",
+    "maps_desc": "Google Haritalar konum sabitleme",
     "language": "Dil",
     "language_desc": "Dilinizi seçin",
     "section_project": "PROJE",
     "section_enhance": "GENİŞLETMEK",
+    "section_app": "UYGULAMA",
+    "clear_cache": "Önbelleği Temizle ve Yeniden Yükle",
+    "clear_cache_desc": "Önbelleğe alınmış tüm dosyaları yenileyerek yükleme sorunlarını düzeltin",
     "all_set": "Hepsi kuruldu",
     "finish_setup": "Kurulumu bitir",
     "done_pill": "TAMAM",
     "todo_pill": "YAPILACAK",
-    "opt_pill": "İSTEĞE BAĞLI",
-    "section_app": "UYGULAMA",
-    "clear_cache": "Önbelleği Temizle ve Yeniden Yükle",
-    "clear_cache_desc": "Önbelleğe alınmış tüm dosyaları yenileyerek yükleme sorunlarını düzeltin"
+    "opt_pill": "İSTEĞE BAĞLI"
   },
   "team": {
     "title": "👥 TAKIM YÖNETİMİ",
@@ -508,6 +529,32 @@
     "openai_url_placeholder": "https://api.openai.com",
     "openai_key_placeholder": "sk-...",
     "openai_model_placeholder": "gpt-4o-mini"
+  },
+  "maps": {
+    "title": "HARİTA KURULUMU",
+    "api_key": "GOOGLE HARİTALAR API ANAHTARI",
+    "api_key_placeholder": "AIzaSy...",
+    "setup_desc": "Girişlerde GPS konumu sabitlemeyi etkinleştirmek için Google Haritalar API anahtarınızı yapıştırın.",
+    "maps_desc": "Girişlere tam GPS konumlarını sabitleyin. Tüm kusurları canlı bir haritada görüntüleyin.",
+    "tag_on_map": "HARİTADA ETİKETLE",
+    "tap_to_pin": "Kusur konumunu ayarlamak için haritaya dokunun",
+    "use_gps": "GPS'İMİ KULLAN",
+    "search_address": "Adres veya konum arayın...",
+    "confirm_location": "KONUMU ONAYLA",
+    "clear_location": "KONUMU TEMİZLE",
+    "view_on_map": "HARİTADA GÖRÜNTÜLE",
+    "map_view": "HARİTA GÖRÜNÜMÜ",
+    "satellite": "Uydu",
+    "street": "Sokak",
+    "my_location": "KONUMUM",
+    "all_on_map": "HEPSİ HARİTADA",
+    "nearby_issues": "YAKIN SORUNLAR",
+    "location_saved": "✓ Harita konumu kaydedildi",
+    "lat_lng": "Enlem/Boylam",
+    "coords_copied": "Koordinatlar kopyalandı",
+    "map_pin_desc": "GPS etiketli konum pini",
+    "open_in_maps": "Google Haritalar'da aç",
+    "no_api_key": "Harita konumu etiketlemeyi etkinleştirmek için Ayarlar → Haritalar'a bir Google Haritalar API anahtarı ekleyin."
   },
   "export": {
     "markups_header": "İŞARETLEYİCİLER",
@@ -670,7 +717,7 @@
     "set_team_desc": "Üyeleri davet edin (bağlantı + kod), rol atayın, üyeleri kaldırın.",
     "set_ai": "AI Kurulumu",
     "set_ai_desc": "Fotoğraf analizi ve arama için Gemini (ücretsiz), Ollama (yerel) veya OpenAI/GPT bağlayın.",
-    "set_telegram": "Telegram",
+    "set_telegram": "Telgraf",
     "set_telegram_desc": "Öğeler kaydedildiğinde veya güncellendiğinde ekip grubunuza gerçek zamanlı uyarılar.",
     "set_storage": "Depolama",
     "set_storage_desc": "PocketBase (varsayılan), yerel yol veya Google Drive seçin.",
@@ -680,7 +727,7 @@
     "tip_multi_projects_desc": "Sahalar, binalar veya tadilat işleri arasında geçiş yapmak için proje seçiciyi kullanın.",
     "tip_export": "Dışa aktarma seçenekleri",
     "tip_export_desc": "Rapor sekmesi: CSV, PDF, Google Sheets veya hepsi bir arada. Hangi bölümlerin (kusurlar, çizimler, karşılaştırmalar) dahil edileceğini seçin.",
-    "tip_advisor": "Contract Advisor",
+    "tip_advisor": "Sözleşme Danışmanı",
     "tip_advisor_desc": "Rapor sekmesinden ADVISOR'a dokunarak sözleşme veya iş kapsamı PDF'leri kullanarak AI destekli madde-sorun eşleştirmesi alın — kusur talepleri, FM SLA'ları ve tadilat değişiklik anlaşmazlıkları için yararlıdır.",
     "tip_language": "Dil",
     "tip_language_desc": "Ayarlar → Dil bölümünden dilinizi istediğiniz zaman değiştirin. Tüm açılır menüler (bileşenler, sorunlar, seviyeler, maliyetler) çevrilir.",
@@ -689,7 +736,11 @@
     "tip_drawing_gestures": "Çizim hareketleri",
     "tip_drawing_gestures_desc": "Çizimde herhangi bir yerde yakınlaştırmak ve kaydırmak için iki parmağınızla sıkıştırın — artık işaretleme sırasında bile çalışır. + / − düğmeleri görünümünüzün ortasına doğru yakınlaştırır.",
     "tip_photo_scale": "Çizimlerdeki fotoğrafları ölçeklendir",
-    "tip_photo_scale_desc": "Çizime bir fotoğraf yerleştirdikten sonra seçmek için dokunun ve işaretleme araç çubuğundaki mor − / + düğmelerini kullanarak yeniden boyutlandırın. Köşe tutamacını da sürükleyebilirsiniz."
+    "tip_photo_scale_desc": "Çizime bir fotoğraf yerleştirdikten sonra seçmek için dokunun ve işaretleme araç çubuğundaki mor − / + düğmelerini kullanarak yeniden boyutlandırın. Köşe tutamacını da sürükleyebilirsiniz.",
+    "set_maps": "Haritalar",
+    "set_maps_desc": "Girişlerde GPS konum sabitlemeyi etkinleştirmek için bir Google Haritalar API anahtarı ekleyin.",
+    "tip_map_tagging": "Harita konumu etiketleme",
+    "tip_map_tagging_desc": "Bir girişi kaydederken, Google Haritalar'a tam kusur konumuna bir GPS PIN'i bırakmak için HARİTA ÜZERİNDE ETİKETLE'ye dokunun. Kaydedilen koordinatlar giriş detayında görünür ve Google Haritalar'da açılabilir."
   },
   "feedback": {
     "title": "Geri Bildirim",
@@ -758,21 +809,6 @@
     "select": "Dil seçin",
     "current": "Mevcut dil"
   },
-  "detail": {
-    "update_status": "DURUMU GÜNCELLE",
-    "description": "AÇIKLAMA",
-    "timeline": "ZAMAN ÇİZELGESİ",
-    "assigned": "Atanan"
-  },
-  "work_categories": {
-    "landed": "Bina Kusurları (Alçak Katlı)",
-    "highrise": "Bina Kusurları (Yüksek Katlı)",
-    "construction": "Şantiye",
-    "interior": "İç Mekan İşleri",
-    "facilities": "Tesis Yönetimi",
-    "infrastructure": "Altyapı İşleri",
-    "others": "Diğer"
-  },
   "opt": {
     "Structural": "Yapısal",
     "Architectural": "Mimari",
@@ -810,7 +846,7 @@
     "Railing": "Korkuluk",
     "Balcony": "Balkon",
     "Corridor": "Koridor",
-    "Parapet": "Parapet",
+    "Parapet": "Korkuluk",
     "Facade": "Cephe",
     "Canopy": "Sundurma",
     "Pipe": "Boru",
@@ -837,7 +873,7 @@
     "Thermostat": "Termostat",
     "Condensate Pipe": "Kondens Borusu",
     "Chiller": "Soğutucu",
-    "Sprinkler": "Sprinkler",
+    "Sprinkler": "Yağmurlama",
     "Fire Alarm": "Yangın Alarmı",
     "Extinguisher": "Yangın Söndürücü",
     "Hose Reel": "Yangın Hortumu Makarası",
@@ -933,7 +969,7 @@
     "Generator": "Jeneratör",
     "Transformer": "Trafo",
     "Switchboard": "Ana Pano",
-    "UPS": "UPS",
+    "UPS": "GÜÇ KAYNAĞI",
     "Water Tank": "Su Deposu",
     "Pump Room": "Pompa Odası",
     "Lobby": "Lobi",

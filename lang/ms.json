@@ -80,6 +80,15 @@
     "observation": "Pemerhatian",
     "label": "KETERUKAN"
   },
+  "work_categories": {
+    "landed": "Kecacatan Bangunan (Bertanah)",
+    "highrise": "Kecacatan Bangunan (Bertingkat)",
+    "construction": "Tapak Pembinaan",
+    "interior": "Kerja Dalaman",
+    "facilities": "Pengurusan Fasiliti",
+    "infrastructure": "Kerja Infrastruktur",
+    "others": "Lain-lain"
+  },
   "roles": {
     "admin": "Pentadbir",
     "manager": "Pengurus",
@@ -178,7 +187,11 @@
     "saving": "MENJIMATKAN...",
     "log_another": "+ LOG LAIN DI SINI",
     "listening": "MENDENGAR...",
-    "tap_to_speak": "KETIK UNTUK BERCAKAP"
+    "tap_to_speak": "KETIK UNTUK BERCAKAP",
+    "tag_on_map": "TAG PADA PETA",
+    "map_location": "LOKASI PETA",
+    "map_location_set": "Set lokasi peta",
+    "map_location_cleared": "Lokasi peta dikosongkan"
   },
   "review": {
     "title": "Semakan",
@@ -193,6 +206,12 @@
     "select": "✓ PILIH",
     "type_label": "JENIS",
     "status_label": "STATUS"
+  },
+  "detail": {
+    "update_status": "KEMASKINI STATUS",
+    "description": "PENERANGAN",
+    "timeline": "GARIS MASA",
+    "assigned": "Ditugaskan"
   },
   "report": {
     "title": "Laporan",
@@ -225,6 +244,8 @@
     "total_defects": "JUMLAH KECACATAN",
     "by_severity": "MENGIKUT KETERUKKAN",
     "by_status": "MENGIKUT STATUS",
+    "by_assignee": "MENGIKUT PENERIMA",
+    "total": "jumlah",
     "email_preview": "PREVIEW EMEL",
     "pins": "pin",
     "markups": "markup",
@@ -234,9 +255,7 @@
     "severity_label": "KETERANGAN",
     "status_label": "STATUS",
     "assignee_label": "PENOLAKAN",
-    "date_range": "Julat TARIKH",
-    "by_assignee": "MENGIKUT PENERIMA",
-    "total": "jumlah"
+    "date_range": "Julat TARIKH"
   },
   "dashboard": {
     "title": "Papan Pemuka",
@@ -365,18 +384,20 @@
     "telegram_desc": "Ping kecacatan masa nyata",
     "storage": "Storan",
     "storage_desc": "Backend dan pengehosan fail",
+    "maps": "Peta",
+    "maps_desc": "Penyematan lokasi Peta Google",
     "language": "Bahasa",
     "language_desc": "Pilih bahasa anda",
     "section_project": "PROJEK",
     "section_enhance": "TINGKATKAN",
+    "section_app": "APLIKASI",
+    "clear_cache": "Kosongkan Cache & Muat Semula",
+    "clear_cache_desc": "Selesaikan masalah pemuatan dengan menyegarkan semua fail yang dicache",
     "all_set": "Semua telah ditetapkan",
     "finish_setup": "Selesaikan persediaan",
     "done_pill": "SELESAI",
     "todo_pill": "PERLU BUAT",
-    "opt_pill": "PILIHAN",
-    "section_app": "APLIKASI",
-    "clear_cache": "Kosongkan Cache & Muat Semula",
-    "clear_cache_desc": "Selesaikan masalah pemuatan dengan menyegarkan semua fail yang dicache"
+    "opt_pill": "PILIHAN"
   },
   "team": {
     "title": "👥 PENGURUSAN PASUKAN",
@@ -508,6 +529,32 @@
     "openai_url_placeholder": "https://api.openai.com",
     "openai_key_placeholder": "sk-...",
     "openai_model_placeholder": "gpt-4o-mini"
+  },
+  "maps": {
+    "title": "PENYEDIAAN PETA",
+    "api_key": "KUNCI API GOOGLE MAPS",
+    "api_key_placeholder": "AIzaSy...",
+    "setup_desc": "Tampalkan kunci API Peta Google anda untuk mendayakan penyematan lokasi GPS pada entri.",
+    "maps_desc": "Sematkan lokasi GPS tepat pada entri. Lihat semua kecacatan pada peta langsung.",
+    "tag_on_map": "TAG PADA PETA",
+    "tap_to_pin": "Ketik peta untuk menetapkan lokasi kecacatan",
+    "use_gps": "GUNAKAN GPS SAYA",
+    "search_address": "Cari alamat atau lokasi...",
+    "confirm_location": "SAHKAN LOKASI",
+    "clear_location": "LOKASI JELAS",
+    "view_on_map": "LIHAT PADA PETA",
+    "map_view": "PANDANGAN PETA",
+    "satellite": "Satelit",
+    "street": "Jalan",
+    "my_location": "LOKASI SAYA",
+    "all_on_map": "SEMUA DI PETA",
+    "nearby_issues": "ISU BERDEKATAN",
+    "location_saved": "✓ Peta lokasi disimpan",
+    "lat_lng": "Lat/Lng",
+    "coords_copied": "Koordinat disalin",
+    "map_pin_desc": "Pin lokasi bertanda GPS",
+    "open_in_maps": "Buka dalam Peta Google",
+    "no_api_key": "Tambahkan kunci API Peta Google dalam Tetapan → Peta untuk mendayakan pengeteg lokasi peta."
   },
   "export": {
     "markups_header": "MARKUPS",
@@ -680,7 +727,7 @@
     "tip_multi_projects_desc": "Gunakan pemilih projek untuk menukar antara tapak, bangunan atau kerja pengubahsuaian.",
     "tip_export": "Pilihan eksport",
     "tip_export_desc": "Tab Laporan: CSV, PDF, Google Sheets atau semua-dalam-satu. Pilih seksyen mana (kecacatan, lukisan, perbandingan) untuk disertakan.",
-    "tip_advisor": "Contract Advisor",
+    "tip_advisor": "Penasihat Kontrak",
     "tip_advisor_desc": "Dari tab Laporan, ketik ADVISOR untuk mendapatkan pemetaan klausa-ke-isu berkuasa AI menggunakan PDF kontrak atau skop kerja — berguna untuk tuntutan kecacatan, SLA FM dan pertikaian variasi pengubahsuaian.",
     "tip_language": "Bahasa",
     "tip_language_desc": "Tukar bahasa bila-bila masa dari Tetapan → Bahasa. Semua dropdown (komponen, isu, aras, kos) diterjemahkan.",
@@ -689,7 +736,11 @@
     "tip_drawing_gestures": "Gerak isyarat lukisan",
     "tip_drawing_gestures_desc": "Cubit dengan dua jari untuk zum dan geser di mana-mana pada lukisan — kini berfungsi walaupun semasa anda menanda. Butang + / − akan zum ke tengah paparan anda.",
     "tip_photo_scale": "Skalakan foto pada lukisan",
-    "tip_photo_scale_desc": "Selepas meletakkan foto pada lukisan, ketik untuk memilihnya dan gunakan butang ungu − / + dalam bar alat tanda untuk mengubah saiz. Anda juga boleh menyeret pemegang sudut."
+    "tip_photo_scale_desc": "Selepas meletakkan foto pada lukisan, ketik untuk memilihnya dan gunakan butang ungu − / + dalam bar alat tanda untuk mengubah saiz. Anda juga boleh menyeret pemegang sudut.",
+    "set_maps": "Peta",
+    "set_maps_desc": "Tambahkan kunci API Peta Google untuk mendayakan penyematan lokasi GPS pada entri.",
+    "tip_map_tagging": "Penandaan lokasi peta",
+    "tip_map_tagging_desc": "Apabila mengelog masukan, ketik TANDA PADA PETA untuk menjatuhkan pin GPS pada Peta Google di lokasi kecacatan yang tepat. Koordinat yang disimpan muncul dalam butiran entri dan boleh dibuka dalam Peta Google."
   },
   "feedback": {
     "title": "Maklum Balas",
@@ -757,21 +808,6 @@
     "title": "🌐 BAHASA",
     "select": "Pilih bahasa",
     "current": "Bahasa semasa"
-  },
-  "detail": {
-    "update_status": "KEMASKINI STATUS",
-    "description": "PENERANGAN",
-    "timeline": "GARIS MASA",
-    "assigned": "Ditugaskan"
-  },
-  "work_categories": {
-    "landed": "Kecacatan Bangunan (Bertanah)",
-    "highrise": "Kecacatan Bangunan (Bertingkat)",
-    "construction": "Tapak Pembinaan",
-    "interior": "Kerja Dalaman",
-    "facilities": "Pengurusan Fasiliti",
-    "infrastructure": "Kerja Infrastruktur",
-    "others": "Lain-lain"
   },
   "opt": {
     "Structural": "Struktur",

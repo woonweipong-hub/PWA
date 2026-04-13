@@ -80,6 +80,15 @@
     "observation": "관찰",
     "label": "심각도"
   },
+  "work_categories": {
+    "landed": "건물 결함 (저층)",
+    "highrise": "건물 결함 (고층)",
+    "construction": "건설 현장",
+    "interior": "인테리어 공사",
+    "facilities": "시설 관리",
+    "infrastructure": "인프라 공사",
+    "others": "기타"
+  },
   "roles": {
     "admin": "관리자",
     "manager": "매니저",
@@ -178,7 +187,11 @@
     "saving": "절약...",
     "log_another": "+ 여기에 다른 사람을 기록하세요",
     "listening": "청취...",
-    "tap_to_speak": "탭하여 말하기"
+    "tap_to_speak": "탭하여 말하기",
+    "tag_on_map": "지도에 태그 추가",
+    "map_location": "지도 위치",
+    "map_location_set": "지도 위치 설정",
+    "map_location_cleared": "지도 위치가 삭제되었습니다."
   },
   "review": {
     "title": "검토",
@@ -193,6 +206,12 @@
     "select": "✓ 선택",
     "type_label": "유형",
     "status_label": "상태"
+  },
+  "detail": {
+    "update_status": "상태 업데이트",
+    "description": "설명",
+    "timeline": "타임라인",
+    "assigned": "담당자"
   },
   "report": {
     "title": "보고서",
@@ -225,6 +244,8 @@
     "total_defects": "총 결함",
     "by_severity": "심각도별",
     "by_status": "상태별",
+    "by_assignee": "담당자별",
+    "total": "합계",
     "email_preview": "이메일 미리보기",
     "pins": "다리",
     "markups": "마크업",
@@ -234,9 +255,7 @@
     "severity_label": "심각성",
     "status_label": "상태",
     "assignee_label": "양수인",
-    "date_range": "기간",
-    "by_assignee": "담당자별",
-    "total": "합계"
+    "date_range": "기간"
   },
   "dashboard": {
     "title": "대시보드",
@@ -365,18 +384,20 @@
     "telegram_desc": "실시간 결함 알림",
     "storage": "저장소",
     "storage_desc": "백엔드 및 파일 호스팅",
+    "maps": "지도",
+    "maps_desc": "Google 지도 위치 고정",
     "language": "언어",
     "language_desc": "언어 선택",
     "section_project": "프로젝트",
     "section_enhance": "향상",
+    "section_app": "앱",
+    "clear_cache": "캐시 지우기 및 새로고침",
+    "clear_cache_desc": "캐시된 모든 파일을 새로 고쳐 로딩 문제를 해결합니다",
     "all_set": "모든 설정 완료",
     "finish_setup": "설정 완료",
     "done_pill": "완료",
     "todo_pill": "할일",
-    "opt_pill": "선택",
-    "section_app": "앱",
-    "clear_cache": "캐시 지우기 및 새로고침",
-    "clear_cache_desc": "캐시된 모든 파일을 새로 고쳐 로딩 문제를 해결합니다"
+    "opt_pill": "선택"
   },
   "team": {
     "title": "👥 팀 관리",
@@ -508,6 +529,32 @@
     "openai_url_placeholder": "https://api.openai.com",
     "openai_key_placeholder": "sk-...",
     "openai_model_placeholder": "gpt-4o-미니"
+  },
+  "maps": {
+    "title": "지도 설정",
+    "api_key": "구글 지도 API 키",
+    "api_key_placeholder": "아이자시...",
+    "setup_desc": "항목에 GPS 위치 고정을 활성화하려면 Google Maps API 키를 붙여넣으세요.",
+    "maps_desc": "항목에 정확한 GPS 위치를 고정합니다. 실시간 지도에서 모든 결함을 확인하세요.",
+    "tag_on_map": "지도에 태그 추가",
+    "tap_to_pin": "결함 위치를 설정하려면 지도를 탭하세요.",
+    "use_gps": "내 GPS 사용",
+    "search_address": "주소 또는 위치 검색...",
+    "confirm_location": "위치 확인",
+    "clear_location": "위치 지우기",
+    "view_on_map": "지도에서 보기",
+    "map_view": "지도 보기",
+    "satellite": "위성",
+    "street": "거리",
+    "my_location": "내 위치",
+    "all_on_map": "지도에 있는 모든 것",
+    "nearby_issues": "주변 문제",
+    "location_saved": "✓ 지도 위치가 저장되었습니다",
+    "lat_lng": "위도/경도",
+    "coords_copied": "좌표가 복사되었습니다.",
+    "map_pin_desc": "GPS 태그된 위치 핀",
+    "open_in_maps": "Google 지도에서 열기",
+    "no_api_key": "지도 위치 태그 지정을 활성화하려면 설정 → 지도에서 Google Maps API 키를 추가하세요."
   },
   "export": {
     "markups_header": "마크업",
@@ -670,7 +717,7 @@
     "set_team_desc": "멤버 초대(링크 + 코드), 역할 할당, 멤버 제거.",
     "set_ai": "AI 설정",
     "set_ai_desc": "사진 분석 및 검색을 위해 Gemini(무료), Ollama(로컬) 또는 OpenAI/GPT를 연결합니다.",
-    "set_telegram": "Telegram",
+    "set_telegram": "전보",
     "set_telegram_desc": "항목이 기록되거나 업데이트될 때 팀 그룹에 실시간 알림을 보냅니다.",
     "set_storage": "스토리지",
     "set_storage_desc": "PocketBase(기본값), 로컬 경로 또는 Google Drive 중에서 선택합니다.",
@@ -680,7 +727,7 @@
     "tip_multi_projects_desc": "프로젝트 선택기를 사용하여 현장, 건물 또는 리노베이션 작업을 전환하세요.",
     "tip_export": "내보내기 옵션",
     "tip_export_desc": "보고서 탭: CSV, PDF, Google Sheets 또는 올인원. 포함할 섹션(하자, 도면, 비교)을 선택하세요.",
-    "tip_advisor": "Contract Advisor",
+    "tip_advisor": "계약 고문",
     "tip_advisor_desc": "보고서 탭에서 ADVISOR를 탭하여 계약서 또는 작업 범위 PDF를 사용한 AI 기반 조항-이슈 매핑을 받으세요 — 하자 청구, FM SLA 및 리노베이션 변경 분쟁에 유용합니다.",
     "tip_language": "언어",
     "tip_language_desc": "설정 → 언어에서 언제든지 언어를 전환할 수 있습니다. 모든 드롭다운(구성요소, 이슈, 레벨, 비용)이 번역되어 있습니다.",
@@ -689,7 +736,11 @@
     "tip_drawing_gestures": "도면 제스처",
     "tip_drawing_gestures_desc": "두 손가락으로 꼬집어 도면 어디서든 확대/축소 및 이동할 수 있습니다 — 이제 마크업 중에도 작동합니다. + / − 버튼은 화면 중앙을 기준으로 확대/축소합니다.",
     "tip_photo_scale": "도면 위 사진 크기 조정",
-    "tip_photo_scale_desc": "도면에 사진을 배치한 후 탭하여 선택하고, 마크업 도구 모음의 보라색 − / + 버튼으로 크기를 조정하세요. 모서리 핸들을 드래그할 수도 있습니다."
+    "tip_photo_scale_desc": "도면에 사진을 배치한 후 탭하여 선택하고, 마크업 도구 모음의 보라색 − / + 버튼으로 크기를 조정하세요. 모서리 핸들을 드래그할 수도 있습니다.",
+    "set_maps": "지도",
+    "set_maps_desc": "항목에 GPS 위치 고정을 활성화하려면 Google Maps API 키를 추가하세요.",
+    "tip_map_tagging": "지도 위치 태그 지정",
+    "tip_map_tagging_desc": "항목을 기록할 때 지도에 태그 지정을 탭하면 Google 지도의 정확한 결함 위치에 GPS 핀이 표시됩니다. 저장된 좌표는 항목 세부정보에 표시되며 Google 지도에서 열 수 있습니다."
   },
   "feedback": {
     "title": "피드백",
@@ -757,21 +808,6 @@
     "title": "🌐 언어",
     "select": "언어 선택",
     "current": "현재 언어"
-  },
-  "detail": {
-    "update_status": "상태 업데이트",
-    "description": "설명",
-    "timeline": "타임라인",
-    "assigned": "담당자"
-  },
-  "work_categories": {
-    "landed": "건물 결함 (저층)",
-    "highrise": "건물 결함 (고층)",
-    "construction": "건설 현장",
-    "interior": "인테리어 공사",
-    "facilities": "시설 관리",
-    "infrastructure": "인프라 공사",
-    "others": "기타"
   },
   "opt": {
     "Structural": "구조",

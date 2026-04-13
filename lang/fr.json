@@ -80,6 +80,15 @@
     "observation": "Observation",
     "label": "GRAVITÉ"
   },
+  "work_categories": {
+    "landed": "Défauts Bâtiment (Bas)",
+    "highrise": "Défauts Bâtiment (Tour)",
+    "construction": "Chantier",
+    "interior": "Travaux Intérieurs",
+    "facilities": "Gestion des Installations",
+    "infrastructure": "Travaux d'Infrastructure",
+    "others": "Autres"
+  },
   "roles": {
     "admin": "Administrateur",
     "manager": "Gestionnaire",
@@ -178,7 +187,11 @@
     "saving": "ÉCONOMIE...",
     "log_another": "+ CONNECTEZ-EN UN AUTRE ICI",
     "listening": "ÉCOUTE...",
-    "tap_to_speak": "APPUYEZ POUR PARLER"
+    "tap_to_speak": "APPUYEZ POUR PARLER",
+    "tag_on_map": "ÉTIQUETTE SUR LA CARTE",
+    "map_location": "EMPLACEMENT SUR LA CARTE",
+    "map_location_set": "Ensemble d'emplacement sur la carte",
+    "map_location_cleared": "Emplacement sur la carte effacé"
   },
   "review": {
     "title": "Révision",
@@ -193,6 +206,12 @@
     "select": "✓ SÉLECTIONNER",
     "type_label": "TAPER",
     "status_label": "STATUT"
+  },
+  "detail": {
+    "update_status": "METTRE À JOUR LE STATUT",
+    "description": "DESCRIPTION",
+    "timeline": "CHRONOLOGIE",
+    "assigned": "Assigné"
   },
   "report": {
     "title": "Rapport",
@@ -225,6 +244,8 @@
     "total_defects": "TOTAL DES DEFAUTS",
     "by_severity": "PAR GRAVITÉ",
     "by_status": "PAR STATUT",
+    "by_assignee": "PAR ASSIGNÉ",
+    "total": "totale",
     "email_preview": "APERÇU DU COURRIEL",
     "pins": "épingles",
     "markups": "majorations",
@@ -234,9 +255,7 @@
     "severity_label": "GRAVITÉ",
     "status_label": "STATUT",
     "assignee_label": "CESSIONNAIRE",
-    "date_range": "PLAGE DE DATES",
-    "by_assignee": "PAR ASSIGNÉ",
-    "total": "total"
+    "date_range": "PLAGE DE DATES"
   },
   "dashboard": {
     "title": "Tableau de bord",
@@ -365,18 +384,20 @@
     "telegram_desc": "Notifications de défauts en temps réel",
     "storage": "Stockage",
     "storage_desc": "Backend et hébergement de fichiers",
+    "maps": "Cartes",
+    "maps_desc": "Épinglage de localisation sur Google Maps",
     "language": "Langue",
     "language_desc": "Choisir votre langue",
     "section_project": "PROJET",
     "section_enhance": "AMÉLIORER",
+    "section_app": "APPLICATION",
+    "clear_cache": "Vider le cache et recharger",
+    "clear_cache_desc": "Résoudre les problèmes de chargement en actualisant tous les fichiers mis en cache",
     "all_set": "Tout est configuré",
     "finish_setup": "Terminer la configuration",
     "done_pill": "FAIT",
     "todo_pill": "À FAIRE",
-    "opt_pill": "OPTIONNEL",
-    "section_app": "APP",
-    "clear_cache": "Vider le cache et recharger",
-    "clear_cache_desc": "Résoudre les problèmes de chargement en actualisant tous les fichiers mis en cache"
+    "opt_pill": "OPTIONNEL"
   },
   "team": {
     "title": "👥 GESTION D'ÉQUIPE",
@@ -509,6 +530,32 @@
     "openai_key_placeholder": "sk-...",
     "openai_model_placeholder": "gpt-4o-mini"
   },
+  "maps": {
+    "title": "CONFIGURATION DES CARTES",
+    "api_key": "CLÉ API GOOGLE MAPS",
+    "api_key_placeholder": "AIzaSy...",
+    "setup_desc": "Collez votre clé API Google Maps pour activer l'épinglage de localisation GPS sur les entrées.",
+    "maps_desc": "Épinglez les emplacements GPS exacts sur les entrées. Visualisez tous les défauts sur une carte en direct.",
+    "tag_on_map": "ÉTIQUETTE SUR LA CARTE",
+    "tap_to_pin": "Appuyez sur la carte pour définir l'emplacement du défaut",
+    "use_gps": "UTILISER MON GPS",
+    "search_address": "Rechercher une adresse ou un emplacement...",
+    "confirm_location": "CONFIRMER L'EMPLACEMENT",
+    "clear_location": "EMPLACEMENT CLAIR",
+    "view_on_map": "VOIR SUR LA CARTE",
+    "map_view": "VUE CARTE",
+    "satellite": "Satellite",
+    "street": "Rue",
+    "my_location": "MA LOCALISATION",
+    "all_on_map": "TOUT SUR LA CARTE",
+    "nearby_issues": "PROBLÈMES À PROXIMITÉ",
+    "location_saved": "✓ Emplacement de la carte enregistré",
+    "lat_lng": "Latitude/Longueur",
+    "coords_copied": "Coordonnées copiées",
+    "map_pin_desc": "Épingle de localisation marquée par GPS",
+    "open_in_maps": "Ouvrir dans Google Maps",
+    "no_api_key": "Ajoutez une clé API Google Maps dans Paramètres → Cartes pour activer le marquage de localisation sur la carte."
+  },
   "export": {
     "markups_header": "MARQUAGES",
     "markup_csv": "CSV de balisage",
@@ -639,7 +686,7 @@
     "nav_dashboard_desc": "Affiche les éléments actifs, les statuts, le résumé de gravité, les alertes et les entrées récentes. Barre de requête AI pour la recherche en langage naturel.",
     "nav_log": "Saisir (+)",
     "nav_log_desc": "Créer une nouvelle entrée — défaut, problème, ordre de travail, observation ou mise à jour — avec photos, saisie vocale et remplissage assisté par AI. Au choix parmi 7 catégories de travaux.",
-    "nav_tag": "Tag",
+    "nav_tag": "Étiqueter",
     "nav_tag_desc": "Téléverse des plans, épingle les défauts sur les dessins, compare les révisions PDF et annote avec outils de balisage + superposition photo. Convient aux défauts, rondes FM et listes de réserves de rénovation.",
     "nav_review": "Revue",
     "nav_review_desc": "Parcourir, rechercher, filtrer et mettre à jour les entrées par lot. Recherche AI en langage naturel, photos de vérification, curseur avant/après.",
@@ -670,7 +717,7 @@
     "set_team_desc": "Inviter des membres (lien + code), attribuer des rôles, retirer des membres.",
     "set_ai": "Configuration AI",
     "set_ai_desc": "Connecter Gemini (gratuit), Ollama (local) ou OpenAI/GPT pour l'analyse photo et la recherche.",
-    "set_telegram": "Telegram",
+    "set_telegram": "Télégramme",
     "set_telegram_desc": "Alertes en temps réel vers le groupe de l'équipe lorsque des éléments sont enregistrés ou mis à jour.",
     "set_storage": "Stockage",
     "set_storage_desc": "Choisir PocketBase (par défaut), chemin local ou Google Drive.",
@@ -680,7 +727,7 @@
     "tip_multi_projects_desc": "Utilise le sélecteur de projet pour basculer entre chantiers, bâtiments ou chantiers de rénovation.",
     "tip_export": "Options d'export",
     "tip_export_desc": "Onglet Rapport : CSV, PDF, Google Sheets ou tout-en-un. Choisis quelles sections (défauts, plans, comparaisons) inclure.",
-    "tip_advisor": "Contract Advisor",
+    "tip_advisor": "Conseiller en contrats",
     "tip_advisor_desc": "Depuis l'onglet Rapport, appuie sur ADVISOR pour obtenir une correspondance clause-à-défaut assistée par AI à partir de PDF de contrat ou de cahier des charges — utile pour réclamations de défauts, SLA de FM et litiges de travaux modificatifs de rénovation.",
     "tip_language": "Langue",
     "tip_language_desc": "Change de langue à tout moment depuis Paramètres → Langue. Toutes les listes déroulantes (composants, problèmes, niveaux, coûts) sont traduites.",
@@ -689,7 +736,11 @@
     "tip_drawing_gestures": "Gestes sur les plans",
     "tip_drawing_gestures_desc": "Pince avec deux doigts pour zoomer et te déplacer n'importe où sur un plan — fonctionne maintenant même pendant le marquage. Les boutons + / − zooment vers le centre de ta vue.",
     "tip_photo_scale": "Redimensionner les photos sur les plans",
-    "tip_photo_scale_desc": "Après avoir placé une photo sur un plan, touche pour la sélectionner et utilise les boutons violets − / + de la barre de marquage pour la redimensionner. Tu peux aussi faire glisser la poignée d'angle."
+    "tip_photo_scale_desc": "Après avoir placé une photo sur un plan, touche pour la sélectionner et utilise les boutons violets − / + de la barre de marquage pour la redimensionner. Tu peux aussi faire glisser la poignée d'angle.",
+    "set_maps": "Cartes",
+    "set_maps_desc": "Ajoutez une clé API Google Maps pour activer l'épinglage de localisation GPS sur les entrées.",
+    "tip_map_tagging": "Marquage de localisation sur la carte",
+    "tip_map_tagging_desc": "Lors de l'enregistrement d'une entrée, appuyez sur TAG ON MAP pour déposer une épingle GPS sur Google Maps à l'emplacement exact du défaut. Les coordonnées enregistrées apparaissent dans les détails de l'entrée et peuvent être ouvertes dans Google Maps."
   },
   "feedback": {
     "title": "Avis",
@@ -758,21 +809,6 @@
     "select": "Sélectionner la langue",
     "current": "Langue actuelle"
   },
-  "detail": {
-    "update_status": "METTRE À JOUR LE STATUT",
-    "description": "DESCRIPTION",
-    "timeline": "CHRONOLOGIE",
-    "assigned": "Assigné"
-  },
-  "work_categories": {
-    "landed": "Défauts Bâtiment (Bas)",
-    "highrise": "Défauts Bâtiment (Tour)",
-    "construction": "Chantier",
-    "interior": "Travaux Intérieurs",
-    "facilities": "Gestion des Installations",
-    "infrastructure": "Travaux d'Infrastructure",
-    "others": "Autres"
-  },
   "opt": {
     "Structural": "Structure",
     "Architectural": "Architecture",
@@ -837,7 +873,7 @@
     "Thermostat": "Thermostat",
     "Condensate Pipe": "Tuyau de condensat",
     "Chiller": "Groupe froid",
-    "Sprinkler": "Sprinkler",
+    "Sprinkler": "Arroseuse",
     "Fire Alarm": "Alarme incendie",
     "Extinguisher": "Extincteur",
     "Hose Reel": "Dévidoir",
@@ -1167,7 +1203,7 @@
     "Broken section": "Section cassée",
     "Height issue": "Problème de hauteur",
     "Faded": "Effacé",
-    "Incorrect": "Incorrect",
+    "Incorrect": "Incorrecte",
     "Loose post": "Poteau desserré",
     "Needs patching": "Réparation nécessaire",
     "Hazard": "Danger",
@@ -1251,9 +1287,9 @@
     "Attic": "Grenier",
     "External": "Extérieur",
     "Common Area": "Parties communes",
-    "Zone A": "Zone A",
-    "Zone B": "Zone B",
-    "Zone C": "Zone C",
+    "Zone A": "ZoneA",
+    "Zone B": "ZoneB",
+    "Zone C": "ZoneC",
     "Zone D": "Zone D",
     "North Wing": "Aile nord",
     "South Wing": "Aile sud",

@@ -27,6 +27,7 @@ const LANG_MAP = {
   'th':    'th',
   'vi':    'vi',
   'bn':    'bn',
+  'my':    'my',
   'ja':    'ja',
   'ko':    'ko',
   'de':    'de',

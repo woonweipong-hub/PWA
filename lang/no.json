@@ -80,6 +80,15 @@
     "observation": "Observasjon",
     "label": "ALVORLIGHETSGRAD"
   },
+  "work_categories": {
+    "landed": "Byggfeil (Lavbygg)",
+    "highrise": "Byggfeil (Høybygg)",
+    "construction": "Byggeplass",
+    "interior": "Innredningsarbeid",
+    "facilities": "Eiendomsforvaltning",
+    "infrastructure": "Infrastrukturarbeid",
+    "others": "Annet"
+  },
   "roles": {
     "admin": "Admin",
     "manager": "Leder",
@@ -178,7 +187,11 @@
     "saving": "SPARER...",
     "log_another": "+ LOGG EN ANNEN HER",
     "listening": "HØRER...",
-    "tap_to_speak": "TRYKK FOR Å TALE"
+    "tap_to_speak": "TRYKK FOR Å TALE",
+    "tag_on_map": "TAG PÅ KART",
+    "map_location": "KARTPLASSERING",
+    "map_location_set": "Kartplassering satt",
+    "map_location_cleared": "Kartplassering slettet"
   },
   "review": {
     "title": "Gjennomgå",
@@ -193,6 +206,12 @@
     "select": "✓ VELG",
     "type_label": "TYPE",
     "status_label": "STATUS"
+  },
+  "detail": {
+    "update_status": "OPPDATER STATUS",
+    "description": "BESKRIVELSE",
+    "timeline": "TIDSLINJE",
+    "assigned": "Tildelt"
   },
   "report": {
     "title": "Rapportere",
@@ -225,6 +244,8 @@
     "total_defects": "TOTALT DEFEKTER",
     "by_severity": "ETTER ALVARLIGHET",
     "by_status": "ETTER STATUS",
+    "by_assignee": "ETTER ANSVARLIG",
+    "total": "totalt",
     "email_preview": "FORHÅNDSVISNING AV E-POST",
     "pins": "pinner",
     "markups": "markeringer",
@@ -234,9 +255,7 @@
     "severity_label": "ALVARLIGHET",
     "status_label": "STATUS",
     "assignee_label": "TILTAKER",
-    "date_range": "DATOintervall",
-    "by_assignee": "ETTER ANSVARLIG",
-    "total": "totalt"
+    "date_range": "DATOintervall"
   },
   "dashboard": {
     "title": "Dashbord",
@@ -365,18 +384,20 @@
     "telegram_desc": "Sanntidsfeil pinger",
     "storage": "Lagring",
     "storage_desc": "Backend og filhosting",
+    "maps": "Kart",
+    "maps_desc": "Google Maps posisjonsfesting",
     "language": "Språk",
     "language_desc": "Velg språket ditt",
     "section_project": "PROSJEKT",
     "section_enhance": "FORBEDRE",
+    "section_app": "APP",
+    "clear_cache": "Tøm hurtigbuffer og last på nytt",
+    "clear_cache_desc": "Løs innlastingsproblemer ved å oppdatere alle hurtigbufrede filer",
     "all_set": "Alt satt opp",
     "finish_setup": "Fullfør oppsettet",
     "done_pill": "FERDIG",
     "todo_pill": "Å GJØRE",
-    "opt_pill": "VALGFRITT",
-    "section_app": "APP",
-    "clear_cache": "Tøm hurtigbuffer og last på nytt",
-    "clear_cache_desc": "Løs innlastingsproblemer ved å oppdatere alle hurtigbufrede filer"
+    "opt_pill": "VALGFRITT"
   },
   "team": {
     "title": "👥 TEAM LEDELSE",
@@ -508,6 +529,32 @@
     "openai_url_placeholder": "https://api.openai.com",
     "openai_key_placeholder": "sk-...",
     "openai_model_placeholder": "gpt-4o-mini"
+  },
+  "maps": {
+    "title": "KARTOPPSETT",
+    "api_key": "GOOGLE MAPS API NØKKEL",
+    "api_key_placeholder": "AIzaSy...",
+    "setup_desc": "Lim inn Google Maps API-nøkkelen for å aktivere GPS-posisjonsfesting på oppføringer.",
+    "maps_desc": "Fest nøyaktige GPS-plasseringer på oppføringer. Se alle defekter på et levende kart.",
+    "tag_on_map": "TAG PÅ KART",
+    "tap_to_pin": "Trykk på kart for å angi defekt plassering",
+    "use_gps": "BRUK MIN GPS",
+    "search_address": "Søk etter adresse eller plassering...",
+    "confirm_location": "BEKREFT PLASSERING",
+    "clear_location": "KLAR PLASSERING",
+    "view_on_map": "SE PÅ KART",
+    "map_view": "KARTVISNING",
+    "satellite": "Satellitt",
+    "street": "Gate",
+    "my_location": "MIN PLASSERING",
+    "all_on_map": "ALT PÅ KART",
+    "nearby_issues": "NÆRHETER",
+    "location_saved": "✓ Kartplassering lagret",
+    "lat_lng": "Lat/Lng",
+    "coords_copied": "Koordinater er kopiert",
+    "map_pin_desc": "GPS-merket posisjonsnål",
+    "open_in_maps": "Åpne i Google Maps",
+    "no_api_key": "Legg til en Google Maps API-nøkkel i Innstillinger → Kart for å aktivere merking av kartplassering."
   },
   "export": {
     "markups_header": "MARKUPS",
@@ -680,7 +727,7 @@
     "tip_multi_projects_desc": "Bruk prosjektvelgeren til å bytte mellom byggeplasser, bygninger eller renoveringsjobber.",
     "tip_export": "Eksportalternativer",
     "tip_export_desc": "Rapport-fanen: CSV, PDF, Google Sheets eller alt-i-ett. Velg hvilke seksjoner (mangler, tegninger, sammenligninger) som skal inkluderes.",
-    "tip_advisor": "Contract Advisor",
+    "tip_advisor": "Kontraktsrådgiver",
     "tip_advisor_desc": "Fra Rapport-fanen trykk på ADVISOR for å få AI-drevet klausul-til-problem-kartlegging ved hjelp av kontrakt- eller leveranse-PDF-er — nyttig for mangelkrav, FM SLA-er og renoveringsvariasjonsdisputter.",
     "tip_language": "Språk",
     "tip_language_desc": "Bytt språk når som helst fra Innstillinger → Språk. Alle nedtrekksmenyer (komponenter, problemer, nivåer, kostnader) er oversatt.",
@@ -689,7 +736,11 @@
     "tip_drawing_gestures": "Tegningsgester",
     "tip_drawing_gestures_desc": "Klyp med to fingre for å zoome og panorere hvor som helst på en tegning — fungerer nå selv mens du markerer. + / − -knappene zoomer mot midten av visningen din.",
     "tip_photo_scale": "Skaler bilder på tegninger",
-    "tip_photo_scale_desc": "Etter å ha plassert et bilde på en tegning, trykk for å velge det og bruk de lilla − / + -knappene i markeringsverktøylinjen for å endre størrelse. Du kan også dra hjørnehåndtaket."
+    "tip_photo_scale_desc": "Etter å ha plassert et bilde på en tegning, trykk for å velge det og bruk de lilla − / + -knappene i markeringsverktøylinjen for å endre størrelse. Du kan også dra hjørnehåndtaket.",
+    "set_maps": "Kart",
+    "set_maps_desc": "Legg til en Google Maps API-nøkkel for å aktivere GPS-posisjonsfesting på oppføringer.",
+    "tip_map_tagging": "Kartposisjonsmerking",
+    "tip_map_tagging_desc": "Når du logger en oppføring, trykk på TAG PÅ KART for å slippe en GPS-nål på Google Maps på det nøyaktige defekte stedet. Lagrede koordinater vises i oppføringsdetaljene og kan åpnes i Google Maps."
   },
   "feedback": {
     "title": "Tilbakemelding",
@@ -757,21 +808,6 @@
     "title": "🌐 SPRÅK",
     "select": "Velg språk",
     "current": "Nåværende språk"
-  },
-  "detail": {
-    "update_status": "OPPDATER STATUS",
-    "description": "BESKRIVELSE",
-    "timeline": "TIDSLINJE",
-    "assigned": "Tildelt"
-  },
-  "work_categories": {
-    "landed": "Byggfeil (Lavbygg)",
-    "highrise": "Byggfeil (Høybygg)",
-    "construction": "Byggeplass",
-    "interior": "Innredningsarbeid",
-    "facilities": "Eiendomsforvaltning",
-    "infrastructure": "Infrastrukturarbeid",
-    "others": "Annet"
   },
   "opt": {
     "Structural": "Bæresystem",

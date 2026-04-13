@@ -80,6 +80,15 @@
     "observation": "Observation",
     "label": "ALLVARLIGHETSGRAD"
   },
+  "work_categories": {
+    "landed": "Byggfel (Låghus)",
+    "highrise": "Byggfel (Höghus)",
+    "construction": "Byggarbetsplats",
+    "interior": "Inredningsarbeten",
+    "facilities": "Fastighetsförvaltning",
+    "infrastructure": "Infrastrukturarbeten",
+    "others": "Övrigt"
+  },
   "roles": {
     "admin": "Administration",
     "manager": "Chef",
@@ -178,7 +187,11 @@
     "saving": "SPARANDE...",
     "log_another": "+ LOGGA EN ANNAN HÄR",
     "listening": "LYSSNANDE...",
-    "tap_to_speak": "TRYCK FÖR ATT TALA"
+    "tap_to_speak": "TRYCK FÖR ATT TALA",
+    "tag_on_map": "TAGGA PÅ KARTAN",
+    "map_location": "KARTA PLATS",
+    "map_location_set": "Kartplats inställd",
+    "map_location_cleared": "Kartposition rensad"
   },
   "review": {
     "title": "Recension",
@@ -193,6 +206,12 @@
     "select": "✓ VÄLJ",
     "type_label": "TYP",
     "status_label": "STATUS"
+  },
+  "detail": {
+    "update_status": "UPPDATERA STATUS",
+    "description": "BESKRIVNING",
+    "timeline": "TIDSLINJE",
+    "assigned": "Tilldelad"
   },
   "report": {
     "title": "Rapportera",
@@ -225,6 +244,8 @@
     "total_defects": "TOTALA DEFEKT",
     "by_severity": "EFTER ALVARLIGHET",
     "by_status": "EFTER STATUS",
+    "by_assignee": "PER ANSVARIG",
+    "total": "totalt",
     "email_preview": "E-postförhandsgranskning",
     "pins": "stift",
     "markups": "uppmärkningar",
@@ -234,9 +255,7 @@
     "severity_label": "STRÄNGHET",
     "status_label": "STATUS",
     "assignee_label": "UTVECKLARE",
-    "date_range": "DATUMintervall",
-    "by_assignee": "PER ANSVARIG",
-    "total": "totalt"
+    "date_range": "DATUMintervall"
   },
   "dashboard": {
     "title": "Instrumentpanel",
@@ -365,18 +384,20 @@
     "telegram_desc": "Defekt pingar i realtid",
     "storage": "Lagring",
     "storage_desc": "Backend och filhosting",
+    "maps": "Kartor",
+    "maps_desc": "Google Maps platsfäste",
     "language": "Språk",
     "language_desc": "Välj ditt språk",
     "section_project": "PROJEKT",
     "section_enhance": "ÖKA",
+    "section_app": "APP",
+    "clear_cache": "Rensa cache och ladda om",
+    "clear_cache_desc": "Åtgärda laddningsproblem genom att uppdatera alla cachade filer",
     "all_set": "Allt inrett",
     "finish_setup": "Slutför installationen",
     "done_pill": "KLAR",
     "todo_pill": "ATT GÖRA",
-    "opt_pill": "VALFRITT",
-    "section_app": "APP",
-    "clear_cache": "Rensa cache och ladda om",
-    "clear_cache_desc": "Åtgärda laddningsproblem genom att uppdatera alla cachade filer"
+    "opt_pill": "VALFRITT"
   },
   "team": {
     "title": "👥 TEAMLEDNING",
@@ -509,6 +530,32 @@
     "openai_key_placeholder": "sk-...",
     "openai_model_placeholder": "gpt-4o-mini"
   },
+  "maps": {
+    "title": "INSTÄLLNING AV KARTOR",
+    "api_key": "GOOGLE MAPS API-NYCKEL",
+    "api_key_placeholder": "AIzaSy...",
+    "setup_desc": "Klistra in din Google Maps API-nyckel för att aktivera GPS-platsfäste på poster.",
+    "maps_desc": "Fäst exakta GPS-platser på poster. Se alla defekter på en livekarta.",
+    "tag_on_map": "TAGGA PÅ KARTAN",
+    "tap_to_pin": "Tryck på kartan för att ange defekt plats",
+    "use_gps": "ANVÄND MIN GPS",
+    "search_address": "Sök adress eller plats...",
+    "confirm_location": "BEKRÄFTA PLATS",
+    "clear_location": "TYDLIGT PLATS",
+    "view_on_map": "SE PÅ KARTAN",
+    "map_view": "KARTVY",
+    "satellite": "Satellit",
+    "street": "Gata",
+    "my_location": "MIN PLATS",
+    "all_on_map": "ALLT PÅ KARTAN",
+    "nearby_issues": "NÄRLIGA FRÅGOR",
+    "location_saved": "✓ Kartplats sparad",
+    "lat_lng": "Lat/Lng",
+    "coords_copied": "Koordinater kopierade",
+    "map_pin_desc": "GPS-märkt platsnål",
+    "open_in_maps": "Öppna i Google Maps",
+    "no_api_key": "Lägg till en Google Maps API-nyckel i Inställningar → Kartor för att aktivera kartplatstaggning."
+  },
   "export": {
     "markups_header": "MARKUPS",
     "markup_csv": "Markera CSV",
@@ -639,7 +686,7 @@
     "nav_dashboard_desc": "Visa aktiva poster, statusräkningar, allvarsöversikt, varningar och senaste poster. AI Query-fält för sökning på naturligt språk.",
     "nav_log": "Logga (+)",
     "nav_log_desc": "Skapa en ny post — fel, problem, arbetsorder, observation eller uppdatering — med foton, röstinmatning och AI-assisterad ifyllning. Välj mellan 7 arbetskategorier.",
-    "nav_tag": "Tag",
+    "nav_tag": "Märka",
     "nav_tag_desc": "Ladda upp planritningar, sätt pins på problem i ritningar, jämför PDF-revisioner och annotera med markup + fotoöverlägg. Fungerar för fel, FM-rundor och renoveringsbesiktningslistor.",
     "nav_review": "Granska",
     "nav_review_desc": "Bläddra, sök, filtrera och batch-uppdatera poster. AI-sökning på naturligt språk, verifieringsfoton, före/efter-reglage.",
@@ -680,7 +727,7 @@
     "tip_multi_projects_desc": "Använd projektväljaren för att växla mellan byggplatser, byggnader eller renoveringsjobb.",
     "tip_export": "Exportalternativ",
     "tip_export_desc": "Rapport-fliken: CSV, PDF, Google Sheets eller allt-i-ett. Välj vilka sektioner (fel, ritningar, jämförelser) som ska inkluderas.",
-    "tip_advisor": "Contract Advisor",
+    "tip_advisor": "Avtalsrådgivare",
     "tip_advisor_desc": "Från Rapport-fliken tryck på ADVISOR för att få AI-driven klausul-till-problem-mappning med kontrakts- eller leverans-PDF:er — användbart för felkrav, FM SLA:er och renoveringsvariationstvister.",
     "tip_language": "Språk",
     "tip_language_desc": "Byt språk när som helst från Inställningar → Språk. Alla rullgardinsmenyer (komponenter, problem, nivåer, kostnader) är översatta.",
@@ -689,7 +736,11 @@
     "tip_drawing_gestures": "Ritningsgester",
     "tip_drawing_gestures_desc": "Nyp med två fingrar för att zooma och panorera var som helst på en ritning — fungerar nu även medan du markerar. + / − -knapparna zoomar mot mitten av din vy.",
     "tip_photo_scale": "Skala foton på ritningar",
-    "tip_photo_scale_desc": "Efter att du placerat ett foto på en ritning, tryck för att välja det och använd de lila − / + -knapparna i markeringsverktygsfältet för att ändra storlek. Du kan också dra i hörnhandtaget."
+    "tip_photo_scale_desc": "Efter att du placerat ett foto på en ritning, tryck för att välja det och använd de lila − / + -knapparna i markeringsverktygsfältet för att ändra storlek. Du kan också dra i hörnhandtaget.",
+    "set_maps": "Kartor",
+    "set_maps_desc": "Lägg till en Google Maps API-nyckel för att aktivera GPS-placering på poster.",
+    "tip_map_tagging": "Kartplatstaggning",
+    "tip_map_tagging_desc": "När du loggar en post trycker du på TAGGA PÅ KARTAN för att släppa en GPS-nål på Google Maps på den exakta defekten. Sparade koordinater visas i inmatningsdetaljen och kan öppnas i Google Maps."
   },
   "feedback": {
     "title": "Feed-back",
@@ -757,21 +808,6 @@
     "title": "🌐 SPRÅK",
     "select": "Välj språk",
     "current": "Nuvarande språk"
-  },
-  "detail": {
-    "update_status": "UPPDATERA STATUS",
-    "description": "BESKRIVNING",
-    "timeline": "TIDSLINJE",
-    "assigned": "Tilldelad"
-  },
-  "work_categories": {
-    "landed": "Byggfel (Låghus)",
-    "highrise": "Byggfel (Höghus)",
-    "construction": "Byggarbetsplats",
-    "interior": "Inredningsarbeten",
-    "facilities": "Fastighetsförvaltning",
-    "infrastructure": "Infrastrukturarbeten",
-    "others": "Övrigt"
   },
   "opt": {
     "Structural": "Stomme",
@@ -1111,7 +1147,7 @@
     "Peeling": "Flagning",
     "Uneven coat": "Ojämnt lager",
     "Crack line": "Spricklinje",
-    "Bubbling": "Bubbling",
+    "Bubbling": "Bubblande",
     "Touch-up needed": "Bättring behövs",
     "Drip marks": "Droppspår",
     "Debonding": "Vidhäftningsfel",

@@ -80,6 +80,15 @@
     "observation": "Havainto",
     "label": "VAKAVUUS"
   },
+  "work_categories": {
+    "landed": "Rakennusvirheet (Matala)",
+    "highrise": "Rakennusvirheet (Korkea)",
+    "construction": "Rakennustyömaa",
+    "interior": "Sisustustyöt",
+    "facilities": "Kiinteistöhallinta",
+    "infrastructure": "Infrastruktuurirakentaminen",
+    "others": "Muut"
+  },
   "roles": {
     "admin": "Admin",
     "manager": "Manager",
@@ -178,7 +187,11 @@
     "saving": "TALLENNUS...",
     "log_another": "+ KIRJAA TOINEN TÄSTÄ",
     "listening": "KUUNTELU...",
-    "tap_to_speak": "NAPAUTA PUHUAksesi"
+    "tap_to_speak": "NAPAUTA PUHUAksesi",
+    "tag_on_map": "TAGI KARTALLE",
+    "map_location": "KARTTA SIJAINTI",
+    "map_location_set": "Kartan sijainti asetettu",
+    "map_location_cleared": "Kartan sijainti tyhjennetty"
   },
   "review": {
     "title": "Arvostelu",
@@ -193,6 +206,12 @@
     "select": "✓ VALITSE",
     "type_label": "TYYPPI",
     "status_label": "STATUS"
+  },
+  "detail": {
+    "update_status": "PÄIVITÄ TILA",
+    "description": "KUVAUS",
+    "timeline": "AIKAJANA",
+    "assigned": "Vastuuhenkilö"
   },
   "report": {
     "title": "Raportoi",
@@ -225,6 +244,8 @@
     "total_defects": "VIAT YHTEENSÄ",
     "by_severity": "VAKAVUUSASteen mukaan",
     "by_status": "TILAN MUKAAN",
+    "by_assignee": "VASTUUHENKILÖN MUKAAN",
+    "total": "yhteensä",
     "email_preview": "SÄHKÖPOSTIN ESITTELY",
     "pins": "nastat",
     "markups": "merkinnät",
@@ -234,9 +255,7 @@
     "severity_label": "VAKAVUUS",
     "status_label": "STATUS",
     "assignee_label": "MÄÄRÄYS",
-    "date_range": "DATE RANGE",
-    "by_assignee": "VASTUUHENKILÖN MUKAAN",
-    "total": "yhteensä"
+    "date_range": "PÄIVÄMÄÄRÄALUEET"
   },
   "dashboard": {
     "title": "Kojelauta",
@@ -365,18 +384,20 @@
     "telegram_desc": "Reaaliaikainen vika ping",
     "storage": "Varastointi",
     "storage_desc": "Backend ja tiedostojen isännöinti",
+    "maps": "Kartat",
+    "maps_desc": "Google Maps -sijainnin kiinnitys",
     "language": "Kieli",
     "language_desc": "Valitse kielesi",
     "section_project": "PROJEKTI",
     "section_enhance": "PARANTAA",
+    "section_app": "SOVELLUS",
+    "clear_cache": "Tyhjennä välimuisti ja lataa uudelleen",
+    "clear_cache_desc": "Korjaa latausongelmat päivittämällä kaikki välimuistissa olevat tiedostot",
     "all_set": "Kaikki valmiina",
     "finish_setup": "Viimeistele asennus",
     "done_pill": "VALMIS",
     "todo_pill": "TEHTÄVÄ",
-    "opt_pill": "VALINNAINEN",
-    "section_app": "SOVELLUS",
-    "clear_cache": "Tyhjennä välimuisti ja lataa uudelleen",
-    "clear_cache_desc": "Korjaa latausongelmat päivittämällä kaikki välimuistissa olevat tiedostot"
+    "opt_pill": "VALINNAINEN"
   },
   "team": {
     "title": "👥 RYHMÄN HALLINTA",
@@ -508,6 +529,32 @@
     "openai_url_placeholder": "https://api.openai.com",
     "openai_key_placeholder": "sk-...",
     "openai_model_placeholder": "gpt-4o-mini"
+  },
+  "maps": {
+    "title": "KARTAT ASETUKSET",
+    "api_key": "GOOGLE MAPS API -AVAIN",
+    "api_key_placeholder": "AIzaSy...",
+    "setup_desc": "Liitä Google Maps API -avain ottaaksesi GPS-sijainnin kiinnityksen käyttöön merkinnöissä.",
+    "maps_desc": "Kiinnitä tarkat GPS-paikat merkintöihin. Katso kaikki viat live-kartalla.",
+    "tag_on_map": "TAGI KARTALLE",
+    "tap_to_pin": "Napauta karttaa asettaaksesi vian sijainnin",
+    "use_gps": "KÄYTÄ OMA GPS:ääni",
+    "search_address": "Hae osoitetta tai sijaintia...",
+    "confirm_location": "VAHVISTA SIJAINTI",
+    "clear_location": "TYHJENNÄ SIJAINTI",
+    "view_on_map": "NÄYTÄ KARTALTA",
+    "map_view": "KARTTANÄKYMÄ",
+    "satellite": "Satelliitti",
+    "street": "Street",
+    "my_location": "MINUN SIJAINTI",
+    "all_on_map": "KAIKKI KARTALLE",
+    "nearby_issues": "LÄHELLÄ OLEVAT ONGELMAT",
+    "location_saved": "✓ Kartan sijainti tallennettu",
+    "lat_lng": "Lat/Lng",
+    "coords_copied": "Koordinaatit kopioitu",
+    "map_pin_desc": "GPS-merkitty sijaintinasta",
+    "open_in_maps": "Avaa Google Mapsissa",
+    "no_api_key": "Lisää Google Maps API -avain kohdassa Asetukset → Kartat ottaaksesi kartan sijainnin merkitsemisen käyttöön."
   },
   "export": {
     "markups_header": "MARKUPS",
@@ -680,7 +727,7 @@
     "tip_multi_projects_desc": "Käytä projektin valitsinta vaihtaaksesi työmaiden, rakennusten tai remonttitöiden välillä.",
     "tip_export": "Vientivaihtoehdot",
     "tip_export_desc": "Raportti-välilehti: CSV, PDF, Google Sheets tai kaikki yhdessä. Valitse sisällytettävät osiot (virheet, piirustukset, vertailut).",
-    "tip_advisor": "Contract Advisor",
+    "tip_advisor": "Sopimusneuvoja",
     "tip_advisor_desc": "Raportti-välilehdeltä napauta ADVISOR saadaksesi AI-pohjaisen lauseke-ongelma-yhdistyksen sopimus- tai toimituslaajuus-PDF:iä käyttäen — hyödyllinen virhevaateisiin, FM SLA:ihin ja remonttimuutoskiistoihin.",
     "tip_language": "Kieli",
     "tip_language_desc": "Vaihda kieltä milloin tahansa kohdasta Asetukset → Kieli. Kaikki pudotusvalikot (komponentit, ongelmat, tasot, kustannukset) on käännetty.",
@@ -689,7 +736,11 @@
     "tip_drawing_gestures": "Piirustuseleet",
     "tip_drawing_gestures_desc": "Nipistä kahdella sormella zoomataksesi ja siirtyäksesi missä tahansa piirustuksessa — toimii nyt jopa merkintöjen aikana. + / − -painikkeet zoomaavat näkymän keskelle.",
     "tip_photo_scale": "Skaalaa kuvia piirustuksissa",
-    "tip_photo_scale_desc": "Napauta piirustukseen sijoitettua valokuvaa valitaksesi sen ja käytä merkintätyökalurivin violetteja − / + -painikkeita koon muuttamiseen. Voit myös vetää kulmakahvasta."
+    "tip_photo_scale_desc": "Napauta piirustukseen sijoitettua valokuvaa valitaksesi sen ja käytä merkintätyökalurivin violetteja − / + -painikkeita koon muuttamiseen. Voit myös vetää kulmakahvasta.",
+    "set_maps": "Kartat",
+    "set_maps_desc": "Lisää Google Maps -sovellusliittymäavain ottaaksesi GPS-sijainnin kiinnityksen käyttöön merkinnöissä.",
+    "tip_map_tagging": "Kartan sijainnin merkitseminen",
+    "tip_map_tagging_desc": "Kun kirjaat merkintää, napauta MERKINNÄT KARTALLE pudottaaksesi GPS-nasta Google Mapsiin tarkkaan vikapaikkaan. Tallennetut koordinaatit näkyvät tiedoissa, ja ne voidaan avata Google Mapsissa."
   },
   "feedback": {
     "title": "Palaute",
@@ -757,21 +808,6 @@
     "title": "🌐 KIELI",
     "select": "Valitse kieli",
     "current": "Nykyinen kieli"
-  },
-  "detail": {
-    "update_status": "PÄIVITÄ TILA",
-    "description": "KUVAUS",
-    "timeline": "AIKAJANA",
-    "assigned": "Vastuuhenkilö"
-  },
-  "work_categories": {
-    "landed": "Rakennusvirheet (Matala)",
-    "highrise": "Rakennusvirheet (Korkea)",
-    "construction": "Rakennustyömaa",
-    "interior": "Sisustustyöt",
-    "facilities": "Kiinteistöhallinta",
-    "infrastructure": "Infrastruktuurirakentaminen",
-    "others": "Muut"
   },
   "opt": {
     "Structural": "Rakenne",

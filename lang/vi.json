@@ -80,6 +80,15 @@
     "observation": "Quan sát",
     "label": "MỨC ĐỘ"
   },
+  "work_categories": {
+    "landed": "Lỗi Công Trình (Nhà Thấp Tầng)",
+    "highrise": "Lỗi Công Trình (Nhà Cao Tầng)",
+    "construction": "Công Trường Xây Dựng",
+    "interior": "Công Trình Nội Thất",
+    "facilities": "Quản Lý Cơ Sở",
+    "infrastructure": "Công Trình Hạ Tầng",
+    "others": "Khác"
+  },
   "roles": {
     "admin": "Quản trị viên",
     "manager": "Quản lý",
@@ -178,7 +187,11 @@
     "saving": "ĐANG LƯU...",
     "log_another": "+ ĐĂNG NHẬP KHÁC TẠI ĐÂY",
     "listening": "NGHE...",
-    "tap_to_speak": "NHẤN ĐỂ NÓI"
+    "tap_to_speak": "NHẤN ĐỂ NÓI",
+    "tag_on_map": "THẺ TRÊN BẢN ĐỒ",
+    "map_location": "BẢN ĐỒ VỊ TRÍ",
+    "map_location_set": "Đã đặt vị trí bản đồ",
+    "map_location_cleared": "Đã xóa vị trí trên bản đồ"
   },
   "review": {
     "title": "Xem xét",
@@ -193,6 +206,12 @@
     "select": "✓ CHỌN",
     "type_label": "KIỂU",
     "status_label": "TRẠNG THÁI"
+  },
+  "detail": {
+    "update_status": "CẬP NHẬT TRẠNG THÁI",
+    "description": "MÔ TẢ",
+    "timeline": "DÒNG THỜI GIAN",
+    "assigned": "Phụ trách"
   },
   "report": {
     "title": "Báo cáo",
@@ -225,6 +244,8 @@
     "total_defects": "TỔNG SỐ LỖI",
     "by_severity": "THEO MỨC ĐỘ NGHIÊM TRỌNG",
     "by_status": "THEO TÌNH TRẠNG",
+    "by_assignee": "THEO NGƯỜI PHỤ TRÁCH",
+    "total": "tổng",
     "email_preview": "XEM TRƯỚC EMAIL",
     "pins": "ghim",
     "markups": "đánh dấu",
@@ -234,9 +255,7 @@
     "severity_label": "MỨC ĐỘ NGHIÊM TRỌNG",
     "status_label": "TRẠNG THÁI",
     "assignee_label": "NGƯỜI ĐƯỢC CHUYỂN PHÁP",
-    "date_range": "PHẠM VI NGÀY",
-    "by_assignee": "THEO NGƯỜI PHỤ TRÁCH",
-    "total": "tổng"
+    "date_range": "PHẠM VI NGÀY"
   },
   "dashboard": {
     "title": "Bảng điều khiển",
@@ -365,18 +384,20 @@
     "telegram_desc": "Thông báo lỗi thời gian thực",
     "storage": "Lưu trữ",
     "storage_desc": "Backend và lưu trữ tệp",
+    "maps": "Bản đồ",
+    "maps_desc": "Ghim vị trí trên Google Maps",
     "language": "Ngôn ngữ",
     "language_desc": "Chọn ngôn ngữ của bạn",
     "section_project": "DỰ ÁN",
     "section_enhance": "NÂNG CAO",
+    "section_app": "ỨNG DỤNG",
+    "clear_cache": "Xóa bộ nhớ đệm và tải lại",
+    "clear_cache_desc": "Khắc phục sự cố tải bằng cách làm mới tất cả các tệp đã lưu trong bộ nhớ đệm",
     "all_set": "Đã cài đặt xong",
     "finish_setup": "Hoàn tất cài đặt",
     "done_pill": "XONG",
     "todo_pill": "CẦN LÀM",
-    "opt_pill": "TÙY CHỌN",
-    "section_app": "ỨNG DỤNG",
-    "clear_cache": "Xóa bộ nhớ đệm và tải lại",
-    "clear_cache_desc": "Khắc phục sự cố tải bằng cách làm mới tất cả các tệp đã lưu trong bộ nhớ đệm"
+    "opt_pill": "TÙY CHỌN"
   },
   "team": {
     "title": "👥 QUẢN LÝ NHÓM",
@@ -509,6 +530,32 @@
     "openai_key_placeholder": "sk-...",
     "openai_model_placeholder": "gpt-4o-mini"
   },
+  "maps": {
+    "title": "THIẾT LẬP BẢN ĐỒ",
+    "api_key": "KHÓA API BẢN ĐỒ GOOGLE",
+    "api_key_placeholder": "AizaSy...",
+    "setup_desc": "Dán khóa API Google Maps của bạn để bật tính năng ghim vị trí GPS vào các mục nhập.",
+    "maps_desc": "Ghim vị trí GPS chính xác vào các mục. Xem tất cả các khiếm khuyết trên bản đồ trực tiếp.",
+    "tag_on_map": "THẺ TRÊN BẢN ĐỒ",
+    "tap_to_pin": "Nhấn vào bản đồ để đặt vị trí lỗi",
+    "use_gps": "SỬ DỤNG GPS CỦA TÔI",
+    "search_address": "Tìm kiếm địa chỉ hoặc vị trí...",
+    "confirm_location": "XÁC NHẬN VỊ TRÍ",
+    "clear_location": "XÓA VỊ TRÍ",
+    "view_on_map": "XEM TRÊN BẢN ĐỒ",
+    "map_view": "XEM BẢN ĐỒ",
+    "satellite": "Vệ tinh",
+    "street": "Đường phố",
+    "my_location": "VỊ TRÍ CỦA TÔI",
+    "all_on_map": "TẤT CẢ TRÊN BẢN ĐỒ",
+    "nearby_issues": "VẤN ĐỀ GẦN ĐÂY",
+    "location_saved": "✓ Đã lưu vị trí bản đồ",
+    "lat_lng": "Vĩ độ/Lng",
+    "coords_copied": "Đã sao chép tọa độ",
+    "map_pin_desc": "Ghim vị trí được gắn thẻ GPS",
+    "open_in_maps": "Mở trong Google Maps",
+    "no_api_key": "Thêm khóa API Google Maps trong Cài đặt → Bản đồ để bật gắn thẻ vị trí trên bản đồ."
+  },
   "export": {
     "markups_header": "ĐÁNH DẤU",
     "markup_csv": "Đánh dấu CSV",
@@ -639,7 +686,7 @@
     "nav_dashboard_desc": "Xem các mục đang hoạt động, số lượng trạng thái, tóm tắt mức độ nghiêm trọng, cảnh báo và các mục gần đây. Thanh AI Query để tìm kiếm bằng ngôn ngữ tự nhiên.",
     "nav_log": "Ghi nhận (+)",
     "nav_log_desc": "Tạo mục mới — lỗi, vấn đề, lệnh làm việc, quan sát hoặc cập nhật — với ảnh, nhập giọng nói và điền hỗ trợ bởi AI. Chọn từ 7 danh mục công việc.",
-    "nav_tag": "Tag",
+    "nav_tag": "Nhãn",
     "nav_tag_desc": "Tải lên bản vẽ mặt bằng, ghim các vấn đề lên bản vẽ, so sánh các phiên bản PDF và chú thích bằng markup + lớp phủ ảnh. Hoạt động cho lỗi, tuần tra FM và danh sách snagging cải tạo.",
     "nav_review": "Xem xét",
     "nav_review_desc": "Duyệt, tìm kiếm, lọc và cập nhật hàng loạt các mục. Tìm kiếm ngôn ngữ tự nhiên AI, ảnh xác minh, thanh trượt trước/sau.",
@@ -670,7 +717,7 @@
     "set_team_desc": "Mời thành viên (liên kết + mã), gán vai trò, xóa thành viên.",
     "set_ai": "Thiết lập AI",
     "set_ai_desc": "Kết nối Gemini (miễn phí), Ollama (cục bộ) hoặc OpenAI/GPT để phân tích ảnh và tìm kiếm.",
-    "set_telegram": "Telegram",
+    "set_telegram": "điện tín",
     "set_telegram_desc": "Cảnh báo thời gian thực đến nhóm của bạn khi các mục được ghi nhận hoặc cập nhật.",
     "set_storage": "Lưu trữ",
     "set_storage_desc": "Chọn PocketBase (mặc định), đường dẫn cục bộ hoặc Google Drive.",
@@ -680,7 +727,7 @@
     "tip_multi_projects_desc": "Sử dụng bộ chọn dự án để chuyển đổi giữa các công trường, tòa nhà hoặc công việc cải tạo.",
     "tip_export": "Tùy chọn xuất",
     "tip_export_desc": "Tab Báo cáo: CSV, PDF, Google Sheets hoặc tất cả trong một. Chọn các phần (lỗi, bản vẽ, so sánh) để bao gồm.",
-    "tip_advisor": "Contract Advisor",
+    "tip_advisor": "Cố vấn hợp đồng",
     "tip_advisor_desc": "Từ tab Báo cáo, nhấn ADVISOR để nhận ánh xạ điều khoản-đến-vấn đề được hỗ trợ bởi AI sử dụng PDF hợp đồng hoặc phạm vi công việc — hữu ích cho khiếu nại lỗi, SLA FM và tranh chấp thay đổi cải tạo.",
     "tip_language": "Ngôn ngữ",
     "tip_language_desc": "Thay đổi ngôn ngữ bất cứ lúc nào từ Cài đặt → Ngôn ngữ. Tất cả dropdown (thành phần, vấn đề, mức, chi phí) đều được dịch.",
@@ -689,7 +736,11 @@
     "tip_drawing_gestures": "Cử chỉ trên bản vẽ",
     "tip_drawing_gestures_desc": "Chụm hai ngón tay để thu phóng và di chuyển ở bất kỳ đâu trên bản vẽ — nay hoạt động ngay cả khi bạn đang đánh dấu. Nút + / − thu phóng về giữa chế độ xem của bạn.",
     "tip_photo_scale": "Điều chỉnh kích thước ảnh trên bản vẽ",
-    "tip_photo_scale_desc": "Sau khi đặt ảnh lên bản vẽ, chạm để chọn rồi dùng các nút tím − / + trong thanh công cụ đánh dấu để đổi kích thước. Bạn cũng có thể kéo tay cầm ở góc."
+    "tip_photo_scale_desc": "Sau khi đặt ảnh lên bản vẽ, chạm để chọn rồi dùng các nút tím − / + trong thanh công cụ đánh dấu để đổi kích thước. Bạn cũng có thể kéo tay cầm ở góc.",
+    "set_maps": "Bản đồ",
+    "set_maps_desc": "Thêm khóa API Google Maps để bật tính năng ghim vị trí GPS vào các mục nhập.",
+    "tip_map_tagging": "Gắn thẻ vị trí bản đồ",
+    "tip_map_tagging_desc": "Khi ghi lại một mục nhập, hãy chạm vào GẮN THẺ TRÊN BẢN ĐỒ để thả ghim GPS trên Google Maps vào vị trí lỗi chính xác. Tọa độ đã lưu xuất hiện trong chi tiết mục nhập và có thể mở được trong Google Maps."
   },
   "feedback": {
     "title": "Phản hồi",
@@ -757,21 +808,6 @@
     "title": "🌐 NGÔN NGỮ",
     "select": "Chọn ngôn ngữ",
     "current": "Ngôn ngữ hiện tại"
-  },
-  "detail": {
-    "update_status": "CẬP NHẬT TRẠNG THÁI",
-    "description": "MÔ TẢ",
-    "timeline": "DÒNG THỜI GIAN",
-    "assigned": "Phụ trách"
-  },
-  "work_categories": {
-    "landed": "Lỗi Công Trình (Nhà Thấp Tầng)",
-    "highrise": "Lỗi Công Trình (Nhà Cao Tầng)",
-    "construction": "Công Trường Xây Dựng",
-    "interior": "Công Trình Nội Thất",
-    "facilities": "Quản Lý Cơ Sở",
-    "infrastructure": "Công Trình Hạ Tầng",
-    "others": "Khác"
   },
   "opt": {
     "Structural": "Kết cấu",

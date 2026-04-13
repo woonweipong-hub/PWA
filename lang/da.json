@@ -80,6 +80,15 @@
     "observation": "Observation",
     "label": "ALVORLIGHED"
   },
+  "work_categories": {
+    "landed": "Bygningsfejl (Lavbyggeri)",
+    "highrise": "Bygningsfejl (Højbyggeri)",
+    "construction": "Byggeplads",
+    "interior": "Indretningsarbejde",
+    "facilities": "Ejendomsforvaltning",
+    "infrastructure": "Infrastrukturarbejde",
+    "others": "Andet"
+  },
   "roles": {
     "admin": "Admin",
     "manager": "Manager",
@@ -178,7 +187,11 @@
     "saving": "GEMMER...",
     "log_another": "+ LOG EN ANDEN HER",
     "listening": "LYTTER...",
-    "tap_to_speak": "TRYK FOR AT TALE"
+    "tap_to_speak": "TRYK FOR AT TALE",
+    "tag_on_map": "TAG PÅ KORT",
+    "map_location": "KORT PLACERING",
+    "map_location_set": "Kortplacering indstillet",
+    "map_location_cleared": "Kortplacering ryddet"
   },
   "review": {
     "title": "Gennemgå",
@@ -193,6 +206,12 @@
     "select": "✓ VÆLG",
     "type_label": "TYPE",
     "status_label": "STATUS"
+  },
+  "detail": {
+    "update_status": "OPDATER STATUS",
+    "description": "BESKRIVELSE",
+    "timeline": "TIDSLINJE",
+    "assigned": "Tildelt"
   },
   "report": {
     "title": "Rapport",
@@ -225,6 +244,8 @@
     "total_defects": "SAMLET DEFEKTER",
     "by_severity": "EFTER ALVARLIGHED",
     "by_status": "EFTER STATUS",
+    "by_assignee": "EFTER ANSVARLIG",
+    "total": "total",
     "email_preview": "EMAIL FORBUD",
     "pins": "stifter",
     "markups": "opmærkninger",
@@ -234,9 +255,7 @@
     "severity_label": "ALVARLIGHED",
     "status_label": "STATUS",
     "assignee_label": "OVERDRAGENDE",
-    "date_range": "DATOintervall",
-    "by_assignee": "EFTER ANSVARLIG",
-    "total": "total"
+    "date_range": "DATOintervall"
   },
   "dashboard": {
     "title": "Instrumentbræt",
@@ -365,18 +384,20 @@
     "telegram_desc": "Defekte pinger i realtid",
     "storage": "Opbevaring",
     "storage_desc": "Backend og filhosting",
+    "maps": "Kort",
+    "maps_desc": "Google Maps fastgørelse af placering",
     "language": "Sprog",
     "language_desc": "Vælg dit sprog",
     "section_project": "PROJEKT",
     "section_enhance": "FORBEDRE",
+    "section_app": "APP",
+    "clear_cache": "Ryd cache og genindlæs",
+    "clear_cache_desc": "Løs indlæsningsproblemer ved at opdatere alle cachelagrede filer",
     "all_set": "Alt sammen sat op",
     "finish_setup": "Afslut opsætningen",
     "done_pill": "FÆRDIG",
     "todo_pill": "AT GØRE",
-    "opt_pill": "VALGFRI",
-    "section_app": "APP",
-    "clear_cache": "Ryd cache og genindlæs",
-    "clear_cache_desc": "Løs indlæsningsproblemer ved at opdatere alle cachelagrede filer"
+    "opt_pill": "VALGFRI"
   },
   "team": {
     "title": "👥 TEAMLEDELSE",
@@ -508,6 +529,32 @@
     "openai_url_placeholder": "https://api.openai.com",
     "openai_key_placeholder": "sk-...",
     "openai_model_placeholder": "gpt-4o-mini"
+  },
+  "maps": {
+    "title": "KORTOPSÆTNING",
+    "api_key": "GOOGLE MAPS API NØGLE",
+    "api_key_placeholder": "AIzaSy...",
+    "setup_desc": "Indsæt din Google Maps API-nøgle for at aktivere GPS-placering på poster.",
+    "maps_desc": "Fastgør nøjagtige GPS-placeringer på poster. Se alle defekter på et live kort.",
+    "tag_on_map": "TAG PÅ KORT",
+    "tap_to_pin": "Tryk på kort for at indstille defekt placering",
+    "use_gps": "BRUG MIN GPS",
+    "search_address": "Søg adresse eller placering...",
+    "confirm_location": "BEKRÆFT PLACERING",
+    "clear_location": "KLAR PLACERING",
+    "view_on_map": "SE PÅ KORT",
+    "map_view": "KORTVISNING",
+    "satellite": "Satellit",
+    "street": "Gade",
+    "my_location": "MIN PLACERING",
+    "all_on_map": "ALT PÅ KORT",
+    "nearby_issues": "NÆRHEDSPROGRAMMER",
+    "location_saved": "✓ Kortplacering gemt",
+    "lat_lng": "Lat/Lng",
+    "coords_copied": "Koordinater kopieret",
+    "map_pin_desc": "GPS-mærket positionsnål",
+    "open_in_maps": "Åbn i Google Maps",
+    "no_api_key": "Tilføj en Google Maps API-nøgle i Indstillinger → Kort for at aktivere kortplaceringsmærkning."
   },
   "export": {
     "markups_header": "MARKUPS",
@@ -666,7 +713,7 @@
     "settings_items": "Indstillingspunkter",
     "set_projects": "Projekter",
     "set_projects_desc": "Opret, skift, arkiver eller gendan projekter.",
-    "set_team": "Team",
+    "set_team": "Hold",
     "set_team_desc": "Inviter medlemmer (link + kode), tildel roller, fjern medlemmer.",
     "set_ai": "AI-opsætning",
     "set_ai_desc": "Forbind Gemini (gratis), Ollama (lokal) eller OpenAI/GPT til fotoanalyse og søgning.",
@@ -680,7 +727,7 @@
     "tip_multi_projects_desc": "Brug projektvælgeren til at skifte mellem byggepladser, bygninger eller renoveringsopgaver.",
     "tip_export": "Eksportmuligheder",
     "tip_export_desc": "Rapportfanen: CSV, PDF, Google Sheets eller alt-i-en. Vælg hvilke sektioner (mangler, tegninger, sammenligninger), der skal inkluderes.",
-    "tip_advisor": "Contract Advisor",
+    "tip_advisor": "Kontraktrådgiver",
     "tip_advisor_desc": "Fra Rapport-fanen tryk på ADVISOR for at få AI-drevet klausul-til-mangel-mapping ved hjælp af kontrakt- eller leverance-PDF'er — nyttigt til mangelkrav, FM SLA'er og renoveringsvariationstvister.",
     "tip_language": "Sprog",
     "tip_language_desc": "Skift sprog når som helst fra Indstillinger → Sprog. Alle dropdowns (komponenter, problemer, niveauer, omkostninger) er oversat.",
@@ -689,7 +736,11 @@
     "tip_drawing_gestures": "Tegningsbevægelser",
     "tip_drawing_gestures_desc": "Knib med to fingre for at zoome og panorere hvor som helst på en tegning — det virker nu selv mens du markerer. + / − -knapperne zoomer mod midten af din visning.",
     "tip_photo_scale": "Skaler fotos på tegninger",
-    "tip_photo_scale_desc": "Efter du har placeret et foto på en tegning, tryk for at vælge det og brug de lilla − / + -knapper i markeringsværktøjslinjen til at ændre størrelse. Du kan også trække hjørnehåndtaget."
+    "tip_photo_scale_desc": "Efter du har placeret et foto på en tegning, tryk for at vælge det og brug de lilla − / + -knapper i markeringsværktøjslinjen til at ændre størrelse. Du kan også trække hjørnehåndtaget.",
+    "set_maps": "Kort",
+    "set_maps_desc": "Tilføj en Google Maps API-nøgle for at aktivere GPS-placering på poster.",
+    "tip_map_tagging": "Kortplaceringsmærkning",
+    "tip_map_tagging_desc": "Når du logger en post, skal du trykke på TAG PÅ KORT for at anbringe en GPS-nål på Google Maps på det nøjagtige defekte sted. Gemte koordinater vises i indtastningsdetaljerne og kan åbnes i Google Maps."
   },
   "feedback": {
     "title": "Feedback",
@@ -757,21 +808,6 @@
     "title": "🌐 SPROG",
     "select": "Vælg sprog",
     "current": "Nuværende sprog"
-  },
-  "detail": {
-    "update_status": "OPDATER STATUS",
-    "description": "BESKRIVELSE",
-    "timeline": "TIDSLINJE",
-    "assigned": "Tildelt"
-  },
-  "work_categories": {
-    "landed": "Bygningsfejl (Lavbyggeri)",
-    "highrise": "Bygningsfejl (Højbyggeri)",
-    "construction": "Byggeplads",
-    "interior": "Indretningsarbejde",
-    "facilities": "Ejendomsforvaltning",
-    "infrastructure": "Infrastrukturarbejde",
-    "others": "Andet"
   },
   "opt": {
     "Structural": "Bærende",

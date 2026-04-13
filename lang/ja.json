@@ -80,6 +80,15 @@
     "observation": "観察",
     "label": "重要度"
   },
+  "work_categories": {
+    "landed": "建物欠陥（低層）",
+    "highrise": "建物欠陥（高層）",
+    "construction": "建設現場",
+    "interior": "内装工事",
+    "facilities": "施設管理",
+    "infrastructure": "インフラ工事",
+    "others": "その他"
+  },
   "roles": {
     "admin": "管理者",
     "manager": "マネージャー",
@@ -178,7 +187,11 @@
     "saving": "保存中...",
     "log_another": "+ ここで別のログを記録",
     "listening": "リスニング...",
-    "tap_to_speak": "タップして話す"
+    "tap_to_speak": "タップして話す",
+    "tag_on_map": "地図にタグを付ける",
+    "map_location": "地図の位置",
+    "map_location_set": "地図の位置セット",
+    "map_location_cleared": "マップの位置をクリアしました"
   },
   "review": {
     "title": "レビュー",
@@ -193,6 +206,12 @@
     "select": "✓ 選択",
     "type_label": "タイプ",
     "status_label": "状態"
+  },
+  "detail": {
+    "update_status": "ステータス更新",
+    "description": "説明",
+    "timeline": "タイムライン",
+    "assigned": "担当者"
   },
   "report": {
     "title": "レポート",
@@ -225,6 +244,8 @@
     "total_defects": "総欠陥数",
     "by_severity": "重大度別",
     "by_status": "ステータス別",
+    "by_assignee": "担当者別",
+    "total": "合計",
     "email_preview": "メールでのプレビュー",
     "pins": "ピン",
     "markups": "マークアップ",
@@ -234,9 +255,7 @@
     "severity_label": "重大度",
     "status_label": "状態",
     "assignee_label": "譲受人",
-    "date_range": "日付範囲",
-    "by_assignee": "担当者別",
-    "total": "合計"
+    "date_range": "日付範囲"
   },
   "dashboard": {
     "title": "ダッシュボード",
@@ -365,18 +384,20 @@
     "telegram_desc": "リアルタイム欠陥通知",
     "storage": "ストレージ",
     "storage_desc": "バックエンドとファイルホスティング",
+    "maps": "地図",
+    "maps_desc": "Google マップの場所の固定",
     "language": "言語",
     "language_desc": "言語を選択",
     "section_project": "プロジェクト",
     "section_enhance": "強化",
+    "section_app": "アプリ",
+    "clear_cache": "キャッシュをクリアして再読み込み",
+    "clear_cache_desc": "キャッシュされたファイルを更新して読み込みの問題を修正します",
     "all_set": "すべて設定完了",
     "finish_setup": "セットアップを完了",
     "done_pill": "完了",
     "todo_pill": "未完了",
-    "opt_pill": "任意",
-    "section_app": "アプリ",
-    "clear_cache": "キャッシュをクリアして再読み込み",
-    "clear_cache_desc": "キャッシュされたファイルを更新して読み込みの問題を修正します"
+    "opt_pill": "任意"
   },
   "team": {
     "title": "👥 チーム管理",
@@ -450,7 +471,7 @@
     "gemini_desc": "無料クラウドAI — 1日1,500分析",
     "ollama": "Ollama（ローカル）",
     "ollama_desc": "ローカルでAIを実行 — Llava、Qwen、Llama Vision",
-    "openai": "OpenAI / GPT",
+    "openai": "OpenAI/GPT",
     "openai_desc": "GPT-4o、GPT-4o-mini、または互換API",
     "clause_mapping": "欠陥から条項へのマッピング",
     "contract_advisory": "契約条項アドバイザリー",
@@ -508,6 +529,32 @@
     "openai_url_placeholder": "https://api.openai.com",
     "openai_key_placeholder": "スク...",
     "openai_model_placeholder": "gpt-4o-mini"
+  },
+  "maps": {
+    "title": "マップのセットアップ",
+    "api_key": "Google マップ API キー",
+    "api_key_placeholder": "アイザシ...",
+    "setup_desc": "Google Maps API キーを貼り付けて、エントリに対する GPS 位置の固定を有効にします。",
+    "maps_desc": "正確な GPS 位置をエントリに固定します。 ライブマップ上にすべての欠陥を表示します。",
+    "tag_on_map": "地図にタグを付ける",
+    "tap_to_pin": "マップをタップして欠陥位置を設定します",
+    "use_gps": "私のGPSを使用してください",
+    "search_address": "住所または場所を検索...",
+    "confirm_location": "場所を確認する",
+    "clear_location": "明確な場所",
+    "view_on_map": "地図で見る",
+    "map_view": "マップビュー",
+    "satellite": "衛星",
+    "street": "通り",
+    "my_location": "私の場所",
+    "all_on_map": "全て地図上にある",
+    "nearby_issues": "身近な問題",
+    "location_saved": "✓ 地図の位置が保存されました",
+    "lat_lng": "緯度/経度",
+    "coords_copied": "座標をコピーしました",
+    "map_pin_desc": "GPSタグ付き位置ピン",
+    "open_in_maps": "Google マップで開く",
+    "no_api_key": "[設定] → [マップ] で Google Maps API キーを追加して、地図上の位置のタグ付けを有効にします。"
   },
   "export": {
     "markups_header": "マークアップ",
@@ -670,7 +717,7 @@
     "set_team_desc": "メンバーの招待（リンク＋コード）、役割の割り当て、メンバーの削除を行います。",
     "set_ai": "AIセットアップ",
     "set_ai_desc": "Gemini（無料）、Ollama（ローカル）、またはOpenAI/GPTを接続して写真分析と検索を利用します。",
-    "set_telegram": "Telegram",
+    "set_telegram": "電報",
     "set_telegram_desc": "項目の記録や更新時にチームグループへリアルタイム通知を送信します。",
     "set_storage": "ストレージ",
     "set_storage_desc": "PocketBase（デフォルト）、ローカルパス、またはGoogle Driveを選択します。",
@@ -680,7 +727,7 @@
     "tip_multi_projects_desc": "プロジェクトセレクターを使用して、現場、建物、改修案件を切り替えます。",
     "tip_export": "エクスポートオプション",
     "tip_export_desc": "レポートタブ：CSV、PDF、Google Sheets、またはオールインワン。含めるセクション（不具合、図面、比較）を選択できます。",
-    "tip_advisor": "Contract Advisor",
+    "tip_advisor": "契約アドバイザー",
     "tip_advisor_desc": "レポートタブからADVISORをタップすると、契約書または作業範囲のPDFを使用したAIによる条項と課題のマッピングが得られます — 不具合請求、FM SLA、改修変更紛争に便利です。",
     "tip_language": "言語",
     "tip_language_desc": "設定 → 言語からいつでも言語を切り替えられます。すべてのドロップダウン（部位、不具合、レベル、コスト）が翻訳されています。",
@@ -689,7 +736,11 @@
     "tip_drawing_gestures": "図面でのジェスチャー",
     "tip_drawing_gestures_desc": "2本の指でピンチすると図面のどこでもズーム・パンできます — マークアップ中でも動作します。+ / − ボタンはビューの中央に向けてズームします。",
     "tip_photo_scale": "図面上の写真サイズ変更",
-    "tip_photo_scale_desc": "図面に写真を配置した後、タップして選択し、マークアップツールバーの紫色の − / + ボタンでサイズを変更できます。角のハンドルをドラッグすることもできます。"
+    "tip_photo_scale_desc": "図面に写真を配置した後、タップして選択し、マークアップツールバーの紫色の − / + ボタンでサイズを変更できます。角のハンドルをドラッグすることもできます。",
+    "set_maps": "地図",
+    "set_maps_desc": "Google Maps API キーを追加して、エントリに対する GPS 位置の固定を有効にします。",
+    "tip_map_tagging": "地図の位置のタグ付け",
+    "tip_map_tagging_desc": "エントリを記録するときに、[地図にタグを付ける] をタップして、Google マップ上の欠陥の正確な位置に GPS ピンをドロップします。 保存された座標はエントリの詳細に表示され、Google マップで開くことができます。"
   },
   "feedback": {
     "title": "フィードバック",
@@ -757,21 +808,6 @@
     "title": "🌐 言語",
     "select": "言語を選択",
     "current": "現在の言語"
-  },
-  "detail": {
-    "update_status": "ステータス更新",
-    "description": "説明",
-    "timeline": "タイムライン",
-    "assigned": "担当者"
-  },
-  "work_categories": {
-    "landed": "建物欠陥（低層）",
-    "highrise": "建物欠陥（高層）",
-    "construction": "建設現場",
-    "interior": "内装工事",
-    "facilities": "施設管理",
-    "infrastructure": "インフラ工事",
-    "others": "その他"
   },
   "opt": {
     "Structural": "構造",

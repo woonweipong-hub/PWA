@@ -80,6 +80,15 @@
     "observation": "Osservazione",
     "label": "GRAVITÀ"
   },
+  "work_categories": {
+    "landed": "Difetti Edificio (Basso)",
+    "highrise": "Difetti Edificio (Alto)",
+    "construction": "Cantiere",
+    "interior": "Lavori Interni",
+    "facilities": "Gestione Strutture",
+    "infrastructure": "Opere Infrastrutturali",
+    "others": "Altri"
+  },
   "roles": {
     "admin": "Ammin",
     "manager": "Manager",
@@ -178,7 +187,11 @@
     "saving": "RISPARMIO...",
     "log_another": "+ REGISTRA UN ALTRO QUI",
     "listening": "ASCOLTO...",
-    "tap_to_speak": "TOCCA PER PARLARE"
+    "tap_to_speak": "TOCCA PER PARLARE",
+    "tag_on_map": "TAGLIA SULLA MAPPA",
+    "map_location": "POSIZIONE SULLA MAPPA",
+    "map_location_set": "Posizione sulla mappa impostata",
+    "map_location_cleared": "Posizione sulla mappa cancellata"
   },
   "review": {
     "title": "Revisione",
@@ -193,6 +206,12 @@
     "select": "✓ SELEZIONA",
     "type_label": "TIPA",
     "status_label": "STATO"
+  },
+  "detail": {
+    "update_status": "AGGIORNA STATO",
+    "description": "DESCRIZIONE",
+    "timeline": "CRONOLOGIA",
+    "assigned": "Assegnato"
   },
   "report": {
     "title": "Rapporto",
@@ -225,6 +244,8 @@
     "total_defects": "DIFETTI TOTALI",
     "by_severity": "PER SEVERITÀ",
     "by_status": "PER STATO",
+    "by_assignee": "PER ASSEGNATARIO",
+    "total": "totale",
     "email_preview": "ANTEPRIMA E-MAIL",
     "pins": "perni",
     "markups": "markup",
@@ -234,9 +255,7 @@
     "severity_label": "GRAVITÀ",
     "status_label": "STATO",
     "assignee_label": "CESSIONARIA",
-    "date_range": "INTERVALLO DI DATE",
-    "by_assignee": "PER ASSEGNATARIO",
-    "total": "totale"
+    "date_range": "INTERVALLO DI DATE"
   },
   "dashboard": {
     "title": "Pannello di controllo",
@@ -365,18 +384,20 @@
     "telegram_desc": "Ping dei difetti in tempo reale",
     "storage": "Magazzinaggio",
     "storage_desc": "Backend e hosting di file",
+    "maps": "Mappe",
+    "maps_desc": "Blocco della posizione di Google Maps",
     "language": "Lingua",
     "language_desc": "Scegli la tua lingua",
     "section_project": "PROGETTO",
     "section_enhance": "MIGLIORARE",
+    "section_app": "APP",
+    "clear_cache": "Svuota cache e ricarica",
+    "clear_cache_desc": "Risolvi i problemi di caricamento aggiornando tutti i file memorizzati nella cache",
     "all_set": "Tutto pronto",
     "finish_setup": "Termina la configurazione",
     "done_pill": "FATTO",
     "todo_pill": "DA FARE",
-    "opt_pill": "OPZIONALE",
-    "section_app": "APP",
-    "clear_cache": "Svuota cache e ricarica",
-    "clear_cache_desc": "Risolvi i problemi di caricamento aggiornando tutti i file memorizzati nella cache"
+    "opt_pill": "OPZIONALE"
   },
   "team": {
     "title": "👥 GESTIONE DELLA SQUADRA",
@@ -509,6 +530,32 @@
     "openai_key_placeholder": "sk-...",
     "openai_model_placeholder": "gpt-4o-mini"
   },
+  "maps": {
+    "title": "IMPOSTAZIONE MAPPE",
+    "api_key": "CHIAVE API DI GOOGLE MAPS",
+    "api_key_placeholder": "AIzaSy...",
+    "setup_desc": "Incolla la chiave API di Google Maps per abilitare il blocco della posizione GPS sulle voci.",
+    "maps_desc": "Appunta le posizioni GPS esatte sulle voci. Visualizza tutti i difetti su una mappa live.",
+    "tag_on_map": "TAGLIA SULLA MAPPA",
+    "tap_to_pin": "Tocca la mappa per impostare la posizione del difetto",
+    "use_gps": "USA IL MIO GPS",
+    "search_address": "Cerca indirizzo o posizione...",
+    "confirm_location": "CONFERMA POSIZIONE",
+    "clear_location": "POSIZIONE CHIARA",
+    "view_on_map": "VISUALIZZA SULLA MAPPA",
+    "map_view": "VISUALIZZAZIONE MAPPA",
+    "satellite": "Satellitare",
+    "street": "Strada",
+    "my_location": "LA MIA POSIZIONE",
+    "all_on_map": "TUTTO SULLA MAPPA",
+    "nearby_issues": "PROBLEMI VICINI",
+    "location_saved": "✓ Posizione sulla mappa salvata",
+    "lat_lng": "Lat/Lng",
+    "coords_copied": "Coordinate copiate",
+    "map_pin_desc": "Perno di posizione con tag GPS",
+    "open_in_maps": "Apri in Google Maps",
+    "no_api_key": "Aggiungi una chiave API di Google Maps in Impostazioni → Mappe per abilitare il tagging della posizione sulla mappa."
+  },
   "export": {
     "markups_header": "MARKUP",
     "markup_csv": "CSV di markup",
@@ -635,15 +682,15 @@
     "setup_4": "4. Invita il team da Impostazioni → Team (solo Admin).",
     "setup_5": "5. Crea o seleziona un progetto, poi inizia a registrare voci.",
     "main_nav": "Navigazione principale",
-    "nav_dashboard": "Dashboard",
+    "nav_dashboard": "Pannello di controllo",
     "nav_dashboard_desc": "Mostra voci attive, conteggi di stato, riepilogo gravità, avvisi e voci recenti. Barra di query AI per ricerca in linguaggio naturale.",
     "nav_log": "Registra (+)",
     "nav_log_desc": "Crea una nuova voce — difetto, problema, ordine di lavoro, osservazione o aggiornamento — con foto, input vocale e compilazione assistita da AI. Scegli tra 7 categorie di lavoro.",
-    "nav_tag": "Tag",
+    "nav_tag": "Etichetta",
     "nav_tag_desc": "Carica planimetrie, posiziona spilli sui disegni, confronta revisioni PDF e annota con markup + sovrapposizione foto. Utile per difetti, ronde FM e liste di ripasso per ristrutturazioni.",
     "nav_review": "Revisione",
     "nav_review_desc": "Sfoglia, cerca, filtra e aggiorna voci in blocco. Ricerca AI in linguaggio naturale, foto di verifica, slider prima/dopo.",
-    "nav_report": "Report",
+    "nav_report": "Rapporto",
     "nav_report_desc": "Totali per sezione, statistiche filtrate, report via email, Contract Advisor, esportazione CSV/PDF/Google Sheets.",
     "log_1": "1. Scegli una categoria di lavoro adatta al cantiere — Difetti edili (villa o palazzo), Costruzione, Interni/Ristrutturazione, Facility Management, Infrastrutture o Altro.",
     "log_2": "2. Scegli un tipo di voce come Difetto, Osservazione, Istruzione, Ordine di lavoro o Aggiornamento.",
@@ -666,11 +713,11 @@
     "settings_items": "Voci delle Impostazioni",
     "set_projects": "Progetti",
     "set_projects_desc": "Crea, cambia, archivia o ripristina progetti.",
-    "set_team": "Team",
+    "set_team": "Squadra",
     "set_team_desc": "Invita membri (link + codice), assegna ruoli, rimuovi membri.",
     "set_ai": "Configurazione AI",
     "set_ai_desc": "Collega Gemini (gratuito), Ollama (locale) o OpenAI/GPT per analisi foto e ricerca.",
-    "set_telegram": "Telegram",
+    "set_telegram": "Telegramma",
     "set_telegram_desc": "Avvisi in tempo reale al gruppo del team quando le voci vengono registrate o aggiornate.",
     "set_storage": "Archiviazione",
     "set_storage_desc": "Scegli PocketBase (predefinito), percorso locale o Google Drive.",
@@ -680,7 +727,7 @@
     "tip_multi_projects_desc": "Usa il selettore di progetto per passare tra cantieri, edifici o lavori di ristrutturazione.",
     "tip_export": "Opzioni di esportazione",
     "tip_export_desc": "Scheda Report: CSV, PDF, Google Sheets o tutto-in-uno. Scegli quali sezioni (difetti, disegni, confronti) includere.",
-    "tip_advisor": "Contract Advisor",
+    "tip_advisor": "Consulente contrattuale",
     "tip_advisor_desc": "Dalla scheda Report, tocca ADVISOR per ottenere una mappatura clausola-problema assistita da AI usando PDF di contratto o capitolato — utile per rivendicazioni difetti, SLA di FM e contestazioni di varianti di ristrutturazione.",
     "tip_language": "Lingua",
     "tip_language_desc": "Cambia lingua in qualsiasi momento da Impostazioni → Lingua. Tutti i menu a tendina (componenti, problemi, livelli, costi) sono tradotti.",
@@ -689,7 +736,11 @@
     "tip_drawing_gestures": "Gesti sui disegni",
     "tip_drawing_gestures_desc": "Pizzica con due dita per ingrandire e spostare in qualsiasi punto del disegno — ora funziona anche mentre crei i markup. I pulsanti + / − ingrandiscono verso il centro della vista.",
     "tip_photo_scale": "Ridimensiona foto sui disegni",
-    "tip_photo_scale_desc": "Dopo aver posizionato una foto su un disegno, tocca per selezionarla e usa i pulsanti viola − / + nella barra dei markup per ridimensionare. Puoi anche trascinare la maniglia d'angolo."
+    "tip_photo_scale_desc": "Dopo aver posizionato una foto su un disegno, tocca per selezionarla e usa i pulsanti viola − / + nella barra dei markup per ridimensionare. Puoi anche trascinare la maniglia d'angolo.",
+    "set_maps": "Mappe",
+    "set_maps_desc": "Aggiungi una chiave API di Google Maps per abilitare il blocco della posizione GPS sulle voci.",
+    "tip_map_tagging": "Etichettatura della posizione sulla mappa",
+    "tip_map_tagging_desc": "Quando registri una voce, tocca TAG SULLA MAPPA per inserire un segnaposto GPS su Google Maps nella posizione esatta del difetto. Le coordinate salvate appaiono nei dettagli della voce e possono essere aperte in Google Maps."
   },
   "feedback": {
     "title": "Feedback",
@@ -758,21 +809,6 @@
     "select": "Seleziona lingua",
     "current": "Lingua corrente"
   },
-  "detail": {
-    "update_status": "AGGIORNA STATO",
-    "description": "DESCRIZIONE",
-    "timeline": "CRONOLOGIA",
-    "assigned": "Assegnato"
-  },
-  "work_categories": {
-    "landed": "Difetti Edificio (Basso)",
-    "highrise": "Difetti Edificio (Alto)",
-    "construction": "Cantiere",
-    "interior": "Lavori Interni",
-    "facilities": "Gestione Strutture",
-    "infrastructure": "Opere Infrastrutturali",
-    "others": "Altri"
-  },
   "opt": {
     "Structural": "Strutturale",
     "Architectural": "Architettonico",
@@ -837,7 +873,7 @@
     "Thermostat": "Termostato",
     "Condensate Pipe": "Tubo condensa",
     "Chiller": "Refrigeratore",
-    "Sprinkler": "Sprinkler",
+    "Sprinkler": "Irrigatore",
     "Fire Alarm": "Allarme antincendio",
     "Extinguisher": "Estintore",
     "Hose Reel": "Naspo",
