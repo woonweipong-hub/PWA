@@ -6939,6 +6939,29 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[provider,currentProject?.id]);
 
+  // Fit the map view to all GPS-pinned entries. Called once after first
+  // render so users land on their past pins (rather than an empty saved
+  // default), and on demand via the 🎯 FIT button. Does NOT persist — the
+  // saved default view (★) is untouched.
+  const hasAutoFitRef=useRef(false);
+  const fitToAllPins=()=>{
+    if(!mapObj.current)return;
+    const pts=(defects||[]).filter(d=>typeof d.lat==="number"&&typeof d.lng==="number");
+    if(pts.length===0)return;
+    if(provider==="gmaps"&&window.google?.maps){
+      const g=window.google.maps;
+      if(pts.length===1){mapObj.current.setCenter({lat:pts[0].lat,lng:pts[0].lng});mapObj.current.setZoom(18);}
+      else{
+        const b=new g.LatLngBounds();
+        pts.forEach(d=>b.extend({lat:d.lat,lng:d.lng}));
+        mapObj.current.fitBounds(b,60);
+      }
+    }else if(provider==="osm"&&window.L){
+      if(pts.length===1)mapObj.current.setView([pts[0].lat,pts[0].lng],18);
+      else mapObj.current.fitBounds(pts.map(d=>[d.lat,d.lng]),{padding:[40,40]});
+    }
+  };
+
   // ── Render existing defect pins (both providers) ───────────────
   useEffect(()=>{
     if(status!=="ready"||!mapObj.current)return;
@@ -6999,8 +7022,16 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
         return m;
       });
     }
+    // First-render only: frame every existing pin so users see where past
+    // entries were added instead of staring at the saved default.
+    if(!hasAutoFitRef.current&&mapDefects.length>0){
+      hasAutoFitRef.current=true;
+      setTimeout(fitToAllPins,120);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[status,defects,provider]);
+  // Reset the auto-fit guard when switching projects or providers.
+  useEffect(()=>{hasAutoFitRef.current=false;},[currentProject?.id,provider]);
 
   // Snap the current map view and save as a drawing. User then pins defects
   // using the drawing pin system (multi-pin, drag, markup, heatmap — parity).
@@ -7197,6 +7228,11 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
         <button onClick={()=>setShowList(v=>!v)} style={{padding:"8px 12px",borderRadius:10,border:"1px solid "+(showList?"rgba(52,170,220,0.4)":"rgba(0,0,0,0.12)"),background:showList?"rgba(52,170,220,0.12)":"#fff",color:showList?"#2b8bb8":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
           📋 LIST ({mapDefects.length})
         </button>
+        {mapDefects.length>0&&(
+          <button onClick={fitToAllPins} title="Recenter map to show every pinned entry in this project" style={{padding:"8px 12px",borderRadius:10,border:"1px solid rgba(255,107,0,0.3)",background:"#fff",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+            🎯 FIT
+          </button>
+        )}
         {canEdit&&(
           <button onClick={snapAsDrawing} disabled={snapping} title="Capture current map view as a drawing (pin like a floor plan)" style={{padding:"8px 12px",borderRadius:10,border:"1px solid rgba(48,209,88,0.4)",background:snapping?"rgba(48,209,88,0.25)":"rgba(48,209,88,0.12)",color:"#1a7a35",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:snapping?"wait":"pointer",display:"flex",alignItems:"center",gap:6}}>
             {snapping?"…":"📸"} SNAP
