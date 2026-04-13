@@ -537,6 +537,7 @@
     "setup_desc": "Paste your Google Maps API key to enable GPS location pinning on entries.",
     "maps_desc": "Pin exact GPS locations on entries. View all defects on a live map.",
     "tag_on_map": "TAG ON MAP",
+    "map_location": "MAP LOCATION",
     "tap_to_pin": "Tap map to set defect location",
     "use_gps": "USE MY GPS",
     "search_address": "Search address or location...",
@@ -751,7 +752,9 @@
     "set_maps": "Maps",
     "set_maps_desc": "Add a Google Maps API key to enable GPS location pinning on entries.",
     "tip_map_tagging": "Map location tagging",
-    "tip_map_tagging_desc": "When logging an entry, tap TAG ON MAP to drop a GPS pin on Google Maps at the exact defect location. Saved coordinates appear in the entry detail and can be opened in Google Maps."
+    "tip_map_tagging_desc": "When logging an entry, tap TAG ON MAP to drop a GPS pin on Google Maps at the exact defect location. Saved coordinates appear in the entry detail and can be opened in Google Maps.",
+    "tip_map_markup": "Map markup toolkit",
+    "tip_map_markup_desc": "In TAG \u2192 Tag on Map, tap \u270F MARKUP to draw directly on the map. Tools: Zone (rectangle), Radius (circle), Path (polyline), Arrow, Dimension (auto-labelled distance), Stamp (APPROVED / REJECTED / custom), Label, Freehand, and Photo overlay. All markups are anchored in GPS coordinates, move by dragging the coloured handle, and save per project. Works on both OpenStreetMap (free, no key) and Google Maps."
   },
   "feedback": {
     "title": "Feedback",
