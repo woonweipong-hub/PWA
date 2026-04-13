@@ -5059,17 +5059,36 @@ function DefectDetail({defect,onClose,onUpdate,member,company,members=[]}){
                 <div style={{fontSize:13,color:"#444",lineHeight:1.5}}>{defect.description}</div>
               </div>
             )}
-            {typeof defect.lat==="number"&&typeof defect.lng==="number"&&(()=>{
+            {(()=>{
+              // Prefer explicit lat/lng fields; fall back to parsing a "Map: lat, lng"
+              // string out of location or description — covers PocketBase schemas
+              // that haven't had lat/lng/mapZoom added yet.
+              let lat=typeof defect.lat==="number"?defect.lat:null;
+              let lng=typeof defect.lng==="number"?defect.lng:null;
+              if(lat==null||lng==null){
+                const src=(defect.location||"")+" "+(defect.description||"");
+                const m=src.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
+                if(m){lat=parseFloat(m[1]);lng=parseFloat(m[2]);}
+              }
+              if(lat==null||lng==null||isNaN(lat)||isNaN(lng))return null;
               const z=defect.mapZoom||17;
-              const openUrl=`https://www.google.com/maps/search/?api=1&query=${defect.lat},${defect.lng}`;
-              const staticUrl=staticMapUrl(getMapProvider(),defect.lat,defect.lng,z,"600x240");
-              const copy=()=>{try{navigator.clipboard.writeText(`${defect.lat},${defect.lng}`);}catch{}};
+              const openUrl=`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+              const staticUrl=staticMapUrl(getMapProvider(),lat,lng,z,"600x240");
+              const copy=()=>{try{navigator.clipboard.writeText(`${lat},${lng}`);}catch{}};
+              const persistIfMissing=async()=>{
+                // If coords were only parsed from text, save them to the record
+                // so future views don't need to re-parse and the map list works.
+                if(typeof defect.lat!=="number"||typeof defect.lng!=="number"){
+                  try{await DB.defects.update(defect.id,{lat,lng,mapZoom:z});}catch{}
+                }
+              };
+              persistIfMissing();
               return(
                 <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid rgba(0,0,0,0.06)"}}>
                   <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:6}}>🗺 {t("maps.map_location")}</div>
-                  {staticUrl&&<a href={openUrl} target="_blank" rel="noopener noreferrer"><img src={staticUrl} alt="Map" style={{width:"100%",borderRadius:10,display:"block",marginBottom:8,background:"#e5e3dc"}}/></a>}
+                  {staticUrl&&<a href={openUrl} target="_blank" rel="noopener noreferrer"><img src={staticUrl} alt="Map" style={{width:"100%",borderRadius:10,display:"block",marginBottom:8,background:"#e5e3dc"}} onError={e=>{e.target.style.display="none";}}/></a>}
                   <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-                    <span onClick={copy} title={t("maps.coords_copied")} style={{fontFamily:"monospace",fontSize:12,color:"rgba(0,0,0,0.65)",cursor:"pointer"}}>{defect.lat.toFixed(6)}, {defect.lng.toFixed(6)}</span>
+                    <span onClick={copy} title={t("maps.coords_copied")} style={{fontFamily:"monospace",fontSize:12,color:"rgba(0,0,0,0.65)",cursor:"pointer"}}>{lat.toFixed(6)}, {lng.toFixed(6)}</span>
                     <a href={openUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#ff6b00",textDecoration:"none"}}>{t("maps.open_in_maps")} →</a>
                   </div>
                 </div>
