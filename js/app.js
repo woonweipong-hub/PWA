@@ -5852,9 +5852,24 @@ function MapsSettings({onClose}){
           ))}
         </div>
         {provider==="gmaps"&&<>
-          <p style={{fontSize:12,color:"rgba(0,0,0,0.6)",marginBottom:12,lineHeight:1.5,background:"rgba(66,133,244,0.06)",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(66,133,244,0.15)"}}>
-            {t("maps.setup_desc")}
-          </p>
+          <div style={{background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:12,padding:14,marginBottom:14}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a1a1a",marginBottom:10}}>Google Maps Setup</div>
+            {[
+              {n:1,txt:<>Open <a href="https://console.cloud.google.com/google/maps-apis/start" target="_blank" rel="noopener noreferrer" style={{color:"#4285f4",fontWeight:700,textDecoration:"underline"}}>console.cloud.google.com/google/maps-apis/start</a> and sign in with Google.</>},
+              {n:2,txt:<>Create (or pick) a project, then <b>enable billing</b> — Maps has a ~$200/mo free credit so most small teams never get charged.</>},
+              {n:3,txt:<>From APIs & Services → Library, enable these three:<br/><span style={{fontFamily:"monospace",fontSize:11,color:"#4285f4"}}>Maps JavaScript API · Places API · Maps Static API</span></>},
+              {n:4,txt:<>APIs & Services → Credentials → <b>Create credentials → API key</b>. (Optional: restrict to <code style={{fontSize:11}}>http://localhost:8080/*</code> and your production domain.)</>},
+              {n:5,txt:<>Copy the key and paste below → <b>TEST KEY</b> → <b>SAVE SETTINGS</b>.</>},
+            ].map(s=>(
+              <div key={s.n} style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:8,fontSize:12,lineHeight:1.5,color:"rgba(0,0,0,0.7)"}}>
+                <span style={{width:22,height:22,borderRadius:"50%",background:"#4285f4",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12}}>{s.n}</span>
+                <span style={{flex:1}}>{s.txt}</span>
+              </div>
+            ))}
+            <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.18)",borderRadius:8,padding:"8px 10px",fontSize:11,color:"#1a7b3a",marginTop:10,lineHeight:1.5}}>
+              💡 <b>Free tier:</b> Google gives $200/mo free credit. Typical small-team usage (map loads + static thumbnails) is well under that.
+            </div>
+          </div>
           <label style={{display:"block",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.5)",letterSpacing:"0.12em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>{t("maps.api_key")}</label>
           <input type="text" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder={t("maps.api_key_placeholder")} style={{width:"100%",padding:"12px 14px",fontSize:14,borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",boxSizing:"border-box",marginBottom:14}}/>
           <div style={{display:"flex",gap:8,marginBottom:10}}>
@@ -6064,12 +6079,15 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
         </form>
         {canEdit&&<button onClick={saveDefault} title={t("maps.save_default_view")} style={{padding:"10px 12px",borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:savedDefault?"rgba(48,209,88,0.15)":"#fff",color:savedDefault?"#30d158":"rgba(0,0,0,0.7)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{savedDefault?"✓":"★"}</button>}
       </div>
-      <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",display:"flex",gap:10,alignItems:"center"}}>
-        <span>{canEdit?t("maps.drop_pin_hint"):""}</span>
-        <span style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center"}}>
-          {mapDefects.length>0&&<span style={{color:"rgba(0,0,0,0.45)"}}>{mapDefects.length} pinned</span>}
-          <span style={{fontSize:10,background:"rgba(0,0,0,0.05)",padding:"2px 8px",borderRadius:8,color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{providerLabel}</span>
-        </span>
+      {canEdit&&!pendingPin&&(
+        <div style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:10,fontSize:12,color:"#b34800"}}>
+          <span style={{fontSize:15}}>📍</span>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{t("maps.drop_pin_hint")||"Tap the map to drop a pin and create an entry"}</span>
+        </div>
+      )}
+      <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",display:"flex",gap:8,alignItems:"center"}}>
+        {mapDefects.length>0&&<span>{mapDefects.length} pinned</span>}
+        <span style={{marginLeft:"auto",background:"rgba(0,0,0,0.05)",padding:"2px 8px",borderRadius:8,color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{providerLabel}</span>
       </div>
       <div ref={mapRef} style={{width:"100%",height:"min(60vh,520px)",borderRadius:12,border:"1px solid rgba(0,0,0,0.12)",background:"#e5e3dc"}}/>
       {pendingPin&&<div style={{padding:12,background:"#fff",border:"1px solid rgba(255,107,0,0.3)",borderRadius:10,display:"flex",flexDirection:"column",gap:8}}>
