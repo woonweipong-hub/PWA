@@ -5964,6 +5964,10 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
   useEffect(()=>{pinModeRef.current=pinMode;},[pinMode]);
   const markupToolRef=useRef(markupTool);
   useEffect(()=>{markupToolRef.current=markupTool;},[markupTool]);
+  // pendingPhoto is read from the long-lived map click handler registered
+  // once on mount; without a ref, it stays frozen at the first-render null.
+  const pendingPhotoRef=useRef(pendingPhoto);
+  useEffect(()=>{pendingPhotoRef.current=pendingPhoto;},[pendingPhoto]);
 
   // ── Photo tool: open file picker when activated ───────────────
   useEffect(()=>{
@@ -6091,11 +6095,12 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
       if(label)addMarkup({id:"mm_"+Date.now(),type:"stamp",pos:pt,text:label,color:"#34c759"});
       setMarkupTool(null);return;
     }
-    if(tool==="photo"&&pendingPhoto){
-      const widthM=200,aspect=pendingPhoto.aspect||0.75,heightM=widthM*aspect;
+    if(tool==="photo"&&pendingPhotoRef.current){
+      const ph=pendingPhotoRef.current;
+      const widthM=200,aspect=ph.aspect||0.75,heightM=widthM*aspect;
       const mPerDegLat=111320,mPerDegLng=111320*Math.cos(pt.lat*Math.PI/180);
       const dLat=(heightM/2)/mPerDegLat,dLng=(widthM/2)/mPerDegLng;
-      addMarkup({id:"mm_"+Date.now(),type:"photo",a:{lat:pt.lat+dLat,lng:pt.lng-dLng},b:{lat:pt.lat-dLat,lng:pt.lng+dLng},dataUrl:pendingPhoto.dataUrl,color:"#ff6b00"});
+      addMarkup({id:"mm_"+Date.now(),type:"photo",a:{lat:pt.lat+dLat,lng:pt.lng-dLng},b:{lat:pt.lat-dLat,lng:pt.lng+dLng},dataUrl:ph.dataUrl,color:"#ff6b00"});
       setPendingPhoto(null);setMarkupTool(null);return;
     }
     if(tool==="arrow"||tool==="dimension"){
@@ -6145,11 +6150,12 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
       if(label)addMarkup({id:"mm_"+Date.now(),type:"stamp",pos:pt,text:label,color:"#34c759"});
       setMarkupTool(null);return;
     }
-    if(tool==="photo"&&pendingPhoto){
-      const widthM=200,aspect=pendingPhoto.aspect||0.75,heightM=widthM*aspect;
+    if(tool==="photo"&&pendingPhotoRef.current){
+      const ph=pendingPhotoRef.current;
+      const widthM=200,aspect=ph.aspect||0.75,heightM=widthM*aspect;
       const mPerDegLat=111320,mPerDegLng=111320*Math.cos(pt.lat*Math.PI/180);
       const dLat=(heightM/2)/mPerDegLat,dLng=(widthM/2)/mPerDegLng;
-      addMarkup({id:"mm_"+Date.now(),type:"photo",a:{lat:pt.lat+dLat,lng:pt.lng-dLng},b:{lat:pt.lat-dLat,lng:pt.lng+dLng},dataUrl:pendingPhoto.dataUrl,color:"#ff6b00"});
+      addMarkup({id:"mm_"+Date.now(),type:"photo",a:{lat:pt.lat+dLat,lng:pt.lng-dLng},b:{lat:pt.lat-dLat,lng:pt.lng+dLng},dataUrl:ph.dataUrl,color:"#ff6b00"});
       setPendingPhoto(null);setMarkupTool(null);return;
     }
     if(tool==="arrow"||tool==="dimension"){
