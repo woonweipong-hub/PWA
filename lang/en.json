@@ -738,7 +738,7 @@
     "tip_multi_projects": "Multiple projects",
     "tip_multi_projects_desc": "Use the project selector to switch between sites, buildings, or renovation jobs.",
     "tip_export": "Export options",
-    "tip_export_desc": "Report tab: CSV, PDF, Google Sheets, or all-in-one. Choose which sections (defects, drawings, comparisons) to include.",
+    "tip_export_desc": "Report tab: CSV, PDF, Google Sheets, or all-in-one. Choose which sections to include: Defect Entries, PDF Drawings (pins / notes / markup burned in), Saved Comparisons, and Map (per-entry map thumbnails + consolidated ALL PINS ON MAP page, tile-stitched from OpenStreetMap — no API key needed).",
     "tip_advisor": "Contract Advisor",
     "tip_advisor_desc": "From the Report tab, tap ADVISOR to get AI-powered clause-to-issue mapping using contract or scope-of-work PDFs — useful for defect claims, FM SLAs, and renovation variation disputes.",
     "tip_language": "Language",
@@ -752,7 +752,7 @@
     "set_maps": "Maps",
     "set_maps_desc": "Add a Google Maps API key to enable GPS location pinning on entries.",
     "tip_map_tagging": "Map location tagging",
-    "tip_map_tagging_desc": "When logging an entry, tap TAG ON MAP to drop a GPS pin on Google Maps at the exact defect location. Saved coordinates appear in the entry detail and can be opened in Google Maps.",
+    "tip_map_tagging_desc": "When logging an entry, tap TAG ON MAP to drop a GPS pin at the exact defect location (works on OpenStreetMap free or Google Maps). Saved coordinates appear in the entry detail, on the consolidated REVIEW map, and are embedded in PDF reports — each entry gets a per-entry map thumbnail, and a single ALL PINS ON MAP page shows every pin at once with numbered severity markers.",
     "tip_map_markup": "Map markup toolkit",
     "tip_map_markup_desc": "In TAG \u2192 Tag on Map, tap \u270F MARKUP to draw directly on the map. Tools: Zone (rectangle), Radius (circle), Path (polyline), Arrow, Dimension (auto-labelled distance), Stamp (APPROVED / REJECTED / custom), Label, Freehand, and Photo overlay. All markups are anchored in GPS coordinates, move by dragging the coloured handle, and save per project. Works on both OpenStreetMap (free, no key) and Google Maps."
   },

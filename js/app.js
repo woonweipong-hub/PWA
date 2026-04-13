@@ -1393,6 +1393,76 @@ function exportReportAll(defects,drawings,savedComparisons,projectName){
   a.click();
 }
 
+// ── OSM tile-stitching helpers for reliable PDF map exports ─────
+// The public staticmap.openstreetmap.de service is flaky; instead we
+// stitch tile.openstreetmap.org tiles directly (same source the in-app
+// Leaflet map uses) and overlay pins. Returns a dataURL PNG.
+async function _renderOsmComposite(centerLat,centerLng,zoom,widthPx,heightPx,markers){
+  const TILE=256;
+  const n=2**zoom;
+  const cx=((centerLng+180)/360)*n;
+  const cy=((1-Math.asinh(Math.tan(centerLat*Math.PI/180))/Math.PI)/2)*n;
+  const leftTile=Math.floor(cx-widthPx/(2*TILE));
+  const topTile=Math.floor(cy-heightPx/(2*TILE));
+  const tilesX=Math.ceil(widthPx/TILE)+2;
+  const tilesY=Math.ceil(heightPx/TILE)+2;
+  const canvas=document.createElement("canvas");
+  canvas.width=widthPx;canvas.height=heightPx;
+  const ctx=canvas.getContext("2d");
+  ctx.fillStyle="#e5e3dc";ctx.fillRect(0,0,widthPx,heightPx);
+  const offX=(cx-leftTile)*TILE-widthPx/2;
+  const offY=(cy-topTile)*TILE-heightPx/2;
+  const loadImg=(url)=>new Promise(resolve=>{
+    const img=new Image();img.crossOrigin="anonymous";
+    img.onload=()=>resolve(img);img.onerror=()=>resolve(null);
+    img.src=url;
+  });
+  const jobs=[];
+  for(let dx=0;dx<tilesX;dx++)for(let dy=0;dy<tilesY;dy++){
+    const tx=leftTile+dx,ty=topTile+dy;
+    if(tx<0||ty<0||tx>=n||ty>=n)continue;
+    jobs.push(loadImg(`https://tile.openstreetmap.org/${zoom}/${tx}/${ty}.png`).then(img=>({img,dx,dy})));
+  }
+  const tiles=await Promise.all(jobs);
+  tiles.forEach(({img,dx,dy})=>{if(img)ctx.drawImage(img,dx*TILE-offX,dy*TILE-offY,TILE,TILE);});
+  (markers||[]).forEach((m,i)=>{
+    const mx=((m.lng+180)/360)*n;
+    const my=((1-Math.asinh(Math.tan(m.lat*Math.PI/180))/Math.PI)/2)*n;
+    const px=(mx-leftTile)*TILE-offX;
+    const py=(my-topTile)*TILE-offY;
+    if(px<-20||py<-20||px>widthPx+20||py>heightPx+20)return;
+    const r=m.label?13:8;
+    ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);
+    ctx.fillStyle="rgba(0,0,0,0.55)";ctx.fill();
+    ctx.lineWidth=3;ctx.strokeStyle=m.color||"#ff6b00";ctx.stroke();
+    if(m.label){
+      ctx.fillStyle="#fff";
+      ctx.font="bold 12px 'Barlow Condensed',sans-serif";
+      ctx.textAlign="center";ctx.textBaseline="middle";
+      ctx.fillText(String(m.label),px,py+1);
+    }else{
+      ctx.beginPath();ctx.arc(px,py,3,0,Math.PI*2);
+      ctx.fillStyle=m.color||"#ff6b00";ctx.fill();
+    }
+  });
+  ctx.fillStyle="rgba(255,255,255,0.82)";ctx.fillRect(widthPx-118,heightPx-14,118,14);
+  ctx.fillStyle="#555";ctx.font="9px sans-serif";ctx.textAlign="left";ctx.textBaseline="middle";
+  ctx.fillText("© OpenStreetMap",widthPx-114,heightPx-7);
+  return canvas.toDataURL("image/png");
+}
+function _osmZoomForBounds(minLat,maxLat,minLng,maxLng,widthPx,heightPx){
+  const TILE=256;
+  for(let z=18;z>=1;z--){
+    const n=2**z;
+    const xMin=((minLng+180)/360)*n;
+    const xMax=((maxLng+180)/360)*n;
+    const yMin=((1-Math.asinh(Math.tan(maxLat*Math.PI/180))/Math.PI)/2)*n;
+    const yMax=((1-Math.asinh(Math.tan(minLat*Math.PI/180))/Math.PI)/2)*n;
+    if((xMax-xMin)*TILE<=widthPx*0.85&&(yMax-yMin)*TILE<=heightPx*0.85)return z;
+  }
+  return 1;
+}
+
 // Full report export — PDF version with professional layout
 async function exportReportPdf(defects,drawings,savedComparisons,projectName,companyName,allPins,contractAdvisory,allDefectsForPins,onProgress,opts){
   opts=opts||{};
@@ -1668,15 +1738,22 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   const mapImgCache=new Map(); // keyed by defect.id
   if(mapDefects.length>0){
     if(typeof onProgress==="function")onProgress(`Fetching ${mapDefects.length} map thumbnails…`);
-    const mapPromises=mapDefects.map(d=>{
+    const mapPromises=mapDefects.map(async d=>{
       const z=d.mapZoom||17;
-      const url=staticMapUrl(mapProvider,d.lat,d.lng,z,"600x240");
-      if(!url){mapImgCache.set(d.id,null);return Promise.resolve();}
-      return new Promise(resolve=>{
+      const color=SEV_COLOR[d.severity]||"#ff6b00";
+      let src;
+      if(mapProvider==="gmaps"&&gmapsKey){
+        src=staticMapUrl("gmaps",d.lat,d.lng,z,"600x240");
+      }else{
+        try{src=await _renderOsmComposite(d.lat,d.lng,z,600,240,[{lat:d.lat,lng:d.lng,color}]);}
+        catch{src=null;}
+      }
+      if(!src){mapImgCache.set(d.id,null);return;}
+      await new Promise(resolve=>{
         const img=new Image();img.crossOrigin="anonymous";
         img.onload=()=>{mapImgCache.set(d.id,img);resolve();};
         img.onerror=()=>{mapImgCache.set(d.id,null);resolve();};
-        img.src=url;
+        img.src=src;
       });
     });
     await Promise.all(mapPromises);
@@ -1943,7 +2020,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     const lats=mapDefects.map(d=>d.lat),lngs=mapDefects.map(d=>d.lng);
     const centerLat=(Math.min(...lats)+Math.max(...lats))/2;
     const centerLng=(Math.min(...lngs)+Math.max(...lngs))/2;
-    let overviewUrl;
+    let overviewSrc;
     if(mapProvider==="gmaps"&&gmapsKey){
       const bySev={Critical:"red",Major:"orange",Minor:"yellow",Observation:"blue"};
       const groups={};
@@ -1954,16 +2031,21 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
       const markerParams=Object.entries(groups).map(([color,pts])=>
         `markers=color:${color}%7C${pts.slice(0,40).join("%7C")}`
       ).join("&");
-      overviewUrl=`https://maps.googleapis.com/maps/api/staticmap?size=640x480&maptype=hybrid&${markerParams}&key=${encodeURIComponent(gmapsKey)}`;
+      overviewSrc=`https://maps.googleapis.com/maps/api/staticmap?size=640x480&maptype=hybrid&${markerParams}&key=${encodeURIComponent(gmapsKey)}`;
     }else{
-      const markerParams=mapDefects.slice(0,20).map(d=>`markers=${d.lat},${d.lng},red-pushpin`).join("&");
-      overviewUrl=`https://staticmap.openstreetmap.de/staticmap.php?center=${centerLat},${centerLng}&zoom=14&size=640x480&${markerParams}`;
+      const minLat=Math.min(...lats),maxLat=Math.max(...lats);
+      const minLng=Math.min(...lngs),maxLng=Math.max(...lngs);
+      const W=640,H=480;
+      const zoom=mapDefects.length===1?16:_osmZoomForBounds(minLat,maxLat,minLng,maxLng,W,H);
+      const markers=mapDefects.map((d,i)=>({lat:d.lat,lng:d.lng,color:SEV_COLOR[d.severity]||"#8e8e93",label:d.defect_id||(i+1)}));
+      try{overviewSrc=await _renderOsmComposite(centerLat,centerLng,zoom,W,H,markers);}
+      catch{overviewSrc=null;}
     }
-    const overviewImg=await new Promise(resolve=>{
+    const overviewImg=overviewSrc?await new Promise(resolve=>{
       const img=new Image();img.crossOrigin="anonymous";
       img.onload=()=>resolve(img);img.onerror=()=>resolve(null);
-      img.src=overviewUrl;
-    });
+      img.src=overviewSrc;
+    }):null;
     doc.addPage();y=18;
     heading("ALL PINS ON MAP",orange);
     if(overviewImg){
@@ -11657,11 +11739,13 @@ function App(){
                     ["Projects",["Create / rename projects","Switch active project","Archive / restore projects"]],
                     ["Entry Logging",["7 Work Categories (Landed, Highrise, Construction, Interior, FM, Infra, Others)","Log with title, severity, location","4 default types + custom entry types","Custom type manager (icon & color picker)","Multi-level location (Level > Zone > Room > Grid)","Low-friction submit: description OR photo is enough","Snap / upload up to 10 photos","Photo markup editor (arrows, circles, freehand, text)","Markup scales correctly on save (pen, text, arrows)","Edit / delete text annotations on markup","AI photo analysis (Gemini, Ollama, GPT)","AI auto-assign trade + suggested assignee","AI safety risk scoring (auto-escalate Critical)","Duplicate detection (similarity check on submit)","Voice-to-text input (title, description, search)","Component + issue selector (158 / 296 across 19 groups)","Assign to team member","Cost & time tracking fields","Batch logging mode (same location)"]],
                     ["Review",["Full-text search with highlighting","AI natural language search (voice + text)","Filter by status, severity, entry type","Collapsible filters with clear button","Batch update (Status, Severity, Assignee, Duration, Target Date)","Entry type badges on list & detail (translated)","Detail view with all fields + photos","Update status workflow (5 stages)","Verification photo on Close / Verify","Before / after photo comparison slider","Resolution timeline (visual, color-coded)","Photo comments in timeline","Markup on comment photos (tap to annotate)","Edit own comments inline (with edited indicator)","Quick reactions (thumbs, check, warn, fix)","Delete entry (Admin only)","Telegram alerts on new entry & status change"]],
-                    ["Tag on Map",["Action-driven sub-modes in TAG: 🖼 Tag on Drawing · 🗺 Tag on Map · ⇄ Compare Changes","OpenStreetMap as the free default — no API key, no billing, works out of the box","Google Maps as an optional upgrade (satellite + Places search)","Per-project default map view (save current centre/zoom as project home)","Address search: Nominatim on OSM, Places Autocomplete on Google","Tap-to-drop GPS pin → Quick Log creates a defect with lat/lng/zoom","Severity-coloured markers for every map-pinned entry","LIST panel: every pinned entry with tap-to-recenter","Drop-pin toggle — pan freely without accidental pins","Entry detail: static map thumbnail + Open in Google Maps deep link","PDF export: per-entry static map thumbnails + ALL PINS ON MAP overview page","Map markup toolkit: Zone, Radius, Path, Arrow, Dimension (auto-labelled distance), Stamp, Label, Freehand, Photo overlay","All markup types persisted to the map_markups collection per project","Move any markup by dragging the coloured centroid handle (or native drag on Google Maps)","Freehand on Google Maps via transparent canvas overlay","Photo overlay on map — one-click placement with auto bounds; draggable on both providers"]],
+                    ["Tag on Map",["Action-driven sub-modes in TAG: 🖼 Tag on Drawing · 🗺 Tag on Map · ⇄ Compare Changes","OpenStreetMap as the free default — no API key, no billing, works out of the box","Google Maps as an optional upgrade (satellite + Places search)","Per-project default map view (save current centre/zoom as project home)","Address search: Nominatim on OSM, Places Autocomplete on Google","Tap-to-drop GPS pin → Quick Log creates a defect with lat/lng/zoom","Severity-coloured markers for every map-pinned entry","LIST panel: every pinned entry with tap-to-recenter","Drop-pin toggle — pan freely without accidental pins","Entry detail: static map thumbnail + Open in Google Maps deep link","PDF export: per-entry map thumbnails + ALL PINS ON MAP consolidated page (tile-stitched from OSM — no API key needed, works offline-of-staticmap-services)",
+"Consolidated pin overview auto-fits bounds and draws severity-coloured numbered markers (same style as the on-screen LIVE map)","Map markup toolkit: Zone, Radius, Path, Arrow, Dimension (auto-labelled distance), Stamp, Label, Freehand, Photo overlay","All markup types persisted to the map_markups collection per project","Move any markup by dragging the coloured centroid handle (or native drag on Google Maps)","Freehand on Google Maps via transparent canvas overlay","Photo overlay on map — one-click placement with auto bounds; draggable on both providers"]],
                     ["Tag & Compare",["Upload floor plans (JPG, PNG, WEBP, TIF, PDF)","PDF rendering via PDF.js with page navigation","Zoom, pan & pinch-to-zoom (mobile) — works in markup mode too","Center-anchored zoom buttons keep your focal point in place","Zoom / page-nav controls float inside the canvas and never block toolbars","Ring-style defect pins with severity initial","Critical pin pulse animation","Pin tooltip with entry details + remove","Quick-pin: create entry directly from drawing","Defect heatmap overlay (severity-weighted)","Drawing-level markup (freehand, arrows, circles, text)","Drawing notes — pinned text with author + timestamp","Markup color picker + undo / clear","Select arrow icon for select/move tool (matches Figma/Photoshop conventions)","Tap-to-scale ( − / + ) buttons for selected photo markup","Larger photo resize handle with visible corner indicator","Pin count & severity badges on cards","PDF thumbnail preview in list","Diff dropdown: Single (PDFs) and Batch (Folders) in one menu","Single PDF diff with visual overlay of changes","Compare markup — draw on top of the diff (freehand, arrow, circle, text)","Compare markup: select and drag to reposition any stroke","Compare markup: 4 text size presets (S/M/L/XL)","Compare markup: 9-way text alignment via 3x3 grid menu","Compare markup: color picker retargets selected stroke","Compare markup: delete individual strokes without clearing all","Compare markup: overlay site photos onto the diff (capture or pick from device)","Compare markup: drag photos to reposition, +/− to resize, markup on top","AI diff report with lock / approve audit trail","Saved comparisons with overlay thumbnails (markup composited in)","Batch PDFs Comparison (folder vs folder)","Batch completeness check (missing / extra files)","Batch content comparison (per-file diff with detail)","Batch export (CSV + PDF with per-file changes)","Editable set labels (Tender, As-Built, M&E, etc.)"]],
                     ["Dashboard",["Real-time status counts (5 stages)","Critical alerts banner","Severity breakdown chart","Recent entries with type badges","Live sync indicator + queue count"]],
                     ["Admin Analytics",["Entries today / week / month / all time","Active users — who submitted today & this week","Per-user ranking bar chart","Photos stats (total & avg per entry)","Entries by entry type breakdown","Entries by project breakdown","AI usage stats (daily limit, coverage, provider)"]],
-                    ["Reports & Exports",["Site report with section-aware tally (defects, drawings, comparisons)","Tally row lays out in a single aligned grid, stays tight on narrow phones","Conditional severity / status / assignee breakdowns","Filter by severity / status / assignee / date","Email content sections (defects, drawings, comparisons)","Email preview with opt-in/out per section — includes pin entries from drawings","Translated email reports (all values in user's language)","Email report via PocketBase SMTP","Contract Advisor — AI clause-to-defect mapping (PSSCOC/REDAS/SIA)","Google Sheets export (new tab per export)","EXPORT all-in-one CSV (defects + annotations + comparisons)","Dn menu: Markup CSV / PDF export","Dn menu: Compare CSV / PDF export","Dn menu: All CSV / PDF export","Dn menu: All-in-One (CSV + PDF in one tap)","Annotated drawings embedded in PDF exports (pins, notes, markup burned in)","Pins render in their severity colors regardless of section toggles","Live progress feedback during PDF export (Preparing → Rendering drawing N/M → Saving)","Per-drawing PDF export from the viewer"]],
+                    ["Reports & Exports",["Site report with section-aware tally (defects, drawings, comparisons)","Tally row lays out in a single aligned grid, stays tight on narrow phones","Conditional severity / status / assignee breakdowns","Filter by severity / status / assignee / date","Email content sections (defects, drawings, comparisons)","Email preview with opt-in/out per section — includes pin entries from drawings","Translated email reports (all values in user's language)","Email report via PocketBase SMTP","Contract Advisor — AI clause-to-defect mapping (PSSCOC/REDAS/SIA)","Google Sheets export (new tab per export)","EXPORT all-in-one CSV (defects + annotations + comparisons)","Dn menu: Markup CSV / PDF export","Dn menu: Compare CSV / PDF export","Dn menu: All CSV / PDF export","Dn menu: All-in-One (CSV + PDF in one tap)","Annotated drawings embedded in PDF exports (pins, notes, markup burned in)",
+"GPS-tag map thumbnails + consolidated pin overview embedded in PDF exports (reliable OSM tile-stitch fallback when no Google key)","Pins render in their severity colors regardless of section toggles","Live progress feedback during PDF export (Preparing → Rendering drawing N/M → Saving)","Per-drawing PDF export from the viewer"]],
                     ["Multi-Language (i18n)",["22 languages (EN, ZH, ZH-TW, MS, ID, HI, TA, TH, VI, BN, JA, KO, DE, FR, ES, PT, IT, TR, SV, NO, DA, FI)","Full UI translation (617 keys — labels, buttons, placeholders, errors)","Dropdown option translation (539 terms — components, issues, levels, zones, durations, costs)","Construction industry terminology per language","Language selector with flags + native names","Instant English (inlined) + lazy-loaded language packs","Fallback chain: language → English → raw key"]],
                     ["Storage",["PocketBase (default server)","Local path (self-hosted server / machine)","Google Drive (OAuth, personal cloud)"]],
                     ["Setup & Integrations",["Single Settings dropdown for all one-time setup","AI multi-provider setup + test (Gemini, Ollama, OpenAI)","Telegram bot setup + test","Storage mode selector (PocketBase, local path, Google Drive)","Language selector (22 languages)","Daily AI usage limit","Email report config (inside Report tab)","Green ✓ check per configured integration"]],
