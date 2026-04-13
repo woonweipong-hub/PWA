@@ -5671,12 +5671,18 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
   const mapRef=useRef(null);
   const searchRef=useRef(null);
   const mapObj=useRef(null);
-  const markersRef=useRef([]);
+  const markersRef=useRef({existing:[],pending:null});
   const[status,setStatus]=useState("loading"); // loading | ready | no-key | error
   const[pendingPin,setPendingPin]=useState(null);
   const[savedDefault,setSavedDefault]=useState(false);
+  const[qTitle,setQTitle]=useState("");
+  const[qSev,setQSev]=useState("Minor");
+  const[saving,setSaving]=useState(false);
   const apiKey=local.get(GMAPS_KEY)||"";
   const canEdit=member?.role!=="viewer";
+
+  // Filter defects that have GPS coords for current project
+  const mapDefects=(defects||[]).filter(d=>typeof d.lat==="number"&&typeof d.lng==="number");
 
   useEffect(()=>{
     if(!apiKey){setStatus("no-key");return;}
@@ -5707,8 +5713,8 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
       if(canEdit){
         map.addListener("click",e=>{
           setPendingPin({lat:e.latLng.lat(),lng:e.latLng.lng()});
-          if(markersRef.current._pending)markersRef.current._pending.setMap(null);
-          markersRef.current._pending=new g.Marker({position:e.latLng,map,icon:{path:g.SymbolPath.CIRCLE,scale:10,fillColor:"#ff6b00",fillOpacity:1,strokeColor:"#fff",strokeWeight:3}});
+          if(markersRef.current.pending)markersRef.current.pending.setMap(null);
+          markersRef.current.pending=new g.Marker({position:e.latLng,map,icon:{path:g.SymbolPath.CIRCLE,scale:10,fillColor:"#ff6b00",fillOpacity:1,strokeColor:"#fff",strokeWeight:3},zIndex:9999});
         });
       }
       setStatus("ready");
@@ -5717,11 +5723,61 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[apiKey,currentProject?.id]);
 
+  // Render existing defect pins as markers
+  useEffect(()=>{
+    if(status!=="ready"||!mapObj.current||!window.google?.maps)return;
+    const g=window.google.maps;
+    markersRef.current.existing.forEach(m=>m.setMap(null));
+    markersRef.current.existing=mapDefects.map(d=>{
+      const color=SEV_COLOR[d.severity]||"#8e8e93";
+      const m=new g.Marker({
+        position:{lat:d.lat,lng:d.lng},
+        map:mapObj.current,
+        icon:{path:g.SymbolPath.CIRCLE,scale:8,fillColor:color,fillOpacity:0.95,strokeColor:"#fff",strokeWeight:2},
+        title:d.title||"Entry",
+      });
+      const iw=new g.InfoWindow({content:`<div style="font-family:'Barlow Condensed',sans-serif;padding:2px 6px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${(d.title||"Entry").replace(/</g,"&lt;")}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div></div>`});
+      m.addListener("click",()=>iw.open({anchor:m,map:mapObj.current}));
+      return m;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[status,defects]);
+
   const saveDefault=()=>{
     if(!mapObj.current||!currentProject?.id)return;
     const c=mapObj.current.getCenter();
     setProjectMapDefault(currentProject.id,{lat:c.lat(),lng:c.lng(),zoom:mapObj.current.getZoom()});
     setSavedDefault(true);setTimeout(()=>setSavedDefault(false),2200);
+  };
+
+  const cancelPending=()=>{
+    if(markersRef.current.pending){markersRef.current.pending.setMap(null);markersRef.current.pending=null;}
+    setPendingPin(null);setQTitle("");setQSev("Minor");
+  };
+
+  const savePin=async()=>{
+    if(!pendingPin||!qTitle.trim()||!onSaveEntry)return;
+    setSaving(true);
+    try{
+      await onSaveEntry({
+        title:qTitle.trim(),
+        severity:qSev,
+        status:"Open",
+        description:"",
+        location:`Map: ${pendingPin.lat.toFixed(5)}, ${pendingPin.lng.toFixed(5)}`,
+        level:"",zone:"",roomArea:"",gridRef:"",
+        assignee:"",
+        loggedBy:member?.name||"",
+        loggedByRole:member?.role||"",
+        lat:pendingPin.lat,
+        lng:pendingPin.lng,
+        mapZoom:mapObj.current?.getZoom()||17,
+      });
+      cancelPending();
+    }catch(e){
+      alert("Failed to save: "+(e.message||e));
+    }
+    setSaving(false);
   };
 
   if(status==="no-key"){
@@ -5737,14 +5793,24 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
         <input ref={searchRef} type="text" placeholder={t("maps.search_address")} style={{flex:1,padding:"10px 12px",fontSize:13,borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",boxSizing:"border-box"}}/>
         {canEdit&&<button onClick={saveDefault} title={t("maps.save_default_view")} style={{padding:"10px 12px",borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:savedDefault?"rgba(48,209,88,0.15)":"#fff",color:savedDefault?"#30d158":"rgba(0,0,0,0.7)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{savedDefault?"✓":"★"}</button>}
       </div>
-      <div style={{fontSize:11,color:"rgba(0,0,0,0.5)"}}>{canEdit?t("maps.drop_pin_hint"):""}</div>
+      <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",display:"flex",gap:10,alignItems:"center"}}>
+        <span>{canEdit?t("maps.drop_pin_hint"):""}</span>
+        {mapDefects.length>0&&<span style={{marginLeft:"auto",color:"rgba(0,0,0,0.45)"}}>{mapDefects.length} pinned</span>}
+      </div>
       <div ref={mapRef} style={{width:"100%",height:"min(60vh,520px)",borderRadius:12,border:"1px solid rgba(0,0,0,0.12)",background:"#e5e3dc"}}/>
-      {status==="loading"&&<div style={{fontSize:12,color:"rgba(0,0,0,0.45)"}}>{t("maps.sdk_loading")}</div>}
-      {pendingPin&&<div style={{padding:"10px 12px",background:"#fff",border:"1px solid rgba(255,107,0,0.3)",borderRadius:10,fontSize:12,display:"flex",alignItems:"center",gap:10}}>
-        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"rgba(0,0,0,0.7)"}}>{t("maps.lat_lng")}:</span>
-        <span style={{fontFamily:"monospace",fontSize:11,color:"rgba(0,0,0,0.75)"}}>{pendingPin.lat.toFixed(6)}, {pendingPin.lng.toFixed(6)}</span>
-        <span style={{flex:1}}/>
-        <button onClick={()=>{if(markersRef.current._pending){markersRef.current._pending.setMap(null);markersRef.current._pending=null;}setPendingPin(null);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",color:"rgba(0,0,0,0.6)",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,cursor:"pointer"}}>{t("actions.cancel")}</button>
+      {pendingPin&&<div style={{padding:12,background:"#fff",border:"1px solid rgba(255,107,0,0.3)",borderRadius:10,display:"flex",flexDirection:"column",gap:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,fontSize:11}}>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"rgba(0,0,0,0.7)"}}>{t("maps.lat_lng")}:</span>
+          <span style={{fontFamily:"monospace",fontSize:11,color:"rgba(0,0,0,0.75)"}}>{pendingPin.lat.toFixed(6)}, {pendingPin.lng.toFixed(6)}</span>
+        </div>
+        <input type="text" value={qTitle} onChange={e=>setQTitle(e.target.value)} placeholder={t("fields.title_placeholder")} autoFocus style={{padding:"10px 12px",fontSize:13,borderRadius:8,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",boxSizing:"border-box"}}/>
+        <select value={qSev} onChange={e=>setQSev(e.target.value)} style={{padding:"10px 12px",fontSize:13,borderRadius:8,border:"1px solid rgba(0,0,0,0.14)",background:"#fff"}}>
+          {["Critical","Major","Minor","Observation"].map(s=>(<option key={s} value={s}>{tOpt(s)}</option>))}
+        </select>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={cancelPending} disabled={saving} style={{flex:1,padding:"10px 12px",borderRadius:8,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",color:"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:saving?"not-allowed":"pointer"}}>{t("actions.cancel")}</button>
+          <button onClick={savePin} disabled={saving||!qTitle.trim()} style={{flex:2,padding:"10px 12px",borderRadius:8,border:"none",background:qTitle.trim()&&!saving?"#ff6b00":"rgba(0,0,0,0.1)",color:qTitle.trim()&&!saving?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:qTitle.trim()&&!saving?"pointer":"not-allowed"}}>{saving?t("messages.saving"):t("actions.save")}</button>
+        </div>
       </div>}
     </div>
   );
