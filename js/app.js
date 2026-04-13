@@ -941,16 +941,50 @@ function PhotoMarkup({src,onSave,onCancel}){
 
 const AI_PROMPT='Analyze this construction defect photo. Respond in valid JSON only, no markdown: {"title":"max 5 word defect title","severity":"one of Critical Major Minor Observation","description":"2 sentence technical description","trade":"responsible trade e.g. Plumbing Electrical Waterproofing Painting Tiling Structural Carpentry Aircon General","safety_risk":1 to 5 integer where 5 is life-threatening hazard and 1 is cosmetic,"suggested_assignee":"trade role to assign e.g. Plumber Electrician Painter Tiler Contractor"}';
 
+// Cache the model name the user's Gemini key actually has access to, so we
+// don't hardcode against a model that may be renamed/retired by Google.
+const GEMINI_MODEL_KEY="sdt-gemini-model-v1";
+const GEMINI_MODEL_FALLBACKS=["gemini-2.5-flash","gemini-2.0-flash","gemini-1.5-flash","gemini-1.5-flash-latest","gemini-pro"];
+
+// Probe the Gemini models endpoint and return the first vision-capable model
+// that works with the given key. Caches the result.
+async function pickGeminiModel(apiKey){
+  const cached=local.get(GEMINI_MODEL_KEY);
+  if(cached)return cached;
+  try{
+    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
+    if(!r.ok)return GEMINI_MODEL_FALLBACKS[0];
+    const d=await r.json();
+    const names=(d.models||[]).map(m=>(m.name||"").replace(/^models\//,"")).filter(n=>n.includes("gemini"));
+    // Prefer fallback order; else pick first "flash" from available list
+    for(const want of GEMINI_MODEL_FALLBACKS){if(names.includes(want)){local.set(GEMINI_MODEL_KEY,want);return want;}}
+    const firstFlash=names.find(n=>n.includes("flash"))||names[0];
+    if(firstFlash){local.set(GEMINI_MODEL_KEY,firstFlash);return firstFlash;}
+  }catch{}
+  return GEMINI_MODEL_FALLBACKS[0];
+}
+
+// Call Gemini generateContent, auto-retrying once with a fresh model pick
+// if the request 404s (model name changed/retired).
+async function geminiGenerate(apiKey,body){
+  let model=await pickGeminiModel(apiKey);
+  const call=async m=>fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(apiKey)}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  let res=await call(model);
+  if(res.status===404){
+    local.del(GEMINI_MODEL_KEY);
+    model=await pickGeminiModel(apiKey);
+    res=await call(model);
+  }
+  return res;
+}
+
 async function analyzeWithGemini(apiKey,base64Image){
   try{
     const b64=base64Image.split(",")[1];
-    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({contents:[{parts:[
-        {inline_data:{mime_type:"image/jpeg",data:b64}},
-        {text:AI_PROMPT}
-      ]}]})
-    });
+    const res=await geminiGenerate(apiKey,{contents:[{parts:[
+      {inline_data:{mime_type:"image/jpeg",data:b64}},
+      {text:AI_PROMPT}
+    ]}]});
     const data=await res.json();
     const parts=data.candidates?.[0]?.content?.parts||[];
     const nonThought=parts.filter(p=>p.text&&!p.thought);
@@ -1016,10 +1050,7 @@ async function askAI(prompt){
   try{
     if(provider==="gemini"){
       const key=local.get(GEMINI_KEY);if(!key)return null;
-      const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
-      });
+      const res=await geminiGenerate(key,{contents:[{parts:[{text:prompt}]}]});
       const data=await res.json();
       return data.candidates?.[0]?.content?.parts?.[0]?.text||null;
     }
@@ -1046,10 +1077,7 @@ async function askAIWithUsage(prompt){
   try{
     if(provider==="gemini"){
       const key=local.get(GEMINI_KEY);if(!key)return{text:null,tokens:null};
-      const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
-      });
+      const res=await geminiGenerate(key,{contents:[{parts:[{text:prompt}]}]});
       const data=await res.json();
       const text=data.candidates?.[0]?.content?.parts?.[0]?.text||null;
       const u=data.usageMetadata||{};
@@ -3246,8 +3274,25 @@ function GeminiSettings({onClose,companyId}){
     setTesting(true);setTestRes(null);
     try{
       if(provider==="gemini"){
-        const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${gemKey.trim()}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:"Reply with just: OK"}]}]})});
-        setTestRes(res.ok?"success":"fail");
+        // Probe the models list endpoint — works regardless of which specific
+        // model versions the key has access to. Reset the cached model pick
+        // so the next real call re-probes against this freshly-validated key.
+        const key=gemKey.trim();
+        const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`);
+        if(r.ok){
+          const d=await r.json();
+          const flashModels=(d.models||[]).map(m=>(m.name||"").replace(/^models\//,"")).filter(n=>n.includes("flash"));
+          local.del(GEMINI_MODEL_KEY);
+          setTestRes({ok:true,detail:flashModels.length?`${flashModels.length} model${flashModels.length>1?"s":""} available (${flashModels[0]})`:"Key valid"});
+        }else{
+          let reason="";
+          try{const d=await r.json();reason=d?.error?.message||"";}catch{}
+          if(r.status===400)reason=reason||"Invalid key format";
+          else if(r.status===403)reason=reason||"Generative Language API not enabled for this project";
+          else if(r.status===404)reason=reason||"Endpoint not found — key may be for a different Google API";
+          else reason=reason||`HTTP ${r.status}`;
+          setTestRes({ok:false,detail:reason});
+        }
       }else if(provider==="ollama"){
         const url=ollamaUrl.trim().replace(/\/+$/,"");
         const res=await fetch(url+"/api/tags");
@@ -3255,14 +3300,18 @@ function GeminiSettings({onClose,companyId}){
           const d=await res.json();
           const models=(d.models||[]).map(m=>m.name);
           setOllamaModels(models);
-          setTestRes(models.length>0?"success":"fail");
-        }else{setTestRes("fail");}
+          setTestRes(models.length>0?{ok:true,detail:`${models.length} model${models.length>1?"s":""} available`}:{ok:false,detail:"No models installed — run `ollama pull llava`"});
+        }else{setTestRes({ok:false,detail:`HTTP ${res.status} from ${url}`});}
       }else if(provider==="openai"){
         const url=oaiUrl.trim().replace(/\/+$/,"");
         const res=await fetch(url+"/v1/models",{headers:{"Authorization":"Bearer "+oaiKey.trim()}});
-        setTestRes(res.ok?"success":"fail");
+        if(res.ok)setTestRes({ok:true,detail:"Key valid"});
+        else{
+          let reason="";try{const d=await res.json();reason=d?.error?.message||"";}catch{}
+          setTestRes({ok:false,detail:reason||`HTTP ${res.status}`});
+        }
       }
-    }catch{setTestRes("fail");}
+    }catch(e){setTestRes({ok:false,detail:e.message||"Network error"});}
     setTesting(false);
   };
 
@@ -3364,7 +3413,17 @@ function GeminiSettings({onClose,companyId}){
         )}
 
         {/* Test & Save */}
-        {testRes&&<div style={{background:testRes==="success"?"rgba(48,209,88,0.1)":"rgba(255,59,48,0.1)",border:`1px solid ${testRes==="success"?"rgba(48,209,88,0.3)":"rgba(255,59,48,0.3)"}`,borderRadius:10,padding:"12px 16px",marginBottom:16,color:testRes==="success"?"#1a7a35":"#cc0000",fontSize:13,fontWeight:600}}>{testRes==="success"?"✓ AI connected! Photos will be auto-analyzed.":"✗ Connection failed. Check your settings and try again."}</div>}
+        {testRes&&(()=>{
+          const ok=testRes.ok===true||testRes==="success";
+          const detail=typeof testRes==="object"?testRes.detail:"";
+          return(
+            <div style={{background:ok?"rgba(48,209,88,0.1)":"rgba(255,59,48,0.1)",border:`1px solid ${ok?"rgba(48,209,88,0.3)":"rgba(255,59,48,0.3)"}`,borderRadius:10,padding:"12px 16px",marginBottom:16,color:ok?"#1a7a35":"#cc0000",fontSize:13,fontWeight:600}}>
+              <div>{ok?"✓ AI connected! Photos will be auto-analyzed.":"✗ Connection failed."}</div>
+              {detail&&<div style={{fontSize:11,fontWeight:500,marginTop:4,opacity:0.85,wordBreak:"break-word"}}>{detail}</div>}
+              {!ok&&<div style={{fontSize:11,fontWeight:500,marginTop:6,opacity:0.75}}>Verify the key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" style={{color:"#cc0000",textDecoration:"underline"}}>aistudio.google.com/apikey</a> — or check that Generative Language API is enabled in Google Cloud.</div>}
+            </div>
+          );
+        })()}
         <div style={{display:"flex",gap:10}}>
           <button onClick={test} disabled={!canTest||testing} style={{flex:1,background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:10,padding:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>{testing?"TESTING...":"TEST"}</button>
           <button onClick={save} disabled={!canTest} style={{flex:2,background:canTest?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:13,color:canTest?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{saved?"✓ SAVED":"SAVE"}</button>
