@@ -5900,6 +5900,10 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
   const[searching,setSearching]=useState(false);
   const[pinMode,setPinMode]=useState(true);
   const[showList,setShowList]=useState(false);
+  const[markupTool,setMarkupTool]=useState(null); // null | "rect" | "circle" | "line" | "text"
+  const[mapMarkups,setMapMarkups]=useState([]);   // session-only, not yet persisted
+  const markupDrawRef=useRef(null);               // {tool, first:{lat,lng}, tempLayer, points[]}
+  const markupLayersRef=useRef([]);
   const provider=providerRef.current;
   const canEdit=member?.role!=="viewer";
 
@@ -5951,6 +5955,84 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
   // Keep pinMode in a ref so map click handlers see the latest value
   const pinModeRef=useRef(pinMode);
   useEffect(()=>{pinModeRef.current=pinMode;},[pinMode]);
+  const markupToolRef=useRef(markupTool);
+  useEffect(()=>{markupToolRef.current=markupTool;},[markupTool]);
+
+  // ── Map markup: click handlers and finish logic ────────────────
+  const finishPolyline=()=>{
+    const d=markupDrawRef.current;
+    if(!d||d.tool!=="line"||!d.points||d.points.length<2)return;
+    setMapMarkups(prev=>[...prev,{id:"mm_"+Date.now(),type:"line",points:d.points,color:"#ff6b00"}]);
+    if(d.tempLayer&&mapObj.current)mapObj.current.removeLayer(d.tempLayer);
+    markupDrawRef.current=null;
+    setMarkupTool(null);
+  };
+  const handleMapMarkupClick=(latlng,map,L,tool)=>{
+    if(tool==="text"){
+      const label=prompt("Text label:");
+      if(label&&label.trim()){
+        setMapMarkups(prev=>[...prev,{id:"mm_"+Date.now(),type:"text",pos:{lat:latlng.lat,lng:latlng.lng},text:label.trim(),color:"#ff6b00"}]);
+      }
+      setMarkupTool(null);return;
+    }
+    if(tool==="rect"||tool==="circle"){
+      const d=markupDrawRef.current;
+      if(!d||d.tool!==tool){
+        markupDrawRef.current={tool,first:{lat:latlng.lat,lng:latlng.lng}};
+        return;
+      }
+      // Second click completes the shape
+      const a=d.first,b={lat:latlng.lat,lng:latlng.lng};
+      if(tool==="rect"){
+        setMapMarkups(prev=>[...prev,{id:"mm_"+Date.now(),type:"rect",a,b,color:"#ff6b00"}]);
+      }else{
+        const R=6371000;
+        const dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;
+        const la1=a.lat*Math.PI/180,la2=b.lat*Math.PI/180;
+        const hav=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
+        const radius=2*R*Math.atan2(Math.sqrt(hav),Math.sqrt(1-hav));
+        setMapMarkups(prev=>[...prev,{id:"mm_"+Date.now(),type:"circle",center:a,radius,color:"#ff6b00"}]);
+      }
+      markupDrawRef.current=null;
+      setMarkupTool(null);
+      return;
+    }
+    if(tool==="line"){
+      const d=markupDrawRef.current;
+      const pts=d?.points||[];
+      const next=[...pts,{lat:latlng.lat,lng:latlng.lng}];
+      // Update temp preview layer
+      if(d?.tempLayer&&mapObj.current)mapObj.current.removeLayer(d.tempLayer);
+      const tempLayer=L.polyline(next.map(p=>[p.lat,p.lng]),{color:"#ff6b00",weight:3,dashArray:"6 4"}).addTo(mapObj.current);
+      markupDrawRef.current={tool:"line",points:next,tempLayer};
+      return;
+    }
+  };
+
+  // Render mapMarkups as Leaflet layers
+  useEffect(()=>{
+    if(status!=="ready"||provider!=="osm"||!mapObj.current||!window.L)return;
+    const L=window.L;
+    markupLayersRef.current.forEach(l=>{try{l.remove();}catch{}});
+    markupLayersRef.current=mapMarkups.map(m=>{
+      if(m.type==="rect"){
+        return L.rectangle([[m.a.lat,m.a.lng],[m.b.lat,m.b.lng]],{color:m.color,weight:2,fillOpacity:0.12}).addTo(mapObj.current);
+      }
+      if(m.type==="circle"){
+        return L.circle([m.center.lat,m.center.lng],{radius:m.radius,color:m.color,weight:2,fillOpacity:0.12}).addTo(mapObj.current);
+      }
+      if(m.type==="line"){
+        return L.polyline(m.points.map(p=>[p.lat,p.lng]),{color:m.color,weight:3}).addTo(mapObj.current);
+      }
+      if(m.type==="text"){
+        const safe=(m.text||"").replace(/</g,"&lt;");
+        const icon=L.divIcon({className:"",html:`<div style="background:#fff;border:1.5px solid ${m.color};border-radius:6px;padding:2px 8px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;color:${m.color};white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.15)">${safe}</div>`,iconAnchor:[0,0]});
+        return L.marker([m.pos.lat,m.pos.lng],{icon}).addTo(mapObj.current);
+      }
+      return null;
+    }).filter(Boolean);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[mapMarkups,status,provider]);
 
   // ── OSM / Leaflet path ─────────────────────────────────────────
   useEffect(()=>{
@@ -5968,10 +6050,19 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
       mapObj.current=map;
       if(canEdit){
         map.on("click",e=>{
+          // Markup-drawing tool takes priority over pin-drop
+          const tool=markupToolRef.current;
+          if(tool){handleMapMarkupClick(e.latlng,map,L,tool);return;}
           if(!pinModeRef.current)return;
           setPendingPin({lat:e.latlng.lat,lng:e.latlng.lng});
           if(markersRef.current.pending)markersRef.current.pending.remove();
           markersRef.current.pending=L.circleMarker([e.latlng.lat,e.latlng.lng],{radius:10,color:"#fff",weight:3,fillColor:"#ff6b00",fillOpacity:1}).addTo(map);
+        });
+        map.on("dblclick",e=>{
+          // Finish a multi-click polyline
+          if(markupToolRef.current==="line"&&markupDrawRef.current?.points?.length>=2){
+            finishPolyline();
+          }
         });
       }
       setStatus("ready");
@@ -6094,9 +6185,9 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
             📌 ADD PIN {pinMode?"· ON":""}
           </button>
         )}
-        {canEdit&&(
-          <button onClick={()=>alert("Map markup (highlight zones, boundaries) — coming soon. Tell us what you need: highlight an area, draw a route, or mark a boundary?")} style={{padding:"8px 12px",borderRadius:10,border:"1px solid rgba(0,0,0,0.12)",background:"#fff",color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-            ✏ MARKUP
+        {canEdit&&provider==="osm"&&(
+          <button onClick={()=>{setMarkupTool(t=>t?null:"rect");setPinMode(false);}} style={{padding:"8px 12px",borderRadius:10,border:"1px solid "+(markupTool?"rgba(88,86,214,0.4)":"rgba(0,0,0,0.12)"),background:markupTool?"rgba(88,86,214,0.12)":"#fff",color:markupTool?"#5856d6":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+            ✏ MARKUP {markupTool?"· ON":""}
           </button>
         )}
         <button onClick={()=>setShowList(v=>!v)} style={{padding:"8px 12px",borderRadius:10,border:"1px solid "+(showList?"rgba(52,170,220,0.4)":"rgba(0,0,0,0.12)"),background:showList?"rgba(52,170,220,0.12)":"#fff",color:showList?"#2b8bb8":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
@@ -6104,10 +6195,29 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
         </button>
         <span style={{marginLeft:"auto",fontSize:10,background:"rgba(0,0,0,0.05)",padding:"3px 8px",borderRadius:8,color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{providerLabel}</span>
       </div>
-      {canEdit&&pinMode&&!pendingPin&&(
+      {canEdit&&pinMode&&!pendingPin&&!markupTool&&(
         <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:10,fontSize:12,color:"#b34800"}}>
           <span style={{fontSize:14}}>📍</span>
           <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{t("maps.drop_pin_hint")||"Tap the map to drop a pin and create an entry"}</span>
+        </div>
+      )}
+      {canEdit&&markupTool&&(
+        <div style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:6,padding:"8px 10px",background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.25)",borderRadius:10}}>
+          {[
+            {id:"rect",label:"▭ ZONE",hint:"Click two opposite corners"},
+            {id:"circle",label:"◯ RADIUS",hint:"Click centre, then edge"},
+            {id:"line",label:"⇢ PATH",hint:"Click points · double-click to finish"},
+            {id:"text",label:"T LABEL",hint:"Click where the label goes"},
+          ].map(tool=>(
+            <button key={tool.id} onClick={()=>{markupDrawRef.current=null;setMarkupTool(tool.id);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid "+(markupTool===tool.id?"#5856d6":"rgba(88,86,214,0.25)"),background:markupTool===tool.id?"#5856d6":"#fff",color:markupTool===tool.id?"#fff":"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{tool.label}</button>
+          ))}
+          <span style={{fontSize:11,color:"rgba(88,86,214,0.75)",marginLeft:4,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
+            {markupTool==="rect"?"Click two opposite corners":markupTool==="circle"?"Click centre, then edge":markupTool==="line"?"Click points · double-click to finish":markupTool==="text"?"Click where the label goes":""}
+          </span>
+          <span style={{marginLeft:"auto",display:"flex",gap:6}}>
+            {mapMarkups.length>0&&<button onClick={()=>{if(confirm("Clear all map markup?"))setMapMarkups([]);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid rgba(255,59,48,0.3)",background:"#fff",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>CLEAR ALL ({mapMarkups.length})</button>}
+            <button onClick={()=>{markupDrawRef.current=null;setMarkupTool(null);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",color:"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>DONE</button>
+          </span>
         </div>
       )}
       {showList&&(
