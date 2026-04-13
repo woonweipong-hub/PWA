@@ -6728,6 +6728,16 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
   // Snap the current map view and save as a drawing. User then pins defects
   // using the drawing pin system (multi-pin, drag, markup, heatmap — parity).
   const[snapping,setSnapping]=useState(false);
+  const[savedToast,setSavedToast]=useState(false);
+  const quickLogRef=useRef(null);
+  // Scroll the Quick Log card into view the moment it appears, so narrow
+  // phones don't hide it below the fold and leave users wondering why the
+  // next map tap only "moves" the pin.
+  useEffect(()=>{
+    if(pendingPin&&quickLogRef.current){
+      try{quickLogRef.current.scrollIntoView({behavior:"smooth",block:"nearest"});}catch{}
+    }
+  },[pendingPin]);
   const snapAsDrawing=async()=>{
     if(!mapObj.current||!company?.companyId||!currentProject?.id)return;
     setSnapping(true);
@@ -6819,10 +6829,11 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
         mapZoom:zoom||17,
       });
       cancelPending();
-      if(addAnother){
-        // Keep pin mode on; user taps next location to drop another pin
-        setPinMode(true);
-      }
+      // Always keep pin mode on after a save so the next map tap drops another
+      setPinMode(true);
+      // Brief success toast so users know the pin was captured even if the
+      // severity-coloured marker doesn't appear yet (subscription round-trip).
+      setSavedToast(true);setTimeout(()=>setSavedToast(false),2200);
     }catch(e){
       alert("Failed to save: "+(e.message||e));
     }
@@ -6871,7 +6882,13 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
         )}
         <span style={{marginLeft:"auto",fontSize:10,background:"rgba(0,0,0,0.05)",padding:"3px 8px",borderRadius:8,color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{providerLabel}</span>
       </div>
-      {canEdit&&pinMode&&!pendingPin&&!markupTool&&(
+      {savedToast&&(
+        <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"rgba(48,209,88,0.14)",border:"1px solid rgba(48,209,88,0.4)",borderRadius:10,fontSize:12,color:"#1a7a35",animation:"fadeIn 0.2s ease"}}>
+          <span style={{fontSize:14}}>✓</span>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800}}>Pin saved — tap the map to add another.</span>
+        </div>
+      )}
+      {canEdit&&pinMode&&!pendingPin&&!markupTool&&!savedToast&&(
         <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:10,fontSize:12,color:"#b34800"}}>
           <span style={{fontSize:14}}>📍</span>
           <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{t("maps.drop_pin_hint")||"Tap the map to drop a pin and create an entry"}</span>
@@ -6921,7 +6938,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
         </div>
       )}
       <div ref={mapRef} style={{width:"100%",height:"min(55dvh,480px)",minHeight:260,borderRadius:12,border:"1px solid rgba(0,0,0,0.12)",background:"#e5e3dc",overscrollBehavior:"contain",touchAction:"pan-x pan-y"}}/>
-      {pendingPin&&<div style={{padding:14,background:"#fff",border:"2px solid rgba(255,107,0,0.4)",borderRadius:12,display:"flex",flexDirection:"column",gap:10,boxShadow:"0 2px 12px rgba(255,107,0,0.15)"}}>
+      {pendingPin&&<div ref={quickLogRef} style={{padding:14,background:"#fff",border:"2px solid rgba(255,107,0,0.4)",borderRadius:12,display:"flex",flexDirection:"column",gap:10,boxShadow:"0 2px 12px rgba(255,107,0,0.15)"}}>
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}>
           <span style={{width:22,height:22,borderRadius:"50%",background:"#ff6b00",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,flexShrink:0}}>2</span>
           <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a1a1a"}}>Give this pin a title & severity</span>
@@ -10618,6 +10635,18 @@ function App(){
   const[showMaps,setShowMaps]=useState(false);
   const[showAdminAnalytics,setShowAdminAnalytics]=useState(false);
   const[showSettingsMenu,setShowSettingsMenu]=useState(false);const settingsMenuTimer=useRef(null);
+  // Close settings dropdown on outside click/touch (mouseleave alone doesn't
+  // fire on touchscreens, so it would stay open and cover the content area).
+  useEffect(()=>{
+    if(!showSettingsMenu)return;
+    const onAway=(e)=>{
+      if(e.target.closest&&e.target.closest(".dd-panel"))return;
+      if(e.target.closest&&e.target.closest('button[title="Settings"]'))return;
+      setShowSettingsMenu(false);
+    };
+    document.addEventListener("pointerdown",onAway,true);
+    return()=>document.removeEventListener("pointerdown",onAway,true);
+  },[showSettingsMenu]);
   const[showAvatarMenu,setShowAvatarMenu]=useState(false);const avatarMenuTimer=useRef(null);
   const[showAiSearch,setShowAiSearch]=useState(false);
   const[nlFilters,setNlFilters]=useState(null);
