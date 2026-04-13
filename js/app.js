@@ -4790,7 +4790,118 @@ function PhotoViewer({src,onClose}){
   );
 }
 
-function DefectDetail({defect,onClose,onUpdate,member,company,members=[]}){
+// Parse a "Map: lat, lng" (or any "N.N, N.N") pair out of a defect's
+// location / description when dedicated lat/lng fields are missing.
+function parseDefectCoords(d){
+  let lat=typeof d?.lat==="number"?d.lat:null;
+  let lng=typeof d?.lng==="number"?d.lng:null;
+  if(lat==null||lng==null){
+    const src=(d?.location||"")+" "+(d?.description||"");
+    const m=src.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
+    if(m){lat=parseFloat(m[1]);lng=parseFloat(m[2]);}
+  }
+  if(lat==null||lng==null||isNaN(lat)||isNaN(lng))return null;
+  return{lat,lng};
+}
+
+// Live mini-map in the entry detail — shows this pin prominently plus
+// every nearby GPS-pinned entry as numbered coloured markers (SiteCam-style
+// project overview in miniature).
+function DefectMiniMap({defect,allDefects}){
+  const mapRef=useRef(null);
+  const mapObj=useRef(null);
+  const[status,setStatus]=useState("loading");
+  const coords=parseDefectCoords(defect);
+  // Persist parsed coords back to the record so map list & export pick them up
+  useEffect(()=>{
+    if(!coords)return;
+    if(typeof defect.lat!=="number"||typeof defect.lng!=="number"){
+      DB.defects.update(defect.id,{lat:coords.lat,lng:coords.lng,mapZoom:defect.mapZoom||17}).catch(()=>{});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[defect.id]);
+
+  useEffect(()=>{
+    if(!coords||!mapRef.current)return;
+    const provider=getMapProvider();
+    let cancelled=false;
+    (async()=>{
+      if(provider==="gmaps"){
+        try{await loadGoogleMaps(local.get(GMAPS_KEY)||"");}
+        catch{setStatus("error");return;}
+        if(cancelled||!window.google?.maps)return;
+        const g=window.google.maps;
+        const map=new g.Map(mapRef.current,{
+          center:{lat:coords.lat,lng:coords.lng},
+          zoom:defect.mapZoom||17,
+          mapTypeId:"hybrid",
+          streetViewControl:false,mapTypeControl:false,fullscreenControl:false,zoomControl:true,
+          gestureHandling:"cooperative",
+        });
+        mapObj.current=map;
+        placeMarkers(g,map,coords);
+      }else{
+        try{await waitForLeaflet();}catch{setStatus("error");return;}
+        if(cancelled||!window.L||!mapRef.current)return;
+        const L=window.L;
+        const map=L.map(mapRef.current,{zoomControl:true,attributionControl:false,scrollWheelZoom:false}).setView([coords.lat,coords.lng],defect.mapZoom||17);
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,crossOrigin:"anonymous"}).addTo(map);
+        mapObj.current=map;
+        placeLeafletMarkers(L,map,coords);
+      }
+      setStatus("ready");
+      setTimeout(()=>{try{if(provider==="gmaps")window.google.maps.event.trigger(mapObj.current,"resize");else mapObj.current.invalidateSize();}catch{}},80);
+    })();
+    return()=>{cancelled=true;if(mapObj.current&&mapObj.current.remove)try{mapObj.current.remove();}catch{}};
+    function placeMarkers(g,map,c){
+      // This entry — highlighted, pulsing
+      const color=SEV_COLOR[defect.severity]||"#ff6b00";
+      const meSvg=`<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="${color}" opacity="0.3"><animate attributeName="r" values="14;18;14" dur="1.8s" repeatCount="indefinite"/></circle><circle cx="20" cy="20" r="13" fill="rgba(0,0,0,0.55)" stroke="${color}" stroke-width="3.5"/><circle cx="20" cy="20" r="5" fill="${color}"/><text x="20" y="21" text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="900" fill="#fff" font-family="'Barlow Condensed',sans-serif">${defect.severity?defect.severity[0]:""}</text></svg>`;
+      new g.Marker({position:c,map,icon:{url:"data:image/svg+xml;utf8,"+encodeURIComponent(meSvg),scaledSize:new g.Size(40,40),anchor:new g.Point(20,20)},zIndex:9999,title:defect.title||"This entry"});
+      // Neighbours
+      (allDefects||[]).forEach((d,i)=>{
+        if(d.id===defect.id)return;
+        const co=parseDefectCoords(d);if(!co)return;
+        const col=SEV_COLOR[d.severity]||"#8e8e93";
+        const numSvg=`<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="rgba(0,0,0,0.55)" stroke="${col}" stroke-width="2.5"/><text x="13" y="14" text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="900" fill="#fff" font-family="'Barlow Condensed',sans-serif">${i+1}</text></svg>`;
+        new g.Marker({position:co,map,icon:{url:"data:image/svg+xml;utf8,"+encodeURIComponent(numSvg),scaledSize:new g.Size(26,26),anchor:new g.Point(13,13)},title:d.title||"Entry"});
+      });
+    }
+    function placeLeafletMarkers(L,map,c){
+      const color=SEV_COLOR[defect.severity]||"#ff6b00";
+      const meHtml=`<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="${color}" opacity="0.3"><animate attributeName="r" values="14;18;14" dur="1.8s" repeatCount="indefinite"/></circle><circle cx="20" cy="20" r="13" fill="rgba(0,0,0,0.55)" stroke="${color}" stroke-width="3.5"/><circle cx="20" cy="20" r="5" fill="${color}"/><text x="20" y="21" text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="900" fill="#fff" font-family="'Barlow Condensed',sans-serif">${defect.severity?defect.severity[0]:""}</text></svg>`;
+      L.marker([c.lat,c.lng],{icon:L.divIcon({className:"",html:meHtml,iconSize:[40,40],iconAnchor:[20,20]}),zIndexOffset:9999,title:defect.title||"This entry"}).addTo(map);
+      (allDefects||[]).forEach((d,i)=>{
+        if(d.id===defect.id)return;
+        const co=parseDefectCoords(d);if(!co)return;
+        const col=SEV_COLOR[d.severity]||"#8e8e93";
+        const numHtml=`<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="rgba(0,0,0,0.55)" stroke="${col}" stroke-width="2.5"/><text x="13" y="14" text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="900" fill="#fff" font-family="'Barlow Condensed',sans-serif">${i+1}</text></svg>`;
+        L.marker([co.lat,co.lng],{icon:L.divIcon({className:"",html:numHtml,iconSize:[26,26],iconAnchor:[13,13]}),title:d.title||"Entry"}).addTo(map);
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[coords?.lat,coords?.lng,defect.id,allDefects?.length]);
+
+  if(!coords)return null;
+  const openUrl=`https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`;
+  const copy=()=>{try{navigator.clipboard.writeText(`${coords.lat},${coords.lng}`);}catch{}};
+  const nearbyCount=(allDefects||[]).filter(d=>d.id!==defect.id&&parseDefectCoords(d)).length;
+  return(
+    <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid rgba(0,0,0,0.06)"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+        <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em"}}>🗺 MAP LOCATION{nearbyCount>0?` · ${nearbyCount} nearby`:""}</div>
+        <a href={openUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#ff6b00",textDecoration:"none"}}>Open in Google Maps →</a>
+      </div>
+      <div ref={mapRef} style={{width:"100%",height:220,borderRadius:10,border:"1px solid rgba(0,0,0,0.1)",background:"#e5e3dc",overflow:"hidden"}}/>
+      {status==="error"&&<div style={{fontSize:11,color:"#ff3b30",marginTop:6}}>Map preview unavailable.</div>}
+      <div style={{display:"flex",alignItems:"center",gap:10,marginTop:6}}>
+        <span onClick={copy} title="Tap to copy" style={{fontFamily:"monospace",fontSize:11,color:"rgba(0,0,0,0.55)",cursor:"pointer"}}>{coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}</span>
+      </div>
+    </div>
+  );
+}
+
+function DefectDetail({defect,onClose,onUpdate,member,company,members=[],allDefects=[]}){
   const[status,setStatus]=useState(defect.status);
   const[comment,setComment]=useState("");const[saving,setSaving]=useState(false);const[deleting,setDeleting]=useState(false);
   const[commentPhoto,setCommentPhoto]=useState(null);const[verifyPhoto,setVerifyPhoto]=useState(null);
@@ -5059,41 +5170,7 @@ function DefectDetail({defect,onClose,onUpdate,member,company,members=[]}){
                 <div style={{fontSize:13,color:"#444",lineHeight:1.5}}>{defect.description}</div>
               </div>
             )}
-            {(()=>{
-              // Prefer explicit lat/lng fields; fall back to parsing a "Map: lat, lng"
-              // string out of location or description — covers PocketBase schemas
-              // that haven't had lat/lng/mapZoom added yet.
-              let lat=typeof defect.lat==="number"?defect.lat:null;
-              let lng=typeof defect.lng==="number"?defect.lng:null;
-              if(lat==null||lng==null){
-                const src=(defect.location||"")+" "+(defect.description||"");
-                const m=src.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
-                if(m){lat=parseFloat(m[1]);lng=parseFloat(m[2]);}
-              }
-              if(lat==null||lng==null||isNaN(lat)||isNaN(lng))return null;
-              const z=defect.mapZoom||17;
-              const openUrl=`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-              const staticUrl=staticMapUrl(getMapProvider(),lat,lng,z,"600x240");
-              const copy=()=>{try{navigator.clipboard.writeText(`${lat},${lng}`);}catch{}};
-              const persistIfMissing=async()=>{
-                // If coords were only parsed from text, save them to the record
-                // so future views don't need to re-parse and the map list works.
-                if(typeof defect.lat!=="number"||typeof defect.lng!=="number"){
-                  try{await DB.defects.update(defect.id,{lat,lng,mapZoom:z});}catch{}
-                }
-              };
-              persistIfMissing();
-              return(
-                <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid rgba(0,0,0,0.06)"}}>
-                  <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:6}}>🗺 {t("maps.map_location")}</div>
-                  {staticUrl&&<a href={openUrl} target="_blank" rel="noopener noreferrer"><img src={staticUrl} alt="Map" style={{width:"100%",borderRadius:10,display:"block",marginBottom:8,background:"#e5e3dc"}} onError={e=>{e.target.style.display="none";}}/></a>}
-                  <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-                    <span onClick={copy} title={t("maps.coords_copied")} style={{fontFamily:"monospace",fontSize:12,color:"rgba(0,0,0,0.65)",cursor:"pointer"}}>{lat.toFixed(6)}, {lng.toFixed(6)}</span>
-                    <a href={openUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#ff6b00",textDecoration:"none"}}>{t("maps.open_in_maps")} →</a>
-                  </div>
-                </div>
-              );
-            })()}
+            <DefectMiniMap defect={defect} allDefects={allDefects}/>
           </div>
         )}
 
@@ -11202,7 +11279,7 @@ function App(){
 
       {/* Overlays */}
       {showAiSearch&&<AiSearch defects={defects} onClose={()=>setShowAiSearch(false)} onApplyFilters={f=>{setNlFilters(f);setTab("defects");}}/>}
-      {viewing&&<DefectDetail defect={viewing} onClose={()=>setViewing(null)} onUpdate={updateDefect} member={member} company={company} members={members}/>}
+      {viewing&&<DefectDetail defect={viewing} onClose={()=>setViewing(null)} onUpdate={updateDefect} member={member} company={company} members={members} allDefects={defects}/>}
       {showHelp&&(
         <div style={{position:"fixed",inset:0,zIndex:500,background:"#1a1a1a",overflowY:"auto"}}>
           <div style={{maxWidth:430,margin:"0 auto",padding:"0 0 40px"}}>
