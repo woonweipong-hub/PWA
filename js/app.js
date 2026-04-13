@@ -5179,9 +5179,11 @@ function ProfilePanel({member,authUser,company,onClose,onSignOut}){
   const[editName,setEditName]=useState(member?.name||"");
   const[editEmail,setEditEmail]=useState(member?.email||authUser?.email||"");
   const[editJobTitle,setEditJobTitle]=useState(member?.jobTitle||"");
+  const[editCompanyName,setEditCompanyName]=useState(company?.companyName||"");
   const[oldPass,setOldPass]=useState("");const[newPass,setNewPass]=useState("");const[confirmPass,setConfirmPass]=useState("");
   const[saving,setSaving]=useState(false);const[msg,setMsg]=useState(null);
   const[showDeleteConfirm,setShowDeleteConfirm]=useState(false);const[deleting,setDeleting]=useState(false);
+  const isCompanyAdmin=member?.role==="Admin";
 
   const deleteAccount=async()=>{
     setDeleting(true);setMsg(null);
@@ -5211,6 +5213,16 @@ function ProfilePanel({member,authUser,company,onClose,onSignOut}){
     try{
       await DB.members.update(member.id,changes);
       setMsg({type:"ok",text:"Profile updated"});
+    }catch(e){setMsg({type:"err",text:e.message});}
+    setSaving(false);
+  };
+
+  const saveCompanyName=async()=>{
+    if(!editCompanyName.trim()||editCompanyName.trim()===company?.companyName)return;
+    setSaving(true);setMsg(null);
+    try{
+      await DB.companies.update(company.companyId,{name:editCompanyName.trim()});
+      setMsg({type:"ok",text:"Company name updated"});
     }catch(e){setMsg({type:"err",text:e.message});}
     setSaving(false);
   };
@@ -5282,6 +5294,16 @@ function ProfilePanel({member,authUser,company,onClose,onSignOut}){
             <input value={editEmail} onChange={e=>setEditEmail(e.target.value)} type="email" style={{...inp,flex:1}}/>
             <button onClick={saveEmail} disabled={saving||!editEmail.trim()||editEmail===authUser?.email} style={{background:editEmail!==authUser?.email?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:"10px 16px",color:editEmail!==authUser?.email?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",flexShrink:0}}>{t("actions.save")}</button>
           </div>
+        </div>
+
+        {/* Company Name (Admin only — affects every member) */}
+        <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:12}}>
+          <div style={{...lbl(),display:"flex",alignItems:"center",gap:8}}>COMPANY NAME {!isCompanyAdmin&&<span style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.35)",letterSpacing:"0.12em"}}>· ADMIN ONLY</span>}</div>
+          <div style={{display:"flex",gap:8}}>
+            <input value={editCompanyName} onChange={e=>setEditCompanyName(e.target.value)} disabled={!isCompanyAdmin} placeholder={t("auth.company_placeholder")} style={{...inp,flex:1,opacity:isCompanyAdmin?1:0.6}}/>
+            <button onClick={saveCompanyName} disabled={saving||!isCompanyAdmin||!editCompanyName.trim()||editCompanyName.trim()===company?.companyName} style={{background:(isCompanyAdmin&&editCompanyName.trim()&&editCompanyName.trim()!==company?.companyName)?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:"10px 16px",color:(isCompanyAdmin&&editCompanyName.trim()&&editCompanyName.trim()!==company?.companyName)?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:isCompanyAdmin?"pointer":"not-allowed",flexShrink:0}}>{t("actions.save")}</button>
+          </div>
+          {!isCompanyAdmin&&<div style={{fontSize:10,color:"rgba(0,0,0,0.35)",marginTop:6,lineHeight:1.4}}>Only a company admin can change this. Ask your admin to update it.</div>}
         </div>
 
         {/* Change Password */}
@@ -10704,8 +10726,7 @@ function App(){
           <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"nowrap",justifyContent:"flex-end",flexShrink:0}}>
           {/* Settings dropdown — all one-time setup in one place */}
           <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(settingsMenuTimer.current);setShowSettingsMenu(true);}} onMouseLeave={()=>{settingsMenuTimer.current=setTimeout(()=>setShowSettingsMenu(false),250);}}>
-            <button onClick={()=>setShowSettingsMenu(v=>!v)} title={setupComplete?"Settings (all configured)":`Settings — ${setupDone}/${setupTotal} configured`} style={{position:"relative",width:34,height:34,borderRadius:9,background:showSettingsMenu?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showSettingsMenu?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:17,color:showSettingsMenu?"#ff6b00":"rgba(255,255,255,0.75)",flexShrink:0}}>⚙
-              {!setupComplete&&<span style={{position:"absolute",top:-4,right:-4,minWidth:16,height:16,borderRadius:999,background:"#ff9500",color:"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,lineHeight:"16px",padding:"0 4px",textAlign:"center",border:"1.5px solid #1a1a1a"}}>{setupDone}/{setupTotal}</span>}
+            <button onClick={()=>setShowSettingsMenu(v=>!v)} title="Settings" style={{position:"relative",width:34,height:34,borderRadius:9,background:showSettingsMenu?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showSettingsMenu?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:17,color:showSettingsMenu?"#ff6b00":"rgba(255,255,255,0.75)",flexShrink:0}}>⚙
             </button>
             {showSettingsMenu&&(()=>{
               const donePill={background:"rgba(48,209,88,0.15)",color:"#30d158",border:"1px solid rgba(48,209,88,0.3)"};
@@ -10728,18 +10749,10 @@ function App(){
               ];
               return(
               <div className="dd-panel" onMouseEnter={()=>clearTimeout(settingsMenuTimer.current)} onMouseLeave={()=>{settingsMenuTimer.current=setTimeout(()=>setShowSettingsMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:8,background:"linear-gradient(180deg,#2e2e32 0%,#1f1f22 100%)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,overflow:"hidden",zIndex:100,minWidth:278,boxShadow:"0 16px 48px rgba(0,0,0,0.55),0 2px 10px rgba(0,0,0,0.35)"}}>
-                {/* Header with progress bar */}
+                {/* Header */}
                 <div style={{padding:"13px 16px 12px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"linear-gradient(180deg,rgba(255,107,0,0.06),rgba(255,107,0,0))"}}>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                    <div>
-                      <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.14em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("settings.title")}</div>
-                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff",marginTop:2,lineHeight:1}}>{setupComplete?t("settings.all_set"):t("settings.finish_setup")}</div>
-                    </div>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:setupComplete?"#30d158":"#ff9500"}}>{setupDone}/{setupTotal}</div>
-                  </div>
-                  <div style={{height:4,background:"rgba(255,255,255,0.08)",borderRadius:4,overflow:"hidden"}}>
-                    <div style={{width:`${headerPct}%`,height:"100%",background:setupComplete?"#30d158":"#ff9500",borderRadius:4,transition:"width 0.4s ease"}}/>
-                  </div>
+                  <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.14em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("settings.title")}</div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff",marginTop:2,lineHeight:1}}>{setupComplete?t("settings.all_set"):t("settings.title")}</div>
                 </div>
                 {/* Rows */}
                 <div style={{padding:"6px 0 8px"}}>
