@@ -6007,6 +6007,22 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
     markupDrawRef.current=null;
     setMarkupTool(null);
   };
+  // Pick a stamp text from preset list (or custom)
+  const promptStamp=()=>{
+    const txt=prompt("Stamp text (APPROVED, REJECTED, REVIEWED, HOLD, SURVEYED, etc.):","APPROVED");
+    return txt&&txt.trim()?txt.trim().toUpperCase():"";
+  };
+
+  // Haversine distance in metres between two {lat,lng}
+  const haversine=(a,b)=>{
+    const R=6371000;
+    const dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;
+    const la1=a.lat*Math.PI/180,la2=b.lat*Math.PI/180;
+    const hav=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
+    return 2*R*Math.atan2(Math.sqrt(hav),Math.sqrt(1-hav));
+  };
+  const fmtMetres=(m)=>m>=1000?(m/1000).toFixed(2)+" km":Math.round(m)+" m";
+
   const handleGmapsMarkupClick=(latLng,map,g,tool)=>{
     const pt={lat:latLng.lat(),lng:latLng.lng()};
     if(tool==="text"){
@@ -6015,6 +6031,19 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
         addMarkup({id:"mm_"+Date.now(),type:"text",pos:pt,text:label.trim(),color:"#ff6b00"});
       }
       setMarkupTool(null);return;
+    }
+    if(tool==="stamp"){
+      const label=promptStamp();
+      if(label)addMarkup({id:"mm_"+Date.now(),type:"stamp",pos:pt,text:label,color:"#34c759"});
+      setMarkupTool(null);return;
+    }
+    if(tool==="arrow"||tool==="dimension"){
+      const d=markupDrawRef.current;
+      if(!d||d.tool!==tool){markupDrawRef.current={tool,first:pt};return;}
+      const a=d.first,b=pt;
+      if(tool==="arrow")addMarkup({id:"mm_"+Date.now(),type:"arrow",a,b,color:"#ff6b00"});
+      else addMarkup({id:"mm_"+Date.now(),type:"dimension",a,b,color:"#5856d6",distance:haversine(a,b)});
+      markupDrawRef.current=null;setMarkupTool(null);return;
     }
     if(tool==="rect"||tool==="circle"){
       const d=markupDrawRef.current;
@@ -6044,12 +6073,24 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
   };
 
   const handleMapMarkupClick=(latlng,map,L,tool)=>{
+    const pt={lat:latlng.lat,lng:latlng.lng};
     if(tool==="text"){
       const label=prompt("Text label:");
-      if(label&&label.trim()){
-        addMarkup({id:"mm_"+Date.now(),type:"text",pos:{lat:latlng.lat,lng:latlng.lng},text:label.trim(),color:"#ff6b00"});
-      }
+      if(label&&label.trim())addMarkup({id:"mm_"+Date.now(),type:"text",pos:pt,text:label.trim(),color:"#ff6b00"});
       setMarkupTool(null);return;
+    }
+    if(tool==="stamp"){
+      const label=promptStamp();
+      if(label)addMarkup({id:"mm_"+Date.now(),type:"stamp",pos:pt,text:label,color:"#34c759"});
+      setMarkupTool(null);return;
+    }
+    if(tool==="arrow"||tool==="dimension"){
+      const d=markupDrawRef.current;
+      if(!d||d.tool!==tool){markupDrawRef.current={tool,first:pt};return;}
+      const a=d.first,b=pt;
+      if(tool==="arrow")addMarkup({id:"mm_"+Date.now(),type:"arrow",a,b,color:"#ff6b00"});
+      else addMarkup({id:"mm_"+Date.now(),type:"dimension",a,b,color:"#5856d6",distance:haversine(a,b)});
+      markupDrawRef.current=null;setMarkupTool(null);return;
     }
     if(tool==="rect"||tool==="circle"){
       const d=markupDrawRef.current;
@@ -6132,6 +6173,29 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
           const p=e.target.getLatLng();
           updateMarkupGeo(m.id,{pos:{lat:p.lat,lng:p.lng}});
         });
+      }else if(m.type==="stamp"){
+        const safe=(m.text||"STAMP").replace(/</g,"&lt;");
+        const icon=L.divIcon({className:"",html:`<div style="transform:rotate(-12deg);border:2.5px solid ${m.color};border-radius:4px;padding:2px 10px;font-family:Arial,sans-serif;font-weight:900;font-size:14px;color:${m.color};white-space:nowrap;background:rgba(255,255,255,0.75);letter-spacing:1px">${safe}</div>`,iconAnchor:[0,0]});
+        shape=L.marker([m.pos.lat,m.pos.lng],{icon,draggable:canEdit}).addTo(mapObj.current);
+        if(canEdit)shape.on("dragend",e=>{
+          const p=e.target.getLatLng();
+          updateMarkupGeo(m.id,{pos:{lat:p.lat,lng:p.lng}});
+        });
+      }else if(m.type==="arrow"){
+        shape=L.polyline([[m.a.lat,m.a.lng],[m.b.lat,m.b.lng]],{color:m.color,weight:3}).addTo(mapObj.current);
+        // Arrowhead as a rotated triangle divIcon anchored at the head
+        const dy=m.b.lat-m.a.lat,dx=m.b.lng-m.a.lng;
+        const ang=Math.atan2(dy,dx)*180/Math.PI;
+        const head=L.marker([m.b.lat,m.b.lng],{icon:L.divIcon({className:"",html:`<div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:14px solid ${m.color};transform:translate(-8px,-14px) rotate(${-ang+90}deg);transform-origin:8px 14px"></div>`,iconSize:[16,14],iconAnchor:[8,14]}),interactive:false}).addTo(mapObj.current);
+        layers.push(head);
+        handleLatLng=[(m.a.lat+m.b.lat)/2,(m.a.lng+m.b.lng)/2];
+      }else if(m.type==="dimension"){
+        shape=L.polyline([[m.a.lat,m.a.lng],[m.b.lat,m.b.lng]],{color:m.color,weight:2,dashArray:"3 3"}).addTo(mapObj.current);
+        const dist=m.distance!=null?m.distance:haversine(m.a,m.b);
+        const mid={lat:(m.a.lat+m.b.lat)/2,lng:(m.a.lng+m.b.lng)/2};
+        const lbl=L.marker([mid.lat,mid.lng],{icon:L.divIcon({className:"",html:`<div style="background:${m.color};color:#fff;border-radius:4px;padding:1px 6px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;white-space:nowrap">${fmtMetres(dist)}</div>`,iconSize:[60,18],iconAnchor:[30,9]}),interactive:false}).addTo(mapObj.current);
+        layers.push(lbl);
+        handleLatLng=[mid.lat,mid.lng];
       }
       if(shape)layers.push(shape);
       // Draggable centroid handle for non-marker shapes
@@ -6150,6 +6214,8 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
             shape.setLatLng([m.center.lat+dLat,m.center.lng+dLng]);
           }else if(m.type==="line"&&shape.setLatLngs){
             shape.setLatLngs(m.points.map(p=>[p.lat+dLat,p.lng+dLng]));
+          }else if((m.type==="arrow"||m.type==="dimension")&&shape.setLatLngs){
+            shape.setLatLngs([[m.a.lat+dLat,m.a.lng+dLng],[m.b.lat+dLat,m.b.lng+dLng]]);
           }
         });
         handle.on("dragend",e=>{
@@ -6159,6 +6225,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
           if(m.type==="rect")updateMarkupGeo(m.id,{a:{lat:m.a.lat+dLat,lng:m.a.lng+dLng},b:{lat:m.b.lat+dLat,lng:m.b.lng+dLng}});
           else if(m.type==="circle")updateMarkupGeo(m.id,{center:{lat:m.center.lat+dLat,lng:m.center.lng+dLng}});
           else if(m.type==="line")updateMarkupGeo(m.id,{points:m.points.map(p=>({lat:p.lat+dLat,lng:p.lng+dLng}))});
+          else if(m.type==="arrow"||m.type==="dimension")updateMarkupGeo(m.id,{a:{lat:m.a.lat+dLat,lng:m.a.lng+dLng},b:{lat:m.b.lat+dLat,lng:m.b.lng+dLng}});
           dragStart=null;
         });
         layers.push(handle);
@@ -6196,17 +6263,53 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
           for(let i=0;i<path.getLength();i++){const p=path.getAt(i);pts.push({lat:p.lat(),lng:p.lng()});}
           updateMarkupGeo(m.id,{points:pts});
         });
-      }else if(m.type==="text"){
+      }else if(m.type==="text"||m.type==="stamp"){
         const safe=(m.text||"").replace(/</g,"&lt;");
         obj=new g.Marker({
           position:{lat:m.pos.lat,lng:m.pos.lng},
           map:mapObj.current,
           draggable:canEdit,
-          label:{text:safe,color:m.color,fontWeight:"800",fontSize:"12px",className:"gmaps-markup-label"},
+          label:{text:safe,color:m.color,fontWeight:m.type==="stamp"?"900":"800",fontSize:m.type==="stamp"?"14px":"12px",className:"gmaps-markup-label"},
           icon:{path:g.SymbolPath.CIRCLE,scale:0,fillOpacity:0,strokeOpacity:0},
         });
         if(canEdit)obj.addListener("dragend",e=>{
           updateMarkupGeo(m.id,{pos:{lat:e.latLng.lat(),lng:e.latLng.lng()}});
+        });
+      }else if(m.type==="arrow"){
+        obj=new g.Polyline({
+          path:[{lat:m.a.lat,lng:m.a.lng},{lat:m.b.lat,lng:m.b.lng}],
+          strokeColor:m.color,strokeWeight:3,
+          icons:[{icon:{path:g.SymbolPath.FORWARD_CLOSED_ARROW,scale:4,strokeColor:m.color,fillColor:m.color,fillOpacity:1},offset:"100%"}],
+          draggable:canEdit,map:mapObj.current,
+        });
+        if(canEdit)obj.addListener("dragend",()=>{
+          const path=obj.getPath();
+          const a={lat:path.getAt(0).lat(),lng:path.getAt(0).lng()};
+          const b={lat:path.getAt(1).lat(),lng:path.getAt(1).lng()};
+          updateMarkupGeo(m.id,{a,b});
+        });
+      }else if(m.type==="dimension"){
+        const dist=m.distance!=null?m.distance:haversine(m.a,m.b);
+        const poly=new g.Polyline({
+          path:[{lat:m.a.lat,lng:m.a.lng},{lat:m.b.lat,lng:m.b.lng}],
+          strokeColor:m.color,strokeWeight:2,strokeOpacity:0,
+          icons:[{icon:{path:"M 0,-1 0,1",strokeOpacity:1,scale:3},offset:"0",repeat:"10px"}],
+          draggable:canEdit,map:mapObj.current,
+        });
+        obj=poly;
+        const mid={lat:(m.a.lat+m.b.lat)/2,lng:(m.a.lng+m.b.lng)/2};
+        const lbl=new g.Marker({
+          position:mid,map:mapObj.current,
+          label:{text:fmtMetres(dist),color:"#fff",fontWeight:"800",fontSize:"11px"},
+          icon:{path:g.SymbolPath.CIRCLE,scale:14,fillColor:m.color,fillOpacity:0.95,strokeColor:"#fff",strokeWeight:1.5},
+          clickable:false,
+        });
+        layers.push(lbl);
+        if(canEdit)poly.addListener("dragend",()=>{
+          const path=poly.getPath();
+          const a={lat:path.getAt(0).lat(),lng:path.getAt(0).lng()};
+          const b={lat:path.getAt(1).lat(),lng:path.getAt(1).lng()};
+          updateMarkupGeo(m.id,{a,b,distance:haversine(a,b)});
         });
       }
       if(obj)layers.push(obj);
@@ -6385,15 +6488,18 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
       {canEdit&&markupTool&&(
         <div style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:6,padding:"8px 10px",background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.25)",borderRadius:10}}>
           {[
-            {id:"rect",label:"▭ ZONE",hint:"Click two opposite corners"},
-            {id:"circle",label:"◯ RADIUS",hint:"Click centre, then edge"},
-            {id:"line",label:"⇢ PATH",hint:"Click points · double-click to finish"},
-            {id:"text",label:"T LABEL",hint:"Click where the label goes"},
+            {id:"rect",label:"▭ ZONE"},
+            {id:"circle",label:"◯ RADIUS"},
+            {id:"line",label:"⇢ PATH"},
+            {id:"arrow",label:"→ ARROW"},
+            {id:"dimension",label:"↔ DIMENSION"},
+            {id:"stamp",label:"◈ STAMP"},
+            {id:"text",label:"T LABEL"},
           ].map(tool=>(
-            <button key={tool.id} onClick={()=>{markupDrawRef.current=null;setMarkupTool(tool.id);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid "+(markupTool===tool.id?"#5856d6":"rgba(88,86,214,0.25)"),background:markupTool===tool.id?"#5856d6":"#fff",color:markupTool===tool.id?"#fff":"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{tool.label}</button>
+            <button key={tool.id} onClick={()=>{markupDrawRef.current=null;setMarkupTool(tool.id);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid "+(markupTool===tool.id?"#5856d6":"rgba(88,86,214,0.25)"),background:markupTool===tool.id?"#5856d6":"#fff",color:markupTool===tool.id?"#fff":"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{tool.label}</button>
           ))}
           <span style={{fontSize:11,color:"rgba(88,86,214,0.75)",marginLeft:4,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
-            {markupTool==="rect"?"Click two opposite corners":markupTool==="circle"?"Click centre, then edge":markupTool==="line"?"Click points · double-click to finish":markupTool==="text"?"Click where the label goes":""}
+            {markupTool==="rect"?"Click two opposite corners":markupTool==="circle"?"Click centre, then edge":markupTool==="line"?"Click points · double-click to finish":markupTool==="arrow"?"Click tail, then head":markupTool==="dimension"?"Click start, then end — distance auto-labelled":markupTool==="stamp"?"Click where the stamp goes":markupTool==="text"?"Click where the label goes":""}
           </span>
           <span style={{marginLeft:"auto",display:"flex",gap:6}}>
             {mapMarkups.length>0&&<button onClick={()=>{if(confirm("Clear all map markup?"))clearAllMarkups();}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid rgba(255,59,48,0.3)",background:"#fff",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>CLEAR ALL ({mapMarkups.length})</button>}
