@@ -8719,11 +8719,11 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         {/* Sub-mode toggle bar */}
         <div style={{display:"flex",gap:6,padding:4,background:"rgba(0,0,0,0.05)",borderRadius:12,marginBottom:14}}>
           {[
-            {id:"drawing",icon:"📐",label:t("maps.submode_drawing")},
-            {id:"map",icon:"📍",label:t("maps.submode_map")},
+            {id:"drawing",icon:"blueprint",label:t("maps.submode_drawing")},
+            {id:"map",icon:"pin",label:t("maps.submode_map")},
           ].map(m=>(
-            <button key={m.id} onClick={()=>{setSubMode(m.id);setShowCompare(false);}} style={{flex:1,padding:"9px 10px",borderRadius:9,border:"none",background:subMode===m.id?"#fff":"transparent",color:subMode===m.id?"#1a1a1a":"rgba(0,0,0,0.55)",boxShadow:subMode===m.id?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6,whiteSpace:"nowrap"}}>
-              <span style={{fontSize:15}}>{m.icon}</span>{m.label}
+            <button key={m.id} onClick={()=>{setSubMode(m.id);setShowCompare(false);}} style={{flex:1,padding:"9px 10px",borderRadius:9,border:"none",background:subMode===m.id?"#fff":"transparent",color:subMode===m.id?"#1a1a1a":"rgba(0,0,0,0.55)",boxShadow:subMode===m.id?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,whiteSpace:"nowrap"}}>
+              <DdIcon name={m.icon} size={16}/>{m.label}
             </button>
           ))}
         </div>
@@ -11046,6 +11046,8 @@ const DdIcon=({name,size=16})=>{
     case"logout":return <svg {...p}><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 8l-4 4 4 4"/><path d="M6 12h10"/></svg>;
     case"globe":return <svg {...p}><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8"/><path d="M12 3c2.2 2.5 3.5 5.5 3.5 9s-1.3 6.5-3.5 9c-2.2-2.5-3.5-5.5-3.5-9s1.3-6.5 3.5-9z"/></svg>;
     case"refresh":return <svg {...p}><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>;
+    case"pin":return <svg {...p}><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>;
+    case"blueprint":return <svg {...p}><path d="M4 20L20 4"/><path d="M4 20h13"/><path d="M4 20V7"/></svg>;
     default:return null;
   }
 };
