@@ -5966,7 +5966,7 @@ function MapsSettings({onClose}){
 }
 
 // ── Tag on Map (Google Maps pin canvas) ──────────────────────────
-function MapPanel({currentProject,member,defects,onSaveEntry,company}){
+function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped}){
   const mapRef=useRef(null);
   const searchRef=useRef(null);
   const mapObj=useRef(null);
@@ -6725,6 +6725,47 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[status,defects,provider]);
 
+  // Snap the current map view and save as a drawing. User then pins defects
+  // using the drawing pin system (multi-pin, drag, markup, heatmap — parity).
+  const[snapping,setSnapping]=useState(false);
+  const snapAsDrawing=async()=>{
+    if(!mapObj.current||!company?.companyId||!currentProject?.id)return;
+    setSnapping(true);
+    try{
+      // Read current view
+      let lat,lng,zoom;
+      if(provider==="gmaps"){const c=mapObj.current.getCenter();lat=c.lat();lng=c.lng();zoom=mapObj.current.getZoom();}
+      else{const c=mapObj.current.getCenter();lat=c.lat;lng=c.lng;zoom=mapObj.current.getZoom();}
+      // Fetch static-map image (CORS-friendly via <img crossOrigin>)
+      const url=staticMapUrl(provider,lat,lng,zoom,"1024x1024");
+      if(!url)throw new Error("No static map URL — add a Google Maps key to capture a Google view.");
+      const img=await new Promise((resolve,reject)=>{
+        const i=new Image();i.crossOrigin="anonymous";
+        i.onload=()=>resolve(i);
+        i.onerror=()=>reject(new Error("Failed to fetch static map tile"));
+        i.src=url;
+      });
+      // Draw to canvas + export blob
+      const cnv=document.createElement("canvas");
+      cnv.width=img.width;cnv.height=img.height;
+      cnv.getContext("2d").drawImage(img,0,0);
+      const blob=await new Promise(res=>cnv.toBlob(res,"image/jpeg",0.88));
+      if(!blob)throw new Error("Could not export map image (tile server may block cross-origin capture).");
+      const stamp=new Date().toISOString().slice(0,10);
+      const label=`Map ${stamp} — ${lat.toFixed(4)}, ${lng.toFixed(4)} @ z${zoom}`;
+      const file=new File([blob],`${label}.jpg`,{type:"image/jpeg"});
+      const rec=await DB.drawings.createWithFile({
+        companyId:company.companyId,projectId:currentProject.id,
+        name:label,uploadedBy:member?.name||"",uploadedAt:new Date().toISOString(),
+      },"file",file,file.name);
+      if(onSnapped)onSnapped(rec);
+      else alert("✓ Saved as drawing: "+label);
+    }catch(e){
+      alert("Snap failed: "+(e.message||e)+"\n\nTry OpenStreetMap provider (Settings → Maps) — its static tiles allow cross-origin capture.");
+    }
+    setSnapping(false);
+  };
+
   const saveDefault=()=>{
     if(!mapObj.current||!currentProject?.id)return;
     let lat,lng,zoom;
@@ -6758,10 +6799,11 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
     mapObj.current.setView([hit.lat,hit.lng],17);
   };
 
-  const savePin=async()=>{
+  const savePin=async(addAnother)=>{
     if(!pendingPin||!qTitle.trim()||!onSaveEntry)return;
     setSaving(true);
     try{
+      const zoom=provider==="gmaps"?mapObj.current?.getZoom():mapObj.current?.getZoom();
       await onSaveEntry({
         title:qTitle.trim(),
         severity:qSev,
@@ -6774,9 +6816,13 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
         loggedByRole:member?.role||"",
         lat:pendingPin.lat,
         lng:pendingPin.lng,
-        mapZoom:mapObj.current?.getZoom()||17,
+        mapZoom:zoom||17,
       });
       cancelPending();
+      if(addAnother){
+        // Keep pin mode on; user taps next location to drop another pin
+        setPinMode(true);
+      }
     }catch(e){
       alert("Failed to save: "+(e.message||e));
     }
@@ -6818,6 +6864,11 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
         <button onClick={()=>setShowList(v=>!v)} style={{padding:"8px 12px",borderRadius:10,border:"1px solid "+(showList?"rgba(52,170,220,0.4)":"rgba(0,0,0,0.12)"),background:showList?"rgba(52,170,220,0.12)":"#fff",color:showList?"#2b8bb8":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
           📋 LIST ({mapDefects.length})
         </button>
+        {canEdit&&(
+          <button onClick={snapAsDrawing} disabled={snapping} title="Capture current map view as a drawing (pin like a floor plan)" style={{padding:"8px 12px",borderRadius:10,border:"1px solid rgba(48,209,88,0.4)",background:snapping?"rgba(48,209,88,0.25)":"rgba(48,209,88,0.12)",color:"#1a7a35",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:snapping?"wait":"pointer",display:"flex",alignItems:"center",gap:6}}>
+            {snapping?"…":"📸"} SNAP
+          </button>
+        )}
         <span style={{marginLeft:"auto",fontSize:10,background:"rgba(0,0,0,0.05)",padding:"3px 8px",borderRadius:8,color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{providerLabel}</span>
       </div>
       {canEdit&&pinMode&&!pendingPin&&!markupTool&&(
@@ -6884,9 +6935,10 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
         <select value={qSev} onChange={e=>setQSev(e.target.value)} style={{padding:"11px 12px",fontSize:13,borderRadius:8,border:"1.5px solid rgba(0,0,0,0.18)",background:"#fff"}}>
           {["Critical","Major","Minor","Observation"].map(s=>(<option key={s} value={s}>{tOpt(s)} — {s==="Critical"?"immediate action":s==="Major"?"fix soon":s==="Minor"?"schedule repair":"noted for reference"}</option>))}
         </select>
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={cancelPending} disabled={saving} style={{flex:1,padding:"11px 12px",borderRadius:8,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",color:"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:saving?"not-allowed":"pointer"}}>{t("actions.cancel")}</button>
-          <button onClick={savePin} disabled={saving||!qTitle.trim()} style={{flex:2,padding:"11px 12px",borderRadius:8,border:"none",background:qTitle.trim()&&!saving?"#ff6b00":"rgba(0,0,0,0.1)",color:qTitle.trim()&&!saving?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:qTitle.trim()&&!saving?"pointer":"not-allowed"}}>{saving?t("messages.saving"):"✓ SAVE PIN"}</button>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button onClick={cancelPending} disabled={saving} style={{flex:"1 1 80px",padding:"11px 10px",borderRadius:8,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",color:"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:saving?"not-allowed":"pointer"}}>{t("actions.cancel")}</button>
+          <button onClick={()=>savePin(true)} disabled={saving||!qTitle.trim()} title="Save this pin, keep ADD PIN on, tap next location" style={{flex:"1 1 130px",padding:"11px 10px",borderRadius:8,border:"1px solid "+(qTitle.trim()&&!saving?"rgba(255,107,0,0.4)":"rgba(0,0,0,0.1)"),background:qTitle.trim()&&!saving?"rgba(255,107,0,0.1)":"rgba(0,0,0,0.03)",color:qTitle.trim()&&!saving?"#ff6b00":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:qTitle.trim()&&!saving?"pointer":"not-allowed"}}>+ SAVE & ADD ANOTHER</button>
+          <button onClick={()=>savePin(false)} disabled={saving||!qTitle.trim()} style={{flex:"2 1 120px",padding:"11px 12px",borderRadius:8,border:"none",background:qTitle.trim()&&!saving?"#ff6b00":"rgba(0,0,0,0.1)",color:qTitle.trim()&&!saving?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:qTitle.trim()&&!saving?"pointer":"not-allowed"}}>{saving?t("messages.saving"):"✓ SAVE PIN"}</button>
         </div>
       </div>}
     </div>
@@ -8216,7 +8268,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         </div>
 
         {subMode==="map"?(
-          <MapPanel currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry} company={company}/>
+          <MapPanel currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry} company={company} onSnapped={(rec)=>{setDrawings(prev=>[rec,...prev]);setSubMode("drawing");setViewing(rec);}}/>
         ):(<>
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf,.pdf,.tif,.tiff" onChange={uploadDrawing} style={{display:"none"}}/>
 
