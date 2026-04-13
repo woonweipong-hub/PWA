@@ -5995,6 +5995,54 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
     fr.readAsDataURL(file);
   };
 
+  // ── Freehand on Google Maps: transparent canvas overlay captures
+  // pointer events; pixel coords are converted to lat/lng via an
+  // OverlayView's projection, then saved as a polyline of geo points.
+  useEffect(()=>{
+    if(provider!=="gmaps"||markupTool!=="freehand"||!mapObj.current||!window.google?.maps)return;
+    const g=window.google.maps,map=mapObj.current,mapDiv=map.getDiv();
+    // Projection helper
+    const helper=new g.OverlayView();
+    let proj=null;
+    helper.onAdd=function(){proj=this.getProjection();};
+    helper.draw=function(){if(!proj)proj=this.getProjection();};
+    helper.onRemove=function(){};
+    helper.setMap(map);
+    // Overlay canvas
+    const canvas=document.createElement("canvas");
+    const resize=()=>{canvas.width=mapDiv.clientWidth;canvas.height=mapDiv.clientHeight;};
+    Object.assign(canvas.style,{position:"absolute",top:"0",left:"0",width:"100%",height:"100%",zIndex:"9999",cursor:"crosshair",touchAction:"none"});
+    resize();
+    mapDiv.appendChild(canvas);
+    const ctx=canvas.getContext("2d");
+    ctx.strokeStyle="#ff6b00";ctx.lineWidth=3;ctx.lineCap="round";ctx.lineJoin="round";
+    // Freeze map gestures while drawing
+    const prev={draggable:map.get("draggable"),scrollwheel:map.get("scrollwheel"),disableDoubleClickZoom:map.get("disableDoubleClickZoom"),gestureHandling:map.get("gestureHandling")};
+    map.setOptions({draggable:false,scrollwheel:false,disableDoubleClickZoom:true,gestureHandling:"none"});
+    let drawing=false,points=[];
+    const getPx=e=>{const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};};
+    const toLL=px=>{if(!proj)return null;const ll=proj.fromContainerPixelToLatLng(new g.Point(px.x,px.y));return ll?{lat:ll.lat(),lng:ll.lng()}:null;};
+    const onDown=e=>{e.preventDefault();drawing=true;points=[];const px=getPx(e);const ll=toLL(px);if(ll)points.push(ll);ctx.beginPath();ctx.moveTo(px.x,px.y);canvas.setPointerCapture?.(e.pointerId);};
+    const onMove=e=>{if(!drawing)return;const px=getPx(e);const ll=toLL(px);if(ll)points.push(ll);ctx.lineTo(px.x,px.y);ctx.stroke();};
+    const onUp=e=>{if(!drawing)return;drawing=false;try{canvas.releasePointerCapture?.(e.pointerId);}catch{}if(points.length>=2)addMarkup({id:"mm_"+Date.now(),type:"freehand",points:points.slice(),color:"#ff6b00"});points=[];setMarkupTool(null);};
+    canvas.addEventListener("pointerdown",onDown);
+    canvas.addEventListener("pointermove",onMove);
+    canvas.addEventListener("pointerup",onUp);
+    canvas.addEventListener("pointercancel",onUp);
+    window.addEventListener("resize",resize);
+    return()=>{
+      canvas.removeEventListener("pointerdown",onDown);
+      canvas.removeEventListener("pointermove",onMove);
+      canvas.removeEventListener("pointerup",onUp);
+      canvas.removeEventListener("pointercancel",onUp);
+      window.removeEventListener("resize",resize);
+      try{mapDiv.removeChild(canvas);}catch{}
+      try{helper.setMap(null);}catch{}
+      map.setOptions(prev);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[markupTool,provider,status]);
+
   // ── Freehand on Leaflet: drag across map with panning disabled ─
   useEffect(()=>{
     if(provider!=="osm"||markupTool!=="freehand"||!mapObj.current||!window.L)return;
@@ -6632,7 +6680,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
             <button key={tool.id} onClick={()=>{markupDrawRef.current=null;setMarkupTool(tool.id);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid "+(markupTool===tool.id?"#5856d6":"rgba(88,86,214,0.25)"),background:markupTool===tool.id?"#5856d6":"#fff",color:markupTool===tool.id?"#fff":"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{tool.label}</button>
           ))}
           <span style={{fontSize:11,color:"rgba(88,86,214,0.75)",marginLeft:4,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
-            {markupTool==="rect"?"Click two opposite corners":markupTool==="circle"?"Click centre, then edge":markupTool==="line"?"Click points · double-click to finish":markupTool==="arrow"?"Click tail, then head":markupTool==="dimension"?"Click start, then end — distance auto-labelled":markupTool==="stamp"?"Click where the stamp goes":markupTool==="text"?"Click where the label goes":markupTool==="freehand"?"Click-and-drag on the map to draw (OSM only)":markupTool==="photo"?"Pick an image, then click the map to place it":""}
+            {markupTool==="rect"?"Click two opposite corners":markupTool==="circle"?"Click centre, then edge":markupTool==="line"?"Click points · double-click to finish":markupTool==="arrow"?"Click tail, then head":markupTool==="dimension"?"Click start, then end — distance auto-labelled":markupTool==="stamp"?"Click where the stamp goes":markupTool==="text"?"Click where the label goes":markupTool==="freehand"?"Click-and-drag on the map to draw":markupTool==="photo"?"Pick an image, then click the map to place it":""}
           </span>
           <span style={{marginLeft:"auto",display:"flex",gap:6}}>
             {mapMarkups.length>0&&<button onClick={()=>{if(confirm("Clear all map markup?"))clearAllMarkups();}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid rgba(255,59,48,0.3)",background:"#fff",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>CLEAR ALL ({mapMarkups.length})</button>}
