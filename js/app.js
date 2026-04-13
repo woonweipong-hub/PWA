@@ -4457,6 +4457,29 @@ function AiSearch({defects,onApplyFilters,onClose}){
   );
 }
 
+// Small map thumbnail for Review rows — single OSM tile with the pin dot
+// overlaid at its exact fractional position. No external static-map service
+// required, and img cross-origin is fine for display (we aren't exporting).
+function MapThumb({defect}){
+  const coords=parseDefectCoords(defect);
+  if(!coords)return null;
+  const z=Math.min(18,Math.max(14,defect.mapZoom||17));
+  const n=2**z;
+  const xRaw=((coords.lng+180)/360)*n;
+  const latRad=coords.lat*Math.PI/180;
+  const yRaw=((1-Math.asinh(Math.tan(latRad))/Math.PI)/2)*n;
+  const xTile=Math.floor(xRaw),yTile=Math.floor(yRaw);
+  const url=`https://tile.openstreetmap.org/${z}/${xTile}/${yTile}.png`;
+  const xPct=(xRaw-xTile)*100,yPct=(yRaw-yTile)*100;
+  const color=SEV_COLOR[defect.severity]||"#8e8e93";
+  return(
+    <div style={{width:62,height:62,position:"relative",borderRadius:8,overflow:"hidden",flexShrink:0,background:"#e5e3dc",border:"1px solid rgba(0,0,0,0.08)"}} title="Map location">
+      <img src={url} alt="Map" loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} onError={e=>{e.target.style.display="none";}}/>
+      <div style={{position:"absolute",left:`${xPct}%`,top:`${yPct}%`,transform:"translate(-50%,-50%)",width:12,height:12,borderRadius:"50%",background:color,border:"2px solid #fff",boxShadow:"0 0 0 1px rgba(0,0,0,0.35)"}}/>
+    </div>
+  );
+}
+
 function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,member,members,onBulkUpdate}){
   const[filter,setFilter]=useState("All");const[sevF,setSevF]=useState("All");const[typeF,setTypeF]=useState("All");
   const[search,setSearch]=useState("");const[showFilters,setShowFilters]=useState(false);
@@ -4617,6 +4640,7 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
               <span>{d.created?new Date(d.created).toLocaleDateString():"Just now"}</span>
             </div>
           </div>
+          <MapThumb defect={d}/>
         </div>
         );
       })}
