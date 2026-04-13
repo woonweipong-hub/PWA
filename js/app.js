@@ -8341,9 +8341,8 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           {[
             {id:"drawing",icon:"🖼",label:t("maps.submode_drawing")},
             {id:"map",icon:"🗺",label:t("maps.submode_map")},
-            {id:"compare",icon:"⇄",label:t("maps.submode_compare")},
           ].map(m=>(
-            <button key={m.id} onClick={()=>{setSubMode(m.id);if(m.id==="compare"&&pdfDrawings.length>=2)openCompare();else if(m.id!=="compare")setShowCompare(false);}} style={{flex:1,padding:"9px 10px",borderRadius:9,border:"none",background:subMode===m.id?"#fff":"transparent",color:subMode===m.id?"#1a1a1a":"rgba(0,0,0,0.55)",boxShadow:subMode===m.id?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6,whiteSpace:"nowrap"}}>
+            <button key={m.id} onClick={()=>{setSubMode(m.id);setShowCompare(false);}} style={{flex:1,padding:"9px 10px",borderRadius:9,border:"none",background:subMode===m.id?"#fff":"transparent",color:subMode===m.id?"#1a1a1a":"rgba(0,0,0,0.55)",boxShadow:subMode===m.id?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6,whiteSpace:"nowrap"}}>
               <span style={{fontSize:15}}>{m.icon}</span>{m.label}
             </button>
           ))}

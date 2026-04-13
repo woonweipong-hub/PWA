@@ -584,7 +584,7 @@
     "batch_compare": "Batch",
     "batch_compare_desc": "(Folders Comparison)",
     "diff_compare": "Diff / Compare",
-    "diff": "Diff"
+    "diff": "Compare"
   },
   "contracts": {
     "psscoc": "PSSCOC (public)",
