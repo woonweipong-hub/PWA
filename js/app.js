@@ -8636,7 +8636,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   const hitResizeHandle=(p,idx)=>{
     const s=markupStrokes[idx];if(!s||s.type!=="photo")return false;
     const hx=s.pos.x+s.w,hy=s.pos.y+s.h;
-    return Math.abs(p.x-hx)<3.8&&Math.abs(p.y-hy)<3.8;
+    return Math.abs(p.x-hx)<5&&Math.abs(p.y-hy)<5;
   };
 
   const onMarkupDown=e=>{
@@ -8854,15 +8854,38 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     setMarkupStrokes(s=>s.filter((_,i)=>i!==markupSelectedIdx));
     setMarkupSelectedIdx(null);
   };
-  // Scale the currently selected photo by a multiplier (preserves aspect, clamps size)
+  // Scale the currently selected item by a multiplier.
+  // - photo: resizes w/h (preserves aspect, clamps to page)
+  // - text / callout / stamp: bumps fontSize
+  // - line / arrow / rect / circle / dimension / cloud: scales start↔end around midpoint
+  // - freehand / highlight / polyline: scales points around their centroid
   const scaleSelectedPhoto=(mult)=>{
     if(markupSelectedIdx==null)return;
     setMarkupStrokes(strokes=>strokes.map((s,i)=>{
-      if(i!==markupSelectedIdx||s.type!=="photo")return s;
-      const aspect=s.h/s.w;
-      const nw=Math.max(5,Math.min(100-s.pos.x,s.w*mult));
-      const nh=Math.min(100-s.pos.y,nw*aspect);
-      return{...s,w:nw,h:nh};
+      if(i!==markupSelectedIdx)return s;
+      if(s.type==="photo"){
+        const aspect=s.h/s.w;
+        const nw=Math.max(5,Math.min(100-s.pos.x,s.w*mult));
+        const nh=Math.min(100-s.pos.y,nw*aspect);
+        return{...s,w:nw,h:nh};
+      }
+      if(s.type==="text"||s.type==="callout"||s.type==="stamp"){
+        const cur=s.fontSize||2.4;
+        return{...s,fontSize:Math.max(0.8,Math.min(12,cur*mult))};
+      }
+      if(s.start&&s.end){
+        const cx=(s.start.x+s.end.x)/2,cy=(s.start.y+s.end.y)/2;
+        return{...s,
+          start:{x:cx+(s.start.x-cx)*mult,y:cy+(s.start.y-cy)*mult},
+          end  :{x:cx+(s.end.x  -cx)*mult,y:cy+(s.end.y  -cy)*mult},
+        };
+      }
+      if(s.points&&s.points.length){
+        const cx=s.points.reduce((a,p)=>a+p.x,0)/s.points.length;
+        const cy=s.points.reduce((a,p)=>a+p.y,0)/s.points.length;
+        return{...s,points:s.points.map(p=>({x:cx+(p.x-cx)*mult,y:cy+(p.y-cy)*mult}))};
+      }
+      return s;
     }));
   };
 
@@ -8984,8 +9007,9 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
         <image href={s.dataUrl} x={s.pos.x} y={s.pos.y} width={s.w} height={s.h} preserveAspectRatio="xMidYMid meet"/>
         <rect x={s.pos.x} y={s.pos.y} width={s.w} height={s.h} fill="none" stroke={isSel?"#5856d6":"rgba(255,255,255,0.85)"} strokeWidth={isSel?"0.5":"0.25"} strokeDasharray={isSel?"1 0.6":undefined}/>
         {isSel&&<>
-          <circle cx={s.pos.x+s.w} cy={s.pos.y+s.h} r="2.4" fill="#5856d6" stroke="#fff" strokeWidth="0.45"/>
-          <path d={`M${s.pos.x+s.w-1.1} ${s.pos.y+s.h+0.2} L${s.pos.x+s.w+0.2} ${s.pos.y+s.h-1.1} M${s.pos.x+s.w-0.3} ${s.pos.y+s.h+0.9} L${s.pos.x+s.w+0.9} ${s.pos.y+s.h-0.3}`} stroke="#fff" strokeWidth="0.35" strokeLinecap="round"/>
+          {/* Larger, high-contrast drag-corner handle with a clear ↘ affordance */}
+          <circle cx={s.pos.x+s.w} cy={s.pos.y+s.h} r="3.4" fill="#5856d6" stroke="#fff" strokeWidth="0.7"/>
+          <path d={`M${s.pos.x+s.w-1.5} ${s.pos.y+s.h-1.5} L${s.pos.x+s.w+1.5} ${s.pos.y+s.h+1.5} M${s.pos.x+s.w+0.2} ${s.pos.y+s.h-1.5} L${s.pos.x+s.w+1.5} ${s.pos.y+s.h-1.5} L${s.pos.x+s.w+1.5} ${s.pos.y+s.h-0.2} M${s.pos.x+s.w-1.5} ${s.pos.y+s.h+0.2} L${s.pos.x+s.w-1.5} ${s.pos.y+s.h+1.5} L${s.pos.x+s.w-0.2} ${s.pos.y+s.h+1.5}`} stroke="#fff" strokeWidth="0.55" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
         </>}
       </g>;
     }
