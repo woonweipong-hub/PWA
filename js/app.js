@@ -6664,6 +6664,10 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
     if(status!=="ready"||!mapObj.current)return;
     // Clear previous
     markersRef.current.existing.forEach(m=>{if(m.setMap)m.setMap(null);else if(m.remove)m.remove();});
+    // Persist a defect's new coords after it's dragged on the map
+    const saveDefectMove=async(d,newLat,newLng)=>{
+      try{await DB.defects.update(d.id,{lat:newLat,lng:newLng});}catch(e){console.warn("pin move save failed",e);}
+    };
     if(provider==="gmaps"&&window.google?.maps){
       const g=window.google.maps;
       markersRef.current.existing=mapDefects.map(d=>{
@@ -6672,19 +6676,28 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
           position:{lat:d.lat,lng:d.lng},
           map:mapObj.current,
           icon:{path:g.SymbolPath.CIRCLE,scale:8,fillColor:color,fillOpacity:0.95,strokeColor:"#fff",strokeWeight:2},
-          title:d.title||"Entry",
+          title:canEdit?(d.title||"Entry")+" — drag to move":(d.title||"Entry"),
+          draggable:canEdit,
         });
-        const iw=new g.InfoWindow({content:`<div style="font-family:'Barlow Condensed',sans-serif;padding:2px 6px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${(d.title||"Entry").replace(/</g,"&lt;")}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div></div>`});
+        const iw=new g.InfoWindow({content:`<div style="font-family:'Barlow Condensed',sans-serif;padding:2px 6px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${(d.title||"Entry").replace(/</g,"&lt;")}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${canEdit?'<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div>':''}</div>`});
         m.addListener("click",()=>iw.open({anchor:m,map:mapObj.current}));
+        if(canEdit)m.addListener("dragend",e=>saveDefectMove(d,e.latLng.lat(),e.latLng.lng()));
         return m;
       });
     }else if(provider==="osm"&&window.L){
       const L=window.L;
       markersRef.current.existing=mapDefects.map(d=>{
         const color=SEV_COLOR[d.severity]||"#8e8e93";
-        const m=L.circleMarker([d.lat,d.lng],{radius:8,color:"#fff",weight:2,fillColor:color,fillOpacity:0.95}).addTo(mapObj.current);
+        // Use a divIcon Marker (draggable) styled like the original circle
+        const iconHtml=`<div style="width:18px;height:18px;border-radius:50%;border:2px solid #fff;background:${color};box-shadow:0 1px 3px rgba(0,0,0,0.35)"></div>`;
+        const icon=L.divIcon({className:"",html:iconHtml,iconSize:[18,18],iconAnchor:[9,9]});
+        const m=L.marker([d.lat,d.lng],{icon,draggable:canEdit,title:canEdit?(d.title||"Entry")+" — drag to move":(d.title||"Entry")}).addTo(mapObj.current);
         const safeTitle=(d.title||"Entry").replace(/</g,"&lt;");
-        m.bindPopup(`<div style="font-family:'Barlow Condensed',sans-serif;padding:2px 4px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div></div>`);
+        m.bindPopup(`<div style="font-family:'Barlow Condensed',sans-serif;padding:2px 4px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${canEdit?'<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div>':''}</div>`);
+        if(canEdit)m.on("dragend",e=>{
+          const p=e.target.getLatLng();
+          saveDefectMove(d,p.lat,p.lng);
+        });
         return m;
       });
     }
@@ -9218,6 +9231,11 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     await DB.pins.delete(id);
   };
 
+  // Move pin — persist new x/y percentages
+  const movePin=async(id,x,y)=>{
+    try{await DB.pins.update(id,{x,y});}catch(e){console.warn("pin move failed",e);}
+  };
+
   // View mode — zoom/pan only, blocks pin placement & markup
   const[viewMode,setViewMode]=useState(false);
 
@@ -9808,9 +9826,43 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     const isActive=activePin===p.id;
     const isCritical=d?.severity==="Critical";
     const isOpen=d?.status==="Open";
+    const onPinPointerDown=e=>{
+      if(!canPin||viewMode)return;
+      const target=isImage?imgRef.current:canvasRef.current;
+      if(!target)return;
+      e.stopPropagation();e.preventDefault();
+      const pinEl=e.currentTarget;
+      const startRect=target.getBoundingClientRect();
+      let moved=false;
+      const onMove=ev=>{
+        const x=((ev.clientX-startRect.left)/startRect.width)*100;
+        const y=((ev.clientY-startRect.top)/startRect.height)*100;
+        if(x<0||x>100||y<0||y>100)return;
+        moved=true;
+        pinEl.style.left=x+"%";pinEl.style.top=y+"%";
+      };
+      const onUp=ev=>{
+        document.removeEventListener("pointermove",onMove);
+        document.removeEventListener("pointerup",onUp);
+        document.removeEventListener("pointercancel",onUp);
+        try{pinEl.releasePointerCapture?.(ev.pointerId);}catch{}
+        if(!moved){setActivePin(isActive?null:p.id);return;}
+        // Persist final position
+        const rect=target.getBoundingClientRect();
+        const x=Math.max(0,Math.min(100,((ev.clientX-rect.left)/rect.width)*100));
+        const y=Math.max(0,Math.min(100,((ev.clientY-rect.top)/rect.height)*100));
+        movePin(p.id,parseFloat(x.toFixed(2)),parseFloat(y.toFixed(2)));
+      };
+      try{pinEl.setPointerCapture?.(e.pointerId);}catch{}
+      document.addEventListener("pointermove",onMove);
+      document.addEventListener("pointerup",onUp);
+      document.addEventListener("pointercancel",onUp);
+    };
     return(
-      <div key={p.id} style={{position:"absolute",left:`${p.x}%`,top:`${p.y}%`,transform:"translate(-50%,-50%)",zIndex:isActive?15:5,cursor:"pointer"}}
-        onClick={e=>{e.stopPropagation();setActivePin(isActive?null:p.id);}}>
+      <div key={p.id} style={{position:"absolute",left:`${p.x}%`,top:`${p.y}%`,transform:"translate(-50%,-50%)",zIndex:isActive?15:5,cursor:canPin&&!viewMode?"move":"pointer",touchAction:"none"}}
+        onPointerDown={onPinPointerDown}
+        title={canPin&&!viewMode?"Drag to move, click to view":"Click to view"}
+        onClick={e=>{e.stopPropagation();}}>
         <div style={{position:"relative",width:32,height:32}}>
           {/* Pulse ring for Critical/Open */}
           {isCritical&&isOpen&&<div style={{position:"absolute",top:"50%",left:"50%",width:32,height:32,borderRadius:"50%",background:color,animation:"sevPulse 2s ease-in-out infinite"}}/>}
