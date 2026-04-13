@@ -8719,8 +8719,8 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         {/* Sub-mode toggle bar */}
         <div style={{display:"flex",gap:6,padding:4,background:"rgba(0,0,0,0.05)",borderRadius:12,marginBottom:14}}>
           {[
-            {id:"drawing",icon:"🖼",label:t("maps.submode_drawing")},
-            {id:"map",icon:"🗺",label:t("maps.submode_map")},
+            {id:"drawing",icon:"📐",label:t("maps.submode_drawing")},
+            {id:"map",icon:"📍",label:t("maps.submode_map")},
           ].map(m=>(
             <button key={m.id} onClick={()=>{setSubMode(m.id);setShowCompare(false);}} style={{flex:1,padding:"9px 10px",borderRadius:9,border:"none",background:subMode===m.id?"#fff":"transparent",color:subMode===m.id?"#1a1a1a":"rgba(0,0,0,0.55)",boxShadow:subMode===m.id?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6,whiteSpace:"nowrap"}}>
               <span style={{fontSize:15}}>{m.icon}</span>{m.label}
