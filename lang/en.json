@@ -554,7 +554,18 @@
     "coords_copied": "Coordinates copied",
     "map_pin_desc": "GPS-tagged location pin",
     "open_in_maps": "Open in Google Maps",
-    "no_api_key": "Add a Google Maps API key in Settings \u2192 Maps to enable map location tagging."
+    "no_api_key": "Add a Google Maps API key in Settings \u2192 Maps to enable map location tagging.",
+    "submode_drawing": "Tag on Drawing",
+    "submode_map": "Tag on Map",
+    "submode_compare": "Compare Changes",
+    "save_default_view": "SAVE AS PROJECT DEFAULT",
+    "default_saved": "\u2713 Default view saved for this project",
+    "drop_pin_hint": "Tap the map to drop a pin and create an entry",
+    "sdk_loading": "Loading Google Maps\u2026",
+    "sdk_failed": "Could not load Google Maps. Check your API key in Settings \u2192 Maps.",
+    "test_key": "TEST KEY",
+    "test_ok": "\u2713 API key works",
+    "test_failed": "\u2717 API key invalid or restricted"
   },
   "export": {
     "markups_header": "MARKUPS",

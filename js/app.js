@@ -5603,12 +5603,160 @@ function Report({defects,onEmailSetup,currentProject,company}){
   );
 }
 
+// ── Google Maps SDK loader ────────────────────────────────────────
+let _gmapsLoadingPromise=null;
+function loadGoogleMaps(apiKey){
+  if(!apiKey)return Promise.reject(new Error("no-api-key"));
+  if(window.google&&window.google.maps&&window.google.maps.places)return Promise.resolve();
+  if(_gmapsLoadingPromise)return _gmapsLoadingPromise;
+  _gmapsLoadingPromise=new Promise((resolve,reject)=>{
+    const cbName="__gmapsReady_"+Date.now();
+    window[cbName]=()=>{delete window[cbName];resolve();};
+    const s=document.createElement("script");
+    s.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places&callback=${cbName}`;
+    s.async=true;s.defer=true;
+    s.onerror=()=>{_gmapsLoadingPromise=null;reject(new Error("gmaps-load-failed"));};
+    document.head.appendChild(s);
+  });
+  return _gmapsLoadingPromise;
+}
+
+// Per-project default map view (localStorage until wired to project record)
+function getProjectMapDefault(projectId){
+  if(!projectId)return MAP_FALLBACK_CENTER;
+  return local.get(MAP_DEFAULT_VIEW_KEY_PREFIX+projectId)||MAP_FALLBACK_CENTER;
+}
+function setProjectMapDefault(projectId,view){
+  if(!projectId)return;
+  local.set(MAP_DEFAULT_VIEW_KEY_PREFIX+projectId,view);
+}
+
+// ── Maps Settings (API key) ──────────────────────────────────────
+function MapsSettings({onClose}){
+  const[apiKey,setApiKey]=useState(()=>local.get(GMAPS_KEY)||"");
+  const[saved,setSaved]=useState(false);
+  const[testing,setTesting]=useState(false);
+  const[testRes,setTestRes]=useState(null);
+  const save=()=>{local.set(GMAPS_KEY,apiKey.trim());setSaved(true);setTimeout(()=>setSaved(false),2000);};
+  const test=async()=>{
+    setTesting(true);setTestRes(null);
+    try{
+      _gmapsLoadingPromise=null; // force re-load for test
+      if(window.google&&window.google.maps)delete window.google.maps;
+      await loadGoogleMaps(apiKey.trim());
+      setTestRes("success");
+    }catch{setTestRes("fail");}
+    setTesting(false);
+  };
+  return(
+    <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
+      <SettingsBack onClose={onClose} title={t("maps.title")}/>
+      <div style={{padding:20}}>
+        <p style={{fontSize:13,color:"rgba(0,0,0,0.6)",marginBottom:16,lineHeight:1.5}}>{t("maps.setup_desc")}</p>
+        <label style={{display:"block",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.5)",letterSpacing:"0.12em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>{t("maps.api_key")}</label>
+        <input type="text" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder={t("maps.api_key_placeholder")} style={{width:"100%",padding:"12px 14px",fontSize:14,borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",boxSizing:"border-box",marginBottom:14}}/>
+        <div style={{display:"flex",gap:8,marginBottom:14}}>
+          <button onClick={save} disabled={!apiKey.trim()} style={{flex:1,padding:"11px 14px",borderRadius:10,border:"none",background:apiKey.trim()?"#ff6b00":"rgba(0,0,0,0.1)",color:apiKey.trim()?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:apiKey.trim()?"pointer":"not-allowed"}}>{saved?"✓ "+t("actions.save"):t("actions.save_settings")}</button>
+          <button onClick={test} disabled={!apiKey.trim()||testing} style={{padding:"11px 14px",borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",color:"rgba(0,0,0,0.7)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:apiKey.trim()&&!testing?"pointer":"not-allowed"}}>{testing?"…":t("maps.test_key")}</button>
+        </div>
+        {testRes==="success"&&<div style={{fontSize:13,color:"#30d158",marginBottom:10}}>{t("maps.test_ok")}</div>}
+        {testRes==="fail"&&<div style={{fontSize:13,color:"#ff3b30",marginBottom:10}}>{t("maps.test_failed")}</div>}
+      </div>
+    </div>
+  );
+}
+
+// ── Tag on Map (Google Maps pin canvas) ──────────────────────────
+function MapPanel({currentProject,member,defects,onSaveEntry}){
+  const mapRef=useRef(null);
+  const searchRef=useRef(null);
+  const mapObj=useRef(null);
+  const markersRef=useRef([]);
+  const[status,setStatus]=useState("loading"); // loading | ready | no-key | error
+  const[pendingPin,setPendingPin]=useState(null);
+  const[savedDefault,setSavedDefault]=useState(false);
+  const apiKey=local.get(GMAPS_KEY)||"";
+  const canEdit=member?.role!=="viewer";
+
+  useEffect(()=>{
+    if(!apiKey){setStatus("no-key");return;}
+    let cancelled=false;
+    loadGoogleMaps(apiKey).then(()=>{
+      if(cancelled||!mapRef.current)return;
+      const g=window.google.maps;
+      const view=getProjectMapDefault(currentProject?.id);
+      const map=new g.Map(mapRef.current,{
+        center:{lat:view.lat,lng:view.lng},
+        zoom:view.zoom||17,
+        mapTypeId:"hybrid",
+        streetViewControl:false,
+        mapTypeControl:true,
+        fullscreenControl:false,
+      });
+      mapObj.current=map;
+      if(searchRef.current){
+        const ac=new g.places.Autocomplete(searchRef.current,{fields:["geometry","name"]});
+        ac.bindTo("bounds",map);
+        ac.addListener("place_changed",()=>{
+          const place=ac.getPlace();
+          if(!place.geometry)return;
+          if(place.geometry.viewport)map.fitBounds(place.geometry.viewport);
+          else{map.setCenter(place.geometry.location);map.setZoom(17);}
+        });
+      }
+      if(canEdit){
+        map.addListener("click",e=>{
+          setPendingPin({lat:e.latLng.lat(),lng:e.latLng.lng()});
+          if(markersRef.current._pending)markersRef.current._pending.setMap(null);
+          markersRef.current._pending=new g.Marker({position:e.latLng,map,icon:{path:g.SymbolPath.CIRCLE,scale:10,fillColor:"#ff6b00",fillOpacity:1,strokeColor:"#fff",strokeWeight:3}});
+        });
+      }
+      setStatus("ready");
+    }).catch(()=>setStatus("error"));
+    return()=>{cancelled=true;};
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[apiKey,currentProject?.id]);
+
+  const saveDefault=()=>{
+    if(!mapObj.current||!currentProject?.id)return;
+    const c=mapObj.current.getCenter();
+    setProjectMapDefault(currentProject.id,{lat:c.lat(),lng:c.lng(),zoom:mapObj.current.getZoom()});
+    setSavedDefault(true);setTimeout(()=>setSavedDefault(false),2200);
+  };
+
+  if(status==="no-key"){
+    return <div style={{padding:30,textAlign:"center",color:"rgba(0,0,0,0.55)",fontSize:13,lineHeight:1.6}}>{t("maps.no_api_key")}</div>;
+  }
+  if(status==="error"){
+    return <div style={{padding:30,textAlign:"center",color:"#ff3b30",fontSize:13}}>{t("maps.sdk_failed")}</div>;
+  }
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:10}}>
+      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+        <input ref={searchRef} type="text" placeholder={t("maps.search_address")} style={{flex:1,padding:"10px 12px",fontSize:13,borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",boxSizing:"border-box"}}/>
+        {canEdit&&<button onClick={saveDefault} title={t("maps.save_default_view")} style={{padding:"10px 12px",borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:savedDefault?"rgba(48,209,88,0.15)":"#fff",color:savedDefault?"#30d158":"rgba(0,0,0,0.7)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{savedDefault?"✓":"★"}</button>}
+      </div>
+      <div style={{fontSize:11,color:"rgba(0,0,0,0.5)"}}>{canEdit?t("maps.drop_pin_hint"):""}</div>
+      <div ref={mapRef} style={{width:"100%",height:"min(60vh,520px)",borderRadius:12,border:"1px solid rgba(0,0,0,0.12)",background:"#e5e3dc"}}/>
+      {status==="loading"&&<div style={{fontSize:12,color:"rgba(0,0,0,0.45)"}}>{t("maps.sdk_loading")}</div>}
+      {pendingPin&&<div style={{padding:"10px 12px",background:"#fff",border:"1px solid rgba(255,107,0,0.3)",borderRadius:10,fontSize:12,display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"rgba(0,0,0,0.7)"}}>{t("maps.lat_lng")}:</span>
+        <span style={{fontFamily:"monospace",fontSize:11,color:"rgba(0,0,0,0.75)"}}>{pendingPin.lat.toFixed(6)}, {pendingPin.lng.toFixed(6)}</span>
+        <span style={{flex:1}}/>
+        <button onClick={()=>{if(markersRef.current._pending){markersRef.current._pending.setMap(null);markersRef.current._pending=null;}setPendingPin(null);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",color:"rgba(0,0,0,0.6)",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,cursor:"pointer"}}>{t("actions.cancel")}</button>
+      </div>}
+    </div>
+  );
+}
+
 // ── Drawings & Floor Plan Pins ────────────────────────────────────
 function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntry,initialCompare,embedded}){
   const[drawings,setDrawings]=useState([]);const[loading,setLoading]=useState(true);
   const[viewing,setViewing]=useState(null);
   const[uploading,setUploading]=useState(false);
   const[allPins,setAllPins]=useState([]);
+  const[subMode,setSubMode]=useState("drawing"); // "drawing" | "map" | "compare"
   const[showCompare,setShowCompare]=useState(false);
   const[compareBaseId,setCompareBaseId]=useState("");
   const[compareTargetId,setCompareTargetId]=useState("");
@@ -6910,6 +7058,23 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>{t("drawings.tag_compare")}</div>
           <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>Upload, pin, overlay photos and compare</div>
         </div>}
+
+        {/* Sub-mode toggle bar */}
+        <div style={{display:"flex",gap:6,padding:4,background:"rgba(0,0,0,0.05)",borderRadius:12,marginBottom:14}}>
+          {[
+            {id:"drawing",icon:"🖼",label:t("maps.submode_drawing")},
+            {id:"map",icon:"🗺",label:t("maps.submode_map")},
+            {id:"compare",icon:"⇄",label:t("maps.submode_compare")},
+          ].map(m=>(
+            <button key={m.id} onClick={()=>{setSubMode(m.id);if(m.id==="compare"&&pdfDrawings.length>=2)openCompare();else if(m.id!=="compare")setShowCompare(false);}} style={{flex:1,padding:"9px 10px",borderRadius:9,border:"none",background:subMode===m.id?"#fff":"transparent",color:subMode===m.id?"#1a1a1a":"rgba(0,0,0,0.55)",boxShadow:subMode===m.id?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6,whiteSpace:"nowrap"}}>
+              <span style={{fontSize:15}}>{m.icon}</span>{m.label}
+            </button>
+          ))}
+        </div>
+
+        {subMode==="map"?(
+          <MapPanel currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry}/>
+        ):(<>
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf,.pdf,.tif,.tiff" onChange={uploadDrawing} style={{display:"none"}}/>
 
         {/* Action bar */}
@@ -7122,6 +7287,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
             </div>
           );
         })}
+      </>)}
       </div>
 
       {/* Batch Compare Modal */}
@@ -9161,6 +9327,7 @@ function App(){
   const[showHelp,setShowHelp]=useState(false);const[helpTab,setHelpTab]=useState("help");
   const[showFeedback,setShowFeedback]=useState(false);
   const[showStorage,setShowStorage]=useState(false);
+  const[showMaps,setShowMaps]=useState(false);
   const[showAdminAnalytics,setShowAdminAnalytics]=useState(false);
   const[showSettingsMenu,setShowSettingsMenu]=useState(false);const settingsMenuTimer=useRef(null);
   const[showAvatarMenu,setShowAvatarMenu]=useState(false);const avatarMenuTimer=useRef(null);
@@ -9529,6 +9696,7 @@ function App(){
                 {label:t("settings.ai_setup"),desc:t("settings.ai_desc"),icon:"ai",done:setupChecks.ai,onClick:()=>{setShowGemini(true);setShowSettingsMenu(false);}},
                 {label:t("settings.telegram"),desc:t("settings.telegram_desc"),icon:"plane",done:setupChecks.telegram,onClick:()=>{setShowTg(true);setShowSettingsMenu(false);}},
                 {label:t("settings.storage"),desc:t("settings.storage_desc"),icon:"disk",optional:true,onClick:()=>{setShowStorage(true);setShowSettingsMenu(false);}},
+                {label:t("settings.maps"),desc:t("settings.maps_desc"),icon:"pin",optional:true,onClick:()=>{setShowMaps(true);setShowSettingsMenu(false);}},
                 {section:t("language.title")},
                 {label:t("settings.language"),desc:(languages.find(l=>l.code===lang)||{}).name||"English",icon:"globe",optional:true,onClick:()=>{setShowLangPicker(true);setShowSettingsMenu(false);}},
                 {section:t("settings.section_app")},
@@ -10013,6 +10181,7 @@ function App(){
       {showEmail&&<EmailSettings onClose={()=>setShowEmail(false)} companyId={company?.companyId}/>}
       {showGemini&&<GeminiSettings onClose={()=>setShowGemini(false)} companyId={company?.companyId}/>}
       {showStorage&&<StorageSettings onClose={()=>setShowStorage(false)} companyId={company?.companyId}/>}
+      {showMaps&&<MapsSettings onClose={()=>setShowMaps(false)}/>}
       {showUsers&&<UserManagement onClose={()=>setShowUsers(false)} company={company} member={member} members={members}/>}
       {showAdminAnalytics&&isAdmin&&(
         <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:300,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
