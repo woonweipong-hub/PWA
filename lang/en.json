@@ -556,7 +556,7 @@
     "map_pin_desc": "GPS-tagged location pin",
     "open_in_maps": "Open in Google Maps",
     "no_api_key": "Add a Google Maps API key in Settings \u2192 Maps to enable map location tagging.",
-    "submode_drawing": "Tag on Drawing",
+    "submode_drawing": "Tag on Drawings",
     "submode_map": "Tag on Map",
     "submode_compare": "Compare Changes",
     "save_default_view": "SAVE AS PROJECT DEFAULT",
