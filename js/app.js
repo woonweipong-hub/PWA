@@ -6725,12 +6725,16 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
       {/* Toolbar: ADD PIN / MARKUP / LIST — mirrors Drawing viewer */}
       <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
         {canEdit&&(
-          <button onClick={()=>setPinMode(v=>!v)} style={{padding:"8px 12px",borderRadius:10,border:"1px solid "+(pinMode?"rgba(255,107,0,0.4)":"rgba(0,0,0,0.12)"),background:pinMode?"rgba(255,107,0,0.12)":"#fff",color:pinMode?"#ff6b00":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-            📌 ADD PIN {pinMode?"· ON":""}
+          <button onClick={()=>{setPinMode(v=>!v);if(markupTool)setMarkupTool(null);}} style={{padding:"8px 12px",borderRadius:10,border:"1px solid "+(pinMode&&!markupTool?"rgba(255,107,0,0.4)":"rgba(0,0,0,0.12)"),background:pinMode&&!markupTool?"rgba(255,107,0,0.12)":"#fff",color:pinMode&&!markupTool?"#ff6b00":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+            📌 ADD PIN {pinMode&&!markupTool?"· ON":""}
           </button>
         )}
         {canEdit&&(
-          <button onClick={()=>{setMarkupTool(t=>t?null:"rect");setPinMode(false);}} style={{padding:"8px 12px",borderRadius:10,border:"1px solid "+(markupTool?"rgba(88,86,214,0.4)":"rgba(0,0,0,0.12)"),background:markupTool?"rgba(88,86,214,0.12)":"#fff",color:markupTool?"#5856d6":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+          <button onClick={()=>{
+            // Toggle markup: turning OFF restores pin-drop (the default).
+            if(markupTool){setMarkupTool(null);setPinMode(true);}
+            else{setMarkupTool("rect");setPinMode(false);}
+          }} style={{padding:"8px 12px",borderRadius:10,border:"1px solid "+(markupTool?"rgba(88,86,214,0.4)":"rgba(0,0,0,0.12)"),background:markupTool?"rgba(88,86,214,0.12)":"#fff",color:markupTool?"#5856d6":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
             ✏ MARKUP {markupTool?"· ON":""}
           </button>
         )}
@@ -6743,6 +6747,12 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
         <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:10,fontSize:12,color:"#b34800"}}>
           <span style={{fontSize:14}}>📍</span>
           <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{t("maps.drop_pin_hint")||"Tap the map to drop a pin and create an entry"}</span>
+        </div>
+      )}
+      {canEdit&&!pinMode&&!markupTool&&(
+        <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:10,fontSize:12,color:"rgba(0,0,0,0.55)"}}>
+          <span style={{fontSize:14}}>ℹ️</span>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>Tap <b style={{color:"#ff6b00"}}>📌 ADD PIN</b> to drop pins, or <b style={{color:"#5856d6"}}>✏ MARKUP</b> to draw on the map.</span>
         </div>
       )}
       {canEdit&&markupTool&&(
@@ -6765,7 +6775,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
           </span>
           <span style={{marginLeft:"auto",display:"flex",gap:6}}>
             {mapMarkups.length>0&&<button onClick={()=>{if(confirm("Clear all map markup?"))clearAllMarkups();}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid rgba(255,59,48,0.3)",background:"#fff",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>CLEAR ALL ({mapMarkups.length})</button>}
-            <button onClick={()=>{markupDrawRef.current=null;setMarkupTool(null);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",color:"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>DONE</button>
+            <button onClick={()=>{markupDrawRef.current=null;setMarkupTool(null);setPinMode(true);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",color:"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>DONE</button>
           </span>
         </div>
       )}
@@ -6782,7 +6792,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
           ))}
         </div>
       )}
-      <div ref={mapRef} style={{width:"100%",height:"min(60vh,520px)",borderRadius:12,border:"1px solid rgba(0,0,0,0.12)",background:"#e5e3dc"}}/>
+      <div ref={mapRef} style={{width:"100%",height:"min(55dvh,480px)",minHeight:260,borderRadius:12,border:"1px solid rgba(0,0,0,0.12)",background:"#e5e3dc",overscrollBehavior:"contain",touchAction:"pan-x pan-y"}}/>
       {pendingPin&&<div style={{padding:12,background:"#fff",border:"1px solid rgba(255,107,0,0.3)",borderRadius:10,display:"flex",flexDirection:"column",gap:8}}>
         <div style={{display:"flex",alignItems:"center",gap:10,fontSize:11}}>
           <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"rgba(0,0,0,0.7)"}}>{t("maps.lat_lng")}:</span>
