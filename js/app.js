@@ -8387,6 +8387,21 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   const[photoPlaceRect,setPhotoPlaceRect]=useState(null); // {x,y,w,h} during drag
   const[markupSelectedIdx,setMarkupSelectedIdx]=useState(null);
   const photoDragRef=useRef(null); // {mode:'move'|'resize', startPos, orig}
+  const itemDragRef=useRef(null);  // {startPos, orig} — drag any selected item
+
+  // Translate any markup stroke by (dx,dy) in percentage units.
+  // Works for all geometry types: freehand, highlight, polyline, text, stamp,
+  // line/arrow/rect/circle/dimension/cloud (start+end), callout (start+end),
+  // and photo (pos + w/h unchanged). Returns a new stroke; does not mutate.
+  const translateStroke=(s,dx,dy)=>{
+    if(!s)return s;
+    const n={...s};
+    if(s.points)n.points=s.points.map(p=>({x:p.x+dx,y:p.y+dy}));
+    if(s.start)n.start={x:s.start.x+dx,y:s.start.y+dy};
+    if(s.end)n.end={x:s.end.x+dx,y:s.end.y+dy};
+    if(s.pos)n.pos={x:s.pos.x+dx,y:s.pos.y+dy};
+    return n;
+  };
   const[showDvColorMenu,setShowDvColorMenu]=useState(false);const dvColorTimer=useRef(null);
   const[notes,setNotes]=useState([]);
   const[pendingNotePos,setPendingNotePos]=useState(null);
@@ -8630,6 +8645,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     // pinch/pan handler take over — matches view-mode behavior.
     if(e.touches&&e.touches.length>=2){
       setMarkupCurrent(null);
+      itemDragRef.current=null;
       photoDragRef.current=null;
       setPhotoPlaceRect(null);
       return;
@@ -8686,6 +8702,10 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
         }
       }
       setMarkupSelectedIdx(hitIdx>=0?hitIdx:null);
+      if(hitIdx>=0){
+        // Start a move drag for any selected (non-photo) item
+        itemDragRef.current={startPos:p,orig:JSON.parse(JSON.stringify(markupStrokes[hitIdx]))};
+      }
       return;
     }
     if(markupTool==="text"){
@@ -8710,6 +8730,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     // Two-finger gesture mid-stroke: cancel the stroke so pinch/pan can run.
     if(e.touches&&e.touches.length>=2){
       if(markupCurrent)setMarkupCurrent(null);
+      if(itemDragRef.current)itemDragRef.current=null;
       if(photoDragRef.current)photoDragRef.current=null;
       if(photoPlaceRect)setPhotoPlaceRect(null);
       return;
@@ -8722,6 +8743,14 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       const x=Math.min(sx,p.x),y=Math.min(sy,p.y);
       const w=Math.abs(p.x-sx),h=Math.abs(p.y-sy);
       setPhotoPlaceRect({...photoPlaceRect,x,y,w,h});
+      return;
+    }
+    // Move selected non-photo item
+    if(itemDragRef.current&&markupSelectedIdx!=null){
+      e.preventDefault();e.stopPropagation();
+      const{startPos,orig}=itemDragRef.current;
+      const dx=p.x-startPos.x,dy=p.y-startPos.y;
+      setMarkupStrokes(strokes=>strokes.map((s,i)=>i===markupSelectedIdx?translateStroke(orig,dx,dy):s));
       return;
     }
     // Move / resize selected photo
@@ -8770,6 +8799,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       setMarkupTool("select");
       return;
     }
+    if(itemDragRef.current){itemDragRef.current=null;return;}
     if(photoDragRef.current){photoDragRef.current=null;return;}
     if(markupCurrent){
       if(markupCurrent.type==="dimension"){
