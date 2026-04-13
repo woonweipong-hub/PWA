@@ -5885,7 +5885,7 @@ function MapsSettings({onClose}){
 }
 
 // ── Tag on Map (Google Maps pin canvas) ──────────────────────────
-function MapPanel({currentProject,member,defects,onSaveEntry}){
+function MapPanel({currentProject,member,defects,onSaveEntry,company}){
   const mapRef=useRef(null);
   const searchRef=useRef(null);
   const mapObj=useRef(null);
@@ -5958,11 +5958,42 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
   const markupToolRef=useRef(markupTool);
   useEffect(()=>{markupToolRef.current=markupTool;},[markupTool]);
 
+  // ── Map markup: load + persist ─────────────────────────────────
+  // Stored in PocketBase `map_markups` collection with geo stored as a
+  // JSON blob so all shape variants share a single row shape.
+  useEffect(()=>{
+    if(!company?.companyId||!currentProject?.id)return;
+    let cancelled=false;
+    DB.mapMarkups.list(`companyId = "${company.companyId}" && projectId = "${currentProject.id}"`,"created").then(items=>{
+      if(cancelled)return;
+      setMapMarkups((items||[]).map(it=>({id:it.id,type:it.type,color:it.color||"#ff6b00",text:it.text||"",...(it.geo||{})})));
+    }).catch(()=>{/* collection missing — stay session-only */});
+    return()=>{cancelled=true;};
+  },[company?.companyId,currentProject?.id]);
+
+  const persistMarkup=async(m)=>{
+    if(!company?.companyId||!currentProject?.id)return m;
+    const geo={};
+    if(m.a)geo.a=m.a;if(m.b)geo.b=m.b;
+    if(m.center)geo.center=m.center;if(m.radius!=null)geo.radius=m.radius;
+    if(m.points)geo.points=m.points;
+    if(m.pos)geo.pos=m.pos;
+    try{
+      const saved=await DB.mapMarkups.create({companyId:company.companyId,projectId:currentProject.id,type:m.type,color:m.color,text:m.text||"",geo,createdBy:member?.name||""});
+      return{...m,id:saved.id};
+    }catch{return m;/* leave local id if save fails */}
+  };
+  const addMarkup=async(m)=>{
+    setMapMarkups(prev=>[...prev,m]); // optimistic
+    const saved=await persistMarkup(m);
+    if(saved.id!==m.id)setMapMarkups(prev=>prev.map(x=>x===m?saved:x.id===m.id?saved:x));
+  };
+
   // ── Map markup: click handlers and finish logic ────────────────
   const finishPolyline=()=>{
     const d=markupDrawRef.current;
     if(!d||d.tool!=="line"||!d.points||d.points.length<2)return;
-    setMapMarkups(prev=>[...prev,{id:"mm_"+Date.now(),type:"line",points:d.points,color:"#ff6b00"}]);
+    addMarkup({id:"mm_"+Date.now(),type:"line",points:d.points,color:"#ff6b00"});
     if(d.tempLayer&&mapObj.current)mapObj.current.removeLayer(d.tempLayer);
     markupDrawRef.current=null;
     setMarkupTool(null);
@@ -5971,7 +6002,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
     if(tool==="text"){
       const label=prompt("Text label:");
       if(label&&label.trim()){
-        setMapMarkups(prev=>[...prev,{id:"mm_"+Date.now(),type:"text",pos:{lat:latlng.lat,lng:latlng.lng},text:label.trim(),color:"#ff6b00"}]);
+        addMarkup({id:"mm_"+Date.now(),type:"text",pos:{lat:latlng.lat,lng:latlng.lng},text:label.trim(),color:"#ff6b00"});
       }
       setMarkupTool(null);return;
     }
@@ -5981,17 +6012,16 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
         markupDrawRef.current={tool,first:{lat:latlng.lat,lng:latlng.lng}};
         return;
       }
-      // Second click completes the shape
       const a=d.first,b={lat:latlng.lat,lng:latlng.lng};
       if(tool==="rect"){
-        setMapMarkups(prev=>[...prev,{id:"mm_"+Date.now(),type:"rect",a,b,color:"#ff6b00"}]);
+        addMarkup({id:"mm_"+Date.now(),type:"rect",a,b,color:"#ff6b00"});
       }else{
         const R=6371000;
         const dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;
         const la1=a.lat*Math.PI/180,la2=b.lat*Math.PI/180;
         const hav=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
         const radius=2*R*Math.atan2(Math.sqrt(hav),Math.sqrt(1-hav));
-        setMapMarkups(prev=>[...prev,{id:"mm_"+Date.now(),type:"circle",center:a,radius,color:"#ff6b00"}]);
+        addMarkup({id:"mm_"+Date.now(),type:"circle",center:a,radius,color:"#ff6b00"});
       }
       markupDrawRef.current=null;
       setMarkupTool(null);
@@ -6001,11 +6031,19 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
       const d=markupDrawRef.current;
       const pts=d?.points||[];
       const next=[...pts,{lat:latlng.lat,lng:latlng.lng}];
-      // Update temp preview layer
       if(d?.tempLayer&&mapObj.current)mapObj.current.removeLayer(d.tempLayer);
       const tempLayer=L.polyline(next.map(p=>[p.lat,p.lng]),{color:"#ff6b00",weight:3,dashArray:"6 4"}).addTo(mapObj.current);
       markupDrawRef.current={tool:"line",points:next,tempLayer};
       return;
+    }
+  };
+
+  // Clear all markups — deletes from DB best-effort then clears local state
+  const clearAllMarkups=async()=>{
+    const current=mapMarkups.slice();
+    setMapMarkups([]);
+    for(const m of current){
+      if(m.id&&!m.id.startsWith("mm_"))try{await DB.mapMarkups.delete(m.id);}catch{}
     }
   };
 
@@ -6215,7 +6253,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
             {markupTool==="rect"?"Click two opposite corners":markupTool==="circle"?"Click centre, then edge":markupTool==="line"?"Click points · double-click to finish":markupTool==="text"?"Click where the label goes":""}
           </span>
           <span style={{marginLeft:"auto",display:"flex",gap:6}}>
-            {mapMarkups.length>0&&<button onClick={()=>{if(confirm("Clear all map markup?"))setMapMarkups([]);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid rgba(255,59,48,0.3)",background:"#fff",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>CLEAR ALL ({mapMarkups.length})</button>}
+            {mapMarkups.length>0&&<button onClick={()=>{if(confirm("Clear all map markup?"))clearAllMarkups();}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid rgba(255,59,48,0.3)",background:"#fff",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>CLEAR ALL ({mapMarkups.length})</button>}
             <button onClick={()=>{markupDrawRef.current=null;setMarkupTool(null);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",color:"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>DONE</button>
           </span>
         </div>
@@ -7575,7 +7613,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         </div>
 
         {subMode==="map"?(
-          <MapPanel currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry}/>
+          <MapPanel currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry} company={company}/>
         ):(<>
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf,.pdf,.tif,.tiff" onChange={uploadDrawing} style={{display:"none"}}/>
 

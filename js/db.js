@@ -277,6 +277,7 @@ const DB = (() => {
   const componentPresets = crud('component_presets');
   const drawings = crud('drawings');
   const pins = crud('pins');
+  const mapMarkups = crud('map_markups');
 
   // ── High-level helpers ───────────────────────────────────────────
   const helpers = {
@@ -374,6 +375,7 @@ const DB = (() => {
     componentPresets,
     drawings,
     pins,
+    mapMarkups,
     ...helpers,
     async sendEmail(recipients, subject, html) {
       return apiJson('/api/send-email', 'POST', { recipients, subject, html });
