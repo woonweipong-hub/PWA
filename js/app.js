@@ -6028,7 +6028,8 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
           if(!pinModeRef.current)return;
           setPendingPin({lat:e.latLng.lat(),lng:e.latLng.lng()});
           if(markersRef.current.pending)markersRef.current.pending.setMap(null);
-          markersRef.current.pending=new g.Marker({position:e.latLng,map,icon:{path:g.SymbolPath.CIRCLE,scale:10,fillColor:"#ff6b00",fillOpacity:1,strokeColor:"#fff",strokeWeight:3},zIndex:9999});
+          const pendingSvg=`<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="10" fill="#ff6b00" stroke="#fff" stroke-width="3"/><text x="17" y="18" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="900" fill="#fff" font-family="sans-serif">+</text></svg>`;
+          markersRef.current.pending=new g.Marker({position:e.latLng,map,icon:{url:"data:image/svg+xml;utf8,"+encodeURIComponent(pendingSvg),scaledSize:new g.Size(34,34),anchor:new g.Point(17,17)},zIndex:9999});
         });
         map.addListener("dblclick",()=>{
           if(markupToolRef.current==="line"&&markupDrawRef.current?.points?.length>=2)finishPolyline();
@@ -6624,7 +6625,9 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
           if(!pinModeRef.current)return;
           setPendingPin({lat:e.latlng.lat,lng:e.latlng.lng});
           if(markersRef.current.pending)markersRef.current.pending.remove();
-          markersRef.current.pending=L.circleMarker([e.latlng.lat,e.latlng.lng],{radius:10,color:"#fff",weight:3,fillColor:"#ff6b00",fillOpacity:1}).addTo(map);
+          // Brighter, larger pending pin with pulse so users notice it
+          const pendingHtml=`<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="15" fill="#ff6b00" opacity="0.3"><animate attributeName="r" values="10;15;10" dur="1.2s" repeatCount="indefinite"/></circle><circle cx="17" cy="17" r="10" fill="#ff6b00" stroke="#fff" stroke-width="3"/><text x="17" y="18" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="900" fill="#fff" font-family="'Barlow Condensed',sans-serif">+</text></svg>`;
+          markersRef.current.pending=L.marker([e.latlng.lat,e.latlng.lng],{icon:L.divIcon({className:"",html:pendingHtml,iconSize:[34,34],iconAnchor:[17,17]}),interactive:false,zIndexOffset:9999}).addTo(map);
         });
         map.on("dblclick",e=>{
           // Finish a multi-click polyline
@@ -6668,19 +6671,37 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
     const saveDefectMove=async(d,newLat,newLng)=>{
       try{await DB.defects.update(d.id,{lat:newLat,lng:newLng});}catch(e){console.warn("pin move save failed",e);}
     };
+    // Permanent-delete a defect's GPS location (unpins from map, entry stays)
+    const unpinDefect=async(d)=>{
+      if(!confirm("Remove this entry's map pin?\n(The entry itself will stay — only its GPS location is cleared.)"))return;
+      try{await DB.defects.update(d.id,{lat:null,lng:null,mapZoom:null});}catch(e){alert("Failed to remove pin: "+e.message);}
+    };
+    // Shared letter-in-ring SVG for both providers (matches drawing pin style).
+    // 28×28 overall; severity letter in the middle.
+    const letterInRingSVG=(color,letter,critical)=>{
+      const pulse=critical?`<circle cx="14" cy="14" r="13" fill="${color}" opacity="0.4"><animate attributeName="r" values="10;14;10" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.6;0.1;0.6" dur="2s" repeatCount="indefinite"/></circle>`:"";
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">${pulse}<circle cx="14" cy="14" r="11" fill="rgba(0,0,0,0.55)" stroke="${color}" stroke-width="3"/><circle cx="14" cy="14" r="4" fill="${color}"/><text x="14" y="15" text-anchor="middle" dominant-baseline="central" font-size="9" font-weight="900" font-family="'Barlow Condensed',sans-serif" fill="#fff" style="text-shadow:0 1px 2px rgba(0,0,0,0.8)">${letter||""}</text></svg>`;
+    };
     if(provider==="gmaps"&&window.google?.maps){
       const g=window.google.maps;
       markersRef.current.existing=mapDefects.map(d=>{
         const color=SEV_COLOR[d.severity]||"#8e8e93";
+        const letter=d.severity?d.severity[0]:"";
+        const critical=d.severity==="Critical"&&d.status==="Open";
+        const url="data:image/svg+xml;utf8,"+encodeURIComponent(letterInRingSVG(color,letter,critical));
         const m=new g.Marker({
           position:{lat:d.lat,lng:d.lng},
           map:mapObj.current,
-          icon:{path:g.SymbolPath.CIRCLE,scale:8,fillColor:color,fillOpacity:0.95,strokeColor:"#fff",strokeWeight:2},
+          icon:{url,scaledSize:new g.Size(28,28),anchor:new g.Point(14,14)},
           title:canEdit?(d.title||"Entry")+" — drag to move":(d.title||"Entry"),
           draggable:canEdit,
         });
-        const iw=new g.InfoWindow({content:`<div style="font-family:'Barlow Condensed',sans-serif;padding:2px 6px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${(d.title||"Entry").replace(/</g,"&lt;")}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${canEdit?'<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div>':''}</div>`});
-        m.addListener("click",()=>iw.open({anchor:m,map:mapObj.current}));
+        const safeTitle=(d.title||"Entry").replace(/</g,"&lt;");
+        const iw=new g.InfoWindow({content:`<div style="font-family:'Barlow Condensed',sans-serif;padding:4px 6px;min-width:140px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${canEdit?`<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div><button id="mm-del-${d.id}" style="margin-top:6px;width:100%;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);border-radius:6px;padding:4px 8px;color:#cc0000;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;cursor:pointer">REMOVE PIN</button>`:""}</div>`});
+        m.addListener("click",()=>{
+          iw.open({anchor:m,map:mapObj.current});
+          if(canEdit){setTimeout(()=>{const b=document.getElementById("mm-del-"+d.id);if(b)b.onclick=()=>{iw.close();unpinDefect(d);};},30);}
+        });
         if(canEdit)m.addListener("dragend",e=>saveDefectMove(d,e.latLng.lat(),e.latLng.lng()));
         return m;
       });
@@ -6688,16 +6709,16 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
       const L=window.L;
       markersRef.current.existing=mapDefects.map(d=>{
         const color=SEV_COLOR[d.severity]||"#8e8e93";
-        // Use a divIcon Marker (draggable) styled like the original circle
-        const iconHtml=`<div style="width:18px;height:18px;border-radius:50%;border:2px solid #fff;background:${color};box-shadow:0 1px 3px rgba(0,0,0,0.35)"></div>`;
-        const icon=L.divIcon({className:"",html:iconHtml,iconSize:[18,18],iconAnchor:[9,9]});
+        const letter=d.severity?d.severity[0]:"";
+        const critical=d.severity==="Critical"&&d.status==="Open";
+        const icon=L.divIcon({className:"",html:letterInRingSVG(color,letter,critical),iconSize:[28,28],iconAnchor:[14,14]});
         const m=L.marker([d.lat,d.lng],{icon,draggable:canEdit,title:canEdit?(d.title||"Entry")+" — drag to move":(d.title||"Entry")}).addTo(mapObj.current);
         const safeTitle=(d.title||"Entry").replace(/</g,"&lt;");
-        m.bindPopup(`<div style="font-family:'Barlow Condensed',sans-serif;padding:2px 4px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${canEdit?'<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div>':''}</div>`);
-        if(canEdit)m.on("dragend",e=>{
-          const p=e.target.getLatLng();
-          saveDefectMove(d,p.lat,p.lng);
-        });
+        m.bindPopup(`<div style="font-family:'Barlow Condensed',sans-serif;padding:2px 4px;min-width:140px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${canEdit?`<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div><button id="mm-del-${d.id}" style="margin-top:6px;width:100%;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);border-radius:6px;padding:4px 8px;color:#cc0000;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;cursor:pointer">REMOVE PIN</button>`:""}</div>`);
+        if(canEdit){
+          m.on("popupopen",()=>{setTimeout(()=>{const b=document.getElementById("mm-del-"+d.id);if(b)b.onclick=()=>{m.closePopup();unpinDefect(d);};},30);});
+          m.on("dragend",e=>{const p=e.target.getLatLng();saveDefectMove(d,p.lat,p.lng);});
+        }
         return m;
       });
     }
@@ -6849,18 +6870,23 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
         </div>
       )}
       <div ref={mapRef} style={{width:"100%",height:"min(55dvh,480px)",minHeight:260,borderRadius:12,border:"1px solid rgba(0,0,0,0.12)",background:"#e5e3dc",overscrollBehavior:"contain",touchAction:"pan-x pan-y"}}/>
-      {pendingPin&&<div style={{padding:12,background:"#fff",border:"1px solid rgba(255,107,0,0.3)",borderRadius:10,display:"flex",flexDirection:"column",gap:8}}>
-        <div style={{display:"flex",alignItems:"center",gap:10,fontSize:11}}>
-          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"rgba(0,0,0,0.7)"}}>{t("maps.lat_lng")}:</span>
-          <span style={{fontFamily:"monospace",fontSize:11,color:"rgba(0,0,0,0.75)"}}>{pendingPin.lat.toFixed(6)}, {pendingPin.lng.toFixed(6)}</span>
+      {pendingPin&&<div style={{padding:14,background:"#fff",border:"2px solid rgba(255,107,0,0.4)",borderRadius:12,display:"flex",flexDirection:"column",gap:10,boxShadow:"0 2px 12px rgba(255,107,0,0.15)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}>
+          <span style={{width:22,height:22,borderRadius:"50%",background:"#ff6b00",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,flexShrink:0}}>2</span>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a1a1a"}}>Give this pin a title & severity</span>
         </div>
-        <input type="text" value={qTitle} onChange={e=>setQTitle(e.target.value)} placeholder={t("fields.title_placeholder")} autoFocus style={{padding:"10px 12px",fontSize:13,borderRadius:8,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",boxSizing:"border-box"}}/>
-        <select value={qSev} onChange={e=>setQSev(e.target.value)} style={{padding:"10px 12px",fontSize:13,borderRadius:8,border:"1px solid rgba(0,0,0,0.14)",background:"#fff"}}>
-          {["Critical","Major","Minor","Observation"].map(s=>(<option key={s} value={s}>{tOpt(s)}</option>))}
+        <div style={{fontSize:11,color:"rgba(0,0,0,0.45)",marginLeft:30}}>Fill in below, then SAVE — or tap Cancel to reposition the pin.</div>
+        <div style={{display:"flex",alignItems:"center",gap:8,fontSize:11,background:"rgba(0,0,0,0.04)",padding:"6px 10px",borderRadius:8}}>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"rgba(0,0,0,0.55)"}}>📍 {t("maps.lat_lng")}:</span>
+          <span style={{fontFamily:"monospace",fontSize:11,color:"rgba(0,0,0,0.7)"}}>{pendingPin.lat.toFixed(6)}, {pendingPin.lng.toFixed(6)}</span>
+        </div>
+        <input type="text" value={qTitle} onChange={e=>setQTitle(e.target.value)} placeholder={t("fields.title_placeholder")} autoFocus style={{padding:"11px 12px",fontSize:14,borderRadius:8,border:"1.5px solid "+(qTitle.trim()?"rgba(48,209,88,0.4)":"rgba(0,0,0,0.18)"),background:"#fff",boxSizing:"border-box"}}/>
+        <select value={qSev} onChange={e=>setQSev(e.target.value)} style={{padding:"11px 12px",fontSize:13,borderRadius:8,border:"1.5px solid rgba(0,0,0,0.18)",background:"#fff"}}>
+          {["Critical","Major","Minor","Observation"].map(s=>(<option key={s} value={s}>{tOpt(s)} — {s==="Critical"?"immediate action":s==="Major"?"fix soon":s==="Minor"?"schedule repair":"noted for reference"}</option>))}
         </select>
         <div style={{display:"flex",gap:8}}>
-          <button onClick={cancelPending} disabled={saving} style={{flex:1,padding:"10px 12px",borderRadius:8,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",color:"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:saving?"not-allowed":"pointer"}}>{t("actions.cancel")}</button>
-          <button onClick={savePin} disabled={saving||!qTitle.trim()} style={{flex:2,padding:"10px 12px",borderRadius:8,border:"none",background:qTitle.trim()&&!saving?"#ff6b00":"rgba(0,0,0,0.1)",color:qTitle.trim()&&!saving?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:qTitle.trim()&&!saving?"pointer":"not-allowed"}}>{saving?t("messages.saving"):t("actions.save")}</button>
+          <button onClick={cancelPending} disabled={saving} style={{flex:1,padding:"11px 12px",borderRadius:8,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",color:"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:saving?"not-allowed":"pointer"}}>{t("actions.cancel")}</button>
+          <button onClick={savePin} disabled={saving||!qTitle.trim()} style={{flex:2,padding:"11px 12px",borderRadius:8,border:"none",background:qTitle.trim()&&!saving?"#ff6b00":"rgba(0,0,0,0.1)",color:qTitle.trim()&&!saving?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:qTitle.trim()&&!saving?"pointer":"not-allowed"}}>{saving?t("messages.saving"):"✓ SAVE PIN"}</button>
         </div>
       </div>}
     </div>
