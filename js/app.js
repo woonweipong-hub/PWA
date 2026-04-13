@@ -6813,17 +6813,29 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
     if(!pendingPin||!qTitle.trim()||!onSaveEntry)return;
     setSaving(true);
     try{
-      const zoom=provider==="gmaps"?mapObj.current?.getZoom():mapObj.current?.getZoom();
+      const zoom=mapObj.current?.getZoom();
+      // Full shape used by LogDefect — PocketBase complains "Cannot be blank"
+      // on missing entryType / projectId / projectName / createdAt, etc.
       await onSaveEntry({
         title:qTitle.trim(),
         severity:qSev,
         status:"Open",
-        description:"",
+        entryType:"Defect",
+        description:`Pinned on map at ${pendingPin.lat.toFixed(5)}, ${pendingPin.lng.toFixed(5)}`,
         location:`Map: ${pendingPin.lat.toFixed(5)}, ${pendingPin.lng.toFixed(5)}`,
         level:"",zone:"",roomArea:"",gridRef:"",
+        component:"",trade:"",
         assignee:"",
+        dueDate:"",duration:"",
+        costImpact:"",costResponsible:"",costAmount:"",costRemarks:"",
+        photo:null,extraPhotos:[],
+        projectId:currentProject?.id||"default",
+        projectName:currentProject?.name||"",
         loggedBy:member?.name||"",
         loggedByRole:member?.role||"",
+        createdAt:DB.serverTimestamp(),
+        updatedAt:DB.serverTimestamp(),
+        comments:[],
         lat:pendingPin.lat,
         lng:pendingPin.lng,
         mapZoom:zoom||17,
