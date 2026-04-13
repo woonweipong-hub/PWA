@@ -4888,6 +4888,23 @@ function DefectDetail({defect,onClose,onUpdate,member,company,members=[]}){
                 <div style={{fontSize:13,color:"#444",lineHeight:1.5}}>{defect.description}</div>
               </div>
             )}
+            {typeof defect.lat==="number"&&typeof defect.lng==="number"&&(()=>{
+              const gmapsKey=local.get(GMAPS_KEY)||"";
+              const z=defect.mapZoom||17;
+              const openUrl=`https://www.google.com/maps/search/?api=1&query=${defect.lat},${defect.lng}`;
+              const staticUrl=gmapsKey?`https://maps.googleapis.com/maps/api/staticmap?center=${defect.lat},${defect.lng}&zoom=${z}&size=600x240&maptype=hybrid&markers=color:red%7C${defect.lat},${defect.lng}&key=${encodeURIComponent(gmapsKey)}`:null;
+              const copy=()=>{try{navigator.clipboard.writeText(`${defect.lat},${defect.lng}`);}catch{}};
+              return(
+                <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid rgba(0,0,0,0.06)"}}>
+                  <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:6}}>🗺 {t("maps.map_location")}</div>
+                  {staticUrl&&<a href={openUrl} target="_blank" rel="noopener noreferrer"><img src={staticUrl} alt="Map" style={{width:"100%",borderRadius:10,display:"block",marginBottom:8,background:"#e5e3dc"}}/></a>}
+                  <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                    <span onClick={copy} title={t("maps.coords_copied")} style={{fontFamily:"monospace",fontSize:12,color:"rgba(0,0,0,0.65)",cursor:"pointer"}}>{defect.lat.toFixed(6)}, {defect.lng.toFixed(6)}</span>
+                    <a href={openUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#ff6b00",textDecoration:"none"}}>{t("maps.open_in_maps")} →</a>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
