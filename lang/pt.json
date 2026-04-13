@@ -537,6 +537,7 @@
     "setup_desc": "Cole sua chave de API do Google Maps para ativar a fixação de localização GPS nas entradas.",
     "maps_desc": "Fixe localizações GPS exatas nas entradas. Veja todos os defeitos em um mapa ao vivo.",
     "tag_on_map": "ETIQUETA NO MAPA",
+    "map_location": "LOCALIZAÇÃO NO MAPA",
     "tap_to_pin": "Toque no mapa para definir a localização do defeito",
     "use_gps": "USE MEU GPS",
     "search_address": "Pesquisar endereço ou localização...",
@@ -751,7 +752,9 @@
     "set_maps": "Mapas",
     "set_maps_desc": "Adicione uma chave de API do Google Maps para ativar a fixação de localização GPS nas entradas.",
     "tip_map_tagging": "Marcação de localização no mapa",
-    "tip_map_tagging_desc": "Ao registrar uma entrada, toque em TAG ON MAP para colocar um pino GPS no Google Maps no local exato do defeito. As coordenadas salvas aparecem nos detalhes da entrada e podem ser abertas no Google Maps."
+    "tip_map_tagging_desc": "Ao registrar uma entrada, toque em TAG ON MAP para colocar um pino GPS no Google Maps no local exato do defeito. As coordenadas salvas aparecem nos detalhes da entrada e podem ser abertas no Google Maps.",
+    "tip_map_markup": "Kit de ferramentas de marcação de mapa",
+    "tip_map_markup_desc": "Em TAG → Marcar no Mapa, toque em ✏ MARKUP para desenhar diretamente no mapa. Tools: Zone (rectangle), Radius (circle), Path (polyline), Arrow, Dimension (auto-labelled distance), Stamp (APPROVED / REJECTED / custom), Label, Freehand, and Photo overlay. Todas as marcações são ancoradas em coordenadas GPS, movidas arrastando a alça colorida e salvas por projeto. Funciona tanto no OpenStreetMap (gratuito, sem chave) quanto no Google Maps."
   },
   "feedback": {
     "title": "Opinião",

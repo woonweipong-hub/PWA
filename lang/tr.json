@@ -537,6 +537,7 @@
     "setup_desc": "Girişlerde GPS konumu sabitlemeyi etkinleştirmek için Google Haritalar API anahtarınızı yapıştırın.",
     "maps_desc": "Girişlere tam GPS konumlarını sabitleyin. Tüm kusurları canlı bir haritada görüntüleyin.",
     "tag_on_map": "HARİTADA ETİKETLE",
+    "map_location": "HARİTA KONUMU",
     "tap_to_pin": "Kusur konumunu ayarlamak için haritaya dokunun",
     "use_gps": "GPS'İMİ KULLAN",
     "search_address": "Adres veya konum arayın...",
@@ -751,7 +752,9 @@
     "set_maps": "Haritalar",
     "set_maps_desc": "Girişlerde GPS konum sabitlemeyi etkinleştirmek için bir Google Haritalar API anahtarı ekleyin.",
     "tip_map_tagging": "Harita konumu etiketleme",
-    "tip_map_tagging_desc": "Bir girişi kaydederken, Google Haritalar'a tam kusur konumuna bir GPS PIN'i bırakmak için HARİTA ÜZERİNDE ETİKETLE'ye dokunun. Kaydedilen koordinatlar giriş detayında görünür ve Google Haritalar'da açılabilir."
+    "tip_map_tagging_desc": "Bir girişi kaydederken, Google Haritalar'a tam kusur konumuna bir GPS PIN'i bırakmak için HARİTA ÜZERİNDE ETİKETLE'ye dokunun. Kaydedilen koordinatlar giriş detayında görünür ve Google Haritalar'da açılabilir.",
+    "tip_map_markup": "Harita işaretleme araç seti",
+    "tip_map_markup_desc": "ETİKET → Haritada Etiketle bölümünde, doğrudan harita üzerinde çizim yapmak için ✏ İŞARETLEYİN'e dokunun. Araçlar: Bölge (dikdörtgen), Yarıçap (daire), Yol (çoklu çizgi), Ok, Boyut (otomatik etiketli mesafe), Damga (ONAYLANDI / REDDEDİLDİ / özel), Etiket, Serbest Çizim ve Fotoğraf yer paylaşımı. Tüm işaretlemeler GPS koordinatlarına sabitlenir, renkli tutamacı sürükleyerek hareket ettirin ve proje başına kaydedin. Hem OpenStreetMap'te (ücretsiz, anahtarsız) hem de Google Haritalar'da çalışır."
   },
   "feedback": {
     "title": "Geri Bildirim",

@@ -537,6 +537,7 @@
     "setup_desc": "Tampalkan kunci API Peta Google anda untuk mendayakan penyematan lokasi GPS pada entri.",
     "maps_desc": "Sematkan lokasi GPS tepat pada entri. Lihat semua kecacatan pada peta langsung.",
     "tag_on_map": "TAG PADA PETA",
+    "map_location": "LOKASI PETA",
     "tap_to_pin": "Ketik peta untuk menetapkan lokasi kecacatan",
     "use_gps": "GUNAKAN GPS SAYA",
     "search_address": "Cari alamat atau lokasi...",
@@ -751,7 +752,9 @@
     "set_maps": "Peta",
     "set_maps_desc": "Tambahkan kunci API Peta Google untuk mendayakan penyematan lokasi GPS pada entri.",
     "tip_map_tagging": "Penandaan lokasi peta",
-    "tip_map_tagging_desc": "Apabila mengelog masukan, ketik TANDA PADA PETA untuk menjatuhkan pin GPS pada Peta Google di lokasi kecacatan yang tepat. Koordinat yang disimpan muncul dalam butiran entri dan boleh dibuka dalam Peta Google."
+    "tip_map_tagging_desc": "Apabila mengelog masukan, ketik TANDA PADA PETA untuk menjatuhkan pin GPS pada Peta Google di lokasi kecacatan yang tepat. Koordinat yang disimpan muncul dalam butiran entri dan boleh dibuka dalam Peta Google.",
+    "tip_map_markup": "Kit alat penanda peta",
+    "tip_map_markup_desc": "Dalam TAG → Tag pada Peta, ketik ✏ MARKUP untuk melukis terus pada peta. Alatan: Zon (segi empat tepat), Jejari (bulatan), Laluan (polyline), Anak panah, Dimensi (jarak dilabelkan secara automatik), Setem (DILULUSKAN / DITOLAK / tersuai), Label, Tangan Bebas dan tindanan Foto. Semua penanda dilabuhkan dalam koordinat GPS, bergerak dengan menyeret pemegang berwarna dan simpan setiap projek. Berfungsi pada OpenStreetMap (percuma, tiada kunci) dan Peta Google."
   },
   "feedback": {
     "title": "Maklum Balas",

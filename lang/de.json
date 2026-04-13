@@ -537,6 +537,7 @@
     "setup_desc": "Fügen Sie Ihren Google Maps-API-Schlüssel ein, um die GPS-Standortfixierung für Einträge zu aktivieren.",
     "maps_desc": "Pinnen Sie genaue GPS-Standorte an Einträge. Sehen Sie sich alle Mängel auf einer Live-Karte an.",
     "tag_on_map": "AUF DER KARTE MARKIEREN",
+    "map_location": "KARTENSTANDORT",
     "tap_to_pin": "Tippen Sie auf die Karte, um den Fehlerort festzulegen",
     "use_gps": "VERWENDEN SIE MEIN GPS",
     "search_address": "Adresse oder Standort suchen...",
@@ -751,7 +752,9 @@
     "set_maps": "Karten",
     "set_maps_desc": "Fügen Sie einen Google Maps-API-Schlüssel hinzu, um die GPS-Standortfixierung für Einträge zu aktivieren.",
     "tip_map_tagging": "Markierung des Kartenstandorts",
-    "tip_map_tagging_desc": "Tippen Sie beim Protokollieren eines Eintrags auf „AUF KARTE TAGIEREN“, um einen GPS-Pin in Google Maps an der genauen Fehlerstelle abzulegen. Gespeicherte Koordinaten erscheinen im Eintragsdetail und können in Google Maps geöffnet werden."
+    "tip_map_tagging_desc": "Tippen Sie beim Protokollieren eines Eintrags auf „AUF KARTE TAGIEREN“, um einen GPS-Pin in Google Maps an der genauen Fehlerstelle abzulegen. Gespeicherte Koordinaten erscheinen im Eintragsdetail und können in Google Maps geöffnet werden.",
+    "tip_map_markup": "Kartenmarkierungs-Toolkit",
+    "tip_map_markup_desc": "Tippen Sie unter TAG → Auf Karte markieren auf ✏ MARKUP, um direkt auf der Karte zu zeichnen. Werkzeuge: Zone (Rechteck), Radius (Kreis), Pfad (Polylinie), Pfeil, Bemaßung (automatisch beschrifteter Abstand), Stempel (GENEHMIGT/ABGELEHNT/benutzerdefiniert), Beschriftung, Freihand und Fotoüberlagerung. Alle Markierungen sind in GPS-Koordinaten verankert, können durch Ziehen des farbigen Griffs verschoben und pro Projekt gespeichert werden. Works on both OpenStreetMap (free, no key) and Google Maps."
   },
   "feedback": {
     "title": "Rückmeldung",

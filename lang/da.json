@@ -537,6 +537,7 @@
     "setup_desc": "Indsæt din Google Maps API-nøgle for at aktivere GPS-placering på poster.",
     "maps_desc": "Fastgør nøjagtige GPS-placeringer på poster. Se alle defekter på et live kort.",
     "tag_on_map": "TAG PÅ KORT",
+    "map_location": "KORT PLACERING",
     "tap_to_pin": "Tryk på kort for at indstille defekt placering",
     "use_gps": "BRUG MIN GPS",
     "search_address": "Søg adresse eller placering...",
@@ -751,7 +752,9 @@
     "set_maps": "Kort",
     "set_maps_desc": "Tilføj en Google Maps API-nøgle for at aktivere GPS-placering på poster.",
     "tip_map_tagging": "Kortplaceringsmærkning",
-    "tip_map_tagging_desc": "Når du logger en post, skal du trykke på TAG PÅ KORT for at anbringe en GPS-nål på Google Maps på det nøjagtige defekte sted. Gemte koordinater vises i indtastningsdetaljerne og kan åbnes i Google Maps."
+    "tip_map_tagging_desc": "Når du logger en post, skal du trykke på TAG PÅ KORT for at anbringe en GPS-nål på Google Maps på det nøjagtige defekte sted. Gemte koordinater vises i indtastningsdetaljerne og kan åbnes i Google Maps.",
+    "tip_map_markup": "Kortmarkeringsværktøj",
+    "tip_map_markup_desc": "I TAG → Tag på kort skal du trykke på ✏ MARKUP for at tegne direkte på kortet. Værktøjer: Zone (rektangel), Radius (cirkel), Sti (polylinje), Pil, Dimension (automærket afstand), Stempel (GODKENDT / AFVISET / brugerdefineret), Etiket, Frihånd og Fotooverlejring. Alle markeringer er forankret i GPS-koordinater, flyt ved at trække i det farvede håndtag og gem pr. projekt. Virker på både OpenStreetMap (gratis, uden nøgle) og Google Maps."
   },
   "feedback": {
     "title": "Feedback",

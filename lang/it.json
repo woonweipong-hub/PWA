@@ -537,6 +537,7 @@
     "setup_desc": "Incolla la chiave API di Google Maps per abilitare il blocco della posizione GPS sulle voci.",
     "maps_desc": "Appunta le posizioni GPS esatte sulle voci. Visualizza tutti i difetti su una mappa live.",
     "tag_on_map": "TAGLIA SULLA MAPPA",
+    "map_location": "POSIZIONE SULLA MAPPA",
     "tap_to_pin": "Tocca la mappa per impostare la posizione del difetto",
     "use_gps": "USA IL MIO GPS",
     "search_address": "Cerca indirizzo o posizione...",
@@ -751,7 +752,9 @@
     "set_maps": "Mappe",
     "set_maps_desc": "Aggiungi una chiave API di Google Maps per abilitare il blocco della posizione GPS sulle voci.",
     "tip_map_tagging": "Etichettatura della posizione sulla mappa",
-    "tip_map_tagging_desc": "Quando registri una voce, tocca TAG SULLA MAPPA per inserire un segnaposto GPS su Google Maps nella posizione esatta del difetto. Le coordinate salvate appaiono nei dettagli della voce e possono essere aperte in Google Maps."
+    "tip_map_tagging_desc": "Quando registri una voce, tocca TAG SULLA MAPPA per inserire un segnaposto GPS su Google Maps nella posizione esatta del difetto. Le coordinate salvate appaiono nei dettagli della voce e possono essere aperte in Google Maps.",
+    "tip_map_markup": "Kit di strumenti per il markup della mappa",
+    "tip_map_markup_desc": "In TAG → Tag sulla mappa, tocca ✏ MARKUP per disegnare direttamente sulla mappa. Strumenti: Zona (rettangolo), Raggio (cerchio), Percorso (polilinea), Freccia, Quota (distanza etichettata automaticamente), Timbro (APPROVATO/RIFIUTATO/personalizzato), Etichetta, Mano libera e Sovrapposizione foto. Tutti i markup sono ancorati alle coordinate GPS, si spostano trascinando la maniglia colorata e salvano per progetto. Funziona sia su OpenStreetMap (gratuito, senza chiave) che su Google Maps."
   },
   "feedback": {
     "title": "Feedback",

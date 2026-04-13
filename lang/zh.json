@@ -537,6 +537,7 @@
     "setup_desc": "粘贴您的 Google 地图 API 密钥以在条目上启用 GPS 位置固定。",
     "maps_desc": "在条目上固定准确的 GPS 位置。 在实时地图上查看所有缺陷。",
     "tag_on_map": "在地图上标记",
+    "map_location": "地图位置",
     "tap_to_pin": "点击地图设置缺陷位置",
     "use_gps": "使用我的 GPS",
     "search_address": "搜索地址或位置...",
@@ -751,7 +752,9 @@
     "set_maps": "地图",
     "set_maps_desc": "添加 Google 地图 API 密钥以在条目上启用 GPS 位置固定。",
     "tip_map_tagging": "地图位置标记",
-    "tip_map_tagging_desc": "记录条目时，点击地图上的标签即可在 Google 地图上的确切缺陷位置放置 GPS 图钉。 保存的坐标显示在条目详细信息中，并且可以在 Google 地图中打开。"
+    "tip_map_tagging_desc": "记录条目时，点击地图上的标签即可在 Google 地图上的确切缺陷位置放置 GPS 图钉。 保存的坐标显示在条目详细信息中，并且可以在 Google 地图中打开。",
+    "tip_map_markup": "地图标记工具包",
+    "tip_map_markup_desc": "在标签 → 地图上的标签中，点击 ✏ 标记可直接在地图上绘制。 工具：区域（矩形）、半径（圆形）、路径（折线）、箭头、尺寸（自动标记距离）、图章（已批准/已拒绝/自定义）、标签、手绘和照片叠加。 所有标记都锚定在 GPS 坐标中，通过拖动彩色手柄来移动，并按项目保存。 适用于 OpenStreetMap（免费，无密钥）和 Google 地图。"
   },
   "feedback": {
     "title": "反馈",

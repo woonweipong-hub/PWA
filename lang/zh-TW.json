@@ -537,6 +537,7 @@
     "setup_desc": "貼上您的 Google 地圖 API 金鑰以在條目上啟用 GPS 位置固定。",
     "maps_desc": "在條目上固定準確的 GPS 位置。 在即時地圖上查看所有缺陷。",
     "tag_on_map": "在地圖上標記",
+    "map_location": "地圖位置",
     "tap_to_pin": "點選地圖設定缺陷位置",
     "use_gps": "使用我的 GPS",
     "search_address": "搜尋地址或位置...",
@@ -560,7 +561,7 @@
     "submode_compare": "比較變化",
     "save_default_view": "另存為項目預設值",
     "default_saved": "✓ 為該項目儲存預設視圖",
-    "drop_pin_hint": "Tap the map to drop a pin and create an entry",
+    "drop_pin_hint": "點擊地圖以放置圖釘並建立條目",
     "sdk_loading": "正在加載谷歌地圖...",
     "sdk_failed": "無法載入 Google 地圖。 在「設定」→「地圖」中檢查您的 API 金鑰。",
     "test_key": "測試鍵",
@@ -751,7 +752,9 @@
     "set_maps": "地圖",
     "set_maps_desc": "新增 Google 地圖 API 金鑰以在條目上啟用 GPS 位置固定。",
     "tip_map_tagging": "地圖位置標記",
-    "tip_map_tagging_desc": "記錄條目時，點擊地圖上的標籤即可在 Google 地圖上的確切缺陷位置放置 GPS 圖釘。 儲存的座標顯示在條目詳細資料中，並且可以在 Google 地圖中開啟。"
+    "tip_map_tagging_desc": "記錄條目時，點擊地圖上的標籤即可在 Google 地圖上的確切缺陷位置放置 GPS 圖釘。 儲存的座標顯示在條目詳細資料中，並且可以在 Google 地圖中開啟。",
+    "tip_map_markup": "地圖標記工具包",
+    "tip_map_markup_desc": "在標籤 → 地圖上的標籤中，點選 ✏ 標記可直接在地圖上繪製。 工具：區域（矩形）、半徑（圓形）、路徑（折線）、箭頭、尺寸（自動標記距離）、圖章（已批准/已拒絕/自訂）、標籤、手繪和照片疊加。 所有標記都錨定在 GPS 座標中，透過拖曳彩色手柄來移動，並按項目儲存。 適用於 OpenStreetMap（免費，無密鑰）和 Google 地圖。"
   },
   "feedback": {
     "title": "意見回饋",

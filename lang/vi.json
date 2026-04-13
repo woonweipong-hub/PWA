@@ -537,6 +537,7 @@
     "setup_desc": "Dán khóa API Google Maps của bạn để bật tính năng ghim vị trí GPS vào các mục nhập.",
     "maps_desc": "Ghim vị trí GPS chính xác vào các mục. Xem tất cả các khiếm khuyết trên bản đồ trực tiếp.",
     "tag_on_map": "THẺ TRÊN BẢN ĐỒ",
+    "map_location": "BẢN ĐỒ VỊ TRÍ",
     "tap_to_pin": "Nhấn vào bản đồ để đặt vị trí lỗi",
     "use_gps": "SỬ DỤNG GPS CỦA TÔI",
     "search_address": "Tìm kiếm địa chỉ hoặc vị trí...",
@@ -751,7 +752,9 @@
     "set_maps": "Bản đồ",
     "set_maps_desc": "Thêm khóa API Google Maps để bật tính năng ghim vị trí GPS vào các mục nhập.",
     "tip_map_tagging": "Gắn thẻ vị trí bản đồ",
-    "tip_map_tagging_desc": "Khi ghi lại một mục nhập, hãy chạm vào GẮN THẺ TRÊN BẢN ĐỒ để thả ghim GPS trên Google Maps vào vị trí lỗi chính xác. Tọa độ đã lưu xuất hiện trong chi tiết mục nhập và có thể mở được trong Google Maps."
+    "tip_map_tagging_desc": "Khi ghi lại một mục nhập, hãy chạm vào GẮN THẺ TRÊN BẢN ĐỒ để thả ghim GPS trên Google Maps vào vị trí lỗi chính xác. Tọa độ đã lưu xuất hiện trong chi tiết mục nhập và có thể mở được trong Google Maps.",
+    "tip_map_markup": "Bộ công cụ đánh dấu bản đồ",
+    "tip_map_markup_desc": "Trong TAG → Gắn thẻ trên bản đồ, chạm vào ✏ ĐÁNH DẤU để vẽ trực tiếp trên bản đồ. Công cụ: Vùng (hình chữ nhật), Bán kính (hình tròn), Đường dẫn (đa tuyến), Mũi tên, Kích thước (khoảng cách được gắn nhãn tự động), Tem (ĐÃ ĐƯỢC PHÊ DUYỆT / TỪ CHỐI / tùy chỉnh), Nhãn, Tự do và Lớp phủ ảnh. Tất cả các đánh dấu được neo trong tọa độ GPS, di chuyển bằng cách kéo tay cầm màu và lưu cho mỗi dự án. Hoạt động trên cả OpenStreetMap (miễn phí, không cần chìa khóa) và Google Maps."
   },
   "feedback": {
     "title": "Phản hồi",

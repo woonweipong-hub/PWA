@@ -537,6 +537,7 @@
     "setup_desc": "항목에 GPS 위치 고정을 활성화하려면 Google Maps API 키를 붙여넣으세요.",
     "maps_desc": "항목에 정확한 GPS 위치를 고정합니다. 실시간 지도에서 모든 결함을 확인하세요.",
     "tag_on_map": "지도에 태그 추가",
+    "map_location": "지도 위치",
     "tap_to_pin": "결함 위치를 설정하려면 지도를 탭하세요.",
     "use_gps": "내 GPS 사용",
     "search_address": "주소 또는 위치 검색...",
@@ -751,7 +752,9 @@
     "set_maps": "지도",
     "set_maps_desc": "항목에 GPS 위치 고정을 활성화하려면 Google Maps API 키를 추가하세요.",
     "tip_map_tagging": "지도 위치 태그 지정",
-    "tip_map_tagging_desc": "항목을 기록할 때 지도에 태그 지정을 탭하면 Google 지도의 정확한 결함 위치에 GPS 핀이 표시됩니다. 저장된 좌표는 항목 세부정보에 표시되며 Google 지도에서 열 수 있습니다."
+    "tip_map_tagging_desc": "항목을 기록할 때 지도에 태그 지정을 탭하면 Google 지도의 정확한 결함 위치에 GPS 핀이 표시됩니다. 저장된 좌표는 항목 세부정보에 표시되며 Google 지도에서 열 수 있습니다.",
+    "tip_map_markup": "지도 마크업 툴킷",
+    "tip_map_markup_desc": "태그 → 지도에 태그하기에서 ✏ 마크업을 눌러 지도에 직접 그려보세요. 도구: 영역(직사각형), 반경(원), 경로(폴리라인), 화살표, 치수(자동 라벨링된 거리), 스탬프(승인됨/거부됨/사용자 정의), 라벨, 프리핸드 및 사진 오버레이. 모든 마크업은 GPS 좌표에 고정되어 있으며 색상 핸들을 드래그하여 이동하고 프로젝트별로 저장됩니다. OpenStreetMap(무료, 키 없음)과 Google 지도 모두에서 작동합니다."
   },
   "feedback": {
     "title": "피드백",

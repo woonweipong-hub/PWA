@@ -537,6 +537,7 @@
     "setup_desc": "Collez votre clé API Google Maps pour activer l'épinglage de localisation GPS sur les entrées.",
     "maps_desc": "Épinglez les emplacements GPS exacts sur les entrées. Visualisez tous les défauts sur une carte en direct.",
     "tag_on_map": "ÉTIQUETTE SUR LA CARTE",
+    "map_location": "EMPLACEMENT SUR LA CARTE",
     "tap_to_pin": "Appuyez sur la carte pour définir l'emplacement du défaut",
     "use_gps": "UTILISER MON GPS",
     "search_address": "Rechercher une adresse ou un emplacement...",
@@ -751,7 +752,9 @@
     "set_maps": "Cartes",
     "set_maps_desc": "Ajoutez une clé API Google Maps pour activer l'épinglage de localisation GPS sur les entrées.",
     "tip_map_tagging": "Marquage de localisation sur la carte",
-    "tip_map_tagging_desc": "Lors de l'enregistrement d'une entrée, appuyez sur TAG ON MAP pour déposer une épingle GPS sur Google Maps à l'emplacement exact du défaut. Les coordonnées enregistrées apparaissent dans les détails de l'entrée et peuvent être ouvertes dans Google Maps."
+    "tip_map_tagging_desc": "Lors de l'enregistrement d'une entrée, appuyez sur TAG ON MAP pour déposer une épingle GPS sur Google Maps à l'emplacement exact du défaut. Les coordonnées enregistrées apparaissent dans les détails de l'entrée et peuvent être ouvertes dans Google Maps.",
+    "tip_map_markup": "Boîte à outils de balisage de carte",
+    "tip_map_markup_desc": "Dans TAG → Tag on Map, appuyez sur ✏ MARKUP pour dessiner directement sur la carte. Outils : Zone (rectangle), Rayon (cercle), Chemin (polyligne), Flèche, Dimension (distance auto-étiquetée), Tampon (APPROUVÉ/REJETÉ/personnalisé), Étiquette, Main levée et superposition de photos. Toutes les annotations sont ancrées dans les coordonnées GPS, se déplacent en faisant glisser la poignée colorée et sont enregistrées par projet. Fonctionne à la fois sur OpenStreetMap (gratuit, sans clé) et sur Google Maps."
   },
   "feedback": {
     "title": "Avis",

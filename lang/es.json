@@ -537,6 +537,7 @@
     "setup_desc": "Pegue su clave API de Google Maps para habilitar la fijación de ubicación GPS en las entradas.",
     "maps_desc": "Fije ubicaciones GPS exactas en las entradas. Vea todos los defectos en un mapa en vivo.",
     "tag_on_map": "ETIQUETAR EN EL MAPA",
+    "map_location": "UBICACIÓN EN EL MAPA",
     "tap_to_pin": "Toque el mapa para establecer la ubicación del defecto",
     "use_gps": "USA MI GPS",
     "search_address": "Buscar dirección o ubicación...",
@@ -751,7 +752,9 @@
     "set_maps": "Mapas",
     "set_maps_desc": "Agregue una clave API de Google Maps para habilitar la fijación de ubicación GPS en las entradas.",
     "tip_map_tagging": "Etiquetado de ubicación en el mapa",
-    "tip_map_tagging_desc": "Al registrar una entrada, toque ETIQUETAR EN MAPA para colocar un pin de GPS en Google Maps en la ubicación exacta del defecto. Las coordenadas guardadas aparecen en el detalle de la entrada y se pueden abrir en Google Maps."
+    "tip_map_tagging_desc": "Al registrar una entrada, toque ETIQUETAR EN MAPA para colocar un pin de GPS en Google Maps en la ubicación exacta del defecto. Las coordenadas guardadas aparecen en el detalle de la entrada y se pueden abrir en Google Maps.",
+    "tip_map_markup": "Kit de herramientas de marcado de mapas",
+    "tip_map_markup_desc": "En ETIQUETA → Etiquetar en el mapa, toque ✏ MARCADO para dibujar directamente en el mapa. Herramientas: Zona (rectángulo), Radio (círculo), Trazado (polilínea), Flecha, Cota (distancia etiquetada automáticamente), Sello (APROBADO/RECHAZADO/personalizado), Etiqueta, Mano alzada y Superposición de fotografía. Todas las marcas están ancladas en coordenadas GPS, se mueven arrastrando el controlador de color y se guardan por proyecto. Funciona tanto en OpenStreetMap (gratis, sin clave) como en Google Maps."
   },
   "feedback": {
     "title": "Comentarios",

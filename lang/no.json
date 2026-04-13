@@ -537,6 +537,7 @@
     "setup_desc": "Lim inn Google Maps API-nøkkelen for å aktivere GPS-posisjonsfesting på oppføringer.",
     "maps_desc": "Fest nøyaktige GPS-plasseringer på oppføringer. Se alle defekter på et levende kart.",
     "tag_on_map": "TAG PÅ KART",
+    "map_location": "KARTPLASSERING",
     "tap_to_pin": "Trykk på kart for å angi defekt plassering",
     "use_gps": "BRUK MIN GPS",
     "search_address": "Søk etter adresse eller plassering...",
@@ -751,7 +752,9 @@
     "set_maps": "Kart",
     "set_maps_desc": "Legg til en Google Maps API-nøkkel for å aktivere GPS-posisjonsfesting på oppføringer.",
     "tip_map_tagging": "Kartposisjonsmerking",
-    "tip_map_tagging_desc": "Når du logger en oppføring, trykk på TAG PÅ KART for å slippe en GPS-nål på Google Maps på det nøyaktige defekte stedet. Lagrede koordinater vises i oppføringsdetaljene og kan åpnes i Google Maps."
+    "tip_map_tagging_desc": "Når du logger en oppføring, trykk på TAG PÅ KART for å slippe en GPS-nål på Google Maps på det nøyaktige defekte stedet. Lagrede koordinater vises i oppføringsdetaljene og kan åpnes i Google Maps.",
+    "tip_map_markup": "Kartmarkeringsverktøysett",
+    "tip_map_markup_desc": "I TAG → Tag på kart, trykk på ✏ MARKUP for å tegne direkte på kartet. Verktøy: Sone (rektangel), Radius (sirkel), Bane (polylinje), Pil, Dimensjon (automatisk merket avstand), Stempel (GODKJENT / AVVISET / egendefinert), Etikett, Frihånd og Fotooverlegg. Alle markeringer er forankret i GPS-koordinater, flytt ved å dra det fargede håndtaket og lagre per prosjekt. Fungerer på både OpenStreetMap (gratis, uten nøkkel) og Google Maps."
   },
   "feedback": {
     "title": "Tilbakemelding",

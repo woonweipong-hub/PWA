@@ -537,6 +537,7 @@
     "setup_desc": "Tempelkan kunci API Google Maps Anda untuk mengaktifkan penyematan lokasi GPS pada entri.",
     "maps_desc": "Sematkan lokasi GPS yang tepat pada entri. Lihat semua cacat di peta langsung.",
     "tag_on_map": "TAG DI PETA",
+    "map_location": "LOKASI PETA",
     "tap_to_pin": "Ketuk peta untuk mengatur lokasi kerusakan",
     "use_gps": "GUNAKAN GPS SAYA",
     "search_address": "Cari alamat atau lokasi...",
@@ -751,7 +752,9 @@
     "set_maps": "Peta",
     "set_maps_desc": "Tambahkan kunci API Google Maps untuk mengaktifkan penyematan lokasi GPS pada entri.",
     "tip_map_tagging": "Penandaan lokasi peta",
-    "tip_map_tagging_desc": "Saat mencatat entri, ketuk TAG DI PETA untuk meletakkan pin GPS di Google Maps di lokasi kerusakan yang tepat. Koordinat yang disimpan muncul di detail entri dan dapat dibuka di Google Maps."
+    "tip_map_tagging_desc": "Saat mencatat entri, ketuk TAG DI PETA untuk meletakkan pin GPS di Google Maps di lokasi kerusakan yang tepat. Koordinat yang disimpan muncul di detail entri dan dapat dibuka di Google Maps.",
+    "tip_map_markup": "Perangkat markup peta",
+    "tip_map_markup_desc": "Di TAG → Tag di Peta, ketuk ✏ MARKUP untuk menggambar langsung di peta. Alat: Zona (persegi panjang), Radius (lingkaran), Jalur (polyline), Panah, Dimensi (jarak berlabel otomatis), Stempel (DISETUJU / DITOLAK / custom), Label, Freehand, dan Hamparan Foto. Semua markup ditambatkan dalam koordinat GPS, dipindahkan dengan menyeret pegangan berwarna, dan disimpan per proyek. Berfungsi di OpenStreetMap (gratis, tanpa kunci) dan Google Maps."
   },
   "feedback": {
     "title": "Umpan Balik",

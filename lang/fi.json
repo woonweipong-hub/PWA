@@ -537,6 +537,7 @@
     "setup_desc": "Liitä Google Maps API -avain ottaaksesi GPS-sijainnin kiinnityksen käyttöön merkinnöissä.",
     "maps_desc": "Kiinnitä tarkat GPS-paikat merkintöihin. Katso kaikki viat live-kartalla.",
     "tag_on_map": "TAGI KARTALLE",
+    "map_location": "KARTTA SIJAINTI",
     "tap_to_pin": "Napauta karttaa asettaaksesi vian sijainnin",
     "use_gps": "KÄYTÄ OMA GPS:ääni",
     "search_address": "Hae osoitetta tai sijaintia...",
@@ -751,7 +752,9 @@
     "set_maps": "Kartat",
     "set_maps_desc": "Lisää Google Maps -sovellusliittymäavain ottaaksesi GPS-sijainnin kiinnityksen käyttöön merkinnöissä.",
     "tip_map_tagging": "Kartan sijainnin merkitseminen",
-    "tip_map_tagging_desc": "Kun kirjaat merkintää, napauta MERKINNÄT KARTALLE pudottaaksesi GPS-nasta Google Mapsiin tarkkaan vikapaikkaan. Tallennetut koordinaatit näkyvät tiedoissa, ja ne voidaan avata Google Mapsissa."
+    "tip_map_tagging_desc": "Kun kirjaat merkintää, napauta MERKINNÄT KARTALLE pudottaaksesi GPS-nasta Google Mapsiin tarkkaan vikapaikkaan. Tallennetut koordinaatit näkyvät tiedoissa, ja ne voidaan avata Google Mapsissa.",
+    "tip_map_markup": "Kartan merkintätyökalusarja",
+    "tip_map_markup_desc": "Kohdassa TAG → Tag on Map napauta ✏ MARKUP piirtääksesi suoraan kartalle. Työkalut: vyöhyke (suorakulmio), säde (ympyrä), polku (polyline), nuoli, mitta (automaattisesti merkitty etäisyys), leima (hyväksytty / hylätty / mukautettu), tarra, vapaakätinen ja valokuvapeitto. Kaikki merkinnät ankkuroidaan GPS-koordinaatteihin, siirrytään vetämällä värillistä kahvaa ja tallennetaan projektikohtaisesti. Toimii sekä OpenStreetMapissa (ilmainen, ilman avainta) että Google Mapsissa."
   },
   "feedback": {
     "title": "Palaute",

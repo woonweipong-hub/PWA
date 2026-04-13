@@ -537,6 +537,7 @@
     "setup_desc": "Klistra in din Google Maps API-nyckel för att aktivera GPS-platsfäste på poster.",
     "maps_desc": "Fäst exakta GPS-platser på poster. Se alla defekter på en livekarta.",
     "tag_on_map": "TAGGA PÅ KARTAN",
+    "map_location": "KARTA PLATS",
     "tap_to_pin": "Tryck på kartan för att ange defekt plats",
     "use_gps": "ANVÄND MIN GPS",
     "search_address": "Sök adress eller plats...",
@@ -751,7 +752,9 @@
     "set_maps": "Kartor",
     "set_maps_desc": "Lägg till en Google Maps API-nyckel för att aktivera GPS-placering på poster.",
     "tip_map_tagging": "Kartplatstaggning",
-    "tip_map_tagging_desc": "När du loggar en post trycker du på TAGGA PÅ KARTAN för att släppa en GPS-nål på Google Maps på den exakta defekten. Sparade koordinater visas i inmatningsdetaljen och kan öppnas i Google Maps."
+    "tip_map_tagging_desc": "När du loggar en post trycker du på TAGGA PÅ KARTAN för att släppa en GPS-nål på Google Maps på den exakta defekten. Sparade koordinater visas i inmatningsdetaljen och kan öppnas i Google Maps.",
+    "tip_map_markup": "Kartmarkeringsverktyg",
+    "tip_map_markup_desc": "I TAGGA → Tagga på kartan, tryck på ✏ MARKUP för att rita direkt på kartan. Verktyg: Zon (rektangel), Radie (cirkel), Bana (polylinje), Pil, Dimension (automatiskt märkt avstånd), Stämpel (GODKÄND / AVVISAD / anpassad), Etikett, Frihand och Fotoöverlägg. Alla markeringar är förankrade i GPS-koordinater, flytta genom att dra det färgade handtaget och spara per projekt. Fungerar på både OpenStreetMap (gratis, utan nyckel) och Google Maps."
   },
   "feedback": {
     "title": "Feed-back",
