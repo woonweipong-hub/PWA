@@ -5898,6 +5898,8 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
   const[qSev,setQSev]=useState("Minor");
   const[saving,setSaving]=useState(false);
   const[searching,setSearching]=useState(false);
+  const[pinMode,setPinMode]=useState(true);
+  const[showList,setShowList]=useState(false);
   const provider=providerRef.current;
   const canEdit=member?.role!=="viewer";
 
@@ -5934,6 +5936,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
       }
       if(canEdit){
         map.addListener("click",e=>{
+          if(!pinModeRef.current)return;
           setPendingPin({lat:e.latLng.lat(),lng:e.latLng.lng()});
           if(markersRef.current.pending)markersRef.current.pending.setMap(null);
           markersRef.current.pending=new g.Marker({position:e.latLng,map,icon:{path:g.SymbolPath.CIRCLE,scale:10,fillColor:"#ff6b00",fillOpacity:1,strokeColor:"#fff",strokeWeight:3},zIndex:9999});
@@ -5944,6 +5947,10 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
     return()=>{cancelled=true;};
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[provider,currentProject?.id]);
+
+  // Keep pinMode in a ref so map click handlers see the latest value
+  const pinModeRef=useRef(pinMode);
+  useEffect(()=>{pinModeRef.current=pinMode;},[pinMode]);
 
   // ── OSM / Leaflet path ─────────────────────────────────────────
   useEffect(()=>{
@@ -5961,6 +5968,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
       mapObj.current=map;
       if(canEdit){
         map.on("click",e=>{
+          if(!pinModeRef.current)return;
           setPendingPin({lat:e.latlng.lat,lng:e.latlng.lng});
           if(markersRef.current.pending)markersRef.current.pending.remove();
           markersRef.current.pending=L.circleMarker([e.latlng.lat,e.latlng.lng],{radius:10,color:"#fff",weight:3,fillColor:"#ff6b00",fillOpacity:1}).addTo(map);
@@ -6079,16 +6087,42 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
         </form>
         {canEdit&&<button onClick={saveDefault} title={t("maps.save_default_view")} style={{padding:"10px 12px",borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:savedDefault?"rgba(48,209,88,0.15)":"#fff",color:savedDefault?"#30d158":"rgba(0,0,0,0.7)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{savedDefault?"✓":"★"}</button>}
       </div>
-      {canEdit&&!pendingPin&&(
-        <div style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:10,fontSize:12,color:"#b34800"}}>
-          <span style={{fontSize:15}}>📍</span>
+      {/* Toolbar: ADD PIN / MARKUP / LIST — mirrors Drawing viewer */}
+      <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+        {canEdit&&(
+          <button onClick={()=>setPinMode(v=>!v)} style={{padding:"8px 12px",borderRadius:10,border:"1px solid "+(pinMode?"rgba(255,107,0,0.4)":"rgba(0,0,0,0.12)"),background:pinMode?"rgba(255,107,0,0.12)":"#fff",color:pinMode?"#ff6b00":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+            📌 ADD PIN {pinMode?"· ON":""}
+          </button>
+        )}
+        {canEdit&&(
+          <button onClick={()=>alert("Map markup (highlight zones, boundaries) — coming soon. Tell us what you need: highlight an area, draw a route, or mark a boundary?")} style={{padding:"8px 12px",borderRadius:10,border:"1px solid rgba(0,0,0,0.12)",background:"#fff",color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+            ✏ MARKUP
+          </button>
+        )}
+        <button onClick={()=>setShowList(v=>!v)} style={{padding:"8px 12px",borderRadius:10,border:"1px solid "+(showList?"rgba(52,170,220,0.4)":"rgba(0,0,0,0.12)"),background:showList?"rgba(52,170,220,0.12)":"#fff",color:showList?"#2b8bb8":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+          📋 LIST ({mapDefects.length})
+        </button>
+        <span style={{marginLeft:"auto",fontSize:10,background:"rgba(0,0,0,0.05)",padding:"3px 8px",borderRadius:8,color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{providerLabel}</span>
+      </div>
+      {canEdit&&pinMode&&!pendingPin&&(
+        <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:10,fontSize:12,color:"#b34800"}}>
+          <span style={{fontSize:14}}>📍</span>
           <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{t("maps.drop_pin_hint")||"Tap the map to drop a pin and create an entry"}</span>
         </div>
       )}
-      <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",display:"flex",gap:8,alignItems:"center"}}>
-        {mapDefects.length>0&&<span>{mapDefects.length} pinned</span>}
-        <span style={{marginLeft:"auto",background:"rgba(0,0,0,0.05)",padding:"2px 8px",borderRadius:8,color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{providerLabel}</span>
-      </div>
+      {showList&&(
+        <div style={{background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:8,maxHeight:"30vh",overflowY:"auto"}}>
+          {mapDefects.length===0?(
+            <div style={{padding:20,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:12}}>No map-pinned entries yet.</div>
+          ):mapDefects.map(d=>(
+            <button key={d.id} onClick={()=>{if(!mapObj.current)return;if(provider==="gmaps"){mapObj.current.setCenter({lat:d.lat,lng:d.lng});mapObj.current.setZoom(19);}else{mapObj.current.setView([d.lat,d.lng],19);}setShowList(false);}} style={{display:"flex",width:"100%",alignItems:"center",gap:10,padding:"8px 10px",marginBottom:4,borderRadius:8,border:"1px solid rgba(0,0,0,0.06)",background:"#fafafa",cursor:"pointer",textAlign:"left"}}>
+              <span style={{width:10,height:10,borderRadius:"50%",background:SEV_COLOR[d.severity]||"#8e8e93",flexShrink:0}}/>
+              <span style={{flex:1,fontSize:12,fontWeight:700,color:"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title||"Entry"}</span>
+              <span style={{fontSize:10,color:"rgba(0,0,0,0.5)",fontFamily:"monospace"}}>{d.lat.toFixed(4)},{d.lng.toFixed(4)}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <div ref={mapRef} style={{width:"100%",height:"min(60vh,520px)",borderRadius:12,border:"1px solid rgba(0,0,0,0.12)",background:"#e5e3dc"}}/>
       {pendingPin&&<div style={{padding:12,background:"#fff",border:"1px solid rgba(255,107,0,0.3)",borderRadius:10,display:"flex",flexDirection:"column",gap:8}}>
         <div style={{display:"flex",alignItems:"center",gap:10,fontSize:11}}>
