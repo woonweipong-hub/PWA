@@ -9366,11 +9366,14 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   // Handle tap on drawing to place pin or dismiss tooltip
   const handleDrawingClick=e=>{
     if(viewMode)return;
-    if(activePin){setActivePin(null);return;}
+    // Dismiss active pin tooltip but DON'T stop placing — if the user is in
+    // pin-drop mode, a stray active tooltip shouldn't swallow their first tap.
+    if(activePin){setActivePin(null);if(!placing)return;}
     if(!placing)return;
     const target=isImage?imgRef.current:canvasRef.current;
-    if(!target)return;
+    if(!target){alert("Drawing not ready — wait for it to load, then try again.");return;}
     const rect=target.getBoundingClientRect();
+    if(!rect.width||!rect.height){alert("Drawing not loaded yet — wait a moment and try again.");return;}
     const x=((e.clientX-rect.left)/rect.width*100).toFixed(2);
     const y=((e.clientY-rect.top)/rect.height*100).toFixed(2);
     setLinkEntry({x:parseFloat(x),y:parseFloat(y),pageNum:currentPage});
@@ -10215,6 +10218,10 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       <div ref={containerRef} style={{flex:1,overflow:"hidden",position:"relative",cursor:markupMode?"crosshair":placing&&!viewMode?"crosshair":"grab",touchAction:"none"}}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
         onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+        {/* ADD PIN visible banner — pointer-events none so it doesn't eat taps */}
+        {placing&&!viewMode&&(
+          <div style={{position:"absolute",top:10,left:"50%",transform:"translateX(-50%)",background:"rgba(255,107,0,0.95)",color:"#fff",padding:"8px 16px",borderRadius:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,boxShadow:"0 4px 14px rgba(0,0,0,0.4)",zIndex:20,pointerEvents:"none",whiteSpace:"nowrap"}}>📍 Tap the drawing to drop a pin</div>
+        )}
         {/* Zoom controls — inside the canvas so they never overlap toolbars */}
         <div style={{position:"absolute",right:10,top:10,zIndex:10,display:"flex",flexDirection:"column",gap:5,pointerEvents:"auto"}} onPointerDown={e=>e.stopPropagation()} onTouchStart={e=>e.stopPropagation()}>
           <button onClick={zoomIn} style={{width:34,height:34,borderRadius:10,background:"rgba(0,0,0,0.62)",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 6px rgba(0,0,0,0.35)"}}>+</button>
