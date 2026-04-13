@@ -437,5 +437,6 @@ const AI_PROVIDER_KEY = "sdt-ai-provider-v1";
 const OLLAMA_KEY = "sdt-ollama-v1";
 const OPENAI_KEY = "sdt-openai-v1";
 const GMAPS_KEY = "sdt-gmaps-v1";
+const MAP_PROVIDER_KEY = "sdt-map-provider-v1"; // "osm" | "gmaps"
 const MAP_DEFAULT_VIEW_KEY_PREFIX = "sdt-map-default-"; // + projectId
 const MAP_FALLBACK_CENTER = { lat: 1.3331, lng: 103.7422, zoom: 17, label: "JEM Office Building" };

@@ -1370,7 +1370,8 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   opts=opts||{};
   const incMap=opts.incMap!==false;
   const gmapsKey=opts.gmapsKey||"";
-  const mapDefects=incMap&&gmapsKey?(defects||[]).filter(d=>typeof d.lat==="number"&&typeof d.lng==="number"):[];
+  const mapProvider=opts.mapProvider||(gmapsKey?"gmaps":"osm");
+  const mapDefects=incMap?(defects||[]).filter(d=>typeof d.lat==="number"&&typeof d.lng==="number"):[];
   if(typeof onProgress==="function")onProgress("Preparing report…");
   const doc=new jspdf.jsPDF("p","mm","a4");
   const pageW=doc.internal.pageSize.getWidth();
@@ -1641,7 +1642,8 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     if(typeof onProgress==="function")onProgress(`Fetching ${mapDefects.length} map thumbnails…`);
     const mapPromises=mapDefects.map(d=>{
       const z=d.mapZoom||17;
-      const url=`https://maps.googleapis.com/maps/api/staticmap?center=${d.lat},${d.lng}&zoom=${z}&size=600x240&maptype=hybrid&markers=color:red%7C${d.lat},${d.lng}&key=${encodeURIComponent(gmapsKey)}`;
+      const url=staticMapUrl(mapProvider,d.lat,d.lng,z,"600x240");
+      if(!url){mapImgCache.set(d.id,null);return Promise.resolve();}
       return new Promise(resolve=>{
         const img=new Image();img.crossOrigin="anonymous";
         img.onload=()=>{mapImgCache.set(d.id,img);resolve();};
@@ -1906,20 +1908,29 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   // ═══════════════════════════════════════════════════════════════════
   // MAP OVERVIEW — all GPS-pinned entries on one static map
   // ═══════════════════════════════════════════════════════════════════
-  if(mapDefects.length>0&&gmapsKey){
+  if(mapDefects.length>0){
     if(typeof onProgress==="function")onProgress("Fetching overview map…");
-    // Encode all pins as color-coded markers (Google Static Maps: max ~30 markers per call
-    // before URL hits length limits; we batch color groups)
-    const bySev={Critical:"red",Major:"orange",Minor:"yellow",Observation:"blue"};
-    const groups={};
-    for(const d of mapDefects){
-      const c=bySev[d.severity]||"gray";
-      (groups[c]||(groups[c]=[])).push(`${d.lat},${d.lng}`);
+    // Compute bounding-box centre for OSM fallback (since OSM staticmap.openstreetmap.de
+    // doesn't accept multi-marker colour groups cleanly, we center + show first 20 pins)
+    const lats=mapDefects.map(d=>d.lat),lngs=mapDefects.map(d=>d.lng);
+    const centerLat=(Math.min(...lats)+Math.max(...lats))/2;
+    const centerLng=(Math.min(...lngs)+Math.max(...lngs))/2;
+    let overviewUrl;
+    if(mapProvider==="gmaps"&&gmapsKey){
+      const bySev={Critical:"red",Major:"orange",Minor:"yellow",Observation:"blue"};
+      const groups={};
+      for(const d of mapDefects){
+        const c=bySev[d.severity]||"gray";
+        (groups[c]||(groups[c]=[])).push(`${d.lat},${d.lng}`);
+      }
+      const markerParams=Object.entries(groups).map(([color,pts])=>
+        `markers=color:${color}%7C${pts.slice(0,40).join("%7C")}`
+      ).join("&");
+      overviewUrl=`https://maps.googleapis.com/maps/api/staticmap?size=640x480&maptype=hybrid&${markerParams}&key=${encodeURIComponent(gmapsKey)}`;
+    }else{
+      const markerParams=mapDefects.slice(0,20).map(d=>`markers=${d.lat},${d.lng},red-pushpin`).join("&");
+      overviewUrl=`https://staticmap.openstreetmap.de/staticmap.php?center=${centerLat},${centerLng}&zoom=14&size=640x480&${markerParams}`;
     }
-    const markerParams=Object.entries(groups).map(([color,pts])=>
-      `markers=color:${color}%7C${pts.slice(0,40).join("%7C")}`
-    ).join("&");
-    const overviewUrl=`https://maps.googleapis.com/maps/api/staticmap?size=640x480&maptype=hybrid&${markerParams}&key=${encodeURIComponent(gmapsKey)}`;
     const overviewImg=await new Promise(resolve=>{
       const img=new Image();img.crossOrigin="anonymous";
       img.onload=()=>resolve(img);img.onerror=()=>resolve(null);
@@ -4990,10 +5001,9 @@ function DefectDetail({defect,onClose,onUpdate,member,company,members=[]}){
               </div>
             )}
             {typeof defect.lat==="number"&&typeof defect.lng==="number"&&(()=>{
-              const gmapsKey=local.get(GMAPS_KEY)||"";
               const z=defect.mapZoom||17;
               const openUrl=`https://www.google.com/maps/search/?api=1&query=${defect.lat},${defect.lng}`;
-              const staticUrl=gmapsKey?`https://maps.googleapis.com/maps/api/staticmap?center=${defect.lat},${defect.lng}&zoom=${z}&size=600x240&maptype=hybrid&markers=color:red%7C${defect.lat},${defect.lng}&key=${encodeURIComponent(gmapsKey)}`:null;
+              const staticUrl=staticMapUrl(getMapProvider(),defect.lat,defect.lng,z,"600x240");
               const copy=()=>{try{navigator.clipboard.writeText(`${defect.lat},${defect.lng}`);}catch{}};
               return(
                 <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid rgba(0,0,0,0.06)"}}>
@@ -5492,8 +5502,8 @@ function Report({defects,onEmailSetup,currentProject,company}){
           {showExportMenu&&(
             <div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(0,0,0,0.08)",zIndex:20,minWidth:160,overflow:"hidden"}}>
               <button disabled={pdfExport.active} onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||""});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")}</button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);setPdfExport({active:true,label:"Preparing report…"});try{await new Promise(r=>setTimeout(r,600));await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||""});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")}</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);setPdfExport({active:true,label:"Preparing report…"});try{await new Promise(r=>setTimeout(r,600));await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
               <button onClick={async()=>{setShowExportMenu(false);try{const result=await exportToGoogleSheets(incDefects?filtered:[],currentProject?.name,company?.companyName);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
             </div>
           )}
@@ -5723,6 +5733,15 @@ function Report({defects,onEmailSetup,currentProject,company}){
   );
 }
 
+// ── Map provider selection ───────────────────────────────────────
+// "osm"  = OpenStreetMap via Leaflet (free, no key)   [default]
+// "gmaps"= Google Maps JS SDK (needs API key + billing)
+function getMapProvider(){
+  const p=local.get(MAP_PROVIDER_KEY);
+  if(p==="gmaps"&&(local.get(GMAPS_KEY)||""))return "gmaps";
+  return "osm";
+}
+
 // ── Google Maps SDK loader ────────────────────────────────────────
 let _gmapsLoadingPromise=null;
 function loadGoogleMaps(apiKey){
@@ -5741,6 +5760,43 @@ function loadGoogleMaps(apiKey){
   return _gmapsLoadingPromise;
 }
 
+// ── Leaflet readiness — script is <script defer> in index.html ───
+function waitForLeaflet(timeoutMs){
+  if(window.L)return Promise.resolve();
+  return new Promise((resolve,reject)=>{
+    const deadline=Date.now()+(timeoutMs||8000);
+    const tick=()=>{if(window.L)resolve();else if(Date.now()>deadline)reject(new Error("leaflet-load-timeout"));else setTimeout(tick,80);};
+    tick();
+  });
+}
+
+// ── Nominatim geocoding (free, rate-limited 1 req/sec) ───────────
+async function geocodeNominatim(query){
+  if(!query||!query.trim())return null;
+  const url=`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query.trim())}`;
+  try{
+    const r=await fetch(url,{headers:{"Accept-Language":"en"}});
+    if(!r.ok)return null;
+    const items=await r.json();
+    if(!items||!items.length)return null;
+    return{lat:parseFloat(items[0].lat),lng:parseFloat(items[0].lon),label:items[0].display_name};
+  }catch{return null;}
+}
+
+// ── Static map URL builders (for PDF export & entry detail) ──────
+function staticMapUrl(provider,lat,lng,zoom,size){
+  const z=zoom||17;
+  const s=size||"600x240";
+  if(provider==="gmaps"){
+    const key=local.get(GMAPS_KEY)||"";
+    if(!key)return null;
+    return `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=${z}&size=${s}&maptype=hybrid&markers=color:red%7C${lat},${lng}&key=${encodeURIComponent(key)}`;
+  }
+  // OSM (free, via staticmap.openstreetmap.de)
+  const[w,h]=s.split("x");
+  return `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=${z}&size=${w}x${h}&markers=${lat},${lng},red-pushpin`;
+}
+
 // Per-project default map view (localStorage until wired to project record)
 function getProjectMapDefault(projectId){
   if(!projectId)return MAP_FALLBACK_CENTER;
@@ -5751,17 +5807,26 @@ function setProjectMapDefault(projectId,view){
   local.set(MAP_DEFAULT_VIEW_KEY_PREFIX+projectId,view);
 }
 
-// ── Maps Settings (API key) ──────────────────────────────────────
+// ── Maps Settings (provider + optional Google key) ───────────────
+const MAP_PROVIDERS=[
+  {id:"osm",label:"OpenStreetMap",icon:"🌍",desc:"Free · No key · No billing · Works out of the box",color:"#30d158"},
+  {id:"gmaps",label:"Google Maps",icon:"🗺",desc:"Satellite + Places search · Needs API key + billing",color:"#4285f4"},
+];
 function MapsSettings({onClose}){
+  const[provider,setProvider]=useState(()=>local.get(MAP_PROVIDER_KEY)||"osm");
   const[apiKey,setApiKey]=useState(()=>local.get(GMAPS_KEY)||"");
   const[saved,setSaved]=useState(false);
   const[testing,setTesting]=useState(false);
   const[testRes,setTestRes]=useState(null);
-  const save=()=>{local.set(GMAPS_KEY,apiKey.trim());setSaved(true);setTimeout(()=>setSaved(false),2000);};
+  const save=()=>{
+    local.set(MAP_PROVIDER_KEY,provider);
+    local.set(GMAPS_KEY,apiKey.trim());
+    setSaved(true);setTimeout(()=>setSaved(false),2000);
+  };
   const test=async()=>{
     setTesting(true);setTestRes(null);
     try{
-      _gmapsLoadingPromise=null; // force re-load for test
+      _gmapsLoadingPromise=null;
       if(window.google&&window.google.maps)delete window.google.maps;
       await loadGoogleMaps(apiKey.trim());
       setTestRes("success");
@@ -5772,15 +5837,33 @@ function MapsSettings({onClose}){
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
       <SettingsBack onClose={onClose} title={t("maps.title")}/>
       <div style={{padding:20}}>
-        <p style={{fontSize:13,color:"rgba(0,0,0,0.6)",marginBottom:16,lineHeight:1.5}}>{t("maps.setup_desc")}</p>
-        <label style={{display:"block",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.5)",letterSpacing:"0.12em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>{t("maps.api_key")}</label>
-        <input type="text" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder={t("maps.api_key_placeholder")} style={{width:"100%",padding:"12px 14px",fontSize:14,borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",boxSizing:"border-box",marginBottom:14}}/>
-        <div style={{display:"flex",gap:8,marginBottom:14}}>
-          <button onClick={save} disabled={!apiKey.trim()} style={{flex:1,padding:"11px 14px",borderRadius:10,border:"none",background:apiKey.trim()?"#ff6b00":"rgba(0,0,0,0.1)",color:apiKey.trim()?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:apiKey.trim()?"pointer":"not-allowed"}}>{saved?"✓ "+t("actions.save"):t("actions.save_settings")}</button>
-          <button onClick={test} disabled={!apiKey.trim()||testing} style={{padding:"11px 14px",borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",color:"rgba(0,0,0,0.7)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:apiKey.trim()&&!testing?"pointer":"not-allowed"}}>{testing?"…":t("maps.test_key")}</button>
+        <p style={{fontSize:13,color:"rgba(0,0,0,0.6)",marginBottom:16,lineHeight:1.5}}>{t("maps.maps_desc")}</p>
+        <label style={{display:"block",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.5)",letterSpacing:"0.12em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>MAP PROVIDER</label>
+        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:18}}>
+          {MAP_PROVIDERS.map(p=>(
+            <button key={p.id} onClick={()=>{setProvider(p.id);setTestRes(null);}} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderRadius:12,border:`2px solid ${provider===p.id?p.color:"rgba(0,0,0,0.1)"}`,background:provider===p.id?p.color+"10":"#fff",cursor:"pointer",textAlign:"left"}}>
+              <span style={{fontSize:20,flexShrink:0}}>{p.icon}</span>
+              <div style={{flex:1}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a1a1a"}}>{p.label}</div>
+                <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",marginTop:2}}>{p.desc}</div>
+              </div>
+              {provider===p.id&&<span style={{color:p.color,fontSize:18,fontWeight:700}}>✓</span>}
+            </button>
+          ))}
         </div>
-        {testRes==="success"&&<div style={{fontSize:13,color:"#30d158",marginBottom:10}}>{t("maps.test_ok")}</div>}
-        {testRes==="fail"&&<div style={{fontSize:13,color:"#ff3b30",marginBottom:10}}>{t("maps.test_failed")}</div>}
+        {provider==="gmaps"&&<>
+          <p style={{fontSize:12,color:"rgba(0,0,0,0.6)",marginBottom:12,lineHeight:1.5,background:"rgba(66,133,244,0.06)",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(66,133,244,0.15)"}}>
+            {t("maps.setup_desc")}
+          </p>
+          <label style={{display:"block",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.5)",letterSpacing:"0.12em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>{t("maps.api_key")}</label>
+          <input type="text" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder={t("maps.api_key_placeholder")} style={{width:"100%",padding:"12px 14px",fontSize:14,borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",boxSizing:"border-box",marginBottom:14}}/>
+          <div style={{display:"flex",gap:8,marginBottom:10}}>
+            <button onClick={test} disabled={!apiKey.trim()||testing} style={{padding:"11px 14px",borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",color:"rgba(0,0,0,0.7)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:apiKey.trim()&&!testing?"pointer":"not-allowed"}}>{testing?"…":t("maps.test_key")}</button>
+          </div>
+          {testRes==="success"&&<div style={{fontSize:13,color:"#30d158",marginBottom:10}}>{t("maps.test_ok")}</div>}
+          {testRes==="fail"&&<div style={{fontSize:13,color:"#ff3b30",marginBottom:10}}>{t("maps.test_failed")}</div>}
+        </>}
+        <button onClick={save} style={{width:"100%",padding:"12px 14px",borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{saved?"✓ "+t("actions.save"):t("actions.save_settings")}</button>
       </div>
     </div>
   );
@@ -5792,20 +5875,24 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
   const searchRef=useRef(null);
   const mapObj=useRef(null);
   const markersRef=useRef({existing:[],pending:null});
-  const[status,setStatus]=useState("loading"); // loading | ready | no-key | error
+  const providerRef=useRef(getMapProvider());
+  const[status,setStatus]=useState("loading"); // loading | ready | error
   const[pendingPin,setPendingPin]=useState(null);
   const[savedDefault,setSavedDefault]=useState(false);
   const[qTitle,setQTitle]=useState("");
   const[qSev,setQSev]=useState("Minor");
   const[saving,setSaving]=useState(false);
-  const apiKey=local.get(GMAPS_KEY)||"";
+  const[searching,setSearching]=useState(false);
+  const provider=providerRef.current;
   const canEdit=member?.role!=="viewer";
 
   // Filter defects that have GPS coords for current project
   const mapDefects=(defects||[]).filter(d=>typeof d.lat==="number"&&typeof d.lng==="number");
 
+  // ── Google Maps path ───────────────────────────────────────────
   useEffect(()=>{
-    if(!apiKey){setStatus("no-key");return;}
+    if(provider!=="gmaps")return;
+    const apiKey=local.get(GMAPS_KEY)||"";
     let cancelled=false;
     loadGoogleMaps(apiKey).then(()=>{
       if(cancelled||!mapRef.current)return;
@@ -5841,38 +5928,100 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
     }).catch(()=>setStatus("error"));
     return()=>{cancelled=true;};
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[apiKey,currentProject?.id]);
+  },[provider,currentProject?.id]);
 
-  // Render existing defect pins as markers
+  // ── OSM / Leaflet path ─────────────────────────────────────────
   useEffect(()=>{
-    if(status!=="ready"||!mapObj.current||!window.google?.maps)return;
-    const g=window.google.maps;
-    markersRef.current.existing.forEach(m=>m.setMap(null));
-    markersRef.current.existing=mapDefects.map(d=>{
-      const color=SEV_COLOR[d.severity]||"#8e8e93";
-      const m=new g.Marker({
-        position:{lat:d.lat,lng:d.lng},
-        map:mapObj.current,
-        icon:{path:g.SymbolPath.CIRCLE,scale:8,fillColor:color,fillOpacity:0.95,strokeColor:"#fff",strokeWeight:2},
-        title:d.title||"Entry",
-      });
-      const iw=new g.InfoWindow({content:`<div style="font-family:'Barlow Condensed',sans-serif;padding:2px 6px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${(d.title||"Entry").replace(/</g,"&lt;")}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div></div>`});
-      m.addListener("click",()=>iw.open({anchor:m,map:mapObj.current}));
-      return m;
-    });
+    if(provider!=="osm")return;
+    let cancelled=false;
+    waitForLeaflet().then(()=>{
+      if(cancelled||!mapRef.current||!window.L)return;
+      const L=window.L;
+      const view=getProjectMapDefault(currentProject?.id);
+      const map=L.map(mapRef.current,{zoomControl:true,attributionControl:true}).setView([view.lat,view.lng],view.zoom||17);
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{
+        maxZoom:19,
+        attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(map);
+      mapObj.current=map;
+      if(canEdit){
+        map.on("click",e=>{
+          setPendingPin({lat:e.latlng.lat,lng:e.latlng.lng});
+          if(markersRef.current.pending)markersRef.current.pending.remove();
+          markersRef.current.pending=L.circleMarker([e.latlng.lat,e.latlng.lng],{radius:10,color:"#fff",weight:3,fillColor:"#ff6b00",fillOpacity:1}).addTo(map);
+        });
+      }
+      setStatus("ready");
+      // Leaflet renders blank if container sized post-mount; nudge after paint
+      setTimeout(()=>{try{map.invalidateSize();}catch{}},60);
+    }).catch(()=>setStatus("error"));
+    return()=>{cancelled=true;if(mapObj.current&&mapObj.current.remove)try{mapObj.current.remove();}catch{}};
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[status,defects]);
+  },[provider,currentProject?.id]);
+
+  // ── Render existing defect pins (both providers) ───────────────
+  useEffect(()=>{
+    if(status!=="ready"||!mapObj.current)return;
+    // Clear previous
+    markersRef.current.existing.forEach(m=>{if(m.setMap)m.setMap(null);else if(m.remove)m.remove();});
+    if(provider==="gmaps"&&window.google?.maps){
+      const g=window.google.maps;
+      markersRef.current.existing=mapDefects.map(d=>{
+        const color=SEV_COLOR[d.severity]||"#8e8e93";
+        const m=new g.Marker({
+          position:{lat:d.lat,lng:d.lng},
+          map:mapObj.current,
+          icon:{path:g.SymbolPath.CIRCLE,scale:8,fillColor:color,fillOpacity:0.95,strokeColor:"#fff",strokeWeight:2},
+          title:d.title||"Entry",
+        });
+        const iw=new g.InfoWindow({content:`<div style="font-family:'Barlow Condensed',sans-serif;padding:2px 6px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${(d.title||"Entry").replace(/</g,"&lt;")}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div></div>`});
+        m.addListener("click",()=>iw.open({anchor:m,map:mapObj.current}));
+        return m;
+      });
+    }else if(provider==="osm"&&window.L){
+      const L=window.L;
+      markersRef.current.existing=mapDefects.map(d=>{
+        const color=SEV_COLOR[d.severity]||"#8e8e93";
+        const m=L.circleMarker([d.lat,d.lng],{radius:8,color:"#fff",weight:2,fillColor:color,fillOpacity:0.95}).addTo(mapObj.current);
+        const safeTitle=(d.title||"Entry").replace(/</g,"&lt;");
+        m.bindPopup(`<div style="font-family:'Barlow Condensed',sans-serif;padding:2px 4px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div></div>`);
+        return m;
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[status,defects,provider]);
 
   const saveDefault=()=>{
     if(!mapObj.current||!currentProject?.id)return;
-    const c=mapObj.current.getCenter();
-    setProjectMapDefault(currentProject.id,{lat:c.lat(),lng:c.lng(),zoom:mapObj.current.getZoom()});
+    let lat,lng,zoom;
+    if(provider==="gmaps"){
+      const c=mapObj.current.getCenter();lat=c.lat();lng=c.lng();zoom=mapObj.current.getZoom();
+    }else{
+      const c=mapObj.current.getCenter();lat=c.lat;lng=c.lng;zoom=mapObj.current.getZoom();
+    }
+    setProjectMapDefault(currentProject.id,{lat,lng,zoom});
     setSavedDefault(true);setTimeout(()=>setSavedDefault(false),2200);
   };
 
   const cancelPending=()=>{
-    if(markersRef.current.pending){markersRef.current.pending.setMap(null);markersRef.current.pending=null;}
+    if(markersRef.current.pending){
+      if(markersRef.current.pending.setMap)markersRef.current.pending.setMap(null);
+      else if(markersRef.current.pending.remove)markersRef.current.pending.remove();
+      markersRef.current.pending=null;
+    }
     setPendingPin(null);setQTitle("");setQSev("Minor");
+  };
+
+  // OSM search via Nominatim
+  const searchOsm=async()=>{
+    if(provider!=="osm"||!searchRef.current||!mapObj.current)return;
+    const q=searchRef.current.value;
+    if(!q||!q.trim())return;
+    setSearching(true);
+    const hit=await geocodeNominatim(q);
+    setSearching(false);
+    if(!hit){alert("Location not found.");return;}
+    mapObj.current.setView([hit.lat,hit.lng],17);
   };
 
   const savePin=async()=>{
@@ -5900,22 +6049,27 @@ function MapPanel({currentProject,member,defects,onSaveEntry}){
     setSaving(false);
   };
 
-  if(status==="no-key"){
-    return <div style={{padding:30,textAlign:"center",color:"rgba(0,0,0,0.55)",fontSize:13,lineHeight:1.6}}>{t("maps.no_api_key")}</div>;
-  }
   if(status==="error"){
     return <div style={{padding:30,textAlign:"center",color:"#ff3b30",fontSize:13}}>{t("maps.sdk_failed")}</div>;
   }
 
+  const providerLabel=provider==="gmaps"?"Google Maps":"OpenStreetMap";
+
   return(
     <div style={{display:"flex",flexDirection:"column",gap:10}}>
       <div style={{display:"flex",gap:8,alignItems:"center"}}>
-        <input ref={searchRef} type="text" placeholder={t("maps.search_address")} style={{flex:1,padding:"10px 12px",fontSize:13,borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",boxSizing:"border-box"}}/>
+        <form onSubmit={e=>{e.preventDefault();if(provider==="osm")searchOsm();}} style={{flex:1,display:"flex",gap:6}}>
+          <input ref={searchRef} type="text" placeholder={t("maps.search_address")||"Search address or location..."} style={{flex:1,padding:"10px 12px",fontSize:13,borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",boxSizing:"border-box"}}/>
+          {provider==="osm"&&<button type="submit" disabled={searching} style={{padding:"10px 14px",borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",color:"rgba(0,0,0,0.7)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:searching?"wait":"pointer"}}>{searching?"…":"🔍"}</button>}
+        </form>
         {canEdit&&<button onClick={saveDefault} title={t("maps.save_default_view")} style={{padding:"10px 12px",borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:savedDefault?"rgba(48,209,88,0.15)":"#fff",color:savedDefault?"#30d158":"rgba(0,0,0,0.7)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{savedDefault?"✓":"★"}</button>}
       </div>
       <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",display:"flex",gap:10,alignItems:"center"}}>
         <span>{canEdit?t("maps.drop_pin_hint"):""}</span>
-        {mapDefects.length>0&&<span style={{marginLeft:"auto",color:"rgba(0,0,0,0.45)"}}>{mapDefects.length} pinned</span>}
+        <span style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center"}}>
+          {mapDefects.length>0&&<span style={{color:"rgba(0,0,0,0.45)"}}>{mapDefects.length} pinned</span>}
+          <span style={{fontSize:10,background:"rgba(0,0,0,0.05)",padding:"2px 8px",borderRadius:8,color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{providerLabel}</span>
+        </span>
       </div>
       <div ref={mapRef} style={{width:"100%",height:"min(60vh,520px)",borderRadius:12,border:"1px solid rgba(0,0,0,0.12)",background:"#e5e3dc"}}/>
       {pendingPin&&<div style={{padding:12,background:"#fff",border:"1px solid rgba(255,107,0,0.3)",borderRadius:10,display:"flex",flexDirection:"column",gap:8}}>
