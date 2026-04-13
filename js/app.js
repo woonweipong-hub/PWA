@@ -6415,9 +6415,32 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company}){
           updateMarkupGeo(m.id,{points:pts});
         });
       }else if(m.type==="photo"&&m.dataUrl&&m.a&&m.b){
-        const bounds={north:Math.max(m.a.lat,m.b.lat),south:Math.min(m.a.lat,m.b.lat),east:Math.max(m.a.lng,m.b.lng),west:Math.min(m.a.lng,m.b.lng)};
-        obj=new g.GroundOverlay(m.dataUrl,bounds,{clickable:false,opacity:0.92,map:mapObj.current});
-        // GroundOverlay is not natively draggable — Leaflet parity only for now
+        const mkBounds=(a,b)=>({north:Math.max(a.lat,b.lat),south:Math.min(a.lat,b.lat),east:Math.max(a.lng,b.lng),west:Math.min(a.lng,b.lng)});
+        let overlay=new g.GroundOverlay(m.dataUrl,mkBounds(m.a,m.b),{clickable:false,opacity:0.92,map:mapObj.current});
+        obj=overlay;
+        // GroundOverlay isn't natively draggable — add a draggable handle at
+        // the centroid and rebuild the overlay at the new bounds on dragend.
+        if(canEdit){
+          const mid={lat:(m.a.lat+m.b.lat)/2,lng:(m.a.lng+m.b.lng)/2};
+          const handle=new g.Marker({
+            position:mid,map:mapObj.current,draggable:true,
+            icon:{path:g.SymbolPath.CIRCLE,scale:7,fillColor:m.color,fillOpacity:0.95,strokeColor:"#fff",strokeWeight:2},
+            zIndex:9999,title:"Drag to move photo",
+          });
+          let start=null;
+          handle.addListener("dragstart",()=>{start={lat:handle.getPosition().lat(),lng:handle.getPosition().lng()};});
+          handle.addListener("dragend",()=>{
+            if(!start)return;
+            const cur=handle.getPosition();
+            const dLat=cur.lat()-start.lat,dLng=cur.lng()-start.lng;
+            const na={lat:m.a.lat+dLat,lng:m.a.lng+dLng},nb={lat:m.b.lat+dLat,lng:m.b.lng+dLng};
+            overlay.setMap(null);
+            overlay=new g.GroundOverlay(m.dataUrl,mkBounds(na,nb),{clickable:false,opacity:0.92,map:mapObj.current});
+            updateMarkupGeo(m.id,{a:na,b:nb});
+            start=null;
+          });
+          layers.push(handle);
+        }
       }
       if(obj)layers.push(obj);
     });
