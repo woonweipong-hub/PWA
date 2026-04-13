@@ -6633,6 +6633,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
       const map=L.map(mapRef.current,{zoomControl:true,attributionControl:true}).setView([view.lat,view.lng],view.zoom||17);
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{
         maxZoom:19,
+        crossOrigin:"anonymous", // critical for snap: lets us export tiles to canvas
         attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       }).addTo(map);
       mapObj.current=map;
@@ -6757,29 +6758,62 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
       try{quickLogRef.current.scrollIntoView({behavior:"smooth",block:"nearest"});}catch{}
     }
   },[pendingPin]);
+  // Capture the live map directly from the DOM — works even on tile servers
+  // that don't support CORS on their static-map endpoint, since we draw the
+  // already-rendered tile <img> elements (loaded with crossOrigin:anonymous).
+  const snapFromLeafletDOM=()=>{
+    const map=mapObj.current;
+    const size=map.getSize();
+    const cnv=document.createElement("canvas");
+    cnv.width=size.x;cnv.height=size.y;
+    const ctx=cnv.getContext("2d");
+    ctx.fillStyle="#e5e3dc";ctx.fillRect(0,0,size.x,size.y);
+    const mapRect=map.getContainer().getBoundingClientRect();
+    const tiles=map.getContainer().querySelectorAll(".leaflet-tile");
+    for(const tile of tiles){
+      if(!tile.src||!tile.complete||tile.naturalWidth===0)continue;
+      const r=tile.getBoundingClientRect();
+      try{ctx.drawImage(tile,r.left-mapRect.left,r.top-mapRect.top,r.width,r.height);}
+      catch(e){throw new Error("Tiles tainted (not loaded with CORS). Reload the map and try again.");}
+    }
+    return new Promise(res=>cnv.toBlob(res,"image/jpeg",0.88));
+  };
+
+  const snapFromStaticUrl=async()=>{
+    let lat,lng,zoom;
+    if(provider==="gmaps"){const c=mapObj.current.getCenter();lat=c.lat();lng=c.lng();zoom=mapObj.current.getZoom();}
+    else{const c=mapObj.current.getCenter();lat=c.lat;lng=c.lng;zoom=mapObj.current.getZoom();}
+    const url=staticMapUrl(provider,lat,lng,zoom,"1024x1024");
+    if(!url)throw new Error("No static map URL available for this provider.");
+    const img=await new Promise((resolve,reject)=>{
+      const i=new Image();i.crossOrigin="anonymous";
+      i.onload=()=>resolve(i);i.onerror=()=>reject(new Error("tile server blocked cross-origin capture"));
+      i.src=url;
+    });
+    const cnv=document.createElement("canvas");
+    cnv.width=img.width;cnv.height=img.height;
+    cnv.getContext("2d").drawImage(img,0,0);
+    return new Promise(res=>cnv.toBlob(res,"image/jpeg",0.88));
+  };
+
   const snapAsDrawing=async()=>{
     if(!mapObj.current||!company?.companyId||!currentProject?.id)return;
     setSnapping(true);
     try{
-      // Read current view
+      // Current view metadata for the drawing name
       let lat,lng,zoom;
       if(provider==="gmaps"){const c=mapObj.current.getCenter();lat=c.lat();lng=c.lng();zoom=mapObj.current.getZoom();}
       else{const c=mapObj.current.getCenter();lat=c.lat;lng=c.lng;zoom=mapObj.current.getZoom();}
-      // Fetch static-map image (CORS-friendly via <img crossOrigin>)
-      const url=staticMapUrl(provider,lat,lng,zoom,"1024x1024");
-      if(!url)throw new Error("No static map URL — add a Google Maps key to capture a Google view.");
-      const img=await new Promise((resolve,reject)=>{
-        const i=new Image();i.crossOrigin="anonymous";
-        i.onload=()=>resolve(i);
-        i.onerror=()=>reject(new Error("Failed to fetch static map tile"));
-        i.src=url;
-      });
-      // Draw to canvas + export blob
-      const cnv=document.createElement("canvas");
-      cnv.width=img.width;cnv.height=img.height;
-      cnv.getContext("2d").drawImage(img,0,0);
-      const blob=await new Promise(res=>cnv.toBlob(res,"image/jpeg",0.88));
-      if(!blob)throw new Error("Could not export map image (tile server may block cross-origin capture).");
+      // OSM: capture from the DOM (tiles already loaded with crossOrigin:anonymous).
+      // gmaps: static-map URL (Google sends CORS headers for Static Maps with valid keys).
+      let blob;
+      try{blob=provider==="osm"?await snapFromLeafletDOM():await snapFromStaticUrl();}
+      catch(e){
+        // One-shot fallback: if DOM capture fails (e.g. tiles re-rendered during
+        // canvas write), try the static URL instead.
+        blob=await snapFromStaticUrl();
+      }
+      if(!blob)throw new Error("Could not export map image.");
       const stamp=new Date().toISOString().slice(0,10);
       const label=`Map ${stamp} — ${lat.toFixed(4)}, ${lng.toFixed(4)} @ z${zoom}`;
       const file=new File([blob],`${label}.jpg`,{type:"image/jpeg"});
@@ -6790,7 +6824,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
       if(onSnapped)onSnapped(rec);
       else alert("✓ Saved as drawing: "+label);
     }catch(e){
-      alert("Snap failed: "+(e.message||e)+"\n\nTry OpenStreetMap provider (Settings → Maps) — its static tiles allow cross-origin capture.");
+      alert("Snap failed: "+(e.message||e));
     }
     setSnapping(false);
   };
