@@ -19,3 +19,8 @@ contracts/REDAS/**
 contracts/SIA/**
 !contracts/PSSCOC/
 !contracts/PSSCOC/**
+
+# Local-only sample drawings we can't redistribute
+# (Autodesk Revit rac_basic_sample, unknown-provenance PDFs, test screenshots)
+sample_drwgs/archived/
+sample_drwgs/*.jpg
