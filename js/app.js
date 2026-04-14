@@ -9086,21 +9086,22 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           </div>
         )}
 
-        {/* Action bar — project name already shown in the top bar, so no
-            spacer here: frees up room on narrow phones so Dn stays visible. */}
-        <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:6,marginBottom:16,flexWrap:"wrap"}}>
+        {/* Action bar — four equal-width buttons, spread across the row so
+            labels breathe and the right edge stays inside the viewport on
+            narrow phones. */}
+        <div style={{display:"flex",alignItems:"stretch",gap:6,marginBottom:16}}>
           {canUpload&&(
-            <button onClick={()=>fileRef.current?.click()} disabled={uploading} title="Upload" style={{borderRadius:10,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 12px",gap:5}}>
-              {uploading?<Spin size={16}/>:<><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 16V3m0 0L7 8m5-5l5 5" stroke="rgba(0,0,0,0.55)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="rgba(0,0,0,0.55)" strokeWidth="1.8" strokeLinecap="round"/></svg><span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.55)"}}>Up</span></>}
+            <button onClick={()=>fileRef.current?.click()} disabled={uploading} title="Upload" style={{flex:1,minWidth:0,borderRadius:10,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 10px",gap:5}}>
+              {uploading?<Spin size={16}/>:<><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 16V3m0 0L7 8m5-5l5 5" stroke="rgba(0,0,0,0.55)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="rgba(0,0,0,0.55)" strokeWidth="1.8" strokeLinecap="round"/></svg><span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.55)"}}>Upload</span></>}
             </button>
           )}
           {canUpload&&(
-            <button onClick={()=>convertRef.current?.click()} disabled={converting} title="Convert JPG sketches to vector PDF drawings (single or batch)" style={{borderRadius:10,background:"rgba(52,199,89,0.08)",border:"1px solid rgba(52,199,89,0.3)",cursor:converting?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 12px",gap:5}}>
+            <button onClick={()=>convertRef.current?.click()} disabled={converting} title="Convert JPG sketches to vector PDF drawings (single or batch)" style={{flex:1,minWidth:0,borderRadius:10,background:"rgba(52,199,89,0.08)",border:"1px solid rgba(52,199,89,0.3)",cursor:converting?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 10px",gap:5}}>
               {converting?<Spin size={16}/>:<><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 7h6l2-3h6a2 2 0 012 2v13a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z" stroke="rgba(52,160,80,0.85)" strokeWidth="1.6" strokeLinejoin="round"/><path d="M9 13l2 2 4-4" stroke="rgba(52,160,80,0.85)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg><span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(52,160,80,0.9)"}}>Convert</span></>}
             </button>
           )}
-          <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(diffMenuTimer.current);setShowDiffMenu(true);}} onMouseLeave={()=>{diffMenuTimer.current=setTimeout(()=>setShowDiffMenu(false),250);}}>
-            <button onClick={()=>setShowDiffMenu(v=>!v)} title={t("export.diff_compare")} style={{borderRadius:10,background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 12px",gap:5}}>
+          <div style={{flex:1,minWidth:0,position:"relative"}} onMouseEnter={()=>{clearTimeout(diffMenuTimer.current);setShowDiffMenu(true);}} onMouseLeave={()=>{diffMenuTimer.current=setTimeout(()=>setShowDiffMenu(false),250);}}>
+            <button onClick={()=>setShowDiffMenu(v=>!v)} title={t("export.diff_compare")} style={{width:"100%",borderRadius:10,background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 10px",gap:5}}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="18" rx="1.5" stroke="rgba(88,86,214,0.8)" strokeWidth="1.8"/><rect x="13" y="3" width="8" height="18" rx="1.5" stroke="rgba(88,86,214,0.8)" strokeWidth="1.8"/><path d="M7 8h0M7 12h0M17 8h0M17 12h0" stroke="rgba(88,86,214,0.8)" strokeWidth="2.2" strokeLinecap="round"/></svg>
               <span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(88,86,214,0.85)"}}>{t("export.diff")}</span>
             </button>
@@ -9110,10 +9111,10 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
               <button onClick={()=>{setShowDiffMenu(false);setShowBatchCompare(true);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#d8d2ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{t("export.batch_compare")} <span style={{color:"rgba(255,255,255,0.35)",fontWeight:400}}>{t("export.batch_compare_desc")}</span></button>
             </div>}
           </div>
-          <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(dnMenuTimer.current);setShowDnMenu(true);}} onMouseLeave={()=>{dnMenuTimer.current=setTimeout(()=>setShowDnMenu(false),250);}}>
-            <button onClick={()=>setShowDnMenu(v=>!v)} title="Download" style={{borderRadius:10,background:"rgba(52,170,220,0.1)",border:"1px solid rgba(52,170,220,0.25)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 12px",gap:5}}>
+          <div style={{flex:1,minWidth:0,position:"relative"}} onMouseEnter={()=>{clearTimeout(dnMenuTimer.current);setShowDnMenu(true);}} onMouseLeave={()=>{dnMenuTimer.current=setTimeout(()=>setShowDnMenu(false),250);}}>
+            <button onClick={()=>setShowDnMenu(v=>!v)} title="Download" style={{width:"100%",borderRadius:10,background:"rgba(52,170,220,0.1)",border:"1px solid rgba(52,170,220,0.25)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 10px",gap:5}}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="rgba(52,170,220,0.85)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="rgba(52,170,220,0.85)" strokeWidth="1.8" strokeLinecap="round"/></svg>
-              <span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(52,170,220,0.9)"}}>Dn</span>
+              <span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(52,170,220,0.9)"}}>Download</span>
             </button>
             {showDnMenu&&<div onMouseEnter={()=>clearTimeout(dnMenuTimer.current)} onMouseLeave={()=>{dnMenuTimer.current=setTimeout(()=>setShowDnMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,overflow:"hidden",zIndex:100,minWidth:180}}>
               <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("export.markups_header")}</div>
