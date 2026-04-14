@@ -7799,6 +7799,16 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
           uploadedAt:new Date().toISOString(),
         },"file",pdfFile,pdfFile.name);
         created.push(rec);
+        // Also trigger a local download so the user has an offline copy of
+        // the vector PDF — same file that was just uploaded. Lands in the
+        // browser/OS default Downloads folder. Tap Up later to re-import.
+        try{
+          const a=document.createElement("a");
+          const objUrl=URL.createObjectURL(blob);
+          a.href=objUrl;a.download=baseName;
+          document.body.appendChild(a);a.click();document.body.removeChild(a);
+          setTimeout(()=>URL.revokeObjectURL(objUrl),1000);
+        }catch{}
       }catch(err){
         console.warn("convert failed for",f.name,err);
         alert(`Failed to convert ${f.name}: ${err.message}`);
@@ -11984,6 +11994,11 @@ function App(){
                       [t("help.tip_photo_scale"),t("help.tip_photo_scale_desc")],
                       [t("help.tip_map_tagging"),t("help.tip_map_tagging_desc")],
                       [t("help.tip_map_markup"),t("help.tip_map_markup_desc")],
+                      [t("help.tip_cluster_pins"),t("help.tip_cluster_pins_desc")],
+                      [t("help.tip_convert"),t("help.tip_convert_desc")],
+                      [t("help.tip_load_samples"),t("help.tip_load_samples_desc")],
+                      [t("help.tip_save_device"),t("help.tip_save_device_desc")],
+                      [t("help.tip_bulk_delete"),t("help.tip_bulk_delete_desc")],
                     ]],
                   ].map(([section,items])=>(
                     <div key={section} style={{marginBottom:24}}>
