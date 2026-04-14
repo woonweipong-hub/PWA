@@ -10305,46 +10305,170 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     downloadTextFile(csv,fn,"text/csv;charset=utf-8");
   };
 
-  const exportComparePdf=()=>{
+  const exportComparePdf=async()=>{
     if(!compareRes)return;
-    const addedHtml=(compareRes.added.length?compareRes.added:["No added lines detected."]).map((l,i)=>{const e=diffEdits[`added_${i}`];const txt=e?.name?`<b>${sanitize(e.name)}</b> <span style="color:#999;font-size:10px">(was: ${sanitize(l?.text||l)})</span>`:sanitize(l?.text||l);return`<tr><td>${i+1}</td><td>${txt}${e?.remark?`<div style="color:#666;font-size:10px;margin-top:2px;font-style:italic">💬 ${sanitize(e.remark)}</div>`:""}</td></tr>`;}).join("");
-    const removedHtml=(compareRes.removed.length?compareRes.removed:["No removed lines detected."]).map((l,i)=>{const e=diffEdits[`removed_${i}`];const txt=e?.name?`<b>${sanitize(e.name)}</b> <span style="color:#999;font-size:10px">(was: ${sanitize(l?.text||l)})</span>`:sanitize(l?.text||l);return`<tr><td>${i+1}</td><td>${txt}${e?.remark?`<div style="color:#666;font-size:10px;margin-top:2px;font-style:italic">💬 ${sanitize(e.remark)}</div>`:""}</td></tr>`;}).join("");
+    // Build with jsPDF for structured text, then post-process with pdf-lib
+    // to insert the native-size BASE and TARGET source PDF pages as true
+    // vectors — same treatment as the main drawings export.
+    const doc=new jspdf.jsPDF("p","mm","a4");
+    const pageW=doc.internal.pageSize.getWidth();
+    const pageH=doc.internal.pageSize.getHeight();
+    const margin=14;
+    const contentW=pageW-margin*2;
+    let y=18;
     const stamp=new Date(compareRes.generatedAt||Date.now());
-    const aiApprovalHtml=compareAiReport?`<div style="margin:8px 0 0;font-size:11px;color:${compareAiLocked?"#1a7a35":"#666"};background:${compareAiLocked?"#eefcf1":"#f7f7f7"};border:1px solid ${compareAiLocked?"#9cd8ad":"#ddd"};border-radius:6px;padding:8px"><b>AI Report Status:</b> ${compareAiLocked?"LOCKED":"DRAFT"}${compareAiApprovedBy?` | <b>Approved by:</b> ${sanitize(compareAiApprovedBy)}`:""}${compareAiApprovedAt?` | <b>Approved at:</b> ${sanitize(new Date(compareAiApprovedAt).toLocaleString())}`:""}</div>`:"";
-    const auditHtml=compareAuditLog.length?`<div style="margin:8px 0 0;font-size:10px;border:1px solid #ddd;border-radius:6px;padding:8px;background:#fafafa"><b>Audit Trail</b>${compareAuditLog.map(e=>`<div style="margin:3px 0;color:${e.action==="lock"?"#1a7a35":"#b36b00"}"><b>${e.action.toUpperCase()}</b> by ${sanitize(e.by)} at ${sanitize(new Date(e.at).toLocaleString())}${e.reason&&e.action==="unlock"?` — <i>${sanitize(e.reason)}</i>`:""}</div>`).join("")}</div>`:"";
-    const markupHtml=compareMarkupStrokes.length?`<h2 style="color:#ff6b00">Markup Annotations (${compareMarkupStrokes.length})</h2><div style="font-size:11px;border:1px solid #ffd6b8;border-radius:6px;padding:8px;background:#fff8f3">${compareMarkupStrokes.filter(s=>s.type==="text"&&s.text).map(s=>`<div style="margin:2px 0">📝 ${sanitize(s.text)}</div>`).join("")||"<i>No text annotations</i>"}<div style="margin-top:4px;color:#999;font-size:10px">${compareMarkupStrokes.filter(s=>s.type==="freehand").length} freehand, ${compareMarkupStrokes.filter(s=>s.type==="arrow").length} arrow, ${compareMarkupStrokes.filter(s=>s.type==="circle").length} circle</div></div>`:"";
-    const aiHtml=compareAiReport?`<h2 style="color:#5856d6">AI-Supported Analysis</h2><div style="white-space:pre-wrap;font-size:12px;line-height:1.45;background:#f5f3ff;border:1px solid #d8d2ff;border-radius:8px;padding:10px">${sanitize(compareAiReport)}</div>${aiApprovalHtml}${auditHtml}`:"";
-    const w=window.open("","_blank");
-    if(!w){alert("Popup blocked. Please allow popups to export PDF.");return;}
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileTimestamp()}-Drawing Comparison Report</title><style>
-      body{font-family:Arial,sans-serif;padding:22px;color:#111}
-      h1{margin:0 0 4px;font-size:22px} h2{margin:20px 0 8px;font-size:16px}
-      .meta{font-size:12px;color:#444;margin-bottom:6px}
-      .cards{display:flex;gap:10px;margin:10px 0 14px}
-      .card{flex:1;border-radius:8px;padding:10px;border:1px solid #ddd}
-      .add{border-color:#ff3b30;background:#fff3f2}.rem{border-color:#34c759;background:#f0fff5}
-      table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ddd;padding:6px;vertical-align:top}
-      th{background:#f5f5f5;text-align:left}
-      @media print {.no-print{display:none}}
-    </style></head><body>
-      <h1>Drawing Revision Comparison</h1>
-      <div class="meta"><b>Project:</b> ${sanitize(currentProject?.name||"—")} | <b>Company:</b> ${sanitize(company?.companyName||"—")}</div>
-      <div class="meta"><b>Base:</b> ${sanitize(compareRes.baseName)} | <b>Revision:</b> ${sanitize(compareRes.targetName)}</div>
-      <div class="meta"><b>Generated:</b> ${sanitize(stamp.toLocaleString())}</div>
-      <div class="cards">
-        <div class="card add"><div><b>Added lines (Red)</b></div><div style="font-size:22px;font-weight:bold">${compareRes.totalAdded}</div></div>
-        <div class="card rem"><div><b>Removed lines (Green)</b></div><div style="font-size:22px;font-weight:bold">${compareRes.totalRemoved}</div></div>
-      </div>
-      <h2 style="color:#ff3b30">Added Lines</h2>
-      <table><thead><tr><th style="width:44px">#</th><th>Line</th></tr></thead><tbody>${addedHtml}</tbody></table>
-      <h2 style="color:#34c759">Removed Lines</h2>
-      <table><thead><tr><th style="width:44px">#</th><th>Line</th></tr></thead><tbody>${removedHtml}</tbody></table>
-      ${aiHtml}
-      ${markupHtml}
-      <div class="no-print" style="margin-top:16px;font-size:12px;color:#444">Use your browser destination "Save as PDF" when print dialog appears.</div>
-      <script>window.onload=function(){setTimeout(function(){window.print();},250);};</script>
-    </body></html>`);
-    w.document.close();
+    // Header
+    doc.setFontSize(20);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
+    doc.text("DRAWING REVISION COMPARISON",margin,y);y+=9;
+    doc.setTextColor(0);doc.setFontSize(10);doc.setFont(undefined,"normal");
+    doc.text(`Project: ${currentProject?.name||"—"}`,margin,y);y+=5;
+    doc.text(`Company: ${company?.companyName||"—"}`,margin,y);y+=5;
+    doc.text(`Base: ${compareRes.baseName}`,margin,y);y+=5;
+    doc.text(`Revision: ${compareRes.targetName}`,margin,y);y+=5;
+    doc.text(`Generated: ${stamp.toLocaleString()}`,margin,y);y+=8;
+    // Summary cards
+    doc.setFillColor(255,243,242);doc.setDrawColor(255,59,48);doc.roundedRect(margin,y,(contentW-6)/2,22,2,2,"FD");
+    doc.setFontSize(9);doc.setFont(undefined,"bold");doc.setTextColor(255,59,48);
+    doc.text("ADDED LINES (RED)",margin+3,y+6);
+    doc.setFontSize(22);doc.text(String(compareRes.totalAdded||0),margin+3,y+16);
+    doc.setFillColor(240,255,245);doc.setDrawColor(52,199,89);doc.roundedRect(margin+contentW/2+3,y,(contentW-6)/2,22,2,2,"FD");
+    doc.setTextColor(52,199,89);doc.setFontSize(9);
+    doc.text("REMOVED LINES (GREEN)",margin+contentW/2+6,y+6);
+    doc.setFontSize(22);doc.text(String(compareRes.totalRemoved||0),margin+contentW/2+6,y+16);
+    y+=28;doc.setTextColor(0);doc.setDrawColor(0);doc.setFont(undefined,"normal");
+    const checkPage=(n)=>{if(y+n>pageH-margin){doc.addPage();y=18;}};
+    // Added / Removed tables via autoTable
+    if(compareRes.added?.length){
+      checkPage(30);
+      doc.setFontSize(12);doc.setFont(undefined,"bold");doc.setTextColor(255,59,48);
+      doc.text(`ADDED LINES (${compareRes.added.length})`,margin,y);y+=5;
+      doc.setTextColor(0);doc.setFont(undefined,"normal");
+      const addedRows=compareRes.added.map((l,i)=>{
+        const e=diffEdits[`added_${i}`];
+        const text=e?.name?`${e.name} (was: ${l?.text||l})`:(l?.text||l);
+        return[String(i+1),String(text||"").slice(0,300)+(e?.remark?`\n💬 ${e.remark}`:"")];
+      });
+      doc.autoTable({startY:y,head:[["#","Line"]],body:addedRows,margin:{left:margin,right:margin},styles:{fontSize:8,cellPadding:2,overflow:"linebreak"},headStyles:{fillColor:[255,59,48],textColor:255,fontStyle:"bold"},columnStyles:{0:{cellWidth:12}}});
+      y=doc.lastAutoTable.finalY+6;
+    }
+    if(compareRes.removed?.length){
+      checkPage(30);
+      doc.setFontSize(12);doc.setFont(undefined,"bold");doc.setTextColor(52,199,89);
+      doc.text(`REMOVED LINES (${compareRes.removed.length})`,margin,y);y+=5;
+      doc.setTextColor(0);doc.setFont(undefined,"normal");
+      const removedRows=compareRes.removed.map((l,i)=>{
+        const e=diffEdits[`removed_${i}`];
+        const text=e?.name?`${e.name} (was: ${l?.text||l})`:(l?.text||l);
+        return[String(i+1),String(text||"").slice(0,300)+(e?.remark?`\n💬 ${e.remark}`:"")];
+      });
+      doc.autoTable({startY:y,head:[["#","Line"]],body:removedRows,margin:{left:margin,right:margin},styles:{fontSize:8,cellPadding:2,overflow:"linebreak"},headStyles:{fillColor:[52,199,89],textColor:255,fontStyle:"bold"},columnStyles:{0:{cellWidth:12}}});
+      y=doc.lastAutoTable.finalY+6;
+    }
+    // AI report + approval + audit
+    if(compareAiReport){
+      checkPage(30);
+      doc.setFontSize(12);doc.setFont(undefined,"bold");doc.setTextColor(88,86,214);
+      doc.text("AI-SUPPORTED ANALYSIS",margin,y);y+=5;
+      doc.setTextColor(60);doc.setFontSize(9);doc.setFont(undefined,"normal");
+      const aiLines=doc.splitTextToSize(compareAiReport,contentW-2);
+      for(const line of aiLines){checkPage(5);doc.text(line,margin,y);y+=4.2;}
+      y+=3;
+      const status=compareAiLocked?"LOCKED":"DRAFT";
+      doc.setFontSize(9);doc.setFont(undefined,"bold");doc.setTextColor(compareAiLocked?26:140,compareAiLocked?122:102,compareAiLocked?53:0);
+      doc.text(`Status: ${status}`,margin,y);y+=5;
+      if(compareAiApprovedBy){doc.setFont(undefined,"normal");doc.text(`Approved by: ${compareAiApprovedBy}`,margin,y);y+=5;}
+      if(compareAiApprovedAt){doc.text(`Approved at: ${new Date(compareAiApprovedAt).toLocaleString()}`,margin,y);y+=5;}
+      doc.setTextColor(0);y+=2;
+      if(compareAuditLog.length){
+        doc.setFontSize(9);doc.setFont(undefined,"bold");
+        doc.text("AUDIT TRAIL",margin,y);y+=4;
+        doc.setFont(undefined,"normal");doc.setFontSize(8);doc.setTextColor(80);
+        for(const e of compareAuditLog){
+          const row=`${e.action.toUpperCase()} by ${e.by} at ${new Date(e.at).toLocaleString()}${e.reason&&e.action==="unlock"?` — ${e.reason}`:""}`;
+          const wrap=doc.splitTextToSize(row,contentW-2);
+          for(const line of wrap){checkPage(5);doc.text(line,margin,y);y+=3.8;}
+        }
+        doc.setTextColor(0);y+=3;
+      }
+    }
+    // Markup annotations list (text form)
+    if(compareMarkupStrokes?.length){
+      checkPage(20);
+      doc.setFontSize(12);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
+      doc.text(`MARKUP ANNOTATIONS (${compareMarkupStrokes.length})`,margin,y);y+=5;
+      doc.setTextColor(60);doc.setFontSize(9);doc.setFont(undefined,"normal");
+      const textStrokes=compareMarkupStrokes.filter(s=>s.type==="text"&&s.text);
+      for(const s of textStrokes){
+        const row="📝 "+(s.text||"");
+        const wrap=doc.splitTextToSize(row,contentW-4);
+        for(const line of wrap){checkPage(5);doc.text(line,margin+2,y);y+=4;}
+      }
+      const fh=compareMarkupStrokes.filter(s=>s.type==="freehand").length;
+      const ar=compareMarkupStrokes.filter(s=>s.type==="arrow").length;
+      const ci=compareMarkupStrokes.filter(s=>s.type==="circle").length;
+      doc.setFontSize(8);doc.setTextColor(140);
+      doc.text(`Shapes: ${fh} freehand · ${ar} arrow · ${ci} circle`,margin,y);y+=5;
+      doc.setTextColor(0);
+    }
+    // Native-size vector pages for base + target — the crown jewel of this
+    // export. Each gets a small A4 title page pointing at the native page
+    // that follows.
+    const baseDrawing=drawings.find(d=>d.id===compareBaseId);
+    const targetDrawing=drawings.find(d=>d.id===compareTargetId);
+    const nativeInserts=[];
+    const addNativeHeader=(label,dr)=>{
+      if(!dr||!/\.pdf$/i.test(dr.file||""))return;
+      doc.addPage();y=18;
+      doc.setFontSize(16);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
+      doc.text(label,margin,y);y+=7;
+      doc.setTextColor(0);doc.setFontSize(11);doc.setFont(undefined,"normal");
+      doc.text(dr.name||"",margin,y);y+=5;
+      doc.setFontSize(8);doc.setTextColor(110);
+      doc.text("The next page is the source PDF at native size for measurement (print at 100% for 1:1 scale).",margin,y);
+      doc.setTextColor(0);
+      nativeInserts.push({titlePageNumber:doc.getNumberOfPages(),sourceUrl:DB.fileUrl("drawings",dr.id,dr.file),sourcePageIdx:0});
+    };
+    addNativeHeader("BASE DRAWING",baseDrawing);
+    addNativeHeader("REVISION DRAWING",targetDrawing);
+    // Post-process with pdf-lib to splice native source pages in.
+    const fileBase=`SiteShrimp_Compare_${(currentProject?.name||"Export").replace(/\s/g,"_")}_${stamp.toLocaleDateString("en-GB").replace(/\//g,"-")}`;
+    const fileName=fileBase+".pdf";
+    if(!nativeInserts.length){doc.save(fileName);return;}
+    try{
+      const PDFLib=await _waitForPdfLib();
+      const {PDFDocument}=PDFLib;
+      const baseBytes=doc.output("arraybuffer");
+      const outDoc=await PDFDocument.load(baseBytes);
+      // Dedup source fetches across base+target in case the user compared a
+      // drawing to itself (unusual but harmless).
+      const uniqueUrls=[...new Set(nativeInserts.map(s=>s.sourceUrl))];
+      const srcCache=new Map();
+      await Promise.all(uniqueUrls.map(async u=>{
+        try{srcCache.set(u,await _fetchBytes(u));}
+        catch(e){console.warn("compare: source fetch failed",u,e);srcCache.set(u,null);}
+      }));
+      // Descending page order so insertPage doesn't invalidate later swaps.
+      const sorted=[...nativeInserts].sort((a,b)=>b.titlePageNumber-a.titlePageNumber);
+      for(const ins of sorted){
+        const bytes=srcCache.get(ins.sourceUrl);
+        if(!bytes)continue;
+        try{
+          const srcDoc=await PDFDocument.load(bytes,{ignoreEncryption:true});
+          if(ins.sourcePageIdx>=srcDoc.getPageCount())continue;
+          const [copied]=await outDoc.copyPages(srcDoc,[ins.sourcePageIdx]);
+          outDoc.insertPage(ins.titlePageNumber,copied);
+        }catch(e){console.warn("compare: native insert failed",ins,e);}
+      }
+      const finalBytes=await outDoc.save({useObjectStreams:true});
+      const blob=new Blob([finalBytes],{type:"application/pdf"});
+      const a=document.createElement("a");
+      a.href=URL.createObjectURL(blob);a.download=fileName;
+      document.body.appendChild(a);a.click();
+      setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+    }catch(e){
+      console.warn("compare: pdf-lib post-process failed; saving base PDF",e);
+      doc.save(fileName);
+    }
   };
 
   const closeViewerAndRefreshPins=()=>{
