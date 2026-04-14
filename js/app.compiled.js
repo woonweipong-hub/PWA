@@ -491,11 +491,17 @@ const STAGE_WEIGHTS={read:3,decode:3,preprocess:7,trace:62,svg:5,pdf:10,upload:1
 // tighter than before (1200 instead of 1600) — on a 9000x7000 scan
 // the trace time scales with pixel count, so 1200 roughly halves
 // the wait with barely perceptible quality loss on line art.
-const MAX=1200;const scale=Math.min(1,MAX/Math.max(img.width,img.height));const w=Math.round(img.width*scale),h=Math.round(img.height*scale);const cnv=document.createElement("canvas");cnv.width=w;cnv.height=h;const ctx=cnv.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);// Preprocess: grayscale + threshold → high-contrast B&W. This is what
-// turns pencil/pen sketches on paper into clean vector lines.
-const id=ctx.getImageData(0,0,w,h);const d=id.data;let sum=0,count=0;for(let i=0;i<d.length;i+=4){const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];sum+=g;count++;}// Threshold = mean - 25 (biases toward preserving dark strokes without
-// catching paper shading). Works well for photos of white paper.
-const thresh=Math.max(60,Math.min(210,sum/count-25));for(let i=0;i<d.length;i+=4){const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];const v=g<thresh?0:255;d[i]=d[i+1]=d[i+2]=v;d[i+3]=255;}// ── Gentle denoise: 3x3 median filter on the binary image ──
+const MAX=1200;const scale=Math.min(1,MAX/Math.max(img.width,img.height));const w=Math.round(img.width*scale),h=Math.round(img.height*scale);const cnv=document.createElement("canvas");cnv.width=w;cnv.height=h;const ctx=cnv.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);// Preprocess: grayscale + ADAPTIVE (local-mean) threshold → high-
+// contrast B&W. A global threshold failed on photos with uneven
+// lighting — the shadow half of the page would be swallowed whole
+// as a giant black blob. Local thresholding judges each pixel
+// against the mean of a small window around it, so shadow and
+// sunlit regions are both handled correctly.
+const id=ctx.getImageData(0,0,w,h);const d=id.data;// Precompute grayscale channel + integral image for O(1) window-mean queries.
+const gray=new Float32Array(w*h);for(let i=0,j=0;i<d.length;i+=4,j++){gray[j]=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];}const W1=w+1;const integral=new Float64Array(W1*(h+1));for(let y=0;y<h;y++){let rowSum=0;for(let x=0;x<w;x++){rowSum+=gray[y*w+x];integral[(y+1)*W1+(x+1)]=integral[y*W1+(x+1)]+rowSum;}}// Window size ≈ 5% of the smaller dimension (clamped), offset 12 biases
+// toward catching strokes slightly darker than their local background —
+// safe for pencil on paper without catching paper texture itself.
+const WIN=Math.max(15,Math.min(51,Math.round(Math.min(w,h)/20)|0));const HW=WIN>>1;const OFFSET=12;for(let y=0;y<h;y++){for(let x=0;x<w;x++){const x1=Math.max(0,x-HW),y1=Math.max(0,y-HW);const x2=Math.min(w-1,x+HW),y2=Math.min(h-1,y+HW);const area=(x2-x1+1)*(y2-y1+1);const s=integral[(y2+1)*W1+(x2+1)]-integral[y1*W1+(x2+1)]-integral[(y2+1)*W1+x1]+integral[y1*W1+x1];const mean=s/area;const v=gray[y*w+x]<mean-OFFSET?0:255;const i=(y*w+x)*4;d[i]=d[i+1]=d[i+2]=v;d[i+3]=255;}}// ── Gentle denoise: 3x3 median filter on the binary image ──
 // Majority-vote kills isolated single-pixel speckles while
 // preserving thin (even 1-pixel-wide) real strokes, because any
 // line pixel has enough black neighbours along its length to win
