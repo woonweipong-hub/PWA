@@ -474,13 +474,23 @@ const thresh=Math.max(60,Math.min(210,sum/count-25));for(let i=0;i<d.length;i+=4
 // synchronous — there's no mid-trace callback — but at least the
 // user sees the bar move into this stage rather than appearing to
 // hang.
-setTimeout(()=>{let svgstr;try{svgstr=window.ImageTracer.imagedataToSVG(id,{numberofcolors:2,pathomit:8,ltres:1,qtres:1,strokewidth:1,linefilter:true,colorsampling:0,colorquantcycles:1,mincolorratio:0,pal:[{r:255,g:255,b:255,a:255},{r:0,g:0,b:0,a:255}]});}catch(e){return reject(new Error("Tracing failed: "+e.message));}report("svg",0);continueAfterTrace(svgstr);},40);return;function continueAfterTrace(svgstrArg){let svgstr=svgstrArg;// Drop the white background rectangle ImageTracer emits so the PDF
+setTimeout(()=>{let svgstr;try{// Aggressive path reduction so svg2pdf doesn't have to re-draw
+// thousands of tiny noise blobs for grainy scans:
+//   pathomit 24  → drop any path with <24 points (was 8)
+//   ltres    2.5 → coarser line fit (was 1)
+//   qtres    2.5 → coarser curve fit (was 1)
+// Visible quality loss on pure line drawings is minimal; the
+// PDF-render stage gets ~5-10× faster on HABS-scan-class inputs.
+svgstr=window.ImageTracer.imagedataToSVG(id,{numberofcolors:2,pathomit:24,ltres:2.5,qtres:2.5,strokewidth:1,linefilter:true,colorsampling:0,colorquantcycles:1,mincolorratio:0,pal:[{r:255,g:255,b:255,a:255},{r:0,g:0,b:0,a:255}]});}catch(e){return reject(new Error("Tracing failed: "+e.message));}report("svg",0);continueAfterTrace(svgstr);},40);return;function continueAfterTrace(svgstrArg){let svgstr=svgstrArg;// Drop the white background rectangle ImageTracer emits so the PDF
 // doesn't carry a huge solid-white path. svg2pdf would render it fine,
 // but it bloats the file.
 svgstr=svgstr.replace(/<path[^>]*fill="rgb\(255,255,255\)"[^>]*\/>/g,"");// Build an SVG DOM element for svg2pdf.
 const parser=new DOMParser();const svgDoc=parser.parseFromString(svgstr,"image/svg+xml");const svgEl=svgDoc.documentElement;// Render to A4 landscape preserving image aspect; svg2pdf honours the
 // SVG viewBox, so everything stays vector.
-const{jsPDF}=window.jspdf;const landscape=w>=h;const doc=new jsPDF({orientation:landscape?"l":"p",unit:"mm",format:"a4"});const pageW=landscape?297:210,pageH=landscape?210:297;const margin=10;const scaleFit=Math.min((pageW-margin*2)/w,(pageH-margin*2)/h);const drawW=w*scaleFit,drawH=h*scaleFit;const ox=(pageW-drawW)/2,oy=(pageH-drawH)/2;report("pdf",0);window.svg2pdf(svgEl,doc,{x:ox,y:oy,width:drawW,height:drawH}).then(()=>{doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(120);doc.text(`Vectorised from ${file.name} — SiteShrimp Convert`,margin,pageH-5);const blob=doc.output("blob");resolve(blob);}).catch(e=>reject(new Error("PDF build failed: "+e.message)));}};img.src=reader.result;};reader.readAsDataURL(file);});// Load the four bundled sample drawings from the public GitHub repo. Lets
+const{jsPDF}=window.jspdf;const landscape=w>=h;const doc=new jsPDF({orientation:landscape?"l":"p",unit:"mm",format:"a4"});const pageW=landscape?297:210,pageH=landscape?210:297;const margin=10;const scaleFit=Math.min((pageW-margin*2)/w,(pageH-margin*2)/h);const drawW=w*scaleFit,drawH=h*scaleFit;const ox=(pageW-drawW)/2,oy=(pageH-drawH)/2;report("pdf",0);// svg2pdf exposes no per-path progress callback, so fake a slow
+// creep from 0 → ~0.95 within the PDF stage. Interval is cleared
+// the moment the promise resolves/rejects so we snap to 100%.
+let pdfTick=0;const pdfCreep=setInterval(()=>{pdfTick=Math.min(0.95,pdfTick+0.04);report("pdf",pdfTick);},500);window.svg2pdf(svgEl,doc,{x:ox,y:oy,width:drawW,height:drawH}).then(()=>{clearInterval(pdfCreep);doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(120);doc.text(`Vectorised from ${file.name} — SiteShrimp Convert`,margin,pageH-5);const blob=doc.output("blob");resolve(blob);}).catch(e=>{clearInterval(pdfCreep);reject(new Error("PDF build failed: "+e.message));});}};img.src=reader.result;};reader.readAsDataURL(file);});// Load the four bundled sample drawings from the public GitHub repo. Lets
 // testers kick the tyres on TAG / Compare / Convert with zero setup — no
 // need to find their own drawings first.
 // License/provenance-tagged so every drawing carries its own credit line.

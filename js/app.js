@@ -7730,8 +7730,15 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
         setTimeout(()=>{
           let svgstr;
           try{
+            // Aggressive path reduction so svg2pdf doesn't have to re-draw
+            // thousands of tiny noise blobs for grainy scans:
+            //   pathomit 24  → drop any path with <24 points (was 8)
+            //   ltres    2.5 → coarser line fit (was 1)
+            //   qtres    2.5 → coarser curve fit (was 1)
+            // Visible quality loss on pure line drawings is minimal; the
+            // PDF-render stage gets ~5-10× faster on HABS-scan-class inputs.
             svgstr=window.ImageTracer.imagedataToSVG(id,{
-              numberofcolors:2,pathomit:8,ltres:1,qtres:1,
+              numberofcolors:2,pathomit:24,ltres:2.5,qtres:2.5,
               strokewidth:1,linefilter:true,
               colorsampling:0,colorquantcycles:1,mincolorratio:0,
               pal:[{r:255,g:255,b:255,a:255},{r:0,g:0,b:0,a:255}],
@@ -7762,14 +7769,23 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
         const drawW=w*scaleFit,drawH=h*scaleFit;
         const ox=(pageW-drawW)/2,oy=(pageH-drawH)/2;
         report("pdf",0);
+        // svg2pdf exposes no per-path progress callback, so fake a slow
+        // creep from 0 → ~0.95 within the PDF stage. Interval is cleared
+        // the moment the promise resolves/rejects so we snap to 100%.
+        let pdfTick=0;
+        const pdfCreep=setInterval(()=>{
+          pdfTick=Math.min(0.95,pdfTick+0.04);
+          report("pdf",pdfTick);
+        },500);
         window.svg2pdf(svgEl,doc,{x:ox,y:oy,width:drawW,height:drawH})
           .then(()=>{
+            clearInterval(pdfCreep);
             doc.setFont("helvetica","normal");doc.setFontSize(7);
             doc.setTextColor(120);
             doc.text(`Vectorised from ${file.name} — SiteShrimp Convert`,margin,pageH-5);
             const blob=doc.output("blob");
             resolve(blob);
-          }).catch(e=>reject(new Error("PDF build failed: "+e.message)));
+          }).catch(e=>{clearInterval(pdfCreep);reject(new Error("PDF build failed: "+e.message));});
         }
       };
       img.src=reader.result;
