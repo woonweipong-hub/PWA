@@ -745,8 +745,11 @@ async function renderDrawingAnnotatedPages(drawing,defects,allPins,opts={}){
       for(const pn of pages){
         if(pn>doc.numPages)continue;
         const page=await doc.getPage(pn);
-        // 2× render scale (was 1.5×) — doubles on-page resolution so CAD
-        // line work stays sharp even when the reviewer zooms in on the PDF.
+        // Native source dimensions — used by the raster export path to
+        // create a PDF page at the source's original paper size (A1 → A1).
+        const nativeViewport=page.getViewport({scale:1});
+        // 2× render scale — doubles on-page resolution so CAD line work
+        // stays sharp even when the reviewer zooms in.
         const viewport=page.getViewport({scale:2.0});
         const canvas=document.createElement("canvas");
         canvas.width=viewport.width;canvas.height=viewport.height;
@@ -754,11 +757,7 @@ async function renderDrawingAnnotatedPages(drawing,defects,allPins,opts={}){
         ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
         await page.render({canvasContext:ctx,viewport}).promise;
         applyOverlays(ctx,canvas.width,canvas.height,pn);
-        // PNG (lossless) for PDF-source drawings — CAD/line-art compresses
-        // well and JPEG's DCT blur was the main "why does my floor plan
-        // look fuzzy" complaint. Photos embedded via markup are still
-        // placed separately as JPEG.
-        out.push({pageNum:pn,dataUrl:canvas.toDataURL("image/png"),fmt:"PNG"});
+        out.push({pageNum:pn,dataUrl:canvas.toDataURL("image/png"),fmt:"PNG",nativeW:nativeViewport.width,nativeH:nativeViewport.height});
       }
     }catch(e){console.warn("renderDrawingAnnotatedPages PDF failed for",drawing.name,e);}
     finally{try{if(doc)await doc.destroy();}catch{}}
@@ -2382,32 +2381,37 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
                 if(row)measurementRows.push({drawing:d.name||"",page:pg.pageNum,...row});
               }
             }else{
-              // Raster-source drawings (JPG/PNG) — no native PDF to preserve,
-              // so emit the A4 body page as before with raster + vector markup.
-              doc.addPage();y=18;
-              doc.setFontSize(11);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
-              doc.text(`${d.name||"Drawing"}${pages.length>1?" — Page "+pg.pageNum:""}`,margin,y);
-              doc.setTextColor(0);y+=6;
-              doc.setFontSize(8);doc.setFont(undefined,"normal");
-              doc.text(`${drawingPins.length} pin(s), ${notes.length} note(s), ${markups.length} markup(s)`,margin,y);y+=6;
+              // Raster path — also honours source size so the drawing page
+              // matches the original paper (A1 in → A1 out), just as a
+              // raster. The caption sits in a small band at the top, then
+              // the image fills the remainder at full width.
               const img=new Image();
               await new Promise((resolve)=>{img.onload=resolve;img.onerror=resolve;img.src=pg.dataUrl;});
               if(img.width>0&&img.height>0){
-                const ratio=img.height/img.width;
-                const imgW=contentW;
-                const imgH=Math.min(imgW*ratio,pageH-y-margin-10);
-                const actualW=imgH/(ratio||1);
-                const drawnW=Math.min(imgW,actualW);
-                const drawX=margin,drawY=y;
+                // For PDF sources we know native dims in pt; for image
+                // sources we use the rendered canvas dims in mm at 2×
+                // scale as a paper-size proxy.
+                const srcWmm=pg.nativeW?pg.nativeW*0.352778:img.width*0.5*0.352778;
+                const srcHmm=pg.nativeH?pg.nativeH*0.352778:img.height*0.5*0.352778;
+                const orient=srcWmm>srcHmm?"l":"p";
+                doc.addPage([srcWmm,srcHmm],orient);
+                const captionH=10;
+                doc.setFontSize(10);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
+                doc.text(`${d.name||"Drawing"}${pages.length>1?" — Page "+pg.pageNum:""}`,6,6.5);
+                doc.setTextColor(60);doc.setFontSize(7);doc.setFont(undefined,"normal");
+                doc.text(`${drawingPins.length} pin · ${notes.length} note · ${markups.length} markup`,6,9.5);
+                doc.setTextColor(0);
+                // Full-bleed image below the caption band, preserving aspect.
+                const drawX=0,drawY=captionH;
+                const drawnW=srcWmm,drawnH=srcHmm-captionH;
                 const fmt=pg.fmt||"JPEG";
-                doc.addImage(pg.dataUrl,fmt,drawX,drawY,drawnW,imgH,undefined,"SLOW");
+                doc.addImage(pg.dataUrl,fmt,drawX,drawY,drawnW,drawnH,undefined,"SLOW");
                 for(const s of markups){
                   if(PDF_VECTOR_MARKUP_TYPES.has(s.type)){
-                    _drawMarkupStrokeVectorPdf(doc,drawX,drawY,drawnW,imgH,s);
+                    _drawMarkupStrokeVectorPdf(doc,drawX,drawY,drawnW,drawnH,s);
                   }
                 }
                 doc.setDrawColor(0);doc.setFillColor(0);doc.setLineWidth(0.2);doc.setTextColor(0);doc.setFontSize(8);doc.setFont(undefined,"normal");
-                y+=imgH+4;
               }
             }
           }
@@ -10411,11 +10415,6 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     const addFastRaster=async(label,dr)=>{
       if(!dr)return;
       const url=DB.fileUrl("drawings",dr.id,dr.file);
-      doc.addPage();y=18;
-      doc.setFontSize(16);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
-      doc.text(label,margin,y);y+=7;
-      doc.setTextColor(0);doc.setFontSize(11);doc.setFont(undefined,"normal");
-      doc.text(dr.name||"",margin,y);y+=6;
       try{
         if(/\.pdf$/i.test(dr.file||"")){
           if(!window.pdfjsLib)return;
@@ -10423,26 +10422,37 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           if(!pdfjsLib.GlobalWorkerOptions.workerSrc){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}
           const srcDoc=await pdfjsLib.getDocument(url).promise;
           const page=await srcDoc.getPage(1);
-          const viewport=page.getViewport({scale:1.5});
+          const nativeVp=page.getViewport({scale:1});
+          const viewport=page.getViewport({scale:2.0});
           const canvas=document.createElement("canvas");
           canvas.width=viewport.width;canvas.height=viewport.height;
           const ctx=canvas.getContext("2d");
           ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
           await page.render({canvasContext:ctx,viewport}).promise;
-          const dataUrl=canvas.toDataURL("image/jpeg",0.88);
-          const ratio=canvas.height/canvas.width;
-          const imgW=contentW;
-          const imgH=Math.min(imgW*ratio,pageH-y-margin-4);
-          const drawnW=Math.min(imgW,imgH/(ratio||1));
-          doc.addImage(dataUrl,"JPEG",margin,y,drawnW,imgH,undefined,"SLOW");
+          const dataUrl=canvas.toDataURL("image/jpeg",0.9);
+          // Size the exported page to the source's native paper size so A1
+          // input stays A1 out — even in fast raster mode.
+          const srcWmm=nativeVp.width*0.352778;
+          const srcHmm=nativeVp.height*0.352778;
+          doc.addPage([srcWmm,srcHmm],srcWmm>srcHmm?"l":"p");
+          const captionH=10;
+          doc.setFontSize(12);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
+          doc.text(`${label} — ${dr.name||""}`,6,6.5);
+          doc.setTextColor(0);doc.setFont(undefined,"normal");
+          doc.addImage(dataUrl,"JPEG",0,captionH,srcWmm,srcHmm-captionH,undefined,"SLOW");
           try{await srcDoc.destroy();}catch{}
         }else{
+          // Image source — use the image's pixel dims as a paper-size proxy
+          // at 96 DPI so the page still comes out roughly A4-to-A1 sized.
           const img=await _loadImageEl(url);
-          const ratio=img.height/img.width;
-          const imgW=contentW;
-          const imgH=Math.min(imgW*ratio,pageH-y-margin-4);
-          const drawnW=Math.min(imgW,imgH/(ratio||1));
-          doc.addImage(url,"JPEG",margin,y,drawnW,imgH,undefined,"SLOW");
+          const srcWmm=(img.width/96)*25.4;
+          const srcHmm=(img.height/96)*25.4;
+          doc.addPage([srcWmm,srcHmm],srcWmm>srcHmm?"l":"p");
+          const captionH=10;
+          doc.setFontSize(12);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
+          doc.text(`${label} — ${dr.name||""}`,6,6.5);
+          doc.setTextColor(0);doc.setFont(undefined,"normal");
+          doc.addImage(url,"JPEG",0,captionH,srcWmm,srcHmm-captionH,undefined,"SLOW");
         }
       }catch(e){console.warn("compare fast render failed",e);}
     };
