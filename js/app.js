@@ -10449,6 +10449,18 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
 
   const closeViewerAndRefreshPins=()=>{
     setViewing(null);
+    // SSE pin subscriptions can drop updates on mobile (screen lock, poor
+    // signal) or between reconnects. Force a fresh list fetch for all
+    // drawings when the viewer closes so the list thumbnails reflect any
+    // pins the user just dropped.
+    if(drawings.length){
+      Promise.all(drawings.map(d=>DB.pins.list(`drawingId="${d.id}"`).catch(()=>[])))
+        .then(lists=>{
+          const merged=[];
+          lists.forEach(ls=>merged.push(...ls));
+          setAllPins(merged);
+        });
+    }
   };
 
   if(viewing)return <DrawingViewer drawing={viewing} onClose={closeViewerAndRefreshPins} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry}/>;
