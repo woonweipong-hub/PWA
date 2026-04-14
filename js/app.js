@@ -3893,7 +3893,24 @@ function GoogleSheetsSetup({gClientId}){
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────
-function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentProject,member,onDrawings,queueCount,onSyncQueue,syncing2}){
+function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentProject,member,onDrawings,queueCount,onSyncQueue,syncing2,onBulkDelete}){
+  const[dbSelect,setDbSelect]=useState(false);
+  const[dbSelectedIds,setDbSelectedIds]=useState(()=>new Set());
+  const[dbBulkSaving,setDbBulkSaving]=useState(false);
+  const canDashDelete=member?.role==="Admin"&&!!onBulkDelete;
+  const dbToggle=id=>setDbSelectedIds(prev=>{const n=new Set(prev);if(n.has(id))n.delete(id);else n.add(id);return n;});
+  const dbExit=()=>{setDbSelect(false);setDbSelectedIds(new Set());};
+  const dbApplyDelete=async()=>{
+    if(!dbSelectedIds.size)return;
+    if(!confirm(`Permanently delete ${dbSelectedIds.size} entr${dbSelectedIds.size===1?"y":"ies"}?\n\nThis also removes their drawing pins and cannot be undone.`))return;
+    setDbBulkSaving(true);
+    try{
+      const res=await onBulkDelete(Array.from(dbSelectedIds));
+      alert(`Deleted ${res.ok} entr${res.ok===1?"y":"ies"}${res.failed?` · ${res.failed} failed`:""}.`);
+      dbExit();
+    }catch(e){alert("Bulk delete failed: "+e.message);}
+    setDbBulkSaving(false);
+  };
   const open=defects.filter(d=>d.status==="Open").length;
   const inprog=defects.filter(d=>d.status==="In Progress").length;
   const done=defects.filter(d=>d.status==="Done").length;
@@ -3968,26 +3985,48 @@ function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentPr
         </div>
       )}
 
-<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:10}}>{t("dashboard.recent_entries")}</div>
+<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em"}}>{t("dashboard.recent_entries")}</div>
+        {canDashDelete&&defects.length>0&&(
+          dbSelect
+            ?<button onClick={dbExit} style={{background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:20,padding:"4px 10px",color:"rgba(0,0,0,0.55)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.done")}</button>
+            :<button onClick={()=>setDbSelect(true)} style={{background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.25)",borderRadius:20,padding:"4px 10px",color:"#ff3b30",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>SELECT</button>
+        )}
+      </div>
       {defects.length===0&&(
         <div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"40px 0",fontSize:14}}>
           {t("dashboard.no_defects")}{["Admin","Manager","Inspector"].includes(member?.role)?` ${t("dashboard.tap_log")}`:""}
         </div>
       )}
-      {defects.slice(0,6).map((d,i)=>(
-        <div key={d.id} onClick={()=>onView(d)} className="anim" style={{animationDelay:`${i*0.05}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:`4px solid ${SEV_COLOR[d.severity]}`}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,color:"#1a1a1a",flex:1,paddingRight:8}}>{d.title}</div>
-            <StatusChip s={d.status}/>
-          </div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            {d.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(d.entryType),background:typeBg(d.entryType),padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(d.entryType)} {tOpt(d.entryType).toUpperCase()}</span>}
-            <SevChip s={d.severity}/>
-            <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>📍 {d.location}</span>
-            <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>→ {d.assignee}</span>
+      {defects.slice(0,6).map((d,i)=>{
+        const checked=dbSelectedIds.has(d.id);
+        return(
+        <div key={d.id} onClick={()=>dbSelect?dbToggle(d.id):onView(d)} className="anim" style={{animationDelay:`${i*0.05}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:`4px solid ${SEV_COLOR[d.severity]}`,outline:dbSelect&&checked?"2px solid #ff3b30":"none",display:"flex",gap:10,alignItems:"flex-start"}}>
+          {dbSelect&&(
+            <div style={{width:20,height:20,borderRadius:5,border:checked?"2px solid #ff3b30":"2px solid rgba(0,0,0,0.25)",background:checked?"#ff3b30":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2}}>
+              {checked&&<span style={{color:"#fff",fontSize:12,fontWeight:900}}>✓</span>}
+            </div>
+          )}
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,color:"#1a1a1a",flex:1,paddingRight:8}}>{d.title}</div>
+              <StatusChip s={d.status}/>
+            </div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {d.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(d.entryType),background:typeBg(d.entryType),padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(d.entryType)} {tOpt(d.entryType).toUpperCase()}</span>}
+              <SevChip s={d.severity}/>
+              <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>📍 {d.location}</span>
+              <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>→ {d.assignee}</span>
+            </div>
           </div>
         </div>
-      ))}
+      );})}
+      {dbSelect&&dbSelectedIds.size>0&&(
+        <div style={{position:"fixed",bottom:72,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 24px)",maxWidth:406,background:"#1a1a1a",borderRadius:14,padding:"12px 14px",zIndex:60,boxShadow:"0 12px 40px rgba(0,0,0,0.4)",display:"flex",alignItems:"center",gap:8}}>
+          <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff"}}>{dbSelectedIds.size} SELECTED</div>
+          <button onClick={dbApplyDelete} disabled={dbBulkSaving} style={{background:"rgba(255,59,48,0.25)",border:"1px solid rgba(255,59,48,0.55)",borderRadius:10,padding:"9px 16px",color:"#ff6b6b",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:dbBulkSaving?"wait":"pointer"}}>{dbBulkSaving?"…":"🗑 DELETE"}</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -4688,12 +4727,24 @@ function DefectsMapView({defects,onView}){
   );
 }
 
-function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,member,members,onBulkUpdate,company,currentProject}){
+function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,member,members,onBulkUpdate,onBulkDelete,company,currentProject}){
   const[filter,setFilter]=useState("All");const[sevF,setSevF]=useState("All");const[typeF,setTypeF]=useState("All");
   const[search,setSearch]=useState("");const[showFilters,setShowFilters]=useState(false);
   const searchRef=useRef(null);
   // Batch select / update
   const canBulk=["Admin","Manager","Inspector"].includes(member?.role);
+  const canBulkDelete=member?.role==="Admin"&&!!onBulkDelete;
+  const applyBulkDelete=async()=>{
+    if(!selectedIds.size)return;
+    if(!confirm(`Permanently delete ${selectedIds.size} entr${selectedIds.size===1?"y":"ies"}?\n\nThis also removes their drawing pins and cannot be undone.`))return;
+    setBulkSaving(true);
+    try{
+      const res=await onBulkDelete(Array.from(selectedIds));
+      alert(`Deleted ${res.ok} entr${res.ok===1?"y":"ies"}${res.failed?` · ${res.failed} failed`:""}.`);
+      exitSelect();
+    }catch(e){alert("Bulk delete failed: "+e.message);}
+    setBulkSaving(false);
+  };
   const[selectMode,setSelectMode]=useState(false);
   const[selectedIds,setSelectedIds]=useState(()=>new Set());
   const[showBulkPanel,setShowBulkPanel]=useState(false);
@@ -4947,8 +4998,9 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
 
       {/* Sticky action bar when items selected */}
       {selectMode&&selectedIds.size>0&&!showBulkPanel&&(
-        <div style={{position:"fixed",bottom:72,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 24px)",maxWidth:406,background:"#1a1a1a",borderRadius:14,padding:"12px 14px",zIndex:60,boxShadow:"0 12px 40px rgba(0,0,0,0.4)",display:"flex",alignItems:"center",gap:10}}>
+        <div style={{position:"fixed",bottom:72,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 24px)",maxWidth:406,background:"#1a1a1a",borderRadius:14,padding:"12px 14px",zIndex:60,boxShadow:"0 12px 40px rgba(0,0,0,0.4)",display:"flex",alignItems:"center",gap:8}}>
           <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff"}}>{selectedIds.size} SELECTED</div>
+          {canBulkDelete&&<button onClick={applyBulkDelete} disabled={bulkSaving} style={{background:"rgba(255,59,48,0.2)",border:"1px solid rgba(255,59,48,0.5)",borderRadius:10,padding:"9px 14px",color:"#ff6b6b",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:bulkSaving?"wait":"pointer"}}>{bulkSaving?"…":"🗑 DELETE"}</button>}
           <button onClick={()=>setShowBulkPanel(true)} style={{background:"#ff6b00",border:"none",borderRadius:10,padding:"9px 16px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>UPDATE ▸</button>
         </div>
       )}
@@ -7686,6 +7738,39 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     reader.readAsDataURL(file);
   });
 
+  // Load the four bundled sample drawings from the public GitHub repo. Lets
+  // testers kick the tyres on TAG / Compare / Convert with zero setup — no
+  // need to find their own drawings first.
+  const SAMPLE_URLS=[
+    {name:"SampleHouse V1 (vector)",url:"https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/sample_drwgs/SampleHouse_V1.pdf"},
+    {name:"SampleHouse V2 (vector)",url:"https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/sample_drwgs/SampleHouse_V2.pdf"},
+    {name:"Dyckman First Floor (sketch)",url:"https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/sample_drwgs/Dyckman_First_Floor_sketch.png"},
+    {name:"Dyckman Second Floor (sketch)",url:"https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/sample_drwgs/Dyckman_Second_Floor_sketch.png"},
+  ];
+  const[loadingSamples,setLoadingSamples]=useState(false);
+  const loadSampleDrawings=async()=>{
+    if(!company?.companyId||!currentProject?.id){alert("Pick a project first.");return;}
+    setLoadingSamples(true);
+    const created=[];
+    for(const s of SAMPLE_URLS){
+      try{
+        const resp=await fetch(s.url);
+        if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
+        const blob=await resp.blob();
+        const fname=s.url.split("/").pop();
+        const file=new File([blob],fname,{type:blob.type||"application/octet-stream"});
+        const rec=await DB.drawings.createWithFile({
+          companyId:company.companyId,projectId:currentProject.id,
+          name:s.name,uploadedBy:member?.name||"",uploadedAt:new Date().toISOString(),
+        },"file",file,fname);
+        created.push(rec);
+      }catch(err){console.warn("sample load failed",s.name,err);}
+    }
+    if(created.length)setDrawings(prev=>[...created,...prev]);
+    setLoadingSamples(false);
+    alert(`Loaded ${created.length}/${SAMPLE_URLS.length} sample drawings.`);
+  };
+
   // Convert button handler: single or batch. Each JPG becomes one vector PDF
   // drawing record so the user can immediately Compare between versions.
   const convertJpgsToPdf=async(e)=>{
@@ -9015,6 +9100,11 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
             <div style={{fontSize:32,marginBottom:8}}>📐</div>
             <div style={{fontSize:14}}>No drawings yet</div>
             {canUpload&&<div style={{fontSize:12,marginTop:4}}>Upload a drawing to get started</div>}
+            {canUpload&&(
+              <button onClick={loadSampleDrawings} disabled={loadingSamples} style={{marginTop:14,background:"rgba(52,170,220,0.1)",border:"1px solid rgba(52,170,220,0.3)",borderRadius:10,padding:"8px 14px",color:"#34aadc",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:loadingSamples?"wait":"pointer"}}>
+                {loadingSamples?"Loading…":"↧ Load sample drawings"}
+              </button>
+            )}
           </div>
         )}
 
@@ -11558,6 +11648,29 @@ function App(){
     return{ok,failed};
   };
 
+  // Bulk delete — Admin-only. Deletes each defect and sweeps associated pins
+  // so orphaned drawing markers don't linger. Returns {ok,failed} like bulkUpdate.
+  const bulkDelete=async(ids)=>{
+    if(!ids||!ids.length)return{ok:0,failed:0};
+    if(member?.role!=="Admin"){alert("Only Admins can delete entries.");return{ok:0,failed:ids.length};}
+    let ok=0,failed=0;
+    const deletedSet=new Set();
+    for(const id of ids){
+      try{
+        // Remove drawing pins that reference this defect (best-effort).
+        try{
+          const pins=await DB.pins.list(`entryId="${id}"`);
+          for(const p of pins){try{await DB.pins.delete(p.id);}catch{}}
+        }catch{}
+        await DB.defects.delete(id);
+        deletedSet.add(id);
+        ok++;
+      }catch(e){console.warn("bulk delete failed for",id,e);failed++;}
+    }
+    if(deletedSet.size)setDefects(prev=>prev.filter(d=>!deletedSet.has(d.id)));
+    return{ok,failed};
+  };
+
   const signOut=()=>{
     DB.auth.signOut();
     GDrive.disconnect();
@@ -11753,11 +11866,11 @@ function App(){
 
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:84}}>
-        {tab==="dashboard"&&<Dashboard defects={defects} onView={setViewing} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} company={company} currentProject={currentProject} member={member} onDrawings={()=>setTab("drawings")} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
+        {tab==="dashboard"&&<Dashboard defects={defects} onView={setViewing} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} company={company} currentProject={currentProject} member={member} onDrawings={()=>setTab("drawings")} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2} onBulkDelete={bulkDelete}/>}
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("dashboard")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect}/>}
-        {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} company={company} currentProject={currentProject}/>}
+        {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} company={company} currentProject={currentProject}/>}
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company}/>}
       </div>
 
