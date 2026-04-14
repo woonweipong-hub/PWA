@@ -6419,7 +6419,14 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
   const canEdit=member?.role!=="viewer";
 
   // Filter defects that have GPS coords for current project
-  const mapDefects=(defects||[]).filter(d=>typeof d.lat==="number"&&typeof d.lng==="number");
+  // Tolerant of string-number round-trip from PocketBase FormData uploads —
+  // parseFloat + isFinite lets legacy records render even if the subscription
+  // normaliser missed them (e.g. offline sync path).
+  const mapDefects=(defects||[]).map(d=>{
+    const lat=typeof d.lat==="number"?d.lat:parseFloat(d.lat);
+    const lng=typeof d.lng==="number"?d.lng:parseFloat(d.lng);
+    return Number.isFinite(lat)&&Number.isFinite(lng)?{...d,lat,lng}:null;
+  }).filter(Boolean);
 
   // ── Google Maps path ───────────────────────────────────────────
   useEffect(()=>{
@@ -7098,7 +7105,13 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
   const hasAutoFitRef=useRef(false);
   const fitToAllPins=()=>{
     if(!mapObj.current)return;
-    const pts=(defects||[]).filter(d=>typeof d.lat==="number"&&typeof d.lng==="number");
+    // Reuse the same tolerant lat/lng parse as the render path so "fit" works
+    // for any record that renders a pin, including string-number round-trips.
+    const pts=(defects||[]).map(d=>{
+      const lat=typeof d.lat==="number"?d.lat:parseFloat(d.lat);
+      const lng=typeof d.lng==="number"?d.lng:parseFloat(d.lng);
+      return Number.isFinite(lat)&&Number.isFinite(lng)?{lat,lng}:null;
+    }).filter(Boolean);
     if(pts.length===0)return;
     if(provider==="gmaps"&&window.google?.maps){
       const g=window.google.maps;
@@ -11591,8 +11604,15 @@ function App(){
     if(!company?.companyId||!currentProject?.id)return;
     setSyncing(true);
     return DB.defects.subscribe(`companyId="${company.companyId}" && projectId="${currentProject.id}"`,items=>{
+      // Normalise numeric fields that round-trip as strings through PocketBase
+      // FormData uploads (lat/lng/mapZoom). Without this, map pins silently
+      // disappear because the existing-pin filter requires typeof === "number".
+      const numOrNull=v=>{if(v===null||v===undefined||v==="")return null;const n=typeof v==="number"?v:parseFloat(v);return Number.isFinite(n)?n:null;};
       // Map photo filenames to URLs (supports PocketBase files, GDrive URLs, or local)
       const withPhotos=items.map(d=>{
+        // Coerce numeric fields first so every downstream consumer sees numbers.
+        const lat=numOrNull(d.lat),lng=numOrNull(d.lng),mapZoom=numOrNull(d.mapZoom);
+        d={...d,lat,lng,mapZoom};
         // Google Drive storage — photos stored as JSON array of URLs
         if(d.storageMode==="gdrive"&&d.gdrivePhotos){
           let gPhotos=[];
