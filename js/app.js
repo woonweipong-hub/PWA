@@ -7779,7 +7779,12 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   // Stage-weighted progress estimate for one file. The long stage is
   // `trace` (~70% of the budget for any realistic image), the rest are
   // order-of-magnitude faster.
-  const STAGE_WEIGHTS={read:5,decode:5,preprocess:10,trace:65,svg:5,pdf:5,upload:5};
+  // Rebalanced so each stage lives in a distinct display range. Previously
+  // pdf (0.98 cap) and upload (0) both rounded to 95%, making them visually
+  // indistinguishable — a real hang in either looked identical to the user.
+  //   read 0-3 · decode 3-6 · preprocess 6-13 · trace 13-75 ·
+  //   svg 75-80 · pdf 80-90 · upload 90-100
+  const STAGE_WEIGHTS={read:3,decode:3,preprocess:7,trace:62,svg:5,pdf:10,upload:10};
   const traceOneToPdfBlob=(file,onStage)=>new Promise((resolve,reject)=>{
     const report=(stage,within=0)=>{if(onStage)onStage(stage,within);};
     if(!window.ImageTracer)return reject(new Error("ImageTracer not loaded — refresh the app."));
@@ -7946,10 +7951,11 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
         // raster embed so the user gets *a* PDF instead of a hang. This gives
         // 30s to produce pretty vectors; after that we choose "done" over
         // "perfect".
-        // 60s deadline — gives vector path time to finish on 1000-2000
-        // path outputs while still guaranteeing the bar can never truly
-        // hang. Raster fallback still kicks in beyond this.
-        const DEADLINE_MS=60000;
+        // 20s deadline — with the raster fallback shipping and typical
+        // clean drawings tracing in under a few seconds, long vector
+        // runs almost always mean something's wrong. Fall back sooner so
+        // users aren't waiting unnecessarily.
+        const DEADLINE_MS=20000;
         let raced=false;
         const deadline=setTimeout(()=>{
           if(raced)return;
@@ -7957,21 +7963,36 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
           clearInterval(pdfCreep);
           finishWithBitmap("vector timed out at 30s");
         },DEADLINE_MS);
-        window.svg2pdf(svgEl,doc,{x:ox,y:oy,width:drawW,height:drawH})
-          .then(()=>{
-            if(raced)return;
+        // Wrap in try/catch in case svg2pdf throws synchronously (some
+        // versions do under specific DOM parse errors) — without this
+        // any sync throw would bypass the deadline and leave the promise
+        // dangling, which was the original "stuck at 95%" symptom.
+        try{
+          window.svg2pdf(svgEl,doc,{x:ox,y:oy,width:drawW,height:drawH})
+            .then(()=>{
+              if(raced)return;
+              raced=true;
+              clearTimeout(deadline);clearInterval(pdfCreep);
+              doc.setFont("helvetica","normal");doc.setFontSize(7);
+              doc.setTextColor(120);
+              doc.text(`Vectorised from ${file.name} — SiteShrimp Convert`,margin,pageH-5);
+              try{resolve(doc.output("blob"));}
+              catch(e){reject(new Error("PDF output failed: "+e.message));}
+            }).catch(e=>{
+              if(raced)return;
+              raced=true;
+              clearTimeout(deadline);clearInterval(pdfCreep);
+              // Fall back to raster rather than rejecting — the user
+              // still wants *a* PDF out.
+              finishWithBitmap(`vector failed: ${e.message||"unknown"}`);
+            });
+        }catch(e){
+          if(!raced){
             raced=true;
             clearTimeout(deadline);clearInterval(pdfCreep);
-            doc.setFont("helvetica","normal");doc.setFontSize(7);
-            doc.setTextColor(120);
-            doc.text(`Vectorised from ${file.name} — SiteShrimp Convert`,margin,pageH-5);
-            resolve(doc.output("blob"));
-          }).catch(e=>{
-            if(raced)return;
-            raced=true;
-            clearTimeout(deadline);clearInterval(pdfCreep);
-            reject(new Error("PDF build failed: "+e.message));
-          });
+            finishWithBitmap(`vector threw: ${e.message||"unknown"}`);
+          }
+        }
         }
       };
       img.src=reader.result;
@@ -8050,20 +8071,10 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
       emit("read",0);
       try{
         const blob=await traceOneToPdfBlob(f,emit);
-        emit("upload",0);
         const baseName=f.name.replace(/\.[^.]+$/,"")+" (vector).pdf";
-        const pdfFile=new File([blob],baseName,{type:"application/pdf"});
-        const rec=await DB.drawings.createWithFile({
-          companyId:company.companyId,
-          projectId:currentProject.id,
-          name:baseName.replace(/\.pdf$/i,""),
-          uploadedBy:member?.name||"",
-          uploadedAt:new Date().toISOString(),
-        },"file",pdfFile,pdfFile.name);
-        created.push(rec);
-        // Also trigger a local download so the user has an offline copy of
-        // the vector PDF — same file that was just uploaded. Lands in the
-        // browser/OS default Downloads folder. Tap Up later to re-import.
+        // Save locally FIRST so the user always walks away with a file
+        // even if the PocketBase upload hangs or fails. Same blob is
+        // reused for the upload.
         try{
           const a=document.createElement("a");
           const objUrl=URL.createObjectURL(blob);
@@ -8071,6 +8082,31 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
           document.body.appendChild(a);a.click();document.body.removeChild(a);
           setTimeout(()=>URL.revokeObjectURL(objUrl),1000);
         }catch{}
+        // Upload stage — fake creep + hard timeout so we never hang.
+        emit("upload",0);
+        let upTick=0;
+        const upCreep=setInterval(()=>{upTick=Math.min(0.9,upTick+0.05);emit("upload",upTick);},400);
+        const pdfFile=new File([blob],baseName,{type:"application/pdf"});
+        try{
+          const rec=await Promise.race([
+            DB.drawings.createWithFile({
+              companyId:company.companyId,
+              projectId:currentProject.id,
+              name:baseName.replace(/\.pdf$/i,""),
+              uploadedBy:member?.name||"",
+              uploadedAt:new Date().toISOString(),
+            },"file",pdfFile,pdfFile.name),
+            new Promise((_,rej)=>setTimeout(()=>rej(new Error("Upload timed out after 45s")),45000)),
+          ]);
+          created.push(rec);
+        }catch(upErr){
+          // Local file was already saved above — just warn the user that
+          // the cloud copy didn't make it this run.
+          console.warn("upload failed for",f.name,upErr);
+          alert(`Saved "${baseName}" locally, but the cloud upload failed: ${upErr.message}. Tap Upload later to retry.`);
+        }finally{
+          clearInterval(upCreep);
+        }
       }catch(err){
         console.warn("convert failed for",f.name,err);
         alert(`Failed to convert ${f.name}: ${err.message}`);
