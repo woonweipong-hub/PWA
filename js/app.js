@@ -8120,9 +8120,27 @@ Requirements:
       generationConfig:{temperature:0.2,maxOutputTokens:8192},
     });
     const data=await res.json();
-    const parts=data.candidates?.[0]?.content?.parts||[];
+    // Surface the real failure mode instead of "empty response":
+    //   - HTTP error (429 quota, 403 auth, 400 bad request) → data.error
+    //   - Content blocked by safety filters → candidates[].finishReason
+    //   - Model refusal → no candidates at all
+    if(data?.error){
+      const msg=data.error.message||"Unknown API error";
+      const code=data.error.code||res.status;
+      if(code===429||/quota|rate/i.test(msg))throw new Error(`Gemini quota / rate limit (${code}). Wait a minute or check your free-tier daily cap.`);
+      if(code===403||code===401||/API key|auth/i.test(msg))throw new Error(`Gemini auth failed (${code}): ${msg}. Re-enter your key in Settings → AI Setup.`);
+      throw new Error(`Gemini API error (${code}): ${msg}`);
+    }
+    const cand=data?.candidates?.[0];
+    if(!cand)throw new Error("Gemini returned no candidates. Likely the model isn't vision-capable — Settings → AI Setup → re-test the key, it should pick a vision model like gemini-1.5-flash.");
+    if(cand.finishReason==="SAFETY")throw new Error("Gemini blocked the response (safety filters). Try a different image.");
+    if(cand.finishReason==="MAX_TOKENS")throw new Error("Gemini response was cut off at maxTokens — image may be too complex. Try a smaller / simpler drawing.");
+    const parts=cand.content?.parts||[];
     let text=parts.filter(p=>p.text&&!p.thought).map(p=>p.text).join("\n").trim();
-    if(!text)throw new Error("Gemini returned an empty response. Check your API key and quota.");
+    if(!text){
+      const finish=cand.finishReason||"no text returned";
+      throw new Error(`Gemini returned no text (finishReason: ${finish}). Raw: ${JSON.stringify(data).slice(0,200)}`);
+    }
     text=text.replace(/^```(?:xml|svg)?\s*/i,"").replace(/```\s*$/,"").trim();
     const svgStart=text.indexOf("<svg");
     const svgEnd=text.lastIndexOf("</svg>");
