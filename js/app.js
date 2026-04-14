@@ -4466,144 +4466,6 @@ function GoogleSheetsSetup({gClientId}){
   );
 }
 
-// ── Dashboard ─────────────────────────────────────────────────────
-function Dashboard({defects,onView,tgEnabled,aiEnabled,syncing,company,currentProject,member,onDrawings,queueCount,onSyncQueue,syncing2,onBulkDelete}){
-  const[dbSelect,setDbSelect]=useState(false);
-  const[dbSelectedIds,setDbSelectedIds]=useState(()=>new Set());
-  const[dbBulkSaving,setDbBulkSaving]=useState(false);
-  const canDashDelete=member?.role==="Admin"&&!!onBulkDelete;
-  const dbToggle=id=>setDbSelectedIds(prev=>{const n=new Set(prev);if(n.has(id))n.delete(id);else n.add(id);return n;});
-  const dbExit=()=>{setDbSelect(false);setDbSelectedIds(new Set());};
-  const dbApplyDelete=async()=>{
-    if(!dbSelectedIds.size)return;
-    if(!confirm(`Permanently delete ${dbSelectedIds.size} entr${dbSelectedIds.size===1?"y":"ies"}?\n\nThis also removes their drawing pins and cannot be undone.`))return;
-    setDbBulkSaving(true);
-    try{
-      const res=await onBulkDelete(Array.from(dbSelectedIds));
-      alert(`Deleted ${res.ok} entr${res.ok===1?"y":"ies"}${res.failed?` · ${res.failed} failed`:""}.`);
-      dbExit();
-    }catch(e){alert("Bulk delete failed: "+e.message);}
-    setDbBulkSaving(false);
-  };
-  const open=defects.filter(d=>d.status==="Open").length;
-  const inprog=defects.filter(d=>d.status==="In Progress").length;
-  const done=defects.filter(d=>d.status==="Done").length;
-  const verified=defects.filter(d=>d.status==="Verified").length;
-  const closed=defects.filter(d=>d.status==="Closed").length;
-  const critical=defects.filter(d=>d.severity==="Critical"&&!["Verified","Closed"].includes(d.status)).length;
-  const sevData=SEVERITY.map(s=>({s,count:defects.filter(d=>d.severity===s).length})).filter(x=>x.count>0);
-
-  const Card=({label,value,color})=>(
-    <div style={{flex:1,background:"#fff",borderRadius:14,padding:"14px 16px",borderTop:`3px solid ${color}`}}>
-      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:32,fontWeight:800,color:"#1a1a1a",lineHeight:1}}>{value}</div>
-      <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginTop:4}}>{label}</div>
-    </div>
-  );
-
-  return(
-    <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-        <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#1a1a1a"}}>{currentProject?.name||"OVERVIEW"}</div>
-          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>{company?.companyName} · {member?.name}</div>
-        </div>
-        <div style={{display:"flex",gap:5,flexWrap:"wrap",justifyContent:"flex-end"}}>
-          {syncing
-            ?<div style={{display:"flex",alignItems:"center",gap:5,background:"rgba(255,149,0,0.1)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:20,padding:"4px 10px"}}><Spin size={8}/><span style={{fontSize:10,fontWeight:700,color:"#ff9500",fontFamily:"'Barlow Condensed',sans-serif",marginLeft:4}}>SYNC</span></div>
-            :<div style={{display:"flex",alignItems:"center",gap:4,background:"rgba(0,229,100,0.1)",border:"1px solid rgba(0,229,100,0.2)",borderRadius:20,padding:"4px 8px"}}><div style={{width:6,height:6,borderRadius:"50%",background:"#00e564",animation:"pulse 2s infinite"}}/><span style={{fontSize:10,fontWeight:700,color:"#00e564",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("dashboard.live")}</span></div>
-          }
-          {tgEnabled&&<div style={{background:"rgba(0,136,204,0.1)",border:"1px solid rgba(0,136,204,0.25)",borderRadius:20,padding:"4px 8px"}}><span style={{fontSize:10,fontWeight:700,color:"#0088cc",fontFamily:"'Barlow Condensed',sans-serif"}}>TG</span></div>}
-          {aiEnabled&&<div style={{background:"rgba(88,86,214,0.1)",border:"1px solid rgba(88,86,214,0.25)",borderRadius:20,padding:"4px 8px"}}><span style={{fontSize:10,fontWeight:700,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif"}}>AI</span></div>}
-        </div>
-      </div>
-
-      <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
-        <Card label={t("status.open_short")} value={open} color="#ff3b30"/>
-        <Card label={t("status.in_progress_short")} value={inprog} color="#ff9500"/>
-        <Card label={t("status.done_short")} value={done} color="#34aadc"/>
-        <Card label={t("status.verified_short")} value={verified} color="#30d158"/>
-        <Card label={t("status.closed_short")} value={closed} color="#8e8e93"/>
-      </div>
-
-      {critical>0&&(
-        <div style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.25)",borderRadius:12,padding:"12px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
-          <div style={{fontSize:20}}>⚠️</div>
-          <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff3b30",fontSize:14}}>{critical} {t("dashboard.critical_unresolved")}</div><div style={{fontSize:12,color:"rgba(0,0,0,0.5)"}}>{t("dashboard.requires_attention")}</div></div>
-        </div>
-      )}
-
-      {queueCount>0&&(
-        <button onClick={onSyncQueue} style={{width:"100%",background:"rgba(255,149,0,0.1)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:12,padding:"12px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10,cursor:"pointer",textAlign:"left"}}>
-          {syncing2?<Spin size={16}/>:<span style={{fontSize:20}}>📤</span>}
-          <div style={{flex:1}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff9500",fontSize:14}}>{queueCount} {t("messages.queued_offline")}</div>
-            <div style={{fontSize:12,color:"rgba(0,0,0,0.5)"}}>{syncing2?t("messages.syncing"):navigator.onLine?t("dashboard.tap_sync"):t("messages.will_sync")}</div>
-          </div>
-        </button>
-      )}
-
-      {sevData.length>0&&(
-        <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:16}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:12}}>{t("dashboard.by_severity")}</div>
-          {sevData.map(({s,count})=>(
-            <div key={s} style={{marginBottom:8}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:SEV_COLOR[s]}}>{(SEV_I18N[s]?t(SEV_I18N[s]):s).toUpperCase()}</span>
-                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12}}>{count}</span>
-              </div>
-              <div style={{background:"rgba(0,0,0,0.06)",borderRadius:4,height:5,overflow:"hidden"}}>
-                <div style={{background:SEV_COLOR[s],height:"100%",width:defects.length?`${(count/defects.length)*100}%`:"0%",borderRadius:4,transition:"width 0.5s ease"}}/>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em"}}>{t("dashboard.recent_entries")}</div>
-        {canDashDelete&&defects.length>0&&(
-          dbSelect
-            ?<button onClick={dbExit} style={{background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:20,padding:"4px 10px",color:"rgba(0,0,0,0.55)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.done")}</button>
-            :<button onClick={()=>setDbSelect(true)} style={{background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.25)",borderRadius:20,padding:"4px 10px",color:"#ff3b30",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>SELECT</button>
-        )}
-      </div>
-      {defects.length===0&&(
-        <div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"40px 0",fontSize:14}}>
-          {t("dashboard.no_defects")}{["Admin","Manager","Inspector"].includes(member?.role)?` ${t("dashboard.tap_log")}`:""}
-        </div>
-      )}
-      {defects.slice(0,6).map((d,i)=>{
-        const checked=dbSelectedIds.has(d.id);
-        return(
-        <div key={d.id} onClick={()=>dbSelect?dbToggle(d.id):onView(d)} className="anim" style={{animationDelay:`${i*0.05}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:`4px solid ${SEV_COLOR[d.severity]}`,outline:dbSelect&&checked?"2px solid #ff3b30":"none",display:"flex",gap:10,alignItems:"flex-start"}}>
-          {dbSelect&&(
-            <div style={{width:20,height:20,borderRadius:5,border:checked?"2px solid #ff3b30":"2px solid rgba(0,0,0,0.25)",background:checked?"#ff3b30":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2}}>
-              {checked&&<span style={{color:"#fff",fontSize:12,fontWeight:900}}>✓</span>}
-            </div>
-          )}
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,color:"#1a1a1a",flex:1,paddingRight:8}}>{d.title}</div>
-              <StatusChip s={d.status}/>
-            </div>
-            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-              {d.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(d.entryType),background:typeBg(d.entryType),padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(d.entryType)} {tOpt(d.entryType).toUpperCase()}</span>}
-              <SevChip s={d.severity}/>
-              <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>📍 {d.location}</span>
-              <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>→ {d.assignee}</span>
-            </div>
-          </div>
-        </div>
-      );})}
-      {dbSelect&&dbSelectedIds.size>0&&(
-        <div style={{position:"fixed",bottom:72,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 24px)",maxWidth:406,background:"#1a1a1a",borderRadius:14,padding:"12px 14px",zIndex:60,boxShadow:"0 12px 40px rgba(0,0,0,0.4)",display:"flex",alignItems:"center",gap:8}}>
-          <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff"}}>{dbSelectedIds.size} SELECTED</div>
-          <button onClick={dbApplyDelete} disabled={dbBulkSaving} style={{background:"rgba(255,59,48,0.25)",border:"1px solid rgba(255,59,48,0.55)",borderRadius:10,padding:"9px 16px",color:"#ff6b6b",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:dbBulkSaving?"wait":"pointer"}}>{dbBulkSaving?"…":"🗑 DELETE"}</button>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── Log Entry (with AI + Batch + Multi-photo) ────────────────────
 function LogDefect({member,company,currentProject,members,onSave,existingDefects=[],onViewEntry,onTagDrawing}){
@@ -6615,7 +6477,21 @@ function ProfilePanel({member,authUser,company,onClose,onSignOut,onCompanyUpdate
   );
 }
 
-function Report({defects,onEmailSetup,currentProject,company}){
+function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled,syncing,member,queueCount,onSyncQueue,syncing2}){
+  // Merged-from-Dashboard status block (lives at the top of Report now).
+  const open=defects.filter(d=>d.status==="Open").length;
+  const inprog=defects.filter(d=>d.status==="In Progress").length;
+  const doneCount=defects.filter(d=>d.status==="Done").length;
+  const verified=defects.filter(d=>d.status==="Verified").length;
+  const closedCount=defects.filter(d=>d.status==="Closed").length;
+  const critical=defects.filter(d=>d.severity==="Critical"&&!["Verified","Closed"].includes(d.status)).length;
+  const sevData=SEVERITY.map(s=>({s,count:defects.filter(d=>d.severity===s).length})).filter(x=>x.count>0);
+  const StatusCard=({label,value,color})=>(
+    <div style={{flex:1,minWidth:56,background:"#fff",borderRadius:12,padding:"10px 12px",borderTop:`3px solid ${color}`}}>
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",lineHeight:1}}>{value}</div>
+      <div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginTop:3}}>{label}</div>
+    </div>
+  );
   const[sending,setSending]=useState(false);const[sendRes,setSendRes]=useState(null);
   const[showFilters,setShowFilters]=useState(false);const[showExportMenu,setShowExportMenu]=useState(false);const[showEmailMenu,setShowEmailMenu]=useState(false);
   const[showContractAdvisor,setShowContractAdvisor]=useState(false);
@@ -6817,8 +6693,66 @@ function Report({defects,onEmailSetup,currentProject,company}){
 
   return(
     <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
-      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",marginBottom:2}}>{t("report.site_report")}</div>
-      <div style={{fontSize:12,color:"rgba(0,0,0,0.4)",marginBottom:10}}>{currentProject?.name||""} · {new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}</div>
+      {/* Merged from former Dashboard tab: title + status dots + status
+          cards + critical banner + offline queue sync. Gives the report
+          surface a glanceable landing, same info at-a-glance that used to
+          live on Dashboard. */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,flexWrap:"wrap",gap:8}}>
+        <div style={{minWidth:0,flex:"1 1 180px"}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",marginBottom:2}}>{t("report.site_report")}</div>
+          <div style={{fontSize:12,color:"rgba(0,0,0,0.4)"}}>{currentProject?.name||""} · {new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}</div>
+        </div>
+        <div style={{display:"flex",gap:5,flexWrap:"wrap",justifyContent:"flex-end"}}>
+          {syncing
+            ?<div style={{display:"flex",alignItems:"center",gap:5,background:"rgba(255,149,0,0.1)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:20,padding:"4px 10px"}}><Spin size={8}/><span style={{fontSize:10,fontWeight:700,color:"#ff9500",fontFamily:"'Barlow Condensed',sans-serif",marginLeft:4}}>SYNC</span></div>
+            :<div style={{display:"flex",alignItems:"center",gap:4,background:"rgba(0,229,100,0.1)",border:"1px solid rgba(0,229,100,0.2)",borderRadius:20,padding:"4px 8px"}}><div style={{width:6,height:6,borderRadius:"50%",background:"#00e564",animation:"pulse 2s infinite"}}/><span style={{fontSize:10,fontWeight:700,color:"#00e564",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("dashboard.live")}</span></div>
+          }
+          {tgEnabled&&<div style={{background:"rgba(0,136,204,0.1)",border:"1px solid rgba(0,136,204,0.25)",borderRadius:20,padding:"4px 8px"}}><span style={{fontSize:10,fontWeight:700,color:"#0088cc",fontFamily:"'Barlow Condensed',sans-serif"}}>TG</span></div>}
+          {aiEnabled&&<div style={{background:"rgba(88,86,214,0.1)",border:"1px solid rgba(88,86,214,0.25)",borderRadius:20,padding:"4px 8px"}}><span style={{fontSize:10,fontWeight:700,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif"}}>AI</span></div>}
+        </div>
+      </div>
+
+      <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+        <StatusCard label={t("status.open_short")} value={open} color="#ff3b30"/>
+        <StatusCard label={t("status.in_progress_short")} value={inprog} color="#ff9500"/>
+        <StatusCard label={t("status.done_short")} value={doneCount} color="#34aadc"/>
+        <StatusCard label={t("status.verified_short")} value={verified} color="#30d158"/>
+        <StatusCard label={t("status.closed_short")} value={closedCount} color="#8e8e93"/>
+      </div>
+
+      {critical>0&&(
+        <div style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.25)",borderRadius:12,padding:"10px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:10}}>
+          <div style={{fontSize:18}}>⚠️</div>
+          <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff3b30",fontSize:13}}>{critical} {t("dashboard.critical_unresolved")}</div><div style={{fontSize:11,color:"rgba(0,0,0,0.5)"}}>{t("dashboard.requires_attention")}</div></div>
+        </div>
+      )}
+
+      {queueCount>0&&(
+        <button onClick={onSyncQueue} style={{width:"100%",background:"rgba(255,149,0,0.1)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:12,padding:"10px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:10,cursor:"pointer",textAlign:"left"}}>
+          {syncing2?<Spin size={16}/>:<span style={{fontSize:18}}>📤</span>}
+          <div style={{flex:1}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff9500",fontSize:13}}>{queueCount} {t("messages.queued_offline")}</div>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.5)"}}>{syncing2?t("messages.syncing"):navigator.onLine?t("dashboard.tap_sync"):t("messages.will_sync")}</div>
+          </div>
+        </button>
+      )}
+
+      {sevData.length>0&&(
+        <div style={{background:"#fff",borderRadius:12,padding:"10px 14px",marginBottom:12}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:8}}>{t("dashboard.by_severity")}</div>
+          {sevData.map(({s,count})=>(
+            <div key={s} style={{marginBottom:6}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,color:SEV_COLOR[s]}}>{(SEV_I18N[s]?t(SEV_I18N[s]):s).toUpperCase()}</span>
+                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11}}>{count}</span>
+              </div>
+              <div style={{background:"rgba(0,0,0,0.06)",borderRadius:4,height:4,overflow:"hidden"}}>
+                <div style={{background:SEV_COLOR[s],height:"100%",width:defects.length?`${(count/defects.length)*100}%`:"0%",borderRadius:4,transition:"width 0.5s ease"}}/>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div style={{display:"flex",gap:6,marginBottom:10}}>
         <div style={{position:"relative",flex:1,display:"flex"}}>
@@ -13012,7 +12946,7 @@ function AdminAnalytics({defects,members,company,currentProject,projects,allDefe
 }
 
 // ── App Root ──────────────────────────────────────────────────────
-const NAV=[{id:"dashboard",icon:"⊞",labelKey:"nav.dashboard"},{id:"log",icon:"+",labelKey:"nav.log"},{id:"drawings",icon:"📐",labelKey:"nav.tag"},{id:"defects",icon:"≡",labelKey:"nav.review"},{id:"report",icon:"◎",labelKey:"nav.report"}];
+const NAV=[{id:"log",icon:"+",labelKey:"nav.log"},{id:"drawings",icon:"📐",labelKey:"nav.tag"},{id:"defects",icon:"≡",labelKey:"nav.review"},{id:"report",icon:"◎",labelKey:"nav.report"}];
 
 // Dropdown line icons — stroke-only, single color
 const DdIcon=({name,size=16})=>{
@@ -13058,7 +12992,7 @@ function App(){
   const[currentProject,setCurrentProject]=useState(()=>local.get(PROJECT_KEY));
   const[defects,setDefects]=useState([]);
   const[syncing,setSyncing]=useState(true);
-  const[tab,setTab]=useState("dashboard");
+  const[tab,setTab]=useState("report");
   const[viewing,setViewing]=useState(null);
   const[showTg,setShowTg]=useState(false);
   const[showEmail,setShowEmail]=useState(false);
@@ -13580,8 +13514,8 @@ function App(){
         </div>
       </div>
 
-      {/* AI Query bar — shown on Dashboard and Report tabs */}
-      {(tab==="dashboard"||tab==="report")&&(
+      {/* AI Query bar — shown on Report tab (merged in from former Dashboard) */}
+      {tab==="report"&&(
         <div style={{background:"#1a1a1a",padding:"0 12px 10px"}}>
           <button onClick={()=>{if(aiEnabled)setShowAiSearch(true);}} title={aiEnabled?"AI natural-language query across your entries":"Configure AI in Settings to enable"} style={{width:"100%",display:"flex",alignItems:"center",gap:10,background:aiEnabled?"rgba(255,255,255,0.07)":"rgba(255,255,255,0.04)",border:`1px solid ${aiEnabled?"rgba(255,107,0,0.35)":"rgba(255,255,255,0.08)"}`,borderRadius:10,padding:"9px 12px",cursor:aiEnabled?"pointer":"not-allowed",textAlign:"left"}}>
             <span style={{fontSize:14,color:aiEnabled?"#ff6b00":"rgba(255,255,255,0.3)"}}>💬</span>
@@ -13596,12 +13530,11 @@ function App(){
 
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:84}}>
-        {tab==="dashboard"&&<Dashboard defects={defects} onView={setViewing} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} company={company} currentProject={currentProject} member={member} onDrawings={()=>setTab("drawings")} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2} onBulkDelete={bulkDelete}/>}
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
-        {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("dashboard")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect}/>}
+        {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect}/>}
         {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} onUpdate={updateDefect} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")}/>}
-        {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company}/>}
+        {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} member={member} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
       </div>
 
       {/* Bottom Nav */}
