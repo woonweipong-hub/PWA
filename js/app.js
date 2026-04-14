@@ -7741,11 +7741,13 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   // Load the four bundled sample drawings from the public GitHub repo. Lets
   // testers kick the tyres on TAG / Compare / Convert with zero setup — no
   // need to find their own drawings first.
+  // License/provenance-tagged so every drawing carries its own credit line.
+  // See sample_drwgs/ATTRIBUTION.md for full sources and licences.
   const SAMPLE_URLS=[
-    {name:"SampleHouse V1 (vector)",url:"https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/sample_drwgs/SampleHouse_V1.pdf"},
-    {name:"SampleHouse V2 (vector)",url:"https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/sample_drwgs/SampleHouse_V2.pdf"},
-    {name:"Dyckman First Floor (sketch)",url:"https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/sample_drwgs/Dyckman_First_Floor_sketch.png"},
-    {name:"Dyckman Second Floor (sketch)",url:"https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/sample_drwgs/Dyckman_Second_Floor_sketch.png"},
+    {name:"SampleHouse V1 (vector, CC0)",url:"https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/sample_drwgs/SampleHouse_V1.pdf",credit:"Original work by SiteShrimp — released CC0 / public domain."},
+    {name:"SampleHouse V2 (vector, CC0)",url:"https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/sample_drwgs/SampleHouse_V2.pdf",credit:"Original work by SiteShrimp — released CC0 / public domain."},
+    {name:"Dyckman House — First Floor (HABS, public domain)",url:"https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/sample_drwgs/Dyckman_First_Floor_sketch.png",credit:"Historic American Buildings Survey (HABS NY,31-NEYO,11-, sheet 2) — Library of Congress. Public domain (US federal work)."},
+    {name:"Dyckman House — Second Floor (HABS, public domain)",url:"https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/sample_drwgs/Dyckman_Second_Floor_sketch.png",credit:"Historic American Buildings Survey (HABS NY,31-NEYO,11-, sheet 3) — Library of Congress. Public domain (US federal work)."},
   ];
   const[loadingSamples,setLoadingSamples]=useState(false);
   const loadSampleDrawings=async()=>{
@@ -7761,14 +7763,18 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
         const file=new File([blob],fname,{type:blob.type||"application/octet-stream"});
         const rec=await DB.drawings.createWithFile({
           companyId:company.companyId,projectId:currentProject.id,
-          name:s.name,uploadedBy:member?.name||"",uploadedAt:new Date().toISOString(),
+          // The drawing name itself carries the licence tag ("(HABS, public
+          // domain)" / "(CC0)") so provenance follows the record everywhere
+          // it's shown — no schema change needed.
+          name:s.name,
+          uploadedBy:member?.name||"",uploadedAt:new Date().toISOString(),
         },"file",file,fname);
         created.push(rec);
       }catch(err){console.warn("sample load failed",s.name,err);}
     }
     if(created.length)setDrawings(prev=>[...created,...prev]);
     setLoadingSamples(false);
-    alert(`Loaded ${created.length}/${SAMPLE_URLS.length} sample drawings.`);
+    alert(`Loaded ${created.length}/${SAMPLE_URLS.length} sample drawings.\n\nSources:\n• SampleHouse V1/V2 — Original SiteShrimp work, CC0.\n• Dyckman House — HABS (Library of Congress), public domain.\n\nSee sample_drwgs/ATTRIBUTION.md for full details.`);
   };
 
   // Convert button handler: single or batch. Each JPG becomes one vector PDF
