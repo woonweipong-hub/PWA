@@ -10430,34 +10430,51 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     };
     addNativeHeader("BASE DRAWING",baseDrawing);
     addNativeHeader("REVISION DRAWING",targetDrawing);
-    // Post-process with pdf-lib to splice native source pages in.
+    // Assemble the final PDF in a FRESH pdf-lib document. This avoids any
+    // graphics-state / colour-space leakage between jsPDF-authored pages and
+    // copyPages-inserted source pages that some PDF viewers (notably Chrome's
+    // built-in) render as CMYK bleed. We copyPages from the jsPDF output AND
+    // from each source, so every page in the final file originates from a
+    // clean content-stream copy — no embed-as-XObject and no shared state.
     const fileBase=`SiteShrimp_Compare_${(currentProject?.name||"Export").replace(/\s/g,"_")}_${stamp.toLocaleDateString("en-GB").replace(/\//g,"-")}`;
     const fileName=fileBase+".pdf";
+    const jsPdfPageCount=doc.getNumberOfPages();
     if(!nativeInserts.length){doc.save(fileName);return;}
     try{
       const PDFLib=await _waitForPdfLib();
       const {PDFDocument}=PDFLib;
-      const baseBytes=doc.output("arraybuffer");
-      const outDoc=await PDFDocument.load(baseBytes);
-      // Dedup source fetches across base+target in case the user compared a
-      // drawing to itself (unusual but harmless).
+      const jsPdfBytes=doc.output("arraybuffer");
+      const jsPdfDoc=await PDFDocument.load(jsPdfBytes);
+      // Fresh destination — no state inherited from the jsPDF run.
+      const outDoc=await PDFDocument.create();
+      // Dedup source fetches across base+target in case user compared a
+      // drawing to itself.
       const uniqueUrls=[...new Set(nativeInserts.map(s=>s.sourceUrl))];
       const srcCache=new Map();
       await Promise.all(uniqueUrls.map(async u=>{
         try{srcCache.set(u,await _fetchBytes(u));}
         catch(e){console.warn("compare: source fetch failed",u,e);srcCache.set(u,null);}
       }));
-      // Descending page order so insertPage doesn't invalidate later swaps.
-      const sorted=[...nativeInserts].sort((a,b)=>b.titlePageNumber-a.titlePageNumber);
-      for(const ins of sorted){
+      // Build an index by titlePageNumber so we can splice the native page
+      // after each title in one forward pass (no index shifting).
+      const insertAfter=new Map(); // jsPDF page number → { sourceUrl, sourcePageIdx }
+      nativeInserts.forEach(ins=>insertAfter.set(ins.titlePageNumber,ins));
+      for(let p=1;p<=jsPdfPageCount;p++){
+        const [jsCopied]=await outDoc.copyPages(jsPdfDoc,[p-1]);
+        outDoc.addPage(jsCopied);
+        const ins=insertAfter.get(p);
+        if(!ins)continue;
         const bytes=srcCache.get(ins.sourceUrl);
-        if(!bytes)continue;
+        if(!bytes){
+          console.warn("compare: no bytes for",ins.sourceUrl,"— native insert skipped");
+          continue;
+        }
         try{
           const srcDoc=await PDFDocument.load(bytes,{ignoreEncryption:true});
           if(ins.sourcePageIdx>=srcDoc.getPageCount())continue;
-          const [copied]=await outDoc.copyPages(srcDoc,[ins.sourcePageIdx]);
-          outDoc.insertPage(ins.titlePageNumber,copied);
-        }catch(e){console.warn("compare: native insert failed",ins,e);}
+          const [srcCopied]=await outDoc.copyPages(srcDoc,[ins.sourcePageIdx]);
+          outDoc.addPage(srcCopied);
+        }catch(e){console.warn("compare: native copy failed",ins,e);}
       }
       const finalBytes=await outDoc.save({useObjectStreams:true});
       const blob=new Blob([finalBytes],{type:"application/pdf"});
@@ -10466,7 +10483,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       document.body.appendChild(a);a.click();
       setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
     }catch(e){
-      console.warn("compare: pdf-lib post-process failed; saving base PDF",e);
+      console.warn("compare: pdf-lib assembly failed; saving base jsPDF",e);
       doc.save(fileName);
     }
   };
