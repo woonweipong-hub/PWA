@@ -7672,7 +7672,7 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
         const scaleFit=Math.min((pageW-margin*2)/w,(pageH-margin*2)/h);
         const drawW=w*scaleFit,drawH=h*scaleFit;
         const ox=(pageW-drawW)/2,oy=(pageH-drawH)/2;
-        window.svg2pdf.svg2pdf(svgEl,doc,{x:ox,y:oy,width:drawW,height:drawH})
+        window.svg2pdf(svgEl,doc,{x:ox,y:oy,width:drawW,height:drawH})
           .then(()=>{
             doc.setFont("helvetica","normal");doc.setFontSize(7);
             doc.setTextColor(120);
