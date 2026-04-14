@@ -7798,10 +7798,9 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
       img.onerror=()=>reject(new Error("Failed to decode image."));
       img.onload=()=>{
         report("preprocess",0);
-        // Downscale very large images so tracing stays responsive. Cap is
-        // tighter than before (1200 instead of 1600) — on a 9000x7000 scan
-        // the trace time scales with pixel count, so 1200 roughly halves
-        // the wait with barely perceptible quality loss on line art.
+        // Downscale cap — balances trace speed against retained detail.
+        // 1200 keeps traces fast on phones and produces output the user
+        // has accepted as "good enough" for the HABS-class inputs.
         const MAX=1200;
         const scale=Math.min(1,MAX/Math.max(img.width,img.height));
         const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
@@ -8066,6 +8065,90 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     alert(`Loaded ${created.length}/${SAMPLE_URLS.length} sample drawings.\n\nSources:\n• SampleHouse V1/V2 — Original SiteShrimp work, CC0.\n• Dyckman House — HABS (Library of Congress), public domain.\n\nSee sample_drwgs/ATTRIBUTION.md for full details.`);
   };
 
+  // ── AI Enhance: Gemini Vision → simplified SVG → vector PDF ──
+  // Different pipeline from ImageTracer. Sends the image to Gemini with a
+  // prompt asking for a structured SVG of the floor plan (walls, doors,
+  // openings, room labels). Output is semantic — walls are single lines
+  // with stroke-width, not outlined polygons — so visually much cleaner
+  // than raster-edge tracing. Costs one Gemini call per image (free tier
+  // handles ~1500/day).
+  const[aiEnhance,setAiEnhance]=useState(false);
+  const aiEnhanceOneToPdfBlob=async(file,onStage)=>{
+    const report=(stage,within=0)=>{if(onStage)onStage(stage,within);};
+    const key=local.get(GEMINI_KEY);
+    if(!key)throw new Error("Gemini key missing — configure AI in Settings first.");
+    if(!window.jspdf||!window.svg2pdf)throw new Error("PDF libs not loaded — refresh the app.");
+    report("read",0);
+    const dataUrl=await new Promise((resolve,reject)=>{
+      const r=new FileReader();r.onerror=()=>reject(new Error("Failed to read file."));
+      r.onload=()=>resolve(r.result);r.readAsDataURL(file);
+    });
+    report("decode",0);
+    // Downscale to something Gemini will actually look at without wasting tokens.
+    const img=await new Promise((resolve,reject)=>{
+      const i=new Image();i.onerror=()=>reject(new Error("Failed to decode image."));
+      i.onload=()=>resolve(i);i.src=dataUrl;
+    });
+    report("preprocess",0);
+    const MAX=1024;
+    const scale=Math.min(1,MAX/Math.max(img.width,img.height));
+    const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
+    const cnv=document.createElement("canvas");cnv.width=w;cnv.height=h;
+    cnv.getContext("2d").drawImage(img,0,0,w,h);
+    const jpeg=cnv.toDataURL("image/jpeg",0.85);
+    const b64=jpeg.split(",")[1];
+    report("trace",0.1);
+    // Prompt: ask for a clean SVG only — no prose, no markdown. The viewBox
+    // is the raster size so coordinates are directly in source-pixel space.
+    const prompt=`You are converting an architectural floor plan image into clean SVG.
+Output ONLY valid SVG markup — no commentary, no code fences, no JSON. Start with <svg ...> and end with </svg>.
+
+Requirements:
+- viewBox="0 0 ${w} ${h}" matching the source image pixel dimensions.
+- White background (<rect fill="white" ... />).
+- Walls as <line> or <polyline> with stroke="black" stroke-width="2" stroke-linecap="square".
+- Door swings as thin arcs where shown.
+- Room labels as <text> at approximate centres, font-size 14, fill="black".
+- Keep dimensions/rough layout faithful to the image; prefer clean orthogonal lines over every tiny wobble.
+- Do not include grids, hatching, or decorative shading — walls, openings, labels only.
+- If you cannot identify something confidently, leave it out rather than guessing.`;
+    const res=await geminiGenerate(key,{
+      contents:[{parts:[
+        {inline_data:{mime_type:"image/jpeg",data:b64}},
+        {text:prompt},
+      ]}],
+      generationConfig:{temperature:0.2,maxOutputTokens:8192},
+    });
+    const data=await res.json();
+    const parts=data.candidates?.[0]?.content?.parts||[];
+    let text=parts.filter(p=>p.text&&!p.thought).map(p=>p.text).join("\n").trim();
+    if(!text)throw new Error("Gemini returned an empty response. Check your API key and quota.");
+    text=text.replace(/^```(?:xml|svg)?\s*/i,"").replace(/```\s*$/,"").trim();
+    const svgStart=text.indexOf("<svg");
+    const svgEnd=text.lastIndexOf("</svg>");
+    if(svgStart<0||svgEnd<0)throw new Error("Gemini did not return SVG. Raw start: "+text.slice(0,120));
+    const svgstr=text.slice(svgStart,svgEnd+6);
+    report("svg",0);
+    const parser=new DOMParser();
+    const svgDoc=parser.parseFromString(svgstr,"image/svg+xml");
+    const svgEl=svgDoc.documentElement;
+    if(svgEl.querySelector("parsererror"))throw new Error("Gemini SVG did not parse. Try again or use standard Convert.");
+    const{jsPDF}=window.jspdf;
+    const landscape=w>=h;
+    const doc=new jsPDF({orientation:landscape?"l":"p",unit:"mm",format:"a4"});
+    const pageW=landscape?297:210,pageH=landscape?210:297;
+    const margin=10;
+    const scaleFit=Math.min((pageW-margin*2)/w,(pageH-margin*2)/h);
+    const drawW=w*scaleFit,drawH=h*scaleFit;
+    const ox=(pageW-drawW)/2,oy=(pageH-drawH)/2;
+    report("pdf",0);
+    await window.svg2pdf(svgEl,doc,{x:ox,y:oy,width:drawW,height:drawH});
+    doc.setFont("helvetica","normal");doc.setFontSize(7);
+    doc.setTextColor(120);
+    doc.text(`AI-Enhanced from ${file.name} — SiteShrimp Convert (Gemini)`,margin,pageH-5);
+    return doc.output("blob");
+  };
+
   // Convert button handler: single or batch. Each JPG becomes one vector PDF
   // drawing record so the user can immediately Compare between versions.
   const convertJpgsToPdf=async(e)=>{
@@ -8099,8 +8182,11 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
       };
       emit("read",0);
       try{
-        const blob=await traceOneToPdfBlob(f,emit);
-        const baseName=f.name.replace(/\.[^.]+$/,"")+" (vector).pdf";
+        const blob=aiEnhance
+          ?await aiEnhanceOneToPdfBlob(f,emit)
+          :await traceOneToPdfBlob(f,emit);
+        const suffix=aiEnhance?" (AI vector).pdf":" (vector).pdf";
+        const baseName=f.name.replace(/\.[^.]+$/,"")+suffix;
         // Save locally FIRST so the user always walks away with a file
         // even if the PocketBase upload hangs or fails. Same blob is
         // reused for the upload.
@@ -9370,9 +9456,15 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
             </button>
           )}
           {canUpload&&(
-            <button onClick={()=>convertRef.current?.click()} disabled={converting} title="Convert JPG sketches to vector PDF drawings (single or batch)" style={{flex:1,minWidth:0,borderRadius:10,background:"rgba(52,199,89,0.08)",border:"1px solid rgba(52,199,89,0.3)",cursor:converting?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 10px",gap:5}}>
-              {converting?<Spin size={16}/>:<><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 7h6l2-3h6a2 2 0 012 2v13a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z" stroke="rgba(52,160,80,0.85)" strokeWidth="1.6" strokeLinejoin="round"/><path d="M9 13l2 2 4-4" stroke="rgba(52,160,80,0.85)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg><span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(52,160,80,0.9)"}}>Convert</span></>}
-            </button>
+            <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:3}}>
+              <button onClick={()=>convertRef.current?.click()} disabled={converting} title={aiEnhance?"Convert with Gemini AI vision — produces cleaner, semantic SVG (uses your Gemini quota)":"Convert JPG sketches to vector PDF drawings (single or batch) — offline, free, deterministic"} style={{width:"100%",borderRadius:10,background:aiEnhance?"rgba(88,86,214,0.1)":"rgba(52,199,89,0.08)",border:`1px solid ${aiEnhance?"rgba(88,86,214,0.35)":"rgba(52,199,89,0.3)"}`,cursor:converting?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 10px",gap:5}}>
+                {converting?<Spin size={16}/>:<><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 7h6l2-3h6a2 2 0 012 2v13a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z" stroke={aiEnhance?"rgba(88,86,214,0.85)":"rgba(52,160,80,0.85)"} strokeWidth="1.6" strokeLinejoin="round"/><path d="M9 13l2 2 4-4" stroke={aiEnhance?"rgba(88,86,214,0.85)":"rgba(52,160,80,0.85)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg><span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:aiEnhance?"rgba(88,86,214,0.9)":"rgba(52,160,80,0.9)"}}>{aiEnhance?"AI Convert":"Convert"}</span></>}
+              </button>
+              <label title="Use Gemini AI vision instead of the offline tracer — cleaner output on sketches but costs Gemini quota" style={{display:"flex",alignItems:"center",gap:4,fontSize:9,cursor:isAiConfigured()?"pointer":"not-allowed",color:isAiConfigured()?(aiEnhance?"#5856d6":"rgba(0,0,0,0.55)"):"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,justifyContent:"center",letterSpacing:"0.04em"}}>
+                <input type="checkbox" checked={aiEnhance} disabled={!isAiConfigured()||converting} onChange={e=>setAiEnhance(e.target.checked)} style={{margin:0,width:11,height:11,cursor:isAiConfigured()?"pointer":"not-allowed"}}/>
+                AI ENHANCE
+              </label>
+            </div>
           )}
           <div style={{flex:1,minWidth:0,position:"relative"}} onMouseEnter={()=>{clearTimeout(diffMenuTimer.current);setShowDiffMenu(true);}} onMouseLeave={()=>{diffMenuTimer.current=setTimeout(()=>setShowDiffMenu(false),250);}}>
             <button onClick={()=>setShowDiffMenu(v=>!v)} title={t("export.diff_compare")} style={{width:"100%",borderRadius:10,background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 10px",gap:5}}>
