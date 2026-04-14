@@ -548,6 +548,53 @@ function _buildOverlayPng(Wpx,Hpx,pins,notes,defects,markups,imgCache){
   }catch(e){console.warn("overlay build failed",e);return null;}
 }
 
+// Compute a measurement row for a markup stroke. Coordinates arrive as
+// percentages of the drawing area; we convert to mm on the SOURCE PAPER
+// using the source page's physical dimensions so the CSV is independent
+// of how the drawing was scaled into the report body. Returns null when
+// the stroke doesn't describe a measurable geometry (text, stamps, photos).
+function _markupMeasurementRow(s,sourceWmm,sourceHmm){
+  if(!s||!sourceWmm||!sourceHmm)return null;
+  const toMm=p=>({x:(p.x/100)*sourceWmm,y:(p.y/100)*sourceHmm});
+  const dist=(a,b)=>Math.hypot(b.x-a.x,b.y-a.y);
+  const polyLen=pts=>{let L=0;for(let i=1;i<pts.length;i++)L+=dist(pts[i-1],pts[i]);return L;};
+  if((s.type==="line"||s.type==="arrow"||s.type==="dimension")&&s.start&&s.end){
+    const a=toMm(s.start),b=toMm(s.end);
+    return{type:s.type,label:s.label||s.text||"",lengthMm:dist(a,b),widthMm:"",heightMm:"",areaMm2:"",x1:a.x,y1:a.y,x2:b.x,y2:b.y};
+  }
+  if(s.type==="rect"&&s.start&&s.end){
+    const a=toMm(s.start),b=toMm(s.end);
+    const w=Math.abs(b.x-a.x),h=Math.abs(b.y-a.y);
+    return{type:"rect",label:s.text||"",lengthMm:"",widthMm:w,heightMm:h,areaMm2:w*h,x1:Math.min(a.x,b.x),y1:Math.min(a.y,b.y),x2:Math.max(a.x,b.x),y2:Math.max(a.y,b.y)};
+  }
+  if(s.type==="circle"&&s.start&&s.end){
+    const a=toMm(s.start),b=toMm(s.end);
+    const rx=Math.abs(b.x-a.x)/2,ry=Math.abs(b.y-a.y)/2;
+    return{type:"circle",label:s.text||"",lengthMm:"",widthMm:rx*2,heightMm:ry*2,areaMm2:Math.PI*rx*ry,x1:(a.x+b.x)/2-rx,y1:(a.y+b.y)/2-ry,x2:(a.x+b.x)/2+rx,y2:(a.y+b.y)/2+ry};
+  }
+  if((s.type==="polyline"||s.type==="freehand")&&Array.isArray(s.points)&&s.points.length>1){
+    const pts=s.points.map(toMm);
+    const L=polyLen(pts);
+    return{type:s.type,label:s.text||"",lengthMm:L,widthMm:"",heightMm:"",areaMm2:"",x1:pts[0].x,y1:pts[0].y,x2:pts[pts.length-1].x,y2:pts[pts.length-1].y};
+  }
+  return null;
+}
+function _downloadMeasurementCsv(rows,fileName){
+  if(!rows||!rows.length)return;
+  const esc=v=>{if(v==null)return"";const s=String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+  const fmt=v=>(typeof v==="number"&&isFinite(v))?v.toFixed(2):esc(v);
+  const headers=["Drawing","Page","Type","Label","Length (mm on source)","Width (mm on source)","Height (mm on source)","Area (mm² on source)","X1","Y1","X2","Y2"];
+  const lines=[headers.join(",")];
+  for(const r of rows){
+    lines.push([r.drawing,r.page,r.type,r.label,fmt(r.lengthMm),fmt(r.widthMm),fmt(r.heightMm),fmt(r.areaMm2),fmt(r.x1),fmt(r.y1),fmt(r.x2),fmt(r.y2)].map(esc).join(","));
+  }
+  const csv="\uFEFF"+lines.join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  a.download=fileName;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+}
 function _drawNoteMarker(ctx,W,H,n){
   const x=(n.x/100)*W,y=(n.y/100)*H;
   const fs=Math.max(12,W*0.013);
@@ -1739,6 +1786,11 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   // built so we can splice original PDF-source drawings back in as true
   // vectors via pdf-lib. Empty means no post-processing needed.
   const pdfLibSwaps=[];
+  // Measurement data for the companion CSV — one row per measurable markup
+  // (rect, line, dimension, polyline, circle) on a drawing. Values are
+  // computed in mm on the SOURCE PAPER; users multiply by the drawing's
+  // title-block scale factor (e.g. 1:100 → ×100) for real-world units.
+  const measurementRows=[];
   const orange=[255,107,0],purple=[88,86,214];
   const sevRGB={Critical:[255,59,48],Major:[255,149,0],Minor:[230,184,0],Observation:[52,170,220]};
   const statRGB={Open:[255,59,48],"In Progress":[255,149,0],Done:[52,170,220],Verified:[48,209,88],Closed:[142,142,147]};
@@ -2265,6 +2317,19 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
               doc.setDrawColor(220);doc.setLineWidth(0.2);
               doc.rect(drawX,drawY,drawnW,imgH);
               doc.setDrawColor(0);
+              // Scale-factor stamp — we display a vector floor plan at a
+              // fraction of its source size to fit the A4 body, so anyone who
+              // later takes a ruler to this PDF must multiply by the stamp's
+              // ratio AND the original drawing's title-block scale to get
+              // real-world lengths. Making that ratio visible = no silent
+              // miscalculation.
+              const sourceWmm=pg.nativeW*0.352778;
+              const sourceHmm=pg.nativeH*0.352778;
+              const displayPct=sourceWmm>0?(drawnW/sourceWmm*100):100;
+              doc.setFontSize(6.5);doc.setFont(undefined,"normal");doc.setTextColor(110);
+              const stamp=`Source ${sourceWmm.toFixed(0)}×${sourceHmm.toFixed(0)} mm · displayed at ${displayPct.toFixed(1)}% · multiply by title-block scale for real-world units`;
+              doc.text(stamp,drawX,drawY+imgH+3.2);
+              doc.setTextColor(0);
               pdfLibSwaps.push({
                 docPageNumber:doc.getNumberOfPages(),
                 sourceUrl:pg.sourceUrl,
@@ -2273,7 +2338,12 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
                 markups:pg.markups||[],
                 overlayPng:pg.overlayPng,
               });
-              y+=imgH+4;
+              // Emit one measurement row per measurable markup on this page.
+              for(const s of markups){
+                const row=_markupMeasurementRow(s,sourceWmm,sourceHmm);
+                if(row)measurementRows.push({drawing:d.name||"",page:pg.pageNum,...row});
+              }
+              y+=imgH+6;
             }else{
               const img=new Image();
               await new Promise((resolve)=>{img.onload=resolve;img.onerror=resolve;img.src=pg.dataUrl;});
@@ -2462,10 +2532,16 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     doc.setTextColor(0);
   }
 
-  const fileName=`SiteShrimp_Report_${(projectName||"Export").replace(/\s/g,"_")}_${now.toLocaleDateString("en-GB").replace(/\//g,"-")}.pdf`;
+  const baseName=`SiteShrimp_Report_${(projectName||"Export").replace(/\s/g,"_")}_${now.toLocaleDateString("en-GB").replace(/\//g,"-")}`;
+  const fileName=baseName+".pdf";
+  const csvName=baseName+"_measurements.csv";
+  // Trigger the companion CSV right after the PDF so the user ends up with
+  // both files in their Downloads folder from a single export action.
+  const downloadCsv=()=>_downloadMeasurementCsv(measurementRows,csvName);
   if(pdfLibSwaps.length===0){
     if(typeof onProgress==="function")onProgress("Saving PDF…");
     doc.save(fileName);
+    downloadCsv();
     return;
   }
   try{
@@ -2523,11 +2599,13 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     a.download=fileName;
     document.body.appendChild(a);a.click();
     setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+    downloadCsv();
   }catch(err){
     // Fall back to the un-merged PDF so the user still gets their report.
     console.warn("pdf-lib post-process failed; saving base PDF",err);
     if(typeof onProgress==="function")onProgress("Saving PDF…");
     doc.save(fileName);
+    downloadCsv();
   }
 }
 
