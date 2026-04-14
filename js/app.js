@@ -5876,7 +5876,7 @@ function DefectMiniMap({defect,allDefects}){
   );
 }
 
-function DefectDetail({defect,onClose,onUpdate,member,company,members=[],allDefects=[],embedded=false}){
+function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[],allDefects=[],embedded=false}){
   const[status,setStatus]=useState(defect.status);
   const[comment,setComment]=useState("");const[saving,setSaving]=useState(false);const[deleting,setDeleting]=useState(false);
   const[commentPhoto,setCommentPhoto]=useState(null);const[verifyPhoto,setVerifyPhoto]=useState(null);
@@ -6059,6 +6059,17 @@ function DefectDetail({defect,onClose,onUpdate,member,company,members=[],allDefe
     setDeleting(true);
     try{
       await DB.defects.delete(defect.id);
+      // Remove any drawing pins tied to this entry so the map and drawing
+      // overlays don't show orphaned markers until SSE catches up.
+      try{
+        const pins=await DB.pins.list(`entryId="${defect.id}"`);
+        for(const p of pins){try{await DB.pins.delete(p.id);}catch{}}
+      }catch{}
+      // Synchronously remove from the parent state — SSE can drop delete
+      // events on flaky mobile connections; without this, the defect
+      // reappears in Review lists and the export. Fixes the "deleted
+      // defect ghost on export" bug.
+      if(typeof onDelete==="function")onDelete(defect.id);
       onClose();
     }catch(e){alert("Failed to delete: "+e.message);setDeleting(false);}
   };
@@ -13518,7 +13529,7 @@ function App(){
 
       {/* Overlays */}
       {showAiSearch&&<AiSearch defects={defects} onClose={()=>setShowAiSearch(false)} onApplyFilters={f=>{setNlFilters(f);setTab("defects");}}/>}
-      {viewing&&<DefectDetail defect={viewing} onClose={()=>setViewing(null)} onUpdate={updateDefect} member={member} company={company} members={members} allDefects={defects}/>}
+      {viewing&&<DefectDetail defect={viewing} onClose={()=>setViewing(null)} onUpdate={updateDefect} onDelete={(id)=>setDefects(prev=>prev.filter(d=>d.id!==id))} member={member} company={company} members={members} allDefects={defects}/>}
       {showHelp&&(
         <div style={{position:"fixed",inset:0,zIndex:500,background:"#1a1a1a",overflowY:"auto"}}>
           <div style={{maxWidth:430,margin:"0 auto",padding:"0 0 40px"}}>
