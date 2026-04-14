@@ -6334,6 +6334,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
   const searchRef=useRef(null);
   const mapObj=useRef(null);
   const markersRef=useRef({existing:[],pending:null});
+  const clusterRef=useRef(null); // Leaflet MarkerClusterGroup or gmaps MarkerClusterer
   const providerRef=useRef(getMapProvider());
   const[status,setStatus]=useState("loading"); // loading | ready | error
   const[pendingPin,setPendingPin]=useState(null);
@@ -7052,8 +7053,17 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
   // ── Render existing defect pins (both providers) ───────────────
   useEffect(()=>{
     if(status!=="ready"||!mapObj.current)return;
-    // Clear previous
+    // Clear previous markers AND any active cluster layer (so we can rebuild
+    // with current defects — both arrays and clusters).
     markersRef.current.existing.forEach(m=>{if(m.setMap)m.setMap(null);else if(m.remove)m.remove();});
+    if(clusterRef.current){
+      try{
+        if(clusterRef.current.clearMarkers)clusterRef.current.clearMarkers(); // gmaps MarkerClusterer
+        if(clusterRef.current.clearLayers)clusterRef.current.clearLayers();   // leaflet cluster group
+        if(clusterRef.current.remove&&provider==="osm")clusterRef.current.remove();
+      }catch{}
+      clusterRef.current=null;
+    }
     // Persist a defect's new coords after it's dragged on the map
     const saveDefectMove=async(d,newLat,newLng)=>{
       try{await DB.defects.update(d.id,{lat:newLat,lng:newLng});}catch(e){console.warn("pin move save failed",e);}
@@ -7069,6 +7079,17 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
       const pulse=critical?`<circle cx="14" cy="14" r="13" fill="${color}" opacity="0.4"><animate attributeName="r" values="10;14;10" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.6;0.1;0.6" dur="2s" repeatCount="indefinite"/></circle>`:"";
       return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">${pulse}<circle cx="14" cy="14" r="11" fill="rgba(0,0,0,0.55)" stroke="${color}" stroke-width="3"/><circle cx="14" cy="14" r="4" fill="${color}"/><text x="14" y="15" text-anchor="middle" dominant-baseline="central" font-size="9" font-weight="900" font-family="'Barlow Condensed',sans-serif" fill="#fff" style="text-shadow:0 1px 2px rgba(0,0,0,0.8)">${letter||""}</text></svg>`;
     };
+    // Cluster bubble style — dominant severity colour of the children.
+    // Accepts a list of severities and picks the "worst" one so the bubble
+    // reflects the most urgent item underneath.
+    const SEV_RANK={Critical:4,Major:3,Minor:2,Trivial:1};
+    const pickClusterColor=(sevs)=>{
+      let top=null,topRank=-1;
+      for(const s of sevs){const r=SEV_RANK[s]||0;if(r>topRank){topRank=r;top=s;}}
+      return SEV_COLOR[top]||"#ff6b00";
+    };
+    const clusterBubbleSVG=(count,color)=>`<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="${color}" opacity="0.35"/><circle cx="20" cy="20" r="13" fill="${color}" stroke="#fff" stroke-width="2.5"/><text x="20" y="21" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="900" fill="#fff" font-family="'Barlow Condensed',sans-serif">${count}</text></svg>`;
+
     if(provider==="gmaps"&&window.google?.maps){
       const g=window.google.maps;
       markersRef.current.existing=mapDefects.map(d=>{
@@ -7078,11 +7099,12 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
         const url="data:image/svg+xml;utf8,"+encodeURIComponent(letterInRingSVG(color,letter,critical));
         const m=new g.Marker({
           position:{lat:d.lat,lng:d.lng},
-          map:mapObj.current,
+          // NOTE: no `map:` here — markers are owned by the clusterer below
           icon:{url,scaledSize:new g.Size(28,28),anchor:new g.Point(14,14)},
           title:canEdit?(d.title||"Entry")+" — drag to move":(d.title||"Entry"),
           draggable:canEdit,
         });
+        m._defect=d;
         const safeTitle=(d.title||"Entry").replace(/</g,"&lt;");
         const iw=new g.InfoWindow({content:`<div style="font-family:'Barlow Condensed',sans-serif;padding:4px 6px;min-width:140px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${canEdit?`<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div><button id="mm-del-${d.id}" style="margin-top:6px;width:100%;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);border-radius:6px;padding:4px 8px;color:#cc0000;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;cursor:pointer">REMOVE PIN</button>`:""}</div>`});
         m.addListener("click",()=>{
@@ -7092,6 +7114,24 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
         if(canEdit)m.addListener("dragend",e=>saveDefectMove(d,e.latLng.lat(),e.latLng.lng()));
         return m;
       });
+      // Wrap markers in a clusterer so overlapping pins collapse into a
+      // numbered bubble. Falls back to plain markers if the lib failed to load.
+      const MC=window.markerClusterer;
+      if(MC&&MC.MarkerClusterer){
+        clusterRef.current=new MC.MarkerClusterer({
+          map:mapObj.current,
+          markers:markersRef.current.existing,
+          renderer:{render:({count,markers})=>{
+            const color=pickClusterColor(markers.map(mk=>mk._defect?.severity));
+            return new g.Marker({
+              icon:{url:"data:image/svg+xml;utf8,"+encodeURIComponent(clusterBubbleSVG(count,color)),scaledSize:new g.Size(40,40),anchor:new g.Point(20,20)},
+              label:"",zIndex:1000+count,
+            });
+          }},
+        });
+      }else{
+        markersRef.current.existing.forEach(m=>m.setMap(mapObj.current));
+      }
     }else if(provider==="osm"&&window.L){
       const L=window.L;
       markersRef.current.existing=mapDefects.map(d=>{
@@ -7099,7 +7139,8 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
         const letter=d.severity?d.severity[0]:"";
         const critical=d.severity==="Critical"&&d.status==="Open";
         const icon=L.divIcon({className:"",html:letterInRingSVG(color,letter,critical),iconSize:[28,28],iconAnchor:[14,14]});
-        const m=L.marker([d.lat,d.lng],{icon,draggable:canEdit,title:canEdit?(d.title||"Entry")+" — drag to move":(d.title||"Entry")}).addTo(mapObj.current);
+        const m=L.marker([d.lat,d.lng],{icon,draggable:canEdit,title:canEdit?(d.title||"Entry")+" — drag to move":(d.title||"Entry")});
+        m._defect=d;
         const safeTitle=(d.title||"Entry").replace(/</g,"&lt;");
         m.bindPopup(`<div style="font-family:'Barlow Condensed',sans-serif;padding:2px 4px;min-width:140px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${canEdit?`<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div><button id="mm-del-${d.id}" style="margin-top:6px;width:100%;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);border-radius:6px;padding:4px 8px;color:#cc0000;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;cursor:pointer">REMOVE PIN</button>`:""}</div>`);
         if(canEdit){
@@ -7108,6 +7149,26 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
         }
         return m;
       });
+      // Group into a MarkerClusterGroup. Custom cluster icon reflects the
+      // severity mix so users spot hotspots at a glance.
+      if(L.markerClusterGroup){
+        const group=L.markerClusterGroup({
+          showCoverageOnHover:false,
+          spiderfyOnMaxZoom:true,
+          maxClusterRadius:40,
+          iconCreateFunction:(cluster)=>{
+            const children=cluster.getAllChildMarkers();
+            const sevs=children.map(c=>c._defect?.severity);
+            const color=pickClusterColor(sevs);
+            return L.divIcon({className:"",html:clusterBubbleSVG(children.length,color),iconSize:[40,40],iconAnchor:[20,20]});
+          },
+        });
+        markersRef.current.existing.forEach(m=>group.addLayer(m));
+        group.addTo(mapObj.current);
+        clusterRef.current=group;
+      }else{
+        markersRef.current.existing.forEach(m=>m.addTo(mapObj.current));
+      }
     }
     // First-render only: frame every existing pin so users see where past
     // entries were added instead of staring at the saved default.

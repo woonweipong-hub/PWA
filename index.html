@@ -74,13 +74,18 @@ window.addEventListener('beforeinstallprompt', e => {
 <!-- Leaflet — free OSM map tiles (no API key needed) -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer></script>
+<!-- Marker clustering — groups overlapping pins into numbered bubbles -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js" defer></script>
+<script src="https://unpkg.com/@googlemaps/markerclusterer@2.5.3/dist/index.min.js" defer></script>
 <!-- PocketBase data layer -->
 <script src="js/db.js"></script>
 <!-- Shared constants (entry types, statuses, components, locations) -->
 <script src="js/constants.js"></script>
 <!-- i18n — lightweight translation helper (must load before app.js) -->
-<script src="js/lang.js?v=92fb1cb"></script>
+<script src="js/lang.js?v=2c3f9e8"></script>
 <!-- App logic — pre-compiled, no Babel needed -->
-<script src="js/app.compiled.js?v=92fb1cb"></script>
+<script src="js/app.compiled.js?v=2c3f9e8"></script>
 </body>
 </html>
