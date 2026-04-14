@@ -1813,11 +1813,15 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   const gmapsKey=opts.gmapsKey||"";
   const mapProvider=opts.mapProvider||(gmapsKey?"gmaps":"osm");
   const mapDefects=incMap?(defects||[]).filter(d=>typeof d.lat==="number"&&typeof d.lng==="number"):[];
-  // Always lossless-first: PDF-source drawings go in via pdf-lib copyPages
-  // (native size, original vectors, bit-for-bit). If copyPages fails on a
-  // specific source (encrypted, malformed, oversized for mobile memory) the
-  // post-process falls back to a hi-res raster for THAT drawing only. No
-  // device mode toggle; quality is the priority.
+  // Two modes:
+  //   - Lossless (default on laptops): PDF-source drawings go in via pdf-lib
+  //     copyPages, bit-for-bit vector, native A1/A3 page size. Per-drawing
+  //     raster fallback only if copyPages can't handle a specific source.
+  //   - Fast (default on mobile): pdf.js raster in A4 only, no pdf-lib.
+  //     Sub-second per drawing, small file, decent quality for coordination.
+  // Auto-detect the default based on user-agent; caller can override via
+  // opts.fastMode.
+  const fastMode=typeof opts.fastMode==="boolean"?opts.fastMode:_isMobileLikeDevice();
   if(typeof onProgress==="function")onProgress("Preparing report…");
   const doc=new jspdf.jsPDF("p","mm","a4");
   const pageW=doc.internal.pageSize.getWidth();
@@ -2310,10 +2314,10 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
       // vector page + overlays in that rect. Image-source (JPG/PNG) drawings
       // stay on the raster + vector-markup path — there's no vector gain
       // available and the path is already tuned.
-      // Vector path whenever pdf-lib is loaded. Fallback to raster per
-      // drawing inside the post-process if copyPages can't handle the source.
+      // Vector path runs only in lossless mode and when pdf-lib is loaded;
+      // fast mode falls through to the raster A4 path below.
       const hasPdfLib=typeof window.PDFLib!=="undefined"||!!document.querySelector('script[src*="pdf-lib"]');
-      const vectorDrawingsEnabled=hasPdfLib;
+      const vectorDrawingsEnabled=!fastMode&&hasPdfLib;
       const RENDER_CONCURRENCY=2;
       const renderedByIdx=new Array(annotated.length);
       let renderCursor=0,renderedCount=0;
@@ -6845,7 +6849,8 @@ function Report({defects,onEmailSetup,currentProject,company}){
           {showExportMenu&&(
             <div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(0,0,0,0.08)",zIndex:20,minWidth:160,overflow:"hidden"}}>
               <button disabled={pdfExport.active} onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· lossless vector</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);setPdfExport({active:true,label:"Preparing report…"});try{await new Promise(r=>setTimeout(r,600));await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
               <button onClick={async()=>{setShowExportMenu(false);try{const result=await exportToGoogleSheets(incDefects?filtered:[],currentProject?.name,company?.companyName);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
             </div>
@@ -10310,14 +10315,14 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     downloadTextFile(csv,fn,"text/csv;charset=utf-8");
   };
 
-  const exportComparePdf=async()=>{
+  const exportComparePdf=async(modeOpts)=>{
     if(!compareRes)return;
-    // Compare export is always lossless-first: source PDF drawings go in via
-    // pdf-lib copyPages (bit-for-bit vector preservation). If copyPages fails
-    // for a specific source (encrypted, malformed, oversized on mobile) we
-    // fall back to a high-resolution raster render of that source. No
-    // speed/quality toggle — the user asked for lossless output; this is
-    // the best we can do on any device.
+    // Two modes, same semantics as the main Report export:
+    //   - Lossless (default on laptops): copyPages both source drawings at
+    //     native size, raster fallback per drawing only if needed.
+    //   - Fast (default on mobile): quick pdf.js raster render of both
+    //     drawings, A4 only, no pdf-lib post-process.
+    const fastMode=(modeOpts&&typeof modeOpts.fastMode==="boolean")?modeOpts.fastMode:_isMobileLikeDevice();
     // Build with jsPDF for structured text, then post-process with pdf-lib
     // to insert the native-size BASE and TARGET source PDF pages as true
     // vectors — same treatment as the main drawings export.
@@ -10395,17 +10400,59 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     // that follows.
     const baseDrawing=drawings.find(d=>d.id===compareBaseId);
     const targetDrawing=drawings.find(d=>d.id===compareTargetId);
-    // Record inserts. Native pages come directly after the single summary
-    // page. If copyPages fails for one, the post-process paints a hi-res
-    // raster page in its place — still on its own page, at A4 with full
-    // content fit (no title page, no scale stamp needed).
     const nativeInserts=[];
     const addInsert=(label,dr)=>{
       if(!dr||!/\.pdf$/i.test(dr.file||""))return;
       nativeInserts.push({afterSummaryPage:doc.getNumberOfPages(),label,sourceUrl:DB.fileUrl("drawings",dr.id,dr.file),sourcePageIdx:0,drawingName:dr.name||""});
     };
-    addInsert("BASE DRAWING",baseDrawing);
-    addInsert("REVISION DRAWING",targetDrawing);
+    // Fast mode: raster the two drawings into A4 pages directly; skip the
+    // pdf-lib post-process entirely. Lossless mode: queue native-size
+    // inserts for the post-process below.
+    const addFastRaster=async(label,dr)=>{
+      if(!dr)return;
+      const url=DB.fileUrl("drawings",dr.id,dr.file);
+      doc.addPage();y=18;
+      doc.setFontSize(16);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
+      doc.text(label,margin,y);y+=7;
+      doc.setTextColor(0);doc.setFontSize(11);doc.setFont(undefined,"normal");
+      doc.text(dr.name||"",margin,y);y+=6;
+      try{
+        if(/\.pdf$/i.test(dr.file||"")){
+          if(!window.pdfjsLib)return;
+          const pdfjsLib=window.pdfjsLib;
+          if(!pdfjsLib.GlobalWorkerOptions.workerSrc){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}
+          const srcDoc=await pdfjsLib.getDocument(url).promise;
+          const page=await srcDoc.getPage(1);
+          const viewport=page.getViewport({scale:1.5});
+          const canvas=document.createElement("canvas");
+          canvas.width=viewport.width;canvas.height=viewport.height;
+          const ctx=canvas.getContext("2d");
+          ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
+          await page.render({canvasContext:ctx,viewport}).promise;
+          const dataUrl=canvas.toDataURL("image/jpeg",0.88);
+          const ratio=canvas.height/canvas.width;
+          const imgW=contentW;
+          const imgH=Math.min(imgW*ratio,pageH-y-margin-4);
+          const drawnW=Math.min(imgW,imgH/(ratio||1));
+          doc.addImage(dataUrl,"JPEG",margin,y,drawnW,imgH,undefined,"SLOW");
+          try{await srcDoc.destroy();}catch{}
+        }else{
+          const img=await _loadImageEl(url);
+          const ratio=img.height/img.width;
+          const imgW=contentW;
+          const imgH=Math.min(imgW*ratio,pageH-y-margin-4);
+          const drawnW=Math.min(imgW,imgH/(ratio||1));
+          doc.addImage(url,"JPEG",margin,y,drawnW,imgH,undefined,"SLOW");
+        }
+      }catch(e){console.warn("compare fast render failed",e);}
+    };
+    if(fastMode){
+      await addFastRaster("BASE DRAWING",baseDrawing);
+      await addFastRaster("REVISION DRAWING",targetDrawing);
+    }else{
+      addInsert("BASE DRAWING",baseDrawing);
+      addInsert("REVISION DRAWING",targetDrawing);
+    }
     // Assemble the final PDF in a FRESH pdf-lib document. This avoids any
     // graphics-state / colour-space leakage between jsPDF-authored pages and
     // copyPages-inserted source pages that some PDF viewers (notably Chrome's
@@ -11374,7 +11421,8 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                   </div>
                   <div style={{display:"flex",gap:8,marginBottom:12}}>
                     <button onClick={exportCompareCsv} style={{flex:1,background:"rgba(52,170,220,0.25)",border:"1px solid rgba(52,170,220,0.45)",borderRadius:10,padding:"9px 10px",color:"#7fd7ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>EXPORT CSV</button>
-                    <button onClick={()=>exportComparePdf()} style={{flex:1,background:"rgba(52,199,89,0.2)",border:"1px solid rgba(52,199,89,0.4)",borderRadius:10,padding:"9px 10px",color:"#7bd69a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>📗 EXPORT PDF (vector)</button>
+                    <button onClick={()=>exportComparePdf({fastMode:true})} style={{flex:1,background:"rgba(255,107,0,0.22)",border:"1px solid rgba(255,107,0,0.4)",borderRadius:10,padding:"9px 10px",color:"#ffb48a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>📕 FAST PDF</button>
+                    <button onClick={()=>exportComparePdf({fastMode:false})} style={{flex:1,background:"rgba(52,199,89,0.2)",border:"1px solid rgba(52,199,89,0.4)",borderRadius:10,padding:"9px 10px",color:"#7bd69a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>📗 VECTOR PDF</button>
                   </div>
                   <div style={{display:"flex",gap:8,marginBottom:8}}>
                     <div style={{flex:1,background:"rgba(255,0,255,0.12)",border:"1px solid rgba(255,0,255,0.3)",borderRadius:10,padding:10}}>
