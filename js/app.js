@@ -432,6 +432,169 @@ function _drawMarkupStrokeVectorPdf(doc,x0,y0,W,H,s){
   }catch(e){/* one bad stroke shouldn't abort the whole export */}
   try{doc.setLineDashPattern([],0);}catch{}
 }
+// ── pdf-lib helpers (true-vector drawing merge) ─────────────────
+// These run as a post-processing pass on the jsPDF output: for each
+// PDF-source drawing, the original vector page is embedded in place of
+// the raster placeholder, and markup / pins / notes are re-drawn on top
+// using pdf-lib primitives so they layer above the embedded page.
+const MM_TO_PT=72/25.4; // jsPDF works in mm; pdf-lib works in pt
+
+async function _waitForPdfLib(timeoutMs=6000){
+  if(window.PDFLib)return window.PDFLib;
+  const start=Date.now();
+  return new Promise((resolve,reject)=>{
+    (function check(){
+      if(window.PDFLib)return resolve(window.PDFLib);
+      if(Date.now()-start>timeoutMs)return reject(new Error("pdf-lib failed to load"));
+      setTimeout(check,80);
+    })();
+  });
+}
+async function _fetchBytes(url){
+  const res=await fetch(url,{credentials:"include"});
+  if(!res.ok)throw new Error("fetch "+url+" → "+res.status);
+  return new Uint8Array(await res.arrayBuffer());
+}
+// Convert a jsPDF rect (top-left origin, mm) to a pdf-lib rect
+// (bottom-left origin, pt) on a page of given height in pt.
+function _rectMmToPt(x,y,w,h,pageHeightPt){
+  return{x:x*MM_TO_PT,y:pageHeightPt-(y+h)*MM_TO_PT,width:w*MM_TO_PT,height:h*MM_TO_PT};
+}
+// Paint a vector-capable markup stroke onto a pdf-lib page. x0/y0/W/H are
+// in mm (jsPDF coords); pdf-lib translation happens inside.
+function _drawMarkupStrokeVectorPdfLib(page,x0Mm,y0Mm,Wmm,Hmm,pageHeightPt,s,fonts){
+  if(!PDF_VECTOR_MARKUP_TYPES.has(s.type))return;
+  const PDFLib=window.PDFLib;if(!PDFLib)return;
+  const {rgb}=PDFLib;
+  const rgb01=(hex)=>{const c=_hexToRgb(hex||"#ff6b00");return rgb(c[0]/255,c[1]/255,c[2]/255);};
+  const color=rgb01(s.color||"#ff6b00");
+  const lwPt=Math.max(0.5,Wmm*0.003*MM_TO_PT);
+  const dashArray=s.lineStyle==="dotted"?[lwPt*3,lwPt*2]:undefined;
+  // Convert a percent-coord point to pdf-lib pt.
+  const pt=p=>({x:(x0Mm+(p.x/100)*Wmm)*MM_TO_PT,y:pageHeightPt-(y0Mm+(p.y/100)*Hmm)*MM_TO_PT});
+  try{
+    if(s.type==="freehand"&&Array.isArray(s.points)&&s.points.length>1){
+      for(let i=1;i<s.points.length;i++){const a=pt(s.points[i-1]),b=pt(s.points[i]);page.drawLine({start:a,end:b,thickness:lwPt,color,dashArray,lineCap:PDFLib.LineCapStyle.Round});}
+    }else if(s.type==="arrow"&&s.start&&s.end){
+      const a=pt(s.start),b=pt(s.end);
+      page.drawLine({start:a,end:b,thickness:lwPt,color,dashArray,lineCap:PDFLib.LineCapStyle.Round});
+      // pdf-lib y grows upward, so recompute angle from y-inverted vectors.
+      const angle=Math.atan2(-(b.y-a.y),b.x-a.x);
+      const hl=Math.max(3,Wmm*0.018)*MM_TO_PT;
+      const h1={x:b.x-hl*Math.cos(angle-0.4),y:b.y+hl*Math.sin(angle-0.4)};
+      const h2={x:b.x-hl*Math.cos(angle+0.4),y:b.y+hl*Math.sin(angle+0.4)};
+      page.drawLine({start:b,end:h1,thickness:lwPt,color,lineCap:PDFLib.LineCapStyle.Round});
+      page.drawLine({start:b,end:h2,thickness:lwPt,color,lineCap:PDFLib.LineCapStyle.Round});
+    }else if(s.type==="circle"&&s.start&&s.end){
+      const a=pt(s.start),b=pt(s.end);
+      const cx=(a.x+b.x)/2,cy=(a.y+b.y)/2,rx=Math.abs(b.x-a.x)/2,ry=Math.abs(b.y-a.y)/2;
+      if(rx>0.5||ry>0.5)page.drawEllipse({x:cx,y:cy,xScale:rx,yScale:ry,borderColor:color,borderWidth:lwPt,color:undefined,opacity:0});
+    }else if(s.type==="rect"&&s.start&&s.end){
+      const a=pt(s.start),b=pt(s.end);
+      const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y),w=Math.abs(b.x-a.x),h=Math.abs(b.y-a.y);
+      if(w>0.5||h>0.5)page.drawRectangle({x,y,width:w,height:h,borderColor:color,borderWidth:lwPt,borderDashArray:dashArray,opacity:0});
+    }else if(s.type==="line"&&s.start&&s.end){
+      const a=pt(s.start),b=pt(s.end);
+      page.drawLine({start:a,end:b,thickness:lwPt,color,dashArray,lineCap:PDFLib.LineCapStyle.Round});
+    }else if(s.type==="polyline"&&Array.isArray(s.points)&&s.points.length>1){
+      for(let i=1;i<s.points.length;i++){const a=pt(s.points[i-1]),b=pt(s.points[i]);page.drawLine({start:a,end:b,thickness:lwPt,color,dashArray,lineCap:PDFLib.LineCapStyle.Round});}
+      if(s.closed&&s.points.length>2){const a=pt(s.points[s.points.length-1]),b=pt(s.points[0]);page.drawLine({start:a,end:b,thickness:lwPt,color,dashArray,lineCap:PDFLib.LineCapStyle.Round});}
+    }else if(s.type==="highlight"&&Array.isArray(s.points)&&s.points.length>1){
+      const thick=Math.max(3,Wmm*0.015)*MM_TO_PT;
+      for(let i=1;i<s.points.length;i++){const a=pt(s.points[i-1]),b=pt(s.points[i]);page.drawLine({start:a,end:b,thickness:thick,color,opacity:0.35,lineCap:PDFLib.LineCapStyle.Round});}
+    }else if(s.type==="text"&&s.pos&&s.text){
+      const fsPt=s.fontSize?Math.max(5,Wmm*s.fontSize*0.018):Math.max(6,Wmm*0.042);
+      const font=fonts.bold;
+      const tw=font.widthOfTextAtSize(s.text,fsPt);
+      const th=fsPt; // rough ascent
+      const p=pt(s.pos);
+      const align=s.align||"left",valign=s.valign||"bottom";
+      const padX=th*0.2,padY=th*0.15;
+      const bw=tw+padX*2,bh=th+padY*2;
+      let bgX;if(align==="center")bgX=p.x-bw/2;else if(align==="right")bgX=p.x-bw;else bgX=p.x;
+      // pdf-lib bgY is bottom-left of box; convert from jsPDF top-left baseline.
+      // p.y here is already pdf-lib y (from pt()). In jsPDF coords valign=bottom
+      // means the anchor is the text baseline. In pdf-lib, drawing a rect at
+      // (bgX, p.y) would put bottom-left at the baseline. We want box to span
+      // down by bh in valign=bottom.
+      let bgY;if(valign==="top")bgY=p.y-bh;else if(valign==="middle")bgY=p.y-bh/2;else bgY=p.y;
+      page.drawRectangle({x:bgX,y:bgY,width:bw,height:bh,color:rgb(1,1,1),borderColor:color,borderWidth:lwPt});
+      const textX=align==="center"?p.x-tw/2:(align==="right"?p.x-tw-padX:bgX+padX);
+      const textY=bgY+padY;
+      page.drawText(s.text,{x:textX,y:textY,size:fsPt,font,color});
+    }else if(s.type==="photo"&&s.pos&&s.dataUrl){
+      // Skip here; photo embeds handled separately during the pdf-lib pass
+      // so they can be awaited (embedJpg/Png is async).
+    }
+  }catch(e){console.warn("pdf-lib markup stroke failed",s.type,e);}
+}
+// Render pins + notes + non-vector-capable markups onto a transparent canvas
+// overlay so we can drop them on top of the embedded vector page without
+// re-implementing every marker in pdf-lib. Returns a PNG data URL or null.
+function _buildOverlayPng(Wpx,Hpx,pins,notes,defects,markups,imgCache){
+  try{
+    const canvas=document.createElement("canvas");
+    canvas.width=Wpx;canvas.height=Hpx;
+    const ctx=canvas.getContext("2d");
+    ctx.clearRect(0,0,Wpx,Hpx);
+    // Only bake the markup types that DON'T have a pdf-lib vector path.
+    (markups||[]).forEach(s=>{if(!PDF_VECTOR_MARKUP_TYPES.has(s.type))_drawMarkupStroke(ctx,Wpx,Hpx,s,imgCache);});
+    (notes||[]).forEach(n=>_drawNoteMarker(ctx,Wpx,Hpx,n));
+    (pins||[]).forEach(p=>{
+      const def=(defects||[]).find(x=>x.id===p.entryId);
+      _drawPinMarker(ctx,Wpx,Hpx,p,def);
+    });
+    return canvas.toDataURL("image/png");
+  }catch(e){console.warn("overlay build failed",e);return null;}
+}
+
+// Compute a measurement row for a markup stroke. Coordinates arrive as
+// percentages of the drawing area; we convert to mm on the SOURCE PAPER
+// using the source page's physical dimensions so the CSV is independent
+// of how the drawing was scaled into the report body. Returns null when
+// the stroke doesn't describe a measurable geometry (text, stamps, photos).
+function _markupMeasurementRow(s,sourceWmm,sourceHmm){
+  if(!s||!sourceWmm||!sourceHmm)return null;
+  const toMm=p=>({x:(p.x/100)*sourceWmm,y:(p.y/100)*sourceHmm});
+  const dist=(a,b)=>Math.hypot(b.x-a.x,b.y-a.y);
+  const polyLen=pts=>{let L=0;for(let i=1;i<pts.length;i++)L+=dist(pts[i-1],pts[i]);return L;};
+  if((s.type==="line"||s.type==="arrow"||s.type==="dimension")&&s.start&&s.end){
+    const a=toMm(s.start),b=toMm(s.end);
+    return{type:s.type,label:s.label||s.text||"",lengthMm:dist(a,b),widthMm:"",heightMm:"",areaMm2:"",x1:a.x,y1:a.y,x2:b.x,y2:b.y};
+  }
+  if(s.type==="rect"&&s.start&&s.end){
+    const a=toMm(s.start),b=toMm(s.end);
+    const w=Math.abs(b.x-a.x),h=Math.abs(b.y-a.y);
+    return{type:"rect",label:s.text||"",lengthMm:"",widthMm:w,heightMm:h,areaMm2:w*h,x1:Math.min(a.x,b.x),y1:Math.min(a.y,b.y),x2:Math.max(a.x,b.x),y2:Math.max(a.y,b.y)};
+  }
+  if(s.type==="circle"&&s.start&&s.end){
+    const a=toMm(s.start),b=toMm(s.end);
+    const rx=Math.abs(b.x-a.x)/2,ry=Math.abs(b.y-a.y)/2;
+    return{type:"circle",label:s.text||"",lengthMm:"",widthMm:rx*2,heightMm:ry*2,areaMm2:Math.PI*rx*ry,x1:(a.x+b.x)/2-rx,y1:(a.y+b.y)/2-ry,x2:(a.x+b.x)/2+rx,y2:(a.y+b.y)/2+ry};
+  }
+  if((s.type==="polyline"||s.type==="freehand")&&Array.isArray(s.points)&&s.points.length>1){
+    const pts=s.points.map(toMm);
+    const L=polyLen(pts);
+    return{type:s.type,label:s.text||"",lengthMm:L,widthMm:"",heightMm:"",areaMm2:"",x1:pts[0].x,y1:pts[0].y,x2:pts[pts.length-1].x,y2:pts[pts.length-1].y};
+  }
+  return null;
+}
+function _downloadMeasurementCsv(rows,fileName){
+  if(!rows||!rows.length)return;
+  const esc=v=>{if(v==null)return"";const s=String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+  const fmt=v=>(typeof v==="number"&&isFinite(v))?v.toFixed(2):esc(v);
+  const headers=["Drawing","Page","Type","Label","Length (mm on source)","Width (mm on source)","Height (mm on source)","Area (mm² on source)","X1","Y1","X2","Y2"];
+  const lines=[headers.join(",")];
+  for(const r of rows){
+    lines.push([r.drawing,r.page,r.type,r.label,fmt(r.lengthMm),fmt(r.widthMm),fmt(r.heightMm),fmt(r.areaMm2),fmt(r.x1),fmt(r.y1),fmt(r.x2),fmt(r.y2)].map(esc).join(","));
+  }
+  const csv="\uFEFF"+lines.join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  a.download=fileName;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+}
 function _drawNoteMarker(ctx,W,H,n){
   const x=(n.x/100)*W,y=(n.y/100)*H;
   const fs=Math.max(12,W*0.013);
@@ -483,6 +646,47 @@ async function renderDrawingAnnotatedPages(drawing,defects,allPins,opts={}){
   if(pageSet.size===0)return[];
   const pages=[...pageSet].sort((a,b)=>a-b);
   const imgCache=await _preloadStrokePhotos(markups);
+  // Vector-source path — for PDF drawings, skip the raster and return
+  // metadata the export can use to splice the original vector page in via
+  // pdf-lib later. We still build a thin transparent PNG overlay for pins,
+  // notes, and non-vector markup types (cloud / callout / stamp / dimension)
+  // so those don't get lost.
+  if(opts.vectorSource===true&&isPdf){
+    if(!window.pdfjsLib)return[];
+    const pdfjsLib=window.pdfjsLib;
+    if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    const out=[];
+    let srcDoc=null;
+    try{
+      srcDoc=await pdfjsLib.getDocument(fileUrl).promise;
+      for(const pn of pages){
+        if(pn>srcDoc.numPages)continue;
+        const page=await srcDoc.getPage(pn);
+        const vp=page.getViewport({scale:1});
+        const pagePins=pins.filter(p=>(p.pageNum||1)===pn);
+        const pageNotes=notes.filter(n=>(n.pageNum||1)===pn);
+        // Overlay at 2x the PDF page size — a good balance between pin/note
+        // marker sharpness and overlay weight in the output PDF.
+        const overlayW=Math.max(800,Math.round(vp.width*2));
+        const overlayH=Math.max(600,Math.round(vp.height*2));
+        const overlayPng=_buildOverlayPng(overlayW,overlayH,pagePins,pageNotes,defects,markups,imgCache);
+        out.push({
+          pageNum:pn,
+          isVectorSource:true,
+          sourceUrl:fileUrl,
+          sourcePageIdx:pn-1, // pdf-lib is 0-indexed
+          nativeW:vp.width,
+          nativeH:vp.height,
+          overlayPng,
+          markups:[...markups], // the caller will vector-draw the supported types
+        });
+      }
+    }catch(e){console.warn("vectorSource render failed for",drawing.name,e);}
+    finally{try{if(srcDoc)await srcDoc.destroy();}catch{}}
+    return out;
+  }
   // When vectorMarkup is requested, leave the jsPDF-vectorisable markup types
   // out of the raster so the caller can re-draw them as crisp PDF primitives.
   // Types without a vector equivalent (dimension, cloud, callout, stamp) still
@@ -1578,6 +1782,15 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   const margin=14;
   const contentW=pageW-margin*2;
   let y=18;
+  // Collected during the drawings loop; processed after the jsPDF doc is
+  // built so we can splice original PDF-source drawings back in as true
+  // vectors via pdf-lib. Empty means no post-processing needed.
+  const pdfLibSwaps=[];
+  // Measurement data for the companion CSV — one row per measurable markup
+  // (rect, line, dimension, polyline, circle) on a drawing. Values are
+  // computed in mm on the SOURCE PAPER; users multiply by the drawing's
+  // title-block scale factor (e.g. 1:100 → ×100) for real-world units.
+  const measurementRows=[];
   const orange=[255,107,0],purple=[88,86,214];
   const sevRGB={Critical:[255,59,48],Major:[255,149,0],Minor:[230,184,0],Observation:[52,170,220]};
   const statRGB={Open:[255,59,48],"In Progress":[255,149,0],Done:[52,170,220],Verified:[48,209,88],Closed:[142,142,147]};
@@ -2047,6 +2260,14 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
       // heavy per page; running two in flight roughly halves wall-clock on
       // multi-drawing reports while staying safe on phone RAM. Writing to
       // the jsPDF doc still happens serially below to keep page order stable.
+      //
+      // PDF-source drawings go through the vectorSource path: pdf.js returns
+      // only metadata (no raster), the export reserves page space with an
+      // empty rect, and a post-processing pdf-lib pass embeds the original
+      // vector page + overlays in that rect. Image-source (JPG/PNG) drawings
+      // stay on the raster + vector-markup path — there's no vector gain
+      // available and the path is already tuned.
+      const hasPdfLib=typeof window.PDFLib!=="undefined"||!!document.querySelector('script[src*="pdf-lib"]');
       const RENDER_CONCURRENCY=2;
       const renderedByIdx=new Array(annotated.length);
       let renderCursor=0,renderedCount=0;
@@ -2056,7 +2277,9 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
           if(i>=annotated.length)return;
           const d=annotated[i];
           try{
-            const pages=await renderDrawingAnnotatedPages(d,(allDefectsForPins&&allDefectsForPins.length?allDefectsForPins:defects),allPins||[],{vectorMarkup:true});
+            const isPdfSrc=/\.pdf$/i.test(d.file||"");
+            const renderOpts=(hasPdfLib&&isPdfSrc)?{vectorSource:true}:{vectorMarkup:true};
+            const pages=await renderDrawingAnnotatedPages(d,(allDefectsForPins&&allDefectsForPins.length?allDefectsForPins:defects),allPins||[],renderOpts);
             renderedByIdx[i]=pages||[];
           }catch(e){console.warn("exportReportPdf: render failed",d.name,e);renderedByIdx[i]=[];}
           renderedCount++;
@@ -2078,32 +2301,72 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
             doc.setFontSize(8);doc.setFont(undefined,"normal");
             const notes=getDrawingNotes(d.id)||[];const markups=getDrawingMarkup(d.id)||[];
             const drawingPins=(allPins||[]).filter(p=>p.drawingId===d.id);
-            doc.text(`${drawingPins.length} pin(s), ${notes.length} note(s), ${markups.length} markup(s)`,margin,y);y+=6;
-            const img=new Image();
-            await new Promise((resolve)=>{img.onload=resolve;img.onerror=resolve;img.src=pg.dataUrl;});
-            if(img.width>0&&img.height>0){
-              const ratio=img.height/img.width;
+            doc.text(`${drawingPins.length} pin(s), ${notes.length} note(s), ${markups.length} markup(s)${pg.isVectorSource?"  ·  vector":""}`,margin,y);y+=6;
+
+            if(pg.isVectorSource){
+              // Reserve page space using the source page's native aspect ratio.
+              // The post-processing pass will draw the embedded vector page +
+              // overlay + vector markup into this rect.
+              const ratio=(pg.nativeH||1)/(pg.nativeW||1);
               const imgW=contentW;
               const imgH=Math.min(imgW*ratio,pageH-y-margin-10);
-              const actualW=imgH/(ratio||1);
-              const drawnW=Math.min(imgW,actualW);
+              const drawnW=Math.min(imgW,imgH/(ratio||1));
               const drawX=margin,drawY=y;
-              // "SLOW" = better zlib compression on the embedded JPEG/PNG
-              // stream → smaller PDF at the same pixel fidelity. PDF-source
-              // drawings are PNG (lossless for line art); scanned images
-              // stay JPEG at 0.92.
-              const fmt=pg.fmt||"JPEG";
-              doc.addImage(pg.dataUrl,fmt,drawX,drawY,drawnW,imgH,undefined,"SLOW");
-              // Paint the vector-capable markup types on top of the raster so
-              // arrows / circles / text / freehand stay crisp at any zoom.
+              // Light border so the reserved area reads as "drawing here" even
+              // in the brief moment before pdf-lib embeds the vector content.
+              doc.setDrawColor(220);doc.setLineWidth(0.2);
+              doc.rect(drawX,drawY,drawnW,imgH);
+              doc.setDrawColor(0);
+              // Scale-factor stamp — we display a vector floor plan at a
+              // fraction of its source size to fit the A4 body, so anyone who
+              // later takes a ruler to this PDF must multiply by the stamp's
+              // ratio AND the original drawing's title-block scale to get
+              // real-world lengths. Making that ratio visible = no silent
+              // miscalculation.
+              const sourceWmm=pg.nativeW*0.352778;
+              const sourceHmm=pg.nativeH*0.352778;
+              const displayPct=sourceWmm>0?(drawnW/sourceWmm*100):100;
+              doc.setFontSize(6.5);doc.setFont(undefined,"normal");doc.setTextColor(110);
+              const stamp=`Source ${sourceWmm.toFixed(0)}×${sourceHmm.toFixed(0)} mm · displayed at ${displayPct.toFixed(1)}% · multiply by title-block scale for real-world units`;
+              doc.text(stamp,drawX,drawY+imgH+3.2);
+              doc.setTextColor(0);
+              pdfLibSwaps.push({
+                docPageNumber:doc.getNumberOfPages(),
+                sourceUrl:pg.sourceUrl,
+                sourcePageIdx:pg.sourcePageIdx,
+                rect:{x:drawX,y:drawY,w:drawnW,h:imgH},
+                markups:pg.markups||[],
+                overlayPng:pg.overlayPng,
+              });
+              // Emit one measurement row per measurable markup on this page.
               for(const s of markups){
-                if(PDF_VECTOR_MARKUP_TYPES.has(s.type)){
-                  _drawMarkupStrokeVectorPdf(doc,drawX,drawY,drawnW,imgH,s);
-                }
+                const row=_markupMeasurementRow(s,sourceWmm,sourceHmm);
+                if(row)measurementRows.push({drawing:d.name||"",page:pg.pageNum,...row});
               }
-              // Reset styles that the vector helper may have mutated.
-              doc.setDrawColor(0);doc.setFillColor(0);doc.setLineWidth(0.2);doc.setTextColor(0);doc.setFontSize(8);doc.setFont(undefined,"normal");
-              y+=imgH+4;
+              y+=imgH+6;
+            }else{
+              const img=new Image();
+              await new Promise((resolve)=>{img.onload=resolve;img.onerror=resolve;img.src=pg.dataUrl;});
+              if(img.width>0&&img.height>0){
+                const ratio=img.height/img.width;
+                const imgW=contentW;
+                const imgH=Math.min(imgW*ratio,pageH-y-margin-10);
+                const actualW=imgH/(ratio||1);
+                const drawnW=Math.min(imgW,actualW);
+                const drawX=margin,drawY=y;
+                // "SLOW" = better zlib compression on the embedded JPEG/PNG
+                // stream → smaller PDF at the same pixel fidelity. Raster-source
+                // drawings stay JPEG at 0.92.
+                const fmt=pg.fmt||"JPEG";
+                doc.addImage(pg.dataUrl,fmt,drawX,drawY,drawnW,imgH,undefined,"SLOW");
+                for(const s of markups){
+                  if(PDF_VECTOR_MARKUP_TYPES.has(s.type)){
+                    _drawMarkupStrokeVectorPdf(doc,drawX,drawY,drawnW,imgH,s);
+                  }
+                }
+                doc.setDrawColor(0);doc.setFillColor(0);doc.setLineWidth(0.2);doc.setTextColor(0);doc.setFontSize(8);doc.setFont(undefined,"normal");
+                y+=imgH+4;
+              }
             }
           }
         }catch(e){console.warn("exportReportPdf: failed to write drawing",d.name,e);}
@@ -2269,8 +2532,81 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     doc.setTextColor(0);
   }
 
-  if(typeof onProgress==="function")onProgress("Saving PDF…");
-  doc.save(`SiteShrimp_Report_${(projectName||"Export").replace(/\s/g,"_")}_${now.toLocaleDateString("en-GB").replace(/\//g,"-")}.pdf`);
+  const baseName=`SiteShrimp_Report_${(projectName||"Export").replace(/\s/g,"_")}_${now.toLocaleDateString("en-GB").replace(/\//g,"-")}`;
+  const fileName=baseName+".pdf";
+  const csvName=baseName+"_measurements.csv";
+  // Trigger the companion CSV right after the PDF so the user ends up with
+  // both files in their Downloads folder from a single export action.
+  const downloadCsv=()=>_downloadMeasurementCsv(measurementRows,csvName);
+  if(pdfLibSwaps.length===0){
+    if(typeof onProgress==="function")onProgress("Saving PDF…");
+    doc.save(fileName);
+    downloadCsv();
+    return;
+  }
+  try{
+    if(typeof onProgress==="function")onProgress("Embedding vector drawings…");
+    const PDFLib=await _waitForPdfLib();
+    const {PDFDocument,StandardFonts}=PDFLib;
+    const baseBytes=doc.output("arraybuffer");
+    const outDoc=await PDFDocument.load(baseBytes);
+    const helveticaBold=await outDoc.embedFont(StandardFonts.HelveticaBold);
+    // Batch source-file fetches (unique URLs) so the same drawing PDF isn't
+    // downloaded once per page.
+    const uniqueUrls=[...new Set(pdfLibSwaps.map(s=>s.sourceUrl))];
+    const srcCache=new Map();
+    await Promise.all(uniqueUrls.map(async u=>{
+      try{srcCache.set(u,await _fetchBytes(u));}
+      catch(e){console.warn("pdf-lib: source fetch failed",u,e);srcCache.set(u,null);}
+    }));
+    // Embed every page we need. pdf-lib dedupes identical pages internally
+    // when called separately, so we do one call per swap.
+    for(let i=0;i<pdfLibSwaps.length;i++){
+      const sw=pdfLibSwaps[i];
+      if(typeof onProgress==="function")onProgress(`Embedding drawing ${i+1}/${pdfLibSwaps.length}…`);
+      const bytes=srcCache.get(sw.sourceUrl);
+      if(!bytes)continue;
+      try{
+        const [embedded]=await outDoc.embedPdf(bytes,[sw.sourcePageIdx]);
+        const outPage=outDoc.getPage(sw.docPageNumber-1);
+        const pageHpt=outPage.getHeight();
+        const rectPt=_rectMmToPt(sw.rect.x,sw.rect.y,sw.rect.w,sw.rect.h,pageHpt);
+        outPage.drawPage(embedded,rectPt);
+        // Overlay PNG (pins, notes, non-vector markup) sits on top of the
+        // embedded vector page so those markers don't get lost.
+        if(sw.overlayPng){
+          try{
+            const b64=sw.overlayPng.split(",")[1];
+            const pngBytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+            const pngImg=await outDoc.embedPng(pngBytes);
+            outPage.drawImage(pngImg,rectPt);
+          }catch(e){console.warn("overlay embed failed",e);}
+        }
+        // Vector-capable markup draws last, so it sits above the embedded
+        // page and the overlay — same layering as the on-screen canvas.
+        for(const s of sw.markups){
+          if(PDF_VECTOR_MARKUP_TYPES.has(s.type)){
+            _drawMarkupStrokeVectorPdfLib(outPage,sw.rect.x,sw.rect.y,sw.rect.w,sw.rect.h,pageHpt,s,{bold:helveticaBold});
+          }
+        }
+      }catch(e){console.warn("pdf-lib: page swap failed",sw,e);}
+    }
+    if(typeof onProgress==="function")onProgress("Saving PDF…");
+    const finalBytes=await outDoc.save({useObjectStreams:true});
+    const blob=new Blob([finalBytes],{type:"application/pdf"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download=fileName;
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+    downloadCsv();
+  }catch(err){
+    // Fall back to the un-merged PDF so the user still gets their report.
+    console.warn("pdf-lib post-process failed; saving base PDF",err);
+    if(typeof onProgress==="function")onProgress("Saving PDF…");
+    doc.save(fileName);
+    downloadCsv();
+  }
 }
 
 // ── Google Sheets Export ───────────────────────────────────────────
