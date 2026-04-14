@@ -509,7 +509,11 @@ svgstr=window.ImageTracer.imagedataToSVG(id,{numberofcolors:2,pathomit:24,ltres:
 svgstr=svgstr.replace(/<path[^>]*fill="rgb\(255,255,255\)"[^>]*\/>/g,"");// Build an SVG DOM element for svg2pdf.
 const parser=new DOMParser();const svgDoc=parser.parseFromString(svgstr,"image/svg+xml");const svgEl=svgDoc.documentElement;// Render to A4 landscape preserving image aspect; svg2pdf honours the
 // SVG viewBox, so everything stays vector.
-const{jsPDF}=window.jspdf;const landscape=w>=h;const doc=new jsPDF({orientation:landscape?"l":"p",unit:"mm",format:"a4"});const pageW=landscape?297:210,pageH=landscape?210:297;const margin=10;const scaleFit=Math.min((pageW-margin*2)/w,(pageH-margin*2)/h);const drawW=w*scaleFit,drawH=h*scaleFit;report("pdf",0);// svg2pdf can take many minutes when ImageTracer emits thousands of
+const{jsPDF}=window.jspdf;const landscape=w>=h;const doc=new jsPDF({orientation:landscape?"l":"p",unit:"mm",format:"a4"});const pageW=landscape?297:210,pageH=landscape?210:297;const margin=10;const scaleFit=Math.min((pageW-margin*2)/w,(pageH-margin*2)/h);const drawW=w*scaleFit,drawH=h*scaleFit;// Centre the drawing on the page — used by both the vector (svg2pdf)
+// and raster (doc.addImage) paths. Accidentally dropped in an earlier
+// refactor; without these, both render calls threw ReferenceError and
+// the promise never resolved, stranding the progress bar at 95%.
+const ox=(pageW-drawW)/2,oy=(pageH-drawH)/2;report("pdf",0);// svg2pdf can take many minutes when ImageTracer emits thousands of
 // paths (HABS-class scans with grainy backgrounds). Count paths and,
 // if excessive, skip the full vector re-draw and embed the cleaned
 // B&W bitmap instead — still crisp enough for Compare, completes in
@@ -517,8 +521,9 @@ const{jsPDF}=window.jspdf;const landscape=w>=h;const doc=new jsPDF({orientation:
 const pathCount=(svgstr.match(/<path\b/g)||[]).length;const PATH_LIMIT=600;const finishWithBitmap=note=>{// The ImageData has already been thresholded to pure B&W by the
 // preprocess step, so a JPEG re-encode is effectively lossless for
 // our purposes and ~10× smaller than a PNG. addImage is synchronous
-// and finishes in <100ms.
-const png=cnv.toDataURL("image/jpeg",0.92);doc.addImage(png,"JPEG",ox,oy,drawW,drawH,"",landscape?"FAST":"FAST");doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(120);doc.text(`Cleaned from ${file.name} — SiteShrimp Convert${note?` (${note})`:""}`,margin,pageH-5);resolve(doc.output("blob"));};if(pathCount>PATH_LIMIT){report("pdf",0.95);// Drop out of the vector path entirely — no svg2pdf call at all.
+// and finishes in <100ms. Wrapped in try/catch so any future bug
+// reject()s the promise instead of silently stranding the bar.
+try{const png=cnv.toDataURL("image/jpeg",0.92);doc.addImage(png,"JPEG",ox,oy,drawW,drawH,"","FAST");doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(120);doc.text(`Cleaned from ${file.name} — SiteShrimp Convert${note?` (${note})`:""}`,margin,pageH-5);resolve(doc.output("blob"));}catch(err){reject(new Error("Raster fallback failed: "+err.message));}};if(pathCount>PATH_LIMIT){report("pdf",0.95);// Drop out of the vector path entirely — no svg2pdf call at all.
 finishWithBitmap(`${pathCount} paths → raster fallback`);return;}// Otherwise: vector render. Fake a slow creep while svg2pdf grinds,
 // capped at 98% so the user knows it's alive and doesn't look frozen.
 let pdfTick=0;const pdfCreep=setInterval(()=>{pdfTick=Math.min(0.98,pdfTick+0.03);report("pdf",pdfTick);},500);// Hard deadline: if svg2pdf hasn't finished in 30s, fall back to the

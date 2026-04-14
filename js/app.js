@@ -7867,6 +7867,11 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
         const margin=10;
         const scaleFit=Math.min((pageW-margin*2)/w,(pageH-margin*2)/h);
         const drawW=w*scaleFit,drawH=h*scaleFit;
+        // Centre the drawing on the page — used by both the vector (svg2pdf)
+        // and raster (doc.addImage) paths. Accidentally dropped in an earlier
+        // refactor; without these, both render calls threw ReferenceError and
+        // the promise never resolved, stranding the progress bar at 95%.
+        const ox=(pageW-drawW)/2,oy=(pageH-drawH)/2;
         report("pdf",0);
         // svg2pdf can take many minutes when ImageTracer emits thousands of
         // paths (HABS-class scans with grainy backgrounds). Count paths and,
@@ -7879,13 +7884,18 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
           // The ImageData has already been thresholded to pure B&W by the
           // preprocess step, so a JPEG re-encode is effectively lossless for
           // our purposes and ~10× smaller than a PNG. addImage is synchronous
-          // and finishes in <100ms.
-          const png=cnv.toDataURL("image/jpeg",0.92);
-          doc.addImage(png,"JPEG",ox,oy,drawW,drawH,"",landscape?"FAST":"FAST");
-          doc.setFont("helvetica","normal");doc.setFontSize(7);
-          doc.setTextColor(120);
-          doc.text(`Cleaned from ${file.name} — SiteShrimp Convert${note?` (${note})`:""}`,margin,pageH-5);
-          resolve(doc.output("blob"));
+          // and finishes in <100ms. Wrapped in try/catch so any future bug
+          // reject()s the promise instead of silently stranding the bar.
+          try{
+            const png=cnv.toDataURL("image/jpeg",0.92);
+            doc.addImage(png,"JPEG",ox,oy,drawW,drawH,"","FAST");
+            doc.setFont("helvetica","normal");doc.setFontSize(7);
+            doc.setTextColor(120);
+            doc.text(`Cleaned from ${file.name} — SiteShrimp Convert${note?` (${note})`:""}`,margin,pageH-5);
+            resolve(doc.output("blob"));
+          }catch(err){
+            reject(new Error("Raster fallback failed: "+err.message));
+          }
         };
         if(pathCount>PATH_LIMIT){
           report("pdf",0.95);
