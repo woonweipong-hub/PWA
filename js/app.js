@@ -535,6 +535,51 @@ function _drawMarkupStrokeVectorPdfLib(page,x0Mm,y0Mm,Wmm,Hmm,pageHeightPt,s,fon
     }
   }catch(e){console.warn("pdf-lib markup stroke failed",s.type,e);}
 }
+// Paint a defect pin as vectors on a pdf-lib page: outline ring in the
+// severity colour, dark inner disc, and the pin number in white. Pure vector,
+// no raster overlay — same pipeline as the source drawing, so everything on
+// the page stays selectable and crisp at any zoom.
+function _drawPinPdfLib(page,pin,defect,nativeWpt,nativeHpt,font,pinIndex){
+  if(!pin)return;
+  const PDFLib=window.PDFLib;if(!PDFLib)return;
+  const {rgb}=PDFLib;
+  const hex=defect?(SEV_COLOR[defect.severity]||"#ff6b00"):"#8e8e93";
+  const c=_hexToRgb(hex);
+  const col=rgb(c[0]/255,c[1]/255,c[2]/255);
+  const x=(pin.x/100)*nativeWpt;
+  const y=nativeHpt-(pin.y/100)*nativeHpt; // pdf-lib origin is bottom-left
+  const r=Math.max(10,nativeWpt*0.012);
+  try{
+    // Outer ring — severity colour.
+    page.drawCircle({x,y,size:r,borderColor:col,borderWidth:r*0.22,color:rgb(0,0,0),opacity:0.45});
+    // Inner dot — severity colour.
+    page.drawCircle({x,y,size:r*0.35,color:col,opacity:1});
+    // Number badge if provided.
+    if(pinIndex!=null&&font){
+      const label=String(pinIndex);
+      const fs=r*0.9;
+      const tw=font.widthOfTextAtSize(label,fs);
+      page.drawText(label,{x:x-tw/2,y:y-fs*0.32,size:fs,font,color:rgb(1,1,1)});
+    }
+  }catch(e){console.warn("pdf-lib pin draw failed",e);}
+}
+// Paint a project note as a rounded pill + text, pure vector.
+function _drawNotePdfLib(page,note,nativeWpt,nativeHpt,font){
+  if(!note||!note.text)return;
+  const PDFLib=window.PDFLib;if(!PDFLib)return;
+  const {rgb}=PDFLib;
+  const x=(note.x/100)*nativeWpt;
+  const y=nativeHpt-(note.y/100)*nativeHpt;
+  const fs=Math.max(9,nativeWpt*0.009);
+  const text="📝 "+(note.text||"").slice(0,60);
+  try{
+    const tw=font.widthOfTextAtSize(text,fs);
+    const padX=fs*0.5,padY=fs*0.3;
+    const bw=tw+padX*2,bh=fs+padY*2;
+    page.drawRectangle({x:x-bw/2,y:y-bh/2,width:bw,height:bh,color:rgb(0.345,0.337,0.839),opacity:0.92,borderColor:rgb(1,1,1),borderWidth:0.5});
+    page.drawText(text,{x:x-bw/2+padX,y:y-fs*0.32,size:fs,font,color:rgb(1,1,1)});
+  }catch(e){console.warn("pdf-lib note draw failed",e);}
+}
 // Render pins + notes + non-vector-capable markups onto a transparent canvas
 // overlay so we can drop them on top of the embedded vector page without
 // re-implementing every marker in pdf-lib. Returns a PNG data URL or null.
@@ -2326,19 +2371,22 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
             const notes=getDrawingNotes(d.id)||[];const markups=getDrawingMarkup(d.id)||[];
             const drawingPins=(allPins||[]).filter(p=>p.drawingId===d.id);
             if(pg.isVectorSource){
-              // PDF-source drawings DON'T get an A4 preview page. The user
-              // asked for every drawing to be at its original size; the source
-              // PDF's native page gets spliced in via pdf-lib copyPages in
-              // post-process, carrying drawing title + metadata as a small
-              // caption overlay at the top-left.
+              // Pure-vector path. Source PDF page is spliced in via copyPages
+              // (1:1 with its native dimensions); pins, notes and markup are
+              // then drawn on top as pdf-lib vectors — no raster overlay.
+              // Non-vector markup types (cloud / callout / stamp / dimension)
+              // are currently skipped on the native page.
               const sourceWmm=pg.nativeW*0.352778;
               const sourceHmm=pg.nativeH*0.352778;
+              // Filter pins + notes to this specific source page so multi-page
+              // PDFs get the right markers on the right page.
+              const pagePins=drawingPins.filter(p=>(p.pageNum||1)===pg.pageNum);
+              const pageNotes=notes.filter(n=>(n.pageNum||1)===pg.pageNum);
               pdfLibSwaps.push({
                 insertAfterPage:doc.getNumberOfPages(),
                 sourceUrl:pg.sourceUrl,
                 sourcePageIdx:pg.sourcePageIdx,
                 markups:pg.markups||[],
-                overlayPng:pg.overlayPng,
                 drawingName:d.name||"Drawing",
                 srcPageNum:pg.pageNum,
                 pageCountTotal:pages.length,
@@ -2346,6 +2394,11 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
                 noteCount:notes.length,
                 markupCount:markups.length,
                 sourceWmm,sourceHmm,
+                pins:pagePins.map(p=>{
+                  const def=(defects||[]).find(df=>df.id===p.entryId);
+                  return{x:p.x,y:p.y,severity:def?.severity,entryId:p.entryId};
+                }),
+                notes:pageNotes,
               });
               // Emit one measurement row per measurable markup on this page.
               for(const s of markups){
@@ -2604,29 +2657,24 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
           const nativeHpt=copied.getHeight();
           const nativeWmm=nativeWpt/MM_TO_PT;
           const nativeHmm=nativeHpt/MM_TO_PT;
-          // Overlay PNG (pins, notes, non-vector markup) — transparent, sits
-          // directly on top of the native page without scaling distortion.
-          if(sw.overlayPng){
-            try{
-              const b64=sw.overlayPng.split(",")[1];
-              const pngBytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
-              const pngImg=await outDoc.embedPng(pngBytes);
-              copied.drawImage(pngImg,{x:0,y:0,width:nativeWpt,height:nativeHpt});
-            }catch(e){console.warn("native overlay embed failed",e);}
-          }
+          // Pure-vector overlays on top of the copied source page.
+          // - Vector-capable markup (arrows, rects, circles, freehand, text…)
+          //   via pdf-lib primitives.
+          // - Pins and notes via pdf-lib primitives (no raster PNG).
+          // Non-vector markup types (cloud / callout / stamp / dimension)
+          // are omitted here — the vector requirement takes priority.
           for(const s of sw.markups){
             if(PDF_VECTOR_MARKUP_TYPES.has(s.type)){
               _drawMarkupStrokeVectorPdfLib(copied,0,0,nativeWmm,nativeHmm,nativeHpt,s,{bold:helveticaBold});
             }
           }
-          // Caption at top-left corner — drawing name + annotation counts +
-          // "SiteShrimp" stamp so each native page identifies itself without
-          // depending on a preceding A4 title page.
+          (sw.pins||[]).forEach((pin,idx)=>_drawPinPdfLib(copied,pin,{severity:pin.severity},nativeWpt,nativeHpt,helveticaBold,idx+1));
+          (sw.notes||[]).forEach(n=>_drawNotePdfLib(copied,n,nativeWpt,nativeHpt,helveticaBold));
+          // Caption at top-left — vector text on a white pill so the page
+          // is self-identifying without a preceding A4 title page.
           const pageLabel=sw.pageCountTotal>1?` · Page ${sw.srcPageNum}`:"";
           const captionText=`${sw.drawingName}${pageLabel} · ${sw.pinCount} pin(s), ${sw.noteCount} note(s), ${sw.markupCount} markup(s)`;
           try{
-            // White pill behind caption so the text stays legible over any
-            // line work underneath.
             const fontSize=10;
             const textWidth=helveticaBold.widthOfTextAtSize(captionText,fontSize);
             copied.drawRectangle({x:10,y:nativeHpt-22,width:textWidth+12,height:16,color:rgb(1,1,1),borderColor:rgb(1,0.42,0),borderWidth:0.8,opacity:0.92});
