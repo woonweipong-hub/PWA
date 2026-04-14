@@ -7347,6 +7347,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
       )}
       {canEdit&&markupTool&&(
         <div style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:6,padding:"8px 10px",background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.25)",borderRadius:10}}>
+          <button onClick={()=>{markupDrawRef.current=null;setMarkupTool(null);setPinMode(true);}} title="Exit markup mode" style={{padding:"8px 14px",borderRadius:8,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",boxShadow:"0 1px 4px rgba(88,86,214,0.35)"}}>✓ DONE</button>
           {[
             {id:"rect",label:"▭ ZONE"},
             {id:"circle",label:"◯ RADIUS"},
@@ -10463,6 +10464,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       {/* Markup toolbar */}
       {markupMode&&(
         <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:6,background:"#1a1a1a",borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0,flexWrap:"wrap"}}>
+          <button onClick={()=>setMarkupMode(false)} title="Exit markup mode" style={{padding:"6px 12px",borderRadius:8,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",boxShadow:"0 1px 4px rgba(88,86,214,0.35)"}}>✓ DONE</button>
           {[{id:"select",label:null,title:"Select, move, resize"},{id:"freehand",label:"✏",title:"Freehand"},{id:"highlight",label:null,title:"Highlight Marker"},{id:"line",label:null,title:"Line"},{id:"arrow",label:"↗",title:"Arrow"},{id:"polyline",label:null,title:"Polyline / Polygon"},{id:"circle",label:null,title:"Circle"},{id:"rect",label:null,title:"Rectangle"},{id:"cloud",label:null,title:"Revision Cloud"},{id:"dimension",label:null,title:"Dimension line"},{id:"text",label:"T",title:"Text"},{id:"callout",label:null,title:"Callout / Leader Note"},{id:"stamp",label:"⊞",title:"Stamp"}].map(t=>(
             <button key={t.id} onClick={()=>{setMarkupTool(t.id);if(t.id!=="select")setMarkupSelectedIdx(null);}} title={t.title} style={{width:32,height:32,borderRadius:7,border:markupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:markupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
               {t.id==="select"?<svg width="16" height="16" viewBox="0 0 20 20"><path d="M4 2 L4 15 L7.5 12 L10 17 L12 16 L9.5 11 L14 11 Z" fill="#fff" stroke="#fff" strokeWidth="0.8" strokeLinejoin="round"/></svg>
@@ -11440,7 +11442,7 @@ function App(){
   return(
     <div style={{width:"100%",maxWidth:430,margin:"0 auto",height:"100dvh",background:"#f0ede8",display:"flex",flexDirection:"column",overflow:"hidden"}}>
       {/* Header */}
-        <div style={{background:"#1a1a1a",padding:"10px 12px 8px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,position:"relative",zIndex:1000}}>
+        <div style={{background:"#1a1a1a",padding:"10px 12px 8px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,position:"relative"}}>
           <button onClick={()=>setShowProjects(true)} style={{background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0,flex:1,minWidth:0,maxWidth:"calc(100% - 240px)"}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:8.5,fontWeight:700,color:"#ff6b00",letterSpacing:"0.13em",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{company.companyName}</div>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13.5,fontWeight:800,color:"#fff",marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
