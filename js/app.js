@@ -7940,8 +7940,6 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   // License/provenance-tagged so every drawing carries its own credit line.
   // See sample_drwgs/ATTRIBUTION.md for full sources and licences.
   const SAMPLE_URLS=[
-    {name:"SampleHouse V1 (vector, CC0)",url:"https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/sample_drwgs/SampleHouse_V1.pdf",credit:"Original work by SiteShrimp — released CC0 / public domain."},
-    {name:"SampleHouse V2 (vector, CC0)",url:"https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/sample_drwgs/SampleHouse_V2.pdf",credit:"Original work by SiteShrimp — released CC0 / public domain."},
     {name:"Dyckman House — First Floor (HABS, public domain)",url:"https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/sample_drwgs/Dyckman_First_Floor_sketch.png",credit:"Historic American Buildings Survey (HABS NY,31-NEYO,11-, sheet 2) — Library of Congress. Public domain (US federal work)."},
     {name:"Dyckman House — Second Floor (HABS, public domain)",url:"https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/sample_drwgs/Dyckman_Second_Floor_sketch.png",credit:"Historic American Buildings Survey (HABS NY,31-NEYO,11-, sheet 3) — Library of Congress. Public domain (US federal work)."},
   ];
@@ -12155,6 +12153,7 @@ function App(){
                 <button onClick={()=>setHelpTab("help")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="help"?"2px solid #ff6b00":"2px solid transparent",color:helpTab==="help"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{t("help.title").toUpperCase()}</button>
                 <button onClick={()=>setHelpTab("hosting")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="hosting"?"2px solid #34a853":"2px solid transparent",color:helpTab==="hosting"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>HOSTING</button>
                 <button onClick={()=>setHelpTab("features")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="features"?"2px solid #ff6b00":"2px solid transparent",color:helpTab==="features"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{t("help.features")}</button>
+                <button onClick={()=>setHelpTab("disclaimer")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="disclaimer"?"2px solid #ffcc00":"2px solid transparent",color:helpTab==="disclaimer"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>DISCLAIMER</button>
               </div>
             </div>
             <div style={{padding:"20px 16px"}}>
@@ -12460,6 +12459,42 @@ function App(){
                       );})
                     );})
                   );})()}
+                </div>
+              )}
+
+              {/* ── DISCLAIMER TAB ── */}
+              {helpTab==="disclaimer"&&(
+                <div style={{color:"rgba(255,255,255,0.78)",fontSize:12,lineHeight:1.7,fontFamily:"'Barlow',sans-serif"}}>
+                  <div style={{marginBottom:16}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ffcc00",letterSpacing:"0.05em",marginBottom:6}}>PURPOSE</div>
+                    <div style={{color:"rgba(255,255,255,0.72)"}}>SiteShrimp is a vibe programming project created for learning purposes and offered free for public use. It is self-driven, non-commercial, and shared to inspire open collaboration.</div>
+                  </div>
+
+                  <div style={{background:"rgba(255,204,0,0.08)",border:"1px solid rgba(255,204,0,0.3)",borderRadius:12,padding:"14px 16px",marginBottom:18}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#ffcc00",letterSpacing:"0.06em",marginBottom:6}}>⚠ AT YOUR OWN RISK</div>
+                    SiteShrimp is provided <b>"as is"</b>, without warranty of any kind, express or implied. Use of this app — and any content, advisory, export, message, or decision generated through it — is entirely at your own risk. No responsibility or liability is held by the author, by Anthropic / Claude Code, by any contributor who commented, was involved in, or created part of this app, or by any third-party provider (AI, maps, hosting, payments) it integrates with.
+                  </div>
+
+                  {[
+                    ["Not professional advice","Nothing produced by SiteShrimp — including AI-generated contract advisories, clause mappings, defect categorisations, or report content — constitutes legal, contractual, engineering, safety, or other professional advice. Always verify generated outputs against original source documents and consult qualified professionals before acting on matters with legal, financial, safety, or contractual consequences."],
+                    ["AI outputs","AI responses may contain errors, omissions, or hallucinated clause references, and may vary between runs. Cross-check every cited clause number and party-responsibility attribution against the source PDF. AI providers (e.g. Google Gemini, OpenAI) handle your prompt content under their own terms — choose a provider and quota that align with your project's confidentiality needs."],
+                    ["Data & privacy","User-uploaded contract PDFs are processed in your browser; only the extracted text is transmitted by the app to your configured AI provider. Photos, entries, and drawings are stored on your configured backend (PocketBase / Google Drive / local). Review your organisation's data-handling policy before uploading sensitive documents."],
+                    ["Contract samples","The bundled PSSCOC (Public Sector Standard Conditions of Contract) is included as a reference sample only. It is publicly downloadable from Singapore's Building and Construction Authority (BCA) website (www1.bca.gov.sg); copyright remains with BCA. SiteShrimp's bundling does not grant any licence. Users in jurisdictions outside Singapore should supply their own applicable standard contracts via the upload feature."],
+                    ["Sample drawings","Dyckman_First_Floor_sketch.png and Dyckman_Second_Floor_sketch.png — Historic American Buildings Survey (HABS NY,31-NEYO,11-, sheets 2 and 3), courtesy of the Library of Congress Prints & Photographs Division. Public domain (works of U.S. federal government employees). Credited to HABS / LoC as a courtesy; no attribution is legally required."],
+                    ["Third-party content","Map tiles are provided by OpenStreetMap contributors (ODbL) and, where configured, Google Maps under its terms. React, Leaflet, PDF.js, jsPDF, ImageTracer, svg2pdf, marker-clusterer, PocketBase, and other libraries are used under their respective open-source licences."],
+                  ].map(([title,body])=>(
+                    <div key={title} style={{marginBottom:16}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ffcc00",letterSpacing:"0.05em",marginBottom:6}}>{title.toUpperCase()}</div>
+                      <div style={{color:"rgba(255,255,255,0.65)"}}>{body}</div>
+                    </div>
+                  ))}
+
+                  <div style={{borderTop:"1px solid rgba(255,255,255,0.1)",paddingTop:14,marginTop:22}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ff6b00",letterSpacing:"0.05em",marginBottom:8}}>AUTHORSHIP & ACKNOWLEDGEMENTS</div>
+                    <div style={{color:"rgba(255,255,255,0.72)"}}>
+                      Designed and directed by <b>Mr. PONG Woon Wei</b>, developed in collaboration with <b>Claude Code (Anthropic)</b>, with comments from <b>Ar. William Lau</b> and <b>Dr. TAN Kee Wee</b>.
+                    </div>
+                  </div>
                 </div>
               )}
 
