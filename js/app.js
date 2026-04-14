@@ -4727,9 +4727,14 @@ function DefectsMapView({defects,onView}){
   );
 }
 
-function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,member,members,onBulkUpdate,onBulkDelete,company,currentProject}){
+function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,member,members,onBulkUpdate,onBulkDelete,company,currentProject,onJumpToTag}){
   const[filter,setFilter]=useState("All");const[sevF,setSevF]=useState("All");const[typeF,setTypeF]=useState("All");
   const[search,setSearch]=useState("");const[showFilters,setShowFilters]=useState(false);
+  // "entries" | "drawings" | "comparisons" — lets users triage drawing-side
+  // artefacts (markup, notes, pin counts, saved comparisons) from the same
+  // screen they already use for defect entries, instead of hopping to Tag.
+  const[source,setSource]=useState("entries");
+  const savedComparisonsList=currentProject?.id?getSavedComparisons(currentProject.id):[];
   const searchRef=useRef(null);
   // Batch select / update
   const canBulk=["Admin","Manager","Inspector"].includes(member?.role);
@@ -4843,6 +4848,64 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
         </div>
       </div>
 
+      {/* Source switcher — entries (defects) · drawings · comparisons.
+          Keeps Review a one-stop triage surface without duplicating Tag. */}
+      <div style={{display:"flex",gap:4,padding:3,background:"rgba(0,0,0,0.05)",borderRadius:10,marginBottom:12,width:"max-content"}}>
+        {[
+          {id:"entries",label:`📝 ENTRIES (${defects.length})`},
+          {id:"drawings",label:`📐 DRAWINGS${rvDrawings.length?` (${rvDrawings.length})`:""}`},
+          {id:"comparisons",label:`🔍 COMPARISONS${savedComparisonsList.length?` (${savedComparisonsList.length})`:""}`},
+        ].map(opt=>(
+          <button key={opt.id} onClick={()=>setSource(opt.id)} style={{padding:"6px 12px",borderRadius:7,border:"none",background:source===opt.id?"#fff":"transparent",color:source===opt.id?"#1a1a1a":"rgba(0,0,0,0.5)",boxShadow:source===opt.id?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{opt.label}</button>
+        ))}
+      </div>
+
+      {/* Drawings source — per-drawing markup / notes / pin counts with tap-through to Tag */}
+      {source==="drawings"&&(
+        rvDrawings.length===0
+          ?<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>No drawings in this project yet. Upload in Tag & Compare.</div>
+          :<div>{rvDrawings.filter(d=>!q||(d.name||"").toLowerCase().includes(q)||(d.file||"").toLowerCase().includes(q)).map((d,i)=>{
+              const pinCount=rvPins.filter(p=>p.drawingId===d.id).length;
+              const noteCount=getDrawingNotes(d.id).length;
+              const markupCount=getDrawingMarkup(d.id).length;
+              const hasAny=pinCount+noteCount+markupCount>0;
+              return(
+                <div key={d.id} className="anim" style={{animationDelay:`${i*0.04}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:`4px solid ${hasAny?"#ff6b00":"rgba(0,0,0,0.15)"}`,display:"flex",gap:12,alignItems:"flex-start"}} onClick={()=>onJumpToTag&&onJumpToTag({type:"drawing",id:d.id})}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,color:"#1a1a1a",marginBottom:6}}><Highlight text={d.name||d.file||"Untitled"} query={q}/></div>
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
+                      <span style={{color:pinCount?"#ff3b30":"rgba(0,0,0,0.3)"}}>📍 {pinCount} pin{pinCount===1?"":"s"}</span>
+                      <span style={{color:markupCount?"#007aff":"rgba(0,0,0,0.3)"}}>✏️ {markupCount} markup</span>
+                      <span style={{color:noteCount?"#34c759":"rgba(0,0,0,0.3)"}}>📝 {noteCount} note{noteCount===1?"":"s"}</span>
+                    </div>
+                  </div>
+                  <div style={{color:"rgba(0,0,0,0.3)",fontSize:16,flexShrink:0}}>›</div>
+                </div>
+              );
+            })}</div>
+      )}
+
+      {/* Comparisons source — each saved PDF-diff with stats + tap-through */}
+      {source==="comparisons"&&(
+        savedComparisonsList.length===0
+          ?<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>No saved comparisons yet. Diff two PDFs in Tag & Compare and save.</div>
+          :<div>{savedComparisonsList.filter(sc=>!q||(sc.baseName||"").toLowerCase().includes(q)||(sc.targetName||"").toLowerCase().includes(q)).map((sc,i)=>(
+              <div key={sc.id||i} className="anim" style={{animationDelay:`${i*0.04}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:"4px solid #5856d6",display:"flex",gap:12,alignItems:"flex-start"}} onClick={()=>onJumpToTag&&onJumpToTag({type:"comparison",id:sc.id})}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a",marginBottom:4}}><Highlight text={`${sc.baseName||"Base"} → ${sc.targetName||"Target"}`} query={q}/></div>
+                  <div style={{display:"flex",gap:10,flexWrap:"wrap",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
+                    <span style={{color:"#34c759"}}>+{sc.totalAdded||0} added</span>
+                    <span style={{color:"#ff3b30"}}>−{sc.totalRemoved||0} removed</span>
+                    {sc.aiReport&&<span style={{color:"#ff6b00"}}>🤖 AI report</span>}
+                    {sc.savedAt&&<span style={{color:"rgba(0,0,0,0.4)"}}>· {new Date(sc.savedAt).toLocaleDateString()}</span>}
+                  </div>
+                </div>
+                <div style={{color:"rgba(0,0,0,0.3)",fontSize:16,flexShrink:0}}>›</div>
+              </div>
+            ))}</div>
+      )}
+
+      {source!=="entries"?null:<>
       {/* Search bar + AI Search */}
       <div style={{display:"flex",gap:8,marginBottom:14}}>
         <div style={{position:"relative",flex:1}}>
@@ -5004,6 +5067,7 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
           <button onClick={()=>setShowBulkPanel(true)} style={{background:"#ff6b00",border:"none",borderRadius:10,padding:"9px 16px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>UPDATE ▸</button>
         </div>
       )}
+      </>}
     </div>
   );
 }
@@ -5129,6 +5193,7 @@ function parseDefectCoords(d){
 function DefectMiniMap({defect,allDefects}){
   const mapRef=useRef(null);
   const mapObj=useRef(null);
+  const resizeObs=useRef(null);
   const[status,setStatus]=useState("loading");
   const coords=parseDefectCoords(defect);
   // Persist parsed coords back to the record so map list & export pick them up
@@ -5169,9 +5234,21 @@ function DefectMiniMap({defect,allDefects}){
         placeLeafletMarkers(L,map,coords);
       }
       setStatus("ready");
-      setTimeout(()=>{try{if(provider==="gmaps")window.google.maps.event.trigger(mapObj.current,"resize");else mapObj.current.invalidateSize();}catch{}},80);
+      // Kick the map to re-measure once the slide-up animation finishes and
+      // again a little later, because Entry Detail mounts with transform:
+      // translateY animation which makes the container report zero/wrong
+      // dimensions during init. Without these, Leaflet's tile pane renders
+      // at a wrong size and the map appears to float / overflow its parent.
+      const kick=()=>{try{if(provider==="gmaps")window.google.maps.event.trigger(mapObj.current,"resize");else mapObj.current.invalidateSize();}catch{}};
+      [80,350,800].forEach(ms=>setTimeout(kick,ms));
+      // Also re-kick on any real container resize (orientation change,
+      // window resize, or parent layout shift).
+      if(window.ResizeObserver&&mapRef.current){
+        resizeObs.current=new ResizeObserver(()=>kick());
+        resizeObs.current.observe(mapRef.current);
+      }
     })();
-    return()=>{cancelled=true;if(mapObj.current&&mapObj.current.remove)try{mapObj.current.remove();}catch{}};
+    return()=>{cancelled=true;if(resizeObs.current){try{resizeObs.current.disconnect();}catch{}resizeObs.current=null;}if(mapObj.current&&mapObj.current.remove)try{mapObj.current.remove();}catch{}};
     function placeMarkers(g,map,c){
       // This entry — highlighted, pulsing
       const color=SEV_COLOR[defect.severity]||"#ff6b00";
@@ -5211,7 +5288,7 @@ function DefectMiniMap({defect,allDefects}){
         <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em"}}>🗺 MAP LOCATION{nearbyCount>0?` · ${nearbyCount} nearby`:""}</div>
         <a href={openUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#ff6b00",textDecoration:"none"}}>Open in Google Maps →</a>
       </div>
-      <div ref={mapRef} style={{width:"100%",height:220,borderRadius:10,border:"1px solid rgba(0,0,0,0.1)",background:"#e5e3dc",overflow:"hidden"}}/>
+      <div ref={mapRef} style={{position:"relative",width:"100%",height:220,borderRadius:10,border:"1px solid rgba(0,0,0,0.1)",background:"#e5e3dc",overflow:"hidden",isolation:"isolate",contain:"layout paint"}}/>
       {status==="error"&&<div style={{fontSize:11,color:"#ff3b30",marginTop:6}}>Map preview unavailable.</div>}
       <div style={{display:"flex",alignItems:"center",gap:10,marginTop:6}}>
         <span onClick={copy} title="Tap to copy" style={{fontFamily:"monospace",fontSize:11,color:"rgba(0,0,0,0.55)",cursor:"pointer"}}>{coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}</span>
@@ -8203,8 +8280,59 @@ Requirements:
 
   // Convert button handler: single or batch. Each JPG becomes one vector PDF
   // drawing record so the user can immediately Compare between versions.
+  // Rasterize a scanned/image-based PDF into one synthetic PNG File per page
+  // so the existing tracer can turn each page into a vector PDF page. Scanned
+  // drawings often arrive as PDFs (phone-scan apps wrap photos in PDF), and
+  // "where possible" means we should vectorise those too — not only loose
+  // JPG/PNG. Rendered at ~1800px longest side, which gives the tracer
+  // headroom above its 1200px cap without ballooning memory on phones.
+  const rasterizePdfToImageFiles=async(pdfFile)=>{
+    if(!window.pdfjsLib)throw new Error("PDF engine not loaded — refresh the app.");
+    const pdfjsLib=window.pdfjsLib;
+    if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    const buf=await pdfFile.arrayBuffer();
+    const doc=await pdfjsLib.getDocument({data:buf}).promise;
+    const base=pdfFile.name.replace(/\.pdf$/i,"");
+    const out=[];
+    for(let p=1;p<=doc.numPages;p++){
+      const page=await doc.getPage(p);
+      const v1=page.getViewport({scale:1});
+      const scale=Math.min(3,1800/Math.max(v1.width,v1.height));
+      const vp=page.getViewport({scale});
+      const cnv=document.createElement("canvas");
+      cnv.width=Math.round(vp.width);cnv.height=Math.round(vp.height);
+      const ctx=cnv.getContext("2d");
+      ctx.fillStyle="#fff";ctx.fillRect(0,0,cnv.width,cnv.height);
+      await page.render({canvasContext:ctx,viewport:vp}).promise;
+      const blob=await new Promise(res=>cnv.toBlob(res,"image/png"));
+      if(!blob)throw new Error(`Failed to rasterize page ${p}`);
+      const suffix=doc.numPages>1?` (p${p})`:"";
+      out.push(new File([blob],`${base}${suffix}.png`,{type:"image/png"}));
+    }
+    return out;
+  };
+
   const convertJpgsToPdf=async(e)=>{
-    const files=Array.from(e.target.files||[]).filter(f=>/^image\//.test(f.type));
+    const raw=Array.from(e.target.files||[]).filter(f=>/^image\//.test(f.type)||/\.pdf$/i.test(f.name)||f.type==="application/pdf");
+    if(!raw.length)return;
+    // Expand any PDFs into per-page image files up front so progress totals
+    // reflect real work units. Failures on a single PDF don't block others.
+    const files=[];
+    for(const f of raw){
+      if(/\.pdf$/i.test(f.name)||f.type==="application/pdf"){
+        try{
+          const pages=await rasterizePdfToImageFiles(f);
+          files.push(...pages);
+        }catch(err){
+          console.warn("pdf rasterize failed for",f.name,err);
+          alert(`Couldn't read ${f.name}: ${err.message}`);
+        }
+      }else{
+        files.push(f);
+      }
+    }
     if(!files.length)return;
     convertCancelRef.current=false;
     setConverting(true);
@@ -9480,7 +9608,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           <MapPanel currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry} company={company} onSnapped={(rec)=>{setDrawings(prev=>[rec,...prev]);setSubMode("drawing");setViewing(rec);}}/>
         ):(<>
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf,.pdf,.tif,.tiff" onChange={uploadDrawing} style={{display:"none"}}/>
-        <input ref={convertRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={convertJpgsToPdf} style={{display:"none"}}/>
+        <input ref={convertRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf" multiple onChange={convertJpgsToPdf} style={{display:"none"}}/>
         {converting&&convertProgress&&(
           <div style={{background:"rgba(52,199,89,0.12)",border:"1px solid rgba(52,199,89,0.35)",borderRadius:10,padding:"10px 12px",marginBottom:12,fontFamily:"'Barlow Condensed',sans-serif"}}>
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,fontSize:12,color:"#1a6a33",fontWeight:700}}>
@@ -12381,7 +12509,7 @@ function App(){
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("dashboard")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect}/>}
-        {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} company={company} currentProject={currentProject}/>}
+        {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")}/>}
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company}/>}
       </div>
 
