@@ -4666,25 +4666,33 @@ function MapThumb({defect}){
 // numbered + severity coloured. Tapping a pin focuses it (preview card slides
 // up at the rear of the master map); bottom chip strip lists all pins for
 // quick navigation and batch select/edit across map-visible entries.
-function DefectsMapView({defects,onView,selectMode,selectedIds,toggleId}){
+function DefectsMapView({defects,allDefects,onView,onUpdate,selectMode,selectedIds,toggleId,member,company,members}){
   const mapRef=useRef(null);
   const mapObj=useRef(null);
-  const markersRef=useRef([]); // [{marker, d, i, c}]
+  const markersRef=useRef([]); // [{marker, d, i, c, inFilter}]
   const providerRef=useRef("");
   const[status,setStatus]=useState("loading");
   const[focusId,setFocusId]=useState(null);
-  const pinned=(defects||[]).map(d=>({d,c:parseDefectCoords(d)})).filter(x=>x.c);
+  // Parity with Tag on Map — every GPS-pinned entry in the project appears,
+  // even if the Review filters/search would otherwise hide it. Out-of-filter
+  // pins render desaturated so users can still see them for context.
+  const filteredIds=useMemo(()=>new Set((defects||[]).map(d=>d.id)),[defects]);
+  const src=(allDefects&&allDefects.length?allDefects:defects)||[];
+  const pinned=src.map(d=>({d,c:parseDefectCoords(d),inFilter:filteredIds.has(d.id)})).filter(x=>x.c);
   const focused=pinned.find(x=>x.d.id===focusId);
+  const showDetail=!!focused&&!selectMode;
 
   // Build a pin icon. Selected entries get a filled-severity look so batch
-  // selection is legible at a glance; focused pin is slightly larger.
-  const buildSvg=(d,i,{selected,focused,size})=>{
-    const color=SEV_COLOR[d.severity]||"#8e8e93";
+  // selection is legible at a glance; focused pin is slightly larger;
+  // out-of-filter pins fade to grey while staying on the map.
+  const buildSvg=(d,i,{selected,focused,size,inFilter})=>{
+    const sevColor=SEV_COLOR[d.severity]||"#8e8e93";
+    const color=inFilter?sevColor:"#b8b5ae";
     const r=size===40?16:13;
-    const fill=selected?color:"rgba(0,0,0,0.75)";
+    const fill=selected?color:(inFilter?"rgba(0,0,0,0.75)":"rgba(0,0,0,0.35)");
     const stroke=selected?"#1a1a1a":color;
     const textColor=selected?"#1a1a1a":"#fff";
-    const extra=focused?`<circle cx="${size/2}" cy="${size/2}" r="${r+3}" fill="none" stroke="${color}" stroke-width="2" opacity="0.9"/>`:"";
+    const extra=focused?`<circle cx="${size/2}" cy="${size/2}" r="${r+3}" fill="none" stroke="${sevColor}" stroke-width="2" opacity="0.9"/>`:"";
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${extra}<circle cx="${size/2}" cy="${size/2}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="3"/><text x="${size/2}" y="${size/2+1}" text-anchor="middle" dominant-baseline="central" font-size="${size===40?14:12}" font-weight="900" fill="${textColor}" font-family="'Barlow Condensed',sans-serif">${i+1}</text></svg>`;
   };
 
@@ -4703,12 +4711,12 @@ function DefectsMapView({defects,onView,selectMode,selectedIds,toggleId}){
         const map=new g.Map(mapRef.current,{mapTypeId:"hybrid",streetViewControl:false,fullscreenControl:false,gestureHandling:"greedy"});
         mapObj.current=map;
         const bounds=new g.LatLngBounds();
-        markersRef.current=pinned.map(({d,c},i)=>{
-          const svg=buildSvg(d,i,{selected:false,focused:false,size:32});
-          const m=new g.Marker({position:c,map,icon:{url:"data:image/svg+xml;utf8,"+encodeURIComponent(svg),scaledSize:new g.Size(32,32),anchor:new g.Point(16,16)},title:`${i+1}. ${d.title||"Entry"}`});
+        markersRef.current=pinned.map(({d,c,inFilter},i)=>{
+          const svg=buildSvg(d,i,{selected:false,focused:false,size:32,inFilter});
+          const m=new g.Marker({position:c,map,icon:{url:"data:image/svg+xml;utf8,"+encodeURIComponent(svg),scaledSize:new g.Size(32,32),anchor:new g.Point(16,16)},title:`${i+1}. ${d.title||"Entry"}`,opacity:inFilter?1:0.85});
           m.addListener("click",()=>handlePinTap(d));
           bounds.extend(c);
-          return{marker:m,d,i,c};
+          return{marker:m,d,i,c,inFilter};
         });
         if(pinned.length===1)map.setCenter(pinned[0].c),map.setZoom(17);
         else map.fitBounds(bounds,40);
@@ -4720,12 +4728,12 @@ function DefectsMapView({defects,onView,selectMode,selectedIds,toggleId}){
         L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,crossOrigin:"anonymous"}).addTo(map);
         mapObj.current=map;
         const group=[];
-        markersRef.current=pinned.map(({d,c},i)=>{
-          const html=buildSvg(d,i,{selected:false,focused:false,size:32});
-          const m=L.marker([c.lat,c.lng],{icon:L.divIcon({className:"",html,iconSize:[32,32],iconAnchor:[16,16]}),title:`${i+1}. ${d.title||"Entry"}`}).addTo(map);
+        markersRef.current=pinned.map(({d,c,inFilter},i)=>{
+          const html=buildSvg(d,i,{selected:false,focused:false,size:32,inFilter});
+          const m=L.marker([c.lat,c.lng],{icon:L.divIcon({className:"",html,iconSize:[32,32],iconAnchor:[16,16]}),title:`${i+1}. ${d.title||"Entry"}`,opacity:inFilter?1:0.85}).addTo(map);
           m.on("click",()=>handlePinTap(d));
           group.push([c.lat,c.lng]);
-          return{marker:m,d,i,c};
+          return{marker:m,d,i,c,inFilter};
         });
         if(pinned.length>1)map.fitBounds(group,{padding:[40,40]});
       }
@@ -4738,12 +4746,13 @@ function DefectsMapView({defects,onView,selectMode,selectedIds,toggleId}){
       if(mapObj.current&&mapObj.current.remove)try{mapObj.current.remove();}catch{}
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[defects?.length]);
+  },[src.length]);
 
-  // Tell the map engine the container size changed when the preview slides
-  // in/out — otherwise Leaflet/Google render tiles clipped to the old size
-  // and the focused pin can end up hidden behind the preview.
+  // When detail opens the map container is display:none; when it closes the
+  // map re-appears and must be told to recompute its size or tiles render
+  // clipped / misaligned.
   useEffect(()=>{
+    if(showDetail)return;
     const id=setTimeout(()=>{
       try{
         if(!mapObj.current)return;
@@ -4752,28 +4761,33 @@ function DefectsMapView({defects,onView,selectMode,selectedIds,toggleId}){
         const fc=pinned.find(x=>x.d.id===focusId);
         if(fc)panTo(fc.c);
       }catch{}
-    },260);
+    },60);
     return()=>clearTimeout(id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[focusId]);
+  },[showDetail,focusId]);
 
   // Update marker icons when selection / focus changes — no map rebuild.
   useEffect(()=>{
     if(!markersRef.current.length)return;
     const provider=providerRef.current;
-    markersRef.current.forEach(({marker,d,i})=>{
+    markersRef.current.forEach((rec)=>{
+      const {marker,d,i}=rec;
       const selected=selectedIds?.has(d.id);
       const isFocus=focusId===d.id;
+      const inFilter=filteredIds.has(d.id);
+      rec.inFilter=inFilter; // keep cache fresh for later icon rebuilds
       const size=isFocus?40:32;
-      const svg=buildSvg(d,i,{selected,focused:isFocus,size});
+      const svg=buildSvg(d,i,{selected,focused:isFocus,size,inFilter});
       if(provider==="gmaps"&&window.google?.maps){
         marker.setIcon({url:"data:image/svg+xml;utf8,"+encodeURIComponent(svg),scaledSize:new window.google.maps.Size(size,size),anchor:new window.google.maps.Point(size/2,size/2)});
+        marker.setOpacity(inFilter?1:0.85);
       }else if(window.L){
         marker.setIcon(window.L.divIcon({className:"",html:svg,iconSize:[size,size],iconAnchor:[size/2,size/2]}));
+        marker.setOpacity(inFilter?1:0.85);
         if(isFocus)marker.setZIndexOffset(1000);else marker.setZIndexOffset(0);
       }
     });
-  },[selectedIds,focusId,selectMode]);
+  },[selectedIds,focusId,selectMode,filteredIds]);
 
   // Pin-tap handler — toggles selection in select mode, otherwise focuses
   // the pin and pans the master map to it. Defined via ref so the click
@@ -4802,38 +4816,18 @@ function DefectsMapView({defects,onView,selectMode,selectedIds,toggleId}){
 
   return(
     <div style={{marginBottom:10}}>
-      {/* Master map — fixed panel, preview card slides up over its bottom. */}
-      <div style={{position:"relative",background:"#fff",borderRadius:12,overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)"}}>
-        <div ref={mapRef} style={{width:"100%",height:focused?"min(40dvh,360px)":"min(55dvh,480px)",minHeight:260,background:"#e5e3dc",transition:"height 0.22s ease"}}/>
-        <div style={{position:"absolute",top:10,left:10,background:"rgba(26,26,26,0.85)",color:"#fff",padding:"6px 12px",borderRadius:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,pointerEvents:"none"}}>{pinned.length} pinned{selectMode?" · tap to select":" · tap a pin to preview"}</div>
+      {/* Master map — collapses when a pin's embedded detail is open, then
+          re-expands via the ◀ BACK TO MAP button inside DefectDetail. */}
+      <div style={{position:"relative",background:"#fff",borderRadius:12,overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)",display:showDetail?"none":"block"}}>
+        <div ref={mapRef} style={{width:"100%",height:"min(55dvh,480px)",minHeight:260,background:"#e5e3dc"}}/>
+        <div style={{position:"absolute",top:10,left:10,background:"rgba(26,26,26,0.85)",color:"#fff",padding:"6px 12px",borderRadius:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,pointerEvents:"none"}}>{pinned.length} pinned{selectMode?" · tap to select":" · tap a pin"}{pinned.length>filteredIds.size?` · ${pinned.length-(pinned.filter(p=>p.inFilter).length)} out of filter`:""}</div>
         {status==="error"&&<div style={{padding:20,color:"#ff3b30",textAlign:"center"}}>Could not load the map. Check your connection and provider in Settings → Maps.</div>}
       </div>
 
-      {/* Preview sheet — sits right below the master map when a pin is
-          selected, pushing the map upwards so both remain visible in
-          the same viewport. */}
-      {focused&&(
-        <div className="anim" style={{marginTop:8,background:"#fff",borderRadius:14,padding:"12px 14px",boxShadow:"0 6px 20px rgba(0,0,0,0.12)",borderLeft:`4px solid ${SEV_COLOR[focused.d.severity]||"#8e8e93"}`,animation:"slideUp 0.2s ease"}}>
-          <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
-            <div style={{width:26,height:26,borderRadius:"50%",background:SEV_COLOR[focused.d.severity]||"#8e8e93",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:13,flexShrink:0}}>{pinned.findIndex(x=>x.d.id===focused.d.id)+1}</div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{focused.d.title||"Entry"}</div>
-              <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>
-                {focused.d.status&&<span style={{fontSize:10,fontWeight:800,padding:"2px 7px",borderRadius:10,background:STATUS_COLOR[focused.d.status]||"rgba(0,0,0,0.3)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif"}}>{focused.d.status.toUpperCase()}</span>}
-                {focused.d.severity&&<span style={{fontSize:10,fontWeight:800,padding:"2px 7px",borderRadius:10,background:SEV_COLOR[focused.d.severity],color:"#fff",fontFamily:"'Barlow Condensed',sans-serif"}}>{focused.d.severity.toUpperCase()}</span>}
-                {focused.d.assignee&&<span style={{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:10,background:"rgba(0,0,0,0.06)",color:"rgba(0,0,0,0.7)",fontFamily:"'Barlow Condensed',sans-serif"}}>@{focused.d.assignee}</span>}
-              </div>
-            </div>
-            <button onClick={()=>setFocusId(null)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:"50%",width:26,height:26,cursor:"pointer",fontSize:15,color:"rgba(0,0,0,0.55)",flexShrink:0}}>×</button>
-          </div>
-          <div style={{display:"flex",gap:6,marginTop:10}}>
-            {selectMode?(
-              <button onClick={()=>toggleId&&toggleId(focused.d.id)} style={{flex:1,background:selectedIds?.has(focused.d.id)?"#ff6b00":"rgba(255,107,0,0.08)",border:`1.5px solid ${selectedIds?.has(focused.d.id)?"#ff6b00":"rgba(255,107,0,0.3)"}`,borderRadius:10,padding:"9px",color:selectedIds?.has(focused.d.id)?"#fff":"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{selectedIds?.has(focused.d.id)?"✓ SELECTED":"+ ADD TO SELECTION"}</button>
-            ):(
-              <button onClick={()=>onView(focused.d)} style={{flex:1,background:"#ff6b00",border:"none",borderRadius:10,padding:"9px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>OPEN DETAILS ▸</button>
-            )}
-          </div>
-        </div>
+      {/* Embedded detail — replaces the master map in place. DefectDetail
+          renders inline (embedded=true) and closes back to the map view. */}
+      {showDetail&&(
+        <DefectDetail defect={focused.d} embedded={true} onClose={()=>setFocusId(null)} onUpdate={onUpdate||(()=>{})} member={member} company={company} members={members||[]} allDefects={allDefects||defects||[]}/>
       )}
 
       {/* Pin chip strip — horizontal list of every pin on the current map,
@@ -4850,13 +4844,14 @@ function DefectsMapView({defects,onView,selectMode,selectedIds,toggleId}){
           )}
         </div>
         <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4,WebkitOverflowScrolling:"touch"}}>
-          {pinned.map(({d},i)=>{
+          {pinned.map(({d,inFilter},i)=>{
             const sel=selectedIds?.has(d.id);
             const foc=focusId===d.id;
-            const color=SEV_COLOR[d.severity]||"#8e8e93";
+            const sevColor=SEV_COLOR[d.severity]||"#8e8e93";
+            const color=inFilter?sevColor:"#b8b5ae";
             return(
-              <button key={d.id} onClick={()=>selectMode?(toggleId&&toggleId(d.id)):(setFocusId(d.id),panTo(parseDefectCoords(d)))} title={`${i+1}. ${d.title||"Entry"}`} style={{flexShrink:0,display:"flex",alignItems:"center",gap:6,padding:"6px 10px 6px 6px",borderRadius:18,border:`1.5px solid ${sel?"#ff6b00":foc?color:"rgba(0,0,0,0.12)"}`,background:sel?"rgba(255,107,0,0.1)":foc?"rgba(0,0,0,0.04)":"#fff",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",maxWidth:160}}>
-                <span style={{width:22,height:22,borderRadius:"50%",background:sel?color:"rgba(0,0,0,0.75)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:11,border:`2px solid ${color}`,flexShrink:0}}>{i+1}</span>
+              <button key={d.id} onClick={()=>selectMode?(toggleId&&toggleId(d.id)):(setFocusId(d.id),panTo(parseDefectCoords(d)))} title={`${i+1}. ${d.title||"Entry"}`+(inFilter?"":" · outside current filter")} style={{flexShrink:0,display:"flex",alignItems:"center",gap:6,padding:"6px 10px 6px 6px",borderRadius:18,border:`1.5px solid ${sel?"#ff6b00":foc?color:"rgba(0,0,0,0.12)"}`,background:sel?"rgba(255,107,0,0.1)":foc?"rgba(0,0,0,0.04)":"#fff",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",maxWidth:160,opacity:inFilter?1:0.55}}>
+                <span style={{width:22,height:22,borderRadius:"50%",background:sel?color:(inFilter?"rgba(0,0,0,0.75)":"rgba(0,0,0,0.35)"),color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:11,border:`2px solid ${color}`,flexShrink:0}}>{i+1}</span>
                 <span style={{fontSize:11,fontWeight:700,color:sel?"#ff6b00":"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:110}}>{d.title||"Entry"}</span>
                 {sel&&<span style={{color:"#ff6b00",fontSize:11,fontWeight:900}}>✓</span>}
               </button>
@@ -4868,7 +4863,7 @@ function DefectsMapView({defects,onView,selectMode,selectedIds,toggleId}){
   );
 }
 
-function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,member,members,onBulkUpdate,onBulkDelete,company,currentProject,onJumpToTag}){
+function DefectsList({defects,onView,onUpdate,nlFilters,onClearNl,onAiSearch,aiEnabled,member,members,onBulkUpdate,onBulkDelete,company,currentProject,onJumpToTag}){
   const[filter,setFilter]=useState("All");const[sevF,setSevF]=useState("All");const[typeF,setTypeF]=useState("All");
   const[search,setSearch]=useState("");const[showFilters,setShowFilters]=useState(false);
   // "entries" | "drawings" | "comparisons" — lets users triage drawing-side
@@ -5113,7 +5108,7 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
           <button onClick={()=>setShowMapView(true)} style={{padding:"6px 14px",borderRadius:7,border:"none",background:showMapView?"#fff":"transparent",color:showMapView?"#1a1a1a":"rgba(0,0,0,0.5)",boxShadow:showMapView?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>MAP ({pinnable.length})</button>
         </div>
       );})()}
-      {showMapView&&<DefectsMapView defects={filtered} onView={onView} selectMode={selectMode} selectedIds={selectedIds} toggleId={toggleId}/>}
+      {showMapView&&<DefectsMapView defects={filtered} allDefects={defects} onView={onView} onUpdate={onUpdate} selectMode={selectMode} selectedIds={selectedIds} toggleId={toggleId} member={member} company={company} members={members}/>}
       {!showMapView&&filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>{q?t("review.no_matching")+" \""+search+"\"":t("review.no_entries")}</div>}
       {!showMapView&&filtered.map((d,i)=>{
         const checked=selectedIds.has(d.id);
@@ -5445,7 +5440,7 @@ function DefectMiniMap({defect,allDefects}){
   );
 }
 
-function DefectDetail({defect,onClose,onUpdate,member,company,members=[],allDefects=[]}){
+function DefectDetail({defect,onClose,onUpdate,member,company,members=[],allDefects=[],embedded=false}){
   const[status,setStatus]=useState(defect.status);
   const[comment,setComment]=useState("");const[saving,setSaving]=useState(false);const[deleting,setDeleting]=useState(false);
   const[commentPhoto,setCommentPhoto]=useState(null);const[verifyPhoto,setVerifyPhoto]=useState(null);
@@ -5633,9 +5628,9 @@ function DefectDetail({defect,onClose,onUpdate,member,company,members=[],allDefe
   };
 
   return(
-    <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:100,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
-      <div style={{position:"sticky",top:0,background:"rgba(240,237,232,0.95)",backdropFilter:"blur(8px)",padding:"16px 16px 12px",display:"flex",alignItems:"center",gap:12,borderBottom:"1px solid rgba(0,0,0,0.08)",zIndex:10}}>
-        <button onClick={onClose} style={{background:"rgba(0,0,0,0.08)",border:"none",borderRadius:20,padding:"7px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.back")}</button>
+    <div style={embedded?{background:"#f0ede8",borderRadius:12,overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)",animation:"slideUp 0.2s ease"}:{position:"fixed",inset:0,background:"#f0ede8",zIndex:100,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
+      <div style={{position:embedded?"relative":"sticky",top:0,background:"rgba(240,237,232,0.95)",backdropFilter:"blur(8px)",padding:"16px 16px 12px",display:"flex",alignItems:"center",gap:12,borderBottom:"1px solid rgba(0,0,0,0.08)",zIndex:10}}>
+        <button onClick={onClose} style={{background:"rgba(0,0,0,0.08)",border:"none",borderRadius:20,padding:"7px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{embedded?"◀ BACK TO MAP":t("actions.back")}</button>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a",flex:1}}>ENTRY DETAIL</div>
         {canUpdate&&!editing&&<button onClick={()=>{setEditFields({title:defect.title||"",description:defect.description||"",severity:defect.severity||"Major",location:defect.location||"",assignee:defect.assignee||"",component:defect.component||"",issue:defect.issue||"",trade:defect.trade||"",entryType:defect.entryType||"Defect",workCategory:defect.workCategory||"Building Defects (Landed)",locationLevel:defect.locationLevel||"",locationZone:defect.locationZone||"",locationSubzone:defect.locationSubzone||"",locationGrid:defect.locationGrid||"",dueDate:defect.dueDate||"",duration:defect.duration||"",costImpact:defect.costImpact||"",costResponsible:defect.costResponsible||"",costAmount:defect.costAmount||"",costRemarks:defect.costRemarks||""});setEditing(true);}} style={{background:"rgba(255,107,0,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.edit")}</button>}
         {canDelete&&<button onClick={deleteDefect} disabled={deleting} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{deleting?"...":t("actions.delete")}</button>}
@@ -12675,7 +12670,7 @@ function App(){
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("dashboard")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect}/>}
-        {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")}/>}
+        {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} onUpdate={updateDefect} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")}/>}
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company}/>}
       </div>
 
