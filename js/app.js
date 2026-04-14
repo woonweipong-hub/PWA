@@ -2323,66 +2323,44 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
         if(!pages.length)continue;
         try{
           for(const pg of pages){
-            doc.addPage();y=18;
-            doc.setFontSize(11);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
-            doc.text(`${d.name||"Drawing"}${pages.length>1?" — Page "+pg.pageNum:""}`,margin,y);
-            doc.setTextColor(0);y+=6;
-            doc.setFontSize(8);doc.setFont(undefined,"normal");
             const notes=getDrawingNotes(d.id)||[];const markups=getDrawingMarkup(d.id)||[];
             const drawingPins=(allPins||[]).filter(p=>p.drawingId===d.id);
-            doc.text(`${drawingPins.length} pin(s), ${notes.length} note(s), ${markups.length} markup(s)${pg.isVectorSource?"  ·  vector":""}`,margin,y);y+=6;
-
             if(pg.isVectorSource){
-              // Reserve page space using the source page's native aspect ratio.
-              // The post-processing pass will draw the embedded vector page +
-              // overlay + vector markup into this rect.
-              const ratio=(pg.nativeH||1)/(pg.nativeW||1);
-              const imgW=contentW;
-              const imgH=Math.min(imgW*ratio,pageH-y-margin-10);
-              const drawnW=Math.min(imgW,imgH/(ratio||1));
-              const drawX=margin,drawY=y;
-              // Paint the raster fallback first. If the pdf-lib vector embed
-              // later fails for any reason (CORS, bad source PDF, CMYK parse
-              // error) the raster remains visible instead of a blank rect.
-              // When the vector embed succeeds, it draws directly on top and
-              // visually replaces the raster — slight file-size overhead for
-              // guaranteed non-regression.
-              if(pg.rasterFallback){
-                try{doc.addImage(pg.rasterFallback,pg.rasterFmt||"PNG",drawX,drawY,drawnW,imgH,undefined,"SLOW");}
-                catch(e){console.warn("raster fallback addImage failed",e);}
-              }else{
-                doc.setDrawColor(220);doc.setLineWidth(0.2);
-                doc.rect(drawX,drawY,drawnW,imgH);
-                doc.setDrawColor(0);
-              }
-              // Scale-factor stamp — we display a vector floor plan at a
-              // fraction of its source size to fit the A4 body, so anyone who
-              // later takes a ruler to this PDF must multiply by the stamp's
-              // ratio AND the original drawing's title-block scale to get
-              // real-world lengths. Making that ratio visible = no silent
-              // miscalculation.
+              // PDF-source drawings DON'T get an A4 preview page. The user
+              // asked for every drawing to be at its original size; the source
+              // PDF's native page gets spliced in via pdf-lib copyPages in
+              // post-process, carrying drawing title + metadata as a small
+              // caption overlay at the top-left.
               const sourceWmm=pg.nativeW*0.352778;
               const sourceHmm=pg.nativeH*0.352778;
-              const displayPct=sourceWmm>0?(drawnW/sourceWmm*100):100;
-              doc.setFontSize(6.5);doc.setFont(undefined,"normal");doc.setTextColor(110);
-              const stamp=`Source ${sourceWmm.toFixed(0)}×${sourceHmm.toFixed(0)} mm · displayed at ${displayPct.toFixed(1)}% · multiply by title-block scale for real-world units`;
-              doc.text(stamp,drawX,drawY+imgH+3.2);
-              doc.setTextColor(0);
               pdfLibSwaps.push({
-                docPageNumber:doc.getNumberOfPages(),
+                insertAfterPage:doc.getNumberOfPages(),
                 sourceUrl:pg.sourceUrl,
                 sourcePageIdx:pg.sourcePageIdx,
-                rect:{x:drawX,y:drawY,w:drawnW,h:imgH},
                 markups:pg.markups||[],
                 overlayPng:pg.overlayPng,
+                drawingName:d.name||"Drawing",
+                srcPageNum:pg.pageNum,
+                pageCountTotal:pages.length,
+                pinCount:drawingPins.length,
+                noteCount:notes.length,
+                markupCount:markups.length,
+                sourceWmm,sourceHmm,
               });
               // Emit one measurement row per measurable markup on this page.
               for(const s of markups){
                 const row=_markupMeasurementRow(s,sourceWmm,sourceHmm);
                 if(row)measurementRows.push({drawing:d.name||"",page:pg.pageNum,...row});
               }
-              y+=imgH+6;
             }else{
+              // Raster-source drawings (JPG/PNG) — no native PDF to preserve,
+              // so emit the A4 body page as before with raster + vector markup.
+              doc.addPage();y=18;
+              doc.setFontSize(11);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
+              doc.text(`${d.name||"Drawing"}${pages.length>1?" — Page "+pg.pageNum:""}`,margin,y);
+              doc.setTextColor(0);y+=6;
+              doc.setFontSize(8);doc.setFont(undefined,"normal");
+              doc.text(`${drawingPins.length} pin(s), ${notes.length} note(s), ${markups.length} markup(s)`,margin,y);y+=6;
               const img=new Image();
               await new Promise((resolve)=>{img.onload=resolve;img.onerror=resolve;img.src=pg.dataUrl;});
               if(img.width>0&&img.height>0){
@@ -2392,9 +2370,6 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
                 const actualW=imgH/(ratio||1);
                 const drawnW=Math.min(imgW,actualW);
                 const drawX=margin,drawY=y;
-                // "SLOW" = better zlib compression on the embedded JPEG/PNG
-                // stream → smaller PDF at the same pixel fidelity. Raster-source
-                // drawings stay JPEG at 0.92.
                 const fmt=pg.fmt||"JPEG";
                 doc.addImage(pg.dataUrl,fmt,drawX,drawY,drawnW,imgH,undefined,"SLOW");
                 for(const s of markups){
@@ -2585,96 +2560,80 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   try{
     if(typeof onProgress==="function")onProgress("Embedding vector drawings…");
     const PDFLib=await _waitForPdfLib();
-    const {PDFDocument,StandardFonts}=PDFLib;
-    const baseBytes=doc.output("arraybuffer");
-    const outDoc=await PDFDocument.load(baseBytes);
+    const {PDFDocument,StandardFonts,rgb}=PDFLib;
+    // Assemble the final document in a FRESH pdf-lib doc so no graphics
+    // state / colour-space from jsPDF bleeds into the copied source pages
+    // (Chrome's viewer renders CMYK bleed when state leaks).
+    const jsPdfBytes=doc.output("arraybuffer");
+    const jsPdfDoc=await PDFDocument.load(jsPdfBytes);
+    const outDoc=await PDFDocument.create();
     const helveticaBold=await outDoc.embedFont(StandardFonts.HelveticaBold);
-    // Batch source-file fetches (unique URLs) so the same drawing PDF isn't
-    // downloaded once per page.
+    // Fetch source PDFs (dedup by URL).
     const uniqueUrls=[...new Set(pdfLibSwaps.map(s=>s.sourceUrl))];
     const srcCache=new Map();
     await Promise.all(uniqueUrls.map(async u=>{
       try{srcCache.set(u,await _fetchBytes(u));}
       catch(e){console.warn("pdf-lib: source fetch failed",u,e);srcCache.set(u,null);}
     }));
-    // Two-phase pass over the swaps.
-    //
-    // Phase A (ascending): for each A4 drawing page, try to draw the source
-    // page into the reserved rect (the "preview" shown in the body of the
-    // report). If that works, great; if not, the raster fallback already
-    // painted by jsPDF is what the user sees in the A4 preview.
-    //
-    // Phase B (descending): insert a full NATIVE-SIZE page right after each
-    // A4 preview by copyPages-ing the source PDF page. This is the page
-    // surveyors actually measure from — original dimensions, original
-    // vectors, no scaling, no embed-as-XObject gymnastics. Descending order
-    // means earlier swaps' docPageNumber stays valid as we insert.
-    for(let i=0;i<pdfLibSwaps.length;i++){
-      const sw=pdfLibSwaps[i];
-      if(typeof onProgress==="function")onProgress(`Embedding drawing ${i+1}/${pdfLibSwaps.length}…`);
-      const bytes=srcCache.get(sw.sourceUrl);
-      if(!bytes)continue;
-      try{
-        const [embedded]=await outDoc.embedPdf(bytes,[sw.sourcePageIdx]);
-        const outPage=outDoc.getPage(sw.docPageNumber-1);
-        const pageHpt=outPage.getHeight();
-        const rectPt=_rectMmToPt(sw.rect.x,sw.rect.y,sw.rect.w,sw.rect.h,pageHpt);
-        outPage.drawPage(embedded,rectPt);
-        if(sw.overlayPng){
-          try{
-            const b64=sw.overlayPng.split(",")[1];
-            const pngBytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
-            const pngImg=await outDoc.embedPng(pngBytes);
-            outPage.drawImage(pngImg,rectPt);
-          }catch(e){console.warn("overlay embed failed",e);}
-        }
-        for(const s of sw.markups){
-          if(PDF_VECTOR_MARKUP_TYPES.has(s.type)){
-            _drawMarkupStrokeVectorPdfLib(outPage,sw.rect.x,sw.rect.y,sw.rect.w,sw.rect.h,pageHpt,s,{bold:helveticaBold});
-          }
-        }
-      }catch(e){console.warn("pdf-lib: rect embed failed",sw,e);}
+    // Build map: jsPDF page number → list of native swaps to append right after.
+    const insertAfter=new Map();
+    for(const sw of pdfLibSwaps){
+      const key=sw.insertAfterPage;
+      const arr=insertAfter.get(key)||[];
+      arr.push(sw);
+      insertAfter.set(key,arr);
     }
-    // Phase B — native-size source pages. Process in descending order so
-    // each insertPage doesn't shift indices of swaps we haven't processed yet.
-    const swapsByPageDesc=[...pdfLibSwaps].sort((a,b)=>b.docPageNumber-a.docPageNumber);
-    for(let i=0;i<swapsByPageDesc.length;i++){
-      const sw=swapsByPageDesc[i];
-      if(typeof onProgress==="function")onProgress(`Preserving native drawing ${i+1}/${swapsByPageDesc.length}…`);
-      const bytes=srcCache.get(sw.sourceUrl);
-      if(!bytes)continue;
-      try{
-        // Load the source as its own document so we can copyPages out of it.
-        // We intentionally don't share this with embedPdf's internal cache —
-        // pdf-lib treats those as separate flows.
-        const srcDoc=await PDFDocument.load(bytes,{ignoreEncryption:true});
-        if(sw.sourcePageIdx>=srcDoc.getPageCount())continue;
-        const [copied]=await outDoc.copyPages(srcDoc,[sw.sourcePageIdx]);
-        // Insert immediately AFTER the A4 preview page (1-indexed → 0-indexed
-        // insertion slot = docPageNumber, pushing existing pages back).
-        outDoc.insertPage(sw.docPageNumber,copied);
-        // Re-apply the overlay + vector markup to the native-size page so pins
-        // and measurable markups appear where the user drew them. The coord
-        // system is the native page's full extent in pt.
-        const nativeHpt=copied.getHeight();
-        const nativeWpt=copied.getWidth();
-        // Native rect = full page in mm for the markup helper.
-        const nativeWmm=nativeWpt/MM_TO_PT;
-        const nativeHmm=nativeHpt/MM_TO_PT;
-        if(sw.overlayPng){
-          try{
-            const b64=sw.overlayPng.split(",")[1];
-            const pngBytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
-            const pngImg=await outDoc.embedPng(pngBytes);
-            copied.drawImage(pngImg,{x:0,y:0,width:nativeWpt,height:nativeHpt});
-          }catch(e){console.warn("native overlay embed failed",e);}
-        }
-        for(const s of sw.markups){
-          if(PDF_VECTOR_MARKUP_TYPES.has(s.type)){
-            _drawMarkupStrokeVectorPdfLib(copied,0,0,nativeWmm,nativeHmm,nativeHpt,s,{bold:helveticaBold});
+    const jsPageCount=jsPdfDoc.getPageCount();
+    let nativeProgress=0;
+    const totalNative=pdfLibSwaps.length;
+    for(let p=1;p<=jsPageCount;p++){
+      const [jsCopied]=await outDoc.copyPages(jsPdfDoc,[p-1]);
+      outDoc.addPage(jsCopied);
+      const swaps=insertAfter.get(p)||[];
+      for(const sw of swaps){
+        nativeProgress++;
+        if(typeof onProgress==="function")onProgress(`Preserving native drawing ${nativeProgress}/${totalNative}…`);
+        const bytes=srcCache.get(sw.sourceUrl);
+        if(!bytes){console.warn("pdf-lib: no bytes for",sw.sourceUrl);continue;}
+        try{
+          const srcDoc=await PDFDocument.load(bytes,{ignoreEncryption:true});
+          if(sw.sourcePageIdx>=srcDoc.getPageCount())continue;
+          const [copied]=await outDoc.copyPages(srcDoc,[sw.sourcePageIdx]);
+          outDoc.addPage(copied);
+          const nativeWpt=copied.getWidth();
+          const nativeHpt=copied.getHeight();
+          const nativeWmm=nativeWpt/MM_TO_PT;
+          const nativeHmm=nativeHpt/MM_TO_PT;
+          // Overlay PNG (pins, notes, non-vector markup) — transparent, sits
+          // directly on top of the native page without scaling distortion.
+          if(sw.overlayPng){
+            try{
+              const b64=sw.overlayPng.split(",")[1];
+              const pngBytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+              const pngImg=await outDoc.embedPng(pngBytes);
+              copied.drawImage(pngImg,{x:0,y:0,width:nativeWpt,height:nativeHpt});
+            }catch(e){console.warn("native overlay embed failed",e);}
           }
-        }
-      }catch(e){console.warn("pdf-lib: native page insert failed",sw,e);}
+          for(const s of sw.markups){
+            if(PDF_VECTOR_MARKUP_TYPES.has(s.type)){
+              _drawMarkupStrokeVectorPdfLib(copied,0,0,nativeWmm,nativeHmm,nativeHpt,s,{bold:helveticaBold});
+            }
+          }
+          // Caption at top-left corner — drawing name + annotation counts +
+          // "SiteShrimp" stamp so each native page identifies itself without
+          // depending on a preceding A4 title page.
+          const pageLabel=sw.pageCountTotal>1?` · Page ${sw.srcPageNum}`:"";
+          const captionText=`${sw.drawingName}${pageLabel} · ${sw.pinCount} pin(s), ${sw.noteCount} note(s), ${sw.markupCount} markup(s)`;
+          try{
+            // White pill behind caption so the text stays legible over any
+            // line work underneath.
+            const fontSize=10;
+            const textWidth=helveticaBold.widthOfTextAtSize(captionText,fontSize);
+            copied.drawRectangle({x:10,y:nativeHpt-22,width:textWidth+12,height:16,color:rgb(1,1,1),borderColor:rgb(1,0.42,0),borderWidth:0.8,opacity:0.92});
+            copied.drawText(captionText,{x:16,y:nativeHpt-18,size:fontSize,font:helveticaBold,color:rgb(1,0.42,0)});
+          }catch(e){console.warn("caption failed",e);}
+        }catch(e){console.warn("pdf-lib: native page insert failed",sw,e);}
+      }
     }
     if(typeof onProgress==="function")onProgress("Saving PDF…");
     const finalBytes=await outDoc.save({useObjectStreams:true});
@@ -2686,7 +2645,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
     downloadCsv();
   }catch(err){
-    // Fall back to the un-merged PDF so the user still gets their report.
+    // Fall back to the jsPDF-only base so the user still gets their report.
     console.warn("pdf-lib post-process failed; saving base PDF",err);
     if(typeof onProgress==="function")onProgress("Saving PDF…");
     doc.save(fileName);
