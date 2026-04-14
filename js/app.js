@@ -1843,12 +1843,24 @@ function _osmZoomForBounds(minLat,maxLat,minLng,maxLng,widthPx,heightPx){
 }
 
 // Full report export — PDF version with professional layout
+// Rough device class — phones / tablets get the "fast" export (raster
+// drawings in A4, no pdf-lib post-process, sub-second export). Laptops get
+// the "lossless" export (native-size source pages, pure vector overlays,
+// bigger wait). User can override via opts.fastMode.
+function _isMobileLikeDevice(){
+  if(typeof navigator==="undefined")return false;
+  const ua=(navigator.userAgent||"").toLowerCase();
+  return /iphone|ipad|android|mobile|tablet|ipod|blackberry|webos/.test(ua);
+}
 async function exportReportPdf(defects,drawings,savedComparisons,projectName,companyName,allPins,contractAdvisory,allDefectsForPins,onProgress,opts){
   opts=opts||{};
   const incMap=opts.incMap!==false;
   const gmapsKey=opts.gmapsKey||"";
   const mapProvider=opts.mapProvider||(gmapsKey?"gmaps":"osm");
   const mapDefects=incMap?(defects||[]).filter(d=>typeof d.lat==="number"&&typeof d.lng==="number"):[];
+  // Fast mode = raster A4 drawing pages, no pdf-lib. Lossless mode = native
+  // source pages + pure-vector overlays via pdf-lib. Default: auto-detect.
+  const fastMode=typeof opts.fastMode==="boolean"?opts.fastMode:_isMobileLikeDevice();
   if(typeof onProgress==="function")onProgress("Preparing report…");
   const doc=new jspdf.jsPDF("p","mm","a4");
   const pageW=doc.internal.pageSize.getWidth();
@@ -2341,7 +2353,9 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
       // vector page + overlays in that rect. Image-source (JPG/PNG) drawings
       // stay on the raster + vector-markup path — there's no vector gain
       // available and the path is already tuned.
+      // Vector path only when we're in lossless mode AND pdf-lib is around.
       const hasPdfLib=typeof window.PDFLib!=="undefined"||!!document.querySelector('script[src*="pdf-lib"]');
+      const vectorDrawingsEnabled=!fastMode&&hasPdfLib;
       const RENDER_CONCURRENCY=2;
       const renderedByIdx=new Array(annotated.length);
       let renderCursor=0,renderedCount=0;
@@ -2352,7 +2366,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
           const d=annotated[i];
           try{
             const isPdfSrc=/\.pdf$/i.test(d.file||"");
-            const renderOpts=(hasPdfLib&&isPdfSrc)?{vectorSource:true}:{vectorMarkup:true};
+            const renderOpts=(vectorDrawingsEnabled&&isPdfSrc)?{vectorSource:true}:{vectorMarkup:true};
             const pages=await renderDrawingAnnotatedPages(d,(allDefectsForPins&&allDefectsForPins.length?allDefectsForPins:defects),allPins||[],renderOpts);
             renderedByIdx[i]=pages||[];
           }catch(e){console.warn("exportReportPdf: render failed",d.name,e);renderedByIdx[i]=[];}
@@ -6847,7 +6861,8 @@ function Report({defects,onEmailSetup,currentProject,company}){
           {showExportMenu&&(
             <div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(0,0,0,0.08)",zIndex:20,minWidth:160,overflow:"hidden"}}>
               <button disabled={pdfExport.active} onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")}</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.4)"}}>· on-site (fast)</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing hi-quality report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (vector)</span></button>
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);setPdfExport({active:true,label:"Preparing report…"});try{await new Promise(r=>setTimeout(r,600));await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
               <button onClick={async()=>{setShowExportMenu(false);try{const result=await exportToGoogleSheets(incDefects?filtered:[],currentProject?.name,company?.companyName);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
             </div>
