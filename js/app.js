@@ -8075,8 +8075,8 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[aiEnhance,setAiEnhance]=useState(false);
   const aiEnhanceOneToPdfBlob=async(file,onStage)=>{
     const report=(stage,within=0)=>{if(onStage)onStage(stage,within);};
-    const key=local.get(GEMINI_KEY);
-    if(!key)throw new Error("Gemini key missing — configure AI in Settings first.");
+    if(!isAiConfigured())throw new Error("No AI provider configured — open Settings → AI Setup.");
+    const key=local.get(GEMINI_KEY); // Only used by the Gemini branch below.
     if(!window.jspdf||!window.svg2pdf)throw new Error("PDF libs not loaded — refresh the app.");
     report("read",0);
     const dataUrl=await new Promise((resolve,reject)=>{
@@ -8112,34 +8112,68 @@ Requirements:
 - Keep dimensions/rough layout faithful to the image; prefer clean orthogonal lines over every tiny wobble.
 - Do not include grids, hatching, or decorative shading — walls, openings, labels only.
 - If you cannot identify something confidently, leave it out rather than guessing.`;
-    const res=await geminiGenerate(key,{
-      contents:[{parts:[
-        {inline_data:{mime_type:"image/jpeg",data:b64}},
-        {text:prompt},
-      ]}],
-      generationConfig:{temperature:0.2,maxOutputTokens:8192},
-    });
-    const data=await res.json();
-    // Surface the real failure mode instead of "empty response":
-    //   - HTTP error (429 quota, 403 auth, 400 bad request) → data.error
-    //   - Content blocked by safety filters → candidates[].finishReason
-    //   - Model refusal → no candidates at all
-    if(data?.error){
-      const msg=data.error.message||"Unknown API error";
-      const code=data.error.code||res.status;
-      if(code===429||/quota|rate/i.test(msg))throw new Error(`Gemini quota / rate limit (${code}). Wait a minute or check your free-tier daily cap.`);
-      if(code===403||code===401||/API key|auth/i.test(msg))throw new Error(`Gemini auth failed (${code}): ${msg}. Re-enter your key in Settings → AI Setup.`);
-      throw new Error(`Gemini API error (${code}): ${msg}`);
-    }
-    const cand=data?.candidates?.[0];
-    if(!cand)throw new Error("Gemini returned no candidates. Likely the model isn't vision-capable — Settings → AI Setup → re-test the key, it should pick a vision model like gemini-1.5-flash.");
-    if(cand.finishReason==="SAFETY")throw new Error("Gemini blocked the response (safety filters). Try a different image.");
-    if(cand.finishReason==="MAX_TOKENS")throw new Error("Gemini response was cut off at maxTokens — image may be too complex. Try a smaller / simpler drawing.");
-    const parts=cand.content?.parts||[];
-    let text=parts.filter(p=>p.text&&!p.thought).map(p=>p.text).join("\n").trim();
-    if(!text){
-      const finish=cand.finishReason||"no text returned";
-      throw new Error(`Gemini returned no text (finishReason: ${finish}). Raw: ${JSON.stringify(data).slice(0,200)}`);
+    // Dispatch to whichever AI provider the user has configured. Each path
+    // returns plain text which we then parse as SVG below.
+    const provider=local.get(AI_PROVIDER_KEY)||"gemini";
+    let text="";
+    if(provider==="ollama"){
+      const cfg=local.get(OLLAMA_KEY)||{};
+      if(!cfg.url)throw new Error("Ollama URL missing — configure AI in Settings → AI Setup.");
+      const ollamaUrl=(cfg.url||"http://localhost:11434").replace(/\/+$/,"");
+      // LLaVA / Llama-3.2-Vision / bakllava are the common local vision
+      // models. If user didn't pick, default to llava since it's most
+      // commonly pulled.
+      const model=cfg.model||"llava";
+      const res=await fetch(ollamaUrl+"/api/generate",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model,prompt,images:[b64],stream:false,options:{temperature:0.2,num_predict:4096}}),
+      });
+      if(!res.ok)throw new Error(`Ollama error ${res.status}: ${await res.text().catch(()=>"")}`);
+      const data=await res.json();
+      text=(data.response||"").trim();
+      if(!text)throw new Error(`Ollama returned no text (model: ${model}). Pull a vision model: "ollama pull llava" or "ollama pull llama3.2-vision".`);
+    }else if(provider==="openai"){
+      const cfg=local.get(OPENAI_KEY)||{};
+      if(!cfg.apiKey)throw new Error("OpenAI key missing — configure AI in Settings → AI Setup.");
+      const openaiUrl=(cfg.url||"https://api.openai.com").replace(/\/+$/,"");
+      const model=cfg.model||"gpt-4o-mini";
+      const res=await fetch(openaiUrl+"/v1/chat/completions",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},
+        body:JSON.stringify({model,max_tokens:8192,messages:[{role:"user",content:[
+          {type:"image_url",image_url:{url:"data:image/jpeg;base64,"+b64,detail:"high"}},
+          {type:"text",text:prompt},
+        ]}]}),
+      });
+      const data=await res.json();
+      if(data?.error)throw new Error(`OpenAI error: ${data.error.message||JSON.stringify(data.error)}`);
+      text=(data.choices?.[0]?.message?.content||"").trim();
+      if(!text)throw new Error("OpenAI returned no text. Check model and quota.");
+    }else{
+      // Gemini (default)
+      if(!key)throw new Error("Gemini key missing — configure AI in Settings → AI Setup.");
+      const res=await geminiGenerate(key,{
+        contents:[{parts:[
+          {inline_data:{mime_type:"image/jpeg",data:b64}},
+          {text:prompt},
+        ]}],
+        generationConfig:{temperature:0.2,maxOutputTokens:8192},
+      });
+      const data=await res.json();
+      if(data?.error){
+        const msg=data.error.message||"Unknown API error";
+        const code=data.error.code||res.status;
+        if(code===429||/quota|rate/i.test(msg))throw new Error(`Gemini quota / rate limit (${code}). Wait a minute or check your free-tier daily cap.`);
+        if(code===403||code===401||/API key|auth/i.test(msg))throw new Error(`Gemini auth failed (${code}): ${msg}. Re-enter your key in Settings → AI Setup.`);
+        throw new Error(`Gemini API error (${code}): ${msg}`);
+      }
+      const cand=data?.candidates?.[0];
+      if(!cand)throw new Error("Gemini returned no candidates. Try a vision model like gemini-1.5-flash (Settings → AI Setup).");
+      if(cand.finishReason==="SAFETY")throw new Error("Gemini blocked the response (safety filters).");
+      if(cand.finishReason==="MAX_TOKENS")throw new Error("Gemini response was cut off at maxTokens — try a smaller image.");
+      const parts=cand.content?.parts||[];
+      text=parts.filter(p=>p.text&&!p.thought).map(p=>p.text).join("\n").trim();
+      if(!text)throw new Error(`Gemini returned no text (finishReason: ${cand.finishReason||"none"}).`);
     }
     text=text.replace(/^```(?:xml|svg)?\s*/i,"").replace(/```\s*$/,"").trim();
     const svgStart=text.indexOf("<svg");
