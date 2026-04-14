@@ -4663,15 +4663,37 @@ function MapThumb({defect}){
 }
 
 // SiteCam-style consolidated map: every GPS-pinned entry shown on one map,
-// numbered + severity coloured, auto-fit to bounds, tap to open.
-function DefectsMapView({defects,onView}){
+// numbered + severity coloured. Tapping a pin focuses it (preview card slides
+// up at the rear of the master map); bottom chip strip lists all pins for
+// quick navigation and batch select/edit across map-visible entries.
+function DefectsMapView({defects,onView,selectMode,selectedIds,toggleId}){
   const mapRef=useRef(null);
   const mapObj=useRef(null);
+  const markersRef=useRef([]); // [{marker, d, i, c}]
+  const providerRef=useRef("");
   const[status,setStatus]=useState("loading");
+  const[focusId,setFocusId]=useState(null);
   const pinned=(defects||[]).map(d=>({d,c:parseDefectCoords(d)})).filter(x=>x.c);
+  const focused=pinned.find(x=>x.d.id===focusId);
+
+  // Build a pin icon. Selected entries get a filled-severity look so batch
+  // selection is legible at a glance; focused pin is slightly larger.
+  const buildSvg=(d,i,{selected,focused,size})=>{
+    const color=SEV_COLOR[d.severity]||"#8e8e93";
+    const r=size===40?16:13;
+    const fill=selected?color:"rgba(0,0,0,0.75)";
+    const stroke=selected?"#1a1a1a":color;
+    const textColor=selected?"#1a1a1a":"#fff";
+    const extra=focused?`<circle cx="${size/2}" cy="${size/2}" r="${r+3}" fill="none" stroke="${color}" stroke-width="2" opacity="0.9"/>`:"";
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${extra}<circle cx="${size/2}" cy="${size/2}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="3"/><text x="${size/2}" y="${size/2+1}" text-anchor="middle" dominant-baseline="central" font-size="${size===40?14:12}" font-weight="900" fill="${textColor}" font-family="'Barlow Condensed',sans-serif">${i+1}</text></svg>`;
+  };
+
+  // Build the map + pins once per defect set (creation is expensive — selection
+  // state updates go through a separate effect that mutates icons in place).
   useEffect(()=>{
     if(pinned.length===0||!mapRef.current)return;
     const provider=getMapProvider();
+    providerRef.current=provider;
     let cancelled=false;
     (async()=>{
       if(provider==="gmaps"){
@@ -4681,12 +4703,12 @@ function DefectsMapView({defects,onView}){
         const map=new g.Map(mapRef.current,{mapTypeId:"hybrid",streetViewControl:false,fullscreenControl:false,gestureHandling:"greedy"});
         mapObj.current=map;
         const bounds=new g.LatLngBounds();
-        pinned.forEach(({d,c},i)=>{
-          const color=SEV_COLOR[d.severity]||"#8e8e93";
-          const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="rgba(0,0,0,0.6)" stroke="${color}" stroke-width="3"/><text x="16" y="17" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="900" fill="#fff" font-family="'Barlow Condensed',sans-serif">${i+1}</text></svg>`;
+        markersRef.current=pinned.map(({d,c},i)=>{
+          const svg=buildSvg(d,i,{selected:false,focused:false,size:32});
           const m=new g.Marker({position:c,map,icon:{url:"data:image/svg+xml;utf8,"+encodeURIComponent(svg),scaledSize:new g.Size(32,32),anchor:new g.Point(16,16)},title:`${i+1}. ${d.title||"Entry"}`});
-          m.addListener("click",()=>onView(d));
+          m.addListener("click",()=>handlePinTap(d));
           bounds.extend(c);
+          return{marker:m,d,i,c};
         });
         if(pinned.length===1)map.setCenter(pinned[0].c),map.setZoom(17);
         else map.fitBounds(bounds,40);
@@ -4698,31 +4720,132 @@ function DefectsMapView({defects,onView}){
         L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,crossOrigin:"anonymous"}).addTo(map);
         mapObj.current=map;
         const group=[];
-        pinned.forEach(({d,c},i)=>{
-          const color=SEV_COLOR[d.severity]||"#8e8e93";
-          const html=`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="rgba(0,0,0,0.6)" stroke="${color}" stroke-width="3"/><text x="16" y="17" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="900" fill="#fff" font-family="'Barlow Condensed',sans-serif">${i+1}</text></svg>`;
+        markersRef.current=pinned.map(({d,c},i)=>{
+          const html=buildSvg(d,i,{selected:false,focused:false,size:32});
           const m=L.marker([c.lat,c.lng],{icon:L.divIcon({className:"",html,iconSize:[32,32],iconAnchor:[16,16]}),title:`${i+1}. ${d.title||"Entry"}`}).addTo(map);
-          m.on("click",()=>onView(d));
+          m.on("click",()=>handlePinTap(d));
           group.push([c.lat,c.lng]);
+          return{marker:m,d,i,c};
         });
         if(pinned.length>1)map.fitBounds(group,{padding:[40,40]});
       }
       setStatus("ready");
       setTimeout(()=>{try{if(provider==="gmaps")window.google.maps.event.trigger(mapObj.current,"resize");else mapObj.current.invalidateSize();}catch{}},100);
     })();
-    return()=>{cancelled=true;if(mapObj.current&&mapObj.current.remove)try{mapObj.current.remove();}catch{}};
+    return()=>{
+      cancelled=true;
+      markersRef.current=[];
+      if(mapObj.current&&mapObj.current.remove)try{mapObj.current.remove();}catch{}
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[defects?.length]);
+
+  // Update marker icons when selection / focus changes — no map rebuild.
+  useEffect(()=>{
+    if(!markersRef.current.length)return;
+    const provider=providerRef.current;
+    markersRef.current.forEach(({marker,d,i})=>{
+      const selected=selectedIds?.has(d.id);
+      const isFocus=focusId===d.id;
+      const size=isFocus?40:32;
+      const svg=buildSvg(d,i,{selected,focused:isFocus,size});
+      if(provider==="gmaps"&&window.google?.maps){
+        marker.setIcon({url:"data:image/svg+xml;utf8,"+encodeURIComponent(svg),scaledSize:new window.google.maps.Size(size,size),anchor:new window.google.maps.Point(size/2,size/2)});
+      }else if(window.L){
+        marker.setIcon(window.L.divIcon({className:"",html:svg,iconSize:[size,size],iconAnchor:[size/2,size/2]}));
+        if(isFocus)marker.setZIndexOffset(1000);else marker.setZIndexOffset(0);
+      }
+    });
+  },[selectedIds,focusId,selectMode]);
+
+  // Pin-tap handler — toggles selection in select mode, otherwise focuses
+  // the pin and pans the master map to it. Defined via ref so the click
+  // listener (bound at map-build time) always sees current state.
+  const stateRef=useRef({selectMode,toggleId});
+  stateRef.current={selectMode,toggleId};
+  const handlePinTap=(d)=>{
+    const {selectMode:sm,toggleId:tg}=stateRef.current;
+    if(sm){tg&&tg(d.id);return;}
+    setFocusId(d.id);
+    panTo(parseDefectCoords(d));
+  };
+  const panTo=(c)=>{
+    if(!c||!mapObj.current)return;
+    try{
+      if(providerRef.current==="gmaps")mapObj.current.panTo(c);
+      else mapObj.current.panTo([c.lat,c.lng]);
+    }catch{}
+  };
+
   if(pinned.length===0)return(
     <div style={{textAlign:"center",color:"rgba(0,0,0,0.4)",padding:"40px 20px",fontSize:13,background:"#fff",borderRadius:12}}>
       No entries have GPS coordinates yet. Drop pins in Tag on Map to see them here.
     </div>
   );
+
   return(
-    <div style={{position:"relative",marginBottom:10,background:"#fff",borderRadius:12,overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)"}}>
-      <div ref={mapRef} style={{width:"100%",height:"min(65dvh,560px)",minHeight:320,background:"#e5e3dc"}}/>
-      <div style={{position:"absolute",top:10,left:10,background:"rgba(26,26,26,0.85)",color:"#fff",padding:"6px 12px",borderRadius:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,pointerEvents:"none"}}>{pinned.length} pinned · tap a marker to open</div>
-      {status==="error"&&<div style={{padding:20,color:"#ff3b30",textAlign:"center"}}>Could not load the map. Check your connection and provider in Settings → Maps.</div>}
+    <div style={{marginBottom:10}}>
+      {/* Master map — fixed panel, preview card slides up over its bottom. */}
+      <div style={{position:"relative",background:"#fff",borderRadius:12,overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)"}}>
+        <div ref={mapRef} style={{width:"100%",height:"min(55dvh,480px)",minHeight:300,background:"#e5e3dc"}}/>
+        <div style={{position:"absolute",top:10,left:10,background:"rgba(26,26,26,0.85)",color:"#fff",padding:"6px 12px",borderRadius:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,pointerEvents:"none"}}>{pinned.length} pinned{selectMode?" · tap to select":" · tap a pin to preview"}</div>
+        {status==="error"&&<div style={{padding:20,color:"#ff3b30",textAlign:"center"}}>Could not load the map. Check your connection and provider in Settings → Maps.</div>}
+
+        {/* Preview sheet — slides up from the bottom of the map, keeps the
+            map visible so users don't lose spatial context. */}
+        {focused&&(
+          <div className="anim" style={{position:"absolute",left:10,right:10,bottom:10,background:"#fff",borderRadius:14,padding:"12px 14px",boxShadow:"0 8px 28px rgba(0,0,0,0.28)",borderLeft:`4px solid ${SEV_COLOR[focused.d.severity]||"#8e8e93"}`,animation:"slideUp 0.2s ease"}}>
+            <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
+              <div style={{width:26,height:26,borderRadius:"50%",background:SEV_COLOR[focused.d.severity]||"#8e8e93",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:13,flexShrink:0}}>{pinned.findIndex(x=>x.d.id===focused.d.id)+1}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{focused.d.title||"Entry"}</div>
+                <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>
+                  {focused.d.status&&<span style={{fontSize:10,fontWeight:800,padding:"2px 7px",borderRadius:10,background:STATUS_COLOR[focused.d.status]||"rgba(0,0,0,0.3)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif"}}>{focused.d.status.toUpperCase()}</span>}
+                  {focused.d.severity&&<span style={{fontSize:10,fontWeight:800,padding:"2px 7px",borderRadius:10,background:SEV_COLOR[focused.d.severity],color:"#fff",fontFamily:"'Barlow Condensed',sans-serif"}}>{focused.d.severity.toUpperCase()}</span>}
+                  {focused.d.assignee&&<span style={{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:10,background:"rgba(0,0,0,0.06)",color:"rgba(0,0,0,0.7)",fontFamily:"'Barlow Condensed',sans-serif"}}>@{focused.d.assignee}</span>}
+                </div>
+              </div>
+              <button onClick={()=>setFocusId(null)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:"50%",width:26,height:26,cursor:"pointer",fontSize:15,color:"rgba(0,0,0,0.55)",flexShrink:0}}>×</button>
+            </div>
+            <div style={{display:"flex",gap:6,marginTop:10}}>
+              {selectMode?(
+                <button onClick={()=>toggleId&&toggleId(focused.d.id)} style={{flex:1,background:selectedIds?.has(focused.d.id)?"#ff6b00":"rgba(255,107,0,0.08)",border:`1.5px solid ${selectedIds?.has(focused.d.id)?"#ff6b00":"rgba(255,107,0,0.3)"}`,borderRadius:10,padding:"9px",color:selectedIds?.has(focused.d.id)?"#fff":"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{selectedIds?.has(focused.d.id)?"✓ SELECTED":"+ ADD TO SELECTION"}</button>
+              ):(
+                <button onClick={()=>onView(focused.d)} style={{flex:1,background:"#ff6b00",border:"none",borderRadius:10,padding:"9px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>OPEN DETAILS ▸</button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Pin chip strip — horizontal list of every pin on the current map,
+          so users can page through entries (and toggle batch selection)
+          without hunting for markers. Thumb-friendly on phones. */}
+      <div style={{marginTop:8,background:"#fff",borderRadius:12,border:"1px solid rgba(0,0,0,0.08)",padding:"8px 10px"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,color:"rgba(0,0,0,0.55)",letterSpacing:0.5}}>ALL PINS ({pinned.length}){selectMode&&selectedIds?.size>0?` · ${selectedIds.size} SELECTED`:""}</div>
+          {selectMode&&(
+            <div style={{display:"flex",gap:6}}>
+              <button onClick={()=>{pinned.forEach(({d})=>{if(!selectedIds?.has(d.id))toggleId&&toggleId(d.id);});}} style={{background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:12,padding:"3px 9px",color:"#ff6b00",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>SELECT ALL</button>
+              {selectedIds?.size>0&&<button onClick={()=>{pinned.forEach(({d})=>{if(selectedIds.has(d.id))toggleId&&toggleId(d.id);});}} style={{background:"none",border:"1px solid rgba(0,0,0,0.12)",borderRadius:12,padding:"3px 9px",color:"rgba(0,0,0,0.55)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>CLEAR</button>}
+            </div>
+          )}
+        </div>
+        <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4,WebkitOverflowScrolling:"touch"}}>
+          {pinned.map(({d},i)=>{
+            const sel=selectedIds?.has(d.id);
+            const foc=focusId===d.id;
+            const color=SEV_COLOR[d.severity]||"#8e8e93";
+            return(
+              <button key={d.id} onClick={()=>selectMode?(toggleId&&toggleId(d.id)):(setFocusId(d.id),panTo(parseDefectCoords(d)))} title={`${i+1}. ${d.title||"Entry"}`} style={{flexShrink:0,display:"flex",alignItems:"center",gap:6,padding:"6px 10px 6px 6px",borderRadius:18,border:`1.5px solid ${sel?"#ff6b00":foc?color:"rgba(0,0,0,0.12)"}`,background:sel?"rgba(255,107,0,0.1)":foc?"rgba(0,0,0,0.04)":"#fff",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",maxWidth:160}}>
+                <span style={{width:22,height:22,borderRadius:"50%",background:sel?color:"rgba(0,0,0,0.75)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:11,border:`2px solid ${color}`,flexShrink:0}}>{i+1}</span>
+                <span style={{fontSize:11,fontWeight:700,color:sel?"#ff6b00":"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:110}}>{d.title||"Entry"}</span>
+                {sel&&<span style={{color:"#ff6b00",fontSize:11,fontWeight:900}}>✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -4759,8 +4882,9 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
   const[bulkAssignee,setBulkAssignee]=useState("");
   const[bulkDuration,setBulkDuration]=useState("");
   const[bulkDueDate,setBulkDueDate]=useState("");
+  const[bulkComment,setBulkComment]=useState("");
   const[bulkSaving,setBulkSaving]=useState(false);
-  const exitSelect=()=>{setSelectMode(false);setSelectedIds(new Set());setShowBulkPanel(false);setBulkStatus("");setBulkSeverity("");setBulkAssignee("");setBulkDuration("");setBulkDueDate("");};
+  const exitSelect=()=>{setSelectMode(false);setSelectedIds(new Set());setShowBulkPanel(false);setBulkStatus("");setBulkSeverity("");setBulkAssignee("");setBulkDuration("");setBulkDueDate("");setBulkComment("");};
   const toggleId=id=>setSelectedIds(prev=>{const n=new Set(prev);if(n.has(id))n.delete(id);else n.add(id);return n;});
   const applyBulk=async()=>{
     const patch={};
@@ -4769,10 +4893,11 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
     if(bulkAssignee.trim())patch.assignee=bulkAssignee.trim();
     if(bulkDuration)patch.duration=bulkDuration;
     if(bulkDueDate)patch.dueDate=bulkDueDate;
-    if(!Object.keys(patch).length){alert("Pick at least one field to update.");return;}
+    const appendComment=bulkComment.trim();
+    if(!Object.keys(patch).length&&!appendComment){alert("Pick at least one field to update, or write a shared comment.");return;}
     setBulkSaving(true);
     try{
-      const res=await onBulkUpdate(Array.from(selectedIds),patch);
+      const res=await onBulkUpdate(Array.from(selectedIds),patch,{appendComment});
       alert(`Updated ${res.ok} entr${res.ok===1?"y":"ies"}${res.failed?` · ${res.failed} failed`:""}.`);
       exitSelect();
     }catch(e){alert("Bulk update failed: "+e.message);}
@@ -4967,10 +5092,10 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
       {(()=>{const pinnable=filtered.filter(d=>parseDefectCoords(d));if(pinnable.length===0)return null;return(
         <div style={{display:"flex",gap:4,padding:3,background:"rgba(0,0,0,0.05)",borderRadius:10,marginBottom:12,width:"max-content"}}>
           <button onClick={()=>setShowMapView(false)} style={{padding:"6px 14px",borderRadius:7,border:"none",background:!showMapView?"#fff":"transparent",color:!showMapView?"#1a1a1a":"rgba(0,0,0,0.5)",boxShadow:!showMapView?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>📋 LIST</button>
-          <button onClick={()=>setShowMapView(true)} style={{padding:"6px 14px",borderRadius:7,border:"none",background:showMapView?"#fff":"transparent",color:showMapView?"#1a1a1a":"rgba(0,0,0,0.5)",boxShadow:showMapView?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>🗺 MAP ({pinnable.length})</button>
+          <button onClick={()=>setShowMapView(true)} style={{padding:"6px 14px",borderRadius:7,border:"none",background:showMapView?"#fff":"transparent",color:showMapView?"#1a1a1a":"rgba(0,0,0,0.5)",boxShadow:showMapView?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>MAP ({pinnable.length})</button>
         </div>
       );})()}
-      {showMapView&&<DefectsMapView defects={filtered} onView={onView}/>}
+      {showMapView&&<DefectsMapView defects={filtered} onView={onView} selectMode={selectMode} selectedIds={selectedIds} toggleId={toggleId}/>}
       {!showMapView&&filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>{q?t("review.no_matching")+" \""+search+"\"":t("review.no_entries")}</div>}
       {!showMapView&&filtered.map((d,i)=>{
         const checked=selectedIds.has(d.id);
@@ -5047,9 +5172,14 @@ function DefectsList({defects,onView,nlFilters,onClearNl,onAiSearch,aiEnabled,me
             </datalist>
           </div>
 
-          <div style={{marginBottom:14}}>
+          <div style={{marginBottom:10}}>
             <div style={lbl()}>TARGET DATE</div>
             <input type="date" value={bulkDueDate} onChange={e=>setBulkDueDate(e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
+          </div>
+
+          <div style={{marginBottom:14}}>
+            <div style={lbl()}>SHARED COMMENT</div>
+            <textarea value={bulkComment} onChange={e=>setBulkComment(e.target.value)} placeholder="Optional — appended to every selected entry" rows={2} style={{...inp,width:"100%",flex:"unset",resize:"vertical",minHeight:44,fontFamily:"inherit"}}/>
           </div>
 
           <div style={{display:"flex",gap:8}}>
@@ -5285,7 +5415,7 @@ function DefectMiniMap({defect,allDefects}){
   return(
     <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid rgba(0,0,0,0.06)"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-        <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em"}}>🗺 MAP LOCATION{nearbyCount>0?` · ${nearbyCount} nearby`:""}</div>
+        <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",display:"inline-flex",alignItems:"center",gap:5}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>MAP LOCATION{nearbyCount>0?` · ${nearbyCount} nearby`:""}</div>
         <a href={openUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#ff6b00",textDecoration:"none"}}>Open in Google Maps →</a>
       </div>
       <div ref={mapRef} style={{position:"relative",width:"100%",height:220,borderRadius:10,border:"1px solid rgba(0,0,0,0.1)",background:"#e5e3dc",overflow:"hidden",isolation:"isolate",contain:"layout paint"}}/>
@@ -6173,7 +6303,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
           {key:"defects",val:incDefects,set:setIncDefects,icon:"📋",label:t("report.defect_entries"),count:filtered.length,color:"#ff3b30"},
           {key:"drawings",val:incDrawings,set:setIncDrawings,icon:"📐",label:t("report.pdf_drawings"),count:drawingsWithAnnotations.length,sub:`${totalPins} ${t("report.pins")} · ${totalMarkups} ${t("report.markups")} · ${totalNotes} ${t("report.notes")}`,color:"#ff6b00"},
           {key:"comparisons",val:incComparisons,set:setIncComparisons,icon:"🔍",label:t("report.saved_comparisons"),count:savedComparisons.length,color:"#5856d6"},
-          {key:"map",val:incMap,set:setIncMap,icon:"🗺",label:t("maps.map_view"),count:(filtered.filter(d=>typeof d.lat==="number"&&typeof d.lng==="number")).length,color:"#34aadc",sub:local.get(GMAPS_KEY)?t("maps.all_on_map"):t("maps.no_api_key")}
+          {key:"map",val:incMap,set:setIncMap,icon:<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign:"-2px"}}><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>,label:t("maps.map_view"),count:(filtered.filter(d=>typeof d.lat==="number"&&typeof d.lng==="number")).length,color:"#34aadc",sub:local.get(GMAPS_KEY)?t("maps.all_on_map"):t("maps.no_api_key")}
         ].map(sec=>(
           <button key={sec.key} onClick={()=>sec.set(v=>!v)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",marginBottom:6,borderRadius:10,border:`1.5px solid ${sec.val?sec.color+"40":"rgba(0,0,0,0.08)"}`,background:sec.val?sec.color+"0a":"#fafafa",cursor:"pointer",textAlign:"left"}}>
             <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${sec.val?sec.color:"rgba(0,0,0,0.15)"}`,background:sec.val?sec.color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#fff",flexShrink:0}}>{sec.val?"✓":""}</div>
@@ -6478,7 +6608,7 @@ function setProjectMapDefault(projectId,view){
 // ── Maps Settings (provider + optional Google key) ───────────────
 const MAP_PROVIDERS=[
   {id:"osm",label:"OpenStreetMap",icon:"🌍",desc:"Free · No key · No billing · Works out of the box",color:"#30d158"},
-  {id:"gmaps",label:"Google Maps",icon:"🗺",desc:"Satellite + Places search · Needs API key + billing",color:"#4285f4"},
+  {id:"gmaps",label:"Google Maps",icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign:"-2px"}}><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>,desc:"Satellite + Places search · Needs API key + billing",color:"#4285f4"},
 ];
 function MapsSettings({onClose}){
   const[provider,setProvider]=useState(()=>local.get(MAP_PROVIDER_KEY)||"osm");
@@ -12259,29 +12389,47 @@ function App(){
   };
 
   // Bulk update — applies a patch to many defects. Returns {ok,failed}.
-  const bulkUpdate=async(ids,patch)=>{
-    if(!ids||!ids.length||!patch||!Object.keys(patch).length)return{ok:0,failed:0};
+  const bulkUpdate=async(ids,patch,opts={})=>{
+    const appendComment=(opts.appendComment||"").trim();
+    if(!ids||!ids.length)return{ok:0,failed:0};
+    if((!patch||!Object.keys(patch).length)&&!appendComment)return{ok:0,failed:0};
     const now=new Date().toISOString();
     const extra={};
-    if(patch.status==="Closed")extra.closedAt=now;
-    if(patch.status==="Verified"){extra.verifiedAt=now;extra.verifiedBy=member?.name||"";}
-    const full={...patch,...extra,updatedAt:now};
+    if(patch?.status==="Closed")extra.closedAt=now;
+    if(patch?.status==="Verified"){extra.verifiedAt=now;extra.verifiedBy=member?.name||"";}
+    const baseFields={...(patch||{}),...extra,updatedAt:now};
+    const commentBy=member?.name||"";
+    const commentRole=member?.role||"";
     let ok=0,failed=0;
     const updatedMap={};
     for(const id of ids){
       try{
-        await DB.defects.update(id,full);
-        updatedMap[id]=full;
+        let payload=baseFields;
+        // Per-record payload when appending a shared comment, since each
+        // defect has its own comments history that must be preserved.
+        if(appendComment){
+          const current=defects.find(d=>d.id===id);
+          const newComments=[...(current?.comments||[]),{text:appendComment,by:commentBy,role:commentRole,at:Date.now()}];
+          payload={...baseFields,comments:newComments};
+        }
+        await DB.defects.update(id,payload);
+        updatedMap[id]=payload;
         ok++;
       }catch(e){console.warn("bulk update failed for",id,e);failed++;}
     }
     setDefects(prev=>prev.map(d=>updatedMap[d.id]?{...d,...updatedMap[d.id]}:d));
     // Telegram alert once for the batch
-    if(patch.status&&ok>0){
+    if(patch?.status&&ok>0){
       const tg=local.get(TG_KEY);
       if(tg?.token&&tg?.chatId){
         const e=STATUS_ICON[patch.status]||"⚪";
         sendTelegram(tg.token,tg.chatId,`${e} <b>Bulk Status Update</b>\n${ok} entr${ok>1?"ies":"y"} → <b>${patch.status}</b>\nBy: ${sanitize(member?.name||"")}`).catch(()=>{});
+      }
+    }
+    if(appendComment&&ok>0){
+      const tg=local.get(TG_KEY);
+      if(tg?.token&&tg?.chatId){
+        sendTelegram(tg.token,tg.chatId,`💬 <b>Bulk Comment</b>\n${ok} entr${ok>1?"ies":"y"} · ${sanitize(commentBy)}: ${sanitize(appendComment)}`).catch(()=>{});
       }
     }
     return{ok,failed};
