@@ -242,13 +242,30 @@ if(i>1){doc.setDrawColor(230);doc.setLineWidth(0.3);doc.line(margin,10,pageW-mar
 // both files in their Downloads folder from a single export action.
 const downloadCsv=()=>_downloadMeasurementCsv(measurementRows,csvName);if(pdfLibSwaps.length===0){if(typeof onProgress==="function")onProgress("Saving PDF…");doc.save(fileName);downloadCsv();return;}try{if(typeof onProgress==="function")onProgress("Embedding vector drawings…");const PDFLib=await _waitForPdfLib();const{PDFDocument,StandardFonts}=PDFLib;const baseBytes=doc.output("arraybuffer");const outDoc=await PDFDocument.load(baseBytes);const helveticaBold=await outDoc.embedFont(StandardFonts.HelveticaBold);// Batch source-file fetches (unique URLs) so the same drawing PDF isn't
 // downloaded once per page.
-const uniqueUrls=[...new Set(pdfLibSwaps.map(s=>s.sourceUrl))];const srcCache=new Map();await Promise.all(uniqueUrls.map(async u=>{try{srcCache.set(u,await _fetchBytes(u));}catch(e){console.warn("pdf-lib: source fetch failed",u,e);srcCache.set(u,null);}}));// Embed every page we need. pdf-lib dedupes identical pages internally
-// when called separately, so we do one call per swap.
-for(let i=0;i<pdfLibSwaps.length;i++){const sw=pdfLibSwaps[i];if(typeof onProgress==="function")onProgress(`Embedding drawing ${i+1}/${pdfLibSwaps.length}…`);const bytes=srcCache.get(sw.sourceUrl);if(!bytes)continue;try{const[embedded]=await outDoc.embedPdf(bytes,[sw.sourcePageIdx]);const outPage=outDoc.getPage(sw.docPageNumber-1);const pageHpt=outPage.getHeight();const rectPt=_rectMmToPt(sw.rect.x,sw.rect.y,sw.rect.w,sw.rect.h,pageHpt);outPage.drawPage(embedded,rectPt);// Overlay PNG (pins, notes, non-vector markup) sits on top of the
-// embedded vector page so those markers don't get lost.
-if(sw.overlayPng){try{const b64=sw.overlayPng.split(",")[1];const pngBytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));const pngImg=await outDoc.embedPng(pngBytes);outPage.drawImage(pngImg,rectPt);}catch(e){console.warn("overlay embed failed",e);}}// Vector-capable markup draws last, so it sits above the embedded
-// page and the overlay — same layering as the on-screen canvas.
-for(const s of sw.markups){if(PDF_VECTOR_MARKUP_TYPES.has(s.type)){_drawMarkupStrokeVectorPdfLib(outPage,sw.rect.x,sw.rect.y,sw.rect.w,sw.rect.h,pageHpt,s,{bold:helveticaBold});}}}catch(e){console.warn("pdf-lib: page swap failed",sw,e);}}if(typeof onProgress==="function")onProgress("Saving PDF…");const finalBytes=await outDoc.save({useObjectStreams:true});const blob=new Blob([finalBytes],{type:"application/pdf"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=fileName;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);downloadCsv();}catch(err){// Fall back to the un-merged PDF so the user still gets their report.
+const uniqueUrls=[...new Set(pdfLibSwaps.map(s=>s.sourceUrl))];const srcCache=new Map();await Promise.all(uniqueUrls.map(async u=>{try{srcCache.set(u,await _fetchBytes(u));}catch(e){console.warn("pdf-lib: source fetch failed",u,e);srcCache.set(u,null);}}));// Two-phase pass over the swaps.
+//
+// Phase A (ascending): for each A4 drawing page, try to draw the source
+// page into the reserved rect (the "preview" shown in the body of the
+// report). If that works, great; if not, the raster fallback already
+// painted by jsPDF is what the user sees in the A4 preview.
+//
+// Phase B (descending): insert a full NATIVE-SIZE page right after each
+// A4 preview by copyPages-ing the source PDF page. This is the page
+// surveyors actually measure from — original dimensions, original
+// vectors, no scaling, no embed-as-XObject gymnastics. Descending order
+// means earlier swaps' docPageNumber stays valid as we insert.
+for(let i=0;i<pdfLibSwaps.length;i++){const sw=pdfLibSwaps[i];if(typeof onProgress==="function")onProgress(`Embedding drawing ${i+1}/${pdfLibSwaps.length}…`);const bytes=srcCache.get(sw.sourceUrl);if(!bytes)continue;try{const[embedded]=await outDoc.embedPdf(bytes,[sw.sourcePageIdx]);const outPage=outDoc.getPage(sw.docPageNumber-1);const pageHpt=outPage.getHeight();const rectPt=_rectMmToPt(sw.rect.x,sw.rect.y,sw.rect.w,sw.rect.h,pageHpt);outPage.drawPage(embedded,rectPt);if(sw.overlayPng){try{const b64=sw.overlayPng.split(",")[1];const pngBytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));const pngImg=await outDoc.embedPng(pngBytes);outPage.drawImage(pngImg,rectPt);}catch(e){console.warn("overlay embed failed",e);}}for(const s of sw.markups){if(PDF_VECTOR_MARKUP_TYPES.has(s.type)){_drawMarkupStrokeVectorPdfLib(outPage,sw.rect.x,sw.rect.y,sw.rect.w,sw.rect.h,pageHpt,s,{bold:helveticaBold});}}}catch(e){console.warn("pdf-lib: rect embed failed",sw,e);}}// Phase B — native-size source pages. Process in descending order so
+// each insertPage doesn't shift indices of swaps we haven't processed yet.
+const swapsByPageDesc=[...pdfLibSwaps].sort((a,b)=>b.docPageNumber-a.docPageNumber);for(let i=0;i<swapsByPageDesc.length;i++){const sw=swapsByPageDesc[i];if(typeof onProgress==="function")onProgress(`Preserving native drawing ${i+1}/${swapsByPageDesc.length}…`);const bytes=srcCache.get(sw.sourceUrl);if(!bytes)continue;try{// Load the source as its own document so we can copyPages out of it.
+// We intentionally don't share this with embedPdf's internal cache —
+// pdf-lib treats those as separate flows.
+const srcDoc=await PDFDocument.load(bytes,{ignoreEncryption:true});if(sw.sourcePageIdx>=srcDoc.getPageCount())continue;const[copied]=await outDoc.copyPages(srcDoc,[sw.sourcePageIdx]);// Insert immediately AFTER the A4 preview page (1-indexed → 0-indexed
+// insertion slot = docPageNumber, pushing existing pages back).
+outDoc.insertPage(sw.docPageNumber,copied);// Re-apply the overlay + vector markup to the native-size page so pins
+// and measurable markups appear where the user drew them. The coord
+// system is the native page's full extent in pt.
+const nativeHpt=copied.getHeight();const nativeWpt=copied.getWidth();// Native rect = full page in mm for the markup helper.
+const nativeWmm=nativeWpt/MM_TO_PT;const nativeHmm=nativeHpt/MM_TO_PT;if(sw.overlayPng){try{const b64=sw.overlayPng.split(",")[1];const pngBytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));const pngImg=await outDoc.embedPng(pngBytes);copied.drawImage(pngImg,{x:0,y:0,width:nativeWpt,height:nativeHpt});}catch(e){console.warn("native overlay embed failed",e);}}for(const s of sw.markups){if(PDF_VECTOR_MARKUP_TYPES.has(s.type)){_drawMarkupStrokeVectorPdfLib(copied,0,0,nativeWmm,nativeHmm,nativeHpt,s,{bold:helveticaBold});}}}catch(e){console.warn("pdf-lib: native page insert failed",sw,e);}}if(typeof onProgress==="function")onProgress("Saving PDF…");const finalBytes=await outDoc.save({useObjectStreams:true});const blob=new Blob([finalBytes],{type:"application/pdf"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=fileName;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);downloadCsv();}catch(err){// Fall back to the un-merged PDF so the user still gets their report.
 console.warn("pdf-lib post-process failed; saving base PDF",err);if(typeof onProgress==="function")onProgress("Saving PDF…");doc.save(fileName);downloadCsv();}}// ── Google Sheets Export ───────────────────────────────────────────
 // Uses Google Sheets API v4 with OAuth2 access token
 // User provides their own Google Client ID (self-hosted)
