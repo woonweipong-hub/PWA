@@ -7819,6 +7819,59 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
           const v=g<thresh?0:255;
           d[i]=d[i+1]=d[i+2]=v;d[i+3]=255;
         }
+        // ── Denoise so ImageTracer doesn't emit one path per speckle ──
+        // Scanned line-art produces thousands of single-pixel noise blobs
+        // after thresholding. Two cheap passes flatten them without losing
+        // real strokes:
+        //   1. 3x3 median filter — replaces each pixel with the majority
+        //      colour of its neighbours; kills isolated speckles.
+        //   2. Morphological OPEN (erode then dilate) by 1 px — removes
+        //      thin 1-pixel-wide noise, preserves 2+ px strokes.
+        const denoise=()=>{
+          const src=new Uint8ClampedArray(d);
+          const isBlack=(i)=>src[i]<128;
+          // median 3x3 (on the binary image — just majority vote of black/white)
+          for(let y=1;y<h-1;y++){
+            for(let x=1;x<w-1;x++){
+              let blacks=0;
+              for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+                if(isBlack(((y+dy)*w+(x+dx))*4))blacks++;
+              }
+              const out=blacks>=5?0:255;
+              const i=(y*w+x)*4;d[i]=d[i+1]=d[i+2]=out;
+            }
+          }
+          // erode: any black pixel missing a black neighbour becomes white
+          const after1=new Uint8ClampedArray(d);
+          for(let y=1;y<h-1;y++){
+            for(let x=1;x<w-1;x++){
+              const i=(y*w+x)*4;
+              if(after1[i]<128){
+                let keep=true;
+                for(let dy=-1;dy<=1&&keep;dy++)for(let dx=-1;dx<=1&&keep;dx++){
+                  if(after1[((y+dy)*w+(x+dx))*4]>=128)keep=false;
+                }
+                // if any neighbour white, erode → white
+                if(!keep){d[i]=d[i+1]=d[i+2]=255;}
+              }
+            }
+          }
+          // dilate: restore thickness — any white pixel adjacent to black becomes black
+          const after2=new Uint8ClampedArray(d);
+          for(let y=1;y<h-1;y++){
+            for(let x=1;x<w-1;x++){
+              const i=(y*w+x)*4;
+              if(after2[i]>=128){
+                let adj=false;
+                for(let dy=-1;dy<=1&&!adj;dy++)for(let dx=-1;dx<=1&&!adj;dx++){
+                  if(after2[((y+dy)*w+(x+dx))*4]<128)adj=true;
+                }
+                if(adj){d[i]=d[i+1]=d[i+2]=0;}
+              }
+            }
+          }
+        };
+        denoise();
         ctx.putImageData(id,0,0);
         report("trace",0);
         // Trace. 2-colour palette (black/white), tuned for line drawings.
@@ -7837,9 +7890,13 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
             //   qtres    2.5 → coarser curve fit (was 1)
             // Visible quality loss on pure line drawings is minimal; the
             // PDF-render stage gets ~5-10× faster on HABS-scan-class inputs.
+            // After denoise, only meaningful strokes remain, so crank
+            // path reduction hard: pathomit 48 drops any path under 48
+            // points (keeps walls / long edges, drops anything residual),
+            // ltres/qtres 3 coarsen curve fit, blurradius 1 smooths jaggies.
             svgstr=window.ImageTracer.imagedataToSVG(id,{
-              numberofcolors:2,pathomit:24,ltres:2.5,qtres:2.5,
-              strokewidth:1,linefilter:true,
+              numberofcolors:2,pathomit:48,ltres:3,qtres:3,
+              strokewidth:1,linefilter:true,blurradius:1,blurdelta:20,
               colorsampling:0,colorquantcycles:1,mincolorratio:0,
               pal:[{r:255,g:255,b:255,a:255},{r:0,g:0,b:0,a:255}],
             });
@@ -7879,7 +7936,11 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
         // B&W bitmap instead — still crisp enough for Compare, completes in
         // well under a second. "Vector when cheap, raster when slow."
         const pathCount=(svgstr.match(/<path\b/g)||[]).length;
-        const PATH_LIMIT=600;
+        // After the denoise passes, typical scans come in at a few hundred
+        // paths. Lifted the raster-fallback trigger to 2000 so vector wins
+        // for anything recognisable; only pathological inputs still fall
+        // back to raster.
+        const PATH_LIMIT=2000;
         const finishWithBitmap=(note)=>{
           // The ImageData has already been thresholded to pure B&W by the
           // preprocess step, so a JPEG re-encode is effectively lossless for
@@ -7914,7 +7975,10 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
         // raster embed so the user gets *a* PDF instead of a hang. This gives
         // 30s to produce pretty vectors; after that we choose "done" over
         // "perfect".
-        const DEADLINE_MS=30000;
+        // 60s deadline — gives vector path time to finish on 1000-2000
+        // path outputs while still guaranteeing the bar can never truly
+        // hang. Raster fallback still kicks in beyond this.
+        const DEADLINE_MS=60000;
         let raced=false;
         const deadline=setTimeout(()=>{
           if(raced)return;
