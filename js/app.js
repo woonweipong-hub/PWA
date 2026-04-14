@@ -7586,7 +7586,8 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const fileRef=useRef();
   const convertRef=useRef();
   const[converting,setConverting]=useState(false);
-  const[convertProgress,setConvertProgress]=useState("");
+  // {label, pct (0..100), stage, totalFiles, fileIdx}  — null when idle.
+  const[convertProgress,setConvertProgress]=useState(null);
   // Batch compare state
   const[showBatchCompare,setShowBatchCompare]=useState(false);
   const[showDnMenu,setShowDnMenu]=useState(false);const dnMenuTimer=useRef(null);
@@ -7663,17 +7664,28 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   // Uses ImageTracer (threshold → SVG paths) then svg2pdf to draw the SVG
   // into a jsPDF page as real vector strokes — output is a true vector PDF
   // usable as a Compare base drawing, not a raster wrapped in PDF.
-  const traceOneToPdfBlob=(file)=>new Promise((resolve,reject)=>{
+  // Stage-weighted progress estimate for one file. The long stage is
+  // `trace` (~70% of the budget for any realistic image), the rest are
+  // order-of-magnitude faster.
+  const STAGE_WEIGHTS={read:5,decode:5,preprocess:10,trace:65,svg:5,pdf:5,upload:5};
+  const traceOneToPdfBlob=(file,onStage)=>new Promise((resolve,reject)=>{
+    const report=(stage,within=0)=>{if(onStage)onStage(stage,within);};
     if(!window.ImageTracer)return reject(new Error("ImageTracer not loaded — refresh the app."));
     if(!window.jspdf||!window.svg2pdf)return reject(new Error("PDF libs not loaded — refresh the app."));
+    report("read",0);
     const reader=new FileReader();
     reader.onerror=()=>reject(new Error("Failed to read file."));
     reader.onload=()=>{
+      report("decode",0);
       const img=new Image();
       img.onerror=()=>reject(new Error("Failed to decode image."));
       img.onload=()=>{
-        // Downscale very large images so tracing stays responsive (~1600px max).
-        const MAX=1600;
+        report("preprocess",0);
+        // Downscale very large images so tracing stays responsive. Cap is
+        // tighter than before (1200 instead of 1600) — on a 9000x7000 scan
+        // the trace time scales with pixel count, so 1200 roughly halves
+        // the wait with barely perceptible quality loss on line art.
+        const MAX=1200;
         const scale=Math.min(1,MAX/Math.max(img.width,img.height));
         const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
         const cnv=document.createElement("canvas");
@@ -7696,16 +7708,29 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
           d[i]=d[i+1]=d[i+2]=v;d[i+3]=255;
         }
         ctx.putImageData(id,0,0);
+        report("trace",0);
         // Trace. 2-colour palette (black/white), tuned for line drawings.
-        let svgstr;
-        try{
-          svgstr=window.ImageTracer.imagedataToSVG(id,{
-            numberofcolors:2,pathomit:8,ltres:1,qtres:1,
-            strokewidth:1,linefilter:true,
-            colorsampling:0,colorquantcycles:1,mincolorratio:0,
-            pal:[{r:255,g:255,b:255,a:255},{r:0,g:0,b:0,a:255}],
-          });
-        }catch(e){return reject(new Error("Tracing failed: "+e.message));}
+        // Run in a microtask so the UI paints the "Tracing…" stage before
+        // the main thread is blocked by imagedataToSVG. ImageTracer is
+        // synchronous — there's no mid-trace callback — but at least the
+        // user sees the bar move into this stage rather than appearing to
+        // hang.
+        setTimeout(()=>{
+          let svgstr;
+          try{
+            svgstr=window.ImageTracer.imagedataToSVG(id,{
+              numberofcolors:2,pathomit:8,ltres:1,qtres:1,
+              strokewidth:1,linefilter:true,
+              colorsampling:0,colorquantcycles:1,mincolorratio:0,
+              pal:[{r:255,g:255,b:255,a:255},{r:0,g:0,b:0,a:255}],
+            });
+          }catch(e){return reject(new Error("Tracing failed: "+e.message));}
+          report("svg",0);
+          continueAfterTrace(svgstr);
+        },40);
+        return;
+        function continueAfterTrace(svgstrArg){
+          let svgstr=svgstrArg;
         // Drop the white background rectangle ImageTracer emits so the PDF
         // doesn't carry a huge solid-white path. svg2pdf would render it fine,
         // but it bloats the file.
@@ -7724,6 +7749,7 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
         const scaleFit=Math.min((pageW-margin*2)/w,(pageH-margin*2)/h);
         const drawW=w*scaleFit,drawH=h*scaleFit;
         const ox=(pageW-drawW)/2,oy=(pageH-drawH)/2;
+        report("pdf",0);
         window.svg2pdf(svgEl,doc,{x:ox,y:oy,width:drawW,height:drawH})
           .then(()=>{
             doc.setFont("helvetica","normal");doc.setFontSize(7);
@@ -7732,6 +7758,7 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
             const blob=doc.output("blob");
             resolve(blob);
           }).catch(e=>reject(new Error("PDF build failed: "+e.message)));
+        }
       };
       img.src=reader.result;
     };
@@ -7784,11 +7811,31 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     if(!files.length)return;
     setConverting(true);
     const created=[];
+    const stagesOrder=["read","decode","preprocess","trace","svg","pdf","upload"];
+    const stageLabels={read:"Reading",decode:"Decoding image",preprocess:"Preprocessing",trace:"Tracing paths",svg:"Building SVG",pdf:"Rendering PDF",upload:"Uploading"};
+    const totalWeight=stagesOrder.reduce((s,k)=>s+STAGE_WEIGHTS[k],0);
+    const pctAtStageStart=(stage)=>{
+      let acc=0;
+      for(const k of stagesOrder){if(k===stage)return acc;acc+=STAGE_WEIGHTS[k];}
+      return acc;
+    };
     for(let i=0;i<files.length;i++){
       const f=files[i];
-      setConvertProgress(`Converting ${i+1}/${files.length}: ${f.name}`);
+      const baseFrac=i/files.length;
+      const perFile=1/files.length;
+      const emit=(stage,within=0)=>{
+        const stagePct=(pctAtStageStart(stage)+STAGE_WEIGHTS[stage]*within)/totalWeight;
+        const overall=Math.min(100,Math.round((baseFrac+perFile*stagePct)*100));
+        setConvertProgress({
+          label:`${stageLabels[stage]||stage} — ${f.name}`,
+          pct:overall,
+          fileIdx:i+1,totalFiles:files.length,
+        });
+      };
+      emit("read",0);
       try{
-        const blob=await traceOneToPdfBlob(f);
+        const blob=await traceOneToPdfBlob(f,emit);
+        emit("upload",0);
         const baseName=f.name.replace(/\.[^.]+$/,"")+" (vector).pdf";
         const pdfFile=new File([blob],baseName,{type:"application/pdf"});
         const rec=await DB.drawings.createWithFile({
@@ -7815,7 +7862,7 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
       }
     }
     if(created.length)setDrawings(prev=>[...created,...prev]);
-    setConvertProgress("");
+    setConvertProgress(null);
     setConverting(false);
     if(convertRef.current)convertRef.current.value="";
   };
@@ -9012,8 +9059,18 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf,.pdf,.tif,.tiff" onChange={uploadDrawing} style={{display:"none"}}/>
         <input ref={convertRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={convertJpgsToPdf} style={{display:"none"}}/>
         {converting&&convertProgress&&(
-          <div style={{background:"rgba(52,199,89,0.12)",border:"1px solid rgba(52,199,89,0.35)",borderRadius:10,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#1a6a33",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,display:"flex",alignItems:"center",gap:8}}>
-            <Spin size={14}/>{convertProgress}
+          <div style={{background:"rgba(52,199,89,0.12)",border:"1px solid rgba(52,199,89,0.35)",borderRadius:10,padding:"10px 12px",marginBottom:12,fontFamily:"'Barlow Condensed',sans-serif"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,fontSize:12,color:"#1a6a33",fontWeight:700}}>
+              <Spin size={14}/>
+              <span style={{flex:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                {convertProgress.totalFiles>1?`[${convertProgress.fileIdx}/${convertProgress.totalFiles}] `:""}{convertProgress.label}
+              </span>
+              <span style={{color:"#1a6a33",fontWeight:800,fontSize:12,flexShrink:0}}>{convertProgress.pct}%</span>
+            </div>
+            <div style={{height:6,background:"rgba(52,160,80,0.18)",borderRadius:3,overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${convertProgress.pct}%`,background:"linear-gradient(90deg,#34c759,#2a9a4a)",borderRadius:3,transition:"width 0.25s ease"}}/>
+            </div>
+            <div style={{fontSize:10,color:"rgba(26,106,51,0.65)",marginTop:4}}>Tracing is the long step — on very large images it can take 30-60 seconds. The app is working, not hung.</div>
           </div>
         )}
 
