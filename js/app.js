@@ -351,6 +351,87 @@ function _drawMarkupStroke(ctx,W,H,s,imageCache){
   }
   ctx.restore();
 }
+// Markup types that we emit as true PDF vectors (crisp at any zoom).
+// Others (dimension, cloud, callout, stamp) stay raster for now.
+const PDF_VECTOR_MARKUP_TYPES=new Set(["freehand","arrow","circle","rect","line","text","highlight","polyline","photo"]);
+function _hexToRgb(hex){
+  const m=/^#?([a-fA-F0-9]{3}|[a-fA-F0-9]{6})$/.exec(String(hex||""));
+  if(!m)return[255,107,0];
+  let h=m[1];
+  if(h.length===3)h=h.split("").map(c=>c+c).join("");
+  return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+}
+// Paint a markup stroke as vectors directly into the jsPDF document. Coordinate
+// space: (x0, y0) is the top-left of the host drawing in mm; (W, H) is its
+// rendered size in mm. Stroke percentages map into that box. Only the types in
+// PDF_VECTOR_MARKUP_TYPES are handled here — the rest still raster-bake.
+function _drawMarkupStrokeVectorPdf(doc,x0,y0,W,H,s){
+  if(!PDF_VECTOR_MARKUP_TYPES.has(s.type))return;
+  const toMm=p=>({x:x0+(p.x/100)*W,y:y0+(p.y/100)*H});
+  const rgb=_hexToRgb(s.color||"#ff6b00");
+  const lw=Math.max(0.25,W*0.003); // mm — echoes canvas heuristic W*0.003
+  doc.setDrawColor(rgb[0],rgb[1],rgb[2]);
+  doc.setFillColor(rgb[0],rgb[1],rgb[2]);
+  doc.setLineWidth(lw);
+  try{doc.setLineCap("round");doc.setLineJoin("round");}catch{}
+  if(s.lineStyle==="dotted")try{doc.setLineDashPattern([lw*3,lw*2],0);}catch{}
+  try{
+    if(s.type==="freehand"&&Array.isArray(s.points)&&s.points.length>1){
+      for(let i=1;i<s.points.length;i++){const a=toMm(s.points[i-1]),b=toMm(s.points[i]);doc.line(a.x,a.y,b.x,b.y);}
+    }else if(s.type==="arrow"&&s.start&&s.end){
+      const a=toMm(s.start),b=toMm(s.end);
+      doc.line(a.x,a.y,b.x,b.y);
+      const angle=Math.atan2(b.y-a.y,b.x-a.x);
+      const hl=Math.max(3,W*0.018);
+      doc.line(b.x,b.y,b.x-hl*Math.cos(angle-0.4),b.y-hl*Math.sin(angle-0.4));
+      doc.line(b.x,b.y,b.x-hl*Math.cos(angle+0.4),b.y-hl*Math.sin(angle+0.4));
+    }else if(s.type==="circle"&&s.start&&s.end){
+      const a=toMm(s.start),b=toMm(s.end);
+      const cx=(a.x+b.x)/2,cy=(a.y+b.y)/2,rx=Math.abs(b.x-a.x)/2,ry=Math.abs(b.y-a.y)/2;
+      if(rx>0.1||ry>0.1)doc.ellipse(cx,cy,rx,ry,"S");
+    }else if(s.type==="rect"&&s.start&&s.end){
+      const a=toMm(s.start),b=toMm(s.end);
+      const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y),w=Math.abs(b.x-a.x),h=Math.abs(b.y-a.y);
+      if(w>0.1||h>0.1)doc.rect(x,y,w,h,"S");
+    }else if(s.type==="line"&&s.start&&s.end){
+      const a=toMm(s.start),b=toMm(s.end);
+      doc.line(a.x,a.y,b.x,b.y);
+    }else if(s.type==="polyline"&&Array.isArray(s.points)&&s.points.length>1){
+      for(let i=1;i<s.points.length;i++){const a=toMm(s.points[i-1]),b=toMm(s.points[i]);doc.line(a.x,a.y,b.x,b.y);}
+      if(s.closed&&s.points.length>2){const a=toMm(s.points[s.points.length-1]),b=toMm(s.points[0]);doc.line(a.x,a.y,b.x,b.y);}
+    }else if(s.type==="highlight"&&Array.isArray(s.points)&&s.points.length>1){
+      // jsPDF can't do alpha on strokes; use a thicker line in the stroke color
+      // so highlights still read clearly in the exported PDF.
+      doc.setLineWidth(Math.max(1.5,W*0.015));
+      for(let i=1;i<s.points.length;i++){const a=toMm(s.points[i-1]),b=toMm(s.points[i]);doc.line(a.x,a.y,b.x,b.y);}
+      doc.setLineWidth(lw);
+    }else if(s.type==="text"&&s.pos&&s.text){
+      const p=toMm(s.pos);
+      const fsPt=s.fontSize?Math.max(5,W*s.fontSize*0.018):Math.max(6,W*0.042);
+      doc.setFontSize(fsPt);
+      doc.setFont(undefined,"bold");
+      const tw=doc.getTextWidth(s.text);
+      const thMm=fsPt*0.3528; // pt → mm
+      const padX=thMm*0.2,padY=thMm*0.15;
+      const align=s.align||"left",valign=s.valign||"bottom";
+      const bw=tw+padX*2,bh=thMm+padY*2;
+      let bgX;if(align==="center")bgX=p.x-bw/2;else if(align==="right")bgX=p.x-bw;else bgX=p.x;
+      let bgY;if(valign==="top")bgY=p.y;else if(valign==="middle")bgY=p.y-bh/2;else bgY=p.y-bh;
+      doc.setFillColor(255,255,255);
+      doc.roundedRect(bgX,bgY,bw,bh,1,1,"FD");
+      doc.setTextColor(rgb[0],rgb[1],rgb[2]);
+      const textX=align==="center"?p.x:(align==="right"?p.x-padX:p.x+padX);
+      const textY=bgY+thMm+padY*0.4;
+      doc.text(s.text,textX,textY,{align:align==="center"?"center":(align==="right"?"right":"left")});
+      doc.setFont(undefined,"normal");doc.setTextColor(0);
+    }else if(s.type==="photo"&&s.pos&&s.dataUrl){
+      const x=x0+(s.pos.x/100)*W,y=y0+(s.pos.y/100)*H;
+      const w=(s.w/100)*W,h=(s.h/100)*H;
+      try{doc.addImage(s.dataUrl,"JPEG",x,y,w,h,undefined,"SLOW");}catch{}
+    }
+  }catch(e){/* one bad stroke shouldn't abort the whole export */}
+  try{doc.setLineDashPattern([],0);}catch{}
+}
 function _drawNoteMarker(ctx,W,H,n){
   const x=(n.x/100)*W,y=(n.y/100)*H;
   const fs=Math.max(12,W*0.013);
@@ -388,7 +469,7 @@ function _drawPinMarker(ctx,W,H,pin,defect){
   }
   ctx.restore();
 }
-async function renderDrawingAnnotatedPages(drawing,defects,allPins){
+async function renderDrawingAnnotatedPages(drawing,defects,allPins,opts={}){
   if(!drawing||!drawing.file)return[];
   const fileUrl=DB.fileUrl("drawings",drawing.id,drawing.file);
   const isPdf=/\.pdf$/i.test(drawing.file||"");
@@ -402,8 +483,16 @@ async function renderDrawingAnnotatedPages(drawing,defects,allPins){
   if(pageSet.size===0)return[];
   const pages=[...pageSet].sort((a,b)=>a-b);
   const imgCache=await _preloadStrokePhotos(markups);
+  // When vectorMarkup is requested, leave the jsPDF-vectorisable markup types
+  // out of the raster so the caller can re-draw them as crisp PDF primitives.
+  // Types without a vector equivalent (dimension, cloud, callout, stamp) still
+  // bake into the raster here.
+  const skipVectorTypes=opts.vectorMarkup===true;
   const applyOverlays=(ctx,W,H,pageNum)=>{
-    markups.forEach(s=>_drawMarkupStroke(ctx,W,H,s,imgCache));
+    markups.forEach(s=>{
+      if(skipVectorTypes&&PDF_VECTOR_MARKUP_TYPES.has(s.type))return;
+      _drawMarkupStroke(ctx,W,H,s,imgCache);
+    });
     notes.filter(n=>(n.pageNum||1)===pageNum).forEach(n=>_drawNoteMarker(ctx,W,H,n));
     pins.filter(p=>(p.pageNum||1)===pageNum).forEach(p=>{
       const def=(defects||[]).find(x=>x.id===p.entryId);
@@ -1739,7 +1828,10 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   if(mapDefects.length>0){
     if(typeof onProgress==="function")onProgress(`Fetching ${mapDefects.length} map thumbnails…`);
     const mapPromises=mapDefects.map(async d=>{
-      const z=d.mapZoom||17;
+      // Zoom 18 gives ~2× pixel density vs 17 for the same composite size —
+      // street-level features stay legible when the report is viewed on
+      // laptops or printed. User-set mapZoom still wins.
+      const z=d.mapZoom||18;
       const color=SEV_COLOR[d.severity]||"#ff6b00";
       let src;
       if(mapProvider==="gmaps"&&gmapsKey){
@@ -1830,7 +1922,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
             const ratio=img.height/img.width;
             const imgW=contentW*0.65;
             const imgH=Math.min(imgW*ratio,60);
-            try{doc.addImage(validPhotos[0],"JPEG",margin+1,y,imgW,imgH);}catch(e){/* skip */}
+            try{doc.addImage(validPhotos[0],"JPEG",margin+1,y,imgW,imgH,undefined,"SLOW");}catch(e){/* skip */}
             y+=imgH+3;
           }
         }else if(validPhotos.length>1){
@@ -1844,7 +1936,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
             if(img&&img.width>0&&img.height>0){
               const ratio=img.height/img.width;
               const imgH=Math.min(imgW*ratio,60);
-              try{doc.addImage(validPhotos[pi],"JPEG",margin+1+pi*(imgW+gap),y,imgW,imgH);}catch(e){/* skip */}
+              try{doc.addImage(validPhotos[pi],"JPEG",margin+1+pi*(imgW+gap),y,imgW,imgH,undefined,"SLOW");}catch(e){/* skip */}
               if(imgH>maxH)maxH=imgH;
             }
           }
@@ -1897,7 +1989,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
         doc.setFontSize(6.5);doc.setFont(undefined,"bold");doc.setTextColor(140);
         doc.text(`🗺 MAP LOCATION  ·  ${d.lat.toFixed(5)}, ${d.lng.toFixed(5)}`,margin+1,y);
         doc.setTextColor(0);y+=2;
-        try{doc.addImage(mapImg,"PNG",margin+1,y,mw,mh);}catch{}
+        try{doc.addImage(mapImg,"PNG",margin+1,y,mw,mh,undefined,"SLOW");}catch{}
         y+=mh+3;
       }
 
@@ -1944,7 +2036,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
         drawingIdx++;
         try{
           if(typeof onProgress==="function")onProgress(`Rendering drawing ${drawingIdx}/${annotated.length}…`);
-          const pages=await renderDrawingAnnotatedPages(d,(allDefectsForPins&&allDefectsForPins.length?allDefectsForPins:defects),allPins||[]);
+          const pages=await renderDrawingAnnotatedPages(d,(allDefectsForPins&&allDefectsForPins.length?allDefectsForPins:defects),allPins||[],{vectorMarkup:true});
           if(!pages||pages.length===0)continue;
           for(const pg of pages){
             doc.addPage();y=18;
@@ -1962,7 +2054,20 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
               const imgW=contentW;
               const imgH=Math.min(imgW*ratio,pageH-y-margin-10);
               const actualW=imgH/(ratio||1);
-              doc.addImage(pg.dataUrl,"JPEG",margin,y,Math.min(imgW,actualW),imgH);
+              const drawnW=Math.min(imgW,actualW);
+              const drawX=margin,drawY=y;
+              // "SLOW" = better zlib compression → smaller PDF at the same
+              // JPEG pixel quality. No pixel loss, just tighter storage.
+              doc.addImage(pg.dataUrl,"JPEG",drawX,drawY,drawnW,imgH,undefined,"SLOW");
+              // Paint the vector-capable markup types on top of the raster so
+              // arrows / circles / text / freehand stay crisp at any zoom.
+              for(const s of markups){
+                if(PDF_VECTOR_MARKUP_TYPES.has(s.type)){
+                  _drawMarkupStrokeVectorPdf(doc,drawX,drawY,drawnW,imgH,s);
+                }
+              }
+              // Reset styles that the vector helper may have mutated.
+              doc.setDrawColor(0);doc.setFillColor(0);doc.setLineWidth(0.2);doc.setTextColor(0);doc.setFontSize(8);doc.setFont(undefined,"normal");
               y+=imgH+4;
             }
           }
@@ -1997,7 +2102,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
           const imgW=contentW;
           const imgH=Math.min(imgW*ratio,pageH-y-margin-10);
           const actualW=imgH/(ratio||1);
-          doc.addImage(sc.overlayThumb,"JPEG",margin,y,Math.min(imgW,actualW),imgH);
+          doc.addImage(sc.overlayThumb,"JPEG",margin,y,Math.min(imgW,actualW),imgH,undefined,"SLOW");
           y+=imgH+4;
           if(sc.aiReport){
             y+=4;doc.setFontSize(9);doc.setFont(undefined,"bold");doc.text("AI Diff Report:",margin,y);y+=5;
@@ -2051,7 +2156,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     if(overviewImg){
       const ow=contentW;
       const oh=ow*(overviewImg.height/overviewImg.width);
-      try{doc.addImage(overviewImg,"PNG",margin,y,ow,oh);}catch{}
+      try{doc.addImage(overviewImg,"PNG",margin,y,ow,oh,undefined,"SLOW");}catch{}
       y+=oh+4;
     }
     // Legend + summary
