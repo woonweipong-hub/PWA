@@ -1813,9 +1813,11 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   const gmapsKey=opts.gmapsKey||"";
   const mapProvider=opts.mapProvider||(gmapsKey?"gmaps":"osm");
   const mapDefects=incMap?(defects||[]).filter(d=>typeof d.lat==="number"&&typeof d.lng==="number"):[];
-  // Fast mode = raster A4 drawing pages, no pdf-lib. Lossless mode = native
-  // source pages + pure-vector overlays via pdf-lib. Default: auto-detect.
-  const fastMode=typeof opts.fastMode==="boolean"?opts.fastMode:_isMobileLikeDevice();
+  // Always lossless-first: PDF-source drawings go in via pdf-lib copyPages
+  // (native size, original vectors, bit-for-bit). If copyPages fails on a
+  // specific source (encrypted, malformed, oversized for mobile memory) the
+  // post-process falls back to a hi-res raster for THAT drawing only. No
+  // device mode toggle; quality is the priority.
   if(typeof onProgress==="function")onProgress("Preparing report…");
   const doc=new jspdf.jsPDF("p","mm","a4");
   const pageW=doc.internal.pageSize.getWidth();
@@ -2308,9 +2310,10 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
       // vector page + overlays in that rect. Image-source (JPG/PNG) drawings
       // stay on the raster + vector-markup path — there's no vector gain
       // available and the path is already tuned.
-      // Vector path only when we're in lossless mode AND pdf-lib is around.
+      // Vector path whenever pdf-lib is loaded. Fallback to raster per
+      // drawing inside the post-process if copyPages can't handle the source.
       const hasPdfLib=typeof window.PDFLib!=="undefined"||!!document.querySelector('script[src*="pdf-lib"]');
-      const vectorDrawingsEnabled=!fastMode&&hasPdfLib;
+      const vectorDrawingsEnabled=hasPdfLib;
       const RENDER_CONCURRENCY=2;
       const renderedByIdx=new Array(annotated.length);
       let renderCursor=0,renderedCount=0;
@@ -2616,40 +2619,66 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
         nativeProgress++;
         if(typeof onProgress==="function")onProgress(`Preserving native drawing ${nativeProgress}/${totalNative}…`);
         const bytes=srcCache.get(sw.sourceUrl);
-        if(!bytes){console.warn("pdf-lib: no bytes for",sw.sourceUrl);continue;}
-        try{
-          const srcDoc=await PDFDocument.load(bytes,{ignoreEncryption:true});
-          if(sw.sourcePageIdx>=srcDoc.getPageCount())continue;
-          const [copied]=await outDoc.copyPages(srcDoc,[sw.sourcePageIdx]);
-          outDoc.addPage(copied);
-          const nativeWpt=copied.getWidth();
-          const nativeHpt=copied.getHeight();
-          const nativeWmm=nativeWpt/MM_TO_PT;
-          const nativeHmm=nativeHpt/MM_TO_PT;
-          // Pure-vector overlays on top of the copied source page.
-          // - Vector-capable markup (arrows, rects, circles, freehand, text…)
-          //   via pdf-lib primitives.
-          // - Pins and notes via pdf-lib primitives (no raster PNG).
-          // Non-vector markup types (cloud / callout / stamp / dimension)
-          // are omitted here — the vector requirement takes priority.
-          for(const s of sw.markups){
-            if(PDF_VECTOR_MARKUP_TYPES.has(s.type)){
-              _drawMarkupStrokeVectorPdfLib(copied,0,0,nativeWmm,nativeHmm,nativeHpt,s,{bold:helveticaBold});
-            }
-          }
-          (sw.pins||[]).forEach((pin,idx)=>_drawPinPdfLib(copied,pin,{severity:pin.severity},nativeWpt,nativeHpt,helveticaBold,idx+1));
-          (sw.notes||[]).forEach(n=>_drawNotePdfLib(copied,n,nativeWpt,nativeHpt,helveticaBold));
-          // Caption at top-left — vector text on a white pill so the page
-          // is self-identifying without a preceding A4 title page.
-          const pageLabel=sw.pageCountTotal>1?` · Page ${sw.srcPageNum}`:"";
-          const captionText=`${sw.drawingName}${pageLabel} · ${sw.pinCount} pin(s), ${sw.noteCount} note(s), ${sw.markupCount} markup(s)`;
+        let targetPage=null;
+        let nativeWpt=0,nativeHpt=0;
+        if(bytes){
           try{
-            const fontSize=10;
-            const textWidth=helveticaBold.widthOfTextAtSize(captionText,fontSize);
-            copied.drawRectangle({x:10,y:nativeHpt-22,width:textWidth+12,height:16,color:rgb(1,1,1),borderColor:rgb(1,0.42,0),borderWidth:0.8,opacity:0.92});
-            copied.drawText(captionText,{x:16,y:nativeHpt-18,size:fontSize,font:helveticaBold,color:rgb(1,0.42,0)});
-          }catch(e){console.warn("caption failed",e);}
-        }catch(e){console.warn("pdf-lib: native page insert failed",sw,e);}
+            const srcDoc=await PDFDocument.load(bytes,{ignoreEncryption:true});
+            if(sw.sourcePageIdx<srcDoc.getPageCount()){
+              const [copied]=await outDoc.copyPages(srcDoc,[sw.sourcePageIdx]);
+              outDoc.addPage(copied);
+              targetPage=copied;
+              nativeWpt=copied.getWidth();
+              nativeHpt=copied.getHeight();
+            }
+          }catch(e){console.warn("pdf-lib: copyPages failed, will raster",sw,e);}
+        }
+        // Raster fallback for THIS drawing only — copyPages couldn't handle
+        // the source. pdf.js at 2x → crisp PNG on a custom-sized page.
+        if(!targetPage){
+          try{
+            if(window.pdfjsLib){
+              const pdfjsLib=window.pdfjsLib;
+              if(!pdfjsLib.GlobalWorkerOptions.workerSrc){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}
+              const srcDoc=await pdfjsLib.getDocument(sw.sourceUrl).promise;
+              const page=await srcDoc.getPage(sw.sourcePageIdx+1);
+              const vp=page.getViewport({scale:2.0});
+              const canvas=document.createElement("canvas");
+              canvas.width=vp.width;canvas.height=vp.height;
+              const ctx=canvas.getContext("2d");
+              ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
+              await page.render({canvasContext:ctx,viewport:vp}).promise;
+              const dataUrl=canvas.toDataURL("image/png");
+              const pngBytes=Uint8Array.from(atob(dataUrl.split(",")[1]),c=>c.charCodeAt(0));
+              const pngImg=await outDoc.embedPng(pngBytes);
+              const nativeSrc=page.getViewport({scale:1});
+              nativeWpt=nativeSrc.width;nativeHpt=nativeSrc.height;
+              targetPage=outDoc.addPage([nativeWpt,nativeHpt]);
+              targetPage.drawImage(pngImg,{x:0,y:0,width:nativeWpt,height:nativeHpt});
+              try{await srcDoc.destroy();}catch{}
+            }
+          }catch(e){console.warn("raster fallback failed",sw,e);}
+        }
+        if(!targetPage)continue;
+        const nativeWmm=nativeWpt/MM_TO_PT;
+        const nativeHmm=nativeHpt/MM_TO_PT;
+        // Pure-vector overlays on top of whatever base was laid down:
+        // vector-capable markup, pins, notes, caption.
+        for(const s of sw.markups){
+          if(PDF_VECTOR_MARKUP_TYPES.has(s.type)){
+            _drawMarkupStrokeVectorPdfLib(targetPage,0,0,nativeWmm,nativeHmm,nativeHpt,s,{bold:helveticaBold});
+          }
+        }
+        (sw.pins||[]).forEach((pin,idx)=>_drawPinPdfLib(targetPage,pin,{severity:pin.severity},nativeWpt,nativeHpt,helveticaBold,idx+1));
+        (sw.notes||[]).forEach(n=>_drawNotePdfLib(targetPage,n,nativeWpt,nativeHpt,helveticaBold));
+        const pageLabel=sw.pageCountTotal>1?` · Page ${sw.srcPageNum}`:"";
+        const captionText=`${sw.drawingName}${pageLabel} · ${sw.pinCount} pin(s), ${sw.noteCount} note(s), ${sw.markupCount} markup(s)`;
+        try{
+          const fontSize=10;
+          const textWidth=helveticaBold.widthOfTextAtSize(captionText,fontSize);
+          targetPage.drawRectangle({x:10,y:nativeHpt-22,width:textWidth+12,height:16,color:rgb(1,1,1),borderColor:rgb(1,0.42,0),borderWidth:0.8,opacity:0.92});
+          targetPage.drawText(captionText,{x:16,y:nativeHpt-18,size:fontSize,font:helveticaBold,color:rgb(1,0.42,0)});
+        }catch(e){console.warn("caption failed",e);}
       }
     }
     if(typeof onProgress==="function")onProgress("Saving PDF…");
@@ -6816,8 +6845,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
           {showExportMenu&&(
             <div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(0,0,0,0.08)",zIndex:20,minWidth:160,overflow:"hidden"}}>
               <button disabled={pdfExport.active} onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.4)"}}>· on-site (fast)</span></button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing hi-quality report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (vector)</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· lossless vector</span></button>
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);setPdfExport({active:true,label:"Preparing report…"});try{await new Promise(r=>setTimeout(r,600));await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
               <button onClick={async()=>{setShowExportMenu(false);try{const result=await exportToGoogleSheets(incDefects?filtered:[],currentProject?.name,company?.companyName);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
             </div>
@@ -10282,10 +10310,14 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     downloadTextFile(csv,fn,"text/csv;charset=utf-8");
   };
 
-  const exportComparePdf=async(modeOpts)=>{
+  const exportComparePdf=async()=>{
     if(!compareRes)return;
-    // Dual mode — matches the main Report export. Auto-detect when unspecified.
-    const fastMode=(modeOpts&&typeof modeOpts.fastMode==="boolean")?modeOpts.fastMode:_isMobileLikeDevice();
+    // Compare export is always lossless-first: source PDF drawings go in via
+    // pdf-lib copyPages (bit-for-bit vector preservation). If copyPages fails
+    // for a specific source (encrypted, malformed, oversized on mobile) we
+    // fall back to a high-resolution raster render of that source. No
+    // speed/quality toggle — the user asked for lossless output; this is
+    // the best we can do on any device.
     // Build with jsPDF for structured text, then post-process with pdf-lib
     // to insert the native-size BASE and TARGET source PDF pages as true
     // vectors — same treatment as the main drawings export.
@@ -10316,77 +10348,46 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     doc.setFontSize(22);doc.text(String(compareRes.totalRemoved||0),margin+contentW/2+6,y+16);
     y+=28;doc.setTextColor(0);doc.setDrawColor(0);doc.setFont(undefined,"normal");
     const checkPage=(n)=>{if(y+n>pageH-margin){doc.addPage();y=18;}};
-    // Added / Removed tables via autoTable
-    if(compareRes.added?.length){
-      checkPage(30);
-      doc.setFontSize(12);doc.setFont(undefined,"bold");doc.setTextColor(255,59,48);
-      doc.text(`ADDED LINES (${compareRes.added.length})`,margin,y);y+=5;
-      doc.setTextColor(0);doc.setFont(undefined,"normal");
-      const addedRows=compareRes.added.map((l,i)=>{
-        const e=diffEdits[`added_${i}`];
-        const text=e?.name?`${e.name} (was: ${l?.text||l})`:(l?.text||l);
-        return[String(i+1),String(text||"").slice(0,300)+(e?.remark?`\n💬 ${e.remark}`:"")];
+    // Compact summary — all key numbers on the front page, drawings follow.
+    // Top 8 added / removed lines as a tight list; AI snippet truncated; audit
+    // trail summarised as one line; markup reduced to shape counts.
+    const MAX_LIST=8;
+    const renderList=(title,items,color)=>{
+      if(!items?.length)return;
+      checkPage(14+items.length*3.8);
+      doc.setFontSize(10);doc.setFont(undefined,"bold");doc.setTextColor(...color);
+      doc.text(`${title} (${items.length}${items.length>MAX_LIST?", top "+MAX_LIST+" shown":""})`,margin,y);y+=4.5;
+      doc.setTextColor(60);doc.setFontSize(8);doc.setFont(undefined,"normal");
+      const slice=items.slice(0,MAX_LIST);
+      slice.forEach((l,i)=>{
+        const line=`${i+1}. ${String(l?.text||l||"").slice(0,140)}`;
+        const wrap=doc.splitTextToSize(line,contentW-4);
+        for(const w of wrap){checkPage(4);doc.text(w,margin+2,y);y+=3.6;}
       });
-      doc.autoTable({startY:y,head:[["#","Line"]],body:addedRows,margin:{left:margin,right:margin},styles:{fontSize:8,cellPadding:2,overflow:"linebreak"},headStyles:{fillColor:[255,59,48],textColor:255,fontStyle:"bold"},columnStyles:{0:{cellWidth:12}}});
-      y=doc.lastAutoTable.finalY+6;
-    }
-    if(compareRes.removed?.length){
-      checkPage(30);
-      doc.setFontSize(12);doc.setFont(undefined,"bold");doc.setTextColor(52,199,89);
-      doc.text(`REMOVED LINES (${compareRes.removed.length})`,margin,y);y+=5;
-      doc.setTextColor(0);doc.setFont(undefined,"normal");
-      const removedRows=compareRes.removed.map((l,i)=>{
-        const e=diffEdits[`removed_${i}`];
-        const text=e?.name?`${e.name} (was: ${l?.text||l})`:(l?.text||l);
-        return[String(i+1),String(text||"").slice(0,300)+(e?.remark?`\n💬 ${e.remark}`:"")];
-      });
-      doc.autoTable({startY:y,head:[["#","Line"]],body:removedRows,margin:{left:margin,right:margin},styles:{fontSize:8,cellPadding:2,overflow:"linebreak"},headStyles:{fillColor:[52,199,89],textColor:255,fontStyle:"bold"},columnStyles:{0:{cellWidth:12}}});
-      y=doc.lastAutoTable.finalY+6;
-    }
-    // AI report + approval + audit
-    if(compareAiReport){
-      checkPage(30);
-      doc.setFontSize(12);doc.setFont(undefined,"bold");doc.setTextColor(88,86,214);
-      doc.text("AI-SUPPORTED ANALYSIS",margin,y);y+=5;
-      doc.setTextColor(60);doc.setFontSize(9);doc.setFont(undefined,"normal");
-      const aiLines=doc.splitTextToSize(compareAiReport,contentW-2);
-      for(const line of aiLines){checkPage(5);doc.text(line,margin,y);y+=4.2;}
-      y+=3;
-      const status=compareAiLocked?"LOCKED":"DRAFT";
-      doc.setFontSize(9);doc.setFont(undefined,"bold");doc.setTextColor(compareAiLocked?26:140,compareAiLocked?122:102,compareAiLocked?53:0);
-      doc.text(`Status: ${status}`,margin,y);y+=5;
-      if(compareAiApprovedBy){doc.setFont(undefined,"normal");doc.text(`Approved by: ${compareAiApprovedBy}`,margin,y);y+=5;}
-      if(compareAiApprovedAt){doc.text(`Approved at: ${new Date(compareAiApprovedAt).toLocaleString()}`,margin,y);y+=5;}
       doc.setTextColor(0);y+=2;
-      if(compareAuditLog.length){
-        doc.setFontSize(9);doc.setFont(undefined,"bold");
-        doc.text("AUDIT TRAIL",margin,y);y+=4;
-        doc.setFont(undefined,"normal");doc.setFontSize(8);doc.setTextColor(80);
-        for(const e of compareAuditLog){
-          const row=`${e.action.toUpperCase()} by ${e.by} at ${new Date(e.at).toLocaleString()}${e.reason&&e.action==="unlock"?` — ${e.reason}`:""}`;
-          const wrap=doc.splitTextToSize(row,contentW-2);
-          for(const line of wrap){checkPage(5);doc.text(line,margin,y);y+=3.8;}
-        }
-        doc.setTextColor(0);y+=3;
-      }
-    }
-    // Markup annotations list (text form)
-    if(compareMarkupStrokes?.length){
+    };
+    renderList("ADDED LINES",compareRes.added,[255,59,48]);
+    renderList("REMOVED LINES",compareRes.removed,[52,199,89]);
+    // AI analysis — truncated to ~500 chars on the summary page.
+    if(compareAiReport){
       checkPage(20);
-      doc.setFontSize(12);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
-      doc.text(`MARKUP ANNOTATIONS (${compareMarkupStrokes.length})`,margin,y);y+=5;
-      doc.setTextColor(60);doc.setFontSize(9);doc.setFont(undefined,"normal");
-      const textStrokes=compareMarkupStrokes.filter(s=>s.type==="text"&&s.text);
-      for(const s of textStrokes){
-        const row="📝 "+(s.text||"");
-        const wrap=doc.splitTextToSize(row,contentW-4);
-        for(const line of wrap){checkPage(5);doc.text(line,margin+2,y);y+=4;}
-      }
+      doc.setFontSize(10);doc.setFont(undefined,"bold");doc.setTextColor(88,86,214);
+      doc.text(`AI ANALYSIS${compareAiLocked?" · LOCKED":""}`,margin,y);y+=4.5;
+      doc.setTextColor(60);doc.setFontSize(8);doc.setFont(undefined,"normal");
+      const snippet=compareAiReport.length>500?compareAiReport.slice(0,500).trim()+"…":compareAiReport;
+      const lines=doc.splitTextToSize(snippet,contentW-2);
+      for(const line of lines){checkPage(4);doc.text(line,margin,y);y+=3.6;}
+      if(compareAiApprovedBy){doc.setFontSize(7);doc.setTextColor(110);doc.text(`Approved by ${compareAiApprovedBy}${compareAiApprovedAt?" · "+new Date(compareAiApprovedAt).toLocaleDateString():""}`,margin,y);y+=4;}
+      doc.setTextColor(0);
+    }
+    if(compareMarkupStrokes?.length){
       const fh=compareMarkupStrokes.filter(s=>s.type==="freehand").length;
       const ar=compareMarkupStrokes.filter(s=>s.type==="arrow").length;
       const ci=compareMarkupStrokes.filter(s=>s.type==="circle").length;
+      const tx=compareMarkupStrokes.filter(s=>s.type==="text").length;
+      checkPage(8);
       doc.setFontSize(8);doc.setTextColor(140);
-      doc.text(`Shapes: ${fh} freehand · ${ar} arrow · ${ci} circle`,margin,y);y+=5;
+      doc.text(`Markup: ${fh} freehand · ${ar} arrow · ${ci} circle · ${tx} text`,margin,y);y+=5;
       doc.setTextColor(0);
     }
     // Native-size vector pages for base + target — the crown jewel of this
@@ -10394,67 +10395,17 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     // that follows.
     const baseDrawing=drawings.find(d=>d.id===compareBaseId);
     const targetDrawing=drawings.find(d=>d.id===compareTargetId);
+    // Record inserts. Native pages come directly after the single summary
+    // page. If copyPages fails for one, the post-process paints a hi-res
+    // raster page in its place — still on its own page, at A4 with full
+    // content fit (no title page, no scale stamp needed).
     const nativeInserts=[];
-    // Fast mode: render base + target as raster in A4 via pdf.js (no
-    // pdf-lib, no native-size pages). Lossless mode: title page + pdf-lib
-    // copyPages of the source below.
-    const addFastRaster=async(label,dr)=>{
-      if(!dr)return;
-      const url=DB.fileUrl("drawings",dr.id,dr.file);
-      doc.addPage();y=18;
-      doc.setFontSize(16);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
-      doc.text(label,margin,y);y+=7;
-      doc.setTextColor(0);doc.setFontSize(11);doc.setFont(undefined,"normal");
-      doc.text(dr.name||"",margin,y);y+=6;
-      try{
-        if(/\.pdf$/i.test(dr.file||"")){
-          if(!window.pdfjsLib)return;
-          const pdfjsLib=window.pdfjsLib;
-          if(!pdfjsLib.GlobalWorkerOptions.workerSrc){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}
-          const srcDoc=await pdfjsLib.getDocument(url).promise;
-          const page=await srcDoc.getPage(1);
-          const viewport=page.getViewport({scale:1.5});
-          const canvas=document.createElement("canvas");
-          canvas.width=viewport.width;canvas.height=viewport.height;
-          const ctx=canvas.getContext("2d");
-          ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
-          await page.render({canvasContext:ctx,viewport}).promise;
-          const dataUrl=canvas.toDataURL("image/jpeg",0.88);
-          const ratio=canvas.height/canvas.width;
-          const imgW=contentW;
-          const imgH=Math.min(imgW*ratio,pageH-y-margin-4);
-          const drawnW=Math.min(imgW,imgH/(ratio||1));
-          doc.addImage(dataUrl,"JPEG",margin,y,drawnW,imgH,undefined,"SLOW");
-          try{await srcDoc.destroy();}catch{}
-        }else{
-          const img=await _loadImageEl(url);
-          const ratio=img.height/img.width;
-          const imgW=contentW;
-          const imgH=Math.min(imgW*ratio,pageH-y-margin-4);
-          const drawnW=Math.min(imgW,imgH/(ratio||1));
-          doc.addImage(url,"JPEG",margin,y,drawnW,imgH,undefined,"SLOW");
-        }
-      }catch(e){console.warn("compare fast render failed",e);}
-    };
-    const addNativeHeader=(label,dr)=>{
+    const addInsert=(label,dr)=>{
       if(!dr||!/\.pdf$/i.test(dr.file||""))return;
-      doc.addPage();y=18;
-      doc.setFontSize(16);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
-      doc.text(label,margin,y);y+=7;
-      doc.setTextColor(0);doc.setFontSize(11);doc.setFont(undefined,"normal");
-      doc.text(dr.name||"",margin,y);y+=5;
-      doc.setFontSize(8);doc.setTextColor(110);
-      doc.text("The next page is the source PDF at native size for measurement (print at 100% for 1:1 scale).",margin,y);
-      doc.setTextColor(0);
-      nativeInserts.push({titlePageNumber:doc.getNumberOfPages(),sourceUrl:DB.fileUrl("drawings",dr.id,dr.file),sourcePageIdx:0});
+      nativeInserts.push({afterSummaryPage:doc.getNumberOfPages(),label,sourceUrl:DB.fileUrl("drawings",dr.id,dr.file),sourcePageIdx:0,drawingName:dr.name||""});
     };
-    if(fastMode){
-      await addFastRaster("BASE DRAWING",baseDrawing);
-      await addFastRaster("REVISION DRAWING",targetDrawing);
-    }else{
-      addNativeHeader("BASE DRAWING",baseDrawing);
-      addNativeHeader("REVISION DRAWING",targetDrawing);
-    }
+    addInsert("BASE DRAWING",baseDrawing);
+    addInsert("REVISION DRAWING",targetDrawing);
     // Assemble the final PDF in a FRESH pdf-lib document. This avoids any
     // graphics-state / colour-space leakage between jsPDF-authored pages and
     // copyPages-inserted source pages that some PDF viewers (notably Chrome's
@@ -10465,6 +10416,27 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     const fileName=fileBase+".pdf";
     const jsPdfPageCount=doc.getNumberOfPages();
     if(!nativeInserts.length){doc.save(fileName);return;}
+    // Helper — hi-res raster page as last-resort fallback when copyPages
+    // can't preserve the source as vectors. 2x scale → crisp at typical
+    // report reading zoom; we still encode as PNG for lossless line work.
+    const rasterPageFromSource=async(url)=>{
+      if(!window.pdfjsLib)return null;
+      const pdfjsLib=window.pdfjsLib;
+      if(!pdfjsLib.GlobalWorkerOptions.workerSrc){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}
+      let srcDoc=null;
+      try{
+        srcDoc=await pdfjsLib.getDocument(url).promise;
+        const page=await srcDoc.getPage(1);
+        const vp=page.getViewport({scale:2.0});
+        const canvas=document.createElement("canvas");
+        canvas.width=vp.width;canvas.height=vp.height;
+        const ctx=canvas.getContext("2d");
+        ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
+        await page.render({canvasContext:ctx,viewport:vp}).promise;
+        return{dataUrl:canvas.toDataURL("image/png"),w:vp.width,h:vp.height};
+      }catch(e){console.warn("raster fallback failed",url,e);return null;}
+      finally{try{if(srcDoc)await srcDoc.destroy();}catch{}}
+    };
     try{
       const PDFLib=await _waitForPdfLib();
       const {PDFDocument}=PDFLib;
@@ -10472,34 +10444,48 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       const jsPdfDoc=await PDFDocument.load(jsPdfBytes);
       // Fresh destination — no state inherited from the jsPDF run.
       const outDoc=await PDFDocument.create();
-      // Dedup source fetches across base+target in case user compared a
-      // drawing to itself.
       const uniqueUrls=[...new Set(nativeInserts.map(s=>s.sourceUrl))];
       const srcCache=new Map();
       await Promise.all(uniqueUrls.map(async u=>{
         try{srcCache.set(u,await _fetchBytes(u));}
         catch(e){console.warn("compare: source fetch failed",u,e);srcCache.set(u,null);}
       }));
-      // Build an index by titlePageNumber so we can splice the native page
-      // after each title in one forward pass (no index shifting).
-      const insertAfter=new Map(); // jsPDF page number → { sourceUrl, sourcePageIdx }
-      nativeInserts.forEach(ins=>insertAfter.set(ins.titlePageNumber,ins));
+      // Multi-valued map: more than one swap can follow the same summary page.
+      const insertAfter=new Map();
+      nativeInserts.forEach(ins=>{
+        const arr=insertAfter.get(ins.afterSummaryPage)||[];
+        arr.push(ins);insertAfter.set(ins.afterSummaryPage,arr);
+      });
       for(let p=1;p<=jsPdfPageCount;p++){
         const [jsCopied]=await outDoc.copyPages(jsPdfDoc,[p-1]);
         outDoc.addPage(jsCopied);
-        const ins=insertAfter.get(p);
-        if(!ins)continue;
-        const bytes=srcCache.get(ins.sourceUrl);
-        if(!bytes){
-          console.warn("compare: no bytes for",ins.sourceUrl,"— native insert skipped");
-          continue;
+        const swaps=insertAfter.get(p)||[];
+        for(const ins of swaps){
+          const bytes=srcCache.get(ins.sourceUrl);
+          let vectorOk=false;
+          if(bytes){
+            try{
+              const srcDoc=await PDFDocument.load(bytes,{ignoreEncryption:true});
+              if(ins.sourcePageIdx<srcDoc.getPageCount()){
+                const [srcCopied]=await outDoc.copyPages(srcDoc,[ins.sourcePageIdx]);
+                outDoc.addPage(srcCopied);
+                vectorOk=true;
+              }
+            }catch(e){console.warn("compare: copyPages failed, will raster",ins,e);}
+          }
+          if(!vectorOk){
+            // Lossless-vector wasn't possible — fall back to a crisp 2x PNG
+            // raster so the drawing is still in the report at the best
+            // quality the device can produce.
+            const raster=await rasterPageFromSource(ins.sourceUrl);
+            if(raster){
+              const pngBytes=Uint8Array.from(atob(raster.dataUrl.split(",")[1]),c=>c.charCodeAt(0));
+              const pngImg=await outDoc.embedPng(pngBytes);
+              const page=outDoc.addPage([raster.w,raster.h]);
+              page.drawImage(pngImg,{x:0,y:0,width:raster.w,height:raster.h});
+            }
+          }
         }
-        try{
-          const srcDoc=await PDFDocument.load(bytes,{ignoreEncryption:true});
-          if(ins.sourcePageIdx>=srcDoc.getPageCount())continue;
-          const [srcCopied]=await outDoc.copyPages(srcDoc,[ins.sourcePageIdx]);
-          outDoc.addPage(srcCopied);
-        }catch(e){console.warn("compare: native copy failed",ins,e);}
       }
       const finalBytes=await outDoc.save({useObjectStreams:true});
       const blob=new Blob([finalBytes],{type:"application/pdf"});
@@ -11388,8 +11374,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                   </div>
                   <div style={{display:"flex",gap:8,marginBottom:12}}>
                     <button onClick={exportCompareCsv} style={{flex:1,background:"rgba(52,170,220,0.25)",border:"1px solid rgba(52,170,220,0.45)",borderRadius:10,padding:"9px 10px",color:"#7fd7ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>EXPORT CSV</button>
-                    <button onClick={()=>exportComparePdf({fastMode:true})} style={{flex:1,background:"rgba(255,107,0,0.22)",border:"1px solid rgba(255,107,0,0.4)",borderRadius:10,padding:"9px 10px",color:"#ffb48a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>📕 FAST PDF</button>
-                    <button onClick={()=>exportComparePdf({fastMode:false})} style={{flex:1,background:"rgba(52,199,89,0.2)",border:"1px solid rgba(52,199,89,0.4)",borderRadius:10,padding:"9px 10px",color:"#7bd69a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>📗 VECTOR PDF</button>
+                    <button onClick={()=>exportComparePdf()} style={{flex:1,background:"rgba(52,199,89,0.2)",border:"1px solid rgba(52,199,89,0.4)",borderRadius:10,padding:"9px 10px",color:"#7bd69a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>📗 EXPORT PDF (vector)</button>
                   </div>
                   <div style={{display:"flex",gap:8,marginBottom:8}}>
                     <div style={{flex:1,background:"rgba(255,0,255,0.12)",border:"1px solid rgba(255,0,255,0.3)",borderRadius:10,padding:10}}>
