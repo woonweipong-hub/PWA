@@ -7532,6 +7532,9 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[savedComparisons,setSavedComparisons]=useState(()=>getSavedComparisons(currentProject?.id||""));
   const[viewingSaved,setViewingSaved]=useState(null);
   const fileRef=useRef();
+  const convertRef=useRef();
+  const[converting,setConverting]=useState(false);
+  const[convertProgress,setConvertProgress]=useState("");
   // Batch compare state
   const[showBatchCompare,setShowBatchCompare]=useState(false);
   const[showDnMenu,setShowDnMenu]=useState(false);const dnMenuTimer=useRef(null);
@@ -7602,6 +7605,118 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     }catch(err){alert("Upload failed: "+err.message);}
     setUploading(false);
     if(fileRef.current)fileRef.current.value="";
+  };
+
+  // Raster-to-vector: trace one JPG/PNG sketch into a single-page vector PDF.
+  // Uses ImageTracer (threshold → SVG paths) then svg2pdf to draw the SVG
+  // into a jsPDF page as real vector strokes — output is a true vector PDF
+  // usable as a Compare base drawing, not a raster wrapped in PDF.
+  const traceOneToPdfBlob=(file)=>new Promise((resolve,reject)=>{
+    if(!window.ImageTracer)return reject(new Error("ImageTracer not loaded — refresh the app."));
+    if(!window.jspdf||!window.svg2pdf)return reject(new Error("PDF libs not loaded — refresh the app."));
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error("Failed to read file."));
+    reader.onload=()=>{
+      const img=new Image();
+      img.onerror=()=>reject(new Error("Failed to decode image."));
+      img.onload=()=>{
+        // Downscale very large images so tracing stays responsive (~1600px max).
+        const MAX=1600;
+        const scale=Math.min(1,MAX/Math.max(img.width,img.height));
+        const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
+        const cnv=document.createElement("canvas");
+        cnv.width=w;cnv.height=h;
+        const ctx=cnv.getContext("2d");
+        ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img,0,0,w,h);
+        // Preprocess: grayscale + threshold → high-contrast B&W. This is what
+        // turns pencil/pen sketches on paper into clean vector lines.
+        const id=ctx.getImageData(0,0,w,h);
+        const d=id.data;
+        let sum=0,count=0;
+        for(let i=0;i<d.length;i+=4){const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];sum+=g;count++;}
+        // Threshold = mean - 25 (biases toward preserving dark strokes without
+        // catching paper shading). Works well for photos of white paper.
+        const thresh=Math.max(60,Math.min(210,(sum/count)-25));
+        for(let i=0;i<d.length;i+=4){
+          const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+          const v=g<thresh?0:255;
+          d[i]=d[i+1]=d[i+2]=v;d[i+3]=255;
+        }
+        ctx.putImageData(id,0,0);
+        // Trace. 2-colour palette (black/white), tuned for line drawings.
+        let svgstr;
+        try{
+          svgstr=window.ImageTracer.imagedataToSVG(id,{
+            numberofcolors:2,pathomit:8,ltres:1,qtres:1,
+            strokewidth:1,linefilter:true,
+            colorsampling:0,colorquantcycles:1,mincolorratio:0,
+            pal:[{r:255,g:255,b:255,a:255},{r:0,g:0,b:0,a:255}],
+          });
+        }catch(e){return reject(new Error("Tracing failed: "+e.message));}
+        // Drop the white background rectangle ImageTracer emits so the PDF
+        // doesn't carry a huge solid-white path. svg2pdf would render it fine,
+        // but it bloats the file.
+        svgstr=svgstr.replace(/<path[^>]*fill="rgb\(255,255,255\)"[^>]*\/>/g,"");
+        // Build an SVG DOM element for svg2pdf.
+        const parser=new DOMParser();
+        const svgDoc=parser.parseFromString(svgstr,"image/svg+xml");
+        const svgEl=svgDoc.documentElement;
+        // Render to A4 landscape preserving image aspect; svg2pdf honours the
+        // SVG viewBox, so everything stays vector.
+        const{jsPDF}=window.jspdf;
+        const landscape=w>=h;
+        const doc=new jsPDF({orientation:landscape?"l":"p",unit:"mm",format:"a4"});
+        const pageW=landscape?297:210,pageH=landscape?210:297;
+        const margin=10;
+        const scaleFit=Math.min((pageW-margin*2)/w,(pageH-margin*2)/h);
+        const drawW=w*scaleFit,drawH=h*scaleFit;
+        const ox=(pageW-drawW)/2,oy=(pageH-drawH)/2;
+        window.svg2pdf.svg2pdf(svgEl,doc,{x:ox,y:oy,width:drawW,height:drawH})
+          .then(()=>{
+            doc.setFont("helvetica","normal");doc.setFontSize(7);
+            doc.setTextColor(120);
+            doc.text(`Vectorised from ${file.name} — SiteShrimp Convert`,margin,pageH-5);
+            const blob=doc.output("blob");
+            resolve(blob);
+          }).catch(e=>reject(new Error("PDF build failed: "+e.message)));
+      };
+      img.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Convert button handler: single or batch. Each JPG becomes one vector PDF
+  // drawing record so the user can immediately Compare between versions.
+  const convertJpgsToPdf=async(e)=>{
+    const files=Array.from(e.target.files||[]).filter(f=>/^image\//.test(f.type));
+    if(!files.length)return;
+    setConverting(true);
+    const created=[];
+    for(let i=0;i<files.length;i++){
+      const f=files[i];
+      setConvertProgress(`Converting ${i+1}/${files.length}: ${f.name}`);
+      try{
+        const blob=await traceOneToPdfBlob(f);
+        const baseName=f.name.replace(/\.[^.]+$/,"")+" (vector).pdf";
+        const pdfFile=new File([blob],baseName,{type:"application/pdf"});
+        const rec=await DB.drawings.createWithFile({
+          companyId:company.companyId,
+          projectId:currentProject.id,
+          name:baseName.replace(/\.pdf$/i,""),
+          uploadedBy:member?.name||"",
+          uploadedAt:new Date().toISOString(),
+        },"file",pdfFile,pdfFile.name);
+        created.push(rec);
+      }catch(err){
+        console.warn("convert failed for",f.name,err);
+        alert(`Failed to convert ${f.name}: ${err.message}`);
+      }
+    }
+    if(created.length)setDrawings(prev=>[...created,...prev]);
+    setConvertProgress("");
+    setConverting(false);
+    if(convertRef.current)convertRef.current.value="";
   };
 
   const deleteDrawing=async id=>{
@@ -8794,6 +8909,12 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           <MapPanel currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry} company={company} onSnapped={(rec)=>{setDrawings(prev=>[rec,...prev]);setSubMode("drawing");setViewing(rec);}}/>
         ):(<>
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf,.pdf,.tif,.tiff" onChange={uploadDrawing} style={{display:"none"}}/>
+        <input ref={convertRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={convertJpgsToPdf} style={{display:"none"}}/>
+        {converting&&convertProgress&&(
+          <div style={{background:"rgba(52,199,89,0.12)",border:"1px solid rgba(52,199,89,0.35)",borderRadius:10,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#1a6a33",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,display:"flex",alignItems:"center",gap:8}}>
+            <Spin size={14}/>{convertProgress}
+          </div>
+        )}
 
         {/* Action bar */}
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
@@ -8801,6 +8922,11 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           {canUpload&&(
             <button onClick={()=>fileRef.current?.click()} disabled={uploading} title="Upload" style={{borderRadius:10,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 12px",gap:5}}>
               {uploading?<Spin size={16}/>:<><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 16V3m0 0L7 8m5-5l5 5" stroke="rgba(0,0,0,0.55)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="rgba(0,0,0,0.55)" strokeWidth="1.8" strokeLinecap="round"/></svg><span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.55)"}}>Up</span></>}
+            </button>
+          )}
+          {canUpload&&(
+            <button onClick={()=>convertRef.current?.click()} disabled={converting} title="Convert JPG sketches to vector PDF drawings (single or batch)" style={{borderRadius:10,background:"rgba(52,199,89,0.08)",border:"1px solid rgba(52,199,89,0.3)",cursor:converting?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 12px",gap:5}}>
+              {converting?<Spin size={16}/>:<><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 7h6l2-3h6a2 2 0 012 2v13a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z" stroke="rgba(52,160,80,0.85)" strokeWidth="1.6" strokeLinejoin="round"/><path d="M9 13l2 2 4-4" stroke="rgba(52,160,80,0.85)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg><span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(52,160,80,0.9)"}}>Convert</span></>}
             </button>
           )}
           <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(diffMenuTimer.current);setShowDiffMenu(true);}} onMouseLeave={()=>{diffMenuTimer.current=setTimeout(()=>setShowDiffMenu(false),250);}}>
