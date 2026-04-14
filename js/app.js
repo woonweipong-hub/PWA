@@ -12492,7 +12492,7 @@ function App(){
                   <div style={{borderTop:"1px solid rgba(255,255,255,0.1)",paddingTop:14,marginTop:22}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ff6b00",letterSpacing:"0.05em",marginBottom:8}}>AUTHORSHIP & ACKNOWLEDGEMENTS</div>
                     <div style={{color:"rgba(255,255,255,0.72)"}}>
-                      Designed and directed by <b>Mr. PONG Woon Wei</b>, developed in collaboration with <b>Claude Code (Anthropic)</b>, with comments from <b>Ar. William Lau, SIA-DTC</b>, <b>Dr. TAN Kee Wee, BCA</b>, and <b>Mr. GAN Chee Ming, MCC</b>.
+                      Designed and directed by <b>Mr. PONG Woon Wei</b>, developed in collaboration with <b>Claude Code (Anthropic)</b>, with comments from <b>Ar. William Lau, SIA-DTC</b>, <b>Dr. TAN Kee Wee, BCA</b>, and <b>Mr. GAN Chee Meng, MCC</b>.
                     </div>
                   </div>
                 </div>
