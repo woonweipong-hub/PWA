@@ -5299,7 +5299,8 @@ function DefectsMapView({defects,allDefects,onView,onUpdate,selectMode,selectedI
   );
 }
 
-function DefectsList({defects,onView,onUpdate,nlFilters,onClearNl,onAiSearch,aiEnabled,member,members,onBulkUpdate,onBulkDelete,company,currentProject,onJumpToTag}){
+function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onClearNl,onAiSearch,aiEnabled,member,members,onBulkUpdate,onBulkDelete,onRestore,onHardDelete,company,currentProject,onJumpToTag}){
+  const[showArchive,setShowArchive]=useState(false);
   const[filter,setFilter]=useState("All");const[sevF,setSevF]=useState("All");const[typeF,setTypeF]=useState("All");
   const[search,setSearch]=useState("");const[showFilters,setShowFilters]=useState(false);
   // "entries" | "drawings" | "comparisons" — lets users triage drawing-side
@@ -5412,6 +5413,9 @@ function DefectsList({defects,onView,onUpdate,nlFilters,onClearNl,onAiSearch,aiE
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
           {(activeFilters>0||q)&&!selectMode&&<button onClick={clearAll} style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:20,padding:"4px 10px",color:"#ff3b30",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.clear")} ({activeFilters+(q?1:0)})</button>}
+          {canBulk&&archivedDefects.length>0&&!selectMode&&(
+            <button onClick={()=>setShowArchive(true)} title="View archived entries — auto-delete after 7 days; restore or permanent-delete available" style={{background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:20,padding:"4px 10px",color:"rgba(0,0,0,0.55)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>🗃 ARCHIVE ({archivedDefects.length})</button>
+          )}
           {canBulk&&onBulkUpdate&&(
             selectMode?(
               <button onClick={exitSelect} style={{background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:20,padding:"4px 10px",color:"rgba(0,0,0,0.55)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.done")}</button>
@@ -5634,6 +5638,45 @@ function DefectsList({defects,onView,onUpdate,nlFilters,onClearNl,onAiSearch,aiE
           <div style={{display:"flex",gap:8}}>
             <button onClick={()=>setShowBulkPanel(false)} disabled={bulkSaving} style={{flex:1,background:"rgba(0,0,0,0.06)",border:"none",borderRadius:10,padding:"12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")}</button>
             <button onClick={applyBulk} disabled={bulkSaving} style={{flex:2,background:"#ff6b00",border:"none",borderRadius:10,padding:"12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>{bulkSaving?<><Spin size={14}/> APPLYING…</>:`APPLY TO ${selectedIds.size}`}</button>
+          </div>
+        </div>
+      )}
+
+      {/* Archive panel — soft-deleted entries, retrievable or purge-ready.
+          Admin / Manager only. Shows countdown to auto-purge (7 days). */}
+      {showArchive&&(
+        <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
+          <div style={{position:"sticky",top:0,background:"rgba(240,237,232,0.95)",backdropFilter:"blur(8px)",padding:"16px 16px 12px",display:"flex",alignItems:"center",gap:12,borderBottom:"1px solid rgba(0,0,0,0.08)",zIndex:10}}>
+            <button onClick={()=>setShowArchive(false)} style={{background:"rgba(0,0,0,0.08)",border:"none",borderRadius:20,padding:"7px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.back")}</button>
+            <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a"}}>🗃 ARCHIVE <span style={{color:"rgba(0,0,0,0.3)",fontSize:13,fontWeight:700}}>({archivedDefects.length})</span></div>
+          </div>
+          <div style={{padding:16}}>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.45)",marginBottom:12,fontFamily:"'Barlow Condensed',sans-serif",lineHeight:1.5}}>
+              Entries deleted from Review or Report land here. They stay for 7 days so you can restore if needed, then auto-purge permanently. Admins can also permanent-delete immediately.
+            </div>
+            {archivedDefects.length===0?(
+              <div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"40px 0",fontSize:14}}>Archive is empty.</div>
+            ):archivedDefects.map(d=>{
+              const archivedMs=Date.parse(d.archivedAt||"");
+              const daysLeft=Number.isFinite(archivedMs)?Math.max(0,Math.ceil((archivedMs+7*24*60*60*1000-Date.now())/(24*60*60*1000))):7;
+              return(
+                <div key={d.id} style={{background:"#fff",borderRadius:12,padding:"12px 14px",marginBottom:8,borderLeft:`4px solid ${SEV_COLOR[d.severity]||"#8e8e93"}`,display:"flex",gap:10,alignItems:"center"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title||"(untitled)"}</div>
+                    <div style={{fontSize:10,color:"rgba(0,0,0,0.45)",marginTop:2,fontFamily:"'Barlow Condensed',sans-serif"}}>
+                      {d.archivedBy?`Archived by ${d.archivedBy} · `:""}{archivedMs?new Date(archivedMs).toLocaleString():""}
+                    </div>
+                    <div style={{fontSize:10,fontWeight:700,color:daysLeft<=1?"#ff3b30":daysLeft<=3?"#ff9500":"rgba(0,0,0,0.4)",marginTop:3,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.05em"}}>
+                      {daysLeft<=0?"PURGING SOON":`AUTO-DELETE IN ${daysLeft} DAY${daysLeft===1?"":"S"}`}
+                    </div>
+                  </div>
+                  <button onClick={async()=>{if(!onRestore)return;await onRestore([d.id]);}} style={{background:"rgba(52,199,89,0.12)",border:"1px solid rgba(52,199,89,0.35)",borderRadius:10,padding:"7px 12px",color:"#1a7a35",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>↺ RESTORE</button>
+                  {member?.role==="Admin"&&onHardDelete&&(
+                    <button onClick={async()=>{if(!confirm(`Permanently delete "${d.title||"(untitled)"}"? This cannot be undone.`))return;await onHardDelete([d.id]);}} style={{background:"rgba(255,59,48,0.12)",border:"1px solid rgba(255,59,48,0.35)",borderRadius:10,padding:"7px 12px",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>🗑 FOREVER</button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -6055,23 +6098,17 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
   };
 
   const deleteDefect=async()=>{
-    if(!canDelete||!confirm("Delete this defect permanently? This cannot be undone."))return;
+    if(!canDelete||!confirm("Archive this entry? It'll disappear from Review, Report and exports, but stays retrievable from the Archive panel for Admins. Permanent delete is available from Archive."))return;
     setDeleting(true);
     try{
-      await DB.defects.delete(defect.id);
-      // Remove any drawing pins tied to this entry so the map and drawing
-      // overlays don't show orphaned markers until SSE catches up.
-      try{
-        const pins=await DB.pins.list(`entryId="${defect.id}"`);
-        for(const p of pins){try{await DB.pins.delete(p.id);}catch{}}
-      }catch{}
-      // Synchronously remove from the parent state — SSE can drop delete
-      // events on flaky mobile connections; without this, the defect
-      // reappears in Review lists and the export. Fixes the "deleted
-      // defect ghost on export" bug.
+      // Soft-delete: record who/when, entry stays in PocketBase.
+      const now=new Date().toISOString();
+      await DB.defects.update(defect.id,{archivedAt:now,archivedBy:member?.name||""});
+      // Optimistically remove from parent state so UI doesn't flash the
+      // archived entry until SSE catches up.
       if(typeof onDelete==="function")onDelete(defect.id);
       onClose();
-    }catch(e){alert("Failed to delete: "+e.message);setDeleting(false);}
+    }catch(e){alert("Failed to archive: "+e.message);setDeleting(false);}
   };
 
   return(
@@ -12971,6 +13008,10 @@ function App(){
   const[projects,setProjects]=useState([]);
   const[currentProject,setCurrentProject]=useState(()=>local.get(PROJECT_KEY));
   const[defects,setDefects]=useState([]);
+  // Soft-deleted entries live here. Hidden from Review + Report + exports,
+  // accessible via the ARCHIVE button at the top of Review for restore or
+  // permanent delete.
+  const[archivedDefects,setArchivedDefects]=useState([]);
   const[syncing,setSyncing]=useState(true);
   const[tab,setTab]=useState("report");
   const[viewing,setViewing]=useState(null);
@@ -13119,7 +13160,11 @@ function App(){
         }
         return{...d,photo};
       });
-      setDefects(withPhotos);
+      // Split active vs archived — anything with a non-empty archivedAt is
+      // soft-deleted and hidden from the main views.
+      const isArchived=d=>!!(d.archivedAt&&String(d.archivedAt).length>0);
+      setDefects(withPhotos.filter(d=>!isArchived(d)));
+      setArchivedDefects(withPhotos.filter(isArchived));
       setSyncing(false);
     });
   },[company?.companyId,currentProject?.id]);
@@ -13294,14 +13339,66 @@ function App(){
 
   // Bulk delete — Admin-only. Deletes each defect and sweeps associated pins
   // so orphaned drawing markers don't linger. Returns {ok,failed} like bulkUpdate.
-  const bulkDelete=async(ids)=>{
+  // Archive (soft-delete): marks an entry as archivedAt=<now> / archivedBy.
+  // Entries stay in PocketBase, disappear from Review + Report + exports.
+  // Admins can restore or hard-delete them from the Archive panel.
+  const archiveDefects=async(ids)=>{
     if(!ids||!ids.length)return{ok:0,failed:0};
-    if(member?.role!=="Admin"){alert("Only Admins can delete entries.");return{ok:0,failed:ids.length};}
+    if(!["Admin","Manager"].includes(member?.role)){alert("Only Admins and Managers can archive entries.");return{ok:0,failed:ids.length};}
+    const now=new Date().toISOString();
+    const by=member?.name||"";
+    let ok=0,failed=0;
+    const archivedIds=new Set();
+    for(const id of ids){
+      try{
+        await DB.defects.update(id,{archivedAt:now,archivedBy:by});
+        archivedIds.add(id);
+        ok++;
+      }catch(e){console.warn("archive failed for",id,e);failed++;}
+    }
+    if(archivedIds.size){
+      // Move from active → archived in local state so the UI updates before
+      // SSE catches up (especially relevant on flaky mobile connections).
+      setDefects(prev=>{
+        const movers=prev.filter(d=>archivedIds.has(d.id)).map(d=>({...d,archivedAt:now,archivedBy:by}));
+        setArchivedDefects(a=>[...movers,...a]);
+        return prev.filter(d=>!archivedIds.has(d.id));
+      });
+    }
+    return{ok,failed};
+  };
+  // Restore archived entries back into active lists.
+  const restoreDefects=async(ids)=>{
+    if(!ids||!ids.length)return{ok:0,failed:0};
+    if(!["Admin","Manager"].includes(member?.role)){alert("Only Admins and Managers can restore entries.");return{ok:0,failed:ids.length};}
+    let ok=0,failed=0;
+    const restoredIds=new Set();
+    for(const id of ids){
+      try{
+        await DB.defects.update(id,{archivedAt:"",archivedBy:""});
+        restoredIds.add(id);
+        ok++;
+      }catch(e){console.warn("restore failed for",id,e);failed++;}
+    }
+    if(restoredIds.size){
+      setArchivedDefects(prev=>{
+        const movers=prev.filter(d=>restoredIds.has(d.id)).map(d=>({...d,archivedAt:"",archivedBy:""}));
+        setDefects(a=>[...movers,...a]);
+        return prev.filter(d=>!restoredIds.has(d.id));
+      });
+    }
+    return{ok,failed};
+  };
+  // Hard-delete: permanently remove from PocketBase. Only usable from the
+  // Archive panel by Admins — the default "DELETE" action everywhere else
+  // is a soft archive.
+  const hardDeleteDefects=async(ids)=>{
+    if(!ids||!ids.length)return{ok:0,failed:0};
+    if(member?.role!=="Admin"){alert("Only Admins can permanently delete entries.");return{ok:0,failed:ids.length};}
     let ok=0,failed=0;
     const deletedSet=new Set();
     for(const id of ids){
       try{
-        // Remove drawing pins that reference this defect (best-effort).
         try{
           const pins=await DB.pins.list(`entryId="${id}"`);
           for(const p of pins){try{await DB.pins.delete(p.id);}catch{}}
@@ -13309,11 +13406,37 @@ function App(){
         await DB.defects.delete(id);
         deletedSet.add(id);
         ok++;
-      }catch(e){console.warn("bulk delete failed for",id,e);failed++;}
+      }catch(e){console.warn("hard delete failed for",id,e);failed++;}
     }
-    if(deletedSet.size)setDefects(prev=>prev.filter(d=>!deletedSet.has(d.id)));
+    if(deletedSet.size){
+      setArchivedDefects(prev=>prev.filter(d=>!deletedSet.has(d.id)));
+      setDefects(prev=>prev.filter(d=>!deletedSet.has(d.id)));
+    }
     return{ok,failed};
   };
+  // bulkDelete keeps its old name so existing callers don't break — but it
+  // now archives instead of hard-deleting. Call hardDeleteDefects explicitly
+  // when permanent removal is intended (Archive panel only).
+  const bulkDelete=archiveDefects;
+  // Grace period — archived entries auto-hard-delete after this many days.
+  // Gives users a buffer to recover accidental deletions; still eventually
+  // cleans storage.
+  const ARCHIVE_GRACE_DAYS=7;
+  // Sweep archived entries older than the grace period on app load and
+  // every time the subscription refreshes. Best-effort client-side; a real
+  // server-side cron would be more reliable but this is enough for an SME
+  // workload. Only Admins trigger the sweep so non-admin clients don't spam
+  // failing DELETE requests.
+  useEffect(()=>{
+    if(member?.role!=="Admin"||!archivedDefects.length)return;
+    const cutoff=Date.now()-ARCHIVE_GRACE_DAYS*24*60*60*1000;
+    const expired=archivedDefects.filter(d=>{
+      const t=Date.parse(d.archivedAt||"");
+      return Number.isFinite(t)&&t<cutoff;
+    }).map(d=>d.id);
+    if(!expired.length)return;
+    hardDeleteDefects(expired).catch(e=>console.warn("archive sweep failed",e));
+  },[archivedDefects,member?.role]);
 
   const signOut=()=>{
     DB.auth.signOut();
@@ -13513,7 +13636,7 @@ function App(){
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect}/>}
-        {tab==="defects"&&<DefectsList defects={defects} onView={setViewing} onUpdate={updateDefect} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")}/>}
+        {tab==="defects"&&<DefectsList defects={defects} archivedDefects={archivedDefects} onView={setViewing} onUpdate={updateDefect} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onRestore={restoreDefects} onHardDelete={hardDeleteDefects} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")}/>}
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} member={member} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
       </div>
 
