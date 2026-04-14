@@ -5966,8 +5966,11 @@ function Report({defects,onEmailSetup,currentProject,company}){
     try{
       // Step 1: Auto-detect available contract PDFs and extract text
       setContractProgress(prev=>[...prev,"Step 1/4: Reading contract PDFs..."]);
+      // Only the PSSCOC folder ships in the public repo; REDAS and SIA are
+      // gitignored. Users bring their own project-specific PDFs via the
+      // upload card below, which merge in as "USER REQUIREMENTS" entries.
       const builtinTexts=await extractContractTexts({
-        usePssoc:true,useRedas:true,useSia:true,
+        usePssoc:true,useRedas:false,useSia:false,
         onProgress:(msg)=>setContractProgress(prev=>[...prev,"  📄 "+msg])
       });
       // Merge user-uploaded project-specific requirements/contracts. Tagged
@@ -6237,7 +6240,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
           </div>
 
           <div style={{background:"rgba(88,86,214,0.05)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontSize:12,lineHeight:1.6,color:"#2f2e55"}}>
-            AI reads your contract PDFs (PSSCOC, REDAS, SIA) and cross-references the <b>{filtered.length} defect{filtered.length!==1?"s":""}</b> in this report to advise:<br/>
+            AI reads the bundled <b>PSSCOC</b> contract (plus any of your own PDFs added below) and cross-references the <b>{filtered.length} defect{filtered.length!==1?"s":""}</b> in this report to advise:<br/>
             <span style={{color:"#5856d6",fontWeight:700}}>Applicable clauses</span> · <span style={{color:"#5856d6",fontWeight:700}}>Responsible parties</span> · <span style={{color:"#5856d6",fontWeight:700}}>Impact & considerations</span> · <span style={{color:"#5856d6",fontWeight:700}}>Actionable follow-ups</span>
           </div>
 
