@@ -5830,6 +5830,46 @@ function Report({defects,onEmailSetup,currentProject,company}){
   const[contractSummary,setContractSummary]=useState("");
   const[contractError,setContractError]=useState("");
   const[contractTokens,setContractTokens]=useState(null);
+  // User-uploaded requirement/contract PDFs. Persisted per-project in
+  // localStorage so the user doesn't have to re-upload each session. We
+  // store only the extracted text (not the raw PDF) — typically a few KB
+  // per contract, well within localStorage limits for reasonable document
+  // counts. Shape: [{name, text, chars}]
+  const USER_CONTRACTS_KEY=currentProject?.id?`siteshrimp_user_contracts_${currentProject.id}`:null;
+  const[userContracts,setUserContracts]=useState(()=>{
+    try{return USER_CONTRACTS_KEY?JSON.parse(localStorage.getItem(USER_CONTRACTS_KEY)||"[]"):[];}
+    catch{return[];}
+  });
+  const userContractRef=useRef();
+  const[userContractBusy,setUserContractBusy]=useState(false);
+  useEffect(()=>{
+    if(!USER_CONTRACTS_KEY)return;
+    try{localStorage.setItem(USER_CONTRACTS_KEY,JSON.stringify(userContracts));}catch{}
+  },[userContracts,USER_CONTRACTS_KEY]);
+  // Reload when project changes so uploads are scoped per-project.
+  useEffect(()=>{
+    try{setUserContracts(USER_CONTRACTS_KEY?JSON.parse(localStorage.getItem(USER_CONTRACTS_KEY)||"[]"):[]);}
+    catch{setUserContracts([]);}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[currentProject?.id]);
+  const addUserContracts=async(ev)=>{
+    const files=Array.from(ev.target.files||[]).filter(f=>/pdf$/i.test(f.name));
+    if(!files.length)return;
+    setUserContractBusy(true);
+    const added=[];
+    for(const f of files){
+      try{
+        const url=URL.createObjectURL(f);
+        const text=await extractPdfText(url,20000); // bigger cap than builtins — user reqs may be long
+        URL.revokeObjectURL(url);
+        if(text)added.push({name:f.name,text,chars:text.length});
+      }catch(err){console.warn("User contract extract failed",f.name,err);}
+    }
+    if(added.length)setUserContracts(prev=>[...prev,...added]);
+    setUserContractBusy(false);
+    if(userContractRef.current)userContractRef.current.value="";
+  };
+  const removeUserContract=(idx)=>setUserContracts(prev=>prev.filter((_,i)=>i!==idx));
   const[sevFilter,setSevFilter]=useState([]);const[statusFilter,setStatusFilter]=useState([]);
   const[assigneeFilter,setAssigneeFilter]=useState([]);const[dateFrom,setDateFrom]=useState("");const[dateTo,setDateTo]=useState("");
   const[showPreview,setShowPreview]=useState(false);
@@ -5926,12 +5966,18 @@ function Report({defects,onEmailSetup,currentProject,company}){
     try{
       // Step 1: Auto-detect available contract PDFs and extract text
       setContractProgress(prev=>[...prev,"Step 1/4: Reading contract PDFs..."]);
-      const extractedTexts=await extractContractTexts({
+      const builtinTexts=await extractContractTexts({
         usePssoc:true,useRedas:true,useSia:true,
         onProgress:(msg)=>setContractProgress(prev=>[...prev,"  📄 "+msg])
       });
+      // Merge user-uploaded project-specific requirements/contracts. Tagged
+      // with a distinct source label so the AI knows these are the user's
+      // own documents, not the public standard contracts.
+      const userTexts=userContracts.map(u=>({source:`USER REQUIREMENTS: ${u.name}`,text:u.text}));
+      const extractedTexts=[...builtinTexts,...userTexts];
       const successCount=extractedTexts.filter(e=>!e.text.startsWith("(Failed")).length;
       const totalChars=extractedTexts.reduce((sum,e)=>sum+e.text.length,0);
+      if(userTexts.length)setContractProgress(prev=>[...prev,`  📎 Including ${userTexts.length} user-uploaded document(s)`]);
       setContractProgress(prev=>[...prev,successCount>0
         ?`  ✓ ${successCount} contract(s) read, ~${Math.round(totalChars/1000)}k chars`
         :"  ⚠ No contract PDFs found — AI will use general knowledge"]);
@@ -6193,6 +6239,34 @@ function Report({defects,onEmailSetup,currentProject,company}){
           <div style={{background:"rgba(88,86,214,0.05)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontSize:12,lineHeight:1.6,color:"#2f2e55"}}>
             AI reads your contract PDFs (PSSCOC, REDAS, SIA) and cross-references the <b>{filtered.length} defect{filtered.length!==1?"s":""}</b> in this report to advise:<br/>
             <span style={{color:"#5856d6",fontWeight:700}}>Applicable clauses</span> · <span style={{color:"#5856d6",fontWeight:700}}>Responsible parties</span> · <span style={{color:"#5856d6",fontWeight:700}}>Impact & considerations</span> · <span style={{color:"#5856d6",fontWeight:700}}>Actionable follow-ups</span>
+          </div>
+
+          {/* User-uploaded requirements / project-specific contracts. Texts
+              are extracted in-browser via pdfjsLib and persisted per-project
+              in localStorage (not the raw PDF, just the extracted text). */}
+          <div style={{background:"rgba(52,170,220,0.06)",border:"1px dashed rgba(52,170,220,0.35)",borderRadius:10,padding:"10px 12px",marginBottom:12}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:userContracts.length?8:0}}>
+              <div style={{flex:1,fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"rgba(0,0,0,0.65)",letterSpacing:"0.05em"}}>
+                📎 YOUR REQUIREMENTS / CONTRACTS (per project)
+              </div>
+              <input ref={userContractRef} type="file" accept="application/pdf,.pdf" multiple onChange={addUserContracts} style={{display:"none"}}/>
+              <button onClick={()=>userContractRef.current?.click()} disabled={userContractBusy} style={{background:"#34aadc",border:"none",borderRadius:8,padding:"6px 10px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:userContractBusy?"wait":"pointer"}}>{userContractBusy?"Reading…":"+ ADD PDF"}</button>
+            </div>
+            {userContracts.length>0?(
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                {userContracts.map((u,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.6)",borderRadius:6,padding:"5px 8px"}}>
+                    <span style={{flex:1,fontSize:11,color:"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📄 {u.name}</span>
+                    <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>{Math.round(u.chars/1000)}k chars</span>
+                    <button onClick={()=>removeUserContract(i)} title="Remove" style={{background:"rgba(255,59,48,0.12)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:6,padding:"2px 8px",color:"#cc0000",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,cursor:"pointer"}}>✕</button>
+                  </div>
+                ))}
+              </div>
+            ):(
+              <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",lineHeight:1.5,marginTop:4}}>
+                Add your own specs, scope-of-work, employer's requirements, or project-specific contracts. Text is extracted in your browser and stored locally for this project only — no upload to our servers.
+              </div>
+            )}
           </div>
 
           {!contractBusy&&!contractSummary&&(
@@ -12159,6 +12233,7 @@ function App(){
                       [t("help.tip_load_samples"),t("help.tip_load_samples_desc")],
                       [t("help.tip_save_device"),t("help.tip_save_device_desc")],
                       [t("help.tip_bulk_delete"),t("help.tip_bulk_delete_desc")],
+                      [t("help.tip_advisor_upload"),t("help.tip_advisor_upload_desc")],
                     ]],
                   ].map(([section,items])=>(
                     <div key={section} style={{marginBottom:24}}>
