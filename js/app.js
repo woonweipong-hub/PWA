@@ -7600,6 +7600,10 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[converting,setConverting]=useState(false);
   // {label, pct (0..100), stage, totalFiles, fileIdx}  — null when idle.
   const[convertProgress,setConvertProgress]=useState(null);
+  // Flipped by the Stop button. Checked between files so the batch loop can
+  // bail early. The in-flight file still finishes because ImageTracer /
+  // svg2pdf are not interruptible, but every file after it is skipped.
+  const convertCancelRef=useRef(false);
   // Batch compare state
   const[showBatchCompare,setShowBatchCompare]=useState(false);
   const[showDnMenu,setShowDnMenu]=useState(false);const dnMenuTimer=useRef(null);
@@ -7837,8 +7841,10 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const convertJpgsToPdf=async(e)=>{
     const files=Array.from(e.target.files||[]).filter(f=>/^image\//.test(f.type));
     if(!files.length)return;
+    convertCancelRef.current=false;
     setConverting(true);
     const created=[];
+    let cancelledAfter=0;
     const stagesOrder=["read","decode","preprocess","trace","svg","pdf","upload"];
     const stageLabels={read:"Reading",decode:"Decoding image",preprocess:"Preprocessing",trace:"Tracing paths",svg:"Building SVG",pdf:"Rendering PDF",upload:"Uploading"};
     const totalWeight=stagesOrder.reduce((s,k)=>s+STAGE_WEIGHTS[k],0);
@@ -7848,6 +7854,7 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
       return acc;
     };
     for(let i=0;i<files.length;i++){
+      if(convertCancelRef.current){cancelledAfter=i;break;}
       const f=files[i];
       const baseFrac=i/files.length;
       const perFile=1/files.length;
@@ -7893,6 +7900,11 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     setConvertProgress(null);
     setConverting(false);
     if(convertRef.current)convertRef.current.value="";
+    if(convertCancelRef.current){
+      const remaining=files.length-cancelledAfter;
+      alert(`Stopped. ${created.length} converted, ${remaining} skipped.`);
+    }
+    convertCancelRef.current=false;
   };
 
   const deleteDrawing=async id=>{
@@ -9094,11 +9106,12 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                 {convertProgress.totalFiles>1?`[${convertProgress.fileIdx}/${convertProgress.totalFiles}] `:""}{convertProgress.label}
               </span>
               <span style={{color:"#1a6a33",fontWeight:800,fontSize:12,flexShrink:0}}>{convertProgress.pct}%</span>
+              <button onClick={()=>{convertCancelRef.current=true;}} disabled={convertCancelRef.current} title="Stop converting — finishes the current file, then skips the rest" style={{background:convertCancelRef.current?"rgba(255,59,48,0.15)":"rgba(255,59,48,0.12)",border:"1px solid rgba(255,59,48,0.4)",borderRadius:8,padding:"3px 10px",color:"#c0392b",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:convertCancelRef.current?"wait":"pointer",flexShrink:0}}>{convertCancelRef.current?"STOPPING…":"✕ STOP"}</button>
             </div>
             <div style={{height:6,background:"rgba(52,160,80,0.18)",borderRadius:3,overflow:"hidden"}}>
               <div style={{height:"100%",width:`${convertProgress.pct}%`,background:"linear-gradient(90deg,#34c759,#2a9a4a)",borderRadius:3,transition:"width 0.25s ease"}}/>
             </div>
-            <div style={{fontSize:10,color:"rgba(26,106,51,0.65)",marginTop:4}}>Tracing is the long step — on very large images it can take 30-60 seconds. The app is working, not hung.</div>
+            <div style={{fontSize:10,color:"rgba(26,106,51,0.65)",marginTop:4}}>Tracing is the long step — on very large images it can take 30-60 seconds. STOP will abort after the current file finishes.</div>
           </div>
         )}
 
