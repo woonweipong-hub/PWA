@@ -8331,6 +8331,19 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[viewing,setViewing]=useState(null);
   const[uploading,setUploading]=useState(false);
   const[allPins,setAllPins]=useState([]);
+  // Batch select for the drawings list — mirrors Review's pattern so Admins
+  // can clean up multiple drawings in one pass (and rename them in bulk).
+  const[selectMode,setSelectMode]=useState(false);
+  const[selectedDrawingIds,setSelectedDrawingIds]=useState(()=>new Set());
+  const[showDrawingRenamePanel,setShowDrawingRenamePanel]=useState(false);
+  const[renameMode,setRenameMode]=useState("prefix"); // prefix | suffix | replace
+  const[renameTerm,setRenameTerm]=useState("");
+  const[renameFind,setRenameFind]=useState("");
+  const[bulkBusy,setBulkBusy]=useState(false);
+  const canDeleteDrawings=member?.role==="Admin";
+  const canRenameDrawings=["Admin","Manager"].includes(member?.role);
+  const exitDrawingSelect=()=>{setSelectMode(false);setSelectedDrawingIds(new Set());setShowDrawingRenamePanel(false);setRenameTerm("");setRenameFind("");};
+  const toggleDrawingId=id=>setSelectedDrawingIds(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
   const[subMode,setSubMode]=useState("drawing"); // "drawing" | "map" | "compare"
   const[showCompare,setShowCompare]=useState(false);
   const[compareBaseId,setCompareBaseId]=useState("");
@@ -9046,6 +9059,59 @@ Requirements:
       await DB.drawings.delete(id);
       setDrawings(prev=>prev.filter(d=>d.id!==id));
     }catch(e){alert("Delete failed: "+e.message);}
+  };
+  const bulkDeleteDrawings=async()=>{
+    if(!canDeleteDrawings||selectedDrawingIds.size===0)return;
+    const count=selectedDrawingIds.size;
+    if(!confirm(`Permanently delete ${count} drawing${count>1?"s":""} and all their pins? This cannot be undone.`))return;
+    setBulkBusy(true);
+    let ok=0,failed=0;
+    const ids=Array.from(selectedDrawingIds);
+    for(const id of ids){
+      try{
+        const pins=await DB.pins.list(`drawingId="${id}"`);
+        for(const p of pins)await DB.pins.delete(p.id);
+        await DB.drawings.delete(id);
+        // Localstorage notes/markup are keyed by drawingId — sweep them too so
+        // we don't leak orphaned annotations.
+        try{
+          const notes=local.get(DRAWING_NOTES_KEY)||{};
+          const markup=local.get(DRAWING_MARKUP_KEY)||{};
+          delete notes[id];delete markup[id];
+          local.set(DRAWING_NOTES_KEY,notes);local.set(DRAWING_MARKUP_KEY,markup);
+        }catch{}
+        ok++;
+      }catch(e){console.warn("bulk drawing delete failed",id,e);failed++;}
+    }
+    setDrawings(prev=>prev.filter(d=>!selectedDrawingIds.has(d.id)));
+    alert(`Deleted ${ok} drawing${ok===1?"":"s"}${failed?` · ${failed} failed`:""}.`);
+    exitDrawingSelect();
+    setBulkBusy(false);
+  };
+  const bulkRenameDrawings=async()=>{
+    if(!canRenameDrawings||selectedDrawingIds.size===0)return;
+    const term=renameTerm.trim();
+    if(renameMode!=="replace"&&!term){alert("Enter the text to add.");return;}
+    if(renameMode==="replace"&&!renameFind.trim()){alert("Enter the text to find before replacing.");return;}
+    setBulkBusy(true);
+    let ok=0,failed=0;
+    const ids=Array.from(selectedDrawingIds);
+    const updatedMap={};
+    for(const id of ids){
+      const cur=drawings.find(d=>d.id===id);
+      if(!cur)continue;
+      let nn=cur.name||"";
+      if(renameMode==="prefix")nn=term+nn;
+      else if(renameMode==="suffix")nn=nn+term;
+      else if(renameMode==="replace")nn=nn.split(renameFind).join(term);
+      if(nn===cur.name)continue;
+      try{await DB.drawings.update(id,{name:nn});updatedMap[id]=nn;ok++;}
+      catch(e){console.warn("bulk drawing rename failed",id,e);failed++;}
+    }
+    setDrawings(prev=>prev.map(d=>updatedMap[d.id]?{...d,name:updatedMap[d.id]}:d));
+    alert(`Renamed ${ok} drawing${ok===1?"":"s"}${failed?` · ${failed} failed`:""}.`);
+    exitDrawingSelect();
+    setBulkBusy(false);
   };
 
   const openCompare=()=>{
@@ -10296,14 +10362,26 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           </div>
         </div>
 
-        {/* Section counters bar */}
+        {/* Section counters bar + select toggle */}
         {(()=>{
           const markedUpDrawings=drawings.filter(d=>getDrawingMarkup(d.id).length>0||getDrawingNotes(d.id).length>0);
           return(
-            <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+            <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
               <div style={{background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:"6px 12px",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.5)"}}>📐 {t("drawings.uploaded_drawings")} ({drawings.length})</div>
               {markedUpDrawings.length>0&&<div style={{background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:10,padding:"6px 12px",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:"#ff6b00"}}>✏ {t("drawings.saved_markup_drawings")} ({markedUpDrawings.length})</div>}
               {savedComparisons.length>0&&<div style={{background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:10,padding:"6px 12px",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",color:"#5856d6"}}>🔍 {t("compare.saved_comparisons")} ({savedComparisons.length})</div>}
+              {(canDeleteDrawings||canRenameDrawings)&&drawings.length>0&&(
+                <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+                  {selectMode?(
+                    <>
+                      <button onClick={()=>setSelectedDrawingIds(new Set(drawings.map(d=>d.id)))} style={{background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:20,padding:"4px 10px",color:"#ff6b00",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>SELECT ALL ({drawings.length})</button>
+                      <button onClick={exitDrawingSelect} style={{background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:20,padding:"4px 10px",color:"rgba(0,0,0,0.55)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>DONE</button>
+                    </>
+                  ):(
+                    <button onClick={()=>setSelectMode(true)} style={{background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:20,padding:"4px 10px",color:"#ff6b00",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("review.select")||"SELECT"}</button>
+                  )}
+                </div>
+              )}
             </div>
           );
         })()}
@@ -10369,8 +10447,11 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           const sevCounts={};
           pinDefects.forEach(df=>{const s=df.severity||"Unknown";sevCounts[s]=(sevCounts[s]||0)+1;});
           return(
-            <div key={d.id} onClick={()=>setViewing(d)} style={{background:"#fff",borderRadius:14,padding:0,marginBottom:12,cursor:"pointer",overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)"}}>
+            <div key={d.id} onClick={()=>selectMode?toggleDrawingId(d.id):setViewing(d)} style={{background:"#fff",borderRadius:14,padding:0,marginBottom:12,cursor:"pointer",overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)",outline:selectMode&&selectedDrawingIds.has(d.id)?"2px solid #ff6b00":"none"}}>
               <div style={{position:"relative",background:"#f8f8f6"}}>
+                {selectMode&&(
+                  <div style={{position:"absolute",top:10,left:10,zIndex:5,width:26,height:26,borderRadius:8,border:`2px solid ${selectedDrawingIds.has(d.id)?"#ff6b00":"#fff"}`,background:selectedDrawingIds.has(d.id)?"#ff6b00":"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:15,fontWeight:800,boxShadow:"0 2px 6px rgba(0,0,0,0.3)"}}>{selectedDrawingIds.has(d.id)?"✓":""}</div>
+                )}
                 {isImage&&<img src={fileUrl} alt={d.name} style={{width:"100%",maxHeight:"50vh",objectFit:"contain",display:"block",background:"#f8f8f6"}}/>}
                 {!isImage&&<PdfThumb url={fileUrl}/>}
                 {(drawingPins.length>0||drawingNotes.length>0||drawingMarkup.length>0)&&(
@@ -10456,7 +10537,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a"}}>{d.name}</div>
                     <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>By {d.uploadedBy||"—"} · {d.uploadedAt?new Date(d.uploadedAt).toLocaleDateString():""}</div>
                   </div>
-                  {member?.role==="Admin"&&<button onClick={e=>{e.stopPropagation();deleteDrawing(d.id);}} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:"#ff3b30",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.delete")}</button>}
+                  {!selectMode&&member?.role==="Admin"&&<button onClick={e=>{e.stopPropagation();deleteDrawing(d.id);}} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:"#ff3b30",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.delete")}</button>}
                 </div>
                 {(drawingPins.length>0||drawingNotes.length>0||drawingMarkup.length>0)&&(
                   <div style={{display:"flex",alignItems:"center",gap:6,marginTop:8,flexWrap:"wrap"}}>
@@ -10474,6 +10555,72 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         })}
       </>)}
       </div>
+
+      {/* Sticky batch action bar for drawing select mode */}
+      {selectMode&&selectedDrawingIds.size>0&&!showDrawingRenamePanel&&(
+        <div style={{position:"fixed",bottom:72,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 24px)",maxWidth:406,background:"#1a1a1a",borderRadius:14,padding:"12px 14px",zIndex:60,boxShadow:"0 12px 40px rgba(0,0,0,0.4)",display:"flex",alignItems:"center",gap:8}}>
+          <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff"}}>{selectedDrawingIds.size} SELECTED</div>
+          {canRenameDrawings&&<button onClick={()=>setShowDrawingRenamePanel(true)} disabled={bulkBusy} style={{background:"rgba(255,107,0,0.85)",border:"none",borderRadius:10,padding:"9px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:bulkBusy?"wait":"pointer"}}>RENAME ▸</button>}
+          {canDeleteDrawings&&<button onClick={bulkDeleteDrawings} disabled={bulkBusy} style={{background:"rgba(255,59,48,0.2)",border:"1px solid rgba(255,59,48,0.5)",borderRadius:10,padding:"9px 14px",color:"#ff6b6b",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:bulkBusy?"wait":"pointer"}}>{bulkBusy?"…":"🗑 DELETE"}</button>}
+        </div>
+      )}
+
+      {/* Batch rename panel — the only drawing metadata field worth amending
+          en-masse today is the name; tags/categories aren't in the schema.
+          Three modes cover the common cleanup cases: add a prefix (e.g. "[ARCH] "),
+          add a suffix (e.g. " v1"), or find-and-replace substrings. */}
+      {selectMode&&showDrawingRenamePanel&&selectedDrawingIds.size>0&&(
+        <div style={{position:"fixed",bottom:64,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 24px)",maxWidth:406,background:"#fff",border:"1px solid rgba(0,0,0,0.1)",borderRadius:14,padding:14,zIndex:60,boxShadow:"0 12px 40px rgba(0,0,0,0.25)",maxHeight:"70vh",overflowY:"auto"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a1a1a"}}>RENAME {selectedDrawingIds.size} DRAWING{selectedDrawingIds.size>1?"S":""}</div>
+            <button onClick={()=>setShowDrawingRenamePanel(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:"50%",width:24,height:24,cursor:"pointer",fontSize:14,color:"rgba(0,0,0,0.5)"}}>×</button>
+          </div>
+          <div style={{display:"flex",gap:4,padding:3,background:"rgba(0,0,0,0.05)",borderRadius:10,marginBottom:10}}>
+            {["prefix","suffix","replace"].map(m=>(
+              <button key={m} onClick={()=>setRenameMode(m)} style={{flex:1,padding:"6px 10px",borderRadius:7,border:"none",background:renameMode===m?"#fff":"transparent",color:renameMode===m?"#1a1a1a":"rgba(0,0,0,0.5)",boxShadow:renameMode===m?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",textTransform:"uppercase"}}>{m}</button>
+            ))}
+          </div>
+          {renameMode==="replace"&&(
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:4}}>FIND</div>
+              <input value={renameFind} onChange={e=>setRenameFind(e.target.value)} placeholder="Text to search for" style={{width:"100%",padding:"10px 12px",border:"1px solid rgba(0,0,0,0.12)",borderRadius:10,fontSize:13,fontFamily:"inherit",boxSizing:"border-box"}}/>
+            </div>
+          )}
+          <div style={{marginBottom:12}}>
+            <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:4}}>{renameMode==="replace"?"REPLACE WITH":renameMode==="prefix"?"PREFIX (ADDED AT START)":"SUFFIX (ADDED AT END)"}</div>
+            <input value={renameTerm} onChange={e=>setRenameTerm(e.target.value)} placeholder={renameMode==="prefix"?"e.g. [ARCHIVED] ":renameMode==="suffix"?"e.g.  v2":"New text (blank to remove)"} style={{width:"100%",padding:"10px 12px",border:"1px solid rgba(0,0,0,0.12)",borderRadius:10,fontSize:13,fontFamily:"inherit",boxSizing:"border-box"}}/>
+          </div>
+          {/* Preview — show first 3 name transformations so users don't apply
+              a typo across dozens of drawings. */}
+          {(() => {
+            const preview=Array.from(selectedDrawingIds).slice(0,3).map(id=>{
+              const d=drawings.find(x=>x.id===id);if(!d)return null;
+              let nn=d.name||"";
+              if(renameMode==="prefix")nn=renameTerm+nn;
+              else if(renameMode==="suffix")nn=nn+renameTerm;
+              else if(renameMode==="replace"&&renameFind)nn=nn.split(renameFind).join(renameTerm);
+              return{from:d.name,to:nn};
+            }).filter(Boolean);
+            return preview.length?(
+              <div style={{background:"rgba(0,0,0,0.03)",border:"1px solid rgba(0,0,0,0.06)",borderRadius:8,padding:"8px 10px",marginBottom:12,fontSize:11,fontFamily:"'Barlow Condensed',sans-serif"}}>
+                <div style={{color:"rgba(0,0,0,0.45)",fontWeight:700,letterSpacing:"0.08em",marginBottom:4}}>PREVIEW</div>
+                {preview.map((p,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:6,marginBottom:2,color:"rgba(0,0,0,0.7)"}}>
+                    <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"40%"}}>{p.from}</span>
+                    <span style={{color:"rgba(0,0,0,0.3)"}}>→</span>
+                    <span style={{fontWeight:700,color:p.from===p.to?"rgba(0,0,0,0.35)":"#ff6b00",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{p.to}</span>
+                  </div>
+                ))}
+                {selectedDrawingIds.size>3&&<div style={{color:"rgba(0,0,0,0.35)",marginTop:2}}>… and {selectedDrawingIds.size-3} more</div>}
+              </div>
+            ):null;
+          })()}
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setShowDrawingRenamePanel(false)} disabled={bulkBusy} style={{flex:1,background:"rgba(0,0,0,0.06)",border:"none",borderRadius:10,padding:"12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")||"CANCEL"}</button>
+            <button onClick={bulkRenameDrawings} disabled={bulkBusy} style={{flex:2,background:"#ff6b00",border:"none",borderRadius:10,padding:"12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{bulkBusy?"APPLYING…":`APPLY TO ${selectedDrawingIds.size}`}</button>
+          </div>
+        </div>
+      )}
 
       {/* Batch Compare Modal */}
       {showBatchCompare&&(
