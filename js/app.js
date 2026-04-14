@@ -4740,6 +4740,23 @@ function DefectsMapView({defects,onView,selectMode,selectedIds,toggleId}){
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[defects?.length]);
 
+  // Tell the map engine the container size changed when the preview slides
+  // in/out — otherwise Leaflet/Google render tiles clipped to the old size
+  // and the focused pin can end up hidden behind the preview.
+  useEffect(()=>{
+    const id=setTimeout(()=>{
+      try{
+        if(!mapObj.current)return;
+        if(providerRef.current==="gmaps"&&window.google?.maps)window.google.maps.event.trigger(mapObj.current,"resize");
+        else if(mapObj.current.invalidateSize)mapObj.current.invalidateSize();
+        const fc=pinned.find(x=>x.d.id===focusId);
+        if(fc)panTo(fc.c);
+      }catch{}
+    },260);
+    return()=>clearTimeout(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[focusId]);
+
   // Update marker icons when selection / focus changes — no map rebuild.
   useEffect(()=>{
     if(!markersRef.current.length)return;
@@ -4787,36 +4804,37 @@ function DefectsMapView({defects,onView,selectMode,selectedIds,toggleId}){
     <div style={{marginBottom:10}}>
       {/* Master map — fixed panel, preview card slides up over its bottom. */}
       <div style={{position:"relative",background:"#fff",borderRadius:12,overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)"}}>
-        <div ref={mapRef} style={{width:"100%",height:"min(55dvh,480px)",minHeight:300,background:"#e5e3dc"}}/>
+        <div ref={mapRef} style={{width:"100%",height:focused?"min(40dvh,360px)":"min(55dvh,480px)",minHeight:260,background:"#e5e3dc",transition:"height 0.22s ease"}}/>
         <div style={{position:"absolute",top:10,left:10,background:"rgba(26,26,26,0.85)",color:"#fff",padding:"6px 12px",borderRadius:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,pointerEvents:"none"}}>{pinned.length} pinned{selectMode?" · tap to select":" · tap a pin to preview"}</div>
         {status==="error"&&<div style={{padding:20,color:"#ff3b30",textAlign:"center"}}>Could not load the map. Check your connection and provider in Settings → Maps.</div>}
-
-        {/* Preview sheet — slides up from the bottom of the map, keeps the
-            map visible so users don't lose spatial context. */}
-        {focused&&(
-          <div className="anim" style={{position:"absolute",left:10,right:10,bottom:10,background:"#fff",borderRadius:14,padding:"12px 14px",boxShadow:"0 8px 28px rgba(0,0,0,0.28)",borderLeft:`4px solid ${SEV_COLOR[focused.d.severity]||"#8e8e93"}`,animation:"slideUp 0.2s ease"}}>
-            <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
-              <div style={{width:26,height:26,borderRadius:"50%",background:SEV_COLOR[focused.d.severity]||"#8e8e93",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:13,flexShrink:0}}>{pinned.findIndex(x=>x.d.id===focused.d.id)+1}</div>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{focused.d.title||"Entry"}</div>
-                <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>
-                  {focused.d.status&&<span style={{fontSize:10,fontWeight:800,padding:"2px 7px",borderRadius:10,background:STATUS_COLOR[focused.d.status]||"rgba(0,0,0,0.3)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif"}}>{focused.d.status.toUpperCase()}</span>}
-                  {focused.d.severity&&<span style={{fontSize:10,fontWeight:800,padding:"2px 7px",borderRadius:10,background:SEV_COLOR[focused.d.severity],color:"#fff",fontFamily:"'Barlow Condensed',sans-serif"}}>{focused.d.severity.toUpperCase()}</span>}
-                  {focused.d.assignee&&<span style={{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:10,background:"rgba(0,0,0,0.06)",color:"rgba(0,0,0,0.7)",fontFamily:"'Barlow Condensed',sans-serif"}}>@{focused.d.assignee}</span>}
-                </div>
-              </div>
-              <button onClick={()=>setFocusId(null)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:"50%",width:26,height:26,cursor:"pointer",fontSize:15,color:"rgba(0,0,0,0.55)",flexShrink:0}}>×</button>
-            </div>
-            <div style={{display:"flex",gap:6,marginTop:10}}>
-              {selectMode?(
-                <button onClick={()=>toggleId&&toggleId(focused.d.id)} style={{flex:1,background:selectedIds?.has(focused.d.id)?"#ff6b00":"rgba(255,107,0,0.08)",border:`1.5px solid ${selectedIds?.has(focused.d.id)?"#ff6b00":"rgba(255,107,0,0.3)"}`,borderRadius:10,padding:"9px",color:selectedIds?.has(focused.d.id)?"#fff":"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{selectedIds?.has(focused.d.id)?"✓ SELECTED":"+ ADD TO SELECTION"}</button>
-              ):(
-                <button onClick={()=>onView(focused.d)} style={{flex:1,background:"#ff6b00",border:"none",borderRadius:10,padding:"9px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>OPEN DETAILS ▸</button>
-              )}
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Preview sheet — sits right below the master map when a pin is
+          selected, pushing the map upwards so both remain visible in
+          the same viewport. */}
+      {focused&&(
+        <div className="anim" style={{marginTop:8,background:"#fff",borderRadius:14,padding:"12px 14px",boxShadow:"0 6px 20px rgba(0,0,0,0.12)",borderLeft:`4px solid ${SEV_COLOR[focused.d.severity]||"#8e8e93"}`,animation:"slideUp 0.2s ease"}}>
+          <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
+            <div style={{width:26,height:26,borderRadius:"50%",background:SEV_COLOR[focused.d.severity]||"#8e8e93",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:13,flexShrink:0}}>{pinned.findIndex(x=>x.d.id===focused.d.id)+1}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{focused.d.title||"Entry"}</div>
+              <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>
+                {focused.d.status&&<span style={{fontSize:10,fontWeight:800,padding:"2px 7px",borderRadius:10,background:STATUS_COLOR[focused.d.status]||"rgba(0,0,0,0.3)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif"}}>{focused.d.status.toUpperCase()}</span>}
+                {focused.d.severity&&<span style={{fontSize:10,fontWeight:800,padding:"2px 7px",borderRadius:10,background:SEV_COLOR[focused.d.severity],color:"#fff",fontFamily:"'Barlow Condensed',sans-serif"}}>{focused.d.severity.toUpperCase()}</span>}
+                {focused.d.assignee&&<span style={{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:10,background:"rgba(0,0,0,0.06)",color:"rgba(0,0,0,0.7)",fontFamily:"'Barlow Condensed',sans-serif"}}>@{focused.d.assignee}</span>}
+              </div>
+            </div>
+            <button onClick={()=>setFocusId(null)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:"50%",width:26,height:26,cursor:"pointer",fontSize:15,color:"rgba(0,0,0,0.55)",flexShrink:0}}>×</button>
+          </div>
+          <div style={{display:"flex",gap:6,marginTop:10}}>
+            {selectMode?(
+              <button onClick={()=>toggleId&&toggleId(focused.d.id)} style={{flex:1,background:selectedIds?.has(focused.d.id)?"#ff6b00":"rgba(255,107,0,0.08)",border:`1.5px solid ${selectedIds?.has(focused.d.id)?"#ff6b00":"rgba(255,107,0,0.3)"}`,borderRadius:10,padding:"9px",color:selectedIds?.has(focused.d.id)?"#fff":"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{selectedIds?.has(focused.d.id)?"✓ SELECTED":"+ ADD TO SELECTION"}</button>
+            ):(
+              <button onClick={()=>onView(focused.d)} style={{flex:1,background:"#ff6b00",border:"none",borderRadius:10,padding:"9px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>OPEN DETAILS ▸</button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Pin chip strip — horizontal list of every pin on the current map,
           so users can page through entries (and toggle batch selection)
