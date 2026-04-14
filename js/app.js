@@ -580,25 +580,6 @@ function _drawNotePdfLib(page,note,nativeWpt,nativeHpt,font){
     page.drawText(text,{x:x-bw/2+padX,y:y-fs*0.32,size:fs,font,color:rgb(1,1,1)});
   }catch(e){console.warn("pdf-lib note draw failed",e);}
 }
-// Render pins + notes + non-vector-capable markups onto a transparent canvas
-// overlay so we can drop them on top of the embedded vector page without
-// re-implementing every marker in pdf-lib. Returns a PNG data URL or null.
-function _buildOverlayPng(Wpx,Hpx,pins,notes,defects,markups,imgCache){
-  try{
-    const canvas=document.createElement("canvas");
-    canvas.width=Wpx;canvas.height=Hpx;
-    const ctx=canvas.getContext("2d");
-    ctx.clearRect(0,0,Wpx,Hpx);
-    // Only bake the markup types that DON'T have a pdf-lib vector path.
-    (markups||[]).forEach(s=>{if(!PDF_VECTOR_MARKUP_TYPES.has(s.type))_drawMarkupStroke(ctx,Wpx,Hpx,s,imgCache);});
-    (notes||[]).forEach(n=>_drawNoteMarker(ctx,Wpx,Hpx,n));
-    (pins||[]).forEach(p=>{
-      const def=(defects||[]).find(x=>x.id===p.entryId);
-      _drawPinMarker(ctx,Wpx,Hpx,p,def);
-    });
-    return canvas.toDataURL("image/png");
-  }catch(e){console.warn("overlay build failed",e);return null;}
-}
 
 // Compute a measurement row for a markup stroke. Coordinates arrive as
 // percentages of the drawing area; we convert to mm on the SOURCE PAPER
@@ -711,50 +692,24 @@ async function renderDrawingAnnotatedPages(drawing,defects,allPins,opts={}){
     }
     const out=[];
     let srcDoc=null;
+    // Lightweight pass — we only need the source page's native dimensions
+    // for layout. The caller will copyPages the actual content via pdf-lib,
+    // and draws pins / notes / markup directly onto the copied page as
+    // pdf-lib vectors. No raster render and no overlay PNG here.
     try{
       srcDoc=await pdfjsLib.getDocument(fileUrl).promise;
       for(const pn of pages){
         if(pn>srcDoc.numPages)continue;
         const page=await srcDoc.getPage(pn);
         const vp=page.getViewport({scale:1});
-        const pagePins=pins.filter(p=>(p.pageNum||1)===pn);
-        const pageNotes=notes.filter(n=>(n.pageNum||1)===pn);
-        // Overlay at 2x the PDF page size — a good balance between pin/note
-        // marker sharpness and overlay weight in the output PDF.
-        const overlayW=Math.max(800,Math.round(vp.width*2));
-        const overlayH=Math.max(600,Math.round(vp.height*2));
-        const overlayPng=_buildOverlayPng(overlayW,overlayH,pagePins,pageNotes,defects,markups,imgCache);
-        // ALSO render a raster fallback for this page. If the pdf-lib vector
-        // embed silently fails (CORS, CMYK weirdness, malformed source) the
-        // raster survives in the exported PDF, so the user never gets a blank
-        // rectangle. The vector embed just overlays on top when it works.
-        let rasterFallback=null;
-        try{
-          const viewport2=page.getViewport({scale:2.0});
-          const canvas=document.createElement("canvas");
-          canvas.width=viewport2.width;canvas.height=viewport2.height;
-          const ctx=canvas.getContext("2d");
-          ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
-          await page.render({canvasContext:ctx,viewport:viewport2}).promise;
-          // Bake pins/notes/non-vector markups into the fallback so it matches
-          // what the overlay PNG adds on the vector path — when the raster is
-          // used standalone it still includes those elements.
-          markups.forEach(s=>{if(!PDF_VECTOR_MARKUP_TYPES.has(s.type))_drawMarkupStroke(ctx,canvas.width,canvas.height,s,imgCache);});
-          pageNotes.forEach(n=>_drawNoteMarker(ctx,canvas.width,canvas.height,n));
-          pagePins.forEach(p=>{const def=(defects||[]).find(x=>x.id===p.entryId);_drawPinMarker(ctx,canvas.width,canvas.height,p,def);});
-          rasterFallback=canvas.toDataURL("image/png");
-        }catch(e){console.warn("raster fallback render failed",e);}
         out.push({
           pageNum:pn,
           isVectorSource:true,
           sourceUrl:fileUrl,
-          sourcePageIdx:pn-1, // pdf-lib is 0-indexed
+          sourcePageIdx:pn-1,
           nativeW:vp.width,
           nativeH:vp.height,
-          overlayPng,
-          rasterFallback,
-          rasterFmt:"PNG",
-          markups:[...markups], // the caller will vector-draw the supported types
+          markups:[...markups],
         });
       }
     }catch(e){console.warn("vectorSource render failed for",drawing.name,e);}
@@ -10327,8 +10282,10 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     downloadTextFile(csv,fn,"text/csv;charset=utf-8");
   };
 
-  const exportComparePdf=async()=>{
+  const exportComparePdf=async(modeOpts)=>{
     if(!compareRes)return;
+    // Dual mode — matches the main Report export. Auto-detect when unspecified.
+    const fastMode=(modeOpts&&typeof modeOpts.fastMode==="boolean")?modeOpts.fastMode:_isMobileLikeDevice();
     // Build with jsPDF for structured text, then post-process with pdf-lib
     // to insert the native-size BASE and TARGET source PDF pages as true
     // vectors — same treatment as the main drawings export.
@@ -10438,6 +10395,47 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     const baseDrawing=drawings.find(d=>d.id===compareBaseId);
     const targetDrawing=drawings.find(d=>d.id===compareTargetId);
     const nativeInserts=[];
+    // Fast mode: render base + target as raster in A4 via pdf.js (no
+    // pdf-lib, no native-size pages). Lossless mode: title page + pdf-lib
+    // copyPages of the source below.
+    const addFastRaster=async(label,dr)=>{
+      if(!dr)return;
+      const url=DB.fileUrl("drawings",dr.id,dr.file);
+      doc.addPage();y=18;
+      doc.setFontSize(16);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
+      doc.text(label,margin,y);y+=7;
+      doc.setTextColor(0);doc.setFontSize(11);doc.setFont(undefined,"normal");
+      doc.text(dr.name||"",margin,y);y+=6;
+      try{
+        if(/\.pdf$/i.test(dr.file||"")){
+          if(!window.pdfjsLib)return;
+          const pdfjsLib=window.pdfjsLib;
+          if(!pdfjsLib.GlobalWorkerOptions.workerSrc){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}
+          const srcDoc=await pdfjsLib.getDocument(url).promise;
+          const page=await srcDoc.getPage(1);
+          const viewport=page.getViewport({scale:1.5});
+          const canvas=document.createElement("canvas");
+          canvas.width=viewport.width;canvas.height=viewport.height;
+          const ctx=canvas.getContext("2d");
+          ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
+          await page.render({canvasContext:ctx,viewport}).promise;
+          const dataUrl=canvas.toDataURL("image/jpeg",0.88);
+          const ratio=canvas.height/canvas.width;
+          const imgW=contentW;
+          const imgH=Math.min(imgW*ratio,pageH-y-margin-4);
+          const drawnW=Math.min(imgW,imgH/(ratio||1));
+          doc.addImage(dataUrl,"JPEG",margin,y,drawnW,imgH,undefined,"SLOW");
+          try{await srcDoc.destroy();}catch{}
+        }else{
+          const img=await _loadImageEl(url);
+          const ratio=img.height/img.width;
+          const imgW=contentW;
+          const imgH=Math.min(imgW*ratio,pageH-y-margin-4);
+          const drawnW=Math.min(imgW,imgH/(ratio||1));
+          doc.addImage(url,"JPEG",margin,y,drawnW,imgH,undefined,"SLOW");
+        }
+      }catch(e){console.warn("compare fast render failed",e);}
+    };
     const addNativeHeader=(label,dr)=>{
       if(!dr||!/\.pdf$/i.test(dr.file||""))return;
       doc.addPage();y=18;
@@ -10450,8 +10448,13 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       doc.setTextColor(0);
       nativeInserts.push({titlePageNumber:doc.getNumberOfPages(),sourceUrl:DB.fileUrl("drawings",dr.id,dr.file),sourcePageIdx:0});
     };
-    addNativeHeader("BASE DRAWING",baseDrawing);
-    addNativeHeader("REVISION DRAWING",targetDrawing);
+    if(fastMode){
+      await addFastRaster("BASE DRAWING",baseDrawing);
+      await addFastRaster("REVISION DRAWING",targetDrawing);
+    }else{
+      addNativeHeader("BASE DRAWING",baseDrawing);
+      addNativeHeader("REVISION DRAWING",targetDrawing);
+    }
     // Assemble the final PDF in a FRESH pdf-lib document. This avoids any
     // graphics-state / colour-space leakage between jsPDF-authored pages and
     // copyPages-inserted source pages that some PDF viewers (notably Chrome's
@@ -11385,7 +11388,8 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                   </div>
                   <div style={{display:"flex",gap:8,marginBottom:12}}>
                     <button onClick={exportCompareCsv} style={{flex:1,background:"rgba(52,170,220,0.25)",border:"1px solid rgba(52,170,220,0.45)",borderRadius:10,padding:"9px 10px",color:"#7fd7ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>EXPORT CSV</button>
-                    <button onClick={exportComparePdf} style={{flex:1,background:"rgba(255,107,0,0.22)",border:"1px solid rgba(255,107,0,0.4)",borderRadius:10,padding:"9px 10px",color:"#ffb48a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>EXPORT PDF</button>
+                    <button onClick={()=>exportComparePdf({fastMode:true})} style={{flex:1,background:"rgba(255,107,0,0.22)",border:"1px solid rgba(255,107,0,0.4)",borderRadius:10,padding:"9px 10px",color:"#ffb48a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>📕 FAST PDF</button>
+                    <button onClick={()=>exportComparePdf({fastMode:false})} style={{flex:1,background:"rgba(52,199,89,0.2)",border:"1px solid rgba(52,199,89,0.4)",borderRadius:10,padding:"9px 10px",color:"#7bd69a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>📗 VECTOR PDF</button>
                   </div>
                   <div style={{display:"flex",gap:8,marginBottom:8}}>
                     <div style={{flex:1,background:"rgba(255,0,255,0.12)",border:"1px solid rgba(255,0,255,0.3)",borderRadius:10,padding:10}}>
