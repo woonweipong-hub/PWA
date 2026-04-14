@@ -6241,7 +6241,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
 
           <div style={{background:"rgba(88,86,214,0.05)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontSize:12,lineHeight:1.6,color:"#2f2e55"}}>
             {(()=>{
-              const parts=["bundled PSSCOC"];
+              const parts=["bundled Singapore Public Sector Standard Conditions of Contract (PSSCOC)"];
               if(userContracts.length===1)parts.push(`your uploaded "${userContracts[0].name}"`);
               else if(userContracts.length>1)parts.push(`your ${userContracts.length} uploaded PDFs`);
               const sources=parts.length===1?<b>{parts[0]}</b>:<><b>{parts[0]}</b> + <b>{parts.slice(1).join(" + ")}</b></>;
