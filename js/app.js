@@ -512,21 +512,30 @@ async function renderDrawingAnnotatedPages(drawing,defects,allPins,opts={}){
       for(const pn of pages){
         if(pn>doc.numPages)continue;
         const page=await doc.getPage(pn);
-        const viewport=page.getViewport({scale:1.5});
+        // 2× render scale (was 1.5×) — doubles on-page resolution so CAD
+        // line work stays sharp even when the reviewer zooms in on the PDF.
+        const viewport=page.getViewport({scale:2.0});
         const canvas=document.createElement("canvas");
         canvas.width=viewport.width;canvas.height=viewport.height;
         const ctx=canvas.getContext("2d");
         ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
         await page.render({canvasContext:ctx,viewport}).promise;
         applyOverlays(ctx,canvas.width,canvas.height,pn);
-        out.push({pageNum:pn,dataUrl:canvas.toDataURL("image/jpeg",0.85)});
+        // PNG (lossless) for PDF-source drawings — CAD/line-art compresses
+        // well and JPEG's DCT blur was the main "why does my floor plan
+        // look fuzzy" complaint. Photos embedded via markup are still
+        // placed separately as JPEG.
+        out.push({pageNum:pn,dataUrl:canvas.toDataURL("image/png"),fmt:"PNG"});
       }
     }catch(e){console.warn("renderDrawingAnnotatedPages PDF failed for",drawing.name,e);}
     finally{try{if(doc)await doc.destroy();}catch{}}
   }else{
     try{
       const img=await _loadImageEl(fileUrl);
-      const maxW=1600;
+      // Allow larger canvases (2000px wide) so raster-source drawings don't
+      // get aggressively downscaled before export — a common complaint on
+      // scanned blueprints.
+      const maxW=2000;
       const scale=Math.min(1,maxW/(img.width||maxW));
       const canvas=document.createElement("canvas");
       canvas.width=Math.max(1,Math.round((img.width||maxW)*scale));
@@ -535,7 +544,10 @@ async function renderDrawingAnnotatedPages(drawing,defects,allPins,opts={}){
       ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
       ctx.drawImage(img,0,0,canvas.width,canvas.height);
       applyOverlays(ctx,canvas.width,canvas.height,1);
-      out.push({pageNum:1,dataUrl:canvas.toDataURL("image/jpeg",0.85)});
+      // Raster-source drawings (JPG/PNG scans) stay JPEG but at 0.92 quality
+      // (was 0.85) — visibly cleaner text on scanned plans, still compresses
+      // photos efficiently.
+      out.push({pageNum:1,dataUrl:canvas.toDataURL("image/jpeg",0.92),fmt:"JPEG"});
     }catch(e){console.warn("renderDrawingAnnotatedPages image failed for",drawing.name,e);}
   }
   return out;
@@ -2031,13 +2043,33 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
       doc.autoTable({startY:y,head:dHeaders,body:dRows,margin:{left:margin,right:margin},styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:orange,textColor:255,fontStyle:"bold"}});
       y=doc.lastAutoTable.finalY+8;
 
-      let drawingIdx=0;
-      for(const d of annotated){
-        drawingIdx++;
+      // Render drawings in parallel batches of 2 — pdf.js is I/O + canvas
+      // heavy per page; running two in flight roughly halves wall-clock on
+      // multi-drawing reports while staying safe on phone RAM. Writing to
+      // the jsPDF doc still happens serially below to keep page order stable.
+      const RENDER_CONCURRENCY=2;
+      const renderedByIdx=new Array(annotated.length);
+      let renderCursor=0,renderedCount=0;
+      const runRenderWorker=async()=>{
+        while(true){
+          const i=renderCursor++;
+          if(i>=annotated.length)return;
+          const d=annotated[i];
+          try{
+            const pages=await renderDrawingAnnotatedPages(d,(allDefectsForPins&&allDefectsForPins.length?allDefectsForPins:defects),allPins||[],{vectorMarkup:true});
+            renderedByIdx[i]=pages||[];
+          }catch(e){console.warn("exportReportPdf: render failed",d.name,e);renderedByIdx[i]=[];}
+          renderedCount++;
+          if(typeof onProgress==="function")onProgress(`Rendering drawing ${renderedCount}/${annotated.length}…`);
+        }
+      };
+      await Promise.all(Array.from({length:Math.min(RENDER_CONCURRENCY,annotated.length)},runRenderWorker));
+
+      for(let di=0;di<annotated.length;di++){
+        const d=annotated[di];
+        const pages=renderedByIdx[di]||[];
+        if(!pages.length)continue;
         try{
-          if(typeof onProgress==="function")onProgress(`Rendering drawing ${drawingIdx}/${annotated.length}…`);
-          const pages=await renderDrawingAnnotatedPages(d,(allDefectsForPins&&allDefectsForPins.length?allDefectsForPins:defects),allPins||[],{vectorMarkup:true});
-          if(!pages||pages.length===0)continue;
           for(const pg of pages){
             doc.addPage();y=18;
             doc.setFontSize(11);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
@@ -2056,9 +2088,12 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
               const actualW=imgH/(ratio||1);
               const drawnW=Math.min(imgW,actualW);
               const drawX=margin,drawY=y;
-              // "SLOW" = better zlib compression → smaller PDF at the same
-              // JPEG pixel quality. No pixel loss, just tighter storage.
-              doc.addImage(pg.dataUrl,"JPEG",drawX,drawY,drawnW,imgH,undefined,"SLOW");
+              // "SLOW" = better zlib compression on the embedded JPEG/PNG
+              // stream → smaller PDF at the same pixel fidelity. PDF-source
+              // drawings are PNG (lossless for line art); scanned images
+              // stay JPEG at 0.92.
+              const fmt=pg.fmt||"JPEG";
+              doc.addImage(pg.dataUrl,fmt,drawX,drawY,drawnW,imgH,undefined,"SLOW");
               // Paint the vector-capable markup types on top of the raster so
               // arrows / circles / text / freehand stay crisp at any zoom.
               for(const s of markups){
@@ -2071,7 +2106,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
               y+=imgH+4;
             }
           }
-        }catch(e){console.warn("exportReportPdf: failed to render drawing",d.name,e);}
+        }catch(e){console.warn("exportReportPdf: failed to write drawing",d.name,e);}
       }
     }
   }
