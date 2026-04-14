@@ -451,9 +451,16 @@ async function _waitForPdfLib(timeoutMs=6000){
   });
 }
 async function _fetchBytes(url){
-  const res=await fetch(url,{credentials:"include"});
-  if(!res.ok)throw new Error("fetch "+url+" → "+res.status);
-  return new Uint8Array(await res.arrayBuffer());
+  // PocketBase file URLs are typically public; sending cookies can trigger
+  // CORS preflight failures on some setups. Try uncredentialed first, then
+  // fall back to credentialed for private collections.
+  try{
+    const res=await fetch(url);
+    if(res.ok)return new Uint8Array(await res.arrayBuffer());
+  }catch{}
+  const res2=await fetch(url,{credentials:"include"});
+  if(!res2.ok)throw new Error("fetch "+url+" → "+res2.status);
+  return new Uint8Array(await res2.arrayBuffer());
 }
 // Convert a jsPDF rect (top-left origin, mm) to a pdf-lib rect
 // (bottom-left origin, pt) on a page of given height in pt.
@@ -672,6 +679,26 @@ async function renderDrawingAnnotatedPages(drawing,defects,allPins,opts={}){
         const overlayW=Math.max(800,Math.round(vp.width*2));
         const overlayH=Math.max(600,Math.round(vp.height*2));
         const overlayPng=_buildOverlayPng(overlayW,overlayH,pagePins,pageNotes,defects,markups,imgCache);
+        // ALSO render a raster fallback for this page. If the pdf-lib vector
+        // embed silently fails (CORS, CMYK weirdness, malformed source) the
+        // raster survives in the exported PDF, so the user never gets a blank
+        // rectangle. The vector embed just overlays on top when it works.
+        let rasterFallback=null;
+        try{
+          const viewport2=page.getViewport({scale:2.0});
+          const canvas=document.createElement("canvas");
+          canvas.width=viewport2.width;canvas.height=viewport2.height;
+          const ctx=canvas.getContext("2d");
+          ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
+          await page.render({canvasContext:ctx,viewport:viewport2}).promise;
+          // Bake pins/notes/non-vector markups into the fallback so it matches
+          // what the overlay PNG adds on the vector path — when the raster is
+          // used standalone it still includes those elements.
+          markups.forEach(s=>{if(!PDF_VECTOR_MARKUP_TYPES.has(s.type))_drawMarkupStroke(ctx,canvas.width,canvas.height,s,imgCache);});
+          pageNotes.forEach(n=>_drawNoteMarker(ctx,canvas.width,canvas.height,n));
+          pagePins.forEach(p=>{const def=(defects||[]).find(x=>x.id===p.entryId);_drawPinMarker(ctx,canvas.width,canvas.height,p,def);});
+          rasterFallback=canvas.toDataURL("image/png");
+        }catch(e){console.warn("raster fallback render failed",e);}
         out.push({
           pageNum:pn,
           isVectorSource:true,
@@ -680,6 +707,8 @@ async function renderDrawingAnnotatedPages(drawing,defects,allPins,opts={}){
           nativeW:vp.width,
           nativeH:vp.height,
           overlayPng,
+          rasterFallback,
+          rasterFmt:"PNG",
           markups:[...markups], // the caller will vector-draw the supported types
         });
       }
@@ -2312,11 +2341,20 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
               const imgH=Math.min(imgW*ratio,pageH-y-margin-10);
               const drawnW=Math.min(imgW,imgH/(ratio||1));
               const drawX=margin,drawY=y;
-              // Light border so the reserved area reads as "drawing here" even
-              // in the brief moment before pdf-lib embeds the vector content.
-              doc.setDrawColor(220);doc.setLineWidth(0.2);
-              doc.rect(drawX,drawY,drawnW,imgH);
-              doc.setDrawColor(0);
+              // Paint the raster fallback first. If the pdf-lib vector embed
+              // later fails for any reason (CORS, bad source PDF, CMYK parse
+              // error) the raster remains visible instead of a blank rect.
+              // When the vector embed succeeds, it draws directly on top and
+              // visually replaces the raster — slight file-size overhead for
+              // guaranteed non-regression.
+              if(pg.rasterFallback){
+                try{doc.addImage(pg.rasterFallback,pg.rasterFmt||"PNG",drawX,drawY,drawnW,imgH,undefined,"SLOW");}
+                catch(e){console.warn("raster fallback addImage failed",e);}
+              }else{
+                doc.setDrawColor(220);doc.setLineWidth(0.2);
+                doc.rect(drawX,drawY,drawnW,imgH);
+                doc.setDrawColor(0);
+              }
               // Scale-factor stamp — we display a vector floor plan at a
               // fraction of its source size to fit the A4 body, so anyone who
               // later takes a ruler to this PDF must multiply by the stamp's
