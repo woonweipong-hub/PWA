@@ -6612,6 +6612,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   };
 
   const total=filtered.length;
+  const bySev=SEVERITY.map(s=>({s,count:filtered.filter(d=>d.severity===s).length}));
   const byAssignee=allAssignees.map(t=>({t,open:filtered.filter(d=>d.assignee===t&&d.status==="Open").length,total:filtered.filter(d=>d.assignee===t).length})).filter(x=>x.total>0);
 
   const runContractAdvisor=async()=>{
@@ -6898,6 +6899,21 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
       </div>
 
       {incDefects&&<>
+      <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14}}>
+        <div style={lbl()}>{t("report.by_severity")}</div>
+        {bySev.map(({s,count})=>(
+          <div key={s} style={{marginBottom:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:SEV_COLOR[s]}}>{(SEV_I18N[s]?t(SEV_I18N[s]):s).toUpperCase()}</span>
+              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13}}>{count}</span>
+            </div>
+            <div style={{background:"rgba(0,0,0,0.06)",borderRadius:4,height:6,overflow:"hidden"}}>
+              <div style={{background:SEV_COLOR[s],height:"100%",width:total?`${(count/total)*100}%`:"0%",borderRadius:4}}/>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {byAssignee.length>0&&(
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14}}>
           <div style={lbl()}>{t("report.by_assignee")}</div>
