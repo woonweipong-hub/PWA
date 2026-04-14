@@ -5649,7 +5649,7 @@ function DefectDetail({defect,onClose,onUpdate,member,company,members=[],allDefe
 
 // ── Report ────────────────────────────────────────────────────────
 // ── Profile Panel (edit name, email, password) ──────────────────
-function ProfilePanel({member,authUser,company,onClose,onSignOut}){
+function ProfilePanel({member,authUser,company,onClose,onSignOut,onCompanyUpdate}){
   const[editName,setEditName]=useState(member?.name||"");
   const[editEmail,setEditEmail]=useState(member?.email||authUser?.email||"");
   const[editJobTitle,setEditJobTitle]=useState(member?.jobTitle||"");
@@ -5692,12 +5692,24 @@ function ProfilePanel({member,authUser,company,onClose,onSignOut}){
   };
 
   const saveCompanyName=async()=>{
-    if(!editCompanyName.trim()||editCompanyName.trim()===company?.companyName)return;
+    const trimmed=editCompanyName.trim();
+    if(!trimmed||trimmed===company?.companyName)return;
     setSaving(true);setMsg(null);
     try{
-      await DB.companies.update(company.companyId,{name:editCompanyName.trim()});
+      await DB.companies.update(company.companyId,{name:trimmed});
+      // Propagate the new name into the App's `company` state so every
+      // reference (top bar, exports, email subject, etc.) reflects the
+      // change without a reload. Previously only the DB was updated and
+      // the UI still showed the old name, which looked like a silent failure.
+      if(onCompanyUpdate)onCompanyUpdate(trimmed);
       setMsg({type:"ok",text:"Company name updated"});
-    }catch(e){setMsg({type:"err",text:e.message});}
+    }catch(e){
+      // Surface the real backend error — typically a PocketBase API rule
+      // mismatch or auth-token issue. Plain "Failed" isn't actionable.
+      const raw=e?.message||String(e);
+      setMsg({type:"err",text:`Save failed: ${raw}`});
+      console.warn("saveCompanyName error",e);
+    }
     setSaving(false);
   };
 
@@ -9074,9 +9086,9 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           </div>
         )}
 
-        {/* Action bar */}
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
-          <div style={{flex:1,fontSize:12,color:"rgba(0,0,0,0.4)"}}>📁 {currentProject?.name}</div>
+        {/* Action bar — project name already shown in the top bar, so no
+            spacer here: frees up room on narrow phones so Dn stays visible. */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:6,marginBottom:16,flexWrap:"wrap"}}>
           {canUpload&&(
             <button onClick={()=>fileRef.current?.click()} disabled={uploading} title="Upload" style={{borderRadius:10,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 12px",gap:5}}>
               {uploading?<Spin size={16}/>:<><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 16V3m0 0L7 8m5-5l5 5" stroke="rgba(0,0,0,0.55)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="rgba(0,0,0,0.55)" strokeWidth="1.8" strokeLinecap="round"/></svg><span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.55)"}}>Up</span></>}
@@ -11935,7 +11947,7 @@ function App(){
       )}
 
       {/* Profile panel */}
-      {showProfile&&<ProfilePanel member={member} authUser={authUser} company={company} onClose={()=>setShowProfile(false)} onSignOut={signOut}/>}
+      {showProfile&&<ProfilePanel member={member} authUser={authUser} company={company} onClose={()=>setShowProfile(false)} onSignOut={signOut} onCompanyUpdate={(name)=>setCompany(prev=>prev?{...prev,companyName:name}:prev)}/>}
 
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:84}}>
