@@ -6273,7 +6273,7 @@ function Report({defects,onEmailSetup,currentProject,company}){
               </div>
             ):(
               <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",lineHeight:1.5,marginTop:4}}>
-                Only PSSCOC is bundled — it's free to redistribute. For licensed contracts (FIDIC, JCT, AIA, NEC, REDAS, SIA, etc.) or project-specific PDFs (employer's requirements, scope-of-work), upload your own copy here. Text is extracted in your browser and stored locally for this project only — no upload to our servers.
+                PSSCOC (Singapore) is bundled as a reference sample — it's publicly downloadable from BCA Singapore. For licensed contracts (FIDIC, JCT, AIA, NEC, REDAS, SIA, etc.) or project-specific PDFs (employer's requirements, scope-of-work), upload your own copy here. Text is extracted in your browser and stored locally for this project only — no upload to our servers.
               </div>
             )}
           </div>
