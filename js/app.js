@@ -6240,7 +6240,13 @@ function Report({defects,onEmailSetup,currentProject,company}){
           </div>
 
           <div style={{background:"rgba(88,86,214,0.05)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontSize:12,lineHeight:1.6,color:"#2f2e55"}}>
-            AI reads the bundled <b>PSSCOC</b> contract (plus any of your own PDFs added below) and cross-references the <b>{filtered.length} defect{filtered.length!==1?"s":""}</b> in this report to advise:<br/>
+            {(()=>{
+              const parts=["bundled PSSCOC"];
+              if(userContracts.length===1)parts.push(`your uploaded "${userContracts[0].name}"`);
+              else if(userContracts.length>1)parts.push(`your ${userContracts.length} uploaded PDFs`);
+              const sources=parts.length===1?<b>{parts[0]}</b>:<><b>{parts[0]}</b> + <b>{parts.slice(1).join(" + ")}</b></>;
+              return<>AI reads {sources} and cross-references the <b>{filtered.length} defect{filtered.length!==1?"s":""}</b> in this report to advise:<br/></>;
+            })()}
             <span style={{color:"#5856d6",fontWeight:700}}>Applicable clauses</span> · <span style={{color:"#5856d6",fontWeight:700}}>Responsible parties</span> · <span style={{color:"#5856d6",fontWeight:700}}>Impact & considerations</span> · <span style={{color:"#5856d6",fontWeight:700}}>Actionable follow-ups</span>
           </div>
 
