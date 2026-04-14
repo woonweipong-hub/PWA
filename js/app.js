@@ -6485,7 +6485,6 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   const verified=defects.filter(d=>d.status==="Verified").length;
   const closedCount=defects.filter(d=>d.status==="Closed").length;
   const critical=defects.filter(d=>d.severity==="Critical"&&!["Verified","Closed"].includes(d.status)).length;
-  const sevData=SEVERITY.map(s=>({s,count:defects.filter(d=>d.severity===s).length})).filter(x=>x.count>0);
   const StatusCard=({label,value,color})=>(
     <div style={{flex:1,minWidth:56,background:"#fff",borderRadius:12,padding:"10px 12px",borderTop:`3px solid ${color}`}}>
       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",lineHeight:1}}>{value}</div>
@@ -6735,23 +6734,6 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
             <div style={{fontSize:11,color:"rgba(0,0,0,0.5)"}}>{syncing2?t("messages.syncing"):navigator.onLine?t("dashboard.tap_sync"):t("messages.will_sync")}</div>
           </div>
         </button>
-      )}
-
-      {sevData.length>0&&(
-        <div style={{background:"#fff",borderRadius:12,padding:"10px 14px",marginBottom:12}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:8}}>{t("dashboard.by_severity")}</div>
-          {sevData.map(({s,count})=>(
-            <div key={s} style={{marginBottom:6}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
-                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,color:SEV_COLOR[s]}}>{(SEV_I18N[s]?t(SEV_I18N[s]):s).toUpperCase()}</span>
-                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11}}>{count}</span>
-              </div>
-              <div style={{background:"rgba(0,0,0,0.06)",borderRadius:4,height:4,overflow:"hidden"}}>
-                <div style={{background:SEV_COLOR[s],height:"100%",width:defects.length?`${(count/defects.length)*100}%`:"0%",borderRadius:4,transition:"width 0.5s ease"}}/>
-              </div>
-            </div>
-          ))}
-        </div>
       )}
 
       <div style={{display:"flex",gap:6,marginBottom:10}}>
