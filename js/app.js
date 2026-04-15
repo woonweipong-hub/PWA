@@ -13732,6 +13732,13 @@ function App(){
                       [t("help.set_maps"),t("help.set_maps_desc")],
                       [t("help.set_language"),t("help.set_language_desc")],
                     ]],
+                    ["Device & performance",[
+                      ["Markup Select / Move","Selects one markup object at a time. Tap another object to switch. Multi-select (marquee) is not yet supported — this is by design, not a RAM issue."],
+                      ["PDF Comparison memory use","Comparison renders two PDFs plus an overlay at 2.5× resolution. For an A1 sheet this can hold ~600 MB of image data in memory while you work."],
+                      ["Recommended phone RAM","• 3–4 GB (budget): OK for A3/A4 sheets; A1/A0 may crash the tab.\n• 6–8 GB (mid-range): comfortable for A2/A1.\n• 12 GB+ (flagship / iPhone): full A0 with headroom."],
+                      ["If the app feels slow or reloads","Close other browser tabs, reduce drawing size (A3 export), or restart the app. Large vector PDFs are heavier than raster scans of the same sheet."],
+                      ["Large drawings tip","Split very large site plans into zones before comparing. Smaller pages render faster, use less RAM, and produce cleaner AI summaries."],
+                    ]],
                     [t("help.practical_tips"),[
                       [t("messages.offline_use"),t("messages.offline_continue")],
                       [t("help.tip_multi_projects"),t("help.tip_multi_projects_desc")],
