@@ -785,6 +785,46 @@ async function renderDrawingAnnotatedPages(drawing,defects,allPins,opts={}){
   return out;
 }
 
+// ── Shared markup toolbar defs ───────────────────────────────────
+// Single source of truth for the 13 markup tools (icon SVGs, titles).
+// Used by PhotoMarkup, DrawingViewer and Compare so all three toolbars
+// stay visually identical. Standard button size 30×30.
+const MARKUP_ICON={
+  select:<svg width="16" height="16" viewBox="0 0 20 20"><path d="M4 2 L4 15 L7.5 12 L10 17 L12 16 L9.5 11 L14 11 Z" fill="#fff" stroke="#fff" strokeWidth="0.8" strokeLinejoin="round"/></svg>,
+  freehand:<svg width="16" height="16" viewBox="0 0 20 20"><path d="M3 14 C5 9, 8 5, 11 5 C13 5, 13 7, 14 9 C15 11, 16 13, 17 13" fill="none" stroke="#fff" strokeWidth="1.6" strokeLinecap="round"/><path d="M14 4 L17 7" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/></svg>,
+  highlight:<svg width="16" height="16" viewBox="0 0 20 20"><rect x="2" y="7" width="16" height="6" rx="1" fill="#fff" opacity="0.5"/><line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="4" strokeLinecap="round" opacity="0.4"/></svg>,
+  line:<svg width="16" height="16" viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+  arrow:<svg width="16" height="16" viewBox="0 0 20 20"><line x1="3" y1="17" x2="15" y2="5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/><polyline points="9,4 16,4 16,11" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  polyline:<svg width="16" height="16" viewBox="0 0 20 20"><polyline points="2,16 7,4 13,14 18,6" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  circle:<svg width="16" height="16" viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="8" ry="8" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>,
+  rect:<svg width="16" height="16" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>,
+  cloud:<svg width="16" height="16" viewBox="0 0 20 20"><path d="M4,14 A3,3 0 0,1 4,8 A4,4 0 0,1 8,5 A4,4 0 0,1 14,5 A4,4 0 0,1 17,8 A3,3 0 0,1 17,14 Z" fill="none" stroke="#fff" strokeWidth="1.2"/></svg>,
+  dimension:<svg width="16" height="16" viewBox="0 0 20 20"><line x1="3" y1="10" x2="17" y2="10" stroke="#fff" strokeWidth="1"/><line x1="3" y1="6" x2="3" y2="14" stroke="#fff" strokeWidth="1.5"/><line x1="17" y1="6" x2="17" y2="14" stroke="#fff" strokeWidth="1.5"/><text x="10" y="8" fill="#fff" fontSize="6" textAnchor="middle" fontFamily="sans-serif">d</text></svg>,
+  text:<svg width="16" height="16" viewBox="0 0 20 20"><text x="10" y="15" fill="#fff" fontSize="15" fontWeight="700" textAnchor="middle" fontFamily="sans-serif">T</text></svg>,
+  callout:<svg width="16" height="16" viewBox="0 0 20 20"><line x1="3" y1="16" x2="10" y2="6" stroke="#fff" strokeWidth="1.2"/><rect x="9" y="2" width="9" height="7" rx="1.5" fill="none" stroke="#fff" strokeWidth="1.2"/><text x="13.5" y="7.5" fill="#fff" fontSize="5" textAnchor="middle" fontFamily="sans-serif">A</text></svg>,
+  stamp:<svg width="16" height="16" viewBox="0 0 20 20"><rect x="2" y="2" width="7" height="7" fill="none" stroke="#fff" strokeWidth="1.3"/><rect x="11" y="2" width="7" height="7" fill="none" stroke="#fff" strokeWidth="1.3"/><rect x="2" y="11" width="7" height="7" fill="none" stroke="#fff" strokeWidth="1.3"/><rect x="11" y="11" width="7" height="7" fill="none" stroke="#fff" strokeWidth="1.3"/></svg>,
+  photo:<span style={{fontSize:14}}>📷</span>,
+};
+// Standard tool order (matches the compact 3-row layout on phone):
+// Row A: Select, Freehand, Highlight, Line, Arrow, Polyline, Circle, Rect
+// Row B: Cloud, Dimension, Text, Callout, Stamp, Photo (camera)
+// Ancillary (Color, LineStyle, Size, ...) and action buttons (Undo/Redo/Clear)
+// wrap naturally via flex-wrap.
+const MARKUP_TOOL_ORDER=["select","freehand","highlight","line","arrow","polyline","circle","rect","cloud","dimension","text","callout","stamp"];
+// Compact 30×30 button used across all three markup toolbars.
+function MarkupToolButton({id,title,active,accent="#5856d6",onClick}){
+  return React.createElement("button",{
+    onClick,title,
+    style:{
+      width:30,height:30,borderRadius:7,
+      border:active?`2px solid ${accent}`:"2px solid rgba(255,255,255,0.15)",
+      background:active?(accent==="#ff6b00"?"rgba(255,107,0,0.2)":"rgba(88,86,214,0.2)"):"rgba(255,255,255,0.05)",
+      color:"#fff",fontSize:14,cursor:"pointer",
+      display:"flex",alignItems:"center",justifyContent:"center",padding:0,flexShrink:0,
+    }
+  },MARKUP_ICON[id]||id);
+}
+
 // ── Photo Markup Editor ──────────────────────────────────────────
 function PhotoMarkup({src,onSave,onCancel}){
   const canvasRef=useRef();const overlayRef=useRef();
@@ -1169,23 +1209,11 @@ function PhotoMarkup({src,onSave,onCancel}){
 
       {/* Toolbar */}
       <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:6,borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0,flexWrap:"wrap"}}>
-        {TOOLS.map(t=>(
-          <button key={t.id} onClick={()=>{setTool(t.id);if(t.id!=="select")setSelectedIdx(null);}} title={t.title} style={{width:36,height:36,borderRadius:8,border:tool===t.id?"2px solid #ff6b00":"2px solid rgba(255,255,255,0.15)",background:tool===t.id?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            {t.id==="select"?<svg width="16" height="16" viewBox="0 0 20 20"><path d="M4 2 L4 15 L7.5 12 L10 17 L12 16 L9.5 11 L14 11 Z" fill="#fff" stroke="#fff" strokeWidth="0.8" strokeLinejoin="round"/></svg>
-            :t.id==="freehand"?"✏"
-            :t.id==="highlight"?<svg width="20" height="20" viewBox="0 0 20 20"><rect x="2" y="7" width="16" height="6" rx="1" fill="#fff" opacity="0.5"/><line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="4" strokeLinecap="round" opacity="0.4"/></svg>
-            :t.id==="line"?<svg width="20" height="20" viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
-            :t.id==="arrow"?"↗"
-            :t.id==="polyline"?<svg width="20" height="20" viewBox="0 0 20 20"><polyline points="2,16 7,4 13,14 18,6" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            :t.id==="circle"?<svg width="20" height="20" viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="8" ry="8" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
-            :t.id==="rect"?<svg width="20" height="20" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
-            :t.id==="cloud"?<svg width="20" height="20" viewBox="0 0 20 20"><path d="M4,14 A3,3 0 0,1 4,8 A4,4 0 0,1 8,5 A4,4 0 0,1 14,5 A4,4 0 0,1 17,8 A3,3 0 0,1 17,14 Z" fill="none" stroke="#fff" strokeWidth="1.2"/></svg>
-            :t.id==="dimension"?<svg width="20" height="20" viewBox="0 0 20 20"><line x1="3" y1="10" x2="17" y2="10" stroke="#fff" strokeWidth="1"/><line x1="3" y1="6" x2="3" y2="14" stroke="#fff" strokeWidth="1.5"/><line x1="17" y1="6" x2="17" y2="14" stroke="#fff" strokeWidth="1.5"/><text x="10" y="8" fill="#fff" fontSize="6" textAnchor="middle" fontFamily="sans-serif">d</text></svg>
-            :t.id==="text"?"T"
-            :t.id==="callout"?<svg width="20" height="20" viewBox="0 0 20 20"><line x1="3" y1="16" x2="10" y2="6" stroke="#fff" strokeWidth="1.2"/><rect x="9" y="2" width="9" height="7" rx="1.5" fill="none" stroke="#fff" strokeWidth="1.2"/><text x="13.5" y="7.5" fill="#fff" fontSize="5" textAnchor="middle" fontFamily="sans-serif">A</text></svg>
-            :t.id==="stamp"?"⊞":""}
-          </button>
-        ))}
+        {MARKUP_TOOL_ORDER.map(id=>{
+          const def=TOOLS.find(x=>x.id===id);if(!def)return null;
+          return <MarkupToolButton key={id} id={id} title={def.title} accent="#ff6b00" active={tool===id}
+            onClick={()=>{setTool(id);if(id!=="select")setSelectedIdx(null);}}/>;
+        })}
         <div style={{width:1,height:24,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
         {COLORS.map(c=>(
           <button key={c} onClick={()=>{setColor(c);if(selectedIdx!=null)setStrokes(s=>s.map((st,i)=>i===selectedIdx?{...st,color:c}:st));}} style={{width:28,height:28,borderRadius:"50%",border:color===c?"3px solid #fff":"3px solid rgba(255,255,255,0.15)",background:c,cursor:"pointer"}}/>
@@ -11240,20 +11268,12 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
               {(compareBaseId&&compareTargetId)&&(
                 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,flexWrap:"wrap"}}>
                   <input ref={comparePhotoInputRef} type="file" accept="image/*" capture="environment" onChange={handleComparePhotoFile} style={{display:"none"}}/>
-                  {[{id:"select",label:"✥",title:"Select / Move"},{id:"freehand",label:"✏",title:"Freehand"},{id:"highlight",label:null,title:"Highlight Marker"},{id:"line",label:null,title:"Line"},{id:"arrow",label:"↗",title:"Arrow"},{id:"polyline",label:null,title:"Polyline / Polygon"},{id:"circle",label:null,title:"Circle"},{id:"rect",label:null,title:"Rectangle"},{id:"cloud",label:null,title:"Revision Cloud"},{id:"dimension",label:null,title:"Dimension"},{id:"text",label:"T",title:"Text"},{id:"callout",label:null,title:"Callout / Leader Note"},{id:"stamp",label:"⊞",title:"Stamp"}].map(t=>(
-                    <button key={t.id} onClick={()=>{setCompareMarkupTool(t.id);if(t.id!=="select")setCompareSelectedIdx(null);}} title={t.title} style={{width:34,height:34,borderRadius:8,border:compareMarkupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:compareMarkupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                      {t.id==="highlight"?<svg width="18" height="18" viewBox="0 0 20 20"><rect x="2" y="7" width="16" height="6" rx="1" fill="#fff" opacity="0.5"/><line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="4" strokeLinecap="round" opacity="0.4"/></svg>
-                      :t.id==="polyline"?<svg width="18" height="18" viewBox="0 0 20 20"><polyline points="2,16 7,4 13,14 18,6" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      :t.id==="circle"?<svg width="18" height="18" viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="8" ry="8" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
-                      :t.id==="rect"?<svg width="18" height="18" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
-                      :t.id==="cloud"?<svg width="18" height="18" viewBox="0 0 20 20"><path d="M4,14 A3,3 0 0,1 4,8 A4,4 0 0,1 8,5 A4,4 0 0,1 14,5 A4,4 0 0,1 17,8 A3,3 0 0,1 17,14 Z" fill="none" stroke="#fff" strokeWidth="1.2"/></svg>
-                      :t.id==="line"?<svg width="18" height="18" viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                      :t.id==="dimension"?<svg width="18" height="18" viewBox="0 0 20 20"><line x1="3" y1="10" x2="17" y2="10" stroke="#fff" strokeWidth="1"/><line x1="3" y1="6" x2="3" y2="14" stroke="#fff" strokeWidth="1.5"/><line x1="17" y1="6" x2="17" y2="14" stroke="#fff" strokeWidth="1.5"/><text x="10" y="8" fill="#fff" fontSize="6" textAnchor="middle" fontFamily="sans-serif">d</text></svg>
-                      :t.id==="callout"?<svg width="18" height="18" viewBox="0 0 20 20"><line x1="3" y1="16" x2="10" y2="6" stroke="#fff" strokeWidth="1.2"/><rect x="9" y="2" width="9" height="7" rx="1.5" fill="none" stroke="#fff" strokeWidth="1.2"/><text x="13.5" y="7.5" fill="#fff" fontSize="5" textAnchor="middle" fontFamily="sans-serif">A</text></svg>
-                      :t.label}
-                    </button>
+                  {MARKUP_TOOL_ORDER.map(id=>(
+                    <MarkupToolButton key={id} id={id} title={{select:"Select / Move",freehand:"Freehand",highlight:"Highlight Marker",line:"Line",arrow:"Arrow",polyline:"Polyline / Polygon",circle:"Circle",rect:"Rectangle",cloud:"Revision Cloud",dimension:"Dimension",text:"Text",callout:"Callout / Leader Note",stamp:"Stamp"}[id]}
+                      accent="#5856d6" active={compareMarkupTool===id}
+                      onClick={()=>{setCompareMarkupTool(id);if(id!=="select")setCompareSelectedIdx(null);}}/>
                   ))}
-                  <button onClick={()=>comparePhotoInputRef.current?.click()} title={t("markup.add_photo")} style={{width:34,height:34,borderRadius:8,border:"2px solid rgba(255,107,0,0.35)",background:"rgba(255,107,0,0.1)",color:"#ffb48a",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>📷</button>
+                  <button onClick={()=>comparePhotoInputRef.current?.click()} title={t("markup.add_photo")} style={{width:30,height:30,borderRadius:7,border:"2px solid rgba(255,107,0,0.35)",background:"rgba(255,107,0,0.1)",color:"#ffb48a",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>📷</button>
                   {comparePendingPhoto&&(
                     <div style={{display:"flex",alignItems:"center",gap:8,background:"rgba(88,86,214,0.15)",borderRadius:8,padding:"6px 12px"}}>
                       <span style={{fontSize:12,color:"#fff",fontWeight:600}}>{t("actions.tap_to_place")}</span>
@@ -12398,21 +12418,12 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       {markupMode&&(
         <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:6,background:"#1a1a1a",borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0,flexWrap:"wrap"}}>
           <button onClick={()=>setMarkupMode(false)} title="Exit markup mode" style={{padding:"6px 12px",borderRadius:8,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",boxShadow:"0 1px 4px rgba(88,86,214,0.35)"}}>✓ DONE</button>
-          {[{id:"select",label:null,title:"Select, move, resize"},{id:"freehand",label:"✏",title:"Freehand"},{id:"highlight",label:null,title:"Highlight Marker"},{id:"line",label:null,title:"Line"},{id:"arrow",label:"↗",title:"Arrow"},{id:"polyline",label:null,title:"Polyline / Polygon"},{id:"circle",label:null,title:"Circle"},{id:"rect",label:null,title:"Rectangle"},{id:"cloud",label:null,title:"Revision Cloud"},{id:"dimension",label:null,title:"Dimension line"},{id:"text",label:"T",title:"Text"},{id:"callout",label:null,title:"Callout / Leader Note"},{id:"stamp",label:"⊞",title:"Stamp"}].map(t=>(
-            <button key={t.id} onClick={()=>{setMarkupTool(t.id);if(t.id!=="select")setMarkupSelectedIdx(null);}} title={t.title} style={{width:32,height:32,borderRadius:7,border:markupTool===t.id?"2px solid #5856d6":"2px solid rgba(255,255,255,0.15)",background:markupTool===t.id?"rgba(88,86,214,0.2)":"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              {t.id==="select"?<svg width="16" height="16" viewBox="0 0 20 20"><path d="M4 2 L4 15 L7.5 12 L10 17 L12 16 L9.5 11 L14 11 Z" fill="#fff" stroke="#fff" strokeWidth="0.8" strokeLinejoin="round"/></svg>
-              :t.id==="highlight"?<svg width="16" height="16" viewBox="0 0 20 20"><rect x="2" y="7" width="16" height="6" rx="1" fill="#fff" opacity="0.5"/><line x1="2" y1="10" x2="18" y2="10" stroke="#fff" strokeWidth="4" strokeLinecap="round" opacity="0.4"/></svg>
-              :t.id==="polyline"?<svg width="16" height="16" viewBox="0 0 20 20"><polyline points="2,16 7,4 13,14 18,6" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              :t.id==="circle"?<svg width="16" height="16" viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="8" ry="8" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
-              :t.id==="rect"?<svg width="16" height="16" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" fill="none" stroke="#fff" strokeWidth="1.5"/></svg>
-              :t.id==="cloud"?<svg width="16" height="16" viewBox="0 0 20 20"><path d="M4,14 A3,3 0 0,1 4,8 A4,4 0 0,1 8,5 A4,4 0 0,1 14,5 A4,4 0 0,1 17,8 A3,3 0 0,1 17,14 Z" fill="none" stroke="#fff" strokeWidth="1.2"/></svg>
-              :t.id==="line"?<svg width="16" height="16" viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
-              :t.id==="dimension"?<svg width="16" height="16" viewBox="0 0 20 20"><line x1="3" y1="10" x2="17" y2="10" stroke="#fff" strokeWidth="1"/><line x1="3" y1="6" x2="3" y2="14" stroke="#fff" strokeWidth="1.5"/><line x1="17" y1="6" x2="17" y2="14" stroke="#fff" strokeWidth="1.5"/><text x="10" y="8" fill="#fff" fontSize="6" textAnchor="middle" fontFamily="sans-serif">d</text></svg>
-              :t.id==="callout"?<svg width="16" height="16" viewBox="0 0 20 20"><line x1="3" y1="16" x2="10" y2="6" stroke="#fff" strokeWidth="1.2"/><rect x="9" y="2" width="9" height="7" rx="1.5" fill="none" stroke="#fff" strokeWidth="1.2"/><text x="13.5" y="7.5" fill="#fff" fontSize="5" textAnchor="middle" fontFamily="sans-serif">A</text></svg>
-              :t.label}
-            </button>
+          {MARKUP_TOOL_ORDER.map(id=>(
+            <MarkupToolButton key={id} id={id} title={{select:"Select, move, resize",freehand:"Freehand",highlight:"Highlight Marker",line:"Line",arrow:"Arrow",polyline:"Polyline / Polygon",circle:"Circle",rect:"Rectangle",cloud:"Revision Cloud",dimension:"Dimension line",text:"Text",callout:"Callout / Leader Note",stamp:"Stamp"}[id]}
+              accent="#5856d6" active={markupTool===id}
+              onClick={()=>{setMarkupTool(id);if(id!=="select")setMarkupSelectedIdx(null);}}/>
           ))}
-          <button onClick={()=>markupPhotoRef.current?.click()} title="Add photo — drag on drawing to place" style={{width:32,height:32,borderRadius:7,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>📷</button>
+          <button onClick={()=>markupPhotoRef.current?.click()} title="Add photo — drag on drawing to place" style={{width:30,height:30,borderRadius:7,border:"2px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>📷</button>
           <input ref={markupPhotoRef} type="file" accept="image/*" capture="environment" onChange={handleMarkupPhotoFile} style={{display:"none"}}/>
           <div style={{width:1,height:22,background:"rgba(255,255,255,0.15)",margin:"0 2px"}}/>
           {/* Color — consolidated swatch dropdown */}
