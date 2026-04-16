@@ -4511,6 +4511,9 @@ function StorageSettings({onClose,companyId}){
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a7a35"}}>PATH 1 · JUST USE SITESHRIMP.ORG</div>
           </div>
           <div style={{fontSize:12,color:"rgba(0,0,0,0.6)",lineHeight:1.6}}>Free. Zero setup. Your team's data is private to your company. <b>Most small teams stop here.</b> Just go to <Link2 href="https://siteshrimp.org">siteshrimp.org</Link2> and sign up.</div>
+          <div style={{fontSize:11,color:"rgba(0,0,0,0.55)",lineHeight:1.6,marginTop:8,padding:"8px 10px",background:"rgba(52,199,89,0.06)",borderRadius:8}}>
+            <b>⚠ Fair use:</b> runs on our shared free-tier backend with a <b>1 GB per-company cap</b>. If your team grows past it, please move to Path 2 or Path 3 — your data exports in one click and capacity stays available for new teams.
+          </div>
         </div>
 
         {/* Path B — Managed */}

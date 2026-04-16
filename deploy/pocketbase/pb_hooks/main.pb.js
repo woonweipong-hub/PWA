@@ -22,6 +22,50 @@ function rateLimit(key, maxPerMinute) {
   return true;
 }
 
+// ====== PER-COMPANY STORAGE CAP ======
+// Hard cap on per-company file storage. Rejects uploads that would exceed.
+// Bounds the worst-case per-company storage cost on the shared instance and
+// prevents siteshrimp.org from accidentally becoming any team's permanent home.
+// Tune COMPANY_STORAGE_CAP_BYTES per the operator's hosting budget.
+var COMPANY_STORAGE_CAP_BYTES = 1024 * 1024 * 1024; // 1 GB
+
+function getCompanyStorageBytes(companyId) {
+  var sql = "SELECT COALESCE(SUM(json_extract(value, '$.size')), 0) AS total " +
+            "FROM defects, json_each(json_array(photo, photoOriginal, costDoc)) " +
+            "WHERE companyId = {:cid}";
+  try {
+    var row = $app.db().newQuery(sql).bind({"cid": companyId}).one();
+    return row && row.total ? parseInt(row.total) : 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+onRecordCreateRequest((e) => {
+  if (e.collection.name !== "defects") return e.next();
+  var record = e.record;
+  var companyId = record.get("companyId");
+  if (!companyId) return e.next();
+
+  var incomingBytes = 0;
+  ["photo", "photoOriginal", "costDoc"].forEach(function (field) {
+    var files = record.get(field) || [];
+    if (!Array.isArray(files)) files = [files];
+    files.forEach(function (f) {
+      if (f && f.size) incomingBytes += f.size;
+    });
+  });
+
+  var currentBytes = getCompanyStorageBytes(companyId);
+  if (currentBytes + incomingBytes > COMPANY_STORAGE_CAP_BYTES) {
+    throw new BadRequestError(
+      "Storage cap reached (1 GB). Please migrate to your own server " +
+      "(Settings -> Storage & Hosting -> Path 2 or Path 3) or delete old defects."
+    );
+  }
+  e.next();
+}, "defects");
+
 // ====== AUTO DEFECT ID ======
 
 onRecordCreate((e) => {
