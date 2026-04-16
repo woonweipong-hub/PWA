@@ -4490,7 +4490,7 @@ function StorageSettings({onClose,companyId}){
         <div style={{background:"#fff",borderRadius:14,padding:"14px 16px",marginBottom:10,borderLeft:"4px solid #5856d6"}}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
             <div style={{fontSize:18}}>🏗</div>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#3a39a6"}}>PATH 2 · MANAGED HOSTING (paid tier, at your own cost)</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#3a39a6"}}>PATH 2 · MANAGED HOSTING (free/paid tier)</div>
             <span style={{background:"rgba(88,86,214,0.15)",color:"#3a39a6",fontSize:10,fontWeight:800,padding:"2px 6px",borderRadius:8,marginLeft:"auto"}}>NO LINUX</span>
           </div>
           <div style={{fontSize:12,color:"rgba(0,0,0,0.6)",lineHeight:1.6,marginBottom:8}}>One-click PocketBase hosting. No Linux / SSH skills needed. Pick one:</div>
