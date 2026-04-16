@@ -5145,12 +5145,30 @@ function DrawingPinThumb({drawing,pin,severity,title}){
 }
 
 // Dispatch: render MapThumb for GPS-pinned entries, DrawingPinThumb for
-// entries pinned on a drawing, or nothing if neither applies.
+// entries pinned on a drawing, PhotoThumb if the entry has at least one
+// uploaded photo, or nothing if none of those apply.
 function EntryThumb({defect,drawingByEntryId}){
   if(parseDefectCoords(defect))return <MapThumb defect={defect}/>;
   const link=drawingByEntryId&&drawingByEntryId[defect.id];
   if(link)return <DrawingPinThumb drawing={link.drawing} pin={link.pin} severity={defect.severity} title={`On drawing: ${link.drawing.name||""}`}/>;
+  // Photo fallback — entries that aren't pinned on a map or drawing but have
+  // a photo should still get a visual cue in the Review list. The first photo
+  // is shown at the same 62×62 footprint as MapThumb / DrawingPinThumb.
+  const photoUrl=typeof defect.photo==="string"?defect.photo
+    :Array.isArray(defect.photo)&&defect.photo[0]?defect.photo[0]:null;
+  if(photoUrl)return <PhotoThumb url={photoUrl} title={defect.title||"Photo"}/>;
   return null;
+}
+// Small photo thumbnail for Review rows — first defect photo, cover-fit so
+// the visible square is filled. Tap-through behaviour (open detail) is
+// inherited from the parent row's onClick.
+function PhotoThumb({url,title}){
+  return (
+    <div title={title} style={{width:62,height:62,borderRadius:8,overflow:"hidden",flexShrink:0,background:"#f0f0f0",border:"1px solid rgba(0,0,0,0.08)",position:"relative"}}>
+      <img src={url} alt="" loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+      <div style={{position:"absolute",bottom:2,right:2,background:"rgba(0,0,0,0.55)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:8,padding:"1px 4px",borderRadius:3,letterSpacing:"0.05em"}}>📷</div>
+    </div>
+  );
 }
 
 // Small map thumbnail for Review rows — single OSM tile with the pin dot
