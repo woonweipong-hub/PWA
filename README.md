@@ -69,7 +69,7 @@ When every item shows a green ✓, the setup badge disappears.
 | **7 Work Categories** | Building Defects (Landed), Building Defects (Highrise), Construction Site, Interior Works, Facilities Management, Infrastructure Works (Roads/Drainage/Linkway), Others — each filters the Component dropdown to just the relevant groups so users aren't flooded with irrelevant items. Last-used category is remembered per device. |
 | **4 Default Entry Types** | Defect, Observation, Update, Instruction |
 | **Custom Entry Types** | Create your own (Site Checks, Safety Audit, Snag List, etc.) — icon + color picker, shared across team |
-| **Component + Issue Selector** | 158 building/infra components across 19 groups, 296 unique predefined issues — tap to select, minimal typing. Includes Roads, Drainage, Linkway, Site & Safety, and FM (Building Services, Common Areas, Amenities). All translated in 22 languages. |
+| **Component + Issue Selector** | 158 building/infra components across 19 groups, 296 unique predefined issues — tap to select, minimal typing. Includes Roads, Drainage, Linkway, Site & Safety, and FM (Building Services, Common Areas, Amenities). All translated in 23 languages. |
 | **Low-friction Submit** | A description **or** a photo is enough — title and location are auto-generated so field users can capture first and fill the rest later via Review comments |
 | **AI Photo Analysis** | Snap a photo, AI auto-fills title, severity, description |
 | **AI Trade + Assignee Suggestion** | Auto-assigns a trade and suggested assignee from the analyzed photo |
@@ -364,7 +364,7 @@ SiteShrimp/
     db.js                 # PocketBase data layer + Google Drive module
     lang.js               # i18n helper — t(), tOpt(), language loading
   lang/
-    en.json ... fi.json   # 22 language packs (1,158 keys each)
+    en.json ... fi.json   # 23 language packs (1,158 keys each)
   manifest.json           # Install config
   sw.js                   # Service worker (offline cache)
   icons/

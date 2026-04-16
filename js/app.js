@@ -7349,6 +7349,24 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
   const[searching,setSearching]=useState(false);
   const[pinMode,setPinMode]=useState(true);
   const[showList,setShowList]=useState(false);
+  // ── Multi-select on map pins (entries with lat/lng) ──
+  // Desktop: shift/ctrl/cmd-click toggles a pin in the selection.
+  // Mobile: the "➕ MULTI" toolbar button enables additive tap-toggle mode.
+  // Batch "🗑 UNPIN (N)" button clears GPS on all selected at once.
+  const[selectedPinIds,setSelectedPinIds]=useState(()=>new Set());
+  const[mapAdditiveSelect,setMapAdditiveSelect]=useState(false);
+  const selectedPinIdsRef=useRef(selectedPinIds);
+  const mapAdditiveRef=useRef(mapAdditiveSelect);
+  useEffect(()=>{selectedPinIdsRef.current=selectedPinIds;},[selectedPinIds]);
+  useEffect(()=>{mapAdditiveRef.current=mapAdditiveSelect;},[mapAdditiveSelect]);
+  const togglePinSelection=(id)=>{
+    setSelectedPinIds(prev=>{
+      const next=new Set(prev);
+      if(next.has(id))next.delete(id);else next.add(id);
+      return next;
+    });
+  };
+  const clearPinSelection=()=>setSelectedPinIds(new Set());
   const[markupTool,setMarkupTool]=useState(null); // null | "rect" | "circle" | "line" | "text" | "arrow" | "dimension" | "stamp" | "freehand" | "photo"
   const[mapMarkups,setMapMarkups]=useState([]);   // session-only, not yet persisted
   const[pendingPhoto,setPendingPhoto]=useState(null); // {dataUrl, aspect}
@@ -8091,10 +8109,12 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
       try{await DB.defects.update(d.id,{lat:null,lng:null,mapZoom:null});}catch(e){alert("Failed to remove pin: "+e.message);}
     };
     // Shared letter-in-ring SVG for both providers (matches drawing pin style).
-    // 28×28 overall; severity letter in the middle.
-    const letterInRingSVG=(color,letter,critical)=>{
+    // 28×28 overall; severity letter in the middle. When `selected` is true,
+    // wraps with an outer accent ring so multi-selected pins stand out.
+    const letterInRingSVG=(color,letter,critical,selected)=>{
       const pulse=critical?`<circle cx="14" cy="14" r="13" fill="${color}" opacity="0.4"><animate attributeName="r" values="10;14;10" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.6;0.1;0.6" dur="2s" repeatCount="indefinite"/></circle>`:"";
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">${pulse}<circle cx="14" cy="14" r="11" fill="rgba(0,0,0,0.55)" stroke="${color}" stroke-width="3"/><circle cx="14" cy="14" r="4" fill="${color}"/><text x="14" y="15" text-anchor="middle" dominant-baseline="central" font-size="9" font-weight="900" font-family="'Barlow Condensed',sans-serif" fill="#fff" style="text-shadow:0 1px 2px rgba(0,0,0,0.8)">${letter||""}</text></svg>`;
+      const selRing=selected?`<circle cx="14" cy="14" r="13.5" fill="none" stroke="#5856d6" stroke-width="2.5" stroke-dasharray="2 1.5"/>`:"";
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">${pulse}${selRing}<circle cx="14" cy="14" r="11" fill="rgba(0,0,0,0.55)" stroke="${color}" stroke-width="3"/><circle cx="14" cy="14" r="4" fill="${color}"/><text x="14" y="15" text-anchor="middle" dominant-baseline="central" font-size="9" font-weight="900" font-family="'Barlow Condensed',sans-serif" fill="#fff" style="text-shadow:0 1px 2px rgba(0,0,0,0.8)">${letter||""}</text></svg>`;
     };
     // Cluster bubble style — dominant severity colour of the children.
     // Accepts a list of severities and picks the "worst" one so the bubble
@@ -8113,7 +8133,8 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
         const color=SEV_COLOR[d.severity]||"#8e8e93";
         const letter=d.severity?d.severity[0]:"";
         const critical=d.severity==="Critical"&&d.status==="Open";
-        const url="data:image/svg+xml;utf8,"+encodeURIComponent(letterInRingSVG(color,letter,critical));
+        const isSelected=selectedPinIds.has(d.id);
+        const url="data:image/svg+xml;utf8,"+encodeURIComponent(letterInRingSVG(color,letter,critical,isSelected));
         const m=new g.Marker({
           position:{lat:d.lat,lng:d.lng},
           // NOTE: no `map:` here — markers are owned by the clusterer below
@@ -8124,7 +8145,13 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
         m._defect=d;
         const safeTitle=(d.title||"Entry").replace(/</g,"&lt;");
         const iw=new g.InfoWindow({content:`<div style="font-family:'Barlow Condensed',sans-serif;padding:4px 6px;min-width:140px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${canEdit?`<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div><button id="mm-del-${d.id}" style="margin-top:6px;width:100%;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);border-radius:6px;padding:4px 8px;color:#cc0000;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;cursor:pointer">REMOVE PIN</button>`:""}</div>`});
-        m.addListener("click",()=>{
+        m.addListener("click",(e)=>{
+          // Multi-select path: shift/ctrl/cmd-click OR additive-mode toggle.
+          // Google Maps MouseEvent wraps the native DOM event as `domEvent`.
+          const de=e&&e.domEvent;
+          const additive=mapAdditiveRef.current||(de&&(de.shiftKey||de.ctrlKey||de.metaKey));
+          if(additive&&canEdit){togglePinSelection(d.id);return;}
+          // Plain click: show info window (existing behaviour)
           iw.open({anchor:m,map:mapObj.current});
           if(canEdit){setTimeout(()=>{const b=document.getElementById("mm-del-"+d.id);if(b)b.onclick=()=>{iw.close();unpinDefect(d);};},30);}
         });
@@ -8155,12 +8182,24 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
         const color=SEV_COLOR[d.severity]||"#8e8e93";
         const letter=d.severity?d.severity[0]:"";
         const critical=d.severity==="Critical"&&d.status==="Open";
-        const icon=L.divIcon({className:"",html:letterInRingSVG(color,letter,critical),iconSize:[28,28],iconAnchor:[14,14]});
+        const isSelected=selectedPinIds.has(d.id);
+        const icon=L.divIcon({className:"",html:letterInRingSVG(color,letter,critical,isSelected),iconSize:[28,28],iconAnchor:[14,14]});
         const m=L.marker([d.lat,d.lng],{icon,draggable:canEdit,title:canEdit?(d.title||"Entry")+" — drag to move":(d.title||"Entry")});
         m._defect=d;
         const safeTitle=(d.title||"Entry").replace(/</g,"&lt;");
         m.bindPopup(`<div style="font-family:'Barlow Condensed',sans-serif;padding:2px 4px;min-width:140px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${canEdit?`<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div><button id="mm-del-${d.id}" style="margin-top:6px;width:100%;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);border-radius:6px;padding:4px 8px;color:#cc0000;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;cursor:pointer">REMOVE PIN</button>`:""}</div>`);
         if(canEdit){
+          // Multi-select path: shift/ctrl/cmd-click OR additive-mode toggle.
+          // Leaflet: `click` event's `originalEvent` holds the DOM MouseEvent.
+          m.on("click",(e)=>{
+            const de=e&&e.originalEvent;
+            const additive=mapAdditiveRef.current||(de&&(de.shiftKey||de.ctrlKey||de.metaKey));
+            if(additive){
+              // Leaflet auto-opens popup on click; close it when toggling selection.
+              m.closePopup();
+              togglePinSelection(d.id);
+            }
+          });
           m.on("popupopen",()=>{setTimeout(()=>{const b=document.getElementById("mm-del-"+d.id);if(b)b.onclick=()=>{m.closePopup();unpinDefect(d);};},30);});
           m.on("dragend",e=>{const p=e.target.getLatLng();saveDefectMove(d,p.lat,p.lng);});
         }
@@ -8193,8 +8232,10 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
       hasAutoFitRef.current=true;
       setTimeout(fitToAllPins,120);
     }
+  // Re-render markers when selection changes so the selected ring appears/
+  // disappears without waiting for a data refresh.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[status,defects,provider]);
+  },[status,defects,provider,selectedPinIds]);
   // Reset the auto-fit guard when switching projects or providers.
   useEffect(()=>{hasAutoFitRef.current=false;},[currentProject?.id,provider]);
 
@@ -8397,6 +8438,31 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
           <button onClick={fitToAllPins} title="Recenter map to show every pinned entry in this project" style={{padding:"8px 12px",borderRadius:10,border:"1px solid rgba(255,107,0,0.3)",background:"#fff",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
             🎯 FIT
           </button>
+        )}
+        {canEdit&&mapDefects.length>0&&(
+          <button onClick={()=>setMapAdditiveSelect(v=>!v)} title={mapAdditiveSelect?"Additive mode ON — next tap toggles pin selection. Tap to turn off.":"Enable additive mode for mobile multi-select (no shift key needed)"} style={{padding:"8px 12px",borderRadius:10,border:"1px solid "+(mapAdditiveSelect?"#5856d6":"rgba(0,0,0,0.12)"),background:mapAdditiveSelect?"rgba(88,86,214,0.14)":"#fff",color:mapAdditiveSelect?"#5856d6":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+            ➕ MULTI{mapAdditiveSelect?" ON":""}
+          </button>
+        )}
+        {canEdit&&selectedPinIds.size>0&&(
+          <>
+            <button onClick={async()=>{
+              if(!confirm(`Unpin ${selectedPinIds.size} selected entr${selectedPinIds.size===1?"y":"ies"}?\n(Entries stay — only their GPS locations are cleared.)`))return;
+              const ids=Array.from(selectedPinIds);
+              const failures=[];
+              for(const id of ids){
+                try{await DB.defects.update(id,{lat:null,lng:null,mapZoom:null});}
+                catch(e){console.warn("unpin failed",id,e);failures.push(id);}
+              }
+              clearPinSelection();
+              if(failures.length)alert(`Unpinned ${ids.length-failures.length}/${ids.length}. ${failures.length} failed — check connection and retry.`);
+            }} title={`Unpin ${selectedPinIds.size} selected entries from the map`} style={{padding:"8px 12px",borderRadius:10,border:"1px solid rgba(255,59,48,0.4)",background:"rgba(255,59,48,0.12)",color:"#cc0000",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+              🗑 UNPIN ({selectedPinIds.size})
+            </button>
+            <button onClick={clearPinSelection} title="Clear selection" style={{padding:"8px 10px",borderRadius:10,border:"1px solid rgba(0,0,0,0.12)",background:"#fff",color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>
+              ✕
+            </button>
+          </>
         )}
         {canEdit&&(
           <button onClick={snapAsDrawing} disabled={snapping} title="Capture current map view as a drawing (pin like a floor plan)" style={{padding:"8px 12px",borderRadius:10,border:"1px solid rgba(48,209,88,0.4)",background:snapping?"rgba(48,209,88,0.25)":"rgba(48,209,88,0.12)",color:"#1a7a35",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:snapping?"wait":"pointer",display:"flex",alignItems:"center",gap:6}}>

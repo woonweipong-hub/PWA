@@ -37,7 +37,7 @@ SiteShrimp is a mobile-first Progressive Web App for construction site defect tr
 - **Role-based access** — Admin, Manager, Inspector, Viewer with different permissions
 - **Multi-project** — Each company manages multiple construction projects
 - **AI photo analysis** — Gemini, Ollama, or OpenAI/GPT auto-fills defect title, severity, description from photos
-- **22-language i18n** — Full UI and dropdown translation for 22 languages (EN, ZH, ZH-TW, MS, ID, HI, TA, TH, VI, BN, JA, KO, DE, FR, ES, PT, IT, TR, SV, NO, DA, FI)
+- **23-language i18n** — Full UI and dropdown translation for 23 languages (EN, ZH, ZH-TW, MS, ID, HI, TA, TH, VI, BN, MY, JA, KO, DE, FR, ES, PT, IT, TR, SV, NO, DA, FI)
 - **Voice input** — Speak to fill any text field
 - **Telegram notifications** — New defects and status changes sent to team group with photo
 - **Email reports** — Filtered HTML report sent to multiple recipients, translated to user's language
@@ -97,9 +97,9 @@ SiteShrimp/
 │   ├── app.compiled.js     ← Babel-compiled output (served to browser)
 │   ├── db.js               ← PocketBase data layer: auth, CRUD, SSE subscriptions
 │   ├── constants.js        ← Entry types, components, issues, locations, statuses
-│   └── lang.js             ← i18n helper: t(), tOpt(), language loading (22 languages)
+│   └── lang.js             ← i18n helper: t(), tOpt(), language loading (23 languages)
 ├── lang/
-│   ├── en.json … fi.json   ← 22 language packs (1,158 keys each)
+│   ├── en.json … fi.json   ← 23 language packs (1,158 keys each)
 ├── manifest.json            ← App install config (name, icons, theme colour)
 ├── sw.js                    ← Service worker: caches app shell, enables offline
 ├── icons/

@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 
 /**
- * Auto-translate missing/untranslated keys in lang/*.json from en.json
+ * Auto-translate missing/untranslated keys in lang/*.json from en.json.
+ *
+ * Note on language count: the app ships 23 language packs total — English
+ * (the source) plus 22 translated targets below. This script only touches
+ * the 22 translated packs; en.json is the source of truth.
  *
  * Usage:
- *   node tools/translate.js          # translate all languages
+ *   node tools/translate.js          # translate all 22 non-English targets
  *   node tools/translate.js hi       # translate only Hindi
  *   node tools/translate.js hi ta    # translate Hindi and Tamil
  */
@@ -170,7 +174,8 @@ async function processLanguage(langCode) {
 }
 
 async function main() {
-  console.log('=== SiteShrimp Translation Tool ===\n');
+  console.log('=== SiteShrimp Translation Tool ===');
+  console.log('(Source: en.json → 22 translated packs · total 23 languages)\n');
 
   // Check en.json exists
   if (!fs.existsSync(EN_FILE)) {
