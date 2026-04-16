@@ -4502,7 +4502,7 @@ function StorageSettings({onClose,companyId}){
             <li><Link2 href="https://firebase.google.com/pricing">Firebase</Link2> / <Link2 href="https://supabase.com/pricing">Supabase</Link2> — managed BaaS alternatives (free tier + paid, at your own cost)</li>
           </ul>
           <div style={{fontSize:11,color:"rgba(0,0,0,0.45)",marginTop:8,padding:"8px 10px",background:"rgba(88,86,214,0.06)",borderRadius:8,lineHeight:1.6}}>
-            <b>4-step switch:</b> (1) sign up at one of the above &nbsp;→&nbsp; (2) click their PocketBase template &nbsp;→&nbsp; (3) copy the server URL (looks like <code style={{background:"rgba(0,0,0,0.05)",padding:"1px 5px",borderRadius:3,fontSize:11}}>https://your-app.fly.dev</code>) &nbsp;→&nbsp; (4) SiteShrimp login page → ⚙ Change server URL → paste → Set.
+            <b>3-step switch:</b> (1) sign up at one of the above &nbsp;→&nbsp; (2) click their PocketBase template &nbsp;→&nbsp; (3) copy the server URL (looks like <code style={{background:"rgba(0,0,0,0.05)",padding:"1px 5px",borderRadius:3,fontSize:11}}>https://your-app.fly.dev</code>) &nbsp;→&nbsp; then follow <b>🔌 CONNECT</b> below.
           </div>
         </div>
 
@@ -4519,7 +4519,7 @@ function StorageSettings({onClose,companyId}){
             <li>Download the binary: <Link2 href="https://pocketbase.io/docs/">pocketbase.io/docs</Link2></li>
             <li>Unzip and run: <code style={{background:"rgba(0,0,0,0.06)",padding:"1px 5px",borderRadius:3,fontSize:11}}>./pocketbase serve</code></li>
             <li>Open <code style={{background:"rgba(0,0,0,0.06)",padding:"1px 5px",borderRadius:3,fontSize:11}}>http://127.0.0.1:8090/_/</code> and create admin</li>
-            <li>SiteShrimp login → ⚙ Change server URL → paste <code style={{background:"rgba(0,0,0,0.06)",padding:"1px 5px",borderRadius:3,fontSize:11}}>http://127.0.0.1:8090</code></li>
+            <li>Then follow <b>🔌 CONNECT</b> below to point SiteShrimp at <code style={{background:"rgba(0,0,0,0.06)",padding:"1px 5px",borderRadius:3,fontSize:11}}>http://127.0.0.1:8090</code></li>
           </ol>
           <div style={{fontSize:11,color:"rgba(0,0,0,0.55)",lineHeight:1.7,marginBottom:6}}><b>Add HTTPS for public access (pick one):</b></div>
           <ul style={{margin:"0 0 10px 0",paddingLeft:18,fontSize:12,color:"rgba(0,0,0,0.6)",lineHeight:1.7}}>
@@ -4536,6 +4536,17 @@ function StorageSettings({onClose,companyId}){
           <div style={{fontSize:11,color:"rgba(0,0,0,0.45)",padding:"8px 10px",background:"rgba(255,107,0,0.06)",borderRadius:8,lineHeight:1.6}}>
             <b>Backup:</b> all your data lives in the <code style={{background:"rgba(0,0,0,0.06)",padding:"1px 5px",borderRadius:3,fontSize:11}}>pb_data/</code> folder (SQLite + uploaded files). Copy that folder to back up. PocketBase admin UI also has a one-click Backup.
           </div>
+        </div>
+
+        {/* ─── CONNECT — point SiteShrimp at your hosted backend (applies to Path 2 & Path 3) ─── */}
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"rgba(0,0,0,0.5)",letterSpacing:"0.08em",margin:"20px 0 10px"}}>🔌 CONNECT — POINT SITESHRIMP AT YOUR SERVER</div>
+        <div style={{background:"#fff",borderRadius:14,padding:"14px 16px",marginBottom:20,borderLeft:"4px solid #1a1a1a"}}>
+          <div style={{fontSize:12,color:"rgba(0,0,0,0.6)",lineHeight:1.6,marginBottom:8}}>Once your PocketBase server is running (Path 2 or Path 3), tell SiteShrimp where to find it. Skip if you're on Path 1.</div>
+          <ol style={{margin:0,paddingLeft:18,fontSize:12,color:"rgba(0,0,0,0.65)",lineHeight:1.8}}>
+            <li>Copy your server URL — e.g. <code style={{background:"rgba(0,0,0,0.06)",padding:"1px 5px",borderRadius:3,fontSize:11}}>https://your-app.fly.dev</code> (managed) or <code style={{background:"rgba(0,0,0,0.06)",padding:"1px 5px",borderRadius:3,fontSize:11}}>http://127.0.0.1:8090</code> (self-host).</li>
+            <li>Open the SiteShrimp login page and expand <b>⚙ Change server URL</b>.</li>
+            <li>Paste the URL → click <b>Set</b>. Then sign in as usual.</li>
+          </ol>
         </div>
 
         {/* ─── FILE STORAGE — works with any hosting choice above ─── */}
