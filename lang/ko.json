@@ -763,6 +763,8 @@
     "tip_photo_filenames_desc": "Google 드라이브에 업로드된 사진의 이름은 Project_YYYYMMDD-HHMMSS_User_DEF-NNNN_N.jpg이므로 앱을 열지 않고도 사진을 정렬하고 찾을 수 있습니다. MyProject_20260416-113200_KH_DEF-0042_1.jpg. DLP 청구 증거, 프로젝트 파일 구성, 주 계약자와 사진 번들 공유에 유용합니다.",
     "tip_map_multi_select": "지도에서 핀을 다중 선택하세요",
     "tip_map_multi_select_desc": "이전 핀과 새로 추가된 핀은 모두 지도에 표시되며, 제거할 때까지 데이터베이스 기록으로 유지됩니다. 한 번에 여러 핀을 사용하려면 Shift 키를 누른 채 클릭(데스크톱)하거나 지도에 태그 도구 모음에서 ➕ MULTI 버튼(모바일)을 누른 다음 각 핀을 눌러 선택 항목에 추가합니다(선택한 핀 주위에 점선 남색 링이 나타남). 선택한 모든 항목에서 GPS를 한 번에 지우려면 🗑 UNPIN(N)을 사용하세요. 항목 자체는 유지되고 지도 핀만 제거됩니다. 선택을 취소하려면 ✕를 탭하세요. 개별 핀 제거(팝업 REMOVE PIN 버튼을 통해)는 단일 핀 케이스에서도 계속 작동합니다.",
+    "tip_ai_language": "AI 자동 완성이 귀하의 언어로 작성됩니다.",
+    "tip_ai_language_desc": "AI 사진 분석이 구성되면(설정 → AI 설정) 제안된 제목과 설명이 현재 UI 언어로 다시 나타납니다. 심각도(Critical/Major/Minor/Observation) 및 Trade 값은 영어로 유지되므로 검색, 필터링 및 일괄 작업은 다양한 언어를 사용하는 팀 구성원 간에 일관되게 유지됩니다. 설정 → 언어에서 UI 언어를 전환하면 다음 AI 분석에서 자동으로 새 언어를 사용합니다.",
     "set_maps": "지도",
     "set_maps_desc": "항목에 GPS 위치 고정을 활성화하려면 Google Maps API 키를 추가하세요.",
     "tip_map_tagging": "지도 위치 태그 지정",
