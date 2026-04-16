@@ -4509,7 +4509,6 @@ function StorageSettings({onClose,companyId}){
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
             <div style={{fontSize:18}}>🌱</div>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a7a35"}}>PATH 1 · JUST USE SITESHRIMP.ORG</div>
-            <span style={{background:"rgba(52,199,89,0.15)",color:"#1a7a35",fontSize:10,fontWeight:800,padding:"2px 6px",borderRadius:8,marginLeft:"auto"}}>RECOMMENDED</span>
           </div>
           <div style={{fontSize:12,color:"rgba(0,0,0,0.6)",lineHeight:1.6}}>Free. Zero setup. Your team's data is private to your company. <b>Most small teams stop here.</b> Just go to <Link2 href="https://siteshrimp.org">siteshrimp.org</Link2> and sign up.</div>
         </div>
