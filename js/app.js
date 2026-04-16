@@ -4364,6 +4364,34 @@ function EmailSettings({onClose,companyId}){
   );
 }
 
+// ── Inline Server URL editor (light theme — for Storage & Hosting page) ─
+function ServerUrlPanelLight(){
+  const[url,setUrl]=useState(()=>localStorage.getItem('pb_url')||'https://api.siteshrimp.org');
+  const[saved,setSaved]=useState(false);
+  const apply=()=>{
+    const cleaned=url.trim().replace(/\/+$/,'');
+    if(!cleaned)return;
+    localStorage.setItem('pb_url',cleaned);
+    setSaved(true);
+    setTimeout(()=>window.location.reload(),800);
+  };
+  const reset=()=>setUrl('https://api.siteshrimp.org');
+  return(
+    <div>
+      <div style={{display:"flex",gap:8}}>
+        <input value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://your-server.example.com" style={{flex:1,fontSize:13,padding:"9px 12px",border:"1px solid rgba(0,0,0,0.15)",borderRadius:8,background:"#fafaf7",color:"#1a1a1a",outline:"none",fontFamily:"inherit"}}/>
+        <button onClick={apply} style={{background:"#ff6b00",border:"none",borderRadius:8,padding:"0 16px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",flexShrink:0}}>
+          {saved?"✓ Set — reloading":"Set"}
+        </button>
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6}}>
+        <button onClick={reset} style={{background:"none",border:"none",color:"rgba(0,0,0,0.4)",fontSize:11,cursor:"pointer",padding:0,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>↺ reset to default</button>
+        <span style={{fontSize:11,color:"rgba(0,0,0,0.35)"}}>App reloads on save</span>
+      </div>
+    </div>
+  );
+}
+
 // ── Storage Settings ──────────────────────────────────────────────
 const STORAGE_MODES=[
   {id:"pocketbase",label:"PocketBase (Default)",icon:"🗄",desc:"Photos stored on your PocketBase server"},
@@ -4541,12 +4569,12 @@ function StorageSettings({onClose,companyId}){
         {/* ─── CONNECT — point SiteShrimp at your hosted backend (applies to Path 2 & Path 3) ─── */}
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"rgba(0,0,0,0.5)",letterSpacing:"0.08em",margin:"20px 0 10px"}}>🔌 CONNECT — POINT SITESHRIMP AT YOUR SERVER</div>
         <div style={{background:"#fff",borderRadius:14,padding:"14px 16px",marginBottom:20,borderLeft:"4px solid #1a1a1a"}}>
-          <div style={{fontSize:12,color:"rgba(0,0,0,0.6)",lineHeight:1.6,marginBottom:8}}>Once your PocketBase server is running (Path 2 or Path 3), tell SiteShrimp where to find it. Skip if you're on Path 1.</div>
-          <ol style={{margin:0,paddingLeft:18,fontSize:12,color:"rgba(0,0,0,0.65)",lineHeight:1.8}}>
-            <li>Copy your server URL — e.g. <code style={{background:"rgba(0,0,0,0.06)",padding:"1px 5px",borderRadius:3,fontSize:11}}>https://your-app.fly.dev</code> (managed) or <code style={{background:"rgba(0,0,0,0.06)",padding:"1px 5px",borderRadius:3,fontSize:11}}>http://127.0.0.1:8090</code> (self-host).</li>
-            <li>Open the SiteShrimp login page and expand <b>⚙ Change server URL</b>.</li>
-            <li>Paste the URL → click <b>Set</b>. Then sign in as usual.</li>
-          </ol>
+          <div style={{fontSize:12,color:"rgba(0,0,0,0.6)",lineHeight:1.6,marginBottom:10}}>Paste your PocketBase URL below and click <b>Set</b> — the app will reload and connect to your server. Skip if you're on Path 1.</div>
+          <ServerUrlPanelLight/>
+          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",lineHeight:1.7,marginTop:10,padding:"8px 10px",background:"rgba(0,0,0,0.03)",borderRadius:8}}>
+            <b>Examples:</b> <code style={{background:"rgba(0,0,0,0.06)",padding:"1px 5px",borderRadius:3,fontSize:11}}>https://your-app.fly.dev</code> (managed) · <code style={{background:"rgba(0,0,0,0.06)",padding:"1px 5px",borderRadius:3,fontSize:11}}>http://127.0.0.1:8090</code> (self-host on this machine).
+          </div>
+          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",lineHeight:1.6,marginTop:6}}>You can also change the server from the login page (⚙ Change server URL) before signing in.</div>
         </div>
 
         {/* ─── FILE STORAGE — works with any hosting choice above ─── */}
