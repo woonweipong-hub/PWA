@@ -4375,17 +4375,98 @@ function StorageSettings({onClose,companyId}){
     setTestingLocal(false);
   };
 
+  const Link2=({href,children})=>(<a href={href} target="_blank" rel="noopener" style={{color:"#ff6b00",textDecoration:"underline",fontWeight:600}}>{children}</a>);
   return(
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
-      <SettingsBack onClose={onClose} title={t("storage.title")}/>
+      <SettingsBack onClose={onClose} title="STORAGE & HOSTING"/>
       <div style={{padding:20}}>
-        {/* Info box */}
-        <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
-          <div style={{fontSize:13,color:"#444",lineHeight:1.6,marginBottom:8}}>Choose where to store your photos and files. Default uses your PocketBase server.</div>
-          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",lineHeight:1.5}}>
-            <b>Local Path</b> — for self-hosted setups on your own server, laptop, or machine. Files are saved to the folder you specify.<br/>
-            <b>Google Drive</b> — for mobile users who want cloud storage they control. Photos upload to your personal Drive.
+        {/* OPTIONAL banner — most users never need to set this up */}
+        <div style={{background:"rgba(52,199,89,0.10)",border:"1px solid rgba(52,199,89,0.35)",borderRadius:14,padding:"14px 16px",marginBottom:16,display:"flex",alignItems:"flex-start",gap:10}}>
+          <div style={{fontSize:20,flexShrink:0}}>✅</div>
+          <div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a7a35",marginBottom:4}}>OPTIONAL — you can skip this</div>
+            <div style={{fontSize:12,color:"rgba(0,0,0,0.6)",lineHeight:1.5}}>Everything works on <Link2 href="https://siteshrimp.org">siteshrimp.org</Link2> without any setup. Come back here after 1–2 days of use if you want to host SiteShrimp yourself or move your photos to your own Google Drive.</div>
           </div>
+        </div>
+
+        {/* Concept explainer — succinct, one line each */}
+        <div style={{background:"#fff",borderRadius:14,padding:"14px 16px",marginBottom:16}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#1a1a1a",marginBottom:8,letterSpacing:"0.06em"}}>WHAT'S THE DIFFERENCE?</div>
+          <div style={{fontSize:12,color:"rgba(0,0,0,0.65)",lineHeight:1.7}}>
+            <b>🖥 Hosting</b> — where the whole <b>app backend</b> runs (accounts, projects, data).<br/>
+            <b>💾 File Storage</b> — where <b>photos</b> get saved (can be different from the backend).<br/>
+            <span style={{color:"rgba(0,0,0,0.4)"}}>Example: you host the backend on your own VM, but keep photos in your personal Google Drive.</span>
+          </div>
+        </div>
+
+        {/* ─── HOSTING PATHS ─── 3 tiers, pick whichever matches your IT comfort ─── */}
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"rgba(0,0,0,0.5)",letterSpacing:"0.08em",margin:"20px 0 10px"}}>🖥 HOSTING — WHERE THE BACKEND RUNS</div>
+
+        {/* Path A — Cloud (default) */}
+        <div style={{background:"#fff",borderRadius:14,padding:"14px 16px",marginBottom:10,borderLeft:"4px solid #34c759"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+            <div style={{fontSize:18}}>🌱</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a7a35"}}>PATH 1 · JUST USE SITESHRIMP.ORG</div>
+            <span style={{background:"rgba(52,199,89,0.15)",color:"#1a7a35",fontSize:10,fontWeight:800,padding:"2px 6px",borderRadius:8,marginLeft:"auto"}}>RECOMMENDED</span>
+          </div>
+          <div style={{fontSize:12,color:"rgba(0,0,0,0.6)",lineHeight:1.6}}>Free. Zero setup. Your team's data is private to your company. <b>Most small teams stop here.</b> Just go to <Link2 href="https://siteshrimp.org">siteshrimp.org</Link2> and sign up.</div>
+        </div>
+
+        {/* Path B — Managed */}
+        <div style={{background:"#fff",borderRadius:14,padding:"14px 16px",marginBottom:10,borderLeft:"4px solid #5856d6"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+            <div style={{fontSize:18}}>🏗</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#3a39a6"}}>PATH 2 · MANAGED HOSTING (~$5/month)</div>
+            <span style={{background:"rgba(88,86,214,0.15)",color:"#3a39a6",fontSize:10,fontWeight:800,padding:"2px 6px",borderRadius:8,marginLeft:"auto"}}>NO LINUX</span>
+          </div>
+          <div style={{fontSize:12,color:"rgba(0,0,0,0.6)",lineHeight:1.6,marginBottom:8}}>One-click PocketBase hosting. No Linux / SSH skills needed. Pick one:</div>
+          <ul style={{margin:0,paddingLeft:18,fontSize:12,color:"rgba(0,0,0,0.6)",lineHeight:1.7}}>
+            <li><Link2 href="https://pockethost.io">PocketHost</Link2> — PocketBase-specific, free tier + paid plans, one-click spin-up</li>
+            <li><Link2 href="https://www.pikapod.net">Pikapod</Link2> — $5/mo, specifically for PocketBase, EU-hosted</li>
+            <li><Link2 href="https://fly.io/docs/languages-and-frameworks/pocketbase/">Fly.io PocketBase template</Link2> — free tier for small apps, global regions</li>
+            <li><Link2 href="https://railway.app">Railway</Link2> — $5 monthly credit, one-click deploy from template</li>
+          </ul>
+          <div style={{fontSize:11,color:"rgba(0,0,0,0.45)",marginTop:8,padding:"8px 10px",background:"rgba(88,86,214,0.06)",borderRadius:8,lineHeight:1.6}}>
+            <b>4-step switch:</b> (1) sign up at one of the above &nbsp;→&nbsp; (2) click their PocketBase template &nbsp;→&nbsp; (3) copy the server URL (looks like <code style={{background:"rgba(0,0,0,0.05)",padding:"1px 5px",borderRadius:3,fontSize:11}}>https://your-app.fly.dev</code>) &nbsp;→&nbsp; (4) SiteShrimp login page → ⚙ Change server URL → paste → Set.
+          </div>
+        </div>
+
+        {/* Path C — Self-host */}
+        <div style={{background:"#fff",borderRadius:14,padding:"14px 16px",marginBottom:20,borderLeft:"4px solid #ff6b00"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+            <div style={{fontSize:18}}>🔧</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#b34800"}}>PATH 3 · SELF-HOST (advanced)</div>
+            <span style={{background:"rgba(255,107,0,0.15)",color:"#b34800",fontSize:10,fontWeight:800,padding:"2px 6px",borderRadius:8,marginLeft:"auto"}}>FULL CONTROL</span>
+          </div>
+          <div style={{fontSize:12,color:"rgba(0,0,0,0.6)",lineHeight:1.6,marginBottom:8}}>Run PocketBase on your own machine — VM, home server, or Docker. For IT-savvy users who want full data sovereignty.</div>
+          <div style={{fontSize:11,color:"rgba(0,0,0,0.55)",lineHeight:1.7,marginBottom:6}}><b>Quick start:</b></div>
+          <ol style={{margin:"0 0 10px 0",paddingLeft:18,fontSize:12,color:"rgba(0,0,0,0.6)",lineHeight:1.8}}>
+            <li>Download the binary: <Link2 href="https://pocketbase.io/docs/">pocketbase.io/docs</Link2></li>
+            <li>Unzip and run: <code style={{background:"rgba(0,0,0,0.06)",padding:"1px 5px",borderRadius:3,fontSize:11}}>./pocketbase serve</code></li>
+            <li>Open <code style={{background:"rgba(0,0,0,0.06)",padding:"1px 5px",borderRadius:3,fontSize:11}}>http://127.0.0.1:8090/_/</code> and create admin</li>
+            <li>SiteShrimp login → ⚙ Change server URL → paste <code style={{background:"rgba(0,0,0,0.06)",padding:"1px 5px",borderRadius:3,fontSize:11}}>http://127.0.0.1:8090</code></li>
+          </ol>
+          <div style={{fontSize:11,color:"rgba(0,0,0,0.55)",lineHeight:1.7,marginBottom:6}}><b>Add HTTPS for public access (pick one):</b></div>
+          <ul style={{margin:"0 0 10px 0",paddingLeft:18,fontSize:12,color:"rgba(0,0,0,0.6)",lineHeight:1.7}}>
+            <li><Link2 href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/">Cloudflare Tunnel</Link2> — free, no open ports, automatic TLS</li>
+            <li><Link2 href="https://caddyserver.com/docs/quick-starts/reverse-proxy">Caddy</Link2> — one-line config, auto Let's Encrypt certs</li>
+            <li>PocketBase auto-TLS: <code style={{background:"rgba(0,0,0,0.06)",padding:"1px 5px",borderRadius:3,fontSize:11}}>./pocketbase serve --https=yourdomain.com:443</code></li>
+          </ul>
+          <div style={{fontSize:11,color:"rgba(0,0,0,0.55)",lineHeight:1.7,marginBottom:6}}><b>Keep it running:</b></div>
+          <ul style={{margin:"0 0 10px 0",paddingLeft:18,fontSize:12,color:"rgba(0,0,0,0.6)",lineHeight:1.7}}>
+            <li>Linux — <Link2 href="https://pocketbase.io/docs/going-to-production/">systemd unit</Link2> (recommended for VMs)</li>
+            <li>Windows — <Link2 href="https://nssm.cc/">NSSM</Link2> to install as Windows service</li>
+            <li>Docker — <Link2 href="https://hub.docker.com/r/spectado/pocketbase">spectado/pocketbase</Link2> image</li>
+          </ul>
+          <div style={{fontSize:11,color:"rgba(0,0,0,0.45)",padding:"8px 10px",background:"rgba(255,107,0,0.06)",borderRadius:8,lineHeight:1.6}}>
+            <b>Backup:</b> all your data lives in the <code style={{background:"rgba(0,0,0,0.06)",padding:"1px 5px",borderRadius:3,fontSize:11}}>pb_data/</code> folder (SQLite + uploaded files). Copy that folder to back up. PocketBase admin UI also has a one-click Backup.
+          </div>
+        </div>
+
+        {/* ─── FILE STORAGE — works with any hosting choice above ─── */}
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"rgba(0,0,0,0.5)",letterSpacing:"0.08em",margin:"20px 0 10px"}}>💾 FILE STORAGE — WHERE YOUR PHOTOS GO</div>
+        <div style={{background:"#fff",borderRadius:14,padding:"12px 14px",marginBottom:12,fontSize:12,color:"rgba(0,0,0,0.6)",lineHeight:1.6}}>
+          Independent of hosting. Default saves photos alongside the backend (wherever it's hosted). Switch to <b>Google Drive</b> if you want photos in your personal Drive instead, or <b>Local Path</b> if you're self-hosting and want photos in a specific folder on your machine.
         </div>
 
         {/* Storage mode selector */}
@@ -8987,9 +9068,13 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   // need to find their own drawings first.
   // License/provenance-tagged so every drawing carries its own credit line.
   // See sample_drwgs/ATTRIBUTION.md for full sources and licences.
+  // Same-origin URLs so samples work both on siteshrimp.org and on self-hosted
+  // deployments (as long as the user copied sample_drwgs/ alongside the app).
+  // Earlier raw.githubusercontent.com URLs returned 404 because the repo is
+  // private; same-origin avoids that entirely.
   const SAMPLE_URLS=[
-    {name:"Dyckman House — First Floor (HABS, public domain)",url:"https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/sample_drwgs/Dyckman_First_Floor_sketch.png",credit:"Historic American Buildings Survey (HABS NY,31-NEYO,11-, sheet 2) — Library of Congress. Public domain (US federal work)."},
-    {name:"Dyckman House — Second Floor (HABS, public domain)",url:"https://raw.githubusercontent.com/woonweipong-hub/SiteShrimp/main/sample_drwgs/Dyckman_Second_Floor_sketch.png",credit:"Historic American Buildings Survey (HABS NY,31-NEYO,11-, sheet 3) — Library of Congress. Public domain (US federal work)."},
+    {name:"Dyckman House — First Floor (HABS, public domain)",url:"sample_drwgs/Dyckman_First_Floor_sketch.png",credit:"Historic American Buildings Survey (HABS NY,31-NEYO,11-, sheet 2) — Library of Congress. Public domain (US federal work)."},
+    {name:"Dyckman House — Second Floor (HABS, public domain)",url:"sample_drwgs/Dyckman_Second_Floor_sketch.png",credit:"Historic American Buildings Survey (HABS NY,31-NEYO,11-, sheet 3) — Library of Congress. Public domain (US federal work)."},
   ];
   const[loadingSamples,setLoadingSamples]=useState(false);
   const loadSampleDrawings=async()=>{
@@ -13911,12 +13996,12 @@ function App(){
                 ...(isAdmin?[{label:t("settings.team"),desc:t("settings.team_desc"),icon:"users",done:setupChecks.team,onClick:()=>{setShowUsers(true);setShowSettingsMenu(false);}}]:[]),
                 {section:t("settings.section_enhance")},
                 {label:t("settings.ai_setup"),desc:t("settings.ai_desc"),icon:"ai",done:setupChecks.ai,onClick:()=>{setShowGemini(true);setShowSettingsMenu(false);}},
-                // Hosting — promoted from Help into Settings since self-hosting
-                // is foundational infrastructure that admins need early. Reuses
-                // the existing Help modal pre-routed to its hosting tab.
-                {label:t("settings.hosting"),desc:t("settings.hosting_desc"),icon:"server",optional:true,onClick:()=>{setHelpTab("hosting");setShowHelp(true);setShowSettingsMenu(false);}},
                 {label:t("settings.telegram"),desc:t("settings.telegram_desc"),icon:"plane",done:setupChecks.telegram,onClick:()=>{setShowTg(true);setShowSettingsMenu(false);}},
-                {label:t("settings.storage"),desc:t("settings.storage_desc"),icon:"disk",optional:true,onClick:()=>{setShowStorage(true);setShowSettingsMenu(false);}},
+                // Storage & Hosting combined — both optional, most users never
+                // touch either. The merged panel explains the distinction at
+                // the top (succinct), then shows 3 hosting paths for power
+                // users who want to move on from siteshrimp.org cloud.
+                {label:t("settings.storage"),desc:t("settings.storage_desc"),icon:"server",optional:true,onClick:()=>{setShowStorage(true);setShowSettingsMenu(false);}},
                 {label:t("settings.maps"),desc:t("settings.maps_desc"),icon:"pin",optional:true,onClick:()=>{setShowMaps(true);setShowSettingsMenu(false);}},
                 {section:t("language.title")},
                 {label:t("settings.language"),desc:(languages.find(l=>l.code===lang)||{}).name||"English",icon:"globe",optional:true,onClick:()=>{setShowLangPicker(true);setShowSettingsMenu(false);}},
