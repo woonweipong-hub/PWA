@@ -4490,15 +4490,16 @@ function StorageSettings({onClose,companyId}){
         <div style={{background:"#fff",borderRadius:14,padding:"14px 16px",marginBottom:10,borderLeft:"4px solid #5856d6"}}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
             <div style={{fontSize:18}}>🏗</div>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#3a39a6"}}>PATH 2 · MANAGED HOSTING (~$5/month)</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#3a39a6"}}>PATH 2 · MANAGED HOSTING (paid tier, at your own cost)</div>
             <span style={{background:"rgba(88,86,214,0.15)",color:"#3a39a6",fontSize:10,fontWeight:800,padding:"2px 6px",borderRadius:8,marginLeft:"auto"}}>NO LINUX</span>
           </div>
           <div style={{fontSize:12,color:"rgba(0,0,0,0.6)",lineHeight:1.6,marginBottom:8}}>One-click PocketBase hosting. No Linux / SSH skills needed. Pick one:</div>
           <ul style={{margin:0,paddingLeft:18,fontSize:12,color:"rgba(0,0,0,0.6)",lineHeight:1.7}}>
             <li><Link2 href="https://pockethost.io">PocketHost</Link2> — PocketBase-specific, free tier + paid plans, one-click spin-up</li>
-            <li><Link2 href="https://www.pikapod.net">Pikapod</Link2> — $5/mo, specifically for PocketBase, EU-hosted</li>
+            <li><Link2 href="https://www.pikapod.net">Pikapod</Link2> — specifically for PocketBase, EU-hosted (paid tier, at your own cost)</li>
             <li><Link2 href="https://fly.io/docs/languages-and-frameworks/pocketbase/">Fly.io PocketBase template</Link2> — free tier for small apps, global regions</li>
-            <li><Link2 href="https://railway.app">Railway</Link2> — $5 monthly credit, one-click deploy from template</li>
+            <li><Link2 href="https://railway.app">Railway</Link2> — one-click deploy from template (paid tier, at your own cost)</li>
+            <li><Link2 href="https://firebase.google.com/pricing">Firebase</Link2> / <Link2 href="https://supabase.com/pricing">Supabase</Link2> — managed BaaS alternatives (free tier + paid, at your own cost)</li>
           </ul>
           <div style={{fontSize:11,color:"rgba(0,0,0,0.45)",marginTop:8,padding:"8px 10px",background:"rgba(88,86,214,0.06)",borderRadius:8,lineHeight:1.6}}>
             <b>4-step switch:</b> (1) sign up at one of the above &nbsp;→&nbsp; (2) click their PocketBase template &nbsp;→&nbsp; (3) copy the server URL (looks like <code style={{background:"rgba(0,0,0,0.05)",padding:"1px 5px",borderRadius:3,fontSize:11}}>https://your-app.fly.dev</code>) &nbsp;→&nbsp; (4) SiteShrimp login page → ⚙ Change server URL → paste → Set.
@@ -14551,7 +14552,7 @@ function App(){
                               "• Your own laptop/PC (testing, LAN-only use)\n",
                               "• ",React.createElement(Link,{href:"https://cloud.google.com/free"},"Google Cloud (GCP)")," — free e2-micro VM\n",
                               "• ",React.createElement(Link,{href:"https://www.oracle.com/cloud/free/"},"Oracle Cloud")," — always-free ARM Ampere VMs (4 CPU / 24 GB RAM!)\n",
-                              "• ",React.createElement(Link,{href:"https://www.vultr.com/"},"Vultr")," / ",React.createElement(Link,{href:"https://www.digitalocean.com/"},"DigitalOcean")," / ",React.createElement(Link,{href:"https://www.hetzner.com/cloud"},"Hetzner")," — $4–6/mo VPS\n",
+                              "• ",React.createElement(Link,{href:"https://www.vultr.com/"},"Vultr")," / ",React.createElement(Link,{href:"https://www.digitalocean.com/"},"DigitalOcean")," / ",React.createElement(Link,{href:"https://www.hetzner.com/cloud"},"Hetzner")," — VPS (paid tier, at your own cost)\n",
                               "• ",React.createElement(Link,{href:"https://fly.io/"},"Fly.io")," — free tier with auto-deploy\n",
                               "• ",React.createElement(Link,{href:"https://railway.app/"},"Railway")," / ",React.createElement(Link,{href:"https://www.pockethost.io/"},"PocketHost")," — one-click managed PocketBase"
                             )
