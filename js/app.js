@@ -36,6 +36,28 @@ const DRAWING_MARKUP_KEY="drawing_markup_v1";
 const SAVED_COMPARISONS_KEY="saved_comparisons_v1";
 const BCA_SCDF_REVISION_COLORS={added:"#ff00ff",removed:"#ddcc00",existing:"#00cccc"};
 const fileTimestamp=()=>{const d=new Date();return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}_${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}${String(d.getSeconds()).padStart(2,"0")}`;};
+// Sanitize a string for use in filenames: ASCII-safe, dash-separated, capped.
+const _sanitizeForFilename=(s,maxLen=24)=>{
+  if(!s)return "";
+  return String(s)
+    .normalize("NFKD").replace(/[\u0300-\u036f]/g,"")  // strip accents
+    .replace(/[^A-Za-z0-9_-]+/g,"-")                     // non-ASCII → dash
+    .replace(/^-+|-+$/g,"")                              // trim dashes
+    .replace(/-{2,}/g,"-")                               // collapse dashes
+    .slice(0,maxLen)||"";
+};
+// Build a structured photo filename:  Project_YYYYMMDD-HHMMSS_User_DEF-NNNN_N.jpg
+// Falls back to "SiteShrimp" / "user" / "DEF-XXXX" / "1" when fields missing.
+// Used for downloads and PDF captions so files self-document outside the app.
+function formatPhotoFilename(opts={}){
+  const proj=_sanitizeForFilename(opts.projectName||"SiteShrimp",24);
+  const ts=opts.ts||fileTimestamp();
+  const user=_sanitizeForFilename(opts.userName||opts.loggedBy||"user",16);
+  const id=_sanitizeForFilename(opts.defectId||"DEF-XXXX",12);
+  const seq=String(opts.sequence||1);
+  const ext=(opts.ext||"jpg").replace(/^\./,"");
+  return `${proj}_${ts}_${user}_${id}_${seq}.${ext}`;
+}
 
 function getSavedComparisons(projectId){
   const all=local.get(SAVED_COMPARISONS_KEY)||{};
@@ -1300,7 +1322,27 @@ function PhotoMarkup({src,onSave,onCancel}){
   );
 }
 
-const AI_PROMPT='Analyze this construction defect photo. Respond in valid JSON only, no markdown: {"title":"max 5 word defect title","severity":"one of Critical Major Minor Observation","description":"2 sentence technical description","trade":"responsible trade e.g. Plumbing Electrical Waterproofing Painting Tiling Structural Carpentry Aircon General","safety_risk":1 to 5 integer where 5 is life-threatening hazard and 1 is cosmetic,"suggested_assignee":"trade role to assign e.g. Plumber Electrician Painter Tiler Contractor"}';
+// Map our language codes to natural-language names the AI will understand
+const _AI_LANG_NAMES={en:"English",zh:"Simplified Chinese",
+  "zh-TW":"Traditional Chinese",ms:"Malay",id:"Indonesian",hi:"Hindi",
+  ta:"Tamil",th:"Thai",vi:"Vietnamese",bn:"Bengali",my:"Burmese",
+  ja:"Japanese",ko:"Korean",de:"German",fr:"French",es:"Spanish",
+  pt:"Portuguese",it:"Italian",tr:"Turkish",sv:"Swedish",no:"Norwegian",
+  da:"Danish",fi:"Finnish"};
+function getAIPrompt(){
+  const lang=(typeof getCurrentLang==="function"?getCurrentLang():"en")||"en";
+  const langName=_AI_LANG_NAMES[lang]||"English";
+  // CRITICAL: Categorical fields (severity, trade) MUST stay English so search,
+  // filter, batch operations, and AI search continue to work across users with
+  // different language preferences. Only freeform fields (title, description)
+  // are localized. The app translates categorical values at render via tOpt().
+  const langClause=lang==="en"?"":` Write the "title" and "description" fields in ${langName}. Keep "severity" and "trade" values in English exactly as listed.`;
+  return 'Analyze this construction defect photo. Respond in valid JSON only, no markdown: {"title":"max 5 word defect title","severity":"one of Critical Major Minor Observation","description":"2 sentence technical description","trade":"responsible trade e.g. Plumbing Electrical Waterproofing Painting Tiling Structural Carpentry Aircon General","safety_risk":1 to 5 integer where 5 is life-threatening hazard and 1 is cosmetic,"suggested_assignee":"trade role to assign e.g. Plumber Electrician Painter Tiler Contractor"}'+langClause;
+}
+// Backward-compatible export — callers that don't need language awareness
+// still see English. New callers should call getAIPrompt() per request to
+// pick up the user's currently-selected language.
+const AI_PROMPT=getAIPrompt();
 
 // Cache the model name the user's Gemini key actually has access to, so we
 // don't hardcode against a model that may be renamed/retired by Google.
@@ -1344,7 +1386,7 @@ async function analyzeWithGemini(apiKey,base64Image){
     const b64=base64Image.split(",")[1];
     const res=await geminiGenerate(apiKey,{contents:[{parts:[
       {inline_data:{mime_type:"image/jpeg",data:b64}},
-      {text:AI_PROMPT}
+      {text:getAIPrompt()}
     ]}]});
     const data=await res.json();
     const parts=data.candidates?.[0]?.content?.parts||[];
@@ -1361,7 +1403,7 @@ async function analyzeWithOllama(cfg,base64Image){
     const model=cfg.model||"llava";
     const res=await fetch(url+"/api/generate",{
       method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({model,prompt:AI_PROMPT,images:[b64],stream:false})
+      body:JSON.stringify({model,prompt:getAIPrompt(),images:[b64],stream:false})
     });
     const data=await res.json();
     const text=data.response||"{}";
@@ -1692,7 +1734,10 @@ function exportCSV(defects,projectName){
 }
 
 // Full report export — defects + drawing annotations + saved comparisons in one CSV
-function exportReportAll(defects,drawings,savedComparisons,projectName){
+function exportReportAll(defects,drawings,savedComparisons,projectName,langCode){
+  // Resolve dropdown option values in the chosen export language. Falls back
+  // to English (which is the storage value) when langCode is missing/unknown.
+  const tx=v=>(langCode&&typeof tOptIn==="function"?tOptIn(langCode,v):v)||"";
   const esc=v=>`"${String(v==null?"":v).replace(/"/g,'""')}"`;
   const lines=[];
   // Section 1: Defect entries
@@ -1703,13 +1748,13 @@ function exportReportAll(defects,drawings,savedComparisons,projectName){
     lines.push([
       d.defect_id||d.id||"",
       d.entryType||"Defect",
-      esc(d.title),esc(d.component),esc(d.issue),esc(d.location),
+      esc(d.title),esc(tx(d.component)),esc(tx(d.issue)),esc(d.location),
       d.severity||"",d.status||"",
-      esc(d.assignee),esc(d.trade),esc(d.loggedBy),
+      esc(d.assignee),esc(tx(d.trade)),esc(d.loggedBy),
       d.loggedByRole||"",
       (d.createdAt||d.created)?new Date(d.createdAt||d.created).toLocaleDateString("en-GB"):"",
-      d.dueDate||"",d.duration||"",
-      esc(d.costImpact),esc(d.costResponsible),d.costAmount||"",
+      d.dueDate||"",esc(tx(d.duration)),
+      esc(tx(d.costImpact)),esc(tx(d.costResponsible)),d.costAmount||"",
       esc(d.description),
       esc((d.comments||[]).map(c=>`${c.by}: ${c.text}`).join(" | "))
     ].join(","));
@@ -2769,7 +2814,8 @@ async function gsheetAuth(clientId){
   });
 }
 
-async function exportToGoogleSheets(defects,projectName,companyName){
+async function exportToGoogleSheets(defects,projectName,companyName,langCode){
+  const tx=v=>(langCode&&typeof tOptIn==="function"?tOptIn(langCode,v):v)||"";
   const cfg=getGSheetConfig();
   if(!cfg?.clientId)throw new Error("Google Sheets not configured. Set up Client ID in Settings.");
   // Auth
@@ -2788,14 +2834,14 @@ async function exportToGoogleSheets(defects,projectName,companyName){
     d.severity||"",
     d.status||"",
     d.assignee||"",
-    d.component||d.trade||"",
+    tx(d.component||d.trade)||"",
     d.loggedBy||"",
     fmtDate(d.createdAt||d.created),
     fmtDate(d.dueDate),
-    d.duration||"",
-    d.costImpact||"",
+    tx(d.duration)||"",
+    tx(d.costImpact)||"",
     d.costAmount||"",
-    d.costResponsible||"",
+    tx(d.costResponsible)||"",
     d.description||"",
     (d.comments||[]).map(c=>`${c.author||""}: ${c.text||""}`).join(" | ")
   ]);
@@ -2903,6 +2949,10 @@ async function sendTelegramPhoto(token,chatId,base64DataUrl,caption){
 }
 
 function generateEmailHTML(defects,projectName,companyName,opts={}){
+  // Per-export language override: opts.langCode lets the email render in a
+  // language different from the user's UI (e.g. Singapore default English).
+  const _lc=opts.langCode||(typeof getCurrentLang==="function"?getCurrentLang():"en");
+  const tx=v=>(_lc&&typeof tOptIn==="function"?tOptIn(_lc,v):(typeof tOpt==="function"?tOpt(v):v))||"";
   const total=defects.length;
   const open=defects.filter(d=>d.status==="Open").length;
   const inProg=defects.filter(d=>d.status==="In Progress").length;
@@ -2921,7 +2971,7 @@ function generateEmailHTML(defects,projectName,companyName,opts={}){
 
   const defectRows=defects.map(d=>{
     const dt=(d.createdAt||d.created)?new Date(d.createdAt||d.created).toLocaleDateString("en-GB"):"—";
-    const entryTypeBadge=d.entryType?`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;color:${typeColor(d.entryType)};background:${typeBg(d.entryType)};margin-right:6px">${typeIcon(d.entryType)} ${tOpt(d.entryType)}</span>`:"";
+    const entryTypeBadge=d.entryType?`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;color:${typeColor(d.entryType)};background:${typeBg(d.entryType)};margin-right:6px">${typeIcon(d.entryType)} ${tx(d.entryType)}</span>`:"";
     const sevBadge=`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;color:${SEV_COLOR[d.severity]};background:${SEV_BG[d.severity]}">${SEV_I18N[d.severity]?t(SEV_I18N[d.severity]):d.severity}</span>`;
     const statusBadge=`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;color:${STATUS_COLOR[d.status]||"#8e8e93"};background:rgba(0,0,0,0.06)">${STATUS_I18N[d.status]?t(STATUS_I18N[d.status]):d.status}</span>`;
     const comments=(d.comments||[]).map(c=>`<div style="padding:6px 10px;background:#f5f5f5;border-radius:6px;font-size:12px;margin:4px 0"><b style="color:#ff6b00">${sanitize(c.by)}:</b> ${sanitize(c.text)}</div>`).join("");
@@ -2933,14 +2983,14 @@ function generateEmailHTML(defects,projectName,companyName,opts={}){
       <table style="font-size:12px;color:#555;margin-bottom:6px"><tbody>
         ${row("📍 Location",d.location)}
         ${row("👤 Assigned",d.assignee)}
-        ${row("🔧 "+t("fields.component"),d.component?(tOpt(d.component)+(d.issue?" — "+tOpt(d.issue):"")):"") }
-        ${row("🏗 "+t("fields.trade"),d.trade?tOpt(d.trade):"")}
+        ${row("🔧 "+t("fields.component"),d.component?(tx(d.component)+(d.issue?" — "+tx(d.issue):"")):"") }
+        ${row("🏗 "+t("fields.trade"),d.trade?tx(d.trade):"")}
         ${row("✍️ "+t("fields.logged_by"),d.loggedBy?(d.loggedBy+(d.loggedByRole?" ("+d.loggedByRole+")":"")):"") }
         ${row("📅 "+t("fields.date"),dt)}
         ${row("⏰ "+t("fields.due_date"),d.dueDate)}
-        ${row("⏱ "+t("fields.duration"),d.duration?tOpt(d.duration):"")}
-        ${row("💰 "+t("fields.cost_impact"),d.costImpact?(tOpt(d.costImpact)+(d.costAmount?" — $"+d.costAmount:"")):"") }
-        ${row("📋 "+t("fields.cost_responsible"),d.costResponsible?tOpt(d.costResponsible):"")}
+        ${row("⏱ "+t("fields.duration"),d.duration?tx(d.duration):"")}
+        ${row("💰 "+t("fields.cost_impact"),d.costImpact?(tx(d.costImpact)+(d.costAmount?" — $"+d.costAmount:"")):"") }
+        ${row("📋 "+t("fields.cost_responsible"),d.costResponsible?tx(d.costResponsible):"")}
       </tbody></table>
       ${d.description?`<div style="font-size:13px;color:#444;padding:8px;background:#f9f9f9;border-radius:6px;margin-bottom:6px">${sanitize(d.description)}</div>`:""}
       ${photoNote}
@@ -6569,6 +6619,26 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   );
   const[sending,setSending]=useState(false);const[sendRes,setSendRes]=useState(null);
   const[showFilters,setShowFilters]=useState(false);const[showExportMenu,setShowExportMenu]=useState(false);const[showEmailMenu,setShowEmailMenu]=useState(false);
+  // Export language — default ENGLISH (Singapore official report convention).
+  // Workers from China / Malaysia / Vietnam / Myanmar / Thailand / Indonesia /
+  // Philippines etc. use the app in their native language via UI settings,
+  // but the exported report (to client / architect / QS / main contractor)
+  // is in English by convention. User can switch to a worker's language
+  // for a briefing / instruction sheet via the dropdown below.
+  const[exportLang,setExportLang]=useState("en");
+  // When the user opens the EXPORT menu, preload the chosen language pack so
+  // tOptIn/tIn resolve correctly inside the export functions (they're sync).
+  useEffect(()=>{if(showExportMenu&&exportLang&&typeof preloadLanguage==="function")preloadLanguage(exportLang);},[showExportMenu,exportLang]);
+  // Ordered list for the export dropdown: English first (Singapore official),
+  // then common Singapore-construction worker languages in typical headcount
+  // order, then the rest alphabetically by label. Graceful fallback if
+  // LANGUAGES isn't available (unlikely in practice).
+  const _exportLangOrder=["en","zh","ms","vi","my","th","id","ta","hi","bn","zh-TW","ja","ko","tl","de","fr","es","pt","it","tr","sv","no","da","fi"];
+  const _orderedExportLanguages=(()=>{
+    const all=(typeof LANGUAGES!=="undefined"?LANGUAGES:[{code:"en",flag:"🇬🇧",name:"English"}]).slice();
+    const pos=c=>{const i=_exportLangOrder.indexOf(c);return i<0?99:i;};
+    return all.sort((a,b)=>pos(a.code)-pos(b.code));
+  })();
   const[showContractAdvisor,setShowContractAdvisor]=useState(false);
   const[contractBusy,setContractBusy]=useState(false);
   const[contractProgress,setContractProgress]=useState([]);
@@ -6669,7 +6739,8 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
 
   const buildEmailOpts=()=>({
     drawingsHtml:incDrawings?generateDrawingsEmailHTML(reportDrawings,reportPins,defects):"",
-    comparisonsHtml:incComparisons?generateComparisonsEmailHTML(savedComparisons):""
+    comparisonsHtml:incComparisons?generateComparisonsEmailHTML(savedComparisons):"",
+    langCode:exportLang
   });
 
   const sendReport=async()=>{
@@ -6842,12 +6913,24 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
         <div style={{position:"relative",flex:1,display:"flex"}}>
           <button disabled={pdfExport.active} onClick={()=>setShowExportMenu(m=>!m)} style={{flex:1,background:pdfExport.active?"rgba(255,107,0,0.15)":(showExportMenu?"#1a1a1a":"rgba(0,0,0,0.07)"),border:"none",borderRadius:10,padding:"10px 6px",color:pdfExport.active?"#ff6b00":(showExportMenu?"#fff":"#1a1a1a"),fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:pdfExport.active?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>{pdfExport.active?<><Spin size={12}/> {pdfExport.label||"Exporting…"}</>:<>📊 {t("report.export_btn")}</>}</button>
           {showExportMenu&&(
-            <div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(0,0,0,0.08)",zIndex:20,minWidth:160,overflow:"hidden"}}>
-              <button disabled={pdfExport.active} onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name);setPdfExport({active:true,label:"Preparing report…"});try{await new Promise(r=>setTimeout(r,600));await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
-              <button onClick={async()=>{setShowExportMenu(false);try{const result=await exportToGoogleSheets(incDefects?filtered:[],currentProject?.name,company?.companyName);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
+            <div style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",border:"1px solid rgba(0,0,0,0.08)",zIndex:20,minWidth:200,overflow:"hidden"}}>
+              {/* Export language selector — independent of UI language.
+                  Default: English (Singapore official report convention).
+                  Other languages available for worker briefings. */}
+              <div style={{padding:"10px 12px",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fafafa"}}>
+                <div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.45)",letterSpacing:"0.06em",marginBottom:4}}>🌐 EXPORT LANGUAGE</div>
+                <select value={exportLang} onChange={e=>setExportLang(e.target.value)} style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid rgba(0,0,0,0.12)",background:"#fff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,color:"#1a1a1a",cursor:"pointer"}}>
+                  {_orderedExportLanguages.map(L=>(
+                    <option key={L.code} value={L.code}>{L.flag} {L.name}{L.code==="en"?"  · Singapore official":""}</option>
+                  ))}
+                </select>
+                <div style={{fontSize:9,color:"rgba(0,0,0,0.4)",marginTop:4,lineHeight:1.3}}>{exportLang==="en"?"Official report for client / architect / QS.":"Worker briefing — for native-language distribution."}</div>
+              </div>
+              <button disabled={pdfExport.active} onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true,langCode:exportLang});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false,langCode:exportLang});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang);setPdfExport({active:true,label:"Preparing report…"});try{await new Promise(r=>setTimeout(r,600));await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
+              <button onClick={async()=>{setShowExportMenu(false);try{const result=await exportToGoogleSheets(incDefects?filtered:[],currentProject?.name,company?.companyName,exportLang);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
             </div>
           )}
         </div>
@@ -11604,8 +11687,28 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   const[pendingPhoto,setPendingPhoto]=useState(null); // {dataUrl, aspect}
   const[photoPlaceRect,setPhotoPlaceRect]=useState(null); // {x,y,w,h} during drag
   const[markupSelectedIdx,setMarkupSelectedIdx]=useState(null);
+  // Multi-select: additional selected indices (excludes primary markupSelectedIdx).
+  // Desktop: shift/ctrl/cmd-click toggles. Mobile: tap the "➕ Multi" toolbar toggle
+  // to enable additive tap behaviour (no shift key on touch devices).
+  const[markupExtraSelectedIdxs,setMarkupExtraSelectedIdxs]=useState(()=>new Set());
+  const[markupAdditiveSelect,setMarkupAdditiveSelect]=useState(false); // mobile multi-select toggle
+  const isMarkupSelected=(i)=>i===markupSelectedIdx||markupExtraSelectedIdxs.has(i);
+  const allMarkupSelected=()=>{
+    const s=new Set(markupExtraSelectedIdxs);
+    if(markupSelectedIdx!=null)s.add(markupSelectedIdx);
+    return Array.from(s);
+  };
+  const clearMarkupSelection=()=>{setMarkupSelectedIdx(null);setMarkupExtraSelectedIdxs(new Set());};
   const photoDragRef=useRef(null); // {mode:'move'|'resize', startPos, orig}
   const itemDragRef=useRef(null);  // {startPos, orig} — drag any selected item
+  // Multi-select drag: parallel originals keyed by index, moved together
+  const multiItemDragRef=useRef(null); // {startPos, origs:Map<idx,stroke>}
+  // Marquee (rectangle-select): drag on empty canvas area with Select tool to
+  // draw a selection rectangle; on release, all items intersecting the rect
+  // become selected. Mirrors the commercial drawing-app convention (Figma,
+  // GoodNotes, Procreate). Coordinates in the SVG's percentage space.
+  const[marqueeRect,setMarqueeRect]=useState(null); // {x,y,w,h}
+  const marqueeRef=useRef(null); // {startPos, additive, preSelected:number[]}
 
   // Translate any markup stroke by (dx,dy) in percentage units.
   // Works for all geometry types: freehand, highlight, polyline, text, stamp,
@@ -11653,9 +11756,11 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   useEffect(()=>{
     saveDrawingNotes(drawing.id,notes);
   },[drawing.id,notes]);
-  // Persist markup strokes
+  // Persist markup strokes (auto-save) + track saved state for UI indicator
+  const[markupSaveTick,setMarkupSaveTick]=useState(0);
   useEffect(()=>{
     saveDrawingMarkup(drawing.id,markupStrokes);
+    setMarkupSaveTick(t=>t+1);
   },[drawing.id,markupStrokes]);
 
   // Load PDF document
@@ -11894,7 +11999,34 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       // Try photo first (supports drag/move)
       const photoIdx=hitPhotoAt(p);
       if(photoIdx>=0){
+        // Respect shift / additive mode so photos participate in multi-select
+        const additive=markupAdditiveSelect||(e&&(e.shiftKey||e.ctrlKey||e.metaKey));
+        if(additive){
+          if(photoIdx===markupSelectedIdx){
+            setMarkupSelectedIdx(null);
+          }else if(markupExtraSelectedIdxs.has(photoIdx)){
+            const next=new Set(markupExtraSelectedIdxs);next.delete(photoIdx);
+            setMarkupExtraSelectedIdxs(next);
+          }else if(markupSelectedIdx==null){
+            setMarkupSelectedIdx(photoIdx);
+          }else{
+            const next=new Set(markupExtraSelectedIdxs);next.add(photoIdx);
+            setMarkupExtraSelectedIdxs(next);
+          }
+          return;
+        }
+        // If photo is already part of a multi-selection, start group drag
+        const alreadyMulti=(photoIdx===markupSelectedIdx&&markupExtraSelectedIdxs.size>0)
+          ||(markupExtraSelectedIdxs.has(photoIdx));
+        if(alreadyMulti){
+          const all=allMarkupSelected();
+          const origs=new Map();
+          all.forEach(i=>origs.set(i,JSON.parse(JSON.stringify(markupStrokes[i]))));
+          multiItemDragRef.current={startPos:p,origs};
+          return;
+        }
         setMarkupSelectedIdx(photoIdx);
+        setMarkupExtraSelectedIdxs(new Set());
         const s=markupStrokes[photoIdx];
         photoDragRef.current={mode:"move",startPos:p,orig:{pos:{...s.pos},w:s.w,h:s.h}};
         return;
@@ -11927,10 +12059,55 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
           if(Math.abs(p.x-cx)<=hw&&Math.abs(p.y-cy)<=hh){hitIdx=i;break;}
         }
       }
-      setMarkupSelectedIdx(hitIdx>=0?hitIdx:null);
+      // Multi-select: shift/ctrl/cmd + click toggles this index in extras.
+      // Mobile: the "➕ Multi" toolbar toggle also enables additive behaviour.
+      // Plain click replaces selection.
+      const shift=markupAdditiveSelect||(e&&(e.shiftKey||e.ctrlKey||e.metaKey));
       if(hitIdx>=0){
-        // Start a move drag for any selected (non-photo) item
-        itemDragRef.current={startPos:p,orig:JSON.parse(JSON.stringify(markupStrokes[hitIdx]))};
+        if(shift){
+          // If already primary, demote nothing — just add to extras if not already selected.
+          // If not selected, add to extras; if in extras, remove.
+          if(hitIdx===markupSelectedIdx){
+            // Deselect primary; keep extras as-is (primary becomes null).
+            setMarkupSelectedIdx(null);
+          }else if(markupExtraSelectedIdxs.has(hitIdx)){
+            const next=new Set(markupExtraSelectedIdxs);next.delete(hitIdx);
+            setMarkupExtraSelectedIdxs(next);
+          }else{
+            if(markupSelectedIdx==null){
+              setMarkupSelectedIdx(hitIdx);
+            }else{
+              const next=new Set(markupExtraSelectedIdxs);next.add(hitIdx);
+              setMarkupExtraSelectedIdxs(next);
+            }
+          }
+        }else{
+          // Plain click: if clicking an already-selected item and multiple are selected,
+          // start a group drag. Otherwise replace selection.
+          const already=hitIdx===markupSelectedIdx||markupExtraSelectedIdxs.has(hitIdx);
+          if(already&&(markupSelectedIdx!=null&&markupExtraSelectedIdxs.size>0||markupExtraSelectedIdxs.size>0)){
+            // Group drag
+            const all=allMarkupSelected();
+            const origs=new Map();
+            all.forEach(i=>origs.set(i,JSON.parse(JSON.stringify(markupStrokes[i]))));
+            multiItemDragRef.current={startPos:p,origs};
+            return;
+          }
+          setMarkupSelectedIdx(hitIdx);
+          setMarkupExtraSelectedIdxs(new Set());
+          itemDragRef.current={startPos:p,orig:JSON.parse(JSON.stringify(markupStrokes[hitIdx]))};
+        }
+      }else{
+        // No item hit: start a marquee (rectangle) selection. If the gesture
+        // ends up being a tap (no movement), we'll treat it as a deselect in
+        // onMarkupUp. Shift / additive-mode lets the marquee extend the
+        // existing selection instead of replacing it.
+        marqueeRef.current={
+          startPos:p,
+          additive:!!shift,
+          preSelected:shift?allMarkupSelected():[]
+        };
+        setMarqueeRect({x:p.x,y:p.y,w:0,h:0});
       }
       return;
     }
@@ -11971,6 +12148,23 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       setPhotoPlaceRect({...photoPlaceRect,x,y,w,h});
       return;
     }
+    // Marquee drag: update the selection rectangle
+    if(marqueeRef.current){
+      e.preventDefault();e.stopPropagation();
+      const{startPos}=marqueeRef.current;
+      const x=Math.min(startPos.x,p.x),y=Math.min(startPos.y,p.y);
+      const w=Math.abs(p.x-startPos.x),h=Math.abs(p.y-startPos.y);
+      setMarqueeRect({x,y,w,h});
+      return;
+    }
+    // Group-move: translate all selected items together
+    if(multiItemDragRef.current){
+      e.preventDefault();e.stopPropagation();
+      const{startPos,origs}=multiItemDragRef.current;
+      const dx=p.x-startPos.x,dy=p.y-startPos.y;
+      setMarkupStrokes(strokes=>strokes.map((s,i)=>origs.has(i)?translateStroke(origs.get(i),dx,dy):s));
+      return;
+    }
     // Move selected non-photo item
     if(itemDragRef.current&&markupSelectedIdx!=null){
       e.preventDefault();e.stopPropagation();
@@ -12002,7 +12196,62 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     if(markupCurrent.type==="freehand"||markupCurrent.type==="highlight")setMarkupCurrent(c=>({...c,points:[...c.points,p]}));
     else setMarkupCurrent(c=>({...c,end:p}));
   };
+  // Hit-test: does a stroke's bounding box intersect the marquee rectangle?
+  // All coords are in percentage (0..100) of the drawing surface.
+  const _strokeIntersectsRect=(s,r)=>{
+    if(!s||!r)return false;
+    const rx1=r.x,ry1=r.y,rx2=r.x+r.w,ry2=r.y+r.h;
+    const overlap=(x1,y1,x2,y2)=>!(x2<rx1||x1>rx2||y2<ry1||y1>ry2);
+    // Point-like strokes: is the anchor inside the rect?
+    if(s.type==="text"||s.type==="stamp"){
+      return s.pos&&s.pos.x>=rx1&&s.pos.x<=rx2&&s.pos.y>=ry1&&s.pos.y<=ry2;
+    }
+    if(s.type==="photo"){
+      return overlap(s.pos.x,s.pos.y,s.pos.x+(s.w||0),s.pos.y+(s.h||0));
+    }
+    // Point-list strokes: any point inside counts
+    if((s.type==="freehand"||s.type==="highlight"||s.type==="polyline")&&s.points){
+      return s.points.some(p=>p.x>=rx1&&p.x<=rx2&&p.y>=ry1&&p.y<=ry2);
+    }
+    // Two-point strokes (line, arrow, rect, circle, dimension, cloud, callout)
+    if(s.start&&s.end){
+      const x1=Math.min(s.start.x,s.end.x),y1=Math.min(s.start.y,s.end.y);
+      const x2=Math.max(s.start.x,s.end.x),y2=Math.max(s.start.y,s.end.y);
+      return overlap(x1,y1,x2,y2);
+    }
+    return false;
+  };
   const onMarkupUp=()=>{
+    // Finalise a marquee selection before anything else
+    if(marqueeRef.current){
+      const{additive,preSelected}=marqueeRef.current;
+      const r=marqueeRect;
+      marqueeRef.current=null;
+      setMarqueeRect(null);
+      // Tiny drag = tap: treat as deselect (unless additive, then keep existing)
+      const isTap=!r||(r.w<1.5&&r.h<1.5);
+      if(isTap){
+        if(!additive)clearMarkupSelection();
+        return;
+      }
+      // Hit-test every stroke against the marquee rectangle
+      const hits=[];
+      for(let i=0;i<markupStrokes.length;i++){
+        if(_strokeIntersectsRect(markupStrokes[i],r))hits.push(i);
+      }
+      if(additive){
+        // Union with previous selection
+        const union=new Set(preSelected);
+        hits.forEach(i=>union.add(i));
+        const arr=Array.from(union);
+        setMarkupSelectedIdx(arr.length?arr[0]:null);
+        setMarkupExtraSelectedIdxs(new Set(arr.slice(1)));
+      }else{
+        setMarkupSelectedIdx(hits.length?hits[0]:null);
+        setMarkupExtraSelectedIdxs(new Set(hits.slice(1)));
+      }
+      return;
+    }
     // Finalise a pending photo placement
     if(pendingPhoto&&photoPlaceRect){
       let{x,y,w,h}=photoPlaceRect;
@@ -12025,6 +12274,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       setMarkupTool("select");
       return;
     }
+    if(multiItemDragRef.current){multiItemDragRef.current=null;return;}
     if(itemDragRef.current){itemDragRef.current=null;return;}
     if(photoDragRef.current){photoDragRef.current=null;return;}
     if(markupCurrent){
@@ -12076,10 +12326,30 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   };
   const cancelPendingPhoto=()=>{setPendingPhoto(null);setPhotoPlaceRect(null);};
   const deleteSelectedMarkup=()=>{
-    if(markupSelectedIdx==null)return;
-    setMarkupStrokes(s=>s.filter((_,i)=>i!==markupSelectedIdx));
-    setMarkupSelectedIdx(null);
+    const selected=allMarkupSelected();
+    if(!selected.length)return;
+    const selSet=new Set(selected);
+    setMarkupStrokes(s=>s.filter((_,i)=>!selSet.has(i)));
+    clearMarkupSelection();
   };
+  // Keyboard: Delete/Backspace removes all selected markup (when in markup mode)
+  useEffect(()=>{
+    if(!markupMode)return;
+    const onKey=(e)=>{
+      // Ignore when typing in inputs/textareas
+      const tag=(e.target&&e.target.tagName||"").toLowerCase();
+      if(tag==="input"||tag==="textarea"||e.target?.isContentEditable)return;
+      if(e.key==="Delete"||e.key==="Backspace"){
+        if(markupSelectedIdx!=null||markupExtraSelectedIdxs.size>0){
+          e.preventDefault();deleteSelectedMarkup();
+        }
+      }else if(e.key==="Escape"){
+        clearMarkupSelection();
+      }
+    };
+    window.addEventListener("keydown",onKey);
+    return()=>window.removeEventListener("keydown",onKey);
+  },[markupMode,markupSelectedIdx,markupExtraSelectedIdxs,markupStrokes]);
   // Scale the currently selected item by a multiplier.
   // - photo: resizes w/h (preserves aspect, clamps to page)
   // - text / callout / stamp: bumps fontSize
@@ -12177,7 +12447,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       </g>;
     }else if(s.type==="text"&&s.pos&&s.text){
       const fs=s.fontSize?Math.max(0.8,s.fontSize*0.75):1.8;
-      const isSel=markupSelectedIdx===i;
+      const isSel=isMarkupSelected(i);
       const align=s.align||"left";
       const valign=s.valign||"bottom";
       const anchor=align==="center"?"middle":(align==="right"?"end":"start");
@@ -12228,7 +12498,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
         <text x={s.pos.x} y={s.pos.y} fill={stampColor} fontSize={fs} fontFamily="Arial,sans-serif" fontWeight="700" textAnchor="middle" dominantBaseline="central" opacity="0.85">{text}</text>
       </g>;
     }else if(s.type==="photo"&&s.pos&&s.dataUrl){
-      const isSel=markupSelectedIdx===i;
+      const isSel=isMarkupSelected(i);
       return <g key={i}>
         <image href={s.dataUrl} x={s.pos.x} y={s.pos.y} width={s.w} height={s.h} preserveAspectRatio="xMidYMid meet"/>
         <rect x={s.pos.x} y={s.pos.y} width={s.w} height={s.h} fill="none" stroke={isSel?"#5856d6":"rgba(255,255,255,0.85)"} strokeWidth={isSel?"0.5":"0.25"} strokeDasharray={isSel?"1 0.6":undefined}/>
@@ -12417,7 +12687,8 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       {/* Markup toolbar */}
       {markupMode&&(
         <div style={{padding:"8px 14px",display:"flex",alignItems:"center",gap:6,background:"#1a1a1a",borderBottom:"1px solid rgba(255,255,255,0.1)",flexShrink:0,flexWrap:"wrap"}}>
-          <button onClick={()=>setMarkupMode(false)} title="Exit markup mode" style={{padding:"6px 12px",borderRadius:8,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",boxShadow:"0 1px 4px rgba(88,86,214,0.35)"}}>✓ DONE</button>
+          <button onClick={()=>setMarkupMode(false)} title="Done — exit markup mode (work is auto-saved)" style={{padding:"6px 12px",borderRadius:8,border:"none",background:"#34c759",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",boxShadow:"0 1px 4px rgba(52,199,89,0.4)"}}>✓ DONE</button>
+          {markupStrokes.length>0&&<span style={{fontSize:10,color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:"0 4px",whiteSpace:"nowrap"}}>✓ Auto-saved · {markupStrokes.length} item{markupStrokes.length>1?"s":""}</span>}
           {MARKUP_TOOL_ORDER.map(id=>(
             <MarkupToolButton key={id} id={id} title={{select:"Select, move, resize",freehand:"Freehand",highlight:"Highlight Marker",line:"Line",arrow:"Arrow",polyline:"Polyline / Polygon",circle:"Circle",rect:"Rectangle",cloud:"Revision Cloud",dimension:"Dimension line",text:"Text",callout:"Callout / Leader Note",stamp:"Stamp"}[id]}
               accent="#5856d6" active={markupTool===id}
@@ -12521,9 +12792,13 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
               <button onClick={()=>scaleSelectedPhoto(1.18)} title="Scale up" style={{background:"rgba(88,86,214,0.22)",border:"1px solid rgba(88,86,214,0.4)",borderRadius:8,width:30,height:28,color:"#c9c7ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
             </>
           )}
-          {markupSelectedIdx!=null&&markupTool==="select"&&(
-            <button onClick={deleteSelectedMarkup} style={{background:"rgba(255,59,48,0.25)",border:"1px solid rgba(255,59,48,0.45)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{t("actions.delete")}</button>
+          {markupTool==="select"&&(
+            <button onClick={()=>setMarkupAdditiveSelect(v=>!v)} title={markupAdditiveSelect?"Additive mode ON — next tap adds to selection (tap to turn off)":"Tap to turn on additive mode — each tap will add to selection (mobile multi-select)"} style={{background:markupAdditiveSelect?"rgba(88,86,214,0.35)":"rgba(255,255,255,0.08)",border:markupAdditiveSelect?"1px solid #5856d6":"1px solid rgba(255,255,255,0.15)",borderRadius:8,padding:"6px 10px",color:markupAdditiveSelect?"#c9c7ff":"rgba(255,255,255,0.7)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{markupAdditiveSelect?"➕ MULTI ON":"➕ MULTI"}</button>
           )}
+          {(markupSelectedIdx!=null||markupExtraSelectedIdxs.size>0)&&markupTool==="select"&&(()=>{
+            const n=(markupSelectedIdx!=null?1:0)+markupExtraSelectedIdxs.size;
+            return <button onClick={deleteSelectedMarkup} title={n>1?"Delete "+n+" selected items (DEL)":"Delete selected (DEL)"} style={{background:"rgba(255,59,48,0.25)",border:"1px solid rgba(255,59,48,0.45)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>🗑 {t("actions.delete")}{n>1?" ("+n+")":""}</button>;
+          })()}
           <button onClick={undoMarkup} disabled={!markupStrokes.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:markupStrokes.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{t("actions.undo")}</button>
           <button onClick={redoMarkup} disabled={!markupRedoStack.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:markupRedoStack.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{t("actions.redo")}</button>
           <button onClick={clearMarkup} disabled={!markupStrokes.length} style={{background:"rgba(255,59,48,0.2)",border:"none",borderRadius:8,padding:"6px 10px",color:markupStrokes.length?"#ff6b6b":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>CLEAR</button>
@@ -12580,6 +12855,9 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
                   <image href={pendingPhoto.dataUrl} x={photoPlaceRect.x} y={photoPlaceRect.y} width={photoPlaceRect.w} height={photoPlaceRect.w*pendingPhoto.aspect} preserveAspectRatio="xMidYMid meet" opacity="0.7"/>
                   <rect x={photoPlaceRect.x} y={photoPlaceRect.y} width={photoPlaceRect.w} height={photoPlaceRect.w*pendingPhoto.aspect} fill="none" stroke="#5856d6" strokeWidth="0.4" strokeDasharray="1 0.6"/>
                 </g>
+              )}
+              {marqueeRect&&marqueeRect.w>0&&marqueeRect.h>0&&(
+                <rect x={marqueeRect.x} y={marqueeRect.y} width={marqueeRect.w} height={marqueeRect.h} fill="rgba(88,86,214,0.10)" stroke="#5856d6" strokeWidth="0.25" strokeDasharray="1.2 0.8" pointerEvents="none"/>
               )}
             </svg>
             {renderHeatmap()}
@@ -13203,9 +13481,14 @@ function App(){
   const uploadDefect=async(data,companyId)=>{
     const storageCfg=local.get(STORAGE_KEY)||{mode:"pocketbase"};
     if(storageCfg.mode==="gdrive"&&GDrive.isConnected()){
-      const ts=Date.now();const gdriveUrls=[];
-      if(data.photo&&data.photo.startsWith("data:"))try{gdriveUrls.push((await GDrive.uploadPhoto(data.photo,`defect_${ts}_1.jpg`)).url);}catch{}
-      if(data.extraPhotos)for(let i=0;i<data.extraPhotos.length;i++)if(data.extraPhotos[i]?.startsWith("data:"))try{gdriveUrls.push((await GDrive.uploadPhoto(data.extraPhotos[i],`defect_${ts}_${i+2}.jpg`)).url);}catch{}
+      const ts=fileTimestamp();const gdriveUrls=[];
+      // Build human-readable filename: Project_YYYYMMDD-HHMMSS_User_DEF-XXXX_N.jpg
+      // The defect_id may not exist yet (server generates it on create). Use
+      // the timestamp + user as the unique anchor for now; downloads/PDF
+      // captions later can rebuild the canonical name from the saved record.
+      const fnameOpts={projectName:data.projectName||currentProject?.name,ts,userName:data.loggedBy||member?.name,defectId:data.defect_id};
+      if(data.photo&&data.photo.startsWith("data:"))try{gdriveUrls.push((await GDrive.uploadPhoto(data.photo,formatPhotoFilename({...fnameOpts,sequence:1}))).url);}catch{}
+      if(data.extraPhotos)for(let i=0;i<data.extraPhotos.length;i++)if(data.extraPhotos[i]?.startsWith("data:"))try{gdriveUrls.push((await GDrive.uploadPhoto(data.extraPhotos[i],formatPhotoFilename({...fnameOpts,sequence:i+2}))).url);}catch{}
       const gd={...data,companyId,storageMode:"gdrive",gdrivePhotos:JSON.stringify(gdriveUrls)};
       delete gd.photo;delete gd.extraPhotos;delete gd.photos;
       return await DB.defects.create(gd);
