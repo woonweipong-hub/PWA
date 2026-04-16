@@ -5,7 +5,11 @@ node_modules/
 .DS_Store
 Thumbs.db
 Tester.*
+Testers.*
 BUSINESS_PLAN.md
+BUSINESS*.md
+Business*.md
+business*.md
 RESEARCH_similar_projects.md
 NEXT.md
 app.js
