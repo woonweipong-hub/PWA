@@ -15,6 +15,9 @@ NEXT.md
 app.js
 preview-*.html
 
+# Internal operations playbook (private — supports paid setup service)
+deploy/pocketbase/HARDENING.md
+
 # Play Store signing keys & build artifacts
 playstore/
 
