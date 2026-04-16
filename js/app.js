@@ -1562,6 +1562,67 @@ async function extractPdfText(url,maxChars=12000){
   return text.slice(0,maxChars).trim();
 }
 
+// ── Batch translate defects' freeform fields for unified exports ──
+// Singapore construction teams have workers from many countries each logging
+// in their own language. This batches all title/description/location values
+// for a set of defects into ONE AI call and returns a Map<id, {title,
+// description, location}> in the target language. Callers pass the result
+// through to CSV/PDF/Email/Sheets generators so the exported report reads
+// uniformly in the chosen language.
+//
+// - Skips defects with no freeform text (all three empty)
+// - Preserves original values in the Map if the AI omits an id
+// - Returns null on AI failure so callers can fall back to originals
+// - targetLang: 2-letter code ("zh", "ms", "vi"…). "en" also translates
+//   (normalises non-English entries to English — the common Singapore case).
+async function translateDefectsFreeText(defects,targetLang,onProgress){
+  if(!targetLang||!Array.isArray(defects)||!defects.length)return null;
+  const langName=(typeof _AI_LANG_NAMES==="object"&&_AI_LANG_NAMES[targetLang])||"English";
+  const payload=defects.map(d=>{
+    const title=(d.title||"").trim();
+    const description=(d.description||"").trim();
+    const location=(d.location||"").trim();
+    if(!title&&!description&&!location)return null;
+    return{id:d.id||d.defect_id||"",title,description,location};
+  }).filter(Boolean);
+  if(!payload.length)return new Map();
+  if(typeof onProgress==="function")onProgress(`Translating ${payload.length} entries to ${langName}…`);
+  const prompt=[
+    `You are a translation assistant for a construction defect tracker.`,
+    `Translate each entry's "title", "description", and "location" into ${langName}.`,
+    `Keep technical construction terms accurate (e.g. severity, trade names).`,
+    `Preserve entry IDs exactly.`,
+    `Output STRICT JSON — an array of objects with the same keys. No markdown fences. No explanatory prose. No trailing commas.`,
+    ``,
+    `Input:`,
+    JSON.stringify(payload)
+  ].join("\n");
+  try{
+    const raw=await askAI(prompt);
+    if(!raw)return null;
+    let json=raw.trim();
+    // Strip common code-fence wrappers
+    if(json.startsWith("```")){
+      json=json.replace(/^```(?:json)?\s*/i,"").replace(/```\s*$/,"");
+    }
+    const arr=JSON.parse(json);
+    if(!Array.isArray(arr))return null;
+    const map=new Map();
+    for(const item of arr){
+      if(!item||!item.id)continue;
+      map.set(item.id,{
+        title:item.title||"",
+        description:item.description||"",
+        location:item.location||""
+      });
+    }
+    return map;
+  }catch(e){
+    console.warn("translateDefectsFreeText failed",e);
+    return null;
+  }
+}
+
 // ── Extract texts from selected contract folders ───────────────────
 async function extractContractTexts({usePssoc,useRedas,useSia,onProgress}){
   const results=[];
@@ -6725,6 +6786,34 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   // is in English by convention. User can switch to a worker's language
   // for a briefing / instruction sheet via the dropdown below.
   const[exportLang,setExportLang]=useState("en");
+  // Unify freeform text (title / description / location) via AI batch-translate.
+  // OFF by default — some teams want to preserve the original language each
+  // worker typed (forensic accuracy for DLP claims). ON when the report is
+  // going out of the team to a client/contractor who needs everything in one
+  // language. Requires AI to be configured; gracefully falls back to
+  // originals if AI isn't available.
+  const[translateFreeText,setTranslateFreeText]=useState(false);
+  // Pre-translate defects' title/description/location to the chosen export
+  // language via AI, then return a new array with those fields overwritten.
+  // Keeps the original objects intact (just returns copies). All downstream
+  // export functions (CSV / PDF / Email / Sheets) read the translated fields
+  // transparently because we swap them at the top of the array.
+  const prepareDefectsForExport=async(src)=>{
+    if(!translateFreeText||!aiEnabled||!src||!src.length)return src;
+    setPdfExport({active:true,label:`Translating ${src.length} entries…`});
+    try{
+      const map=await translateDefectsFreeText(src,exportLang,(msg)=>setPdfExport({active:true,label:msg}));
+      if(!map)return src;
+      return src.map(d=>{
+        const tx=map.get(d.id||d.defect_id);
+        if(!tx)return d;
+        return{...d,title:tx.title||d.title,description:tx.description||d.description,location:tx.location||d.location};
+      });
+    }catch(e){
+      console.warn("export translation failed, falling back to originals",e);
+      return src;
+    }
+  };
   // When the user opens the EXPORT menu, preload the chosen language pack so
   // tOptIn/tIn resolve correctly inside the export functions (they're sync).
   useEffect(()=>{if(showExportMenu&&exportLang&&typeof preloadLanguage==="function")preloadLanguage(exportLang);},[showExportMenu,exportLang]);
@@ -6847,7 +6936,9 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
     setSending(true);setSendRes(null);
     try{
       const opts=buildEmailOpts();
-      const html=generateEmailHTML(incDefects?filtered:[],currentProject?.name,company?.companyName,opts);
+      // Apply export-language free-text translation if the user has it enabled.
+      const defs=await prepareDefectsForExport(incDefects?filtered:[]);
+      const html=generateEmailHTML(defs,currentProject?.name,company?.companyName,opts);
       const timestamp=new Date().toLocaleString("en-GB",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
       const totalItems=filtered.length;
       const subject=`${currentProject?.name||"Project"} – ${timestamp} – ${totalItems} Site Item${totalItems!==1?"s":""} Checked`;
@@ -7024,12 +7115,23 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
                   ))}
                 </select>
                 <div style={{fontSize:9,color:"rgba(0,0,0,0.4)",marginTop:4,lineHeight:1.3}}>{exportLang==="en"?"Official report for client / architect / QS.":"Worker briefing — for native-language distribution."}</div>
+                {/* Free-text unification — translates title / description /
+                    location via the configured AI provider. Helps teams where
+                    each worker logs in their own language (Mandarin, Vietnamese,
+                    Bahasa, Tamil, Burmese, etc.) but the export must be uniform. */}
+                <label style={{display:"flex",alignItems:"flex-start",gap:8,marginTop:10,padding:"8px 10px",background:(aiEnabled?"rgba(88,86,214,0.08)":"rgba(0,0,0,0.04)"),borderRadius:6,cursor:aiEnabled?"pointer":"not-allowed",opacity:aiEnabled?1:0.55}} title={aiEnabled?"":"AI Setup required — configure in Settings → AI Setup to enable."}>
+                  <input type="checkbox" checked={translateFreeText&&aiEnabled} disabled={!aiEnabled} onChange={e=>setTranslateFreeText(e.target.checked)} style={{marginTop:2,flexShrink:0}}/>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:11,fontWeight:700,color:aiEnabled?"#3a39a6":"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.03em"}}>🌐 ALSO TRANSLATE FREE TEXT</div>
+                    <div style={{fontSize:9,color:"rgba(0,0,0,0.45)",lineHeight:1.4,marginTop:2}}>{aiEnabled?"Title / description / location get AI-translated to export language for a uniform report. Adds ~30s for large reports.":"Needs AI Setup — Settings → AI Setup."}</div>
+                  </div>
+                </label>
               </div>
-              <button disabled={pdfExport.active} onClick={()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang);}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true,langCode:exportLang});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false,langCode:exportLang});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);exportReportAll(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang);setPdfExport({active:true,label:"Preparing report…"});try{await new Promise(r=>setTimeout(r,600));await exportReportPdf(incDefects?filtered:[],incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
-              <button onClick={async()=>{setShowExportMenu(false);try{const result=await exportToGoogleSheets(incDefects?filtered:[],currentProject?.name,company?.companyName,exportLang);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang);}catch(e){alert("Export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true,langCode:exportLang});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false,langCode:exportLang});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang);await new Promise(r=>setTimeout(r,600));await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
+              <button onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);const result=await exportToGoogleSheets(defs,currentProject?.name,company?.companyName,exportLang);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
             </div>
           )}
         </div>
