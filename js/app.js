@@ -13338,6 +13338,7 @@ const DdIcon=({name,size=16})=>{
     case"refresh":return <svg {...p}><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>;
     case"pin":return <svg {...p}><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>;
     case"blueprint":return <svg {...p}><path d="M4 20L20 4"/><path d="M4 20h13"/><path d="M4 20V7"/></svg>;
+    case"server":return <svg {...p}><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><circle cx="7" cy="7" r="0.7" fill="currentColor"/><circle cx="7" cy="17" r="0.7" fill="currentColor"/></svg>;
     default:return null;
   }
 };
@@ -13892,6 +13893,10 @@ function App(){
                 ...(isAdmin?[{label:t("settings.team"),desc:t("settings.team_desc"),icon:"users",done:setupChecks.team,onClick:()=>{setShowUsers(true);setShowSettingsMenu(false);}}]:[]),
                 {section:t("settings.section_enhance")},
                 {label:t("settings.ai_setup"),desc:t("settings.ai_desc"),icon:"ai",done:setupChecks.ai,onClick:()=>{setShowGemini(true);setShowSettingsMenu(false);}},
+                // Hosting — promoted from Help into Settings since self-hosting
+                // is foundational infrastructure that admins need early. Reuses
+                // the existing Help modal pre-routed to its hosting tab.
+                {label:t("settings.hosting"),desc:t("settings.hosting_desc"),icon:"server",optional:true,onClick:()=>{setHelpTab("hosting");setShowHelp(true);setShowSettingsMenu(false);}},
                 {label:t("settings.telegram"),desc:t("settings.telegram_desc"),icon:"plane",done:setupChecks.telegram,onClick:()=>{setShowTg(true);setShowSettingsMenu(false);}},
                 {label:t("settings.storage"),desc:t("settings.storage_desc"),icon:"disk",optional:true,onClick:()=>{setShowStorage(true);setShowSettingsMenu(false);}},
                 {label:t("settings.maps"),desc:t("settings.maps_desc"),icon:"pin",optional:true,onClick:()=>{setShowMaps(true);setShowSettingsMenu(false);}},
@@ -14019,8 +14024,10 @@ function App(){
             <div style={{background:"#1a1a1a",padding:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:1}}>
               <button onClick={()=>setShowHelp(false)} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.back")}</button>
               <div style={{display:"flex",gap:0,flex:1}}>
+                {/* HOSTING tab removed — now lives in ⚙ Settings → Hosting.
+                    The hosting branch (helpTab==="hosting") still renders below
+                    when reached via Settings; just no nav button here. */}
                 <button onClick={()=>setHelpTab("help")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="help"?"2px solid #ff6b00":"2px solid transparent",color:helpTab==="help"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{t("help.title").toUpperCase()}</button>
-                <button onClick={()=>setHelpTab("hosting")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="hosting"?"2px solid #34a853":"2px solid transparent",color:helpTab==="hosting"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>HOSTING</button>
                 <button onClick={()=>setHelpTab("features")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="features"?"2px solid #ff6b00":"2px solid transparent",color:helpTab==="features"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{t("help.features")}</button>
                 <button onClick={()=>setHelpTab("disclaimer")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="disclaimer"?"2px solid #ffcc00":"2px solid transparent",color:helpTab==="disclaimer"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>DISCLAIMER</button>
               </div>
