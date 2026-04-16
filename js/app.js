@@ -34,6 +34,19 @@ function compressPhoto(dataUrl,maxPx=1800,quality=0.8){
 const DRAWING_NOTES_KEY="drawing_notes_v1";
 const DRAWING_MARKUP_KEY="drawing_markup_v1";
 const SAVED_COMPARISONS_KEY="saved_comparisons_v1";
+const DISPLAY_XLATE_KEY="display_xlate_v1";
+const DISPLAY_XLATE_PREF_KEY="display_xlate_pref_v1";
+// Display-language translation cache — survives reloads so browsing the
+// Review list in a non-English UI doesn't re-hit the AI for entries
+// already translated. Keyed by `${defectId}__${targetLang}__${updatedEpoch}`
+// so stale cache auto-invalidates when an entry is edited.
+function getDisplayXlateCache(){return local.get(DISPLAY_XLATE_KEY)||{};}
+function setDisplayXlateCache(map){local.set(DISPLAY_XLATE_KEY,map);}
+function displayXlateKey(defectId,targetLang,defect){
+  const upd=defect?.updated||defect?.updatedAt||"";
+  const stamp=upd?Date.parse(upd)||0:0;
+  return `${defectId}__${targetLang}__${stamp}`;
+}
 const BCA_SCDF_REVISION_COLORS={added:"#ff00ff",removed:"#ddcc00",existing:"#00cccc"};
 const fileTimestamp=()=>{const d=new Date();return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}_${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}${String(d.getSeconds()).padStart(2,"0")}`;};
 // Sanitize a string for use in filenames: ASCII-safe, dash-separated, capped.
@@ -5286,6 +5299,99 @@ function DrawingPinThumb({drawing,pin,severity,title}){
   );
 }
 
+// ── Display-language translation hook ─────────────────────────────
+// Real-time translation of defect free-text fields (title, description,
+// location) to the user's current UI language, for mixed-nationality
+// teams where each worker logs in their own language. Returns a Map
+// keyed by defect ID with translated fields. Originals stay in storage.
+//
+// Behaviour:
+// - Enabled only when `enabled` is true AND AI is configured
+// - Skips defects whose text is already in the target language (heuristic:
+//   if targetLang is "en" and all free text is ASCII-only)
+// - Checks localStorage cache first (key includes defect.updated so edits
+//   invalidate automatically)
+// - Batches pending entries with a small delay so rapid list updates
+//   coalesce into one AI call
+function useDefectDisplayMap(defects,targetLang,enabled,aiAvailable){
+  const[map,setMap]=React.useState(()=>new Map());
+  const pendingTimerRef=React.useRef(null);
+  const inFlightRef=React.useRef(new Set());
+  React.useEffect(()=>{
+    if(!enabled||!aiAvailable||!targetLang||!Array.isArray(defects)||!defects.length){
+      // Clear map when feature off so rows revert to originals
+      setMap(prev=>prev.size?new Map():prev);
+      return;
+    }
+    // Load cache hits synchronously
+    const cache=getDisplayXlateCache();
+    const hits=new Map();
+    const misses=[];
+    for(const d of defects){
+      const id=d.id;if(!id)continue;
+      const hasText=(d.title||d.description||d.location||"").trim();
+      if(!hasText)continue;
+      // English-to-English fast path — skip if all text is ASCII and target is "en"
+      if(targetLang==="en"){
+        const allAscii=!/[^\x00-\x7F]/.test((d.title||"")+(d.description||"")+(d.location||""));
+        if(allAscii)continue;
+      }
+      const key=displayXlateKey(id,targetLang,d);
+      const cached=cache[key];
+      if(cached){
+        hits.set(id,{title:cached.title||"",description:cached.description||"",location:cached.location||""});
+      }else if(!inFlightRef.current.has(id)){
+        misses.push(d);
+      }
+    }
+    if(hits.size)setMap(prev=>{
+      // Merge with previous to preserve translations for defects still in list
+      const next=new Map(prev);
+      hits.forEach((v,k)=>next.set(k,v));
+      return next;
+    });
+    if(!misses.length)return;
+    // Debounce batch — wait 400ms for the list to settle
+    clearTimeout(pendingTimerRef.current);
+    pendingTimerRef.current=setTimeout(async()=>{
+      const batch=misses.slice(0,40); // cap per call to keep prompts small
+      batch.forEach(d=>inFlightRef.current.add(d.id));
+      try{
+        const result=await translateDefectsFreeText(batch,targetLang);
+        if(result&&result.size){
+          // Persist to localStorage
+          const cache2=getDisplayXlateCache();
+          result.forEach((v,id)=>{
+            const d=batch.find(x=>x.id===id);
+            if(!d)return;
+            const key=displayXlateKey(id,targetLang,d);
+            cache2[key]=v;
+          });
+          setDisplayXlateCache(cache2);
+          // Merge into state
+          setMap(prev=>{
+            const next=new Map(prev);
+            result.forEach((v,k)=>next.set(k,v));
+            return next;
+          });
+        }
+      }catch(e){console.warn("display-xlate batch failed",e);}
+      finally{batch.forEach(d=>inFlightRef.current.delete(d.id));}
+    },400);
+    return()=>clearTimeout(pendingTimerRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[defects,targetLang,enabled,aiAvailable]);
+  return map;
+}
+// Helper: merge translation into display values, falling back to original.
+// `showOriginal` wins — lets a user toggle "Show original" per entry.
+function applyDisplayXlate(defect,xlateMap,showOriginal){
+  if(showOriginal||!xlateMap||!defect)return defect;
+  const t=xlateMap.get(defect.id);
+  if(!t)return defect;
+  return{...defect,title:t.title||defect.title,description:t.description||defect.description,location:t.location||defect.location};
+}
+
 // Dispatch: render MapThumb for GPS-pinned entries, DrawingPinThumb for
 // entries pinned on a drawing, PhotoThumb if the entry has at least one
 // uploaded photo, or nothing if none of those apply.
@@ -5642,6 +5748,24 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
   });
   const activeFilters=(filter!=="All"?1:0)+(sevF!=="All"?1:0)+(typeF!=="All"?1:0);
   const clearAll=()=>{setFilter("All");setSevF("All");setTypeF("All");setSearch("");if(onClearNl)onClearNl();};
+  // ── Display-language translation (Phase 2) ──
+  // User toggle persisted per device so the Review list stays translated
+  // across sessions. Defaults ON when UI is non-English AND AI is configured
+  // (value to a multi-lang team) — otherwise OFF.
+  const currentUiLang=(typeof getCurrentLang==="function"?getCurrentLang():"en")||"en";
+  const aiDisplayAvailable=typeof aiEnabled!=="undefined"?aiEnabled:!!local.get(GEMINI_KEY);
+  const[translateDisplay,setTranslateDisplay]=useState(()=>{
+    const saved=local.get(DISPLAY_XLATE_PREF_KEY);
+    if(typeof saved==="boolean")return saved;
+    return currentUiLang!=="en";
+  });
+  useEffect(()=>{local.set(DISPLAY_XLATE_PREF_KEY,translateDisplay);},[translateDisplay]);
+  // Per-entry "Show original" toggles — session-only, not persisted
+  const[showOriginalIds,setShowOriginalIds]=useState(()=>new Set());
+  const toggleShowOriginal=(id)=>setShowOriginalIds(prev=>{
+    const next=new Set(prev);if(next.has(id))next.delete(id);else next.add(id);return next;
+  });
+  const displayMap=useDefectDisplayMap(filtered,currentUiLang,translateDisplay,aiDisplayAvailable);
   return(
     <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,gap:8}}>
@@ -5675,6 +5799,20 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
           <button key={opt.id} onClick={()=>setSource(opt.id)} style={{padding:"6px 12px",borderRadius:7,border:"none",background:source===opt.id?"#fff":"transparent",color:source===opt.id?"#1a1a1a":"rgba(0,0,0,0.5)",boxShadow:source===opt.id?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{opt.label}</button>
         ))}
       </div>
+
+      {/* Display-language translation toggle — only shown for entries source.
+          Hidden entirely if AI isn't configured (would be a confusing dead button). */}
+      {source==="entries"&&aiDisplayAvailable&&(
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,padding:"7px 10px",background:translateDisplay?"rgba(88,86,214,0.08)":"rgba(0,0,0,0.04)",border:"1px solid "+(translateDisplay?"rgba(88,86,214,0.3)":"rgba(0,0,0,0.08)"),borderRadius:10}}>
+          <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",flex:1}}>
+            <input type="checkbox" checked={translateDisplay} onChange={e=>setTranslateDisplay(e.target.checked)}/>
+            <div style={{flex:1}}>
+              <div style={{fontSize:11,fontWeight:700,color:translateDisplay?"#3a39a6":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>🌐 TRANSLATE TO MY LANGUAGE</div>
+              <div style={{fontSize:9,color:"rgba(0,0,0,0.45)",lineHeight:1.4,marginTop:1}}>Entries logged in other languages get AI-translated to your UI language. Originals preserved. Cached per entry.</div>
+            </div>
+          </label>
+        </div>
+      )}
 
       {/* Drawings source — per-drawing markup / notes / pin counts with tap-through to Tag */}
       {source==="drawings"&&(
@@ -5790,23 +5928,28 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
       {!showMapView&&filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>{q?t("review.no_matching")+" \""+search+"\"":t("review.no_entries")}</div>}
       {!showMapView&&filtered.map((d,i)=>{
         const checked=selectedIds.has(d.id);
+        // Apply display translation (if enabled). Originals are preserved in
+        // `d`; `dv` carries the translated fields for rendering only.
+        const showOrig=showOriginalIds.has(d.id);
+        const dv=applyDisplayXlate(d,displayMap,showOrig);
+        const wasTranslated=!showOrig&&translateDisplay&&displayMap.has(d.id);
         return(
-        <div key={d.id} className="anim" style={{animationDelay:`${i*0.04}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:`4px solid ${SEV_COLOR[d.severity]}`,display:"flex",gap:12,alignItems:"flex-start",outline:selectMode&&checked?"2px solid #ff6b00":"none"}} onClick={()=>selectMode?toggleId(d.id):onView(d)}>
+        <div key={d.id} className="anim" style={{animationDelay:`${i*0.04}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:`4px solid ${SEV_COLOR[d.severity]}`,display:"flex",gap:12,alignItems:"flex-start",outline:selectMode&&checked?"2px solid #ff6b00":"none"}} onClick={()=>selectMode?toggleId(d.id):onView(dv)}>
           {selectMode&&(
             <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${checked?"#ff6b00":"rgba(0,0,0,0.2)"}`,background:checked?"#ff6b00":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2,color:"#fff",fontSize:13,fontWeight:800}}>{checked?"✓":""}</div>
           )}
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,color:"#1a1a1a",flex:1,paddingRight:8}}><Highlight text={d.title} query={q}/></div>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,color:"#1a1a1a",flex:1,paddingRight:8}}><Highlight text={dv.title} query={q}/>{wasTranslated&&<span title="AI-translated to your UI language. Tap 'Show original' below to see what was typed." style={{fontSize:9,color:"#5856d6",marginLeft:6,padding:"1px 4px",background:"rgba(88,86,214,0.1)",borderRadius:3,fontWeight:700,verticalAlign:"1px"}}>🌐</span>}</div>
               <StatusChip s={d.status}/>
             </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:4}}>
               {d.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(d.entryType),background:typeBg(d.entryType),padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(d.entryType)} {tOpt(d.entryType).toUpperCase()}</span>}
               <SevChip s={d.severity}/>
-              <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>📍 <Highlight text={d.location} query={q}/></span>
+              <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>📍 <Highlight text={dv.location} query={q}/></span>
             </div>
-            {q&&d.description&&d.description.toLowerCase().includes(q)&&(
-              <div style={{fontSize:11,color:"rgba(0,0,0,0.45)",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}><Highlight text={d.description.slice(0,100)} query={q}/></div>
+            {q&&dv.description&&dv.description.toLowerCase().includes(q)&&(
+              <div style={{fontSize:11,color:"rgba(0,0,0,0.45)",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}><Highlight text={dv.description.slice(0,100)} query={q}/></div>
             )}
             <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",display:"flex",justifyContent:"space-between"}}>
               <span>→ <Highlight text={d.assignee} query={q}/></span>
