@@ -11272,7 +11272,10 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           pinDefects.forEach(df=>{const s=df.severity||"Unknown";sevCounts[s]=(sevCounts[s]||0)+1;});
           return(
             <div key={d.id} onClick={()=>selectMode?toggleDrawingId(d.id):setViewing(d)} style={{background:"#fff",borderRadius:14,padding:0,marginBottom:12,cursor:"pointer",overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)",outline:selectMode&&selectedDrawingIds.has(d.id)?"2px solid #ff6b00":"none"}}>
-              <div style={{position:"relative",background:"#f8f8f6"}}>
+              {/* overflow:hidden + minHeight prevent absolutely-positioned pins
+                  from leaking into the title area below when the image is still
+                  loading or renders thinner than expected (e.g. map snapshots). */}
+              <div style={{position:"relative",background:"#f8f8f6",overflow:"hidden",minHeight:60}}>
                 {selectMode&&(
                   <div style={{position:"absolute",top:10,left:10,zIndex:5,width:26,height:26,borderRadius:8,border:`2px solid ${selectedDrawingIds.has(d.id)?"#ff6b00":"#fff"}`,background:selectedDrawingIds.has(d.id)?"#ff6b00":"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:15,fontWeight:800,boxShadow:"0 2px 6px rgba(0,0,0,0.3)"}}>{selectedDrawingIds.has(d.id)?"✓":""}</div>
                 )}
@@ -14401,7 +14404,15 @@ function App(){
       )}
 
       {/* Profile panel */}
-      {showProfile&&<ProfilePanel member={member} authUser={authUser} company={company} onClose={()=>setShowProfile(false)} onSignOut={signOut} onCompanyUpdate={(name)=>setCompany(prev=>prev?{...prev,companyName:name}:prev)}/>}
+      {showProfile&&<ProfilePanel member={member} authUser={authUser} company={company} onClose={()=>setShowProfile(false)} onSignOut={signOut} onCompanyUpdate={(name)=>setCompany(prev=>{
+        // Persist to localStorage too — not just React state — otherwise the
+        // next session's auth-restore reads the stale cached name (COMPANY_KEY
+        // is the source of truth on app boot).
+        if(!prev)return prev;
+        const next={...prev,companyName:name};
+        try{local.set(COMPANY_KEY,next);}catch{}
+        return next;
+      })}/>}
 
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:84}}>
