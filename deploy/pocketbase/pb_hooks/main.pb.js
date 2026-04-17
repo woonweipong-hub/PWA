@@ -43,27 +43,43 @@ function getCompanyStorageBytes(companyId) {
 
 onRecordCreateRequest((e) => {
   if (e.collection.name !== "defects") return e.next();
-  var record = e.record;
-  var companyId = record.get("companyId");
-  if (!companyId) return e.next();
 
-  var incomingBytes = 0;
-  ["photo", "photoOriginal", "costDoc"].forEach(function (field) {
-    var files = record.get(field) || [];
-    if (!Array.isArray(files)) files = [files];
-    files.forEach(function (f) {
-      if (f && f.size) incomingBytes += f.size;
-    });
-  });
+  // Compute cap decision defensively — any JS/SQL error here must NOT
+  // propagate, or PocketBase returns a generic 400 and blocks legitimate
+  // uploads. Only a confirmed over-cap result should reject the request.
+  var overCap = false;
+  try {
+    var companyId = e.record.get("companyId");
+    if (companyId) {
+      var incomingBytes = 0;
+      ["photo", "photoOriginal", "costDoc"].forEach(function (field) {
+        try {
+          var files = e.record.get(field);
+          if (!files) return;
+          if (!Array.isArray(files)) files = [files];
+          for (var i = 0; i < files.length; i++) {
+            var f = files[i];
+            if (f && typeof f.size === "number") incomingBytes += f.size;
+          }
+        } catch (_) { /* unknown field shape — skip */ }
+      });
 
-  var currentBytes = getCompanyStorageBytes(companyId);
-  if (currentBytes + incomingBytes > COMPANY_STORAGE_CAP_BYTES) {
+      var currentBytes = getCompanyStorageBytes(companyId);
+      if (currentBytes + incomingBytes > COMPANY_STORAGE_CAP_BYTES) {
+        overCap = true;
+      }
+    }
+  } catch (err) {
+    console.log("Storage cap hook error (allowing request):", err);
+  }
+
+  if (overCap) {
     throw new BadRequestError(
       "Storage cap reached (1 GB). Please migrate to your own server " +
       "(Settings -> Storage & Hosting -> Path 2 or Path 3) or delete old defects."
     );
   }
-  e.next();
+  return e.next();
 }, "defects");
 
 // ====== AUTO DEFECT ID ======
