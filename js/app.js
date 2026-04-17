@@ -5829,7 +5829,7 @@ function DefectsMapView({defects,allDefects,onView,onUpdate,selectMode,selectedI
   );
 }
 
-function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onClearNl,onAiSearch,aiEnabled,member,members,onBulkUpdate,onBulkDelete,onRestore,onHardDelete,company,currentProject,onJumpToTag}){
+function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onClearNl,onAiSearch,aiEnabled,member,members,onBulkUpdate,onBulkDelete,onRestore,onHardDelete,company,currentProject,onJumpToTag,onOpenInReview}){
   const[showArchive,setShowArchive]=useState(false);
   const[filter,setFilter]=useState("All");const[sevF,setSevF]=useState("All");const[typeF,setTypeF]=useState("All");
   const[search,setSearch]=useState("");const[showFilters,setShowFilters]=useState(false);
@@ -6010,7 +6010,13 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
               const markupCount=getDrawingMarkup(d.id).length;
               const hasAny=pinCount+noteCount+markupCount>0;
               return(
-                <div key={d.id} className="anim" style={{animationDelay:`${i*0.04}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:`4px solid ${hasAny?"#ff6b00":"rgba(0,0,0,0.15)"}`,display:"flex",gap:12,alignItems:"flex-start"}} onClick={()=>onJumpToTag&&onJumpToTag({type:"drawing",id:d.id})}>
+                <div key={d.id} className="anim" style={{animationDelay:`${i*0.04}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:`4px solid ${hasAny?"#ff6b00":"rgba(0,0,0,0.15)"}`,display:"flex",gap:12,alignItems:"flex-start"}} onClick={()=>{
+                  // Open the drawing inline within REVIEW (preserves user's
+                  // scroll/filter state). Falls back to TAG navigation only if
+                  // no inline handler is plumbed in.
+                  if(onOpenInReview)onOpenInReview({type:"drawing",drawing:d});
+                  else if(onJumpToTag)onJumpToTag({type:"drawing",id:d.id});
+                }}>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,color:"#1a1a1a",marginBottom:6}}><Highlight text={d.name||d.file||"Untitled"} query={q}/></div>
                     <div style={{display:"flex",gap:8,flexWrap:"wrap",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
@@ -6031,7 +6037,14 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
         savedComparisonsList.length===0
           ?<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>No saved comparisons yet. Diff two PDFs in Tag & Compare and save.</div>
           :<div>{savedComparisonsList.filter(sc=>!q||(sc.baseName||"").toLowerCase().includes(q)||(sc.targetName||"").toLowerCase().includes(q)).map((sc,i)=>(
-              <div key={sc.id||i} className="anim" style={{animationDelay:`${i*0.04}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:"4px solid #5856d6",display:"flex",gap:12,alignItems:"flex-start"}} onClick={()=>onJumpToTag&&onJumpToTag({type:"comparison",id:sc.id})}>
+              <div key={sc.id||i} className="anim" style={{animationDelay:`${i*0.04}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:"4px solid #5856d6",display:"flex",gap:12,alignItems:"flex-start"}} onClick={()=>{
+                // Open the saved comparison inline (loads it into the Compare
+                // view via DrawingsPanel's initialCompare prop). Previous
+                // behaviour just switched to the TAG tab and stranded the user
+                // with no comparison loaded — see fix #5.
+                if(onOpenInReview)onOpenInReview({type:"comparison",comparison:sc});
+                else if(onJumpToTag)onJumpToTag({type:"comparison",id:sc.id});
+              }}>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a",marginBottom:4}}><Highlight text={`${sc.baseName||"Base"} → ${sc.targetName||"Target"}`} query={q}/></div>
                   <div style={{display:"flex",gap:10,flexWrap:"wrap",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
@@ -13890,6 +13903,12 @@ function App(){
     const unsub=onLangChange(code=>setLangState(code));
     return unsub;
   },[]);
+  // REVIEW > DRAWINGS / COMPARISONS open their detail editor as a full-screen
+  // modal at App level (rather than routing the user to TAG and losing their
+  // REVIEW scroll/filter state). Reuses DrawingViewer for drawings and
+  // DrawingsPanel (without `embedded`, so it renders fullscreen) for the
+  // compare flow.
+  const[reviewModal,setReviewModal]=useState(null);
   // Server-down detection for the maintenance banner. DB layer emits
   // `siteshrimp:server-status` {down:true|false} after 3 consecutive network
   // failures with user's own connection still up. Banner auto-hides on the
@@ -14565,7 +14584,7 @@ function App(){
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect}/>}
-        {tab==="defects"&&<DefectsList defects={defects} archivedDefects={archivedDefects} onView={setViewing} onUpdate={updateDefect} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onRestore={restoreDefects} onHardDelete={hardDeleteDefects} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")}/>}
+        {tab==="defects"&&<DefectsList defects={defects} archivedDefects={archivedDefects} onView={setViewing} onUpdate={updateDefect} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onRestore={restoreDefects} onHardDelete={hardDeleteDefects} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")} onOpenInReview={(payload)=>setReviewModal(payload)}/>}
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} member={member} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
       </div>
 
@@ -14580,6 +14599,12 @@ function App(){
       </div>
 
       {/* Overlays */}
+      {/* Inline DRAWING / COMPARISON viewer launched from REVIEW. Keeps users
+          inside REVIEW context (no jump to TAG, no lost scroll). DrawingViewer
+          and DrawingsPanel both render as fixed full-screen overlays already,
+          so no wrapper modal is needed. */}
+      {reviewModal?.type==="drawing"&&<DrawingViewer drawing={reviewModal.drawing} onClose={()=>setReviewModal(null)} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect}/>}
+      {reviewModal?.type==="comparison"&&<DrawingsPanel onClose={()=>setReviewModal(null)} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} initialCompare={reviewModal.comparison}/>}
       {showAiSearch&&<AiSearch defects={defects} onClose={()=>setShowAiSearch(false)} onApplyFilters={f=>{setNlFilters(f);setTab("defects");}}/>}
       {viewing&&<DefectDetail defect={viewing} onClose={()=>setViewing(null)} onUpdate={updateDefect} onDelete={(id)=>setDefects(prev=>prev.filter(d=>d.id!==id))} member={member} company={company} members={members} allDefects={defects}/>}
       {showHelp&&(
