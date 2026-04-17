@@ -9196,16 +9196,16 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
         <div style={{marginTop:8,background:"#fff",borderRadius:12,border:"1px solid rgba(0,0,0,0.08)",padding:"8px 10px"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,color:"rgba(0,0,0,0.55)",letterSpacing:"0.04em"}}>ALL PINS ({mapDefects.length}){focusedDefect?` · ${(focusedDefect.title||"Entry").slice(0,24)}`:""}</div>
-            {focusedDefect&&<button onClick={()=>setFocusedDefectId(null)} style={{background:"rgba(0,0,0,0.05)",border:"none",borderRadius:6,padding:"3px 8px",color:"rgba(0,0,0,0.55)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>CLEAR</button>}
+            {focusedDefect&&<button onClick={()=>setFocusedDefectId(null)} style={{background:"rgba(0,0,0,0.05)",border:"none",borderRadius:8,padding:"6px 12px",color:"rgba(0,0,0,0.6)",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",minHeight:32}}>CLEAR</button>}
           </div>
           <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:2,WebkitOverflowScrolling:"touch"}}>
             {mapDefects.map((d,i)=>{
               const foc=focusedDefectId===d.id;
               const sevColor=SEV_COLOR[d.severity]||"#8e8e93";
               return(
-                <button key={d.id} onClick={()=>{setFocusedDefectId(foc?null:d.id);if(!foc)focusOnDefect(d);}} title={`${i+1}. ${d.title||"Entry"}`} style={{flexShrink:0,display:"flex",alignItems:"center",gap:6,padding:"5px 10px 5px 5px",borderRadius:16,border:`1.5px solid ${foc?sevColor:"rgba(0,0,0,0.12)"}`,background:foc?"rgba(0,0,0,0.04)":"#fff",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",maxWidth:170}}>
-                  <span style={{width:22,height:22,borderRadius:"50%",background:foc?sevColor:"rgba(0,0,0,0.75)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:11,border:`2px solid ${sevColor}`,flexShrink:0}}>{i+1}</span>
-                  <span style={{fontSize:11,fontWeight:700,color:"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:120}}>{d.title||"Entry"}</span>
+                <button key={d.id} onClick={()=>{setFocusedDefectId(foc?null:d.id);if(!foc)focusOnDefect(d);}} title={`${i+1}. ${d.title||"Entry"}`} style={{flexShrink:0,display:"flex",alignItems:"center",gap:7,padding:"8px 12px 8px 6px",minHeight:40,borderRadius:20,border:`1.5px solid ${foc?sevColor:"rgba(0,0,0,0.12)"}`,background:foc?"rgba(0,0,0,0.04)":"#fff",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",maxWidth:180}}>
+                  <span style={{width:24,height:24,borderRadius:"50%",background:foc?sevColor:"rgba(0,0,0,0.78)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:12,border:`2px solid ${sevColor}`,flexShrink:0}}>{i+1}</span>
+                  <span style={{fontSize:12,fontWeight:700,color:"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:130}}>{d.title||"Entry"}</span>
                 </button>
               );
             })}
@@ -9227,7 +9227,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
               {focusedDefect.description&&<div style={{fontSize:11,color:"rgba(0,0,0,0.55)",marginTop:4,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{focusedDefect.description}</div>}
               <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",marginTop:4,fontFamily:"monospace"}}>{focusedDefect.lat.toFixed(5)}, {focusedDefect.lng.toFixed(5)}</div>
             </div>
-            <button onClick={()=>setFocusedDefectId(null)} title="Close preview" style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:"50%",width:26,height:26,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:14,color:"rgba(0,0,0,0.5)",flexShrink:0}}>×</button>
+            <button onClick={()=>setFocusedDefectId(null)} title="Close preview" aria-label="Close preview" style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:"50%",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:18,lineHeight:1,color:"rgba(0,0,0,0.55)",flexShrink:0}}>×</button>
           </div>
         </div>
       )}
