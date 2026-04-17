@@ -3921,6 +3921,72 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
   const[archived,setArchived]=useState([]);const[showArchived,setShowArchived]=useState(false);
   const canManage=["Admin","Manager"].includes(member?.role);
 
+  // Project sort order is persisted per-company in localStorage. No schema
+  // change needed — the ordering is a UI preference, not a shared data model
+  // concern. Cross-device sync is a conscious trade-off for ship speed; if
+  // teams want synced ordering, promote this to a `sortOrder` field later.
+  const orderKey=company?.companyId?`siteshrimp-project-order-${company.companyId}`:null;
+  const[projectOrder,setProjectOrder]=useState(()=>{
+    if(!orderKey)return[];
+    try{return JSON.parse(localStorage.getItem(orderKey)||"[]");}catch{return[];}
+  });
+  const sortedProjects=useMemo(()=>{
+    if(!projects||!projects.length)return projects||[];
+    if(!projectOrder.length)return projects;
+    const indexMap=new Map(projectOrder.map((id,i)=>[id,i]));
+    // Known ids in stored order; unknown ids (newly-created since last save)
+    // fall to the end, alphabetically among themselves.
+    return[...projects].sort((a,b)=>{
+      const ai=indexMap.has(a.id)?indexMap.get(a.id):Number.MAX_SAFE_INTEGER;
+      const bi=indexMap.has(b.id)?indexMap.get(b.id):Number.MAX_SAFE_INTEGER;
+      if(ai!==bi)return ai-bi;
+      return(a.name||"").localeCompare(b.name||"");
+    });
+  },[projects,projectOrder]);
+  const commitOrder=(idsInNewOrder)=>{
+    setProjectOrder(idsInNewOrder);
+    if(orderKey){try{localStorage.setItem(orderKey,JSON.stringify(idsInNewOrder));}catch{}}
+  };
+  // Pointer-event drag-and-drop: works on mouse and touch without HTML5
+  // drag API quirks. Drag state holds which project is being picked up and
+  // which slot the pointer is hovering over so the UI can show a drop gap.
+  const[draggingId,setDraggingId]=useState(null);
+  const[dropIndex,setDropIndex]=useState(null);
+  const listRef=useRef(null);
+  const onDragStart=(e,id)=>{
+    if(!canManage)return;
+    e.stopPropagation();
+    setDraggingId(id);
+    try{e.currentTarget.setPointerCapture?.(e.pointerId);}catch{}
+  };
+  const onDragMove=(e)=>{
+    if(!draggingId||!listRef.current)return;
+    const y=e.clientY;
+    const cards=Array.from(listRef.current.querySelectorAll("[data-project-card]"));
+    let idx=cards.length;
+    for(let i=0;i<cards.length;i++){
+      const r=cards[i].getBoundingClientRect();
+      if(y<r.top+r.height/2){idx=i;break;}
+    }
+    setDropIndex(idx);
+  };
+  const onDragEnd=()=>{
+    if(!draggingId){setDropIndex(null);return;}
+    if(dropIndex==null){setDraggingId(null);return;}
+    const currentIdx=sortedProjects.findIndex(p=>p.id===draggingId);
+    if(currentIdx<0){setDraggingId(null);setDropIndex(null);return;}
+    const ids=sortedProjects.map(p=>p.id);
+    // Re-insert draggingId at dropIndex. Adjust the insertion index when
+    // the drag origin was above the drop slot — splice on the removed
+    // array would otherwise off-by-one the target.
+    ids.splice(currentIdx,1);
+    const adjusted=currentIdx<dropIndex?dropIndex-1:dropIndex;
+    ids.splice(Math.max(0,Math.min(ids.length,adjusted)),0,draggingId);
+    commitOrder(ids);
+    setDraggingId(null);
+    setDropIndex(null);
+  };
+
   useEffect(()=>{
     if(!showArchived||!company?.companyId)return;
     DB.projects.list(`companyId="${company.companyId}" && archived=true`).then(items=>{
@@ -3962,8 +4028,10 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
       <SettingsBack onClose={onClose} title={t("projects.title")}/>
       <div style={{padding:20}}>
         <div style={lbl()}>SELECT ACTIVE PROJECT</div>
-        {projects.map(p=>(
-          <div key={p.id} style={{background:currentProject?.id===p.id?"#ff6b00":"#fff",borderRadius:12,padding:"14px 16px",marginBottom:8}}>
+        {canManage&&sortedProjects.length>1&&<div style={{fontSize:10,color:"rgba(0,0,0,0.4)",marginBottom:8,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>Drag the ≡ handle on the right to rearrange.</div>}
+        <div ref={listRef} onPointerMove={onDragMove} onPointerUp={onDragEnd} onPointerCancel={onDragEnd}>
+        {sortedProjects.map((p,i)=>(
+          <div key={p.id} data-project-card style={{position:"relative",background:currentProject?.id===p.id?"#ff6b00":"#fff",borderRadius:12,padding:"14px 16px",marginBottom:8,opacity:draggingId===p.id?0.5:1,transition:draggingId?"none":"opacity 0.15s ease",borderTop:dropIndex===i&&draggingId&&draggingId!==p.id?"2px solid #ff6b00":"2px solid transparent"}}>
             {editingId===p.id?(
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                 <input value={editName} onChange={e=>setEditName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&renameProject(p.id)} style={{...inp,flex:1,marginBottom:0}} autoFocus/>
@@ -3971,19 +4039,27 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
                 <button onClick={()=>setEditingId(null)} style={{background:"rgba(0,0,0,0.1)",border:"none",borderRadius:8,padding:"8px 12px",fontSize:12,cursor:"pointer"}}>✕</button>
               </div>
             ):(
-              <div onClick={()=>{onSelect(p);onClose();}} style={{cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div onClick={()=>{if(!draggingId){onSelect(p);onClose();}}} style={{cursor:draggingId?"grabbing":"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
                   <div style={{fontWeight:700,fontSize:14,color:currentProject?.id===p.id?"#fff":"#1a1a1a"}}>{p.name}</div>
                   {currentProject?.id===p.id&&<div style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginTop:2}}>Currently active</div>}
                 </div>
-                <div style={{display:"flex",gap:6}}>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
                   {canManage&&<button onClick={e=>{e.stopPropagation();setEditingId(p.id);setEditName(p.name);}} style={{background:currentProject?.id===p.id?"rgba(255,255,255,0.2)":"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"5px 10px",color:currentProject?.id===p.id?"#fff":"#666",fontSize:12,cursor:"pointer"}}>Rename</button>}
                   {canManage&&currentProject?.id!==p.id&&<button onClick={e=>{e.stopPropagation();archiveProject(p.id);}} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:8,padding:"5px 10px",color:"#ff3b30",fontSize:12,cursor:"pointer"}}>Archive</button>}
+                  {/* Drag handle — pointer down on this element starts a
+                      drag-to-reorder gesture. stopPropagation prevents the
+                      card-level onClick from firing (which would select the
+                      project and close the modal mid-drag). */}
+                  {canManage&&sortedProjects.length>1&&(
+                    <span onPointerDown={e=>onDragStart(e,p.id)} onClick={e=>e.stopPropagation()} title="Drag to reorder" style={{touchAction:"none",cursor:"grab",padding:"6px 8px",fontSize:18,lineHeight:1,color:currentProject?.id===p.id?"rgba(255,255,255,0.85)":"rgba(0,0,0,0.35)",userSelect:"none"}}>≡</span>
+                  )}
                 </div>
               </div>
             )}
           </div>
         ))}
+        </div>
         {canManage&&(
           <div style={{marginTop:14}}>
             <div style={lbl()}>ADD NEW PROJECT</div>
