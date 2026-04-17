@@ -1460,6 +1460,45 @@ async function analyzePhoto(base64Image){
   return analyzeWithGemini(key,base64Image);
 }
 
+// SHA-256 of the raw photo bytes (not the data-URL prefix). Used to key the
+// AI-result cache so re-taking or re-uploading the same photo reuses the
+// prior AI result instead of burning tokens. Stable across sessions.
+async function photoHash(dataUrl){
+  try{
+    const b64=(dataUrl||"").split(",")[1]||"";
+    if(!b64)return null;
+    const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+    const buf=await crypto.subtle.digest("SHA-256",bytes);
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+  }catch{return null;}
+}
+
+// Read a cached AI result by photo hash. Returns null if missing, corrupt, or
+// expired. Silently drops stale entries so the cache self-cleans on read.
+function readAiCache(hash){
+  if(!hash)return null;
+  try{
+    const raw=localStorage.getItem(AI_CACHE_PREFIX+hash);
+    if(!raw)return null;
+    const wrapped=JSON.parse(raw);
+    if(!wrapped||typeof wrapped!=="object")return null;
+    if(wrapped.savedAt&&Date.now()-wrapped.savedAt>AI_CACHE_TTL_MS){
+      try{localStorage.removeItem(AI_CACHE_PREFIX+hash);}catch{}
+      return null;
+    }
+    return wrapped.result||null;
+  }catch{return null;}
+}
+
+// Persist an AI result keyed by photo hash. Silently ignores quota errors
+// (localStorage is best-effort; a full quota shouldn't block the user).
+function writeAiCache(hash,result){
+  if(!hash||!result)return;
+  try{
+    localStorage.setItem(AI_CACHE_PREFIX+hash,JSON.stringify({result,savedAt:Date.now()}));
+  }catch{}
+}
+
 // Text-only AI query (no image) — for natural language search
 async function askAI(prompt){
   const provider=local.get(AI_PROVIDER_KEY)||"gemini";
@@ -4794,37 +4833,81 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
 
   const removePhoto=idx=>setForm(f=>({...f,photos:f.photos.filter((_,i)=>i!==idx)}));
 
+  // Apply an AI result object (freshly returned OR restored from cache) into
+  // the form state. Mutates `result` in place when auto-escalating severity
+  // so the caller sees the final severity for display.
+  const applyAiResult=(result)=>{
+    if(!result)return;
+    if(result.title)set("title",result.title);
+    if(result.severity&&SEVERITY.includes(result.severity))set("severity",result.severity);
+    if(result.description)set("description",result.description);
+    if(result.trade)set("component",result.trade);
+    // Auto-escalate severity for high safety risk
+    if(result.safety_risk&&result.safety_risk>=4&&result.severity!=="Critical"){
+      set("severity","Critical");
+      result.severity="Critical";
+    }
+    // Auto-suggest assignee from team members if AI provides a trade/role
+    if(result.suggested_assignee&&assignees.length>0){
+      const suggestion=result.suggested_assignee.toLowerCase();
+      const match=assignees.find(a=>a.toLowerCase().includes(suggestion))||assignees.find(a=>suggestion.includes(a.toLowerCase()));
+      if(match)set("assignee",match);
+    }
+  };
+
+  // Auto-restore a cached AI result whenever the first photo in the form
+  // matches a previously-analyzed photo. Lets the user switch tabs, close
+  // a markup overlay, or re-take the same photo without losing the AI
+  // output and without re-spending tokens.
+  useEffect(()=>{
+    if(!form.photos[0]||aiResult||analyzing)return;
+    let cancelled=false;
+    (async()=>{
+      const hash=await photoHash(form.photos[0]);
+      if(cancelled||!hash)return;
+      const cached=readAiCache(hash);
+      if(cached){
+        setAiResult(cached);
+        applyAiResult(cached);
+      }
+    })();
+    return()=>{cancelled=true;};
+  // eslint-disable-next-line react-hooks/exhaustive-deps — intentional: only
+  // react to the first photo changing, not every form field mutation.
+  },[form.photos[0]]);
+
   const analyze=async()=>{
     if(!form.photos.length||!aiReady)return;
-    const today=new Date().toISOString().slice(0,10);
-    const aiUsage=local.get(AI_LIMIT_KEY)||{date:"",count:0};
-    const todayCount=aiUsage.date===today?aiUsage.count:0;
-    if(todayCount>=AI_DAILY_LIMIT){
-      alert(`AI analysis limit reached (${AI_DAILY_LIMIT}/day).\n\nYou can still log entries manually.`);
-      return;
-    }
     setAnalyzing(true);
     try{
-      const compressed=await compressPhoto(form.photos[0],600,0.7);
-      const result=await analyzePhoto(compressed||form.photos[0]);
+      const photo=form.photos[0];
+      // 1) Cache hit — skip the API entirely (no token burn, instant apply).
+      const hash=await photoHash(photo);
+      const cached=readAiCache(hash);
+      if(cached){
+        setAiResult(cached);
+        applyAiResult(cached);
+        setAnalyzing(false);
+        return;
+      }
+      // 2) Daily-limit gate. Only counts REAL API calls — cache hits above
+      // don't consume quota, which is the whole point of the cache.
+      const today=new Date().toISOString().slice(0,10);
+      const aiUsage=local.get(AI_LIMIT_KEY)||{date:"",count:0};
+      const todayCount=aiUsage.date===today?aiUsage.count:0;
+      if(todayCount>=AI_DAILY_LIMIT){
+        alert(`AI analysis limit reached (${AI_DAILY_LIMIT}/day).\n\nYou can still log entries manually.`);
+        setAnalyzing(false);
+        return;
+      }
+      // 3) Real API call.
+      const compressed=await compressPhoto(photo,600,0.7);
+      const result=await analyzePhoto(compressed||photo);
       if(result&&(result.title||result.description)){
         local.set(AI_LIMIT_KEY,{date:today,count:todayCount+1});
+        writeAiCache(hash,result);
         setAiResult(result);
-        if(result.title)set("title",result.title);
-        if(result.severity&&SEVERITY.includes(result.severity))set("severity",result.severity);
-        if(result.description)set("description",result.description);
-        if(result.trade)set("component",result.trade);
-        // Auto-escalate severity for high safety risk
-        if(result.safety_risk&&result.safety_risk>=4&&result.severity!=="Critical"){
-          set("severity","Critical");
-          result.severity="Critical";
-        }
-        // Auto-suggest assignee from team members if AI provides a trade/role
-        if(result.suggested_assignee&&assignees.length>0){
-          const suggestion=result.suggested_assignee.toLowerCase();
-          const match=assignees.find(a=>a.toLowerCase().includes(suggestion))||assignees.find(a=>suggestion.includes(a.toLowerCase()));
-          if(match)set("assignee",match);
-        }
+        applyAiResult(result);
       }else{
         alert("AI could not analyze the photo. Try a clearer image or log manually.");
       }

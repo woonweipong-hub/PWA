@@ -430,6 +430,13 @@ const GEMINI_KEY = "sdt-gemini-v1";
 const PROJECT_KEY = "sdt-proj-v1";
 const AI_LIMIT_KEY = "sdt-ai-usage";
 const AI_DAILY_LIMIT = 50;
+// Per-photo cache of AI analysis results. Keyed by SHA-256 of photo bytes so
+// the same photo (re-taken, re-uploaded, or kept across tab switches) reuses
+// the prior result instead of burning tokens. Bump version when the prompt
+// format changes so stale caches are ignored.
+const AI_CACHE_VERSION = 1;
+const AI_CACHE_PREFIX = `sdt-ai-cache-v${AI_CACHE_VERSION}-`;
+const AI_CACHE_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days
 const ONBOARDING_KEY = "sdt-onboarded";
 const STORAGE_KEY = "sdt-storage-v1";
 const GDRIVE_KEY = "sdt-gdrive-v1";
