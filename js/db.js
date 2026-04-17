@@ -10,6 +10,24 @@ const DB = (() => {
   let _sseConnections = {};
   const AUTH_KEY = 'pb_auth';
 
+  // Server-down detection: when 3 consecutive api() calls fail at the network
+  // layer (not HTTP 4xx/5xx — those mean the server DID respond) AND the user's
+  // own connection is up, we broadcast `siteshrimp:server-status` so the app
+  // can show a maintenance banner. Any successful response (incl. 4xx/5xx)
+  // resets the streak.
+  let _netFailStreak = 0;
+  let _serverDown = false;
+  const SERVER_DOWN_THRESHOLD = 3;
+  function _emitServerStatus(down) {
+    if (_serverDown === down) return;
+    _serverDown = down;
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('siteshrimp:server-status', { detail: { down } }));
+      }
+    } catch {}
+  }
+
   // ── Internal helpers ─────────────────────────────────────────────
   function headers(extra = {}) {
     const h = { ...extra };
@@ -28,6 +46,9 @@ const DB = (() => {
         signal: controller.signal,
       });
       clearTimeout(timeout);
+      // Any HTTP response — even an error — proves the server is up.
+      _netFailStreak = 0;
+      _emitServerStatus(false);
       const text = await resp.text();
       let data;
       try { data = JSON.parse(text); } catch { data = { raw: text }; }
@@ -45,6 +66,14 @@ const DB = (() => {
       return data;
     } catch (err) {
       clearTimeout(timeout);
+      // Count only true network failures, and only while the user's own
+      // connection is up — otherwise we'd blame the server for the user's
+      // Wi-Fi drop.
+      const isNetFail = err.name === 'AbortError' || err.name === 'TypeError' || err.message === 'Failed to fetch';
+      if (isNetFail && typeof navigator !== 'undefined' && navigator.onLine !== false) {
+        _netFailStreak++;
+        if (_netFailStreak >= SERVER_DOWN_THRESHOLD) _emitServerStatus(true);
+      }
       if (err.name === 'AbortError') {
         throw new Error('Server not responding (timeout). Make sure your PocketBase VM is running, then reload.');
       }

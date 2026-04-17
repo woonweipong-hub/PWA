@@ -6,6 +6,9 @@
     "review": "レビュー",
     "report": "レポート"
   },
+  "banner": {
+    "server_down": "SiteShrimp はアップグレードのために一時停止されています - すぐに戻ります。 既存の作業は安全です。"
+  },
   "actions": {
     "add": "追加",
     "save": "保存",

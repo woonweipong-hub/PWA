@@ -6,6 +6,9 @@
     "review": "Gennemgang",
     "report": "Rapport"
   },
+  "banner": {
+    "server_down": "SiteShrimp er sat på pause for en opgradering - tilbage snart. Alt eksisterende arbejde er sikkert."
+  },
   "actions": {
     "add": "TILFØJ",
     "save": "GEM",

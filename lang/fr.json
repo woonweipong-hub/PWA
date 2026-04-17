@@ -6,6 +6,9 @@
     "review": "Révision",
     "report": "Rapport"
   },
+  "banner": {
+    "server_down": "SiteShrimp est suspendu pour une mise à niveau – de retour bientôt. Les travaux existants sont sécuritaires."
+  },
   "actions": {
     "add": "AJOUTER",
     "save": "ENREGISTRER",

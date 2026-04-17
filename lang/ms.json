@@ -6,6 +6,9 @@
     "review": "Semakan",
     "report": "Laporan"
   },
+  "banner": {
+    "server_down": "SiteShrimp dijeda untuk naik taraf — kembali tidak lama lagi. Kerja sedia ada selamat."
+  },
   "actions": {
     "add": "TAMBAH",
     "save": "SIMPAN",

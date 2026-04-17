@@ -6,6 +6,9 @@
     "review": "Granska",
     "report": "Rapport"
   },
+  "banner": {
+    "server_down": "SiteShrimp är pausad för en uppgradering — tillbaka snart. Allt befintligt arbete är säkert."
+  },
   "actions": {
     "add": "LÄGG TILL",
     "save": "SPARA",

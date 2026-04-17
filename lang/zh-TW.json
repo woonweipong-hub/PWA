@@ -6,6 +6,9 @@
     "review": "審查",
     "report": "報告"
   },
+  "banner": {
+    "server_down": "SiteShrimp 已暫停升級 - 很快就會恢復。 現有工作是安全的。"
+  },
   "actions": {
     "add": "新增",
     "save": "儲存",

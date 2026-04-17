@@ -6,6 +6,9 @@
     "review": "Tarkistus",
     "report": "Raportti"
   },
+  "banner": {
+    "server_down": "SiteShrimp on keskeytetty päivityksen vuoksi – palaa pian. Kaikki olemassa oleva työ on turvallista."
+  },
   "actions": {
     "add": "LISÄÄ",
     "save": "TALLENNA",

@@ -6,6 +6,9 @@
     "review": "검토",
     "report": "보고서"
   },
+  "banner": {
+    "server_down": "업그레이드를 위해 SiteShrimp가 일시 중지되었습니다. 곧 다시 돌아옵니다. 기존 작업은 안전합니다."
+  },
   "actions": {
     "add": "추가",
     "save": "저장",

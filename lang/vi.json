@@ -6,6 +6,9 @@
     "review": "Xem xét",
     "report": "Báo cáo"
   },
+  "banner": {
+    "server_down": "SiteShrimp đang tạm dừng để nâng cấp — sẽ sớm quay lại. Công việc hiện tại là an toàn."
+  },
   "actions": {
     "add": "THÊM",
     "save": "LƯU",

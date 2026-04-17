@@ -6,6 +6,9 @@
     "review": "İnceleme",
     "report": "Rapor"
   },
+  "banner": {
+    "server_down": "SiteShrimp yükseltme işlemi için duraklatıldı; yakında geri dönecek. Mevcut tüm işler güvenlidir."
+  },
   "actions": {
     "add": "EKLE",
     "save": "KAYDET",

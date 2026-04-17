@@ -6,6 +6,9 @@
     "review": "Überprüfen",
     "report": "Bericht"
   },
+  "banner": {
+    "server_down": "SiteShrimp ist wegen eines Upgrades pausiert – bald zurück. Bestehende Arbeiten sind sicher."
+  },
   "actions": {
     "add": "HINZUFÜGEN",
     "save": "SPEICHERN",

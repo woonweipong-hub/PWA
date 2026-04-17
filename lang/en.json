@@ -6,6 +6,9 @@
     "review": "Review",
     "report": "Report"
   },
+  "banner": {
+    "server_down": "SiteShrimp is paused for an upgrade — back soon. All existing work is safe."
+  },
   "actions": {
     "add": "ADD",
     "save": "SAVE",

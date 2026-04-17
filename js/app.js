@@ -13741,6 +13741,16 @@ function App(){
     const unsub=onLangChange(code=>setLangState(code));
     return unsub;
   },[]);
+  // Server-down detection for the maintenance banner. DB layer emits
+  // `siteshrimp:server-status` {down:true|false} after 3 consecutive network
+  // failures with user's own connection still up. Banner auto-hides on the
+  // next successful API call.
+  const[serverDown,setServerDown]=useState(false);
+  useEffect(()=>{
+    const onStatus=(e)=>setServerDown(!!(e&&e.detail&&e.detail.down));
+    window.addEventListener("siteshrimp:server-status",onStatus);
+    return()=>window.removeEventListener("siteshrimp:server-status",onStatus);
+  },[]);
   const setLang=loadLanguage;
   const languages=LANGUAGES;
   const[authUser,setAuthUser]=useState(null);
@@ -14259,6 +14269,13 @@ function App(){
 
   return(
     <div style={{width:"100%",maxWidth:430,margin:"0 auto",height:"100dvh",background:"#f0ede8",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      {/* Server-down banner — shows when the backend is unreachable (e.g. kill
+          switch fired or VM upgrading). Auto-hides on the next good response. */}
+      {serverDown&&(
+        <div role="status" aria-live="polite" style={{background:"#ff9500",color:"#1a1a1a",padding:"10px 14px",fontSize:13,fontWeight:600,fontFamily:"'Barlow Condensed',sans-serif",textAlign:"center",lineHeight:1.35,letterSpacing:"0.01em",flexShrink:0}}>
+          <span style={{marginRight:6}}>⚠️</span>{t("banner.server_down")}
+        </div>
+      )}
       {/* Header */}
         <div style={{background:"#1a1a1a",padding:"10px 12px 8px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,position:"relative"}}>
           <button onClick={()=>setShowProjects(true)} style={{background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0,flex:1,minWidth:0,maxWidth:"calc(100% - 240px)"}}>
