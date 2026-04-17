@@ -13572,6 +13572,33 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
         )}
       </div>
 
+      {/* Always-visible pin chip strip (fix #4 Option C — parity with
+          REVIEW > ENTRIES > MAP). Shows every pin on the current page as a
+          numbered chip; tap to set activePin so the corresponding marker on
+          the drawing highlights/raises above its siblings. Horizontal scroll
+          handles long pin sets without pushing the drawing off-screen. */}
+      {pagePins.length>0&&(
+        <div style={{flexShrink:0,background:"#0f0f0f",borderTop:"1px solid rgba(255,255,255,0.08)",padding:"7px 10px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,color:"rgba(255,255,255,0.55)",letterSpacing:"0.08em",flex:1}}>ALL PINS ({pagePins.length}){isPdf&&pdfPageCount>1?` · PAGE ${currentPage}`:""}</div>
+            {activePin&&<button onClick={()=>setActivePin(null)} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:6,padding:"3px 8px",color:"rgba(255,255,255,0.6)",fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>CLEAR</button>}
+          </div>
+          <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:2,WebkitOverflowScrolling:"touch"}}>
+            {pagePins.map((p,i)=>{
+              const d=getDefect(p.entryId);
+              const sevColor=d?SEV_COLOR[d.severity]||"#ff6b00":"#8e8e93";
+              const foc=activePin===p.id;
+              return(
+                <button key={p.id} onClick={()=>setActivePin(foc?null:p.id)} title={d?.title||"Pin"} style={{flexShrink:0,display:"flex",alignItems:"center",gap:6,padding:"4px 10px 4px 4px",borderRadius:16,border:`1.5px solid ${foc?sevColor:"rgba(255,255,255,0.15)"}`,background:foc?"rgba(255,255,255,0.1)":"rgba(255,255,255,0.04)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",maxWidth:160}}>
+                  <span style={{width:20,height:20,borderRadius:"50%",background:foc?sevColor:"rgba(255,255,255,0.12)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:10,border:`2px solid ${sevColor}`,flexShrink:0}}>{i+1}</span>
+                  <span style={{fontSize:11,fontWeight:700,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:110}}>{d?.title||"Pin"}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Combined list: pins + defects + text notes */}
       {showCombinedList&&(
         <div style={{position:"absolute",left:0,right:0,bottom:0,zIndex:40,background:"linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.88))",borderTop:"1px solid rgba(255,255,255,0.12)",maxHeight:"42vh",display:"flex",flexDirection:"column"}}>
