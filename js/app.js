@@ -3952,6 +3952,10 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
   // which slot the pointer is hovering over so the UI can show a drop gap.
   const[draggingId,setDraggingId]=useState(null);
   const[dropIndex,setDropIndex]=useState(null);
+  // Tracks which handle the mouse is hovering so we can tint it orange —
+  // a cheap but clear "this is draggable" affordance on desktop. Touch
+  // devices skip this path entirely (no hover).
+  const[hoverHandleId,setHoverHandleId]=useState(null);
   const listRef=useRef(null);
   const onDragStart=(e,id)=>{
     if(!canManage)return;
@@ -4028,7 +4032,7 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
       <SettingsBack onClose={onClose} title={t("projects.title")}/>
       <div style={{padding:20}}>
         <div style={lbl()}>SELECT ACTIVE PROJECT</div>
-        {canManage&&sortedProjects.length>1&&<div style={{fontSize:10,color:"rgba(0,0,0,0.4)",marginBottom:8,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>Drag the ≡ handle on the right to rearrange.</div>}
+        {canManage&&sortedProjects.length>1&&<div style={{fontSize:10,color:"rgba(0,0,0,0.4)",marginBottom:8,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>Hold the ≡ handle on the right and drag up or down to rearrange.</div>}
         <div ref={listRef} onPointerMove={onDragMove} onPointerUp={onDragEnd} onPointerCancel={onDragEnd}>
         {sortedProjects.map((p,i)=>(
           <div key={p.id} data-project-card style={{position:"relative",background:currentProject?.id===p.id?"#ff6b00":"#fff",borderRadius:12,padding:"14px 16px",marginBottom:8,opacity:draggingId===p.id?0.5:1,transition:draggingId?"none":"opacity 0.15s ease",borderTop:dropIndex===i&&draggingId&&draggingId!==p.id?"2px solid #ff6b00":"2px solid transparent"}}>
@@ -4050,10 +4054,22 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
                   {/* Drag handle — pointer down on this element starts a
                       drag-to-reorder gesture. stopPropagation prevents the
                       card-level onClick from firing (which would select the
-                      project and close the modal mid-drag). */}
-                  {canManage&&sortedProjects.length>1&&(
-                    <span onPointerDown={e=>onDragStart(e,p.id)} onClick={e=>e.stopPropagation()} title="Drag to reorder" style={{touchAction:"none",cursor:"grab",padding:"6px 8px",fontSize:18,lineHeight:1,color:currentProject?.id===p.id?"rgba(255,255,255,0.85)":"rgba(0,0,0,0.35)",userSelect:"none"}}>≡</span>
-                  )}
+                      project and close the modal mid-drag). Hover state
+                      tints the handle orange + scales it up slightly so
+                      desktop users see "interactive" at a glance. Tooltip
+                      (native browser) reinforces the hold-and-drag gesture. */}
+                  {canManage&&sortedProjects.length>1&&(()=>{
+                    const isCurrent=currentProject?.id===p.id;
+                    const hov=hoverHandleId===p.id&&!draggingId;
+                    return <span
+                      onPointerDown={e=>onDragStart(e,p.id)}
+                      onClick={e=>e.stopPropagation()}
+                      onMouseEnter={()=>setHoverHandleId(p.id)}
+                      onMouseLeave={()=>setHoverHandleId(id=>id===p.id?null:id)}
+                      title="Hold and drag up or down to rearrange"
+                      aria-label="Drag handle — hold and drag up or down to rearrange this project"
+                      style={{touchAction:"none",cursor:"grab",padding:"6px 8px",fontSize:hov?22:18,lineHeight:1,color:hov?(isCurrent?"#fff":"#ff6b00"):(isCurrent?"rgba(255,255,255,0.85)":"rgba(0,0,0,0.35)"),background:hov&&!isCurrent?"rgba(255,107,0,0.12)":"transparent",borderRadius:6,userSelect:"none",transition:"font-size 0.12s ease, color 0.12s ease, background 0.12s ease"}}>≡</span>;
+                  })()}
                 </div>
               </div>
             )}
