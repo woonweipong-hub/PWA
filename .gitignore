@@ -2,6 +2,18 @@ node_modules/
 .claude/
 .env
 *.log
+
+# Secrets / credentials — never commit
+password.txt
+password*.txt
+passwords.txt
+secrets.txt
+*.secret
+*.secrets
+credentials.*
+.env.local
+.env.*.local
+
 .DS_Store
 Thumbs.db
 Tester.*
@@ -16,7 +28,7 @@ app.js
 preview-*.html
 
 # Internal operations playbook (private — supports paid setup service)
-deploy/pocketbase/HARDENING.md
+deploy/pocketbase/SELFHOST_SETUP_GUIDE.md
 
 # Play Store signing keys & build artifacts
 playstore/
