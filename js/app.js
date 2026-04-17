@@ -9146,6 +9146,11 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[compareMarkupLineStyle,setCompareMarkupLineStyle]=useState("solid");
   const[compareMarkupColor,setCompareMarkupColor]=useState("#ff3b30");
   const[compareMarkupStrokes,setCompareMarkupStrokes]=useState([]);
+  // Toggle-able consolidated list of all markup + audit + diff items for the
+  // current Compare view. Parity with DrawingViewer's LIST panel — gives users
+  // a single scrollable surface showing every markup, every diff item, and
+  // every audit entry for in-place review (fix #4 Option B).
+  const[showCompareList,setShowCompareList]=useState(false);
   const[compareMarkupCurrent,setCompareMarkupCurrent]=useState(null);
   const[compareSelectedIdx,setCompareSelectedIdx]=useState(null);
   const[compareRedoStack,setCompareRedoStack]=useState([]);
@@ -11842,8 +11847,15 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         <div style={{position:"fixed",inset:0,zIndex:260,background:"rgba(0,0,0,0.9)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
           <div style={{width:"100%",height:"100vh",background:"#1a1a1a",overflow:"hidden",display:"flex",flexDirection:"column"}}>
             <div style={{padding:"14px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)",display:"flex",alignItems:"center",gap:10}}>
-              <button onClick={()=>{setShowCompare(false);setViewingSaved(null);}} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",flexShrink:0}}>{t("actions.back")}</button>
+              <button onClick={()=>{setShowCompare(false);setViewingSaved(null);setShowCompareList(false);}} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",flexShrink:0}}>{t("actions.back")}</button>
               <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>PDF {t("compare.title")}{viewingSaved?` (SAVED)`:""}</div>
+              {/* Consolidated list toggle — mirrors DrawingViewer's LIST, gives
+                  users a single panel with every markup, diff item, and audit
+                  entry for the current comparison. (#4 Option B.) */}
+              {(()=>{
+                const listCount=(compareMarkupStrokes?.length||0)+(compareAuditLog?.length||0)+((compareRes?.added||[]).length)+((compareRes?.removed||[]).length);
+                return <button onClick={()=>setShowCompareList(v=>!v)} style={{background:showCompareList?"rgba(255,107,0,0.22)":"rgba(255,255,255,0.1)",border:"none",borderRadius:18,padding:"7px 12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",flexShrink:0}}>LIST ({listCount})</button>;
+              })()}
               <button onClick={saveComparison} style={{background:"rgba(52,199,89,0.25)",border:"1px solid rgba(52,199,89,0.5)",borderRadius:18,padding:"7px 14px",color:"#9ef0b5",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",flexShrink:0}}>{t("actions.save")}</button>
             </div>
 
@@ -12244,6 +12256,44 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                 </div>
               )}
             </div>
+            {/* Consolidated list panel (fix #4 Option B) — mirrors
+                DrawingViewer's LIST behaviour for the Compare view. Slides up
+                over the compare content; toggle from the LIST button in the
+                header. Shows markups, diff additions, diff removals, and the
+                audit log in one scroll. */}
+            {showCompareList&&(()=>{
+              const items=[
+                ...(compareMarkupStrokes||[]).map((s,i)=>({kind:"markup",id:`mk_${i}`,title:s.type==="text"?(s.text||"(empty text)"):`${s.type} · ${s.color||""}`,detail:s.type==="text"?"text annotation":`markup · ${s.color||""}`,}))
+                ,
+                ...((compareRes?.added||[]).map((a,i)=>({kind:"added",id:`add_${i}`,title:a?.text||a?.name||"Added item",detail:"diff · added in revision"})))
+                ,
+                ...((compareRes?.removed||[]).map((r,i)=>({kind:"removed",id:`rem_${i}`,title:r?.text||r?.name||"Removed item",detail:"diff · removed from base"})))
+                ,
+                ...((compareAuditLog||[]).map((e,i)=>({kind:"audit",id:`au_${i}`,title:`${(e.action||"action").toUpperCase()} by ${e.by||"—"}`,detail:`${new Date(e.at||Date.now()).toLocaleString()}${e.reason?" · "+e.reason:""}`})))
+              ];
+              const iconFor=(k)=>k==="markup"?"✏":k==="added"?"＋":k==="removed"?"−":"🛈";
+              const colorFor=(k)=>k==="markup"?"#ff6b00":k==="added"?"#34c759":k==="removed"?"#ff3b30":"rgba(255,255,255,0.5)";
+              return(
+                <div style={{position:"absolute",left:0,right:0,bottom:0,zIndex:40,background:"linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.88))",borderTop:"1px solid rgba(255,255,255,0.12)",maxHeight:"50vh",display:"flex",flexDirection:"column"}}>
+                  <div style={{padding:"9px 12px",display:"flex",alignItems:"center",borderBottom:"1px solid rgba(255,255,255,0.08)",gap:8}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff",flex:1}}>COMPARISON ITEMS · {items.length}</div>
+                    <button onClick={()=>setShowCompareList(false)} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:6,padding:"4px 10px",color:"rgba(255,255,255,0.7)",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>CLOSE</button>
+                  </div>
+                  <div style={{overflowY:"auto",padding:10}}>
+                    {items.length===0&&<div style={{padding:12,textAlign:"center",color:"rgba(255,255,255,0.45)",fontSize:12}}>No markup, diff items, or audit entries yet.</div>}
+                    {items.map(item=>(
+                      <div key={item.kind+"_"+item.id} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"8px 10px",marginBottom:7,display:"flex",alignItems:"center",gap:8}}>
+                        <span style={{fontSize:14,color:colorFor(item.kind),fontWeight:700,width:18,textAlign:"center"}}>{iconFor(item.kind)}</span>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:12,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.title}</div>
+                          <div style={{fontSize:10,color:"rgba(255,255,255,0.5)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.detail}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
