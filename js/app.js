@@ -7986,6 +7986,13 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
   const[searching,setSearching]=useState(false);
   const[pinMode,setPinMode]=useState(true);
   const[showList,setShowList]=useState(false);
+  // Focused defect for the slide-up preview card. Set when the user taps a
+  // chip in the always-visible strip below the map, OR taps a marker on the
+  // map itself. Null hides the card. Same pattern as REVIEW > ENTRIES > MAP
+  // (DefectsMapView) so users get consistent behaviour across TAG and REVIEW.
+  // The focusedDefect lookup + pan helper live further down, after mapDefects
+  // is declared (otherwise TDZ on first render).
+  const[focusedDefectId,setFocusedDefectId]=useState(null);
   // ── Multi-select on map pins (entries with lat/lng) ──
   // Desktop: shift/ctrl/cmd-click toggles a pin in the selection.
   // Mobile: the "➕ MULTI" toolbar button enables additive tap-toggle mode.
@@ -8022,6 +8029,15 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
     const lng=typeof d.lng==="number"?d.lng:parseFloat(d.lng);
     return Number.isFinite(lat)&&Number.isFinite(lng)?{...d,lat,lng}:null;
   }).filter(Boolean);
+  // Resolve the focused defect (for the slide-up preview card) and supply
+  // a pan helper that the chip strip + marker taps can call. Placed here
+  // so mapDefects is already in scope.
+  const focusedDefect=mapDefects.find(d=>d.id===focusedDefectId)||null;
+  const focusOnDefect=(d)=>{
+    if(!d||!mapObj.current)return;
+    if(providerRef.current==="gmaps"){mapObj.current.setCenter({lat:d.lat,lng:d.lng});if((mapObj.current.getZoom()||0)<18)mapObj.current.setZoom(19);}
+    else{mapObj.current.setView([d.lat,d.lng],Math.max(mapObj.current.getZoom()||17,19));}
+  };
 
   // ── Google Maps path ───────────────────────────────────────────
   useEffect(()=>{
@@ -8788,7 +8804,10 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
           const de=e&&e.domEvent;
           const additive=mapAdditiveRef.current||(de&&(de.shiftKey||de.ctrlKey||de.metaKey));
           if(additive&&canEdit){togglePinSelection(d.id);return;}
-          // Plain click: show info window (existing behaviour)
+          // Plain click: open both the in-map info window AND the slide-up
+          // preview card below the map. The card gives phone users a
+          // thumb-reachable surface; the info window keeps desktop parity.
+          setFocusedDefectId(d.id);
           iw.open({anchor:m,map:mapObj.current});
           if(canEdit){setTimeout(()=>{const b=document.getElementById("mm-del-"+d.id);if(b)b.onclick=()=>{iw.close();unpinDefect(d);};},30);}
         });
@@ -8825,18 +8844,21 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
         m._defect=d;
         const safeTitle=(d.title||"Entry").replace(/</g,"&lt;");
         m.bindPopup(`<div style="font-family:'Barlow Condensed',sans-serif;padding:2px 4px;min-width:140px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${canEdit?`<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div><button id="mm-del-${d.id}" style="margin-top:6px;width:100%;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);border-radius:6px;padding:4px 8px;color:#cc0000;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;cursor:pointer">REMOVE PIN</button>`:""}</div>`);
+        // Open the slide-up preview card on every marker click (phone-thumb
+        // surface), regardless of whether the user can edit. Leaflet auto-
+        // opens its bundled popup on click too; both coexist.
+        m.on("click",(e)=>{
+          const de=e&&e.originalEvent;
+          const additive=mapAdditiveRef.current||(de&&(de.shiftKey||de.ctrlKey||de.metaKey));
+          if(additive&&canEdit){
+            // Leaflet auto-opens popup on click; close it when toggling selection.
+            m.closePopup();
+            togglePinSelection(d.id);
+            return;
+          }
+          setFocusedDefectId(d.id);
+        });
         if(canEdit){
-          // Multi-select path: shift/ctrl/cmd-click OR additive-mode toggle.
-          // Leaflet: `click` event's `originalEvent` holds the DOM MouseEvent.
-          m.on("click",(e)=>{
-            const de=e&&e.originalEvent;
-            const additive=mapAdditiveRef.current||(de&&(de.shiftKey||de.ctrlKey||de.metaKey));
-            if(additive){
-              // Leaflet auto-opens popup on click; close it when toggling selection.
-              m.closePopup();
-              togglePinSelection(d.id);
-            }
-          });
           m.on("popupopen",()=>{setTimeout(()=>{const b=document.getElementById("mm-del-"+d.id);if(b)b.onclick=()=>{m.closePopup();unpinDefect(d);};},30);});
           m.on("dragend",e=>{const p=e.target.getLatLng();saveDefectMove(d,p.lat,p.lng);});
         }
@@ -9165,6 +9187,50 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
         </div>
       )}
       <div ref={mapRef} style={{width:"100%",height:"min(55dvh,480px)",minHeight:260,borderRadius:12,border:"1px solid rgba(0,0,0,0.12)",background:"#e5e3dc",overscrollBehavior:"contain",touchAction:"pan-x pan-y"}}/>
+      {/* Always-visible pin chip strip + preview card — mirrors
+          REVIEW > ENTRIES > MAP (DefectsMapView). Strip shows every pinned
+          entry in the current project; tap a chip to pan the map and open
+          a slide-up preview card with title / severity / location and a
+          tap-to-view-details link. Hidden entirely when there are no pins. */}
+      {mapDefects.length>0&&(
+        <div style={{marginTop:8,background:"#fff",borderRadius:12,border:"1px solid rgba(0,0,0,0.08)",padding:"8px 10px"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,color:"rgba(0,0,0,0.55)",letterSpacing:"0.04em"}}>ALL PINS ({mapDefects.length}){focusedDefect?` · ${(focusedDefect.title||"Entry").slice(0,24)}`:""}</div>
+            {focusedDefect&&<button onClick={()=>setFocusedDefectId(null)} style={{background:"rgba(0,0,0,0.05)",border:"none",borderRadius:6,padding:"3px 8px",color:"rgba(0,0,0,0.55)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>CLEAR</button>}
+          </div>
+          <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:2,WebkitOverflowScrolling:"touch"}}>
+            {mapDefects.map((d,i)=>{
+              const foc=focusedDefectId===d.id;
+              const sevColor=SEV_COLOR[d.severity]||"#8e8e93";
+              return(
+                <button key={d.id} onClick={()=>{setFocusedDefectId(foc?null:d.id);if(!foc)focusOnDefect(d);}} title={`${i+1}. ${d.title||"Entry"}`} style={{flexShrink:0,display:"flex",alignItems:"center",gap:6,padding:"5px 10px 5px 5px",borderRadius:16,border:`1.5px solid ${foc?sevColor:"rgba(0,0,0,0.12)"}`,background:foc?"rgba(0,0,0,0.04)":"#fff",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",maxWidth:170}}>
+                  <span style={{width:22,height:22,borderRadius:"50%",background:foc?sevColor:"rgba(0,0,0,0.75)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:11,border:`2px solid ${sevColor}`,flexShrink:0}}>{i+1}</span>
+                  <span style={{fontSize:11,fontWeight:700,color:"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:120}}>{d.title||"Entry"}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {/* Slide-up preview card — appears when a chip or marker is tapped. */}
+      {focusedDefect&&(
+        <div style={{marginTop:8,background:"#fff",borderRadius:12,border:`2px solid ${SEV_COLOR[focusedDefect.severity]||"#ff6b00"}`,padding:"12px 14px",boxShadow:"0 2px 12px rgba(0,0,0,0.1)",animation:"fadeIn 0.15s ease"}}>
+          <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
+            <span style={{width:10,height:10,borderRadius:"50%",background:SEV_COLOR[focusedDefect.severity]||"#8e8e93",flexShrink:0,marginTop:5}}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{focusedDefect.title||"Entry"}</div>
+              <div style={{fontSize:11,color:"rgba(0,0,0,0.55)",marginTop:2,display:"flex",gap:10,flexWrap:"wrap",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
+                <span style={{color:SEV_COLOR[focusedDefect.severity]||"#8e8e93"}}>{focusedDefect.severity||"—"}</span>
+                {focusedDefect.status&&<span>· {focusedDefect.status}</span>}
+                {focusedDefect.location&&<span>· 📍 {focusedDefect.location}</span>}
+              </div>
+              {focusedDefect.description&&<div style={{fontSize:11,color:"rgba(0,0,0,0.55)",marginTop:4,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{focusedDefect.description}</div>}
+              <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",marginTop:4,fontFamily:"monospace"}}>{focusedDefect.lat.toFixed(5)}, {focusedDefect.lng.toFixed(5)}</div>
+            </div>
+            <button onClick={()=>setFocusedDefectId(null)} title="Close preview" style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:"50%",width:26,height:26,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:14,color:"rgba(0,0,0,0.5)",flexShrink:0}}>×</button>
+          </div>
+        </div>
+      )}
       {pendingPin&&<div ref={quickLogRef} style={{padding:14,background:"#fff",border:"2px solid rgba(255,107,0,0.4)",borderRadius:12,display:"flex",flexDirection:"column",gap:10,boxShadow:"0 2px 12px rgba(255,107,0,0.15)"}}>
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}>
           <span style={{width:22,height:22,borderRadius:"50%",background:"#ff6b00",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,flexShrink:0}}>2</span>
