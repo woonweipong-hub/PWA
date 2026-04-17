@@ -9211,13 +9211,22 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     setLoading(true);
     DB.drawings.list(`companyId="${company.companyId}" && projectId="${currentProject.id}"`).then(items=>{
       setDrawings(items);setLoading(false);
-      // Auto-open compare if launched from dashboard shortcut
+      // Auto-open compare when the parent passes an initialCompare. Two shapes:
+      //   1) A full saved-comparison object (from REVIEW > COMPARISONS tap)  —
+      //      has baseId + targetId + saved markups/audit/AI; load it properly
+      //      so the user sees the ACTUAL saved diff and can edit in place.
+      //   2) A bare truthy flag (legacy "just open Compare" shortcut) — fall
+      //      back to pre-selecting the first two available PDFs.
       if(initialCompare){
-        const pdfs=items.filter(d=>/\.pdf$/i.test(d.file||""));
-        if(pdfs.length>=2){
-          setCompareBaseId(pdfs[0].id);
-          setCompareTargetId(pdfs[1].id);
-          setShowCompare(true);
+        if(typeof initialCompare==="object"&&initialCompare.baseId){
+          loadSavedComparison(initialCompare);
+        }else{
+          const pdfs=items.filter(d=>/\.pdf$/i.test(d.file||""));
+          if(pdfs.length>=2){
+            setCompareBaseId(pdfs[0].id);
+            setCompareTargetId(pdfs[1].id);
+            setShowCompare(true);
+          }
         }
       }
     }).catch(()=>setLoading(false));
