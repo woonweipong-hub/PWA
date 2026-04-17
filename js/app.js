@@ -5544,6 +5544,67 @@ function PhotoThumb({url,title}){
   );
 }
 
+// Compact drawing thumbnail for Review > DRAWINGS rows — matches the 62x62
+// footprint used by PhotoThumb / MapThumb elsewhere. Renders first PDF page
+// into a canvas for PDFs; uses cover-fit <img> for rasters. "PDF" badge
+// distinguishes vector sources at a glance.
+function DrawingCardThumb({drawing}){
+  const fileUrl=DB.fileUrl("drawings",drawing.id,drawing.file);
+  const isImage=/\.(jpg|jpeg|png|gif|webp|tif|tiff)$/i.test(drawing.file||"");
+  return (
+    <div title={drawing.name||drawing.file} style={{width:62,height:62,borderRadius:8,overflow:"hidden",flexShrink:0,background:"#f8f8f6",border:"1px solid rgba(0,0,0,0.08)",position:"relative"}}>
+      {isImage
+        ? <img src={fileUrl} alt="" loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+        : <CompactPdfThumb url={fileUrl}/>}
+      {!isImage&&<div style={{position:"absolute",bottom:2,right:2,background:"rgba(0,0,0,0.55)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:8,padding:"1px 4px",borderRadius:3,letterSpacing:"0.05em"}}>PDF</div>}
+    </div>
+  );
+}
+
+// Shrunk version of PdfThumb tuned for a fixed 62-64 px square. Scales the
+// viewport so the page fits the canvas at 2x DPR; cover-fit on display side
+// keeps the frame square. Separate from PdfThumb because that one renders
+// full-width for the TAG viewer and would be wasted work at thumbnail size.
+function CompactPdfThumb({url}){
+  const ref=useRef();
+  useEffect(()=>{
+    if(!window.pdfjsLib||!ref.current||!url)return;
+    const pdfjsLib=window.pdfjsLib;
+    if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    let cancelled=false;
+    pdfjsLib.getDocument(url).promise.then(doc=>doc.getPage(1)).then(page=>{
+      if(cancelled)return;
+      const canvas=ref.current;if(!canvas)return;
+      const base=page.getViewport({scale:1});
+      const scale=Math.min(128/base.width,128/base.height);
+      const vp=page.getViewport({scale});
+      canvas.width=Math.max(1,Math.round(vp.width));
+      canvas.height=Math.max(1,Math.round(vp.height));
+      page.render({canvasContext:canvas.getContext('2d'),viewport:vp});
+    }).catch(()=>{});
+    return()=>{cancelled=true;};
+  },[url]);
+  return <canvas ref={ref} style={{width:"100%",height:"100%",objectFit:"cover",display:"block",background:"#f8f8f6"}}/>;
+}
+
+// Comparison thumbnail for Review > COMPARISONS rows. Reuses the overlayThumb
+// (dataURL of base+target diff) that saveComparison() already persists; no
+// re-rendering needed. Falls back to a neutral tile if the saved record is
+// from before overlayThumb was stored.
+function ComparisonCardThumb({comparison}){
+  const thumb=comparison?.overlayThumb;
+  return (
+    <div title={`${comparison.baseName||"Base"} → ${comparison.targetName||"Target"}`} style={{width:62,height:62,borderRadius:8,overflow:"hidden",flexShrink:0,background:"#efeefb",border:"1px solid rgba(0,0,0,0.08)",position:"relative"}}>
+      {thumb
+        ? <img src={thumb} alt="" loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+        : <div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",color:"#5856d6",fontSize:20}}>🔍</div>}
+      <div style={{position:"absolute",bottom:2,right:2,background:"rgba(88,86,214,0.85)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:8,padding:"1px 4px",borderRadius:3,letterSpacing:"0.05em"}}>DIFF</div>
+    </div>
+  );
+}
+
 // Small map thumbnail for Review rows — single OSM tile with the pin dot
 // overlaid at its exact fractional position. No external static-map service
 // required, and img cross-origin is fine for display (we aren't exporting).
@@ -5958,7 +6019,8 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
                       <span style={{color:noteCount?"#34c759":"rgba(0,0,0,0.3)"}}>📝 {noteCount} note{noteCount===1?"":"s"}</span>
                     </div>
                   </div>
-                  <div style={{color:"rgba(0,0,0,0.3)",fontSize:16,flexShrink:0}}>›</div>
+                  <DrawingCardThumb drawing={d}/>
+                  <div style={{color:"rgba(0,0,0,0.3)",fontSize:16,flexShrink:0,alignSelf:"center"}}>›</div>
                 </div>
               );
             })}</div>
@@ -5979,7 +6041,8 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
                     {sc.savedAt&&<span style={{color:"rgba(0,0,0,0.4)"}}>· {new Date(sc.savedAt).toLocaleDateString()}</span>}
                   </div>
                 </div>
-                <div style={{color:"rgba(0,0,0,0.3)",fontSize:16,flexShrink:0}}>›</div>
+                <ComparisonCardThumb comparison={sc}/>
+                <div style={{color:"rgba(0,0,0,0.3)",fontSize:16,flexShrink:0,alignSelf:"center"}}>›</div>
               </div>
             ))}</div>
       )}
