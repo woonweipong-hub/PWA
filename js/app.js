@@ -5731,6 +5731,18 @@ function DefectsMapView({defects,allDefects,onView,onUpdate,selectMode,selectedI
   const providerRef=useRef("");
   const[status,setStatus]=useState("loading");
   const[focusId,setFocusId]=useState(null);
+  // Pin-editing parity with TAG > Map — non-viewers can drag a pin to correct
+  // its location after capture (initial GPS drop is rarely pixel-perfect on
+  // site). Save goes straight to PocketBase; parent's realtime subscription
+  // reflects the new coords on next tick.
+  const canEdit=member?.role&&member.role!=="viewer"&&member.role!=="Viewer";
+  const saveDefectMove=async(d,newLat,newLng)=>{
+    try{await DB.defects.update(d.id,{lat:newLat,lng:newLng});}catch(e){console.warn("pin move save failed",e);}
+  };
+  const unpinDefect=async(d)=>{
+    if(!confirm("Remove this entry's map pin?\n(The entry itself will stay — only its GPS location is cleared.)"))return;
+    try{await DB.defects.update(d.id,{lat:null,lng:null,mapZoom:null});}catch(e){alert("Failed to remove pin: "+e.message);}
+  };
   // Parity with Tag on Map — every GPS-pinned entry in the project appears,
   // even if the Review filters/search would otherwise hide it. Out-of-filter
   // pins render desaturated so users can still see them for context.
@@ -5771,8 +5783,9 @@ function DefectsMapView({defects,allDefects,onView,onUpdate,selectMode,selectedI
         const bounds=new g.LatLngBounds();
         markersRef.current=pinned.map(({d,c,inFilter},i)=>{
           const svg=buildSvg(d,i,{selected:false,focused:false,size:32,inFilter});
-          const m=new g.Marker({position:c,map,icon:{url:"data:image/svg+xml;utf8,"+encodeURIComponent(svg),scaledSize:new g.Size(32,32),anchor:new g.Point(16,16)},title:`${i+1}. ${d.title||"Entry"}`,opacity:inFilter?1:0.85});
+          const m=new g.Marker({position:c,map,icon:{url:"data:image/svg+xml;utf8,"+encodeURIComponent(svg),scaledSize:new g.Size(32,32),anchor:new g.Point(16,16)},title:canEdit?`${i+1}. ${d.title||"Entry"} — drag to move`:`${i+1}. ${d.title||"Entry"}`,opacity:inFilter?1:0.85,draggable:canEdit});
           m.addListener("click",()=>handlePinTap(d));
+          if(canEdit)m.addListener("dragend",e=>saveDefectMove(d,e.latLng.lat(),e.latLng.lng()));
           bounds.extend(c);
           return{marker:m,d,i,c,inFilter};
         });
@@ -5788,8 +5801,9 @@ function DefectsMapView({defects,allDefects,onView,onUpdate,selectMode,selectedI
         const group=[];
         markersRef.current=pinned.map(({d,c,inFilter},i)=>{
           const html=buildSvg(d,i,{selected:false,focused:false,size:32,inFilter});
-          const m=L.marker([c.lat,c.lng],{icon:L.divIcon({className:"",html,iconSize:[32,32],iconAnchor:[16,16]}),title:`${i+1}. ${d.title||"Entry"}`,opacity:inFilter?1:0.85}).addTo(map);
+          const m=L.marker([c.lat,c.lng],{icon:L.divIcon({className:"",html,iconSize:[32,32],iconAnchor:[16,16]}),title:canEdit?`${i+1}. ${d.title||"Entry"} — drag to move`:`${i+1}. ${d.title||"Entry"}`,opacity:inFilter?1:0.85,draggable:canEdit}).addTo(map);
           m.on("click",()=>handlePinTap(d));
+          if(canEdit)m.on("dragend",e=>{const p=e.target.getLatLng();saveDefectMove(d,p.lat,p.lng);});
           group.push([c.lat,c.lng]);
           return{marker:m,d,i,c,inFilter};
         });
@@ -5897,6 +5911,19 @@ function DefectsMapView({defects,allDefects,onView,onUpdate,selectMode,selectedI
           {selectMode&&(
             <div style={{display:"flex",gap:6}}>
               <button onClick={()=>{pinned.forEach(({d})=>{if(!selectedIds?.has(d.id))toggleId&&toggleId(d.id);});}} style={{background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:12,padding:"3px 9px",color:"#ff6b00",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>SELECT ALL</button>
+              {canEdit&&selectedIds?.size>0&&(
+                <button onClick={async()=>{
+                  const ids=Array.from(selectedIds);
+                  if(!confirm(`Unpin ${ids.length} selected entr${ids.length===1?"y":"ies"}?\n(Entries stay — only their GPS locations are cleared.)`))return;
+                  const failures=[];
+                  for(const id of ids){try{await DB.defects.update(id,{lat:null,lng:null,mapZoom:null});}catch(e){console.warn("unpin failed",id,e);failures.push(id);}}
+                  // Clear selection via parent's toggle so bulk panel closes cleanly
+                  ids.forEach(id=>{if(selectedIds.has(id))toggleId&&toggleId(id);});
+                  if(failures.length)alert(`Unpinned ${ids.length-failures.length}/${ids.length}. ${failures.length} failed — check connection and retry.`);
+                }} title={`Unpin ${selectedIds.size} selected entries from the map`} style={{background:"rgba(255,59,48,0.12)",border:"1px solid rgba(255,59,48,0.4)",borderRadius:12,padding:"3px 9px",color:"#cc0000",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>
+                  🗑 UNPIN ({selectedIds.size})
+                </button>
+              )}
               {selectedIds?.size>0&&<button onClick={()=>{pinned.forEach(({d})=>{if(selectedIds.has(d.id))toggleId&&toggleId(d.id);});}} style={{background:"none",border:"1px solid rgba(0,0,0,0.12)",borderRadius:12,padding:"3px 9px",color:"rgba(0,0,0,0.55)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>CLEAR</button>}
             </div>
           )}
@@ -7975,6 +8002,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
   const searchRef=useRef(null);
   const mapObj=useRef(null);
   const markersRef=useRef({existing:[],pending:null});
+  const accuracyRef=useRef(null); // device-GPS accuracy circle overlay (set by useMyLocation)
   const clusterRef=useRef(null); // Leaflet MarkerClusterGroup or gmaps MarkerClusterer
   const providerRef=useRef(getMapProvider());
   const[status,setStatus]=useState("loading"); // loading | ready | error
@@ -7984,6 +8012,8 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
   const[qSev,setQSev]=useState("Minor");
   const[saving,setSaving]=useState(false);
   const[searching,setSearching]=useState(false);
+  const[locating,setLocating]=useState(false);   // device-GPS fix in-flight
+  const[fixAccuracy,setFixAccuracy]=useState(null); // metres reported with last fix, null = no fix shown
   const[pinMode,setPinMode]=useState(true);
   const[showList,setShowList]=useState(false);
   // Focused defect for the slide-up preview card. Set when the user taps a
@@ -8761,13 +8791,19 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
       if(!confirm("Remove this entry's map pin?\n(The entry itself will stay — only its GPS location is cleared.)"))return;
       try{await DB.defects.update(d.id,{lat:null,lng:null,mapZoom:null});}catch(e){alert("Failed to remove pin: "+e.message);}
     };
-    // Shared letter-in-ring SVG for both providers (matches drawing pin style).
-    // 28×28 overall; severity letter in the middle. When `selected` is true,
-    // wraps with an outer accent ring so multi-selected pins stand out.
-    const letterInRingSVG=(color,letter,critical,selected)=>{
-      const pulse=critical?`<circle cx="14" cy="14" r="13" fill="${color}" opacity="0.4"><animate attributeName="r" values="10;14;10" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.6;0.1;0.6" dur="2s" repeatCount="indefinite"/></circle>`:"";
-      const selRing=selected?`<circle cx="14" cy="14" r="13.5" fill="none" stroke="#5856d6" stroke-width="2.5" stroke-dasharray="2 1.5"/>`:"";
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">${pulse}${selRing}<circle cx="14" cy="14" r="11" fill="rgba(0,0,0,0.55)" stroke="${color}" stroke-width="3"/><circle cx="14" cy="14" r="4" fill="${color}"/><text x="14" y="15" text-anchor="middle" dominant-baseline="central" font-size="9" font-weight="900" font-family="'Barlow Condensed',sans-serif" fill="#fff" style="text-shadow:0 1px 2px rgba(0,0,0,0.8)">${letter||""}</text></svg>`;
+    // Shared number-in-ring SVG for both providers — parity with REVIEW > MAP
+    // so chip numbers match the numbers shown on map markers. Focused pins grow
+    // 28 → 40 and get an outer severity-coloured ring so the tapped entry is
+    // easy to spot. Critical-pulse and selected (batch) ring are preserved.
+    const numInRingSVG=(color,num,critical,selected,focused)=>{
+      const size=focused?40:28;
+      const cx=size/2,cy=size/2;
+      const r=focused?16:11;
+      const fontSize=focused?14:10;
+      const pulse=critical?`<circle cx="${cx}" cy="${cy}" r="${r+2}" fill="${color}" opacity="0.4"><animate attributeName="r" values="${r-1};${r+3};${r-1}" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.6;0.1;0.6" dur="2s" repeatCount="indefinite"/></circle>`:"";
+      const selRing=selected?`<circle cx="${cx}" cy="${cy}" r="${r+2.5}" fill="none" stroke="#5856d6" stroke-width="2.5" stroke-dasharray="2 1.5"/>`:"";
+      const focRing=focused&&!selected?`<circle cx="${cx}" cy="${cy}" r="${r+3}" fill="none" stroke="${color}" stroke-width="2" opacity="0.9"/>`:"";
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${pulse}${selRing}${focRing}<circle cx="${cx}" cy="${cy}" r="${r}" fill="rgba(0,0,0,0.75)" stroke="${color}" stroke-width="3"/><text x="${cx}" y="${cy+1}" text-anchor="middle" dominant-baseline="central" font-size="${fontSize}" font-weight="900" font-family="'Barlow Condensed',sans-serif" fill="#fff" style="text-shadow:0 1px 2px rgba(0,0,0,0.8)">${num||""}</text></svg>`;
     };
     // Cluster bubble style — dominant severity colour of the children.
     // Accepts a list of severities and picks the "worst" one so the bubble
@@ -8782,18 +8818,20 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
 
     if(provider==="gmaps"&&window.google?.maps){
       const g=window.google.maps;
-      markersRef.current.existing=mapDefects.map(d=>{
+      markersRef.current.existing=mapDefects.map((d,idx)=>{
         const color=SEV_COLOR[d.severity]||"#8e8e93";
-        const letter=d.severity?d.severity[0]:"";
         const critical=d.severity==="Critical"&&d.status==="Open";
         const isSelected=selectedPinIds.has(d.id);
-        const url="data:image/svg+xml;utf8,"+encodeURIComponent(letterInRingSVG(color,letter,critical,isSelected));
+        const isFocused=focusedDefectId===d.id;
+        const size=isFocused?40:28;
+        const url="data:image/svg+xml;utf8,"+encodeURIComponent(numInRingSVG(color,idx+1,critical,isSelected,isFocused));
         const m=new g.Marker({
           position:{lat:d.lat,lng:d.lng},
           // NOTE: no `map:` here — markers are owned by the clusterer below
-          icon:{url,scaledSize:new g.Size(28,28),anchor:new g.Point(14,14)},
+          icon:{url,scaledSize:new g.Size(size,size),anchor:new g.Point(size/2,size/2)},
           title:canEdit?(d.title||"Entry")+" — drag to move":(d.title||"Entry"),
           draggable:canEdit,
+          zIndex:isFocused?1000:undefined,
         });
         m._defect=d;
         const safeTitle=(d.title||"Entry").replace(/</g,"&lt;");
@@ -8834,13 +8872,14 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
       }
     }else if(provider==="osm"&&window.L){
       const L=window.L;
-      markersRef.current.existing=mapDefects.map(d=>{
+      markersRef.current.existing=mapDefects.map((d,idx)=>{
         const color=SEV_COLOR[d.severity]||"#8e8e93";
-        const letter=d.severity?d.severity[0]:"";
         const critical=d.severity==="Critical"&&d.status==="Open";
         const isSelected=selectedPinIds.has(d.id);
-        const icon=L.divIcon({className:"",html:letterInRingSVG(color,letter,critical,isSelected),iconSize:[28,28],iconAnchor:[14,14]});
-        const m=L.marker([d.lat,d.lng],{icon,draggable:canEdit,title:canEdit?(d.title||"Entry")+" — drag to move":(d.title||"Entry")});
+        const isFocused=focusedDefectId===d.id;
+        const size=isFocused?40:28;
+        const icon=L.divIcon({className:"",html:numInRingSVG(color,idx+1,critical,isSelected,isFocused),iconSize:[size,size],iconAnchor:[size/2,size/2]});
+        const m=L.marker([d.lat,d.lng],{icon,draggable:canEdit,title:canEdit?(d.title||"Entry")+" — drag to move":(d.title||"Entry"),zIndexOffset:isFocused?1000:0});
         m._defect=d;
         const safeTitle=(d.title||"Entry").replace(/</g,"&lt;");
         m.bindPopup(`<div style="font-family:'Barlow Condensed',sans-serif;padding:2px 4px;min-width:140px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${canEdit?`<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div><button id="mm-del-${d.id}" style="margin-top:6px;width:100%;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);border-radius:6px;padding:4px 8px;color:#cc0000;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;cursor:pointer">REMOVE PIN</button>`:""}</div>`);
@@ -8891,10 +8930,11 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
       hasAutoFitRef.current=true;
       setTimeout(fitToAllPins,120);
     }
-  // Re-render markers when selection changes so the selected ring appears/
-  // disappears without waiting for a data refresh.
+  // Re-render markers when selection OR focus changes so the selected ring
+  // and focused-pin enlargement appear/disappear immediately without waiting
+  // for a data refresh.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[status,defects,provider,selectedPinIds]);
+  },[status,defects,provider,selectedPinIds,focusedDefectId]);
   // Reset the auto-fit guard when switching projects or providers.
   useEffect(()=>{hasAutoFitRef.current=false;},[currentProject?.id,provider]);
 
@@ -8994,13 +9034,83 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
     setSavedDefault(true);setTimeout(()=>setSavedDefault(false),2200);
   };
 
+  const clearAccuracyCircle=()=>{
+    if(!accuracyRef.current)return;
+    if(accuracyRef.current.setMap)try{accuracyRef.current.setMap(null);}catch{}
+    else if(accuracyRef.current.remove)try{accuracyRef.current.remove();}catch{}
+    accuracyRef.current=null;
+  };
   const cancelPending=()=>{
     if(markersRef.current.pending){
       if(markersRef.current.pending.setMap)markersRef.current.pending.setMap(null);
       else if(markersRef.current.pending.remove)markersRef.current.pending.remove();
       markersRef.current.pending=null;
     }
+    clearAccuracyCircle();
+    setFixAccuracy(null);
     setPendingPin(null);setQTitle("");setQSev("Minor");
+  };
+
+  // ── Drop a pin at device GPS location ─────────────────────────
+  // Uses browser Geolocation with high-accuracy mode. Pans/zooms the map,
+  // draws a translucent accuracy ring at the reported ±metres, and opens
+  // the same Quick Log card as a manual map tap. Accuracy is displayed in
+  // the Quick Log card so the user can judge whether to nudge the pin —
+  // construction sites (indoor, basements, steel frames) routinely give
+  // 50–500 m fixes, so the user still has the final say.
+  const useMyLocation=()=>{
+    if(!navigator.geolocation){alert("Location is not available on this device.");return;}
+    if(!mapObj.current)return;
+    // Drop any in-progress markup so the Quick Log flow isn't blocked
+    if(markupTool){markupDrawRef.current=null;setMarkupTool(null);}
+    setPinMode(true);
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(pos=>{
+      setLocating(false);
+      const lat=pos.coords.latitude,lng=pos.coords.longitude;
+      const acc=Number.isFinite(pos.coords.accuracy)?pos.coords.accuracy:null;
+      setFixAccuracy(acc);
+      // Pan + zoom to the fix
+      if(provider==="gmaps"&&window.google?.maps){
+        mapObj.current.setCenter({lat,lng});
+        if((mapObj.current.getZoom()||0)<18)mapObj.current.setZoom(19);
+      }else if(provider==="osm"&&window.L){
+        mapObj.current.setView([lat,lng],Math.max(mapObj.current.getZoom()||17,19));
+      }
+      // Accuracy ring (replaces any previous one)
+      clearAccuracyCircle();
+      if(acc&&acc>0){
+        if(provider==="gmaps"&&window.google?.maps){
+          const g=window.google.maps;
+          accuracyRef.current=new g.Circle({center:{lat,lng},radius:acc,map:mapObj.current,strokeColor:"#ff6b00",strokeOpacity:0.6,strokeWeight:1,fillColor:"#ff6b00",fillOpacity:0.12,clickable:false});
+        }else if(provider==="osm"&&window.L){
+          accuracyRef.current=window.L.circle([lat,lng],{radius:acc,color:"#ff6b00",weight:1,opacity:0.6,fillColor:"#ff6b00",fillOpacity:0.12,interactive:false}).addTo(mapObj.current);
+        }
+      }
+      // Pending pin marker (same visual as a manual tap so nothing feels off)
+      if(markersRef.current.pending){
+        if(markersRef.current.pending.setMap)try{markersRef.current.pending.setMap(null);}catch{}
+        else if(markersRef.current.pending.remove)try{markersRef.current.pending.remove();}catch{}
+        markersRef.current.pending=null;
+      }
+      if(provider==="gmaps"&&window.google?.maps){
+        const g=window.google.maps;
+        const pendingSvg=`<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="10" fill="#ff6b00" stroke="#fff" stroke-width="3"/><text x="17" y="18" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="900" fill="#fff" font-family="sans-serif">+</text></svg>`;
+        markersRef.current.pending=new g.Marker({position:{lat,lng},map:mapObj.current,icon:{url:"data:image/svg+xml;utf8,"+encodeURIComponent(pendingSvg),scaledSize:new g.Size(34,34),anchor:new g.Point(17,17)},zIndex:9999});
+      }else if(provider==="osm"&&window.L){
+        const L=window.L;
+        const pendingHtml=`<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="15" fill="#ff6b00" opacity="0.3"><animate attributeName="r" values="10;15;10" dur="1.2s" repeatCount="indefinite"/></circle><circle cx="17" cy="17" r="10" fill="#ff6b00" stroke="#fff" stroke-width="3"/><text x="17" y="18" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="900" fill="#fff" font-family="'Barlow Condensed',sans-serif">+</text></svg>`;
+        markersRef.current.pending=L.marker([lat,lng],{icon:L.divIcon({className:"",html:pendingHtml,iconSize:[34,34],iconAnchor:[17,17]}),interactive:false,zIndexOffset:9999}).addTo(mapObj.current);
+      }
+      setPendingPin({lat,lng});
+    },err=>{
+      setLocating(false);
+      const msg=err&&err.code===1?"Location permission denied. Enable location for this site in your browser, or tap the map to drop a pin manually."
+        :err&&err.code===2?"Couldn't get a location fix (no GPS / network signal). Try again outdoors, or tap the map to drop a pin manually."
+        :err&&err.code===3?"Location request timed out. Try again, or tap the map to drop a pin manually."
+        :"Couldn't get your location."+(err&&err.message?" "+err.message:"");
+      alert(msg);
+    },{enableHighAccuracy:true,timeout:15000,maximumAge:0});
   };
 
   // OSM search via Nominatim
@@ -9079,6 +9189,11 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
         {canEdit&&(
           <button onClick={()=>{setPinMode(v=>!v);if(markupTool)setMarkupTool(null);}} style={{padding:"8px 12px",borderRadius:10,border:"1px solid "+(pinMode&&!markupTool?"rgba(255,107,0,0.4)":"rgba(0,0,0,0.12)"),background:pinMode&&!markupTool?"rgba(255,107,0,0.12)":"#fff",color:pinMode&&!markupTool?"#ff6b00":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
             📌 ADD PIN {pinMode&&!markupTool?"· ON":""}
+          </button>
+        )}
+        {canEdit&&(
+          <button onClick={useMyLocation} disabled={locating} title="Drop a pin at your device's current GPS location. You can still nudge it in the Quick Log card if the fix is off." style={{padding:"8px 12px",borderRadius:10,border:"1px solid rgba(52,170,220,0.4)",background:locating?"rgba(52,170,220,0.25)":"rgba(52,170,220,0.12)",color:"#2b8bb8",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:locating?"wait":"pointer",display:"flex",alignItems:"center",gap:6}}>
+            {locating?"…":"📍"} GPS
           </button>
         )}
         {canEdit&&(
@@ -9186,7 +9301,16 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
           ))}
         </div>
       )}
-      <div ref={mapRef} style={{width:"100%",height:"min(55dvh,480px)",minHeight:260,borderRadius:12,border:"1px solid rgba(0,0,0,0.12)",background:"#e5e3dc",overscrollBehavior:"contain",touchAction:"pan-x pan-y"}}/>
+      <div style={{position:"relative"}}>
+        <div ref={mapRef} style={{width:"100%",height:"min(55dvh,480px)",minHeight:260,borderRadius:12,border:"1px solid rgba(0,0,0,0.12)",background:"#e5e3dc",overscrollBehavior:"contain",touchAction:"pan-x pan-y"}}/>
+        {/* Counter badge — parity with REVIEW > MAP. Hidden when Quick Log
+            is open so it doesn't overlap the pending-pin affordance. */}
+        {mapDefects.length>0&&!pendingPin&&(
+          <div style={{position:"absolute",top:10,left:10,background:"rgba(26,26,26,0.85)",color:"#fff",padding:"6px 12px",borderRadius:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,pointerEvents:"none",zIndex:500}}>
+            {mapDefects.length} pinned{selectedPinIds.size>0?` · ${selectedPinIds.size} selected`:canEdit?" · tap a pin · drag to move":" · tap a pin"}
+          </div>
+        )}
+      </div>
       {/* Always-visible pin chip strip + preview card — mirrors
           REVIEW > ENTRIES > MAP (DefectsMapView). Strip shows every pinned
           entry in the current project; tap a chip to pan the map and open
@@ -9237,9 +9361,12 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
           <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a1a1a"}}>Give this pin a title & severity</span>
         </div>
         <div style={{fontSize:11,color:"rgba(0,0,0,0.45)",marginLeft:30}}>Fill in below, then SAVE — or tap Cancel to reposition the pin.</div>
-        <div style={{display:"flex",alignItems:"center",gap:8,fontSize:11,background:"rgba(0,0,0,0.04)",padding:"6px 10px",borderRadius:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,fontSize:11,background:"rgba(0,0,0,0.04)",padding:"6px 10px",borderRadius:8,flexWrap:"wrap"}}>
           <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"rgba(0,0,0,0.55)"}}>📍 {t("maps.lat_lng")}:</span>
           <span style={{fontFamily:"monospace",fontSize:11,color:"rgba(0,0,0,0.7)"}}>{pendingPin.lat.toFixed(6)}, {pendingPin.lng.toFixed(6)}</span>
+          {fixAccuracy!=null&&(
+            <span title={fixAccuracy<=20?"Good GPS fix":fixAccuracy<=100?"Approximate — check the pin and nudge if needed":"Poor fix — please verify by tapping the correct spot on the map"} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:fixAccuracy<=20?"#1a7a35":fixAccuracy<=100?"#b34800":"#cc0000",background:fixAccuracy<=20?"rgba(48,209,88,0.14)":fixAccuracy<=100?"rgba(255,107,0,0.14)":"rgba(255,59,48,0.14)",padding:"2px 8px",borderRadius:6}}>±{Math.round(fixAccuracy)} m</span>
+          )}
         </div>
         <input type="text" value={qTitle} onChange={e=>setQTitle(e.target.value)} placeholder={t("fields.title_placeholder")} autoFocus style={{padding:"11px 12px",fontSize:14,borderRadius:8,border:"1.5px solid "+(qTitle.trim()?"rgba(48,209,88,0.4)":"rgba(0,0,0,0.18)"),background:"#fff",boxSizing:"border-box"}}/>
         <select value={qSev} onChange={e=>setQSev(e.target.value)} style={{padding:"11px 12px",fontSize:13,borderRadius:8,border:"1.5px solid rgba(0,0,0,0.18)",background:"#fff"}}>
