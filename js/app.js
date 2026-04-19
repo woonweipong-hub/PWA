@@ -1346,12 +1346,12 @@ const _AI_LANG_NAMES={en:"English",zh:"Simplified Chinese",
 function getAIPrompt(){
   const lang=(typeof getCurrentLang==="function"?getCurrentLang():"en")||"en";
   const langName=_AI_LANG_NAMES[lang]||"English";
-  // CRITICAL: Categorical fields (severity, trade) MUST stay English so search,
-  // filter, batch operations, and AI search continue to work across users with
-  // different language preferences. Only freeform fields (title, description)
-  // are localized. The app translates categorical values at render via tOpt().
-  const langClause=lang==="en"?"":` Write the "title" and "description" fields in ${langName}. Keep "severity" and "trade" values in English exactly as listed.`;
-  return 'Analyze this construction defect photo. Respond in valid JSON only, no markdown: {"title":"max 5 word defect title","severity":"one of Critical Major Minor Observation","description":"2 sentence technical description","trade":"responsible trade e.g. Plumbing Electrical Waterproofing Painting Tiling Structural Carpentry Aircon General","safety_risk":1 to 5 integer where 5 is life-threatening hazard and 1 is cosmetic,"suggested_assignee":"trade role to assign e.g. Plumber Electrician Painter Tiler Contractor"}'+langClause;
+  // CRITICAL: All categorical/enum fields MUST stay English so search, filter,
+  // batch operations, and AI search work consistently across team members with
+  // different language preferences. Only freeform fields (title, description,
+  // location_area) are localized. Categoricals are translated at render via tOpt().
+  const langClause=lang==="en"?"":` Write "title", "description", and "location_area" in ${langName}. Keep all other field values in English exactly as specified.`;
+  return 'Analyze this construction site photo. Respond in valid JSON only, no markdown fences:\n{"title":"max 5 word defect title","severity":"one of: Critical Major Minor Observation","description":"2 sentence technical description of what is wrong and where","trade":"responsible trade: Plumbing Electrical Waterproofing Painting Tiling Structural Carpentry Aircon Civil Landscaping General","component":"specific affected element — use exact match if possible e.g. Tile Floor Ceiling Wall Paint Pipe Drain Slab Column Scaffold Railing Door Window AC Unit Wiring Socket Sprinkler","issue":"most applicable defect type for that component e.g. Crack Leak Peeling Loose Stain Blocked Chipped Sagging Exposed rebar Misaligned Missing Damaged","entry_type":"one of: Defect Observation Instruction — Defect for quality/workmanship, Observation for non-urgent notes, Instruction for directives","location_area":"short visible-area description from photo context e.g. bathroom ceiling external wall corridor floor lift lobby site perimeter","safety_risk":1,"suggested_assignee":"trade role e.g. Plumber Electrician Painter Tiler Contractor"}\nReplace safety_risk 1 with integer 1–5 where 5 is life-threatening hazard.'+langClause;
 }
 // Backward-compatible export — callers that don't need language awareness
 // still see English. New callers should call getAIPrompt() per request to
@@ -4940,7 +4940,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
     if(ctx.locationZone)parts.push(`zone: ${ctx.locationZone}`);
     if(ctx.location)parts.push(`location: ${ctx.location}`);
     if(ctx.workCategory)parts.push(`work category: ${ctx.workCategory}`);
-    if(ctx.component)parts.push(`trade: ${ctx.component}`);
+    if(ctx.component)parts.push(`component: ${ctx.component}`);
     if(!parts.length)return base;
     return base+` Site context from previous entry — ${parts.join(', ')}. Use this to sharpen severity and trade guesses; same floor/zone commonly shares defect types.`;
   };
@@ -4983,13 +4983,48 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
     if(result.title)set("title",result.title);
     if(result.severity&&SEVERITY.includes(result.severity))set("severity",result.severity);
     if(result.description)set("description",result.description);
-    if(result.trade)set("component",result.trade);
     // Auto-escalate severity for high safety risk
     if(result.safety_risk&&result.safety_risk>=4&&result.severity!=="Critical"){
       set("severity","Critical");
       result.severity="Critical";
     }
-    // Auto-suggest assignee from team members if AI provides a trade/role
+    // Component — prefer result.component (specific element) over result.trade
+    // (trade is a category; component is the exact part, e.g. "Tile" not "Tiling").
+    // Match case-insensitively against the master component list.
+    let resolvedComponent=null;
+    if(result.component){
+      const needle=result.component.trim().toLowerCase();
+      resolvedComponent=DEFAULT_COMPONENTS.find(c=>c.toLowerCase()===needle)
+        ||DEFAULT_COMPONENTS.find(c=>c.toLowerCase().includes(needle))
+        ||DEFAULT_COMPONENTS.find(c=>needle.includes(c.toLowerCase()));
+    }
+    if(resolvedComponent){
+      set("component",resolvedComponent);
+      // Issue — only fill if it matches the component's known issue list so the
+      // dropdown stays coherent.
+      if(result.issue){
+        const issues=COMPONENT_ISSUES[resolvedComponent]||[];
+        const needle=result.issue.trim().toLowerCase();
+        const issueMatch=issues.find(i=>i.toLowerCase()===needle)
+          ||issues.find(i=>i.toLowerCase().includes(needle))
+          ||issues.find(i=>needle.includes(i.toLowerCase()));
+        if(issueMatch)set("issue",issueMatch);
+      }
+    }else if(result.trade){
+      // Fallback: use trade category when AI didn't return a matching component
+      set("component",result.trade);
+    }
+    // Entry type — only standard types; skip "Update" (shouldn't be AI-suggested)
+    if(result.entry_type){
+      const valid=["Defect","Observation","Instruction"].find(t=>t.toLowerCase()===result.entry_type.toLowerCase());
+      if(valid)set("entryType",valid);
+    }
+    // Location area — fills the location field only when it is currently empty
+    // so batch-mode carry-overs (floor/zone from previous entry) are not clobbered.
+    if(result.location_area){
+      setForm(f=>({...f,location:f.location||result.location_area}));
+    }
+    // Assignee — fuzzy-match AI's suggested role against actual team members
     if(result.suggested_assignee&&assignees.length>0){
       const suggestion=result.suggested_assignee.toLowerCase();
       const match=assignees.find(a=>a.toLowerCase().includes(suggestion))||assignees.find(a=>suggestion.includes(a.toLowerCase()));
@@ -5377,9 +5412,12 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
                 <div style={{fontSize:11,fontWeight:700,color:"#5856d6",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif"}}>{t("log.ai_filled")}</div>
                 <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",marginBottom:6}}>{aiResult.description}</div>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                  {aiResult.trade&&<span style={{fontSize:10,fontWeight:700,background:"rgba(88,86,214,0.1)",color:"#5856d6",padding:"2px 8px",borderRadius:10}}>🔧 {aiResult.trade}</span>}
+                  {aiResult.component&&<span style={{fontSize:10,fontWeight:700,background:"rgba(88,86,214,0.1)",color:"#5856d6",padding:"2px 8px",borderRadius:10}}>🔩 {aiResult.component}{aiResult.issue?" · "+aiResult.issue:""}</span>}
+                  {!aiResult.component&&aiResult.trade&&<span style={{fontSize:10,fontWeight:700,background:"rgba(88,86,214,0.1)",color:"#5856d6",padding:"2px 8px",borderRadius:10}}>🔧 {aiResult.trade}</span>}
+                  {aiResult.entry_type&&aiResult.entry_type!=="Defect"&&<span style={{fontSize:10,fontWeight:700,background:"rgba(52,170,220,0.12)",color:"#34aadc",padding:"2px 8px",borderRadius:10}}>{aiResult.entry_type}</span>}
+                  {aiResult.location_area&&<span style={{fontSize:10,fontWeight:700,background:"rgba(48,209,88,0.1)",color:"#1a7a35",padding:"2px 8px",borderRadius:10}}>📍 {aiResult.location_area}</span>}
                   {aiResult.suggested_assignee&&<span style={{fontSize:10,fontWeight:700,background:"rgba(255,107,0,0.1)",color:"#ff6b00",padding:"2px 8px",borderRadius:10}}>👤 → {aiResult.suggested_assignee}</span>}
-                  {aiResult.safety_risk&&aiResult.safety_risk>=3&&<span style={{fontSize:10,fontWeight:700,background:aiResult.safety_risk>=4?"rgba(255,59,48,0.15)":"rgba(255,149,0,0.15)",color:aiResult.safety_risk>=4?"#ff3b30":"#ff9500",padding:"2px 8px",borderRadius:10}}>⚠️ Safety Risk: {aiResult.safety_risk}/5</span>}
+                  {aiResult.safety_risk&&aiResult.safety_risk>=3&&<span style={{fontSize:10,fontWeight:700,background:aiResult.safety_risk>=4?"rgba(255,59,48,0.15)":"rgba(255,149,0,0.15)",color:aiResult.safety_risk>=4?"#ff3b30":"#ff9500",padding:"2px 8px",borderRadius:10}}>⚠️ Safety {aiResult.safety_risk}/5</span>}
                 </div>
               </div>
             )}
