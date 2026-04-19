@@ -13001,16 +13001,27 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       if(cancelled)return;
       const nvp=page.getViewport({scale:1});
       const longEdgePt=Math.max(nvp.width,nvp.height);
-      // Cap canvas long edge at 8000 px — keeps memory under ~200MB
-      // worst-case. For typical A4 PDFs this yields scale~2; for
-      // Preserve-PDFs (page = source px) it yields scale~1.
       const CAP=8000;
-      const scale=Math.min(2,Math.max(1,CAP/longEdgePt));
-      const viewport=page.getViewport({scale});
+      const pdfScale=Math.min(2,Math.max(1,CAP/longEdgePt));
+      const viewport=page.getViewport({scale:pdfScale});
       const canvas=canvasRef.current;
       canvas.width=viewport.width;canvas.height=viewport.height;
       const ctx=canvas.getContext('2d');
       page.render({canvasContext:ctx,viewport}).promise.then(()=>{}).catch(()=>{});
+      // Fit page to container on every page load — scale:contain, centered.
+      // CSS maxWidth:100% handles horizontal; we compute vertical centering
+      // so the image fills as much of the viewer as possible.
+      const el=containerRef.current;
+      if(!cancelled&&el&&el.clientWidth>0&&el.clientHeight>0){
+        const cw=el.clientWidth;
+        const ch=el.clientHeight;
+        const dispW=Math.min(viewport.width,cw);
+        const dispH=dispW/viewport.width*viewport.height;
+        // fitS: scale the inner div so the page fills the container (contain)
+        const fitS=Math.min(1,cw/dispW,ch/dispH);
+        setScale(fitS);
+        setOffset({x:0,y:Math.max(0,(ch-dispH*fitS)/2)});
+      }
     });
     return()=>{cancelled=true;};
   },[currentPage,pdfPageCount]);
@@ -13077,7 +13088,21 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   };
   const zoomIn=()=>zoomBy(0.3);
   const zoomOut=()=>zoomBy(-0.3);
-  const resetZoom=()=>{setScale(1);setOffset({x:0,y:0});};
+  const resetZoom=()=>{
+    if(isPdf&&canvasRef.current&&containerRef.current){
+      const canvas=canvasRef.current;
+      const el=containerRef.current;
+      const cw=el.clientWidth||360;
+      const ch=el.clientHeight||500;
+      const dispW=Math.min(canvas.width,cw);
+      const dispH=dispW/canvas.width*canvas.height;
+      const fitS=Math.min(1,cw/dispW,ch/dispH);
+      setScale(fitS);
+      setOffset({x:0,y:Math.max(0,(ch-dispH*fitS)/2)});
+    }else{
+      setScale(1);setOffset({x:0,y:0});
+    }
+  };
 
   // Mouse-wheel zoom at cursor position (desktop) — attached via useEffect for {passive:false}
   const wheelHandler=useRef(null);
