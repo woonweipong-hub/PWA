@@ -5950,6 +5950,7 @@ function DefectsMapView({defects,allDefects,onView,onUpdate,selectMode,selectedI
 
 function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onClearNl,onAiSearch,aiEnabled,member,members,onBulkUpdate,onBulkDelete,onRestore,onHardDelete,company,currentProject,onJumpToTag,onOpenInReview}){
   const[showArchive,setShowArchive]=useState(false);
+  const[archiveSelIds,setArchiveSelIds]=useState(()=>new Set());
   const[filter,setFilter]=useState("All");const[sevF,setSevF]=useState("All");const[typeF,setTypeF]=useState("All");
   const[search,setSearch]=useState("");const[showFilters,setShowFilters]=useState(false);
   // "entries" | "drawings" | "comparisons" — lets users triage drawing-side
@@ -6434,20 +6435,35 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
       {showArchive&&(
         <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
           <div style={{position:"sticky",top:0,background:"rgba(240,237,232,0.95)",backdropFilter:"blur(8px)",padding:"16px 16px 12px",display:"flex",alignItems:"center",gap:12,borderBottom:"1px solid rgba(0,0,0,0.08)",zIndex:10}}>
-            <button onClick={()=>setShowArchive(false)} style={{background:"rgba(0,0,0,0.08)",border:"none",borderRadius:20,padding:"7px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.back")}</button>
+            <button onClick={()=>{setShowArchive(false);setArchiveSelIds(new Set());}} style={{background:"rgba(0,0,0,0.08)",border:"none",borderRadius:20,padding:"7px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.back")}</button>
             <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a"}}>🗃 ARCHIVE <span style={{color:"rgba(0,0,0,0.3)",fontSize:13,fontWeight:700}}>({archivedDefects.length})</span></div>
+            {archivedDefects.length>0&&(
+              <button onClick={()=>setArchiveSelIds(archiveSelIds.size===archivedDefects.length?new Set():new Set(archivedDefects.map(d=>d.id)))} style={{background:"rgba(0,0,0,0.07)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:14,padding:"5px 11px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",color:"rgba(0,0,0,0.6)",letterSpacing:"0.04em"}}>
+                {archiveSelIds.size===archivedDefects.length?"NONE":"ALL"}
+              </button>
+            )}
           </div>
           <div style={{padding:16}}>
             <div style={{fontSize:11,color:"rgba(0,0,0,0.45)",marginBottom:12,fontFamily:"'Barlow Condensed',sans-serif",lineHeight:1.5}}>
               Entries deleted from Review or Report land here. They stay for 7 days so you can restore if needed, then auto-purge permanently. Admins can also permanent-delete immediately.
             </div>
+            {archiveSelIds.size>0&&(
+              <div style={{display:"flex",gap:8,marginBottom:12,padding:"10px 12px",background:"rgba(52,170,220,0.08)",borderRadius:12,border:"1px solid rgba(52,170,220,0.25)",alignItems:"center"}}>
+                <span style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:"#2b8bb8"}}>{archiveSelIds.size} selected</span>
+                <button onClick={async()=>{if(!onRestore)return;await onRestore(Array.from(archiveSelIds));setArchiveSelIds(new Set());}} style={{background:"rgba(52,199,89,0.12)",border:"1px solid rgba(52,199,89,0.35)",borderRadius:10,padding:"7px 12px",color:"#1a7a35",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>↺ RESTORE ({archiveSelIds.size})</button>
+                {member?.role==="Admin"&&onHardDelete&&(
+                  <button onClick={async()=>{if(!confirm(`Permanently delete ${archiveSelIds.size} entr${archiveSelIds.size===1?"y":"ies"}? This cannot be undone.`))return;await onHardDelete(Array.from(archiveSelIds));setArchiveSelIds(new Set());}} style={{background:"rgba(255,59,48,0.12)",border:"1px solid rgba(255,59,48,0.35)",borderRadius:10,padding:"7px 12px",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>🗑 FOREVER ({archiveSelIds.size})</button>
+                )}
+              </div>
+            )}
             {archivedDefects.length===0?(
               <div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"40px 0",fontSize:14}}>Archive is empty.</div>
             ):archivedDefects.map(d=>{
               const archivedMs=Date.parse(d.archivedAt||"");
               const daysLeft=Number.isFinite(archivedMs)?Math.max(0,Math.ceil((archivedMs+7*24*60*60*1000-Date.now())/(24*60*60*1000))):7;
               return(
-                <div key={d.id} style={{background:"#fff",borderRadius:12,padding:"12px 14px",marginBottom:8,borderLeft:`4px solid ${SEV_COLOR[d.severity]||"#8e8e93"}`,display:"flex",gap:10,alignItems:"center"}}>
+                <div key={d.id} style={{background:archiveSelIds.has(d.id)?"rgba(52,170,220,0.07)":"#fff",borderRadius:12,padding:"12px 14px",marginBottom:8,borderLeft:`4px solid ${SEV_COLOR[d.severity]||"#8e8e93"}`,display:"flex",gap:10,alignItems:"center"}}>
+                  <input type="checkbox" checked={archiveSelIds.has(d.id)} onChange={()=>setArchiveSelIds(prev=>{const n=new Set(prev);n.has(d.id)?n.delete(d.id):n.add(d.id);return n;})} style={{width:16,height:16,flexShrink:0,cursor:"pointer",accentColor:"#2b8bb8"}}/>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title||"(untitled)"}</div>
                     <div style={{fontSize:10,color:"rgba(0,0,0,0.45)",marginTop:2,fontFamily:"'Barlow Condensed',sans-serif"}}>
@@ -10271,8 +10287,8 @@ Requirements:
         // promise. For a PDF input in Preserve mode, the user should use
         // Upload instead. We emit a clear alert rather than silently
         // producing a lower-quality file.
-        if(preserveMode&&/\.pdf$/i.test(f.name)){
-          alert(`"${f.name}" is already a PDF — use Upload to add it as-is. Preserve mode is for JPG/PNG sources.`);
+        if(/\.pdf$/i.test(f.name)){
+          alert(`"${f.name}" is already a PDF — use Upload to add it as-is. Convert is for JPG/PNG sources.`);
           continue;
         }
         const blob=aiEnhance
@@ -10280,7 +10296,7 @@ Requirements:
           :preserveMode
             ?await preserveOneToPdfBlob(f,emit)
             :await traceOneToPdfBlob(f,emit);
-        const suffix=aiEnhance?" (AI vector).pdf":preserveMode?" (preserved).pdf":" (vector).pdf";
+        const suffix=aiEnhance?" (AI).pdf":" (converted).pdf";
         const baseName=f.name.replace(/\.[^.]+$/,"")+suffix;
         // Save locally FIRST so the user always walks away with a file
         // even if the PocketBase upload hangs or fails. Same blob is
@@ -11845,19 +11861,17 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           )}
           {canUpload&&(
             <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:3}}>
-              <button onClick={()=>convertRef.current?.click()} disabled={converting} title={aiEnhance?"Convert with Gemini AI vision — produces cleaner, semantic SVG (uses your Gemini quota)":preserveMode?"Lossless PDF — embeds source bytes, page sized 1 PDF point per source pixel so the viewer never downsamples. JPG/PNG only; use Upload for existing PDFs."  :"Convert JPG sketches to vector PDF drawings (single or batch) — offline, free, deterministic"} style={{width:"100%",borderRadius:10,background:aiEnhance?"rgba(88,86,214,0.1)":preserveMode?"rgba(255,149,0,0.08)":"rgba(52,199,89,0.08)",border:`1px solid ${aiEnhance?"rgba(88,86,214,0.35)":preserveMode?"rgba(255,149,0,0.35)":"rgba(52,199,89,0.3)"}`,cursor:converting?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 10px",gap:5}}>
-                {converting?<Spin size={16}/>:<><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 7h6l2-3h6a2 2 0 012 2v13a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z" stroke={aiEnhance?"rgba(88,86,214,0.85)":preserveMode?"rgba(200,120,0,0.85)":"rgba(52,160,80,0.85)"} strokeWidth="1.6" strokeLinejoin="round"/><path d="M9 13l2 2 4-4" stroke={aiEnhance?"rgba(88,86,214,0.85)":preserveMode?"rgba(200,120,0,0.85)":"rgba(52,160,80,0.85)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg><span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:aiEnhance?"rgba(88,86,214,0.9)":preserveMode?"rgba(200,120,0,0.9)":"rgba(52,160,80,0.9)"}}>{aiEnhance?"AI Convert":preserveMode?"Preserve":"Convert"}</span></>}
+              <button onClick={()=>convertRef.current?.click()} disabled={converting} title={aiEnhance?"Convert with Gemini AI vision — cleaner output on sketches, uses your Gemini quota":"Convert JPG/PNG to lossless PDF — image bytes embedded as-is, full quality. PDFs: use Upload."} style={{width:"100%",borderRadius:10,background:aiEnhance?"rgba(88,86,214,0.1)":"rgba(255,149,0,0.08)",border:`1px solid ${aiEnhance?"rgba(88,86,214,0.35)":"rgba(255,149,0,0.35)"}`,cursor:converting?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 10px",gap:5}}>
+                {converting?<Spin size={16}/>:<><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 7h6l2-3h6a2 2 0 012 2v13a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z" stroke={aiEnhance?"rgba(88,86,214,0.85)":"rgba(200,120,0,0.85)"} strokeWidth="1.6" strokeLinejoin="round"/><path d="M9 13l2 2 4-4" stroke={aiEnhance?"rgba(88,86,214,0.85)":"rgba(200,120,0,0.85)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg><span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:aiEnhance?"rgba(88,86,214,0.9)":"rgba(200,120,0,0.9)"}}>{aiEnhance?"AI Convert":"Convert"}</span></>}
               </button>
+              {isAiConfigured()&&(
               <div style={{display:"flex",gap:8,justifyContent:"center"}}>
-                <label title="Lossless PDF — source image embedded as raw bytes, PDF page sized so 1 point = 1 source pixel. Viewer renders at native resolution with no downsample." style={{display:"flex",alignItems:"center",gap:4,fontSize:9,cursor:"pointer",color:preserveMode?"#c87800":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.04em"}}>
-                  <input type="checkbox" checked={preserveMode} disabled={converting} onChange={e=>{setPreserveMode(e.target.checked);if(e.target.checked)setAiEnhance(false);}} style={{margin:0,width:11,height:11,cursor:"pointer"}}/>
-                  PRESERVE
-                </label>
-                <label title="Use Gemini AI vision instead of the offline tracer — cleaner output on sketches but costs Gemini quota" style={{display:"flex",alignItems:"center",gap:4,fontSize:9,cursor:isAiConfigured()?"pointer":"not-allowed",color:isAiConfigured()?(aiEnhance?"#5856d6":"rgba(0,0,0,0.55)"):"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.04em"}}>
-                  <input type="checkbox" checked={aiEnhance} disabled={!isAiConfigured()||converting} onChange={e=>{setAiEnhance(e.target.checked);if(e.target.checked)setPreserveMode(false);}} style={{margin:0,width:11,height:11,cursor:isAiConfigured()?"pointer":"not-allowed"}}/>
+                <label title="Use Gemini AI vision instead of lossless embed — cleaner output on sketches but costs Gemini quota" style={{display:"flex",alignItems:"center",gap:4,fontSize:9,cursor:"pointer",color:aiEnhance?"#5856d6":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.04em"}}>
+                  <input type="checkbox" checked={aiEnhance} disabled={converting} onChange={e=>setAiEnhance(e.target.checked)} style={{margin:0,width:11,height:11,cursor:"pointer"}}/>
                   AI
                 </label>
               </div>
+              )}
             </div>
           )}
           <div style={{flex:1,minWidth:0,position:"relative"}} onMouseEnter={()=>{clearTimeout(diffMenuTimer.current);setShowDiffMenu(true);}} onMouseLeave={()=>{diffMenuTimer.current=setTimeout(()=>setShowDiffMenu(false),250);}}>
