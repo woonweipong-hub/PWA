@@ -885,9 +885,11 @@ useEffect(()=>{if(!drawings.length)return;const unsubs=drawings.map(d=>DB.pins.s
 //   read 0-3 · decode 3-6 · preprocess 6-13 · trace 13-75 ·
 //   svg 75-80 · pdf 80-90 · upload 90-100
 const STAGE_WEIGHTS={read:3,decode:3,preprocess:7,trace:62,svg:5,pdf:10,upload:10};const traceOneToPdfBlob=(file,onStage)=>new Promise((resolve,reject)=>{const report=(stage,within=0)=>{if(onStage)onStage(stage,within);};if(!window.ImageTracer)return reject(new Error("ImageTracer not loaded — refresh the app."));if(!window.jspdf||!window.svg2pdf)return reject(new Error("PDF libs not loaded — refresh the app."));report("read",0);const reader=new FileReader();reader.onerror=()=>reject(new Error("Failed to read file."));reader.onload=()=>{report("decode",0);const img=new Image();img.onerror=()=>reject(new Error("Failed to decode image."));img.onload=()=>{report("preprocess",0);// Downscale cap — balances trace speed against retained detail.
-// 1200 keeps traces fast on phones and produces output the user
-// has accepted as "good enough" for the HABS-class inputs.
-const MAX=1200;const scale=Math.min(1,MAX/Math.max(img.width,img.height));const w=Math.round(img.width*scale),h=Math.round(img.height*scale);const cnv=document.createElement("canvas");cnv.width=w;cnv.height=h;const ctx=cnv.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);// Preprocess: grayscale + ADAPTIVE (local-mean) threshold → high-
+// Raised 1200 → 1800 because 1200 was eating fine strokes on
+// HABS-class scans (dimension ticks, door-schedule text), making
+// converted PDFs visibly inferior to the originals. 1800 keeps
+// text legible while still fitting comfortably in phone memory.
+const MAX=1800;const scale=Math.min(1,MAX/Math.max(img.width,img.height));const w=Math.round(img.width*scale),h=Math.round(img.height*scale);const cnv=document.createElement("canvas");cnv.width=w;cnv.height=h;const ctx=cnv.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);// Preprocess: grayscale + ADAPTIVE (local-mean) threshold → high-
 // contrast B&W. A global threshold failed on photos with uneven
 // lighting — the shadow half of the page would be swallowed whole
 // as a giant black blob. Local thresholding judges each pixel
@@ -910,20 +912,17 @@ const denoise=()=>{const src=new Uint8ClampedArray(d);const isBlack=i=>src[i]<12
 // synchronous — there's no mid-trace callback — but at least the
 // user sees the bar move into this stage rather than appearing to
 // hang.
-setTimeout(()=>{let svgstr;try{// Aggressive path reduction so svg2pdf doesn't have to re-draw
-// thousands of tiny noise blobs for grainy scans:
-//   pathomit 24  → drop any path with <24 points (was 8)
-//   ltres    2.5 → coarser line fit (was 1)
-//   qtres    2.5 → coarser curve fit (was 1)
-// Visible quality loss on pure line drawings is minimal; the
-// PDF-render stage gets ~5-10× faster on HABS-scan-class inputs.
-// After the median-only denoise, real drawings still carry
-// a fair amount of detail — dimension text, door schedules,
-// hatch marks. pathomit 32 drops residual noise but keeps
-// legible text strokes. ltres/qtres 2 is the ImageTracer
-// sweet-spot for architectural line art: fits gentle curves
-// without forcing poly-segment explosion on straight walls.
-svgstr=window.ImageTracer.imagedataToSVG(id,{numberofcolors:2,pathomit:32,ltres:2,qtres:2,strokewidth:1,linefilter:true,blurradius:0,colorsampling:0,colorquantcycles:1,mincolorratio:0,pal:[{r:255,g:255,b:255,a:255},{r:0,g:0,b:0,a:255}]});}catch(e){return reject(new Error("Tracing failed: "+e.message));}report("svg",0);continueAfterTrace(svgstr);},40);return;function continueAfterTrace(svgstrArg){let svgstr=svgstrArg;// Drop the white background rectangle ImageTracer emits so the PDF
+setTimeout(()=>{let svgstr;try{// Tracing knobs tuned for text/fine-line legibility on
+// HABS-class scans. Earlier (pathomit 32 / ltres 2 / qtres 2)
+// was fast but dropped letter terminals and made walls look
+// chunky — converted PDFs came out visibly worse than the
+// source. Current settings:
+//   pathomit 16 → keep small strokes (serifs, ticks, digits)
+//   ltres    1.5 → tighter line fit (crisper walls)
+//   qtres    1.5 → tighter curve fit (cleaner arcs / doors)
+// Produces ~2-3× more paths; raster fallback and svg2pdf
+// deadline are lifted below to absorb the extra work.
+svgstr=window.ImageTracer.imagedataToSVG(id,{numberofcolors:2,pathomit:16,ltres:1.5,qtres:1.5,strokewidth:1,linefilter:true,blurradius:0,colorsampling:0,colorquantcycles:1,mincolorratio:0,pal:[{r:255,g:255,b:255,a:255},{r:0,g:0,b:0,a:255}]});}catch(e){return reject(new Error("Tracing failed: "+e.message));}report("svg",0);continueAfterTrace(svgstr);},40);return;function continueAfterTrace(svgstrArg){let svgstr=svgstrArg;// Drop the white background rectangle ImageTracer emits so the PDF
 // doesn't carry a huge solid-white path. svg2pdf would render it fine,
 // but it bloats the file.
 svgstr=svgstr.replace(/<path[^>]*fill="rgb\(255,255,255\)"[^>]*\/>/g,"");// Build an SVG DOM element for svg2pdf.
@@ -938,11 +937,11 @@ const ox=(pageW-drawW)/2,oy=(pageH-drawH)/2;report("pdf",0);// svg2pdf can take 
 // if excessive, skip the full vector re-draw and embed the cleaned
 // B&W bitmap instead — still crisp enough for Compare, completes in
 // well under a second. "Vector when cheap, raster when slow."
-const pathCount=(svgstr.match(/<path\b/g)||[]).length;// After the denoise passes, typical scans come in at a few hundred
-// paths. Lifted the raster-fallback trigger to 2000 so vector wins
-// for anything recognisable; only pathological inputs still fall
-// back to raster.
-const PATH_LIMIT=2000;const finishWithBitmap=note=>{// The ImageData has already been thresholded to pure B&W by the
+const pathCount=(svgstr.match(/<path\b/g)||[]).length;// With tighter trace (pathomit 16 / ltres 1.5) and 1800-px source,
+// typical HABS scans now land at ~1000-2500 paths. Raised from
+// 2000 → 3500 so sharp-setting vectors don't fall to raster just
+// for carrying more detail.
+const PATH_LIMIT=3500;const finishWithBitmap=note=>{// The ImageData has already been thresholded to pure B&W by the
 // preprocess step, so a JPEG re-encode is effectively lossless for
 // our purposes and ~10× smaller than a PNG. addImage is synchronous
 // and finishes in <100ms. Wrapped in try/catch so any future bug
@@ -954,11 +953,12 @@ let pdfTick=0;const pdfCreep=setInterval(()=>{pdfTick=Math.min(0.98,pdfTick+0.03
 // raster embed so the user gets *a* PDF instead of a hang. This gives
 // 30s to produce pretty vectors; after that we choose "done" over
 // "perfect".
-// 20s deadline — with the raster fallback shipping and typical
-// clean drawings tracing in under a few seconds, long vector
-// runs almost always mean something's wrong. Fall back sooner so
-// users aren't waiting unnecessarily.
-const DEADLINE_MS=20000;let raced=false;const deadline=setTimeout(()=>{if(raced)return;raced=true;clearInterval(pdfCreep);finishWithBitmap("vector timed out at 30s");},DEADLINE_MS);// Wrap in try/catch in case svg2pdf throws synchronously (some
+// 45s deadline — higher-quality trace settings (pathomit 16,
+// ltres/qtres 1.5) and the 1800-px source can push svg2pdf to
+// 15-25s on real phones for dense HABS scans. 20s was cutting
+// good vector runs off; 45s gives them room without feeling
+// infinite if something genuinely hangs.
+const DEADLINE_MS=45000;let raced=false;const deadline=setTimeout(()=>{if(raced)return;raced=true;clearInterval(pdfCreep);finishWithBitmap("vector timed out at 45s");},DEADLINE_MS);// Wrap in try/catch in case svg2pdf throws synchronously (some
 // versions do under specific DOM parse errors) — without this
 // any sync throw would bypass the deadline and leave the promise
 // dangling, which was the original "stuck at 95%" symptom.
