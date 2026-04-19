@@ -9615,6 +9615,12 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const canApproveAi=["Admin","Manager"].includes(member?.role);
   const aiReady=isAiConfigured();
   const pdfDrawings=drawings.filter(d=>/\.pdf$/i.test(d.file||""));
+  // Image drawings are eligible for Compare too (visual diff works on
+  // pixels; text diff just returns no line-level changes). Lets Preserved
+  // JPGs be compared without forcing a lossy PDF wrap.
+  const isImageDrawing=(d)=>/\.(jpg|jpeg|png|webp|gif|bmp)$/i.test(d?.file||"");
+  const isPdfDrawing=(d)=>/\.pdf$/i.test(d?.file||"");
+  const comparableDrawings=drawings.filter(d=>isPdfDrawing(d)||isImageDrawing(d));
 
   // Load drawings for current project
   useEffect(()=>{
@@ -10414,10 +10420,10 @@ Requirements:
   };
 
   const openCompare=()=>{
-    if(pdfDrawings.length<2)return;
+    if(comparableDrawings.length<2)return;
     setCompareError("");setCompareRes(null);
-    const first=pdfDrawings[0]?.id||"";
-    const second=pdfDrawings[1]?.id||first;
+    const first=comparableDrawings[0]?.id||"";
+    const second=comparableDrawings[1]?.id||first;
     setCompareBaseId(prev=>prev||first);
     setCompareTargetId(prev=>prev||(second===first?"":second));
     setShowCompare(true);
@@ -10571,17 +10577,25 @@ Requirements:
     const base=drawings.find(d=>d.id===compareBaseId);
     const target=drawings.find(d=>d.id===compareTargetId);
     if(!base||!target||base.id===target.id){
-      setCompareError("Choose 2 different PDF drawings.");
+      setCompareError("Choose 2 different drawings.");
       return;
     }
     setComparing(true);setCompareError("");setCompareRes(null);setCompareZoom(1);setComparePan({x:0,y:0});setDiffEdits({});
     setCompareAiError("");setCompareAiReport("");
     setCompareAiLocked(false);setCompareAiApprovedBy("");setCompareAiApprovedAt(null);setCompareAuditLog([]);
     try{
-      const baseUrl=DB.fileUrl("drawings",base.id,base.file);
-      const targetUrl=DB.fileUrl("drawings",target.id,target.file);
-      const[baseLines,targetLines]=await Promise.all([extractPdfLines(baseUrl),extractPdfLines(targetUrl)]);
-      const diff=comparePdfLineSets(baseLines,targetLines);
+      // Text-level diff requires both sides to be PDFs (we parse the text
+      // stream via pdf.js). For image drawings, there's no text layer —
+      // skip text diff and rely on the visual/pixel overlay below, which
+      // works for any combination of PDF + image + image.
+      const bothPdf=isPdfDrawing(base)&&isPdfDrawing(target);
+      let diff={added:[],removed:[]};
+      if(bothPdf){
+        const baseUrl=DB.fileUrl("drawings",base.id,base.file);
+        const targetUrl=DB.fileUrl("drawings",target.id,target.file);
+        const[baseLines,targetLines]=await Promise.all([extractPdfLines(baseUrl),extractPdfLines(targetUrl)]);
+        diff=comparePdfLineSets(baseLines,targetLines);
+      }
       setCompareRes({
         baseName:base.name,
         targetName:target.name,
@@ -10589,6 +10603,9 @@ Requirements:
         removed:diff.removed.slice(0,250),
         totalAdded:diff.added.length,
         totalRemoved:diff.removed.length,
+        // Flag the caller so the UI can explain why the line list is
+        // empty (image inputs have no text layer to diff).
+        textDiffSkipped:!bothPdf,
         generatedAt:Date.now()
       });
     }catch(e){
@@ -11222,7 +11239,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
     let cancelled=false;
-    const renderPage=async(url,canvas,scale=2.5)=>{
+    const renderPdfPage=async(url,canvas,scale=2.5)=>{
       const doc=await pdfjsLib.getDocument(url).promise;
       try{
         const page=await doc.getPage(1);
@@ -11231,12 +11248,34 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         await page.render({canvasContext:canvas.getContext("2d"),viewport}).promise;
       }finally{try{await doc.destroy();}catch{}}
     };
+    // Image path — load via <img> and paint to the canvas at source
+    // resolution (capped to keep the diff's temp canvases sane). No
+    // pdf.js involved, so Preserved JPGs flow through at full fidelity.
+    const renderImage=(url,canvas)=>new Promise((resolve,reject)=>{
+      const img=new Image();
+      img.crossOrigin="anonymous";
+      img.onload=()=>{
+        const CAP=3000;
+        const sc=Math.min(1,CAP/Math.max(img.width,img.height));
+        const w=Math.round(img.width*sc),h=Math.round(img.height*sc);
+        canvas.width=w;canvas.height=h;
+        const ctx=canvas.getContext("2d");
+        ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+        ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img,0,0,w,h);
+        resolve();
+      };
+      img.onerror=()=>reject(new Error("Failed to load image drawing"));
+      img.src=url;
+    });
+    const renderAny=(drawing,canvas)=>{
+      const url=DB.fileUrl("drawings",drawing.id,drawing.file);
+      return isImageDrawing(drawing)?renderImage(url,canvas):renderPdfPage(url,canvas);
+    };
     setComparePreviewLoading(true);
-    const baseUrl=DB.fileUrl("drawings",base.id,base.file);
-    const targetUrl=DB.fileUrl("drawings",target.id,target.file);
     Promise.all([
-      renderPage(baseUrl,compareBaseCanvasRef.current),
-      renderPage(targetUrl,compareTargetCanvasRef.current)
+      renderAny(base,compareBaseCanvasRef.current),
+      renderAny(target,compareTargetCanvasRef.current)
     ]).then(()=>{
       if(cancelled)return;
       // Generate pixel-diff overlay: base=blue channel, revision=red channel
@@ -11850,7 +11889,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
             </button>
             {showDiffMenu&&<div onMouseEnter={()=>clearTimeout(diffMenuTimer.current)} onMouseLeave={()=>{diffMenuTimer.current=setTimeout(()=>setShowDiffMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:4,background:"#2a2a2a",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,overflow:"hidden",zIndex:100,minWidth:200}}>
               <div style={{padding:"6px 12px 3px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",letterSpacing:"0.1em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("export.compare_header")}</div>
-              <button onClick={()=>{setShowDiffMenu(false);if(pdfDrawings.length>=2)openCompare();else alert("Upload at least 2 PDF drawings to compare.");}} disabled={pdfDrawings.length<2} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:pdfDrawings.length>=2?"pointer":"not-allowed",color:pdfDrawings.length>=2?"#d8d2ff":"rgba(216,210,255,0.3)",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{t("export.single_compare")} <span style={{color:"rgba(255,255,255,0.35)",fontWeight:400}}>{t("export.single_compare_desc")}</span></button>
+              <button onClick={()=>{setShowDiffMenu(false);if(comparableDrawings.length>=2)openCompare();else alert("Upload at least 2 drawings (PDF or image) to compare.");}} disabled={comparableDrawings.length<2} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:comparableDrawings.length>=2?"pointer":"not-allowed",color:comparableDrawings.length>=2?"#d8d2ff":"rgba(216,210,255,0.3)",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{t("export.single_compare")} <span style={{color:"rgba(255,255,255,0.35)",fontWeight:400}}>{t("export.single_compare_desc")}</span></button>
               <button onClick={()=>{setShowDiffMenu(false);setShowBatchCompare(true);}} style={{width:"100%",textAlign:"left",padding:"6px 12px",background:"none",border:"none",cursor:"pointer",color:"#d8d2ff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{t("export.batch_compare")} <span style={{color:"rgba(255,255,255,0.35)",fontWeight:400}}>{t("export.batch_compare_desc")}</span></button>
             </div>}
           </div>
@@ -12380,15 +12419,15 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                 <div style={{flex:1}}>
                   <div style={{fontSize:9,color:"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:4}}>BASE</div>
                   <select value={compareBaseId} onChange={e=>setCompareBaseId(e.target.value)} style={{width:"100%",padding:"9px 10px",borderRadius:8,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif"}}>
-                    <option value="">Select PDF</option>
-                    {pdfDrawings.map(d=><option key={d.id} value={d.id} style={{color:"#111"}}>{d.name}</option>)}
+                    <option value="">Select drawing</option>
+                    {comparableDrawings.map(d=><option key={d.id} value={d.id} style={{color:"#111"}}>{d.name}{isImageDrawing(d)?" · img":""}</option>)}
                   </select>
                 </div>
                 <div style={{flex:1}}>
                   <div style={{fontSize:9,color:"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:4}}>REVISION</div>
                   <select value={compareTargetId} onChange={e=>setCompareTargetId(e.target.value)} style={{width:"100%",padding:"9px 10px",borderRadius:8,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif"}}>
-                    <option value="">Select PDF</option>
-                    {pdfDrawings.map(d=><option key={d.id} value={d.id} style={{color:"#111"}}>{d.name}</option>)}
+                    <option value="">Select drawing</option>
+                    {comparableDrawings.map(d=><option key={d.id} value={d.id} style={{color:"#111"}}>{d.name}{isImageDrawing(d)?" · img":""}</option>)}
                   </select>
                 </div>
               </div>
