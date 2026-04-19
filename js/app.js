@@ -9903,7 +9903,13 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
         // any sync throw would bypass the deadline and leave the promise
         // dangling, which was the original "stuck at 95%" symptom.
         try{
-          window.svg2pdf(svgEl,doc,{x:ox,y:oy,width:drawW,height:drawH})
+          // svg2pdf v1.5.x returns the jsPDF instance synchronously,
+          // while later versions return a Promise. Wrap in
+          // Promise.resolve so .then works either way — the previous
+          // bare .then crashed against v1.5.0's sync return, which was
+          // why every Convert was still hitting the bitmap fallback
+          // even after we fixed the v2 API mismatch.
+          Promise.resolve(window.svg2pdf(svgEl,doc,{x:ox,y:oy,width:drawW,height:drawH}))
             .then(()=>{
               if(raced)return;
               raced=true;

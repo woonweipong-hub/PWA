@@ -965,7 +965,13 @@ const DEADLINE_MS=45000;let raced=false;const deadline=setTimeout(()=>{if(raced)
 // versions do under specific DOM parse errors) — without this
 // any sync throw would bypass the deadline and leave the promise
 // dangling, which was the original "stuck at 95%" symptom.
-try{window.svg2pdf(svgEl,doc,{x:ox,y:oy,width:drawW,height:drawH}).then(()=>{if(raced)return;raced=true;clearTimeout(deadline);clearInterval(pdfCreep);doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(120);doc.text(`Vectorised from ${file.name} — SiteShrimp Convert`,margin,pageH-5);try{resolve(doc.output("blob"));}catch(e){reject(new Error("PDF output failed: "+e.message));}}).catch(e=>{if(raced)return;raced=true;clearTimeout(deadline);clearInterval(pdfCreep);// Fall back to raster rather than rejecting — the user
+try{// svg2pdf v1.5.x returns the jsPDF instance synchronously,
+// while later versions return a Promise. Wrap in
+// Promise.resolve so .then works either way — the previous
+// bare .then crashed against v1.5.0's sync return, which was
+// why every Convert was still hitting the bitmap fallback
+// even after we fixed the v2 API mismatch.
+Promise.resolve(window.svg2pdf(svgEl,doc,{x:ox,y:oy,width:drawW,height:drawH})).then(()=>{if(raced)return;raced=true;clearTimeout(deadline);clearInterval(pdfCreep);doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(120);doc.text(`Vectorised from ${file.name} — SiteShrimp Convert`,margin,pageH-5);try{resolve(doc.output("blob"));}catch(e){reject(new Error("PDF output failed: "+e.message));}}).catch(e=>{if(raced)return;raced=true;clearTimeout(deadline);clearInterval(pdfCreep);// Fall back to raster rather than rejecting — the user
 // still wants *a* PDF out.
 finishWithBitmap(`vector failed: ${e.message||"unknown"}`);});}catch(e){if(!raced){raced=true;clearTimeout(deadline);clearInterval(pdfCreep);finishWithBitmap(`vector threw: ${e.message||"unknown"}`);}}}};img.src=reader.result;};reader.readAsDataURL(file);});// Preserve mode — lossless PDF. The key trick versus the earlier
 // attempts: the PDF page is sized so that ONE PDF POINT EQUALS ONE
