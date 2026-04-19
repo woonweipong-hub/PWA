@@ -9929,6 +9929,66 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     reader.readAsDataURL(file);
   });
 
+  // Preserve mode — lossless raster-in-PDF path. No threshold, no trace, no
+  // grayscale. Embeds the source image at its native resolution (capped at
+  // 3600 px on the long edge to keep PDF size and phone memory sane) into
+  // a PDF sized to match the source aspect. Output is not vector, but
+  // dimension text, door schedules, and notes stay fully legible — which
+  // the trace path cannot guarantee on dense HABS-class scans.
+  const preserveOneToPdfBlob=(file,onStage)=>new Promise((resolve,reject)=>{
+    const report=(stage,within=0)=>{if(onStage)onStage(stage,within);};
+    if(!window.jspdf)return reject(new Error("PDF lib not loaded — refresh the app."));
+    report("read",0);
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error("Failed to read file."));
+    reader.onload=()=>{
+      report("decode",0);
+      const img=new Image();
+      img.onerror=()=>reject(new Error("Failed to decode image."));
+      img.onload=()=>{
+        report("preprocess",0);
+        // Downscale only if the source exceeds the safety cap. Under the
+        // cap, the canvas copy is bit-identical to the source pixels, so
+        // the subsequent PNG encode is truly lossless for the visible
+        // drawing content.
+        const MAX=3600;
+        const scale=Math.min(1,MAX/Math.max(img.width,img.height));
+        const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
+        const cnv=document.createElement("canvas");
+        cnv.width=w;cnv.height=h;
+        const ctx=cnv.getContext("2d");
+        ctx.imageSmoothingEnabled=true;
+        ctx.imageSmoothingQuality="high";
+        ctx.drawImage(img,0,0,w,h);
+        report("pdf",0);
+        try{
+          const{jsPDF}=window.jspdf;
+          const landscape=w>=h;
+          const doc=new jsPDF({orientation:landscape?"l":"p",unit:"mm",format:"a4"});
+          const pageW=landscape?297:210,pageH=landscape?210:297;
+          const margin=8;
+          const scaleFit=Math.min((pageW-margin*2)/w,(pageH-margin*2)/h);
+          const drawW=w*scaleFit,drawH=h*scaleFit;
+          const ox=(pageW-drawW)/2,oy=(pageH-drawH)/2;
+          // PNG keeps text crisp with zero compression artifacts. On a
+          // 3600-px HABS scan this typically lands at 3-8 MB per page —
+          // acceptable for a drawing PDF, and the upload stage already
+          // handles large blobs.
+          const dataUrl=cnv.toDataURL("image/png");
+          doc.addImage(dataUrl,"PNG",ox,oy,drawW,drawH,"","FAST");
+          doc.setFont("helvetica","normal");doc.setFontSize(7);
+          doc.setTextColor(120);
+          doc.text(`Preserved from ${file.name} — SiteShrimp Convert (lossless)`,margin,pageH-5);
+          resolve(doc.output("blob"));
+        }catch(err){
+          reject(new Error("PDF output failed: "+err.message));
+        }
+      };
+      img.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
   // Load the four bundled sample drawings from the public GitHub repo. Lets
   // testers kick the tyres on TAG / Compare / Convert with zero setup — no
   // need to find their own drawings first.
@@ -9978,6 +10038,10 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   // than raster-edge tracing. Costs one Gemini call per image (free tier
   // handles ~1500/day).
   const[aiEnhance,setAiEnhance]=useState(false);
+  // Preserve mode — lossless raster-in-PDF. Mutex with AI ENHANCE because
+  // the three conversion paths are exclusive: vector trace (default),
+  // lossless preserve, or Gemini AI. Setters enforce the mutex below.
+  const[preserveMode,setPreserveMode]=useState(false);
   const aiEnhanceOneToPdfBlob=async(file,onStage)=>{
     const report=(stage,within=0)=>{if(onStage)onStage(stage,within);};
     if(!isAiConfigured())throw new Error("No AI provider configured — open Settings → AI Setup.");
@@ -10192,8 +10256,10 @@ Requirements:
       try{
         const blob=aiEnhance
           ?await aiEnhanceOneToPdfBlob(f,emit)
-          :await traceOneToPdfBlob(f,emit);
-        const suffix=aiEnhance?" (AI vector).pdf":" (vector).pdf";
+          :preserveMode
+            ?await preserveOneToPdfBlob(f,emit)
+            :await traceOneToPdfBlob(f,emit);
+        const suffix=aiEnhance?" (AI vector).pdf":preserveMode?" (preserved).pdf":" (vector).pdf";
         const baseName=f.name.replace(/\.[^.]+$/,"")+suffix;
         // Save locally FIRST so the user always walks away with a file
         // even if the PocketBase upload hangs or fails. Same blob is
@@ -11725,13 +11791,19 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           )}
           {canUpload&&(
             <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:3}}>
-              <button onClick={()=>convertRef.current?.click()} disabled={converting} title={aiEnhance?"Convert with Gemini AI vision — produces cleaner, semantic SVG (uses your Gemini quota)":"Convert JPG sketches to vector PDF drawings (single or batch) — offline, free, deterministic"} style={{width:"100%",borderRadius:10,background:aiEnhance?"rgba(88,86,214,0.1)":"rgba(52,199,89,0.08)",border:`1px solid ${aiEnhance?"rgba(88,86,214,0.35)":"rgba(52,199,89,0.3)"}`,cursor:converting?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 10px",gap:5}}>
-                {converting?<Spin size={16}/>:<><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 7h6l2-3h6a2 2 0 012 2v13a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z" stroke={aiEnhance?"rgba(88,86,214,0.85)":"rgba(52,160,80,0.85)"} strokeWidth="1.6" strokeLinejoin="round"/><path d="M9 13l2 2 4-4" stroke={aiEnhance?"rgba(88,86,214,0.85)":"rgba(52,160,80,0.85)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg><span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:aiEnhance?"rgba(88,86,214,0.9)":"rgba(52,160,80,0.9)"}}>{aiEnhance?"AI Convert":"Convert"}</span></>}
+              <button onClick={()=>convertRef.current?.click()} disabled={converting} title={aiEnhance?"Convert with Gemini AI vision — produces cleaner, semantic SVG (uses your Gemini quota)":preserveMode?"Lossless — embeds the source image in a PDF at full resolution. Text stays fully readable. Output is raster-in-PDF, not vector.":"Convert JPG sketches to vector PDF drawings (single or batch) — offline, free, deterministic"} style={{width:"100%",borderRadius:10,background:aiEnhance?"rgba(88,86,214,0.1)":preserveMode?"rgba(255,149,0,0.08)":"rgba(52,199,89,0.08)",border:`1px solid ${aiEnhance?"rgba(88,86,214,0.35)":preserveMode?"rgba(255,149,0,0.35)":"rgba(52,199,89,0.3)"}`,cursor:converting?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 10px",gap:5}}>
+                {converting?<Spin size={16}/>:<><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 7h6l2-3h6a2 2 0 012 2v13a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z" stroke={aiEnhance?"rgba(88,86,214,0.85)":preserveMode?"rgba(200,120,0,0.85)":"rgba(52,160,80,0.85)"} strokeWidth="1.6" strokeLinejoin="round"/><path d="M9 13l2 2 4-4" stroke={aiEnhance?"rgba(88,86,214,0.85)":preserveMode?"rgba(200,120,0,0.85)":"rgba(52,160,80,0.85)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg><span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:aiEnhance?"rgba(88,86,214,0.9)":preserveMode?"rgba(200,120,0,0.9)":"rgba(52,160,80,0.9)"}}>{aiEnhance?"AI Convert":preserveMode?"Preserve":"Convert"}</span></>}
               </button>
-              <label title="Use Gemini AI vision instead of the offline tracer — cleaner output on sketches but costs Gemini quota" style={{display:"flex",alignItems:"center",gap:4,fontSize:9,cursor:isAiConfigured()?"pointer":"not-allowed",color:isAiConfigured()?(aiEnhance?"#5856d6":"rgba(0,0,0,0.55)"):"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,justifyContent:"center",letterSpacing:"0.04em"}}>
-                <input type="checkbox" checked={aiEnhance} disabled={!isAiConfigured()||converting} onChange={e=>setAiEnhance(e.target.checked)} style={{margin:0,width:11,height:11,cursor:isAiConfigured()?"pointer":"not-allowed"}}/>
-                AI ENHANCE
-              </label>
+              <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+                <label title="Lossless — embed the source at full resolution, no tracing. Best when you need to read dimensions, notes, or door schedules." style={{display:"flex",alignItems:"center",gap:4,fontSize:9,cursor:"pointer",color:preserveMode?"#c87800":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.04em"}}>
+                  <input type="checkbox" checked={preserveMode} disabled={converting} onChange={e=>{setPreserveMode(e.target.checked);if(e.target.checked)setAiEnhance(false);}} style={{margin:0,width:11,height:11,cursor:"pointer"}}/>
+                  PRESERVE
+                </label>
+                <label title="Use Gemini AI vision instead of the offline tracer — cleaner output on sketches but costs Gemini quota" style={{display:"flex",alignItems:"center",gap:4,fontSize:9,cursor:isAiConfigured()?"pointer":"not-allowed",color:isAiConfigured()?(aiEnhance?"#5856d6":"rgba(0,0,0,0.55)"):"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.04em"}}>
+                  <input type="checkbox" checked={aiEnhance} disabled={!isAiConfigured()||converting} onChange={e=>{setAiEnhance(e.target.checked);if(e.target.checked)setPreserveMode(false);}} style={{margin:0,width:11,height:11,cursor:isAiConfigured()?"pointer":"not-allowed"}}/>
+                  AI
+                </label>
+              </div>
             </div>
           )}
           <div style={{flex:1,minWidth:0,position:"relative"}} onMouseEnter={()=>{clearTimeout(diffMenuTimer.current);setShowDiffMenu(true);}} onMouseLeave={()=>{diffMenuTimer.current=setTimeout(()=>setShowDiffMenu(false),250);}}>
