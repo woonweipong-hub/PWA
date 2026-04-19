@@ -5943,6 +5943,19 @@ function DefectsMapView({defects,allDefects,onView,onUpdate,selectMode,selectedI
             );
           })}
         </div>
+        {focusId&&!selectMode&&canEdit&&(()=>{
+          const fp=pinned.find(p=>p.d.id===focusId);
+          if(!fp)return null;
+          const sevColor=SEV_COLOR[fp.d.severity]||"#8e8e93";
+          return(
+            <div style={{display:"flex",gap:8,marginTop:8,paddingTop:8,borderTop:"1px solid rgba(0,0,0,0.07)"}}>
+              <button onClick={async()=>{
+                if(!confirm("Remove this entry's map pin?\n(The entry itself will stay — only its GPS location is cleared.)"))return;
+                try{await DB.defects.update(fp.d.id,{lat:null,lng:null,mapZoom:null});setFocusId(null);}catch(e){alert("Failed: "+e.message);}
+              }} style={{flex:1,padding:"9px 10px",borderRadius:8,border:"1px solid rgba(255,59,48,0.3)",background:"rgba(255,59,48,0.07)",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>✕ UNPIN</button>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
@@ -9315,9 +9328,6 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped,o
             ✏ MARKUP {markupTool?"· ON":""}
           </button>
         )}
-        <button onClick={()=>setShowList(v=>!v)} style={{padding:"8px 12px",borderRadius:10,border:"1px solid "+(showList?"rgba(52,170,220,0.4)":"rgba(0,0,0,0.12)"),background:showList?"rgba(52,170,220,0.12)":"#fff",color:showList?"#2b8bb8":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-          📋 LIST ({mapDefects.length})
-        </button>
         {mapDefects.length>0&&(
           <button onClick={fitToAllPins} title="Recenter map to show every pinned entry in this project" style={{padding:"8px 12px",borderRadius:10,border:"1px solid rgba(255,107,0,0.3)",background:"#fff",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
             🎯 FIT
@@ -9410,41 +9420,6 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped,o
         {/* Floating LIST overlay — drawn on top of the map so opening it
             doesn't push the map past the bottom nav. Pointer events only on
             the panel itself; the rest of the map stays interactive. */}
-        {showList&&(
-          <div style={{position:"absolute",top:8,left:8,right:8,maxHeight:"calc(100% - 16px)",background:"#fff",border:"1px solid rgba(0,0,0,0.12)",borderRadius:10,boxShadow:"0 6px 20px rgba(0,0,0,0.18)",overflowY:"auto",zIndex:600,display:"flex",flexDirection:"column"}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderBottom:"1px solid rgba(0,0,0,0.06)",position:"sticky",top:0,background:"#fff",zIndex:1}}>
-              <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#1a1a1a",letterSpacing:"0.04em"}}>📋 ALL PINS ({mapDefects.length})</div>
-              <button onClick={()=>setShowList(false)} title="Close list" aria-label="Close list" style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:"50%",width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:16,lineHeight:1,color:"rgba(0,0,0,0.6)",flexShrink:0}}>×</button>
-            </div>
-            {mapDefects.length===0?(
-              <div style={{padding:"18px 16px",textAlign:"center",color:"rgba(0,0,0,0.45)",fontSize:12}}>No map-pinned entries yet. Drop a pin to start.</div>
-            ):(
-              <div style={{padding:8}}>
-                <div style={{fontSize:10,color:"rgba(0,0,0,0.45)",padding:"2px 4px 8px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.04em",lineHeight:1.35}}>
-                  Tap a row to focus. Use actions to edit or unpin. Drag a pin on the map to move it.
-                </div>
-                {mapDefects.map(d=>(
-                  <div key={d.id} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",marginBottom:4,borderRadius:8,border:"1px solid rgba(0,0,0,0.06)",background:"#fafafa"}}>
-                    <button onClick={()=>{if(!mapObj.current)return;focusOnDefect(d);setFocusedDefectId(d.id);setShowList(false);}} title="Focus this pin on the map" style={{display:"flex",flex:1,minWidth:0,alignItems:"center",gap:8,padding:"2px 0",background:"none",border:"none",cursor:"pointer",textAlign:"left"}}>
-                      <span style={{width:10,height:10,borderRadius:"50%",background:SEV_COLOR[d.severity]||"#8e8e93",flexShrink:0}}/>
-                      <span style={{flex:1,fontSize:12,fontWeight:700,color:"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title||"Entry"}</span>
-                    </button>
-                    {canEdit&&onViewEntry&&(
-                      <button onClick={()=>{onViewEntry(d);}} title="Open entry to edit title, severity, notes…" style={{padding:"6px 8px",borderRadius:8,border:"1px solid rgba(0,0,0,0.12)",background:"#fff",color:"rgba(0,0,0,0.65)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",minHeight:32}}>✎ EDIT</button>
-                    )}
-                    {canEdit&&(
-                      <button onClick={async()=>{
-                        if(!confirm(`Unpin "${d.title||"Entry"}" from the map?\n(The entry itself stays — only its GPS location is cleared.)`))return;
-                        try{await DB.defects.update(d.id,{lat:null,lng:null,mapZoom:null});}
-                        catch(e){alert("Unpin failed: "+e.message);}
-                      }} title="Clear GPS location — entry itself remains" style={{padding:"6px 8px",borderRadius:8,border:"1px solid rgba(255,59,48,0.35)",background:"rgba(255,59,48,0.08)",color:"#cc0000",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",minHeight:32}}>🗑 UNPIN</button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </div>
       {/* Always-visible pin chip strip + preview card — mirrors
           REVIEW > ENTRIES > MAP (DefectsMapView). Strip shows every pinned
@@ -9487,6 +9462,10 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped,o
               <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",marginTop:4,fontFamily:"monospace"}}>{focusedDefect.lat.toFixed(5)}, {focusedDefect.lng.toFixed(5)}</div>
             </div>
             <button onClick={()=>setFocusedDefectId(null)} title="Close preview" aria-label="Close preview" style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:"50%",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:18,lineHeight:1,color:"rgba(0,0,0,0.55)",flexShrink:0}}>×</button>
+          </div>
+          <div style={{display:"flex",gap:8,marginTop:10}}>
+            {onViewEntry&&<button onClick={()=>{onViewEntry(focusedDefect);setFocusedDefectId(null);}} style={{flex:1,padding:"9px 10px",borderRadius:8,border:"1px solid rgba(255,107,0,0.35)",background:"rgba(255,107,0,0.08)",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>✏ EDIT</button>}
+            <button onClick={async()=>{if(!confirm("Remove GPS pin from this entry?"))return;await DB.defects.update(focusedDefect.id,{lat:null,lng:null,mapZoom:null});setFocusedDefectId(null);}} style={{flex:1,padding:"9px 10px",borderRadius:8,border:"1px solid rgba(255,59,48,0.3)",background:"rgba(255,59,48,0.07)",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>✕ UNPIN</button>
           </div>
         </div>
       )}
