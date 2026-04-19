@@ -964,21 +964,29 @@ const DEADLINE_MS=45000;let raced=false;const deadline=setTimeout(()=>{if(raced)
 // dangling, which was the original "stuck at 95%" symptom.
 try{window.svg2pdf(svgEl,doc,{x:ox,y:oy,width:drawW,height:drawH}).then(()=>{if(raced)return;raced=true;clearTimeout(deadline);clearInterval(pdfCreep);doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(120);doc.text(`Vectorised from ${file.name} — SiteShrimp Convert`,margin,pageH-5);try{resolve(doc.output("blob"));}catch(e){reject(new Error("PDF output failed: "+e.message));}}).catch(e=>{if(raced)return;raced=true;clearTimeout(deadline);clearInterval(pdfCreep);// Fall back to raster rather than rejecting — the user
 // still wants *a* PDF out.
-finishWithBitmap(`vector failed: ${e.message||"unknown"}`);});}catch(e){if(!raced){raced=true;clearTimeout(deadline);clearInterval(pdfCreep);finishWithBitmap(`vector threw: ${e.message||"unknown"}`);}}}};img.src=reader.result;};reader.readAsDataURL(file);});// Preserve mode — lossless raster-in-PDF path. No threshold, no trace, no
-// grayscale. Embeds the source image at its native resolution (capped at
-// 3600 px on the long edge to keep PDF size and phone memory sane) into
-// a PDF sized to match the source aspect. Output is not vector, but
-// dimension text, door schedules, and notes stay fully legible — which
-// the trace path cannot guarantee on dense HABS-class scans.
-const preserveOneToPdfBlob=(file,onStage)=>new Promise((resolve,reject)=>{const report=(stage,within=0)=>{if(onStage)onStage(stage,within);};if(!window.jspdf)return reject(new Error("PDF lib not loaded — refresh the app."));report("read",0);const reader=new FileReader();reader.onerror=()=>reject(new Error("Failed to read file."));reader.onload=()=>{report("decode",0);const img=new Image();img.onerror=()=>reject(new Error("Failed to decode image."));img.onload=()=>{report("preprocess",0);// Downscale only if the source exceeds the safety cap. Under the
-// cap, the canvas copy is bit-identical to the source pixels, so
-// the subsequent PNG encode is truly lossless for the visible
-// drawing content.
-const MAX=3600;const scale=Math.min(1,MAX/Math.max(img.width,img.height));const w=Math.round(img.width*scale),h=Math.round(img.height*scale);const cnv=document.createElement("canvas");cnv.width=w;cnv.height=h;const ctx=cnv.getContext("2d");ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";ctx.drawImage(img,0,0,w,h);report("pdf",0);try{const{jsPDF}=window.jspdf;const landscape=w>=h;const doc=new jsPDF({orientation:landscape?"l":"p",unit:"mm",format:"a4"});const pageW=landscape?297:210,pageH=landscape?210:297;const margin=8;const scaleFit=Math.min((pageW-margin*2)/w,(pageH-margin*2)/h);const drawW=w*scaleFit,drawH=h*scaleFit;const ox=(pageW-drawW)/2,oy=(pageH-drawH)/2;// PNG keeps text crisp with zero compression artifacts. On a
-// 3600-px HABS scan this typically lands at 3-8 MB per page —
-// acceptable for a drawing PDF, and the upload stage already
-// handles large blobs.
-const dataUrl=cnv.toDataURL("image/png");doc.addImage(dataUrl,"PNG",ox,oy,drawW,drawH,"","FAST");doc.setFont("helvetica","normal");doc.setFontSize(7);doc.setTextColor(120);doc.text(`Preserved from ${file.name} — SiteShrimp Convert (lossless)`,margin,pageH-5);resolve(doc.output("blob"));}catch(err){reject(new Error("PDF output failed: "+err.message));}};img.src=reader.result;};reader.readAsDataURL(file);});// Load the four bundled sample drawings from the public GitHub repo. Lets
+finishWithBitmap(`vector failed: ${e.message||"unknown"}`);});}catch(e){if(!raced){raced=true;clearTimeout(deadline);clearInterval(pdfCreep);finishWithBitmap(`vector threw: ${e.message||"unknown"}`);}}}};img.src=reader.result;};reader.readAsDataURL(file);});// Preserve mode — truly lossless raster-in-PDF. Three things make this
+// different from the earlier preserve path (which was soft):
+//   1. JPEG/PNG sources are embedded as raw bytes — no canvas, no
+//      decode/re-encode pass. The PDF is effectively a thin wrapper
+//      around the original file.
+//   2. The PDF page size is chosen to match the image aspect at 150 DPI,
+//      not forced to A4. No scale-to-fit, no centering, no margins —
+//      so the viewer doesn't resample the image down to A4-worth of
+//      pixels when rendering.
+//   3. No downscale cap. Source resolution is preserved verbatim.
+// Canvas fallback only kicks in for exotic formats (WebP, GIF…) that
+// jsPDF's addImage can't embed natively.
+const preserveOneToPdfBlob=(file,onStage)=>new Promise((resolve,reject)=>{const report=(stage,within=0)=>{if(onStage)onStage(stage,within);};if(!window.jspdf)return reject(new Error("PDF lib not loaded — refresh the app."));report("read",0);const reader=new FileReader();reader.onerror=()=>reject(new Error("Failed to read file."));reader.onload=()=>{report("decode",0);const dataUrl=reader.result;const isJpeg=/^data:image\/(jpeg|jpg);/i.test(dataUrl);const isPng=/^data:image\/png;/i.test(dataUrl);const rawPath=isJpeg||isPng;const img=new Image();img.onerror=()=>reject(new Error("Failed to decode image."));img.onload=()=>{report("preprocess",0);try{const{jsPDF}=window.jspdf;const srcW=img.width,srcH=img.height;// Page size in mm chosen so that rendering the embedded image
+// at 150 DPI reproduces the source pixel dimensions. Drawing
+// viewers can still fit-to-width; this just avoids forcing an
+// A4 downsample baked into the page geometry.
+const mmPerPx=25.4/150;const pageW=srcW*mmPerPx,pageH=srcH*mmPerPx;const doc=new jsPDF({orientation:pageW>=pageH?"l":"p",unit:"mm",format:[pageW,pageH]});report("pdf",0);if(rawPath){// addImage with a raw JPEG/PNG dataURL and matching format
+// flag embeds the bytes verbatim — no re-encoding, fully
+// lossless (for JPEG, as lossy as the source already was;
+// for PNG, bit-perfect).
+const fmt=isJpeg?"JPEG":"PNG";doc.addImage(dataUrl,fmt,0,0,pageW,pageH);}else{// Canvas fallback for WebP/GIF/etc. One decode + one PNG
+// encode, at source resolution (no downscale).
+const cnv=document.createElement("canvas");cnv.width=srcW;cnv.height=srcH;cnv.getContext("2d").drawImage(img,0,0);doc.addImage(cnv.toDataURL("image/png"),"PNG",0,0,pageW,pageH);}resolve(doc.output("blob"));}catch(err){reject(new Error("PDF output failed: "+err.message));}};img.src=dataUrl;};reader.readAsDataURL(file);});// Load the four bundled sample drawings from the public GitHub repo. Lets
 // testers kick the tyres on TAG / Compare / Convert with zero setup — no
 // need to find their own drawings first.
 // License/provenance-tagged so every drawing carries its own credit line.
