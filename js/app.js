@@ -1394,12 +1394,12 @@ async function geminiGenerate(apiKey,body){
   return res;
 }
 
-async function analyzeWithGemini(apiKey,base64Image){
+async function analyzeWithGemini(apiKey,base64Image,prompt){
   try{
     const b64=base64Image.split(",")[1];
     const res=await geminiGenerate(apiKey,{contents:[{parts:[
       {inline_data:{mime_type:"image/jpeg",data:b64}},
-      {text:getAIPrompt()}
+      {text:prompt||getAIPrompt()}
     ]}]});
     const data=await res.json();
     const parts=data.candidates?.[0]?.content?.parts||[];
@@ -1409,14 +1409,14 @@ async function analyzeWithGemini(apiKey,base64Image){
   }catch{return null;}
 }
 
-async function analyzeWithOllama(cfg,base64Image){
+async function analyzeWithOllama(cfg,base64Image,prompt){
   try{
     const b64=base64Image.split(",")[1];
     const url=(cfg.url||"http://localhost:11434").replace(/\/+$/,"");
     const model=cfg.model||"llava";
     const res=await fetch(url+"/api/generate",{
       method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({model,prompt:getAIPrompt(),images:[b64],stream:false})
+      body:JSON.stringify({model,prompt:prompt||getAIPrompt(),images:[b64],stream:false})
     });
     const data=await res.json();
     const text=data.response||"{}";
@@ -1424,7 +1424,7 @@ async function analyzeWithOllama(cfg,base64Image){
   }catch{return null;}
 }
 
-async function analyzeWithOpenAI(cfg,base64Image){
+async function analyzeWithOpenAI(cfg,base64Image,prompt){
   try{
     const b64=base64Image.split(",")[1];
     const url=(cfg.url||"https://api.openai.com").replace(/\/+$/,"");
@@ -1434,7 +1434,7 @@ async function analyzeWithOpenAI(cfg,base64Image){
       headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},
       body:JSON.stringify({model,max_tokens:300,messages:[{role:"user",content:[
         {type:"image_url",image_url:{url:"data:image/jpeg;base64,"+b64,detail:"low"}},
-        {type:"text",text:AI_PROMPT}
+        {type:"text",text:prompt||getAIPrompt()}
       ]}]})
     });
     const data=await res.json();
@@ -1443,21 +1443,22 @@ async function analyzeWithOpenAI(cfg,base64Image){
   }catch{return null;}
 }
 
-// Unified dispatcher — picks the right provider based on user settings
-async function analyzePhoto(base64Image){
+// Unified dispatcher — picks the right provider based on user settings.
+// Optional `prompt` overrides the default getAIPrompt() for context-aware calls.
+async function analyzePhoto(base64Image,prompt){
   const provider=local.get(AI_PROVIDER_KEY)||"gemini";
   if(provider==="ollama"){
     const cfg=local.get(OLLAMA_KEY)||{};
-    return analyzeWithOllama(cfg,base64Image);
+    return analyzeWithOllama(cfg,base64Image,prompt);
   }
   if(provider==="openai"){
     const cfg=local.get(OPENAI_KEY)||{};
-    return analyzeWithOpenAI(cfg,base64Image);
+    return analyzeWithOpenAI(cfg,base64Image,prompt);
   }
   // Default: Gemini
   const key=local.get(GEMINI_KEY);
   if(!key)return null;
-  return analyzeWithGemini(key,base64Image);
+  return analyzeWithGemini(key,base64Image,prompt);
 }
 
 // SHA-256 of the raw photo bytes (not the data-URL prefix). Used to key the
@@ -4893,7 +4894,29 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   const[saving,setSaving]=useState(false);const[analyzing,setAnalyzing]=useState(false);const[aiResult,setAiResult]=useState(null);
   const[count,setCount]=useState(0);const[last,setLast]=useState(null);const[showBatch,setShowBatch]=useState(false);
   const[showMoreDetails,setShowMoreDetails]=useState(false);
+  // Option B: add extra photo to the just-saved entry without creating a new one
+  const[addPhotoData,setAddPhotoData]=useState(null);
+  const[addPhotoAnalyzing,setAddPhotoAnalyzing]=useState(false);
+  const[addPhotoAiDesc,setAddPhotoAiDesc]=useState("");
+  const[addPhotoSaving,setAddPhotoSaving]=useState(false);
+  const addPhotoRef=useRef();
   const saveAndDoneRef=useRef(false);
+
+  // Build a context-enriched AI prompt from the previous entry's metadata.
+  // The extra clause tells AI the floor/zone/trade so its suggestions are more
+  // targeted when logging several defects on the same run.
+  const buildContextPrompt=(ctx)=>{
+    const base=getAIPrompt();
+    if(!ctx)return base;
+    const parts=[];
+    if(ctx.locationLevel)parts.push(`floor/level: ${ctx.locationLevel}`);
+    if(ctx.locationZone)parts.push(`zone: ${ctx.locationZone}`);
+    if(ctx.location)parts.push(`location: ${ctx.location}`);
+    if(ctx.workCategory)parts.push(`work category: ${ctx.workCategory}`);
+    if(ctx.component)parts.push(`trade: ${ctx.component}`);
+    if(!parts.length)return base;
+    return base+` Site context from previous entry — ${parts.join(', ')}. Use this to sharpen severity and trade guesses; same floor/zone commonly shares defect types.`;
+  };
   const[speakTranscript,setSpeakTranscript]=useState("");
   const[showTypeManager,setShowTypeManager]=useState(false);
   const[customTypes,setCustomTypes]=useState(()=>getCustomTypes());
@@ -4992,9 +5015,10 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         setAnalyzing(false);
         return;
       }
-      // 3) Real API call.
+      // 3) Real API call. Pass context from previous entry when available so
+      // AI can make sharper guesses for sequential same-area logging.
       const compressed=await compressPhoto(photo,600,0.7);
-      const result=await analyzePhoto(compressed||photo);
+      const result=await analyzePhoto(compressed||photo,buildContextPrompt(last));
       if(result&&(result.title||result.description)){
         local.set(AI_LIMIT_KEY,{date:today,count:todayCount+1});
         writeAiCache(hash,result);
@@ -5085,6 +5109,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         workCategory:form.workCategory,queued:saveResult==="queued",
         savedEntry:saveResult&&saveResult!=="queued"?{...saveResult,title:effectiveTitle,location:locationDisplay||form.location,severity:form.severity,trade,status:"Open",assignee:form.assignee,loggedBy:member?.name||"",loggedByRole:member?.role||"",description:form.description,component:form.component,entryType:form.entryType||"Defect"}:null});
       setCount(c=>c+1);setForm(blank);setAiResult(null);setSpeakTranscript("");
+      setAddPhotoData(null);setAddPhotoAiDesc("");setAddPhotoSaving(false);
       if(saveAndDoneRef.current){saveAndDoneRef.current=false;/* stay on form, batch screen not shown — parent tab switch handles "done" */}
       else{setShowBatch(true);}
     }catch(e){alert("Error saving: "+e.message);}
@@ -5196,6 +5221,75 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         <div style={{display:"flex",gap:8,marginBottom:10}}>
           {onTagDrawing&&<button onClick={()=>{setShowBatch(false);onTagDrawing(last.savedEntry);}} style={{flex:1,background:"#5856d6",border:"none",borderRadius:12,padding:14,color:"#fff",fontSize:13,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>📐 TAG DRAWING</button>}
           {onViewEntry&&<button onClick={()=>{setShowBatch(false);onViewEntry(last.savedEntry);}} style={{flex:1,background:"#1a1a1a",border:"none",borderRadius:12,padding:14,color:"#fff",fontSize:13,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>✏️ EDIT DETAILS</button>}
+        </div>
+      )}
+      {/* Add extra photo to the same entry — for multi-angle shots of one defect */}
+      {last?.savedEntry&&!last?.queued&&(
+        <div style={{marginBottom:10}}>
+          <input type="file" accept="image/*" capture="environment" ref={addPhotoRef} style={{display:"none"}} onChange={async e=>{
+            const file=e.target.files?.[0];
+            if(!file)return;
+            if(addPhotoRef.current)addPhotoRef.current.value="";
+            const reader=new FileReader();
+            reader.onload=async()=>{
+              const dataUrl=reader.result;
+              setAddPhotoData(dataUrl);
+              setAddPhotoAiDesc("");
+              if(!aiReady)return;
+              setAddPhotoAnalyzing(true);
+              try{
+                const compressed=await compressPhoto(dataUrl,600,0.7);
+                const entry=last.savedEntry;
+                const ctxPrompt=`This is an additional supporting photo for an existing defect entry titled "${entry.title||"defect"}" (${entry.severity||"Major"}, ${entry.location||"on site"}). Analyze what this photo shows as a supplementary view. Respond in valid JSON only: {"description":"2 sentence update describing what this additional photo reveals","safety_risk":1}`;
+                const result=await analyzePhoto(compressed||dataUrl,ctxPrompt);
+                if(result?.description)setAddPhotoAiDesc(result.description);
+              }catch{}
+              setAddPhotoAnalyzing(false);
+            };
+            reader.readAsDataURL(file);
+          }}/>
+          {!addPhotoData?(
+            <button onClick={()=>addPhotoRef.current?.click()} style={{width:"100%",background:"rgba(255,107,0,0.07)",border:"1.5px dashed rgba(255,107,0,0.4)",borderRadius:12,padding:13,color:"#ff6b00",fontSize:13,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+              📷 ADD PHOTO TO THIS ENTRY
+            </button>
+          ):(
+            <div style={{background:"#fff",borderRadius:12,border:"1px solid rgba(0,0,0,0.1)",padding:12,display:"flex",flexDirection:"column",gap:10}}>
+              <div style={{fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif"}}>ADDING PHOTO TO: {(last.savedEntry.title||"Entry").slice(0,40)}</div>
+              <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
+                <img src={addPhotoData} alt="" style={{width:80,height:80,borderRadius:8,objectFit:"cover",flexShrink:0}}/>
+                <div style={{flex:1,minWidth:0}}>
+                  {addPhotoAnalyzing&&<div style={{fontSize:11,color:"#5856d6",display:"flex",alignItems:"center",gap:6}}><Spin size={12}/>AI analyzing…</div>}
+                  {addPhotoAiDesc&&!addPhotoAnalyzing&&(
+                    <div>
+                      <div style={{fontSize:10,fontWeight:700,color:"#5856d6",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif"}}>AI DESCRIPTION UPDATE</div>
+                      <textarea value={addPhotoAiDesc} onChange={e=>setAddPhotoAiDesc(e.target.value)} rows={3} style={{width:"100%",fontSize:11,padding:"6px 8px",borderRadius:7,border:"1px solid rgba(88,86,214,0.3)",background:"rgba(88,86,214,0.04)",resize:"vertical",fontFamily:"'Barlow',sans-serif"}}/>
+                    </div>
+                  )}
+                  {!addPhotoAiDesc&&!addPhotoAnalyzing&&<div style={{fontSize:11,color:"rgba(0,0,0,0.35)"}}>Photo ready to save.</div>}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>{setAddPhotoData(null);setAddPhotoAiDesc("");}} disabled={addPhotoSaving} style={{flex:1,padding:"10px",borderRadius:8,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",color:"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>Cancel</button>
+                <button disabled={addPhotoSaving||addPhotoAnalyzing} onClick={async()=>{
+                  setAddPhotoSaving(true);
+                  try{
+                    const compressed=await compressPhoto(addPhotoData)||addPhotoData;
+                    const entry=last.savedEntry;
+                    const currentExtras=Array.isArray(entry.extraPhotos)?entry.extraPhotos:[];
+                    const updates={extraPhotos:[...currentExtras,compressed]};
+                    if(addPhotoAiDesc.trim())updates.description=addPhotoAiDesc.trim();
+                    await DB.defects.update(entry.id,updates);
+                    // Update local last.savedEntry so subsequent adds stack correctly
+                    setLast(prev=>({...prev,savedEntry:{...prev.savedEntry,extraPhotos:[...currentExtras,compressed],...(addPhotoAiDesc.trim()?{description:addPhotoAiDesc.trim()}:{})}}));
+                    setAddPhotoData(null);setAddPhotoAiDesc("");
+                  }catch(e){alert("Failed to add photo: "+e.message);}
+                  setAddPhotoSaving(false);
+                }} style={{flex:2,padding:"10px",borderRadius:8,border:"none",background:addPhotoSaving||addPhotoAnalyzing?"rgba(0,0,0,0.1)":"#ff6b00",color:addPhotoSaving||addPhotoAnalyzing?"rgba(0,0,0,0.3)":"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:addPhotoSaving||addPhotoAnalyzing?"not-allowed":"pointer"}}>
+                  {addPhotoSaving?"Saving…":"✓ SAVE PHOTO"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
       <button onClick={()=>{setForm({...blank,
