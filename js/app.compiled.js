@@ -724,11 +724,10 @@ const[selectedPinIds,setSelectedPinIds]=useState(()=>new Set());const[mapAdditiv
 const[mapMarkups,setMapMarkups]=useState([]);// session-only, not yet persisted
 const[pendingPhoto,setPendingPhoto]=useState(null);// {dataUrl, aspect}
 const markupDrawRef=useRef(null);// {tool, first:{lat,lng}, tempLayer, points[]}
-const markupLayersRef=useRef([]);const photoInputRef=useRef(null);const provider=providerRef.current;const canEdit=member?.role!=="viewer";// Filter defects that have GPS coords for current project
-// Tolerant of string-number round-trip from PocketBase FormData uploads —
-// parseFloat + isFinite lets legacy records render even if the subscription
-// normaliser missed them (e.g. offline sync path).
-const mapDefects=(defects||[]).map(d=>{const lat=typeof d.lat==="number"?d.lat:parseFloat(d.lat);const lng=typeof d.lng==="number"?d.lng:parseFloat(d.lng);return Number.isFinite(lat)&&Number.isFinite(lng)?{...d,lat,lng}:null;}).filter(Boolean);// Resolve the focused defect (for the slide-up preview card) and supply
+const markupLayersRef=useRef([]);const photoInputRef=useRef(null);const provider=providerRef.current;const canEdit=member?.role!=="viewer";// Use the same parseDefectCoords as REVIEW > MAP for exact parity —
+// handles null lat/lng by falling back to parsing the description/location
+// text (e.g. "Pinned on map at 1.32915, 103.70271").
+const mapDefects=(defects||[]).map(d=>{const c=parseDefectCoords(d);return c?{...d,lat:c.lat,lng:c.lng}:null;}).filter(Boolean);// Resolve the focused defect (for the slide-up preview card) and supply
 // a pan helper that the chip strip + marker taps can call. Placed here
 // so mapDefects is already in scope.
 const focusedDefect=mapDefects.find(d=>d.id===focusedDefectId)||null;const focusOnDefect=d=>{if(!d||!mapObj.current)return;if(providerRef.current==="gmaps"){mapObj.current.setCenter({lat:d.lat,lng:d.lng});if((mapObj.current.getZoom()||0)<18)mapObj.current.setZoom(19);}else{mapObj.current.setView([d.lat,d.lng],Math.max(mapObj.current.getZoom()||17,19));}};// ── Google Maps path ───────────────────────────────────────────
