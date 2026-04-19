@@ -9695,7 +9695,10 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const traceOneToPdfBlob=(file,onStage)=>new Promise((resolve,reject)=>{
     const report=(stage,within=0)=>{if(onStage)onStage(stage,within);};
     if(!window.ImageTracer)return reject(new Error("ImageTracer not loaded — refresh the app."));
-    if(!window.jspdf||!window.svg2pdf)return reject(new Error("PDF libs not loaded — refresh the app."));
+    // svg2pdf.js v2 registers as a jsPDF plugin (doc.svg(...)) rather than
+    // exposing a callable window.svg2pdf — we check the plugin method on
+    // the jsPDF instance just below, after construction.
+    if(!window.jspdf)return reject(new Error("PDF lib not loaded — refresh the app."));
     report("read",0);
     const reader=new FileReader();
     reader.onerror=()=>reject(new Error("Failed to read file."));
@@ -9903,7 +9906,10 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
         // any sync throw would bypass the deadline and leave the promise
         // dangling, which was the original "stuck at 95%" symptom.
         try{
-          window.svg2pdf(svgEl,doc,{x:ox,y:oy,width:drawW,height:drawH})
+          if(typeof doc.svg!=="function"){
+            throw new Error("svg2pdf plugin not ready");
+          }
+          doc.svg(svgEl,{x:ox,y:oy,width:drawW,height:drawH})
             .then(()=>{
               if(raced)return;
               raced=true;
@@ -10053,7 +10059,8 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     const report=(stage,within=0)=>{if(onStage)onStage(stage,within);};
     if(!isAiConfigured())throw new Error("No AI provider configured — open Settings → AI Setup.");
     const key=local.get(GEMINI_KEY); // Only used by the Gemini branch below.
-    if(!window.jspdf||!window.svg2pdf)throw new Error("PDF libs not loaded — refresh the app.");
+    // svg2pdf v2 is a jsPDF plugin — checked as doc.svg after construction.
+    if(!window.jspdf)throw new Error("PDF lib not loaded — refresh the app.");
     report("read",0);
     const dataUrl=await new Promise((resolve,reject)=>{
       const r=new FileReader();r.onerror=()=>reject(new Error("Failed to read file."));
@@ -10170,7 +10177,8 @@ Requirements:
     const drawW=w*scaleFit,drawH=h*scaleFit;
     const ox=(pageW-drawW)/2,oy=(pageH-drawH)/2;
     report("pdf",0);
-    await window.svg2pdf(svgEl,doc,{x:ox,y:oy,width:drawW,height:drawH});
+    if(typeof doc.svg!=="function")throw new Error("svg2pdf plugin not loaded — refresh the app.");
+    await doc.svg(svgEl,{x:ox,y:oy,width:drawW,height:drawH});
     doc.setFont("helvetica","normal");doc.setFontSize(7);
     doc.setTextColor(120);
     doc.text(`AI-Enhanced from ${file.name} — SiteShrimp Convert (Gemini)`,margin,pageH-5);
