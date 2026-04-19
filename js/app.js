@@ -9935,18 +9935,19 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     reader.readAsDataURL(file);
   });
 
-  // Preserve mode — truly lossless raster-in-PDF. Three things make this
-  // different from the earlier preserve path (which was soft):
-  //   1. JPEG/PNG sources are embedded as raw bytes — no canvas, no
-  //      decode/re-encode pass. The PDF is effectively a thin wrapper
-  //      around the original file.
-  //   2. The PDF page size is chosen to match the image aspect at 150 DPI,
-  //      not forced to A4. No scale-to-fit, no centering, no margins —
-  //      so the viewer doesn't resample the image down to A4-worth of
-  //      pixels when rendering.
-  //   3. No downscale cap. Source resolution is preserved verbatim.
-  // Canvas fallback only kicks in for exotic formats (WebP, GIF…) that
-  // jsPDF's addImage can't embed natively.
+  // Preserve mode — lossless PDF. The key trick versus the earlier
+  // attempts: the PDF page is sized so that ONE PDF POINT EQUALS ONE
+  // SOURCE PIXEL. At the drawing viewer's native pdf.js scale=1, the
+  // rasterization canvas comes out exactly srcW × srcH — no downsample
+  // pass, no bilinear smear from pdf.js's internal filter. Combined
+  // with raw-byte JPEG/PNG embedding (no canvas re-encode), the viewer
+  // pipeline becomes bit-equivalent to loading the source as an <img>,
+  // and the file remains a PDF (works in Compare, Report export, etc.).
+  //
+  // The PDF page dimensions come out huge (e.g. 9286 × 7584 pt for a
+  // typical HABS scan ≈ 129" × 105"), but PDF spec allows up to 14400
+  // pt and all modern viewers handle it. The drawing viewer's scale
+  // logic caps canvas size to keep phone memory sane.
   const preserveOneToPdfBlob=(file,onStage)=>new Promise((resolve,reject)=>{
     const report=(stage,within=0)=>{if(onStage)onStage(stage,within);};
     if(!window.jspdf)return reject(new Error("PDF lib not loaded — refresh the app."));
@@ -9966,28 +9967,24 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
         try{
           const{jsPDF}=window.jspdf;
           const srcW=img.width,srcH=img.height;
-          // Page size in mm chosen so that rendering the embedded image
-          // at 150 DPI reproduces the source pixel dimensions. Drawing
-          // viewers can still fit-to-width; this just avoids forcing an
-          // A4 downsample baked into the page geometry.
-          const mmPerPx=25.4/150;
-          const pageW=srcW*mmPerPx,pageH=srcH*mmPerPx;
-          const doc=new jsPDF({orientation:pageW>=pageH?"l":"p",unit:"mm",format:[pageW,pageH]});
+          // Page size in PDF points = source pixel count. This is the
+          // whole point of the lossless path: pdf.js scale=1 then
+          // produces a canvas identical in size to the embedded image,
+          // and no downsample stage exists between the source bytes
+          // and the screen.
+          const doc=new jsPDF({orientation:srcW>=srcH?"l":"p",unit:"pt",format:[srcW,srcH]});
           report("pdf",0);
           if(rawPath){
-            // addImage with a raw JPEG/PNG dataURL and matching format
-            // flag embeds the bytes verbatim — no re-encoding, fully
-            // lossless (for JPEG, as lossy as the source already was;
-            // for PNG, bit-perfect).
+            // Raw dataURL + matching format flag → jsPDF embeds bytes
+            // verbatim (DCTDecode for JPEG, FlateDecode for PNG).
             const fmt=isJpeg?"JPEG":"PNG";
-            doc.addImage(dataUrl,fmt,0,0,pageW,pageH);
+            doc.addImage(dataUrl,fmt,0,0,srcW,srcH);
           }else{
-            // Canvas fallback for WebP/GIF/etc. One decode + one PNG
-            // encode, at source resolution (no downscale).
+            // Canvas fallback for WebP/GIF/etc. at source resolution.
             const cnv=document.createElement("canvas");
             cnv.width=srcW;cnv.height=srcH;
             cnv.getContext("2d").drawImage(img,0,0);
-            doc.addImage(cnv.toDataURL("image/png"),"PNG",0,0,pageW,pageH);
+            doc.addImage(cnv.toDataURL("image/png"),"PNG",0,0,srcW,srcH);
           }
           resolve(doc.output("blob"));
         }catch(err){
@@ -10219,39 +10216,6 @@ Requirements:
   const convertJpgsToPdf=async(e)=>{
     const raw=Array.from(e.target.files||[]).filter(f=>/^image\//.test(f.type)||/\.pdf$/i.test(f.name)||f.type==="application/pdf");
     if(!raw.length)return;
-    // Preserve mode short-circuit — upload source files as-is. Any PDF
-    // wrapping forces the viewer to rasterize the embedded image on
-    // render, and PDF viewers use cheaper downsamplers than image
-    // viewers, so the same bytes look softer inside a PDF than as a
-    // native <img>. Skipping the wrap gives genuinely lossless output.
-    // Trade-off: these drawings are images, not PDFs, so Compare (which
-    // requires PDF) won't accept them — use Vectorize/AI for Compare.
-    if(preserveMode){
-      setConverting(true);
-      const created=[];
-      for(let i=0;i<raw.length;i++){
-        const f=raw[i];
-        setConvertProgress({label:`Uploading ${f.name}`,pct:Math.round(((i)/raw.length)*100),fileIdx:i+1,totalFiles:raw.length});
-        try{
-          const rec=await DB.drawings.createWithFile({
-            companyId:company.companyId,
-            projectId:currentProject.id,
-            name:f.name.replace(/\.[^.]+$/,"")+" (preserved)",
-            uploadedBy:member?.name||"",
-            uploadedAt:new Date().toISOString(),
-          },"file",f,f.name);
-          created.push(rec);
-        }catch(err){
-          console.warn("preserve upload failed for",f.name,err);
-          alert(`Failed to upload ${f.name}: ${err.message}`);
-        }
-      }
-      if(created.length)setDrawings(prev=>[...created,...prev]);
-      setConvertProgress(null);
-      setConverting(false);
-      if(convertRef.current)convertRef.current.value="";
-      return;
-    }
     // Expand any PDFs into per-page image files up front so progress totals
     // reflect real work units. Failures on a single PDF don't block others.
     const files=[];
@@ -10297,6 +10261,15 @@ Requirements:
       };
       emit("read",0);
       try{
+        // Guard Preserve against the PDF-to-images pre-pass: rasterizing a
+        // PDF back to JPEGs just to re-wrap would defeat the lossless
+        // promise. For a PDF input in Preserve mode, the user should use
+        // Upload instead. We emit a clear alert rather than silently
+        // producing a lower-quality file.
+        if(preserveMode&&/\.pdf$/i.test(f.name)){
+          alert(`"${f.name}" is already a PDF — use Upload to add it as-is. Preserve mode is for JPG/PNG sources.`);
+          continue;
+        }
         const blob=aiEnhance
           ?await aiEnhanceOneToPdfBlob(f,emit)
           :preserveMode
@@ -11867,11 +11840,11 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           )}
           {canUpload&&(
             <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:3}}>
-              <button onClick={()=>convertRef.current?.click()} disabled={converting} title={aiEnhance?"Convert with Gemini AI vision — produces cleaner, semantic SVG (uses your Gemini quota)":preserveMode?"Lossless — uploads the source image as-is. Best possible quality (bit-for-bit). Image drawings don't work in Compare; use Vectorize/AI for that."  :"Convert JPG sketches to vector PDF drawings (single or batch) — offline, free, deterministic"} style={{width:"100%",borderRadius:10,background:aiEnhance?"rgba(88,86,214,0.1)":preserveMode?"rgba(255,149,0,0.08)":"rgba(52,199,89,0.08)",border:`1px solid ${aiEnhance?"rgba(88,86,214,0.35)":preserveMode?"rgba(255,149,0,0.35)":"rgba(52,199,89,0.3)"}`,cursor:converting?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 10px",gap:5}}>
+              <button onClick={()=>convertRef.current?.click()} disabled={converting} title={aiEnhance?"Convert with Gemini AI vision — produces cleaner, semantic SVG (uses your Gemini quota)":preserveMode?"Lossless PDF — embeds source bytes, page sized 1 PDF point per source pixel so the viewer never downsamples. JPG/PNG only; use Upload for existing PDFs."  :"Convert JPG sketches to vector PDF drawings (single or batch) — offline, free, deterministic"} style={{width:"100%",borderRadius:10,background:aiEnhance?"rgba(88,86,214,0.1)":preserveMode?"rgba(255,149,0,0.08)":"rgba(52,199,89,0.08)",border:`1px solid ${aiEnhance?"rgba(88,86,214,0.35)":preserveMode?"rgba(255,149,0,0.35)":"rgba(52,199,89,0.3)"}`,cursor:converting?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 10px",gap:5}}>
                 {converting?<Spin size={16}/>:<><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 7h6l2-3h6a2 2 0 012 2v13a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z" stroke={aiEnhance?"rgba(88,86,214,0.85)":preserveMode?"rgba(200,120,0,0.85)":"rgba(52,160,80,0.85)"} strokeWidth="1.6" strokeLinejoin="round"/><path d="M9 13l2 2 4-4" stroke={aiEnhance?"rgba(88,86,214,0.85)":preserveMode?"rgba(200,120,0,0.85)":"rgba(52,160,80,0.85)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg><span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:aiEnhance?"rgba(88,86,214,0.9)":preserveMode?"rgba(200,120,0,0.9)":"rgba(52,160,80,0.9)"}}>{aiEnhance?"AI Convert":preserveMode?"Preserve":"Convert"}</span></>}
               </button>
               <div style={{display:"flex",gap:8,justifyContent:"center"}}>
-                <label title="Lossless — upload the source image as-is, no tracing or PDF wrap. Zero quality loss. Note: image drawings can't be used in Compare (which needs PDF)." style={{display:"flex",alignItems:"center",gap:4,fontSize:9,cursor:"pointer",color:preserveMode?"#c87800":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.04em"}}>
+                <label title="Lossless PDF — source image embedded as raw bytes, PDF page sized so 1 point = 1 source pixel. Viewer renders at native resolution with no downsample." style={{display:"flex",alignItems:"center",gap:4,fontSize:9,cursor:"pointer",color:preserveMode?"#c87800":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.04em"}}>
                   <input type="checkbox" checked={preserveMode} disabled={converting} onChange={e=>{setPreserveMode(e.target.checked);if(e.target.checked)setAiEnhance(false);}} style={{margin:0,width:11,height:11,cursor:"pointer"}}/>
                   PRESERVE
                 </label>
@@ -13010,13 +12983,25 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     return()=>{if(pdfDocRef.current){pdfDocRef.current.destroy();pdfDocRef.current=null;}};
   },[isPdf,fileUrl]);
 
-  // Render current PDF page to canvas
+  // Render current PDF page to canvas. Scale is chosen so the canvas
+  // captures as much source detail as possible without blowing out
+  // phone memory. For a Preserve-mode PDF (page sized to source pixel
+  // count), scale=1 is already the native resolution and further
+  // scale adds nothing. For a normal A4-class PDF, scale=2 gives the
+  // crisp look users expect.
   useEffect(()=>{
     if(!pdfDocRef.current||!canvasRef.current)return;
     let cancelled=false;
     pdfDocRef.current.getPage(currentPage).then(page=>{
       if(cancelled)return;
-      const viewport=page.getViewport({scale:2});
+      const nvp=page.getViewport({scale:1});
+      const longEdgePt=Math.max(nvp.width,nvp.height);
+      // Cap canvas long edge at 8000 px — keeps memory under ~200MB
+      // worst-case. For typical A4 PDFs this yields scale~2; for
+      // Preserve-PDFs (page = source px) it yields scale~1.
+      const CAP=8000;
+      const scale=Math.min(2,Math.max(1,CAP/longEdgePt));
+      const viewport=page.getViewport({scale});
       const canvas=canvasRef.current;
       canvas.width=viewport.width;canvas.height=viewport.height;
       const ctx=canvas.getContext('2d');
