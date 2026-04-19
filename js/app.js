@@ -9986,9 +9986,16 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
       embeddedImage=await pdfDoc.embedPng(pngBytes);
     }
     const{width:imgW,height:imgH}=embeddedImage;
-    // 1 PDF point = 1 source pixel → pdf.js at scale=1 renders exact native size.
-    const page=pdfDoc.addPage([imgW,imgH]);
-    page.drawImage(embeddedImage,{x:0,y:0,width:imgW,height:imgH});
+    // Cap page long edge at 1200 pt so the viewer canvas stays ≤ 2400 px —
+    // safely under mobile canvas area limits. Raw image bytes are still
+    // embedded without re-encoding (lossless); only the display scale changes.
+    const MAX_PT=1200;
+    const longEdge=Math.max(imgW,imgH);
+    const ratio=longEdge>MAX_PT?MAX_PT/longEdge:1;
+    const pageW=Math.round(imgW*ratio);
+    const pageH=Math.round(imgH*ratio);
+    const page=pdfDoc.addPage([pageW,pageH]);
+    page.drawImage(embeddedImage,{x:0,y:0,width:pageW,height:pageH});
     report("pdf",0);
     const pdfBytes=await pdfDoc.save();
     return new Blob([pdfBytes],{type:"application/pdf"});
