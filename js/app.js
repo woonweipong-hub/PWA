@@ -5961,16 +5961,62 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
   // Batch select / update
   const canBulk=["Admin","Manager","Inspector"].includes(member?.role);
   const canBulkDelete=member?.role==="Admin"&&!!onBulkDelete;
+  // REVIEW > DRAWINGS/COMPARISONS bulk-delete — mirrors Tag panel's policy.
+  // Drawings are persistent DB rows (cascade-delete linked pins + notes +
+  // markup), so restrict to Admin. Saved comparisons are localStorage-only,
+  // so Manager may also clean them up.
+  const canBulkDeleteDrawingsRv=member?.role==="Admin";
+  const canBulkDeleteComparisonsRv=["Admin","Manager"].includes(member?.role);
   const applyBulkDelete=async()=>{
     if(!selectedIds.size)return;
-    if(!confirm(`Permanently delete ${selectedIds.size} entr${selectedIds.size===1?"y":"ies"}?\n\nThis also removes their drawing pins and cannot be undone.`))return;
-    setBulkSaving(true);
-    try{
-      const res=await onBulkDelete(Array.from(selectedIds));
-      alert(`Deleted ${res.ok} entr${res.ok===1?"y":"ies"}${res.failed?` · ${res.failed} failed`:""}.`);
+    if(source==="entries"){
+      if(!confirm(`Permanently delete ${selectedIds.size} entr${selectedIds.size===1?"y":"ies"}?\n\nThis also removes their drawing pins and cannot be undone.`))return;
+      setBulkSaving(true);
+      try{
+        const res=await onBulkDelete(Array.from(selectedIds));
+        alert(`Deleted ${res.ok} entr${res.ok===1?"y":"ies"}${res.failed?` · ${res.failed} failed`:""}.`);
+        exitSelect();
+      }catch(e){alert("Bulk delete failed: "+e.message);}
+      setBulkSaving(false);
+      return;
+    }
+    if(source==="drawings"){
+      const ids=Array.from(selectedIds);
+      const pinTotal=rvPins.filter(p=>selectedIds.has(p.drawingId)).length;
+      if(!confirm(`Delete ${ids.length} drawing${ids.length===1?"":"s"}${pinTotal?` and ${pinTotal} linked pin${pinTotal===1?"":"s"}`:""}?\n\nMarkup and notes on these drawings are also removed. This cannot be undone.`))return;
+      setBulkSaving(true);
+      let ok=0,failed=0;
+      for(const id of ids){
+        try{
+          const pins=await DB.pins.list(`drawingId="${id}"`).catch(()=>[]);
+          for(const p of pins){try{await DB.pins.delete(p.id);}catch{}}
+          await DB.drawings.delete(id);
+          try{
+            const notes=local.get(DRAWING_NOTES_KEY)||{};
+            const markup=local.get(DRAWING_MARKUP_KEY)||{};
+            delete notes[id];delete markup[id];
+            local.set(DRAWING_NOTES_KEY,notes);local.set(DRAWING_MARKUP_KEY,markup);
+          }catch{}
+          ok++;
+        }catch(e){console.warn("review drawing delete failed",id,e);failed++;}
+      }
+      setRvDrawings(prev=>prev.filter(d=>!selectedIds.has(d.id)));
+      alert(`Deleted ${ok} drawing${ok===1?"":"s"}${failed?` · ${failed} failed`:""}.`);
       exitSelect();
-    }catch(e){alert("Bulk delete failed: "+e.message);}
-    setBulkSaving(false);
+      setBulkSaving(false);
+      return;
+    }
+    if(source==="comparisons"){
+      const ids=Array.from(selectedIds);
+      if(!confirm(`Delete ${ids.length} saved comparison${ids.length===1?"":"s"}? This cannot be undone.`))return;
+      setBulkSaving(true);
+      try{
+        const remaining=savedComparisonsList.filter(c=>!selectedIds.has(c.id));
+        if(currentProject?.id)setSavedComparisons(currentProject.id,remaining);
+      }catch(e){alert("Delete failed: "+e.message);}
+      exitSelect();
+      setBulkSaving(false);
+    }
   };
   const[selectMode,setSelectMode]=useState(false);
   const[selectedIds,setSelectedIds]=useState(()=>new Set());
@@ -5984,6 +6030,10 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
   const[bulkComment,setBulkComment]=useState("");
   const[bulkSaving,setBulkSaving]=useState(false);
   const exitSelect=()=>{setSelectMode(false);setSelectedIds(new Set());setShowBulkPanel(false);setBulkStatus("");setBulkSeverity("");setBulkAssignee("");setBulkDuration("");setBulkDueDate("");setBulkComment("");};
+  // Selection IDs carry defect/drawing/comparison IDs depending on `source`.
+  // Clear when the user switches sub-tab so stale IDs don't leak into the
+  // wrong delete handler (e.g. treating a drawing ID as a defect ID).
+  useEffect(()=>{setSelectedIds(new Set());setShowBulkPanel(false);},[source]);
   const toggleId=id=>setSelectedIds(prev=>{const n=new Set(prev);if(n.has(id))n.delete(id);else n.add(id);return n;});
   const applyBulk=async()=>{
     const patch={};
@@ -6083,13 +6133,19 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
           {canBulk&&archivedDefects.length>0&&!selectMode&&(
             <button onClick={()=>setShowArchive(true)} title="View archived entries — auto-delete after 7 days; restore or permanent-delete available" style={{background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:20,padding:"4px 10px",color:"rgba(0,0,0,0.55)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>🗃 ARCHIVE ({archivedDefects.length})</button>
           )}
-          {canBulk&&onBulkUpdate&&(
-            selectMode?(
+          {(()=>{
+            const enabled=
+              source==="entries"?(canBulk&&!!onBulkUpdate):
+              source==="drawings"?(canBulkDeleteDrawingsRv&&rvDrawings.length>0):
+              source==="comparisons"?(canBulkDeleteComparisonsRv&&savedComparisonsList.length>0):
+              false;
+            if(!enabled)return null;
+            return selectMode?(
               <button onClick={exitSelect} style={{background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:20,padding:"4px 10px",color:"rgba(0,0,0,0.55)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.done")}</button>
             ):(
               <button onClick={()=>setSelectMode(true)} style={{background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:20,padding:"4px 10px",color:"#ff6b00",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("review.select")}</button>
-            )
-          )}
+            );
+          })()}
         </div>
       </div>
 
@@ -6120,43 +6176,68 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
       )}
 
       {/* Drawings source — per-drawing markup / notes / pin counts with tap-through to Tag */}
-      {source==="drawings"&&(
-        rvDrawings.length===0
-          ?<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>No drawings in this project yet. Upload in Tag & Compare.</div>
-          :<div>{rvDrawings.filter(d=>!q||(d.name||"").toLowerCase().includes(q)||(d.file||"").toLowerCase().includes(q)).map((d,i)=>{
-              const pinCount=rvPins.filter(p=>p.drawingId===d.id).length;
-              const noteCount=getDrawingNotes(d.id).length;
-              const markupCount=getDrawingMarkup(d.id).length;
-              const hasAny=pinCount+noteCount+markupCount>0;
-              return(
-                <div key={d.id} className="anim" style={{animationDelay:`${i*0.04}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:`4px solid ${hasAny?"#ff6b00":"rgba(0,0,0,0.15)"}`,display:"flex",gap:12,alignItems:"flex-start"}} onClick={()=>{
-                  // Open the drawing inline within REVIEW (preserves user's
-                  // scroll/filter state). Falls back to TAG navigation only if
-                  // no inline handler is plumbed in.
-                  if(onOpenInReview)onOpenInReview({type:"drawing",drawing:d});
-                  else if(onJumpToTag)onJumpToTag({type:"drawing",id:d.id});
-                }}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,color:"#1a1a1a",marginBottom:6}}><Highlight text={d.name||d.file||"Untitled"} query={q}/></div>
-                    <div style={{display:"flex",gap:8,flexWrap:"wrap",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
-                      <span style={{color:pinCount?"#ff3b30":"rgba(0,0,0,0.3)"}}>📍 {pinCount} pin{pinCount===1?"":"s"}</span>
-                      <span style={{color:markupCount?"#007aff":"rgba(0,0,0,0.3)"}}>✏️ {markupCount} markup</span>
-                      <span style={{color:noteCount?"#34c759":"rgba(0,0,0,0.3)"}}>📝 {noteCount} note{noteCount===1?"":"s"}</span>
-                    </div>
+      {source==="drawings"&&(()=>{
+        const filteredDrawings=rvDrawings.filter(d=>!q||(d.name||"").toLowerCase().includes(q)||(d.file||"").toLowerCase().includes(q));
+        if(rvDrawings.length===0)return <div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>No drawings in this project yet. Upload in Tag & Compare.</div>;
+        return(<>
+          {selectMode&&filteredDrawings.length>0&&(
+            <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10,padding:"8px 12px",background:"rgba(255,107,0,0.06)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:10}}>
+              <button onClick={()=>setSelectedIds(new Set(filteredDrawings.map(d=>d.id)))} style={{background:"none",border:"none",color:"#ff6b00",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>SELECT ALL ({filteredDrawings.length})</button>
+              <span style={{color:"rgba(0,0,0,0.15)"}}>|</span>
+              <button onClick={()=>setSelectedIds(new Set())} style={{background:"none",border:"none",color:"rgba(0,0,0,0.5)",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.clear")}</button>
+            </div>
+          )}
+          <div>{filteredDrawings.map((d,i)=>{
+            const pinCount=rvPins.filter(p=>p.drawingId===d.id).length;
+            const noteCount=getDrawingNotes(d.id).length;
+            const markupCount=getDrawingMarkup(d.id).length;
+            const hasAny=pinCount+noteCount+markupCount>0;
+            const checked=selectedIds.has(d.id);
+            return(
+              <div key={d.id} className="anim" style={{animationDelay:`${i*0.04}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:`4px solid ${hasAny?"#ff6b00":"rgba(0,0,0,0.15)"}`,display:"flex",gap:12,alignItems:"flex-start",outline:selectMode&&checked?"2px solid #ff6b00":"none"}} onClick={()=>{
+                if(selectMode){toggleId(d.id);return;}
+                // Open the drawing inline within REVIEW (preserves user's
+                // scroll/filter state). Falls back to TAG navigation only if
+                // no inline handler is plumbed in.
+                if(onOpenInReview)onOpenInReview({type:"drawing",drawing:d});
+                else if(onJumpToTag)onJumpToTag({type:"drawing",id:d.id});
+              }}>
+                {selectMode&&(
+                  <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${checked?"#ff6b00":"rgba(0,0,0,0.2)"}`,background:checked?"#ff6b00":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2,color:"#fff",fontSize:13,fontWeight:800}}>{checked?"✓":""}</div>
+                )}
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,color:"#1a1a1a",marginBottom:6}}><Highlight text={d.name||d.file||"Untitled"} query={q}/></div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
+                    <span style={{color:pinCount?"#ff3b30":"rgba(0,0,0,0.3)"}}>📍 {pinCount} pin{pinCount===1?"":"s"}</span>
+                    <span style={{color:markupCount?"#007aff":"rgba(0,0,0,0.3)"}}>✏️ {markupCount} markup</span>
+                    <span style={{color:noteCount?"#34c759":"rgba(0,0,0,0.3)"}}>📝 {noteCount} note{noteCount===1?"":"s"}</span>
                   </div>
-                  <DrawingCardThumb drawing={d}/>
-                  <div style={{color:"rgba(0,0,0,0.3)",fontSize:16,flexShrink:0,alignSelf:"center"}}>›</div>
                 </div>
-              );
-            })}</div>
-      )}
+                <DrawingCardThumb drawing={d}/>
+                <div style={{color:"rgba(0,0,0,0.3)",fontSize:16,flexShrink:0,alignSelf:"center"}}>›</div>
+              </div>
+            );
+          })}</div>
+        </>);
+      })()}
 
       {/* Comparisons source — each saved PDF-diff with stats + tap-through */}
-      {source==="comparisons"&&(
-        savedComparisonsList.length===0
-          ?<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>No saved comparisons yet. Diff two PDFs in Tag & Compare and save.</div>
-          :<div>{savedComparisonsList.filter(sc=>!q||(sc.baseName||"").toLowerCase().includes(q)||(sc.targetName||"").toLowerCase().includes(q)).map((sc,i)=>(
-              <div key={sc.id||i} className="anim" style={{animationDelay:`${i*0.04}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:"4px solid #5856d6",display:"flex",gap:12,alignItems:"flex-start"}} onClick={()=>{
+      {source==="comparisons"&&(()=>{
+        const filteredComparisons=savedComparisonsList.filter(sc=>!q||(sc.baseName||"").toLowerCase().includes(q)||(sc.targetName||"").toLowerCase().includes(q));
+        if(savedComparisonsList.length===0)return <div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>No saved comparisons yet. Diff two PDFs in Tag & Compare and save.</div>;
+        return(<>
+          {selectMode&&filteredComparisons.length>0&&(
+            <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10,padding:"8px 12px",background:"rgba(255,107,0,0.06)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:10}}>
+              <button onClick={()=>setSelectedIds(new Set(filteredComparisons.map(sc=>sc.id)))} style={{background:"none",border:"none",color:"#ff6b00",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>SELECT ALL ({filteredComparisons.length})</button>
+              <span style={{color:"rgba(0,0,0,0.15)"}}>|</span>
+              <button onClick={()=>setSelectedIds(new Set())} style={{background:"none",border:"none",color:"rgba(0,0,0,0.5)",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.clear")}</button>
+            </div>
+          )}
+          <div>{filteredComparisons.map((sc,i)=>{
+            const checked=selectedIds.has(sc.id);
+            return(
+              <div key={sc.id||i} className="anim" style={{animationDelay:`${i*0.04}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:"4px solid #5856d6",display:"flex",gap:12,alignItems:"flex-start",outline:selectMode&&checked?"2px solid #ff6b00":"none"}} onClick={()=>{
+                if(selectMode){toggleId(sc.id);return;}
                 // Open the saved comparison inline (loads it into the Compare
                 // view via DrawingsPanel's initialCompare prop). Previous
                 // behaviour just switched to the TAG tab and stranded the user
@@ -6164,6 +6245,9 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
                 if(onOpenInReview)onOpenInReview({type:"comparison",comparison:sc});
                 else if(onJumpToTag)onJumpToTag({type:"comparison",id:sc.id});
               }}>
+                {selectMode&&(
+                  <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${checked?"#ff6b00":"rgba(0,0,0,0.2)"}`,background:checked?"#ff6b00":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2,color:"#fff",fontSize:13,fontWeight:800}}>{checked?"✓":""}</div>
+                )}
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a",marginBottom:4}}><Highlight text={`${sc.baseName||"Base"} → ${sc.targetName||"Target"}`} query={q}/></div>
                   <div style={{display:"flex",gap:10,flexWrap:"wrap",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
@@ -6176,8 +6260,10 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
                 <ComparisonCardThumb comparison={sc}/>
                 <div style={{color:"rgba(0,0,0,0.3)",fontSize:16,flexShrink:0,alignSelf:"center"}}>›</div>
               </div>
-            ))}</div>
-      )}
+            );
+          })}</div>
+        </>);
+      })()}
 
       {source!=="entries"?null:<>
       {/* Search bar + AI Search */}
@@ -6382,15 +6468,25 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
         </div>
       )}
 
-      {/* Sticky action bar when items selected */}
-      {selectMode&&selectedIds.size>0&&!showBulkPanel&&(
-        <div style={{position:"fixed",bottom:72,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 24px)",maxWidth:406,background:"#1a1a1a",borderRadius:14,padding:"12px 14px",zIndex:60,boxShadow:"0 12px 40px rgba(0,0,0,0.4)",display:"flex",alignItems:"center",gap:8}}>
-          <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff"}}>{selectedIds.size} SELECTED</div>
-          {canBulkDelete&&<button onClick={applyBulkDelete} disabled={bulkSaving} style={{background:"rgba(255,59,48,0.2)",border:"1px solid rgba(255,59,48,0.5)",borderRadius:10,padding:"9px 14px",color:"#ff6b6b",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:bulkSaving?"wait":"pointer"}}>{bulkSaving?"…":"🗑 DELETE"}</button>}
-          <button onClick={()=>setShowBulkPanel(true)} style={{background:"#ff6b00",border:"none",borderRadius:10,padding:"9px 16px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>UPDATE ▸</button>
-        </div>
-      )}
       </>}
+      {/* Sticky action bar when items selected — shown across all three
+          sources. Delete button visibility + label match the active source. */}
+      {selectMode&&selectedIds.size>0&&!showBulkPanel&&(()=>{
+        const deleteOk=
+          source==="entries"?canBulkDelete:
+          source==="drawings"?canBulkDeleteDrawingsRv:
+          source==="comparisons"?canBulkDeleteComparisonsRv:
+          false;
+        const unit=source==="drawings"?"DRAWING":source==="comparisons"?"COMPARISON":"ENTRY";
+        const unitPlural=source==="drawings"?"DRAWINGS":source==="comparisons"?"COMPARISONS":"ENTRIES";
+        return(
+          <div style={{position:"fixed",bottom:72,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 24px)",maxWidth:406,background:"#1a1a1a",borderRadius:14,padding:"12px 14px",zIndex:60,boxShadow:"0 12px 40px rgba(0,0,0,0.4)",display:"flex",alignItems:"center",gap:8}}>
+            <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff"}}>{selectedIds.size} {selectedIds.size===1?unit:unitPlural} SELECTED</div>
+            {deleteOk&&<button onClick={applyBulkDelete} disabled={bulkSaving} style={{background:"rgba(255,59,48,0.2)",border:"1px solid rgba(255,59,48,0.5)",borderRadius:10,padding:"9px 14px",color:"#ff6b6b",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:bulkSaving?"wait":"pointer"}}>{bulkSaving?"…":"🗑 DELETE"}</button>}
+            {source==="entries"&&<button onClick={()=>setShowBulkPanel(true)} style={{background:"#ff6b00",border:"none",borderRadius:10,padding:"9px 16px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>UPDATE ▸</button>}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -7997,7 +8093,7 @@ function MapsSettings({onClose}){
 }
 
 // ── Tag on Map (Google Maps pin canvas) ──────────────────────────
-function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped}){
+function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped,onViewEntry}){
   const mapRef=useRef(null);
   const searchRef=useRef(null);
   const mapObj=useRef(null);
@@ -9288,26 +9384,51 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
           </span>
         </div>
       )}
-      {showList&&(
-        <div style={{background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:10,padding:8,maxHeight:"30vh",overflowY:"auto"}}>
-          {mapDefects.length===0?(
-            <div style={{padding:20,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:12}}>No map-pinned entries yet.</div>
-          ):mapDefects.map(d=>(
-            <button key={d.id} onClick={()=>{if(!mapObj.current)return;if(provider==="gmaps"){mapObj.current.setCenter({lat:d.lat,lng:d.lng});mapObj.current.setZoom(19);}else{mapObj.current.setView([d.lat,d.lng],19);}setShowList(false);}} style={{display:"flex",width:"100%",alignItems:"center",gap:10,padding:"8px 10px",marginBottom:4,borderRadius:8,border:"1px solid rgba(0,0,0,0.06)",background:"#fafafa",cursor:"pointer",textAlign:"left"}}>
-              <span style={{width:10,height:10,borderRadius:"50%",background:SEV_COLOR[d.severity]||"#8e8e93",flexShrink:0}}/>
-              <span style={{flex:1,fontSize:12,fontWeight:700,color:"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title||"Entry"}</span>
-              <span style={{fontSize:10,color:"rgba(0,0,0,0.5)",fontFamily:"monospace"}}>{d.lat.toFixed(4)},{d.lng.toFixed(4)}</span>
-            </button>
-          ))}
-        </div>
-      )}
       <div style={{position:"relative"}}>
         <div ref={mapRef} style={{width:"100%",height:"min(55dvh,480px)",minHeight:260,borderRadius:12,border:"1px solid rgba(0,0,0,0.12)",background:"#e5e3dc",overscrollBehavior:"contain",touchAction:"pan-x pan-y"}}/>
         {/* Counter badge — parity with REVIEW > MAP. Hidden when Quick Log
             is open so it doesn't overlap the pending-pin affordance. */}
-        {mapDefects.length>0&&!pendingPin&&(
+        {mapDefects.length>0&&!pendingPin&&!showList&&(
           <div style={{position:"absolute",top:10,left:10,background:"rgba(26,26,26,0.85)",color:"#fff",padding:"6px 12px",borderRadius:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,pointerEvents:"none",zIndex:500}}>
             {mapDefects.length} pinned{selectedPinIds.size>0?` · ${selectedPinIds.size} selected`:canEdit?" · tap a pin · drag to move":" · tap a pin"}
+          </div>
+        )}
+        {/* Floating LIST overlay — drawn on top of the map so opening it
+            doesn't push the map past the bottom nav. Pointer events only on
+            the panel itself; the rest of the map stays interactive. */}
+        {showList&&(
+          <div style={{position:"absolute",top:8,left:8,right:8,maxHeight:"calc(100% - 16px)",background:"#fff",border:"1px solid rgba(0,0,0,0.12)",borderRadius:10,boxShadow:"0 6px 20px rgba(0,0,0,0.18)",overflowY:"auto",zIndex:600,display:"flex",flexDirection:"column"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderBottom:"1px solid rgba(0,0,0,0.06)",position:"sticky",top:0,background:"#fff",zIndex:1}}>
+              <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#1a1a1a",letterSpacing:"0.04em"}}>📋 ALL PINS ({mapDefects.length})</div>
+              <button onClick={()=>setShowList(false)} title="Close list" aria-label="Close list" style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:"50%",width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:16,lineHeight:1,color:"rgba(0,0,0,0.6)",flexShrink:0}}>×</button>
+            </div>
+            {mapDefects.length===0?(
+              <div style={{padding:"18px 16px",textAlign:"center",color:"rgba(0,0,0,0.45)",fontSize:12}}>No map-pinned entries yet. Drop a pin to start.</div>
+            ):(
+              <div style={{padding:8}}>
+                <div style={{fontSize:10,color:"rgba(0,0,0,0.45)",padding:"2px 4px 8px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.04em",lineHeight:1.35}}>
+                  Tap a row to focus. Use actions to edit or unpin. Drag a pin on the map to move it.
+                </div>
+                {mapDefects.map(d=>(
+                  <div key={d.id} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",marginBottom:4,borderRadius:8,border:"1px solid rgba(0,0,0,0.06)",background:"#fafafa"}}>
+                    <button onClick={()=>{if(!mapObj.current)return;focusOnDefect(d);setFocusedDefectId(d.id);setShowList(false);}} title="Focus this pin on the map" style={{display:"flex",flex:1,minWidth:0,alignItems:"center",gap:8,padding:"2px 0",background:"none",border:"none",cursor:"pointer",textAlign:"left"}}>
+                      <span style={{width:10,height:10,borderRadius:"50%",background:SEV_COLOR[d.severity]||"#8e8e93",flexShrink:0}}/>
+                      <span style={{flex:1,fontSize:12,fontWeight:700,color:"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title||"Entry"}</span>
+                    </button>
+                    {canEdit&&onViewEntry&&(
+                      <button onClick={()=>{onViewEntry(d);}} title="Open entry to edit title, severity, notes…" style={{padding:"6px 8px",borderRadius:8,border:"1px solid rgba(0,0,0,0.12)",background:"#fff",color:"rgba(0,0,0,0.65)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",minHeight:32}}>✎ EDIT</button>
+                    )}
+                    {canEdit&&(
+                      <button onClick={async()=>{
+                        if(!confirm(`Unpin "${d.title||"Entry"}" from the map?\n(The entry itself stays — only its GPS location is cleared.)`))return;
+                        try{await DB.defects.update(d.id,{lat:null,lng:null,mapZoom:null});}
+                        catch(e){alert("Unpin failed: "+e.message);}
+                      }} title="Clear GPS location — entry itself remains" style={{padding:"6px 8px",borderRadius:8,border:"1px solid rgba(255,59,48,0.35)",background:"rgba(255,59,48,0.08)",color:"#cc0000",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",minHeight:32}}>🗑 UNPIN</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -9383,7 +9504,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
 }
 
 // ── Drawings & Floor Plan Pins ────────────────────────────────────
-function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntry,initialCompare,embedded}){
+function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntry,initialCompare,embedded,onViewEntry}){
   const[drawings,setDrawings]=useState([]);const[loading,setLoading]=useState(true);
   const[viewing,setViewing]=useState(null);
   const[uploading,setUploading]=useState(false);
@@ -11572,7 +11693,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         </div>
 
         {subMode==="map"?(
-          <MapPanel currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry} company={company} onSnapped={(rec)=>{setDrawings(prev=>[rec,...prev]);setSubMode("drawing");setViewing(rec);}}/>
+          <MapPanel currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry} company={company} onViewEntry={onViewEntry} onSnapped={(rec)=>{setDrawings(prev=>[rec,...prev]);setSubMode("drawing");setViewing(rec);}}/>
         ):(<>
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf,.pdf,.tif,.tiff" onChange={uploadDrawing} style={{display:"none"}}/>
         <input ref={convertRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf" multiple onChange={convertJpgsToPdf} style={{display:"none"}}/>
@@ -14954,7 +15075,7 @@ function App(){
       <div style={{flex:1,overflowY:"auto",paddingBottom:84}}>
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
-        {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect}/>}
+        {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} onViewEntry={setViewing}/>}
         {tab==="defects"&&<DefectsList defects={defects} archivedDefects={archivedDefects} onView={setViewing} onUpdate={updateDefect} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onRestore={restoreDefects} onHardDelete={hardDeleteDefects} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")} onOpenInReview={(payload)=>setReviewModal(payload)}/>}
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} member={member} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
       </div>
