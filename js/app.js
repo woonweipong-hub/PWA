@@ -813,8 +813,9 @@ async function renderDrawingAnnotatedPages(drawing,defects,allPins,opts={}){
       applyOverlays(ctx,canvas.width,canvas.height,1);
       // Raster-source drawings (JPG/PNG scans) stay JPEG but at 0.92 quality
       // (was 0.85) — visibly cleaner text on scanned plans, still compresses
-      // photos efficiently.
-      out.push({pageNum:1,dataUrl:canvas.toDataURL("image/jpeg",0.92),fmt:"JPEG"});
+      // photos efficiently. Return original image pixel dims as nativeW/H so
+      // the export can produce a correctly-sized PDF page (not halved).
+      out.push({pageNum:1,dataUrl:canvas.toDataURL("image/jpeg",0.92),fmt:"JPEG",nativeW:img.width,nativeH:img.height});
     }catch(e){console.warn("renderDrawingAnnotatedPages image failed for",drawing.name,e);}
   }
   return out;
@@ -2261,14 +2262,16 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   // ═══════════════════════════════════════════════════════════════════
   // DEFECT DETAIL PAGES — one block per defect with inline photo
   // ═══════════════════════════════════════════════════════════════════
-  // Preload all defect photos in parallel for near-zero latency during render
+  // Preload all defect photos in parallel for near-zero latency during render.
+  // Includes extraPhotos so multi-angle shots logged via "Add Photo" appear too.
   const photoCache=new Map();
   if(defects&&defects.length>0){
     const photoPromises=[];
     for(const d of defects){
-      if(!d.photo)continue;
-      const photos=Array.isArray(d.photo)?d.photo:[d.photo];
-      for(const src of photos.slice(0,3)){
+      const mainPhotos=d.photo?(Array.isArray(d.photo)?d.photo:[d.photo]):[];
+      const extras=Array.isArray(d.extraPhotos)?d.extraPhotos:[];
+      const allSrcs=[...mainPhotos,...extras].filter(Boolean).slice(0,5);
+      for(const src of allSrcs){
         if(!src||photoCache.has(src))continue;
         photoPromises.push(new Promise(resolve=>{
           const img=new Image();
@@ -2312,7 +2315,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     heading("ENTRY DETAILS",orange);
     for(let idx=0;idx<defects.length;idx++){
       const d=defects[idx];
-      const hasPhoto=d.photo&&(typeof d.photo==="string"||(Array.isArray(d.photo)&&d.photo.length>0));
+      const hasPhoto=(d.photo&&(typeof d.photo==="string"||(Array.isArray(d.photo)&&d.photo.length>0)))||(Array.isArray(d.extraPhotos)&&d.extraPhotos.length>0);
       const comments=(d.comments||[]).filter(c=>c.text);
       // Estimate block height: header(20) + fields(30) + photo(~70) + desc(15) + comments(comments*8) + padding
       const estH=30+(hasPhoto?75:0)+(d.description?15:0)+(comments.length>0?10+comments.length*7:0)+10;
@@ -2370,35 +2373,47 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
 
       // ── Photo inline ──
       if(hasPhoto){
-        const photos=Array.isArray(d.photo)?d.photo:[d.photo];
-        const validPhotos=photos.slice(0,3).filter(Boolean);
+        // Include extraPhotos — logged via "Add Photo to This Entry" in batch mode
+        const mainPhotos=d.photo?(Array.isArray(d.photo)?d.photo:[d.photo]):[];
+        const extras=Array.isArray(d.extraPhotos)?d.extraPhotos:[];
+        const validPhotos=[...mainPhotos,...extras].filter(Boolean).slice(0,4);
         if(validPhotos.length===1){
-          // Single photo — full width
           const img=photoCache.get(validPhotos[0]);
           if(img&&img.width>0&&img.height>0){
-            checkPage(65);
             const ratio=img.height/img.width;
-            const imgW=contentW*0.65;
-            const imgH=Math.min(imgW*ratio,60);
-            try{doc.addImage(validPhotos[0],"JPEG",margin+1,y,imgW,imgH,undefined,"SLOW");}catch(e){/* skip */}
-            y+=imgH+3;
+            // Full content width; height scales with aspect, capped at ~60% of
+            // remaining page space (max 180mm) so a tall portrait photo doesn't
+            // bleed off the page. When the cap fires, shrink width to match so
+            // the image is never stretched or squished.
+            let iW=contentW-2;
+            let iH=iW*ratio;
+            const maxH=Math.min(pageH-y-margin-20,180);
+            if(iH>maxH){iH=maxH;iW=iH/ratio;}
+            checkPage(iH+10);
+            const iX=margin+1+(contentW-2-iW)/2; // centre if portrait-narrowed
+            try{doc.addImage(validPhotos[0],"JPEG",iX,y,iW,iH,undefined,"SLOW");}catch(e){/* skip */}
+            y+=iH+3;
           }
         }else if(validPhotos.length>1){
-          // Multiple photos — side by side
-          checkPage(65);
-          const gap=4;
-          const imgW=(contentW-gap*(validPhotos.length-1))/validPhotos.length;
-          let maxH=0;
-          for(let pi=0;pi<validPhotos.length;pi++){
+          // Multiple photos — evenly spaced columns, each aspect-correct
+          const n=validPhotos.length;
+          const gap=3;
+          const colW=(contentW-2-gap*(n-1))/n;
+          const maxH=90; // reasonable row height for multi-photo strip
+          let rowH=0;
+          checkPage(maxH+10);
+          for(let pi=0;pi<n;pi++){
             const img=photoCache.get(validPhotos[pi]);
             if(img&&img.width>0&&img.height>0){
               const ratio=img.height/img.width;
-              const imgH=Math.min(imgW*ratio,60);
-              try{doc.addImage(validPhotos[pi],"JPEG",margin+1+pi*(imgW+gap),y,imgW,imgH,undefined,"SLOW");}catch(e){/* skip */}
-              if(imgH>maxH)maxH=imgH;
+              let iW=colW;let iH=iW*ratio;
+              if(iH>maxH){iH=maxH;iW=iH/ratio;}
+              const iX=margin+1+pi*(colW+gap)+(colW-iW)/2; // centre in column
+              try{doc.addImage(validPhotos[pi],"JPEG",iX,y,iW,iH,undefined,"SLOW");}catch(e){/* skip */}
+              if(iH>rowH)rowH=iH;
             }
           }
-          y+=maxH+3;
+          y+=rowH+3;
         }
         y+=2;
       }
@@ -2575,11 +2590,23 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
               const img=new Image();
               await new Promise((resolve)=>{img.onload=resolve;img.onerror=resolve;img.src=pg.dataUrl;});
               if(img.width>0&&img.height>0){
-                // For PDF sources we know native dims in pt; for image
-                // sources we use the rendered canvas dims in mm at 2×
-                // scale as a paper-size proxy.
-                const srcWmm=pg.nativeW?pg.nativeW*0.352778:img.width*0.5*0.352778;
-                const srcHmm=pg.nativeH?pg.nativeH*0.352778:img.height*0.5*0.352778;
+                // PDF sources: nativeW/H are in PDF points → multiply by 0.352778 to get mm.
+                // Image sources (JPG/PNG scans): no intrinsic paper size. Treat canvas pixels
+                // as PDF points (1px ≈ 1pt at 72dpi), capped between A4 and A1 so small scans
+                // are still legible and huge scans don't produce absurdly large PDF pages.
+                // NOTE: the old code divided by 2 assuming 2× render, but image sources are
+                // rendered at ≤1× (maxW=2000 cap), so that halving was wrong.
+                let srcWmm,srcHmm;
+                if(pg.nativeW){
+                  srcWmm=pg.nativeW*0.352778;
+                  srcHmm=pg.nativeH*0.352778;
+                }else{
+                  const A1_MM=841,A4_MM=210;
+                  const rawW=img.width*0.352778,rawH=img.height*0.352778;
+                  const longPx=Math.max(rawW,rawH),shortPx=Math.min(rawW,rawH);
+                  const scale=longPx>A1_MM?A1_MM/longPx:longPx<A4_MM?A4_MM/longPx:1;
+                  srcWmm=rawW*scale;srcHmm=rawH*scale;
+                }
                 const orient=srcWmm>srcHmm?"l":"p";
                 doc.addPage([srcWmm,srcHmm],orient);
                 const captionH=10;
