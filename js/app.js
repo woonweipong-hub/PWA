@@ -9941,66 +9941,58 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     reader.readAsDataURL(file);
   });
 
-  // Preserve mode — lossless PDF. The key trick versus the earlier
-  // attempts: the PDF page is sized so that ONE PDF POINT EQUALS ONE
-  // SOURCE PIXEL. At the drawing viewer's native pdf.js scale=1, the
-  // rasterization canvas comes out exactly srcW × srcH — no downsample
-  // pass, no bilinear smear from pdf.js's internal filter. Combined
-  // with raw-byte JPEG/PNG embedding (no canvas re-encode), the viewer
-  // pipeline becomes bit-equivalent to loading the source as an <img>,
-  // and the file remains a PDF (works in Compare, Report export, etc.).
-  //
-  // The PDF page dimensions come out huge (e.g. 9286 × 7584 pt for a
-  // typical HABS scan ≈ 129" × 105"), but PDF spec allows up to 14400
-  // pt and all modern viewers handle it. The drawing viewer's scale
-  // logic caps canvas size to keep phone memory sane.
-  const preserveOneToPdfBlob=(file,onStage)=>new Promise((resolve,reject)=>{
+  // Preserve mode — truly lossless PDF via pdf-lib.
+  // pdf-lib.embedJpg / embedPng copy the original compressed bytes verbatim
+  // into the PDF stream (DCTDecode for JPEG, FlateDecode for PNG) — no
+  // canvas re-encode, no quality loss. Page size = source pixel count in
+  // PDF points so pdf.js renders at native resolution with no downsample.
+  const preserveOneToPdfBlob=async(file,onStage)=>{
     const report=(stage,within=0)=>{if(onStage)onStage(stage,within);};
-    if(!window.jspdf)return reject(new Error("PDF lib not loaded — refresh the app."));
+    const PDFLib=await _waitForPdfLib(8000).catch(()=>null);
+    if(!PDFLib)throw new Error("PDF lib not loaded — refresh the app.");
     report("read",0);
-    const reader=new FileReader();
-    reader.onerror=()=>reject(new Error("Failed to read file."));
-    reader.onload=()=>{
-      report("decode",0);
-      const dataUrl=reader.result;
-      const isJpeg=/^data:image\/(jpeg|jpg);/i.test(dataUrl);
-      const isPng=/^data:image\/png;/i.test(dataUrl);
-      const rawPath=isJpeg||isPng;
-      const img=new Image();
-      img.onerror=()=>reject(new Error("Failed to decode image."));
-      img.onload=()=>{
-        report("preprocess",0);
-        try{
-          const{jsPDF}=window.jspdf;
-          const srcW=img.width,srcH=img.height;
-          // Page size in PDF points = source pixel count. This is the
-          // whole point of the lossless path: pdf.js scale=1 then
-          // produces a canvas identical in size to the embedded image,
-          // and no downsample stage exists between the source bytes
-          // and the screen.
-          const doc=new jsPDF({orientation:srcW>=srcH?"l":"p",unit:"pt",format:[srcW,srcH]});
-          report("pdf",0);
-          if(rawPath){
-            // Raw dataURL + matching format flag → jsPDF embeds bytes
-            // verbatim (DCTDecode for JPEG, FlateDecode for PNG).
-            const fmt=isJpeg?"JPEG":"PNG";
-            doc.addImage(dataUrl,fmt,0,0,srcW,srcH);
-          }else{
-            // Canvas fallback for WebP/GIF/etc. at source resolution.
-            const cnv=document.createElement("canvas");
-            cnv.width=srcW;cnv.height=srcH;
-            cnv.getContext("2d").drawImage(img,0,0);
-            doc.addImage(cnv.toDataURL("image/png"),"PNG",0,0,srcW,srcH);
-          }
-          resolve(doc.output("blob"));
-        }catch(err){
-          reject(new Error("PDF output failed: "+err.message));
-        }
-      };
-      img.src=dataUrl;
-    };
-    reader.readAsDataURL(file);
-  });
+    const arrayBuffer=await new Promise((resolve,reject)=>{
+      const r=new FileReader();
+      r.onerror=()=>reject(new Error("Failed to read file."));
+      r.onload=()=>resolve(r.result);
+      r.readAsArrayBuffer(file);
+    });
+    report("decode",0);
+    const {PDFDocument}=PDFLib;
+    const isJpeg=/\.(jpg|jpeg)$/i.test(file.name)||file.type==="image/jpeg";
+    const isPng=/\.png$/i.test(file.name)||file.type==="image/png";
+    const pdfDoc=await PDFDocument.create();
+    let embeddedImage;
+    report("preprocess",0);
+    if(isJpeg){
+      embeddedImage=await pdfDoc.embedJpg(arrayBuffer);
+    }else if(isPng){
+      embeddedImage=await pdfDoc.embedPng(arrayBuffer);
+    }else{
+      // WebP/GIF/etc — decode via canvas, re-encode as PNG (lossless).
+      const dataUrl=await new Promise((resolve,reject)=>{
+        const r=new FileReader();r.onerror=()=>reject(new Error("Failed to read file."));
+        r.onload=()=>resolve(r.result);r.readAsDataURL(file);
+      });
+      const img=await new Promise((resolve,reject)=>{
+        const i=new Image();i.onerror=()=>reject(new Error("Failed to decode image."));
+        i.onload=()=>resolve(i);i.src=dataUrl;
+      });
+      const cnv=document.createElement("canvas");
+      cnv.width=img.width;cnv.height=img.height;
+      cnv.getContext("2d").drawImage(img,0,0);
+      const pngB64=cnv.toDataURL("image/png").split(",")[1];
+      const pngBytes=Uint8Array.from(atob(pngB64),c=>c.charCodeAt(0));
+      embeddedImage=await pdfDoc.embedPng(pngBytes);
+    }
+    const{width:imgW,height:imgH}=embeddedImage;
+    // 1 PDF point = 1 source pixel → pdf.js at scale=1 renders exact native size.
+    const page=pdfDoc.addPage([imgW,imgH]);
+    page.drawImage(embeddedImage,{x:0,y:0,width:imgW,height:imgH});
+    report("pdf",0);
+    const pdfBytes=await pdfDoc.save();
+    return new Blob([pdfBytes],{type:"application/pdf"});
+  };
 
   // Load the four bundled sample drawings from the public GitHub repo. Lets
   // testers kick the tyres on TAG / Compare / Convert with zero setup — no
@@ -10054,7 +10046,7 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   // Preserve mode — lossless raster-in-PDF. Mutex with AI ENHANCE because
   // the three conversion paths are exclusive: vector trace (default),
   // lossless preserve, or Gemini AI. Setters enforce the mutex below.
-  const[preserveMode,setPreserveMode]=useState(false);
+  const[preserveMode,setPreserveMode]=useState(true);
   const aiEnhanceOneToPdfBlob=async(file,onStage)=>{
     const report=(stage,within=0)=>{if(onStage)onStage(stage,within);};
     if(!isAiConfigured())throw new Error("No AI provider configured — open Settings → AI Setup.");
@@ -11831,7 +11823,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
             <div style={{height:6,background:"rgba(52,160,80,0.18)",borderRadius:3,overflow:"hidden"}}>
               <div style={{height:"100%",width:`${convertProgress.pct}%`,background:"linear-gradient(90deg,#34c759,#2a9a4a)",borderRadius:3,transition:"width 0.25s ease"}}/>
             </div>
-            <div style={{fontSize:10,color:"rgba(26,106,51,0.65)",marginTop:4}}>Tracing is the long step — on very large images it can take 30-60 seconds. STOP will abort after the current file finishes.</div>
+            <div style={{fontSize:10,color:"rgba(26,106,51,0.65)",marginTop:4}}>Large files may take a moment. STOP will abort after the current file finishes.</div>
           </div>
         )}
 
@@ -14817,6 +14809,13 @@ function App(){
     try{
       const saved=await uploadDefect(data,company.companyId);
 
+      // Optimistically add to local list so the map LIST and REVIEW update
+      // immediately, without waiting for the PocketBase subscription round-trip.
+      if(saved&&saved.id){
+        const _n=v=>{if(v===null||v===undefined||v==='')return null;const n=typeof v==='number'?v:parseFloat(v);return Number.isFinite(n)?n:null;};
+        const normalised={...saved,lat:_n(saved.lat),lng:_n(saved.lng),mapZoom:_n(saved.mapZoom)};
+        setDefects(prev=>prev.some(d=>d.id===saved.id)?prev:[...prev,normalised]);
+      }
       // Telegram notification (fire-and-forget)
       try{
         const cfg=local.get(TG_KEY);
