@@ -10213,6 +10213,39 @@ Requirements:
   const convertJpgsToPdf=async(e)=>{
     const raw=Array.from(e.target.files||[]).filter(f=>/^image\//.test(f.type)||/\.pdf$/i.test(f.name)||f.type==="application/pdf");
     if(!raw.length)return;
+    // Preserve mode short-circuit — upload source files as-is. Any PDF
+    // wrapping forces the viewer to rasterize the embedded image on
+    // render, and PDF viewers use cheaper downsamplers than image
+    // viewers, so the same bytes look softer inside a PDF than as a
+    // native <img>. Skipping the wrap gives genuinely lossless output.
+    // Trade-off: these drawings are images, not PDFs, so Compare (which
+    // requires PDF) won't accept them — use Vectorize/AI for Compare.
+    if(preserveMode){
+      setConverting(true);
+      const created=[];
+      for(let i=0;i<raw.length;i++){
+        const f=raw[i];
+        setConvertProgress({label:`Uploading ${f.name}`,pct:Math.round(((i)/raw.length)*100),fileIdx:i+1,totalFiles:raw.length});
+        try{
+          const rec=await DB.drawings.createWithFile({
+            companyId:company.companyId,
+            projectId:currentProject.id,
+            name:f.name.replace(/\.[^.]+$/,"")+" (preserved)",
+            uploadedBy:member?.name||"",
+            uploadedAt:new Date().toISOString(),
+          },"file",f,f.name);
+          created.push(rec);
+        }catch(err){
+          console.warn("preserve upload failed for",f.name,err);
+          alert(`Failed to upload ${f.name}: ${err.message}`);
+        }
+      }
+      if(created.length)setDrawings(prev=>[...created,...prev]);
+      setConvertProgress(null);
+      setConverting(false);
+      if(convertRef.current)convertRef.current.value="";
+      return;
+    }
     // Expand any PDFs into per-page image files up front so progress totals
     // reflect real work units. Failures on a single PDF don't block others.
     const files=[];
@@ -11795,11 +11828,11 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           )}
           {canUpload&&(
             <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:3}}>
-              <button onClick={()=>convertRef.current?.click()} disabled={converting} title={aiEnhance?"Convert with Gemini AI vision — produces cleaner, semantic SVG (uses your Gemini quota)":preserveMode?"Lossless — embeds the source image in a PDF at full resolution. Text stays fully readable. Output is raster-in-PDF, not vector.":"Convert JPG sketches to vector PDF drawings (single or batch) — offline, free, deterministic"} style={{width:"100%",borderRadius:10,background:aiEnhance?"rgba(88,86,214,0.1)":preserveMode?"rgba(255,149,0,0.08)":"rgba(52,199,89,0.08)",border:`1px solid ${aiEnhance?"rgba(88,86,214,0.35)":preserveMode?"rgba(255,149,0,0.35)":"rgba(52,199,89,0.3)"}`,cursor:converting?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 10px",gap:5}}>
+              <button onClick={()=>convertRef.current?.click()} disabled={converting} title={aiEnhance?"Convert with Gemini AI vision — produces cleaner, semantic SVG (uses your Gemini quota)":preserveMode?"Lossless — uploads the source image as-is. Best possible quality (bit-for-bit). Image drawings don't work in Compare; use Vectorize/AI for that."  :"Convert JPG sketches to vector PDF drawings (single or batch) — offline, free, deterministic"} style={{width:"100%",borderRadius:10,background:aiEnhance?"rgba(88,86,214,0.1)":preserveMode?"rgba(255,149,0,0.08)":"rgba(52,199,89,0.08)",border:`1px solid ${aiEnhance?"rgba(88,86,214,0.35)":preserveMode?"rgba(255,149,0,0.35)":"rgba(52,199,89,0.3)"}`,cursor:converting?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 10px",gap:5}}>
                 {converting?<Spin size={16}/>:<><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 7h6l2-3h6a2 2 0 012 2v13a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z" stroke={aiEnhance?"rgba(88,86,214,0.85)":preserveMode?"rgba(200,120,0,0.85)":"rgba(52,160,80,0.85)"} strokeWidth="1.6" strokeLinejoin="round"/><path d="M9 13l2 2 4-4" stroke={aiEnhance?"rgba(88,86,214,0.85)":preserveMode?"rgba(200,120,0,0.85)":"rgba(52,160,80,0.85)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg><span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:aiEnhance?"rgba(88,86,214,0.9)":preserveMode?"rgba(200,120,0,0.9)":"rgba(52,160,80,0.9)"}}>{aiEnhance?"AI Convert":preserveMode?"Preserve":"Convert"}</span></>}
               </button>
               <div style={{display:"flex",gap:8,justifyContent:"center"}}>
-                <label title="Lossless — embed the source at full resolution, no tracing. Best when you need to read dimensions, notes, or door schedules." style={{display:"flex",alignItems:"center",gap:4,fontSize:9,cursor:"pointer",color:preserveMode?"#c87800":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.04em"}}>
+                <label title="Lossless — upload the source image as-is, no tracing or PDF wrap. Zero quality loss. Note: image drawings can't be used in Compare (which needs PDF)." style={{display:"flex",alignItems:"center",gap:4,fontSize:9,cursor:"pointer",color:preserveMode?"#c87800":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.04em"}}>
                   <input type="checkbox" checked={preserveMode} disabled={converting} onChange={e=>{setPreserveMode(e.target.checked);if(e.target.checked)setAiEnhance(false);}} style={{margin:0,width:11,height:11,cursor:"pointer"}}/>
                   PRESERVE
                 </label>
