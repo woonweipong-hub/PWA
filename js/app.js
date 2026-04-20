@@ -8565,6 +8565,11 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped,o
   const[fixAccuracy,setFixAccuracy]=useState(null); // metres reported with last fix, null = no fix shown
   const[pinMode,setPinMode]=useState(true);
   const[showList,setShowList]=useState(false);
+  // Parity with Tag on Drawings — after tapping the map the user can either
+  // create a new entry (existing Quick Log form) or pin an EXISTING entry
+  // from this project at the tapped coordinates. Collapsed by default so
+  // the primary "new entry" path stays prominent.
+  const[pickExistingOpen,setPickExistingOpen]=useState(false);
   // Focused defect for the slide-up preview card. Set when the user taps a
   // chip in the always-visible strip below the map, OR taps a marker on the
   // map itself. Null hides the card. Same pattern as REVIEW > ENTRIES > MAP
@@ -9672,6 +9677,31 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped,o
     mapObj.current.setView([hit.lat,hit.lng],17);
   };
 
+  // Pin an existing defect at the tapped lat/lng. Mirrors the Tag on
+  // Drawings "link existing entry" path — user's existing entries can
+  // be geolocated after the fact, or moved if they were previously
+  // pinned elsewhere on the map.
+  const pinExistingEntry=async(defect)=>{
+    if(!pendingPin||saving||!defect?.id)return;
+    const hadGps=typeof defect.lat==="number"&&typeof defect.lng==="number";
+    if(hadGps){
+      const prev=`${defect.lat.toFixed(5)}, ${defect.lng.toFixed(5)}`;
+      const next=`${pendingPin.lat.toFixed(5)}, ${pendingPin.lng.toFixed(5)}`;
+      if(!confirm(`"${defect.title||"Entry"}" is already on the map at ${prev}.\n\nMove it to ${next}?`))return;
+    }
+    setSaving(true);
+    try{
+      const zoom=mapObj.current?.getZoom();
+      await DB.defects.update(defect.id,{lat:pendingPin.lat,lng:pendingPin.lng,mapZoom:zoom||17});
+      cancelPending();
+      setPinMode(true);
+      setSavedToast(true);setTimeout(()=>setSavedToast(false),2200);
+    }catch(e){
+      alert("Failed to pin entry: "+(e.message||e));
+    }
+    setSaving(false);
+  };
+
   const savePin=async(addAnother)=>{
     if(!pendingPin||!qTitle.trim()||!onSaveEntry)return;
     setSaving(true);
@@ -9915,6 +9945,41 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped,o
           <button onClick={()=>savePin(true)} disabled={saving||!qTitle.trim()} title="Save this pin, keep ADD PIN on, tap next location" style={{flex:"1 1 130px",padding:"11px 10px",borderRadius:8,border:"1px solid "+(qTitle.trim()&&!saving?"rgba(255,107,0,0.4)":"rgba(0,0,0,0.1)"),background:qTitle.trim()&&!saving?"rgba(255,107,0,0.1)":"rgba(0,0,0,0.03)",color:qTitle.trim()&&!saving?"#ff6b00":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:qTitle.trim()&&!saving?"pointer":"not-allowed"}}>+ SAVE & ADD ANOTHER</button>
           <button onClick={()=>savePin(false)} disabled={saving||!qTitle.trim()} style={{flex:"2 1 120px",padding:"11px 12px",borderRadius:8,border:"none",background:qTitle.trim()&&!saving?"#ff6b00":"rgba(0,0,0,0.1)",color:qTitle.trim()&&!saving?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:qTitle.trim()&&!saving?"pointer":"not-allowed"}}>{saving?t("messages.saving"):"✓ SAVE PIN"}</button>
         </div>
+        {/* Pin-existing-entry picker — parity with Tag on Drawings. Collapsed by
+            default so the primary "new entry" path stays prominent. Shows
+            every defect in the current project; entries already on the map are
+            flagged visually and confirmed before overwrite. */}
+        {(()=>{
+          const projDefects=(defects||[]).filter(d=>!currentProject||d.projectId===currentProject.id||d.projectId==="default");
+          if(projDefects.length===0)return null;
+          return(
+            <div style={{borderTop:"1px dashed rgba(0,0,0,0.12)",paddingTop:10,marginTop:4}}>
+              <button onClick={()=>setPickExistingOpen(v=>!v)} disabled={saving} style={{width:"100%",background:"none",border:"none",padding:"4px 0",color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:saving?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <span>Or pin an existing entry here ({projDefects.length})</span>
+                <span style={{transition:"transform 0.15s",transform:pickExistingOpen?"rotate(180deg)":"rotate(0deg)"}}>▾</span>
+              </button>
+              {pickExistingOpen&&(
+                <div style={{maxHeight:220,overflowY:"auto",marginTop:6,border:"1px solid rgba(0,0,0,0.08)",borderRadius:8,background:"rgba(0,0,0,0.02)"}}>
+                  {projDefects.map(d=>{
+                    const hasGps=typeof d.lat==="number"&&typeof d.lng==="number";
+                    const color=SEV_COLOR[d.severity]||"#8e8e93";
+                    return(
+                      <button key={d.id} onClick={()=>pinExistingEntry(d)} disabled={saving} style={{width:"100%",background:"none",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",padding:"8px 10px",textAlign:"left",cursor:saving?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:8,borderLeft:`3px solid ${color}`}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:"#1a1a1a",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.title||"Untitled"}</div>
+                          <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.severity||"—"} · {d.status||"Open"}{d.defect_id?" · "+d.defect_id:""}</div>
+                        </div>
+                        {hasGps&&(
+                          <span title="Already on the map — tapping will move it here" style={{fontSize:9,fontWeight:700,color:"#b34800",background:"rgba(255,149,0,0.14)",padding:"2px 6px",borderRadius:4,flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:0.5}}>📍 ON MAP</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>}
     </div>
   );
