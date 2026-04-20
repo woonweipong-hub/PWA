@@ -7360,7 +7360,7 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
   };
 
   return(
-    <div style={embedded?{background:"#f0ede8",borderRadius:12,overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)",animation:"slideUp 0.2s ease"}:{position:"fixed",inset:0,background:"#f0ede8",zIndex:100,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
+    <div style={embedded?{background:"#f0ede8",borderRadius:12,overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)",animation:"slideUp 0.2s ease"}:{position:"fixed",inset:0,background:"#f0ede8",zIndex:1100,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
       <div style={{position:embedded?"relative":"sticky",top:0,background:"rgba(240,237,232,0.95)",backdropFilter:"blur(8px)",padding:"16px 16px 12px",display:"flex",alignItems:"center",gap:12,borderBottom:"1px solid rgba(0,0,0,0.08)",zIndex:10}}>
         <button onClick={onClose} style={{background:"rgba(0,0,0,0.08)",border:"none",borderRadius:20,padding:"7px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{embedded?"◀ BACK TO MAP":t("actions.back")}</button>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a",flex:1}}>ENTRY DETAIL</div>
@@ -9952,7 +9952,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onUpdateDefect,comp
       {pendingPin&&!mapQuickCreate&&(()=>{
         const projDefects=(defects||[]).filter(d=>!currentProject||d.projectId===currentProject.id||d.projectId==="default");
         return(
-          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={cancelPending}>
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:1200,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={cancelPending}>
             <div onClick={e=>e.stopPropagation()} style={{background:"#1a1a1a",borderRadius:16,padding:20,width:"100%",maxWidth:420,maxHeight:"80vh",overflowY:"auto"}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff",marginBottom:4}}>LINK TO ENTRY</div>
               <div style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:6}}>Select an existing entry or create new</div>
