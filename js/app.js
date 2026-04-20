@@ -9694,11 +9694,26 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped,o
     setSaving(true);
     try{
       const zoom=mapObj.current?.getZoom();
-      await DB.defects.update(defect.id,{lat:pendingPin.lat,lng:pendingPin.lng,mapZoom:zoom||17});
+      const payload={lat:pendingPin.lat,lng:pendingPin.lng,mapZoom:zoom||17};
+      console.log("[MapPanel] pinExistingEntry → updating defect",defect.id,payload);
+      const result=await DB.defects.update(defect.id,payload);
+      console.log("[MapPanel] pinExistingEntry result:",result);
+      // Force-refresh the subscription's data by briefly re-rendering via a
+      // state bump — the SSE event should land in <1s but some PocketBase
+      // builds skip events on tiny PATCHes. This guarantees the map redraws.
+      setTimeout(()=>{
+        const latOk=typeof result?.lat==="number"||(result?.lat!=null&&!isNaN(parseFloat(result.lat)));
+        const lngOk=typeof result?.lng==="number"||(result?.lng!=null&&!isNaN(parseFloat(result.lng)));
+        if(!latOk||!lngOk){
+          console.warn("[MapPanel] Updated defect response missing numeric lat/lng — server schema may lack these fields. Response:",result);
+          alert("Pinned, but the server didn't return a location — the pin may not appear until you reload.\n\nThis usually means the PocketBase defects collection is missing the `lat` / `lng` / `mapZoom` fields. Check the admin UI.");
+        }
+      },50);
       cancelPending();
       setPinMode(true);
       setSavedToast(true);setTimeout(()=>setSavedToast(false),2200);
     }catch(e){
+      console.error("[MapPanel] pinExistingEntry failed:",e);
       alert("Failed to pin entry: "+(e.message||e));
     }
     setSaving(false);
