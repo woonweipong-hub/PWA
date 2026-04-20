@@ -1420,25 +1420,28 @@ function _parseAiJson(raw,providerLabel){
 async function analyzeWithGemini(apiKey,base64Image,prompt){
   try{
     const b64=base64Image.split(",")[1];
-    // generationConfig matters here: (1) thinkingBudget:0 disables the
-    // 2.5-family "thinking" mode so output tokens aren't spent on internal
-    // reasoning before the JSON is emitted — without this the response can
-    // be truncated mid-JSON on a verbose prompt; (2) responseMimeType forces
-    // well-formed JSON output with no prose wrapper; (3) explicit token
-    // ceiling gives the JSON room to grow as we add fields. Unknown keys
-    // are ignored by older Gemini models, so this stays compatible.
-    const res=await geminiGenerate(apiKey,{
-      contents:[{parts:[
-        {inline_data:{mime_type:"image/jpeg",data:b64}},
-        {text:prompt||getAIPrompt()}
-      ]}],
-      generationConfig:{
-        responseMimeType:"application/json",
-        temperature:0.2,
-        maxOutputTokens:2048,
-        thinkingConfig:{thinkingBudget:0}
-      }
-    });
+    const promptParts=[
+      {inline_data:{mime_type:"image/jpeg",data:b64}},
+      {text:prompt||getAIPrompt()}
+    ];
+    // Full config favours 2.5-family models: thinkingBudget:0 prevents the
+    // model from burning output tokens on internal reasoning; responseMimeType
+    // forces clean JSON; maxOutputTokens gives the response room. Older models
+    // (1.5, 2.0) may 400 on thinkingConfig — we retry with minimal config in
+    // that case so analyses keep working across the fallback model list.
+    const fullConfig={
+      responseMimeType:"application/json",
+      temperature:0.2,
+      maxOutputTokens:2048,
+      thinkingConfig:{thinkingBudget:0}
+    };
+    const minimalConfig={temperature:0.2,maxOutputTokens:2048};
+    let res=await geminiGenerate(apiKey,{contents:[{parts:promptParts}],generationConfig:fullConfig});
+    if(res.status===400){
+      const errText400=await res.text().catch(()=>"");
+      console.warn("[AI] Gemini 400 on full config:",errText400.slice(0,300),"— retrying with minimal config");
+      res=await geminiGenerate(apiKey,{contents:[{parts:promptParts}],generationConfig:minimalConfig});
+    }
     if(!res.ok){
       const errText=await res.text().catch(()=>"");
       console.error("[AI] Gemini HTTP",res.status,errText.slice(0,400));
@@ -1449,7 +1452,7 @@ async function analyzeWithGemini(apiKey,base64Image,prompt){
     const nonThought=parts.filter(p=>p.text&&!p.thought);
     const text=(nonThought.length?nonThought.pop():parts.filter(p=>p.text).pop()||{}).text||"";
     if(!text){
-      console.error("[AI] Gemini returned no text. finishReason:",data.candidates?.[0]?.finishReason,"promptFeedback:",data.promptFeedback);
+      console.error("[AI] Gemini returned no text. finishReason:",data.candidates?.[0]?.finishReason,"promptFeedback:",data.promptFeedback,"raw:",JSON.stringify(data).slice(0,500));
       return null;
     }
     return _parseAiJson(text,"Gemini");
