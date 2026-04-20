@@ -1395,19 +1395,68 @@ async function geminiGenerate(apiKey,body){
   return res;
 }
 
+// Extract JSON from a text response that may be wrapped in code fences or
+// preceded by prose. Tries direct parse first, then strips fences, then
+// extracts the first balanced {...} block as a last resort so a verbose
+// model reply with a valid JSON object embedded still parses cleanly.
+function _parseAiJson(raw,providerLabel){
+  const text=String(raw||"").trim();
+  if(!text)return null;
+  const stripped=text.replace(/```json|```/g,"").trim();
+  try{return JSON.parse(stripped);}catch(_){}
+  const firstBrace=stripped.indexOf("{");
+  const lastBrace=stripped.lastIndexOf("}");
+  if(firstBrace>=0&&lastBrace>firstBrace){
+    const slice=stripped.slice(firstBrace,lastBrace+1);
+    try{return JSON.parse(slice);}catch(e){
+      console.error(`[AI] ${providerLabel||"AI"} JSON parse failed after brace-slice:`,e.message,"raw[0..400]:",stripped.slice(0,400));
+    }
+  }else{
+    console.error(`[AI] ${providerLabel||"AI"} response had no JSON object. raw[0..400]:`,stripped.slice(0,400));
+  }
+  return null;
+}
+
 async function analyzeWithGemini(apiKey,base64Image,prompt){
   try{
     const b64=base64Image.split(",")[1];
-    const res=await geminiGenerate(apiKey,{contents:[{parts:[
-      {inline_data:{mime_type:"image/jpeg",data:b64}},
-      {text:prompt||getAIPrompt()}
-    ]}]});
+    // generationConfig matters here: (1) thinkingBudget:0 disables the
+    // 2.5-family "thinking" mode so output tokens aren't spent on internal
+    // reasoning before the JSON is emitted — without this the response can
+    // be truncated mid-JSON on a verbose prompt; (2) responseMimeType forces
+    // well-formed JSON output with no prose wrapper; (3) explicit token
+    // ceiling gives the JSON room to grow as we add fields. Unknown keys
+    // are ignored by older Gemini models, so this stays compatible.
+    const res=await geminiGenerate(apiKey,{
+      contents:[{parts:[
+        {inline_data:{mime_type:"image/jpeg",data:b64}},
+        {text:prompt||getAIPrompt()}
+      ]}],
+      generationConfig:{
+        responseMimeType:"application/json",
+        temperature:0.2,
+        maxOutputTokens:2048,
+        thinkingConfig:{thinkingBudget:0}
+      }
+    });
+    if(!res.ok){
+      const errText=await res.text().catch(()=>"");
+      console.error("[AI] Gemini HTTP",res.status,errText.slice(0,400));
+      return null;
+    }
     const data=await res.json();
     const parts=data.candidates?.[0]?.content?.parts||[];
     const nonThought=parts.filter(p=>p.text&&!p.thought);
-    const text=(nonThought.length?nonThought.pop():parts.filter(p=>p.text).pop()||{}).text||"{}";
-    return JSON.parse(text.replace(/```json|```/g,"").trim());
-  }catch{return null;}
+    const text=(nonThought.length?nonThought.pop():parts.filter(p=>p.text).pop()||{}).text||"";
+    if(!text){
+      console.error("[AI] Gemini returned no text. finishReason:",data.candidates?.[0]?.finishReason,"promptFeedback:",data.promptFeedback);
+      return null;
+    }
+    return _parseAiJson(text,"Gemini");
+  }catch(err){
+    console.error("[AI] Gemini error:",err);
+    return null;
+  }
 }
 
 async function analyzeWithOllama(cfg,base64Image,prompt){
@@ -1417,12 +1466,19 @@ async function analyzeWithOllama(cfg,base64Image,prompt){
     const model=cfg.model||"llava";
     const res=await fetch(url+"/api/generate",{
       method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({model,prompt:prompt||getAIPrompt(),images:[b64],stream:false})
+      body:JSON.stringify({model,prompt:prompt||getAIPrompt(),images:[b64],stream:false,format:"json"})
     });
+    if(!res.ok){
+      const errText=await res.text().catch(()=>"");
+      console.error("[AI] Ollama HTTP",res.status,errText.slice(0,400));
+      return null;
+    }
     const data=await res.json();
-    const text=data.response||"{}";
-    return JSON.parse(text.replace(/```json|```/g,"").trim());
-  }catch{return null;}
+    return _parseAiJson(data.response||"","Ollama");
+  }catch(err){
+    console.error("[AI] Ollama error:",err);
+    return null;
+  }
 }
 
 async function analyzeWithOpenAI(cfg,base64Image,prompt){
@@ -1430,18 +1486,28 @@ async function analyzeWithOpenAI(cfg,base64Image,prompt){
     const b64=base64Image.split(",")[1];
     const url=(cfg.url||"https://api.openai.com").replace(/\/+$/,"");
     const model=cfg.model||"gpt-4o-mini";
+    // max_tokens bumped from 300 → 1000 so the enlarged JSON response
+    // (more fields per the current prompt) can finish cleanly. response_format
+    // enforces valid JSON output on models that support it.
     const res=await fetch(url+"/v1/chat/completions",{
       method:"POST",
       headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},
-      body:JSON.stringify({model,max_tokens:300,messages:[{role:"user",content:[
+      body:JSON.stringify({model,max_tokens:1000,response_format:{type:"json_object"},messages:[{role:"user",content:[
         {type:"image_url",image_url:{url:"data:image/jpeg;base64,"+b64,detail:"low"}},
         {type:"text",text:prompt||getAIPrompt()}
       ]}]})
     });
+    if(!res.ok){
+      const errText=await res.text().catch(()=>"");
+      console.error("[AI] OpenAI HTTP",res.status,errText.slice(0,400));
+      return null;
+    }
     const data=await res.json();
-    const text=data.choices?.[0]?.message?.content||"{}";
-    return JSON.parse(text.replace(/```json|```/g,"").trim());
-  }catch{return null;}
+    return _parseAiJson(data.choices?.[0]?.message?.content||"","OpenAI");
+  }catch(err){
+    console.error("[AI] OpenAI error:",err);
+    return null;
+  }
 }
 
 // Unified dispatcher — picks the right provider based on user settings.
