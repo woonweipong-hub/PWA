@@ -1351,7 +1351,7 @@ function getAIPrompt(){
   // different language preferences. Only freeform fields (title, description,
   // location_area) are localized. Categoricals are translated at render via tOpt().
   const langClause=lang==="en"?"":` Write "title", "description", and "location_area" in ${langName}. Keep all other field values in English exactly as specified.`;
-  return 'Analyze this construction site photo. Respond in valid JSON only, no markdown fences:\n{"title":"max 5 word defect title","severity":"one of: Critical Major Minor Observation","description":"2 sentence technical description of what is wrong and where","trade":"responsible trade: Plumbing Electrical Waterproofing Painting Tiling Structural Carpentry Aircon Civil Landscaping General","component":"specific affected element — use exact match if possible e.g. Tile Floor Ceiling Wall Paint Pipe Drain Slab Column Scaffold Railing Door Window AC Unit Wiring Socket Sprinkler","issue":"most applicable defect type for that component e.g. Crack Leak Peeling Loose Stain Blocked Chipped Sagging Exposed rebar Misaligned Missing Damaged","entry_type":"one of: Defect Observation Instruction — Defect for quality/workmanship, Observation for non-urgent notes, Instruction for directives","location_area":"short visible-area description from photo context e.g. bathroom ceiling external wall corridor floor lift lobby site perimeter","safety_risk":1,"suggested_assignee":"trade role e.g. Plumber Electrician Painter Tiler Contractor"}\nReplace safety_risk 1 with integer 1–5 where 5 is life-threatening hazard.'+langClause;
+  return 'Analyze this construction site photo. Respond in valid JSON only, no markdown fences:\n{"title":"max 5 word defect title","severity":"one of: Critical Major Minor Observation","description":"2 sentence technical description of what is wrong and where","trade":"responsible trade: Plumbing Electrical Waterproofing Painting Tiling Structural Carpentry Aircon Civil Landscaping General","component":"specific affected element — use exact match if possible e.g. Tile Floor Ceiling Wall Paint Pipe Drain Slab Column Scaffold Railing Door Window AC Unit Wiring Socket Sprinkler","issue":"most applicable defect type for that component e.g. Crack Leak Peeling Loose Stain Blocked Chipped Sagging Exposed rebar Misaligned Missing Damaged","entry_type":"one of: Defect Observation Instruction — Defect for quality/workmanship, Observation for non-urgent notes, Instruction for directives","location_area":"short visible-area description from photo context e.g. bathroom ceiling external wall corridor floor lift lobby site perimeter","room_area":"specific room or area visible in photo — prefer exact match from: Kitchen Bathroom Master Bedroom Bedroom 2 Bedroom 3 Living Room Dining Room Balcony Toilet Store Room Corridor Staircase Lobby Car Park Yard Entrance Hallway Utility Room Laundry Pantry Meeting Room Office Reception","time_needed":"rough repair scope — one of: Same day, 1 day, 2 days, 3 days, 1 week, 2 weeks, 1 month, 2 months, 3 months, TBD","safety_risk":1,"suggested_assignee":"trade role e.g. Plumber Electrician Painter Tiler Contractor"}\nReplace safety_risk 1 with integer 1–5 where 5 is life-threatening hazard.'+langClause;
 }
 // Backward-compatible export — callers that don't need language awareness
 // still see English. New callers should call getAIPrompt() per request to
@@ -5003,29 +5003,54 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
     }
     if(resolvedComponent){
       set("component",resolvedComponent);
-      // Issue — only fill if it matches the component's known issue list so the
-      // dropdown stays coherent.
+      // Issue — prefer a match from the component's known issue list so the
+      // dropdown stays coherent; otherwise keep the AI's raw suggestion as a
+      // custom value (user can edit/verify in the form).
       if(result.issue){
         const issues=COMPONENT_ISSUES[resolvedComponent]||[];
         const needle=result.issue.trim().toLowerCase();
         const issueMatch=issues.find(i=>i.toLowerCase()===needle)
           ||issues.find(i=>i.toLowerCase().includes(needle))
           ||issues.find(i=>needle.includes(i.toLowerCase()));
-        if(issueMatch)set("issue",issueMatch);
+        set("issue",issueMatch||result.issue.trim());
       }
     }else if(result.trade){
       // Fallback: use trade category when AI didn't return a matching component
       set("component",result.trade);
+      if(result.issue)set("issue",result.issue.trim());
     }
     // Entry type — only standard types; skip "Update" (shouldn't be AI-suggested)
     if(result.entry_type){
       const valid=["Defect","Observation","Instruction"].find(t=>t.toLowerCase()===result.entry_type.toLowerCase());
       if(valid)set("entryType",valid);
     }
-    // Location area — fills the location field only when it is currently empty
-    // so batch-mode carry-overs (floor/zone from previous entry) are not clobbered.
-    if(result.location_area){
-      setForm(f=>({...f,location:f.location||result.location_area}));
+    // Room / Area — prefer exact match from DEFAULT_SUBZONES so dropdown stays
+    // clean; fall back to raw AI string as custom. Only fills if currently
+    // empty so batch-mode carry-overs are preserved.
+    const roomHint=result.room_area||result.location_area;
+    if(roomHint){
+      const needle=roomHint.trim().toLowerCase();
+      const subzoneMatch=DEFAULT_SUBZONES.find(s=>s.toLowerCase()===needle)
+        ||DEFAULT_SUBZONES.find(s=>s.toLowerCase().includes(needle))
+        ||DEFAULT_SUBZONES.find(s=>needle.includes(s.toLowerCase()));
+      setForm(f=>({...f,locationSubzone:f.locationSubzone||subzoneMatch||roomHint.trim()}));
+    }
+    // Time needed — match against DURATION_OPTIONS, fallback to raw
+    if(result.time_needed){
+      const needle=result.time_needed.trim().toLowerCase();
+      const durMatch=DURATION_OPTIONS.find(d=>d.toLowerCase()===needle)
+        ||DURATION_OPTIONS.find(d=>d.toLowerCase().includes(needle))
+        ||DURATION_OPTIONS.find(d=>needle.includes(d.toLowerCase()));
+      setForm(f=>({...f,duration:f.duration||durMatch||result.time_needed.trim()}));
+    }
+    // Due date — derive from severity when empty so the user gets a sensible
+    // default. Critical=1d, Major=7d, Minor=30d, Observation=none.
+    const sevForDue=result.severity||null;
+    const dueDays={Critical:1,Major:7,Minor:30}[sevForDue];
+    if(dueDays){
+      const d=new Date();d.setDate(d.getDate()+dueDays);
+      const iso=d.toISOString().slice(0,10);
+      setForm(f=>({...f,dueDate:f.dueDate||iso}));
     }
     // Assignee — fuzzy-match AI's suggested role against actual team members
     if(result.suggested_assignee&&assignees.length>0){
