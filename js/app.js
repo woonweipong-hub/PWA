@@ -8546,7 +8546,7 @@ function MapsSettings({onClose}){
 }
 
 // ── Tag on Map (Google Maps pin canvas) ──────────────────────────
-function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,company,onSnapped,onViewEntry}){
+function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,onBulkUpdate,onBulkDelete,company,onSnapped,onViewEntry}){
   const mapRef=useRef(null);
   const searchRef=useRef(null);
   const mapObj=useRef(null);
@@ -8600,6 +8600,12 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
   const[markupTool,setMarkupTool]=useState(null); // null | "rect" | "circle" | "line" | "text" | "arrow" | "dimension" | "stamp" | "freehand" | "photo"
   const[mapMarkups,setMapMarkups]=useState([]);   // session-only, not yet persisted
   const[pendingPhoto,setPendingPhoto]=useState(null); // {dataUrl, aspect}
+  // Inline bulk-update sheet state for selected pins — parity with REVIEW's
+  // bulk UPDATE flow, scoped to the fields that matter for on-site triage.
+  const[bulkSheetOpen,setBulkSheetOpen]=useState(false);
+  const[bulkStatus,setBulkStatus]=useState("");
+  const[bulkSeverity,setBulkSeverity]=useState("");
+  const[bulkSaving,setBulkSaving]=useState(false);
   const markupDrawRef=useRef(null);               // {tool, first:{lat,lng}, tempLayer, points[]}
   const markupLayersRef=useRef([]);
   const photoInputRef=useRef(null);
@@ -9841,21 +9847,56 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
             ➕ MULTI{mapAdditiveSelect?" ON":""}
           </button>
         )}
+        {canEdit&&mapAdditiveSelect&&mapDefects.length>0&&(
+          <button onClick={()=>{
+            const everyId=new Set(mapDefects.map(d=>d.id));
+            const allSelected=mapDefects.every(d=>selectedPinIds.has(d.id));
+            setSelectedPinIds(allSelected?new Set():everyId);
+          }} title="Toggle selection of every pin on the map" style={{padding:"8px 12px",borderRadius:10,border:"1px solid rgba(88,86,214,0.3)",background:"#fff",color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+            ✓ SELECT ALL ({mapDefects.length})
+          </button>
+        )}
         {canEdit&&selectedPinIds.size>0&&(
           <>
+            {onBulkUpdate&&(
+              <button onClick={()=>setBulkSheetOpen(v=>!v)} title="Update status / severity for selected pins" style={{padding:"8px 12px",borderRadius:10,border:"1px solid rgba(255,107,0,0.4)",background:bulkSheetOpen?"rgba(255,107,0,0.18)":"rgba(255,107,0,0.08)",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+                ✎ UPDATE ({selectedPinIds.size})
+              </button>
+            )}
             <button onClick={async()=>{
               if(!confirm(`Unpin ${selectedPinIds.size} selected entr${selectedPinIds.size===1?"y":"ies"}?\n(Entries stay — only their GPS locations are cleared.)`))return;
               const ids=Array.from(selectedPinIds);
               const failures=[];
               for(const id of ids){
-                try{await DB.defects.update(id,{lat:null,lng:null,mapZoom:null});}
+                try{
+                  const d=mapDefects.find(x=>x.id===id)||{};
+                  const cleanLoc=(d.location||"").replace(/\s*\[?-?\d+\.\d+\s*,\s*-?\d+\.\d+\]?\s*/g,"").trim();
+                  const payload={lat:null,lng:null,mapZoom:null,location:cleanLoc};
+                  const result=await DB.defects.update(id,payload);
+                  if(typeof onPatchDefectLocal==="function"){
+                    onPatchDefectLocal({...d,...(result||{}),lat:null,lng:null,mapZoom:null,location:cleanLoc});
+                  }
+                }
                 catch(e){console.warn("unpin failed",id,e);failures.push(id);}
               }
               clearPinSelection();
               if(failures.length)alert(`Unpinned ${ids.length-failures.length}/${ids.length}. ${failures.length} failed — check connection and retry.`);
             }} title={`Unpin ${selectedPinIds.size} selected entries from the map`} style={{padding:"8px 12px",borderRadius:10,border:"1px solid rgba(255,59,48,0.4)",background:"rgba(255,59,48,0.12)",color:"#cc0000",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-              🗑 UNPIN ({selectedPinIds.size})
+              📍 UNPIN ({selectedPinIds.size})
             </button>
+            {onBulkDelete&&(
+              <button onClick={async()=>{
+                const n=selectedPinIds.size;
+                if(!confirm(`DELETE ${n} selected entr${n===1?"y":"ies"}?\n\nThis archives the entries themselves (not just their pins). You can restore from REVIEW > Archived.`))return;
+                try{
+                  const res=await onBulkDelete(Array.from(selectedPinIds));
+                  clearPinSelection();
+                  if(res?.failed)alert(`Deleted ${res.ok||0}/${n}. ${res.failed} failed.`);
+                }catch(e){alert("Delete failed: "+(e.message||e));}
+              }} title={`Delete ${selectedPinIds.size} selected entries`} style={{padding:"8px 12px",borderRadius:10,border:"1px solid rgba(255,59,48,0.5)",background:"#ff3b30",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+                🗑 DELETE ({selectedPinIds.size})
+              </button>
+            )}
             <button onClick={clearPinSelection} title="Clear selection" style={{padding:"8px 10px",borderRadius:10,border:"1px solid rgba(0,0,0,0.12)",background:"#fff",color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>
               ✕
             </button>
@@ -9868,6 +9909,35 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
         )}
         <span style={{marginLeft:"auto",fontSize:10,background:"rgba(0,0,0,0.05)",padding:"3px 8px",borderRadius:8,color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{providerLabel}</span>
       </div>
+      {canEdit&&bulkSheetOpen&&selectedPinIds.size>0&&onBulkUpdate&&(
+        <div style={{padding:"10px 12px",background:"rgba(255,107,0,0.06)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:10,display:"flex",flexWrap:"wrap",alignItems:"center",gap:8}}>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,color:"#ff6b00",letterSpacing:0.5}}>APPLY TO {selectedPinIds.size}:</span>
+          <select value={bulkStatus} onChange={e=>setBulkStatus(e.target.value)} style={{padding:"6px 8px",fontSize:12,borderRadius:8,border:"1px solid rgba(0,0,0,0.14)",background:"#fff"}}>
+            <option value="">— Status —</option>
+            {["Open","In Progress","Verified","Closed"].map(s=>(<option key={s} value={s}>{s}</option>))}
+          </select>
+          <select value={bulkSeverity} onChange={e=>setBulkSeverity(e.target.value)} style={{padding:"6px 8px",fontSize:12,borderRadius:8,border:"1px solid rgba(0,0,0,0.14)",background:"#fff"}}>
+            <option value="">— Severity —</option>
+            {["Critical","Major","Minor","Observation"].map(s=>(<option key={s} value={s}>{s}</option>))}
+          </select>
+          <button disabled={bulkSaving||(!bulkStatus&&!bulkSeverity)} onClick={async()=>{
+            const patch={};
+            if(bulkStatus)patch.status=bulkStatus;
+            if(bulkSeverity)patch.severity=bulkSeverity;
+            if(!Object.keys(patch).length)return;
+            setBulkSaving(true);
+            try{
+              const res=await onBulkUpdate(Array.from(selectedPinIds),patch);
+              setBulkStatus("");setBulkSeverity("");setBulkSheetOpen(false);clearPinSelection();
+              if(res?.failed)alert(`Updated ${res.ok||0}/${selectedPinIds.size}. ${res.failed} failed.`);
+            }catch(e){alert("Update failed: "+(e.message||e));}
+            setBulkSaving(false);
+          }} style={{padding:"7px 14px",borderRadius:8,border:"none",background:bulkSaving||(!bulkStatus&&!bulkSeverity)?"rgba(0,0,0,0.1)":"#ff6b00",color:bulkSaving||(!bulkStatus&&!bulkSeverity)?"rgba(0,0,0,0.35)":"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:bulkSaving||(!bulkStatus&&!bulkSeverity)?"not-allowed":"pointer"}}>
+            {bulkSaving?"SAVING…":"APPLY"}
+          </button>
+          <button onClick={()=>{setBulkSheetOpen(false);setBulkStatus("");setBulkSeverity("");}} style={{padding:"7px 10px",borderRadius:8,border:"1px solid rgba(0,0,0,0.12)",background:"#fff",color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>Cancel</button>
+        </div>
+      )}
       {savedToast&&(
         <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"rgba(48,209,88,0.14)",border:"1px solid rgba(48,209,88,0.4)",borderRadius:10,fontSize:12,color:"#1a7a35",animation:"fadeIn 0.2s ease"}}>
           <span style={{fontSize:14}}>✓</span>
@@ -10034,7 +10104,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
 }
 
 // ── Drawings & Floor Plan Pins ────────────────────────────────────
-function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntry,onPatchDefectLocal,initialCompare,embedded,onViewEntry}){
+function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntry,onPatchDefectLocal,onBulkUpdate,onBulkDelete,initialCompare,embedded,onViewEntry}){
   const[drawings,setDrawings]=useState([]);const[loading,setLoading]=useState(true);
   const[viewing,setViewing]=useState(null);
   const[uploading,setUploading]=useState(false);
@@ -12343,7 +12413,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         </div>
 
         {subMode==="map"?(
-          <MapPanel currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry} onPatchDefectLocal={onPatchDefectLocal} company={company} onViewEntry={onViewEntry} onSnapped={(rec)=>{setDrawings(prev=>[rec,...prev]);setSubMode("drawing");setViewing(rec);}}/>
+          <MapPanel currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry} onPatchDefectLocal={onPatchDefectLocal} onBulkUpdate={onBulkUpdate} onBulkDelete={onBulkDelete} company={company} onViewEntry={onViewEntry} onSnapped={(rec)=>{setDrawings(prev=>[rec,...prev]);setSubMode("drawing");setViewing(rec);}}/>
         ):(<>
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf,.pdf,.tif,.tiff" onChange={uploadDrawing} style={{display:"none"}}/>
         <input ref={convertRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf" multiple onChange={convertJpgsToPdf} style={{display:"none"}}/>
@@ -15782,7 +15852,7 @@ function App(){
       <div style={{flex:1,overflowY:"auto",paddingBottom:"calc(100px + env(safe-area-inset-bottom,0px))"}}>
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
-        {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} onPatchDefectLocal={updated=>setDefects(prev=>prev.map(d=>d.id===updated.id?updated:d))} onViewEntry={setViewing}/>}
+        {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} onPatchDefectLocal={updated=>setDefects(prev=>prev.map(d=>d.id===updated.id?updated:d))} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onViewEntry={setViewing}/>}
         {tab==="defects"&&<DefectsList defects={defects} archivedDefects={archivedDefects} onView={setViewing} onUpdate={updateDefect} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onRestore={restoreDefects} onHardDelete={hardDeleteDefects} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")} onOpenInReview={(payload)=>setReviewModal(payload)}/>}
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} member={member} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
       </div>
