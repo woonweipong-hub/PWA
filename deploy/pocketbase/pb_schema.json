@@ -57,7 +57,8 @@
       { "name": "defect_type", "type": "text" },
       { "name": "trade", "type": "text" },
       { "name": "assigned_to", "type": "text" },
-      { "name": "timestamp_utc", "type": "text" }
+      { "name": "timestamp_utc", "type": "text" },
+      { "name": "fieldProvenance", "type": "json" }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",

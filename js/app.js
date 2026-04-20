@@ -1351,7 +1351,7 @@ function getAIPrompt(){
   // different language preferences. Only freeform fields (title, description,
   // location_area) are localized. Categoricals are translated at render via tOpt().
   const langClause=lang==="en"?"":` Write "title", "description", and "location_area" in ${langName}. Keep all other field values in English exactly as specified.`;
-  return 'Analyze this construction site photo. Respond in valid JSON only, no markdown fences:\n{"title":"max 5 word defect title","severity":"one of: Critical Major Minor Observation","description":"2 sentence technical description of what is wrong and where","trade":"responsible trade: Plumbing Electrical Waterproofing Painting Tiling Structural Carpentry Aircon Civil Landscaping General","component":"specific affected element — use exact match if possible e.g. Tile Floor Ceiling Wall Paint Pipe Drain Slab Column Scaffold Railing Door Window AC Unit Wiring Socket Sprinkler","issue":"most applicable defect type for that component e.g. Crack Leak Peeling Loose Stain Blocked Chipped Sagging Exposed rebar Misaligned Missing Damaged","entry_type":"one of: Defect Observation Instruction — Defect for quality/workmanship, Observation for non-urgent notes, Instruction for directives","location_area":"short visible-area description from photo context e.g. bathroom ceiling external wall corridor floor lift lobby site perimeter","room_area":"specific room or area visible in photo — prefer exact match from: Kitchen Bathroom Master Bedroom Bedroom 2 Bedroom 3 Living Room Dining Room Balcony Toilet Store Room Corridor Staircase Lobby Car Park Yard Entrance Hallway Utility Room Laundry Pantry Meeting Room Office Reception","time_needed":"rough repair scope — one of: Same day, 1 day, 2 days, 3 days, 1 week, 2 weeks, 1 month, 2 months, 3 months, TBD","safety_risk":1,"suggested_assignee":"trade role e.g. Plumber Electrician Painter Tiler Contractor"}\nReplace safety_risk 1 with integer 1–5 where 5 is life-threatening hazard.'+langClause;
+  return 'Analyze this construction site photo. Respond in valid JSON only, no markdown fences:\n{"title":"max 5 word defect title","severity":"one of: Critical Major Minor Observation","description":"2 sentence technical description of what is wrong and where","trade":"responsible trade: Plumbing Electrical Waterproofing Painting Tiling Structural Carpentry Aircon Civil Landscaping General","component":"specific affected element — use exact match if possible e.g. Tile Floor Ceiling Wall Paint Pipe Drain Slab Column Scaffold Railing Door Window AC Unit Wiring Socket Sprinkler","issue":"most applicable defect type for that component e.g. Crack Leak Peeling Loose Stain Blocked Chipped Sagging Exposed rebar Misaligned Missing Damaged","entry_type":"one of: Defect Observation Instruction — Defect for quality/workmanship, Observation for non-urgent notes, Instruction for directives","location_area":"short visible-area description from photo context e.g. bathroom ceiling external wall corridor floor lift lobby site perimeter","room_area":"specific room or area visible in photo — prefer exact match from: Kitchen Bathroom Master Bedroom Bedroom 2 Bedroom 3 Living Room Dining Room Balcony Toilet Store Room Corridor Staircase Lobby Car Park Yard Entrance Hallway Utility Room Laundry Pantry Meeting Room Office Reception","level_floor":"best-guess floor level from photo context (windows, stairs, views) — prefer exact match from: Basement 2, Basement 1, Ground Floor, 1st Floor, 2nd Floor, 3rd Floor, 4th Floor, 5th Floor, 6th Floor, 7th Floor, 8th Floor, 9th Floor, 10th Floor, Roof, Attic, External, Common Area. Leave empty string if not inferable.","zone":"best-guess zone/block from photo context — prefer exact match from: Zone A, Zone B, Zone C, Zone D, North Wing, South Wing, East Wing, West Wing, Block A, Block B, Block C, Tower 1, Tower 2, Tower 3. Leave empty string if not inferable.","time_needed":"rough repair scope — one of: Same day, 1 day, 2 days, 3 days, 1 week, 2 weeks, 1 month, 2 months, 3 months, TBD","cost_change":"cost impact — default to \\"No change\\" for workmanship/minor defects; use \\"To be confirmed by QS\\" when rework scope is unclear; \\"Variation Order (VO)\\" only when the issue indicates a design/scope variation requiring contractual variation","safety_risk":1,"suggested_assignee":"trade role e.g. Plumber Electrician Painter Tiler Contractor"}\nReplace safety_risk 1 with integer 1–5 where 5 is life-threatening hazard.'+langClause;
 }
 // Backward-compatible export — callers that don't need language awareness
 // still see English. New callers should call getAIPrompt() per request to
@@ -4904,13 +4904,32 @@ function GoogleSheetsSetup({gClientId}){
 }
 
 
+// Render a small provenance badge next to a field label. AI-filled fields
+// show grey "AI" until the user edits/confirms, at which point the badge
+// flips to green "✓ [firstName]" so the team can see who verified what.
+// Absent/undefined provenance = no badge (pure-human entry from the start).
+function ProvChip({prov}){
+  if(!prov||!prov.source)return null;
+  if(prov.source==="ai"){
+    return <span style={{fontSize:9,fontWeight:700,marginLeft:6,padding:"1px 5px",borderRadius:4,background:"rgba(88,86,214,0.12)",color:"#5856d6",letterSpacing:0.5,verticalAlign:"middle"}}>AI</span>;
+  }
+  if(prov.source==="human"){
+    const name=prov.verified_by_name||"";
+    const first=(name.split(" ")[0])||"";
+    const titleAttr=name?`Verified by ${name}${prov.verified_at?" · "+new Date(prov.verified_at).toLocaleDateString():""}`:"Verified";
+    return <span title={titleAttr} style={{fontSize:9,fontWeight:700,marginLeft:6,padding:"1px 5px",borderRadius:4,background:"rgba(48,209,88,0.12)",color:"#1a7a35",letterSpacing:0.5,verticalAlign:"middle"}}>{first?`✓ ${first}`:"✓"}</span>;
+  }
+  return null;
+}
+
 // ── Log Entry (with AI + Batch + Multi-photo) ────────────────────
 function LogDefect({member,company,currentProject,members,onSave,existingDefects=[],onViewEntry,onTagDrawing}){
   const savedWorkCat=local.get(WORK_CATEGORY_KEY)||"Building Defects (Landed)";
   const blank={title:"",location:"",severity:"Major",description:"",assignee:member?.name||"",photos:[],
     component:"",issue:"",locationLevel:"",locationZone:"",locationSubzone:"",locationGrid:"",
     workCategory:savedWorkCat,
-    entryType:"Defect",dueDate:"",duration:"",costImpact:"",costResponsible:"",costAmount:"",costRemarks:""};
+    entryType:"Defect",dueDate:"",duration:"",costImpact:"",costResponsible:"",costAmount:"",costRemarks:"",
+    fieldProvenance:{}};
   const[form,setForm]=useState(blank);
   // Component groups shown — narrowed by the selected work category
   const activeComponentGroups=useMemo(()=>{
@@ -4954,7 +4973,17 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   const[markupIdx,setMarkupIdx]=useState(null);
   const fileRef=useRef();
   const speakVoice=useVoice();
-  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  // Generic setter. When the user edits an AI-filled field, we flip its
+  // provenance to human so the form (and later the saved record) shows who
+  // verified the value and when. Fields that were never AI-filled stay
+  // provenance-free — no chip clutter for pure-human input.
+  const set=(k,v)=>setForm(f=>{
+    const prevProv=f.fieldProvenance&&f.fieldProvenance[k];
+    if(prevProv&&prevProv.source==="ai"){
+      return{...f,[k]:v,fieldProvenance:{...f.fieldProvenance,[k]:{source:"human",verified_by:member?.id||"",verified_by_name:member?.name||"",verified_at:new Date().toISOString()}}};
+    }
+    return{...f,[k]:v};
+  });
   const aiReady=isAiConfigured();
   const assignees=members.length>0?members.map(m=>m.name):["Site Manager","Engineer","Contractor","QC Inspector","Safety Officer"];
   const MAX_PHOTOS=10;
@@ -4979,85 +5008,131 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   const removePhoto=idx=>setForm(f=>({...f,photos:f.photos.filter((_,i)=>i!==idx)}));
 
   // Apply an AI result object (freshly returned OR restored from cache) into
-  // the form state. Mutates `result` in place when auto-escalating severity
-  // so the caller sees the final severity for display.
+  // the form state. One atomic setForm so value + provenance land together
+  // and the "AI" chip renders on the correct fields immediately. Empty-only
+  // writes for carry-over-sensitive fields preserve the previous entry's
+  // verified values in batch mode. Mutates `result` in place when auto-
+  // escalating severity so the caller sees the final severity for display.
   const applyAiResult=(result)=>{
     if(!result)return;
-    if(result.title)set("title",result.title);
-    if(result.severity&&SEVERITY.includes(result.severity))set("severity",result.severity);
-    if(result.description)set("description",result.description);
-    // Auto-escalate severity for high safety risk
-    if(result.safety_risk&&result.safety_risk>=4&&result.severity!=="Critical"){
-      set("severity","Critical");
-      result.severity="Critical";
-    }
-    // Component — prefer result.component (specific element) over result.trade
-    // (trade is a category; component is the exact part, e.g. "Tile" not "Tiling").
-    // Match case-insensitively against the master component list.
-    let resolvedComponent=null;
-    if(result.component){
-      const needle=result.component.trim().toLowerCase();
-      resolvedComponent=DEFAULT_COMPONENTS.find(c=>c.toLowerCase()===needle)
-        ||DEFAULT_COMPONENTS.find(c=>c.toLowerCase().includes(needle))
-        ||DEFAULT_COMPONENTS.find(c=>needle.includes(c.toLowerCase()));
-    }
-    if(resolvedComponent){
-      set("component",resolvedComponent);
-      // Issue — prefer a match from the component's known issue list so the
-      // dropdown stays coherent; otherwise keep the AI's raw suggestion as a
-      // custom value (user can edit/verify in the form).
-      if(result.issue){
-        const issues=COMPONENT_ISSUES[resolvedComponent]||[];
-        const needle=result.issue.trim().toLowerCase();
-        const issueMatch=issues.find(i=>i.toLowerCase()===needle)
-          ||issues.find(i=>i.toLowerCase().includes(needle))
-          ||issues.find(i=>needle.includes(i.toLowerCase()));
-        set("issue",issueMatch||result.issue.trim());
+    const aiProv={source:"ai",verified_by:null,verified_by_name:null,verified_at:null};
+    setForm(f=>{
+      const u={...f};
+      const prov={...(f.fieldProvenance||{})};
+      const writeAi=(field,value)=>{
+        if(value==null||value==="")return;
+        u[field]=value;
+        prov[field]=aiProv;
+      };
+      const writeAiIfEmpty=(field,value)=>{
+        if(value==null||value==="")return;
+        if(u[field])return;
+        u[field]=value;
+        prov[field]=aiProv;
+      };
+      if(result.title)writeAi("title",result.title);
+      if(result.severity&&SEVERITY.includes(result.severity))writeAi("severity",result.severity);
+      if(result.description)writeAi("description",result.description);
+      if(result.safety_risk&&result.safety_risk>=4&&u.severity!=="Critical"){
+        writeAi("severity","Critical");
+        result.severity="Critical";
       }
-    }else if(result.trade){
-      // Fallback: use trade category when AI didn't return a matching component
-      set("component",result.trade);
-      if(result.issue)set("issue",result.issue.trim());
-    }
-    // Entry type — only standard types; skip "Update" (shouldn't be AI-suggested)
-    if(result.entry_type){
-      const valid=["Defect","Observation","Instruction"].find(t=>t.toLowerCase()===result.entry_type.toLowerCase());
-      if(valid)set("entryType",valid);
-    }
-    // Room / Area — prefer exact match from DEFAULT_SUBZONES so dropdown stays
-    // clean; fall back to raw AI string as custom. Only fills if currently
-    // empty so batch-mode carry-overs are preserved.
-    const roomHint=result.room_area||result.location_area;
-    if(roomHint){
-      const needle=roomHint.trim().toLowerCase();
-      const subzoneMatch=DEFAULT_SUBZONES.find(s=>s.toLowerCase()===needle)
-        ||DEFAULT_SUBZONES.find(s=>s.toLowerCase().includes(needle))
-        ||DEFAULT_SUBZONES.find(s=>needle.includes(s.toLowerCase()));
-      setForm(f=>({...f,locationSubzone:f.locationSubzone||subzoneMatch||roomHint.trim()}));
-    }
-    // Time needed — match against DURATION_OPTIONS, fallback to raw
-    if(result.time_needed){
-      const needle=result.time_needed.trim().toLowerCase();
-      const durMatch=DURATION_OPTIONS.find(d=>d.toLowerCase()===needle)
-        ||DURATION_OPTIONS.find(d=>d.toLowerCase().includes(needle))
-        ||DURATION_OPTIONS.find(d=>needle.includes(d.toLowerCase()));
-      setForm(f=>({...f,duration:f.duration||durMatch||result.time_needed.trim()}));
-    }
-    // Due date — derive from severity when empty so the user gets a sensible
-    // default. Critical=1d, Major=7d, Minor=30d, Observation=none.
-    const sevForDue=result.severity||null;
-    const dueDays={Critical:1,Major:7,Minor:30}[sevForDue];
-    if(dueDays){
-      const d=new Date();d.setDate(d.getDate()+dueDays);
-      const iso=d.toISOString().slice(0,10);
-      setForm(f=>({...f,dueDate:f.dueDate||iso}));
-    }
-    // Assignee — fuzzy-match AI's suggested role against actual team members
-    if(result.suggested_assignee&&assignees.length>0){
-      const suggestion=result.suggested_assignee.toLowerCase();
-      const match=assignees.find(a=>a.toLowerCase().includes(suggestion))||assignees.find(a=>suggestion.includes(a.toLowerCase()));
-      if(match)set("assignee",match);
-    }
+      // Component — prefer result.component over result.trade and match
+      // against DEFAULT_COMPONENTS so the dropdown stays clean.
+      let resolvedComponent=null;
+      if(result.component){
+        const needle=result.component.trim().toLowerCase();
+        resolvedComponent=DEFAULT_COMPONENTS.find(c=>c.toLowerCase()===needle)
+          ||DEFAULT_COMPONENTS.find(c=>c.toLowerCase().includes(needle))
+          ||DEFAULT_COMPONENTS.find(c=>needle.includes(c.toLowerCase()));
+      }
+      if(resolvedComponent){
+        writeAi("component",resolvedComponent);
+        if(result.issue){
+          const issues=COMPONENT_ISSUES[resolvedComponent]||[];
+          const needle=result.issue.trim().toLowerCase();
+          const issueMatch=issues.find(i=>i.toLowerCase()===needle)
+            ||issues.find(i=>i.toLowerCase().includes(needle))
+            ||issues.find(i=>needle.includes(i.toLowerCase()));
+          writeAi("issue",issueMatch||result.issue.trim());
+        }
+      }else if(result.trade){
+        writeAi("component",result.trade);
+        if(result.issue)writeAi("issue",result.issue.trim());
+      }
+      if(result.entry_type){
+        const valid=["Defect","Observation","Instruction"].find(t=>t.toLowerCase()===result.entry_type.toLowerCase());
+        if(valid)writeAi("entryType",valid);
+      }
+      // Room / Area — empty-only so batch carry-overs are preserved
+      const roomHint=result.room_area||result.location_area;
+      if(roomHint){
+        const needle=roomHint.trim().toLowerCase();
+        const subzoneMatch=DEFAULT_SUBZONES.find(s=>s.toLowerCase()===needle)
+          ||DEFAULT_SUBZONES.find(s=>s.toLowerCase().includes(needle))
+          ||DEFAULT_SUBZONES.find(s=>needle.includes(s.toLowerCase()));
+        writeAiIfEmpty("locationSubzone",subzoneMatch||roomHint.trim());
+      }
+      // Level / Floor — low-confidence guess from photo context, empty-only
+      if(result.level_floor&&result.level_floor.trim()){
+        const needle=result.level_floor.trim().toLowerCase();
+        const levelMatch=DEFAULT_LEVELS.find(l=>l.toLowerCase()===needle)
+          ||DEFAULT_LEVELS.find(l=>l.toLowerCase().includes(needle))
+          ||DEFAULT_LEVELS.find(l=>needle.includes(l.toLowerCase()));
+        if(levelMatch)writeAiIfEmpty("locationLevel",levelMatch);
+      }
+      // Zone — low-confidence guess, empty-only. Only write when AI produced
+      // an exact match — no raw fallback, since zones are project-specific
+      // labels the AI can't reliably invent.
+      if(result.zone&&result.zone.trim()){
+        const needle=result.zone.trim().toLowerCase();
+        const zoneMatch=DEFAULT_ZONES.find(z=>z.toLowerCase()===needle)
+          ||DEFAULT_ZONES.find(z=>z.toLowerCase().includes(needle))
+          ||DEFAULT_ZONES.find(z=>needle.includes(z.toLowerCase()));
+        if(zoneMatch)writeAiIfEmpty("locationZone",zoneMatch);
+      }
+      // Time needed — match DURATION_OPTIONS, fallback raw, empty-only
+      let resolvedDuration=null;
+      if(result.time_needed){
+        const needle=result.time_needed.trim().toLowerCase();
+        const durMatch=DURATION_OPTIONS.find(d=>d.toLowerCase()===needle)
+          ||DURATION_OPTIONS.find(d=>d.toLowerCase().includes(needle))
+          ||DURATION_OPTIONS.find(d=>needle.includes(d.toLowerCase()));
+        resolvedDuration=durMatch||result.time_needed.trim();
+        writeAiIfEmpty("duration",resolvedDuration);
+      }
+      // Due date — prefer Time Needed (Same day → today, "2 days" → +2 etc.)
+      // so Due Date stays consistent with the work effort AI estimated. Fall
+      // back to severity (Critical=+1, Major=+7, Minor=+30) when duration is
+      // missing/TBD. Empty-only so batch carry-overs survive.
+      const durationDays={
+        "same day":0,"1 day":1,"2 days":2,"3 days":3,
+        "1 week":7,"2 weeks":14,"1 month":30,"2 months":60,"3 months":90
+      };
+      const durKey=(u.duration||resolvedDuration||"").trim().toLowerCase();
+      let dueDays=durKey in durationDays?durationDays[durKey]:null;
+      if(dueDays==null)dueDays={Critical:1,Major:7,Minor:30}[u.severity]??null;
+      if(dueDays!=null){
+        const d=new Date();d.setDate(d.getDate()+dueDays);
+        writeAiIfEmpty("dueDate",d.toISOString().slice(0,10));
+      }
+      // Cost change — safe default. Only write when AI's suggestion matches
+      // a known option so we don't leak free-text into a strict enum.
+      if(result.cost_change&&result.cost_change.trim()){
+        const needle=result.cost_change.trim().toLowerCase();
+        const costMatch=COST_IMPACT_OPTIONS.find(c=>c.toLowerCase()===needle)
+          ||COST_IMPACT_OPTIONS.find(c=>c.toLowerCase().includes(needle))
+          ||COST_IMPACT_OPTIONS.find(c=>needle.includes(c.toLowerCase()));
+        if(costMatch)writeAiIfEmpty("costImpact",costMatch);
+      }
+      // Assignee — fuzzy-match AI's suggested role against team members
+      if(result.suggested_assignee&&assignees.length>0){
+        const suggestion=result.suggested_assignee.toLowerCase();
+        const match=assignees.find(a=>a.toLowerCase().includes(suggestion))||assignees.find(a=>suggestion.includes(a.toLowerCase()));
+        if(match)writeAi("assignee",match);
+      }
+      return{...u,fieldProvenance:prov};
+    });
   };
 
   // Auto-restore a cached AI result whenever the first photo in the form
@@ -5382,11 +5457,19 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           )}
         </div>
       )}
-      <button onClick={()=>{setForm({...blank,
-        workCategory:last?.workCategory||blank.workCategory,
-        location:last?.location||"",assignee:last?.assignee||member?.name||"",severity:last?.severity||"Major",
-        locationLevel:last?.locationLevel||"",locationZone:last?.locationZone||"",component:last?.component||""
-      });setShowBatch(false);setSpeakTranscript("");setShowMoreDetails(false);}} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:16,color:"#fff",fontSize:15,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>{t("log.log_another")}</button>
+      <button onClick={()=>{
+        // Carry-over from the entry the user just submitted. By saving entry N
+        // the user implicitly verified these values, so we mark them human
+        // (verified_by the current user) on entry N+1 rather than AI.
+        const carried={workCategory:last?.workCategory||blank.workCategory,
+          location:last?.location||"",assignee:last?.assignee||member?.name||"",severity:last?.severity||"Major",
+          locationLevel:last?.locationLevel||"",locationZone:last?.locationZone||"",component:last?.component||""};
+        const humanProv={source:"human",verified_by:member?.id||"",verified_by_name:member?.name||"",verified_at:new Date().toISOString()};
+        const carriedProv={};
+        ["assignee","severity","locationLevel","locationZone","component"].forEach(k=>{if(carried[k])carriedProv[k]=humanProv;});
+        setForm({...blank,...carried,fieldProvenance:carriedProv});
+        setShowBatch(false);setSpeakTranscript("");setShowMoreDetails(false);
+      }} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:12,padding:16,color:"#fff",fontSize:15,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer"}}>{t("log.log_another")}</button>
     </div>
   );
 
@@ -5467,13 +5550,13 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       )}
 
       {/* ── 3. TITLE ── */}
-      <VoiceField label={t("fields.title")} value={form.title} onChange={v=>set("title",v)} placeholder={t("fields.title_placeholder")}/>
+      <VoiceField label={<>{t("fields.title")}<ProvChip prov={form.fieldProvenance?.title}/></>} value={form.title} onChange={v=>set("title",v)} placeholder={t("fields.title_placeholder")}/>
 
       {/* ── 4. WHAT HAPPENED ── */}
-      <VoiceField label={t("fields.what_happened")} value={form.description} onChange={v=>set("description",v)} placeholder={t("fields.description_placeholder")} multiline/>
+      <VoiceField label={<>{t("fields.what_happened")}<ProvChip prov={form.fieldProvenance?.description}/></>} value={form.description} onChange={v=>set("description",v)} placeholder={t("fields.description_placeholder")} multiline/>
 
       {/* ── 5. SEVERITY ── */}
-      <ComboField label={t("fields.severity")} value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder={t("fields.severity_placeholder")} displayFn={sevDisplayFn}/>
+      <ComboField label={<>{t("fields.severity")}<ProvChip prov={form.fieldProvenance?.severity}/></>} value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder={t("fields.severity_placeholder")} displayFn={sevDisplayFn}/>
 
       {/* ── MORE DETAILS accordion ── */}
       <button onClick={()=>setShowMoreDetails(!showMoreDetails)} style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:12,padding:"14px 16px",marginBottom:showMoreDetails?16:0,display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}}>
@@ -5487,34 +5570,34 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           <ComboField label={t("fields.work_category")} value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")} displayFn={workcatDisplayFn}/>
 
           {/* Entry Type */}
-          <ComboField label={t("fields.entry_type")} value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder={t("fields.entry_type_placeholder")} displayFn={tOpt}/>
+          <ComboField label={<>{t("fields.entry_type")}<ProvChip prov={form.fieldProvenance?.entryType}/></>} value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder={t("fields.entry_type_placeholder")} displayFn={tOpt}/>
           <div style={{marginTop:-10,marginBottom:12}}><button onClick={()=>setShowTypeManager(true)} style={{background:"none",border:"none",fontSize:11,color:"rgba(255,107,0,0.7)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:0}}>⚙ Manage custom types</button></div>
 
           {/* Item / Part (was Component) */}
-          <ComboField label={t("fields.item_part")} value={form.component} onChange={v=>{set("component",v);set("issue","");}} grouped={activeComponentGroups} placeholder={t("fields.item_part_placeholder")} displayFn={tOpt}/>
+          <ComboField label={<>{t("fields.item_part")}<ProvChip prov={form.fieldProvenance?.component}/></>} value={form.component} onChange={v=>{set("component",v);set("issue","");}} grouped={activeComponentGroups} placeholder={t("fields.item_part_placeholder")} displayFn={tOpt}/>
 
           {/* Issue (filtered by selected component) */}
           {form.component&&(
-            <ComboField label={t("fields.issue")} value={form.issue} onChange={v=>{set("issue",v);if(!form.title)set("title",form.component+" — "+v);}} options={COMPONENT_ISSUES[form.component]||COMPONENT_ISSUES["General"]} placeholder={t("fields.issue_placeholder")} displayFn={tOpt}/>
+            <ComboField label={<>{t("fields.issue")}<ProvChip prov={form.fieldProvenance?.issue}/></>} value={form.issue} onChange={v=>{set("issue",v);if(!form.title)set("title",form.component+" — "+v);}} options={COMPONENT_ISSUES[form.component]||COMPONENT_ISSUES["General"]} placeholder={t("fields.issue_placeholder")} displayFn={tOpt}/>
           )}
 
           {/* Location hierarchy */}
-          <ComboField label={t("fields.level_floor")} value={form.locationLevel} onChange={v=>set("locationLevel",v)} options={DEFAULT_LEVELS} placeholder={t("fields.level_floor_placeholder")} displayFn={tOpt}/>
-          <ComboField label={t("fields.zone")} value={form.locationZone} onChange={v=>set("locationZone",v)} options={DEFAULT_ZONES} placeholder={t("fields.zone_placeholder")} displayFn={tOpt}/>
-          <ComboField label={t("fields.room_area")} value={form.locationSubzone} onChange={v=>set("locationSubzone",v)} options={DEFAULT_SUBZONES} placeholder={t("fields.room_area_placeholder")} displayFn={tOpt}/>
+          <ComboField label={<>{t("fields.level_floor")}<ProvChip prov={form.fieldProvenance?.locationLevel}/></>} value={form.locationLevel} onChange={v=>set("locationLevel",v)} options={DEFAULT_LEVELS} placeholder={t("fields.level_floor_placeholder")} displayFn={tOpt}/>
+          <ComboField label={<>{t("fields.zone")}<ProvChip prov={form.fieldProvenance?.locationZone}/></>} value={form.locationZone} onChange={v=>set("locationZone",v)} options={DEFAULT_ZONES} placeholder={t("fields.zone_placeholder")} displayFn={tOpt}/>
+          <ComboField label={<>{t("fields.room_area")}<ProvChip prov={form.fieldProvenance?.locationSubzone}/></>} value={form.locationSubzone} onChange={v=>set("locationSubzone",v)} options={DEFAULT_SUBZONES} placeholder={t("fields.room_area_placeholder")} displayFn={tOpt}/>
           <VoiceField label={t("fields.grid_ref")} value={form.locationGrid} onChange={v=>set("locationGrid",v)} placeholder={t("fields.grid_ref_placeholder")}/>
 
           {/* Assignee */}
-          <ComboField label={t("fields.assign_to")} value={form.assignee} onChange={v=>set("assignee",v)} options={assignees} placeholder={t("fields.assign_to_placeholder")}/>
+          <ComboField label={<>{t("fields.assign_to")}<ProvChip prov={form.fieldProvenance?.assignee}/></>} value={form.assignee} onChange={v=>set("assignee",v)} options={assignees} placeholder={t("fields.assign_to_placeholder")}/>
 
           {/* Cost & Time */}
           <div style={{background:"rgba(0,0,0,0.02)",borderRadius:12,padding:14,marginBottom:16,border:"1px solid rgba(0,0,0,0.06)"}}>
             <div style={{marginBottom:12}}>
-              <label style={lbl()}>{t("log.due_date")}</label>
+              <label style={lbl()}>{t("log.due_date")}<ProvChip prov={form.fieldProvenance?.dueDate}/></label>
               <input type="date" value={form.dueDate} onChange={e=>set("dueDate",e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
             </div>
-            <ComboField label={t("fields.time_needed")} value={form.duration} onChange={v=>set("duration",v)} options={DURATION_OPTIONS} placeholder={t("fields.time_needed_placeholder")} displayFn={tOpt}/>
-            <ComboField label={t("fields.cost_change")} value={form.costImpact} onChange={v=>set("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder={t("fields.cost_change_placeholder")} displayFn={tOpt}/>
+            <ComboField label={<>{t("fields.time_needed")}<ProvChip prov={form.fieldProvenance?.duration}/></>} value={form.duration} onChange={v=>set("duration",v)} options={DURATION_OPTIONS} placeholder={t("fields.time_needed_placeholder")} displayFn={tOpt}/>
+            <ComboField label={<>{t("fields.cost_change")}<ProvChip prov={form.fieldProvenance?.costImpact}/></>} value={form.costImpact} onChange={v=>set("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder={t("fields.cost_change_placeholder")} displayFn={tOpt}/>
             {form.costImpact&&form.costImpact!=="No change"&&form.costImpact!=="To be confirmed by QS"&&(
               <>
                 <VoiceField label={t("fields.cost_amount")} value={form.costAmount} onChange={v=>set("costAmount",v)} placeholder={t("fields.cost_amount_placeholder")}/>
