@@ -2710,15 +2710,29 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
       img.onload=()=>resolve(img);img.onerror=()=>resolve(null);
       img.src=overviewSrc;
     }):null;
-    doc.addPage();y=18;
-    heading("ALL PINS ON MAP",orange);
+    // Dedicated landscape A4 page for the map itself so pin density reads
+    // clearly on the full page — aspect-preserved, near-full-bleed. Legend,
+    // summary, and per-pin table get their own portrait page after.
     if(overviewImg){
-      const ow=contentW;
-      const oh=ow*(overviewImg.height/overviewImg.width);
-      try{doc.addImage(overviewImg,"PNG",margin,y,ow,oh,undefined,"SLOW");}catch{}
-      y+=oh+4;
+      doc.addPage("a4","l");
+      const lpW=doc.internal.pageSize.getWidth();
+      const lpH=doc.internal.pageSize.getHeight();
+      // Title band
+      doc.setFillColor(orange[0],orange[1],orange[2]);doc.roundedRect(10,8,lpW-20,8,2,2,"F");
+      doc.setFontSize(11);doc.setFont(undefined,"bold");doc.setTextColor(255);
+      doc.text("ALL PINS ON MAP",14,13.5);doc.setTextColor(0);
+      // Scale map to fill landscape page below the title, aspect-preserved
+      const imgAspect=overviewImg.width/overviewImg.height;
+      const availW=lpW-16,availH=lpH-24;
+      let mw=availW,mh=mw/imgAspect;
+      if(mh>availH){mh=availH;mw=mh*imgAspect;}
+      const mx=(lpW-mw)/2,my=20;
+      try{doc.addImage(overviewImg,"PNG",mx,my,mw,mh,undefined,"SLOW");}catch{}
     }
-    // Legend + summary
+    // Legend + summary on a fresh portrait page so the per-pin table has
+    // room to flow across multiple pages when pin count is large.
+    doc.addPage();y=18;
+    heading("MAP LEGEND & PIN DETAIL",orange);
     doc.setFontSize(8);doc.setFont(undefined,"bold");doc.setTextColor(60);
     doc.text(`${mapDefects.length} map-pinned entries`,margin,y);y+=5;
     doc.setFont(undefined,"normal");doc.setTextColor(80);
@@ -5888,19 +5902,19 @@ function applyDisplayXlate(defect,xlateMap,showOriginal){
   return{...defect,title:t.title||defect.title,description:t.description||defect.description,location:t.location||defect.location};
 }
 
-// Dispatch: render MapThumb for GPS-pinned entries, DrawingPinThumb for
-// entries pinned on a drawing, PhotoThumb if the entry has at least one
-// uploaded photo, or nothing if none of those apply.
+// Dispatch: prefer the defect photo (the subject of the entry) when present,
+// falling back to MapThumb for GPS-pinned entries, then DrawingPinThumb for
+// floor-plan-pinned entries, then nothing. Photo wins over pin thumbs
+// because a photo of the defect is more informative for Review than the
+// drawing it sits on; the drawing context is already accessible via the
+// DRAWINGS tab.
 function EntryThumb({defect,drawingByEntryId}){
-  if(parseDefectCoords(defect))return <MapThumb defect={defect}/>;
-  const link=drawingByEntryId&&drawingByEntryId[defect.id];
-  if(link)return <DrawingPinThumb drawing={link.drawing} pin={link.pin} severity={defect.severity} title={`On drawing: ${link.drawing.name||""}`}/>;
-  // Photo fallback — entries that aren't pinned on a map or drawing but have
-  // a photo should still get a visual cue in the Review list. The first photo
-  // is shown at the same 62×62 footprint as MapThumb / DrawingPinThumb.
   const photoUrl=typeof defect.photo==="string"?defect.photo
     :Array.isArray(defect.photo)&&defect.photo[0]?defect.photo[0]:null;
   if(photoUrl)return <PhotoThumb url={photoUrl} title={defect.title||"Photo"}/>;
+  if(parseDefectCoords(defect))return <MapThumb defect={defect}/>;
+  const link=drawingByEntryId&&drawingByEntryId[defect.id];
+  if(link)return <DrawingPinThumb drawing={link.drawing} pin={link.pin} severity={defect.severity} title={`On drawing: ${link.drawing.name||""}`}/>;
   return null;
 }
 // Small photo thumbnail for Review rows — first defect photo, cover-fit so
@@ -5917,9 +5931,11 @@ function PhotoThumb({url,title}){
 
 // Compact drawing thumbnail for Review > DRAWINGS rows — matches the 62x62
 // footprint used by PhotoThumb / MapThumb elsewhere. Renders first PDF page
-// into a canvas for PDFs; uses cover-fit <img> for rasters. "PDF" badge
-// distinguishes vector sources at a glance.
-function DrawingCardThumb({drawing}){
+// into a canvas for PDFs; uses cover-fit <img> for rasters. Optionally
+// overlays severity-coloured dots for each pin on the drawing so the card
+// communicates at a glance where defects sit relative to the plan. "PDF"
+// badge distinguishes vector sources at a glance.
+function DrawingCardThumb({drawing,pins}){
   const fileUrl=DB.fileUrl("drawings",drawing.id,drawing.file);
   const isImage=/\.(jpg|jpeg|png|gif|webp|tif|tiff)$/i.test(drawing.file||"");
   return (
@@ -5927,6 +5943,9 @@ function DrawingCardThumb({drawing}){
       {isImage
         ? <img src={fileUrl} alt="" loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
         : <CompactPdfThumb url={fileUrl}/>}
+      {Array.isArray(pins)&&pins.map((p,i)=>(typeof p?.x==="number"&&typeof p?.y==="number")&&(
+        <div key={i} style={{position:"absolute",left:`${p.x}%`,top:`${p.y}%`,transform:"translate(-50%,-50%)",width:7,height:7,borderRadius:"50%",background:p.color||"#ff6b00",border:"1.5px solid #fff",boxShadow:"0 0 0 0.5px rgba(0,0,0,0.4)",pointerEvents:"none"}}/>
+      ))}
       {!isImage&&<div style={{position:"absolute",bottom:2,right:2,background:"rgba(0,0,0,0.55)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:8,padding:"1px 4px",borderRadius:3,letterSpacing:"0.05em"}}>PDF</div>}
     </div>
   );
@@ -6490,7 +6509,13 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
             </div>
           )}
           <div>{filteredDrawings.map((d,i)=>{
-            const pinCount=rvPins.filter(p=>p.drawingId===d.id).length;
+            const drawingPins=rvPins.filter(p=>p.drawingId===d.id);
+            const pinCount=drawingPins.length;
+            const defectMap={};(defects||[]).forEach(x=>{defectMap[x.id]=x;});
+            const thumbPins=drawingPins.map(p=>{
+              const def=defectMap[p.entryId];
+              return{x:p.x,y:p.y,color:def?(SEV_COLOR[def.severity]||"#ff6b00"):"#8e8e93"};
+            });
             const noteCount=getDrawingNotes(d.id).length;
             const markupCount=getDrawingMarkup(d.id).length;
             const hasAny=pinCount+noteCount+markupCount>0;
@@ -6515,7 +6540,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
                     <span style={{color:noteCount?"#34c759":"rgba(0,0,0,0.3)"}}>📝 {noteCount} note{noteCount===1?"":"s"}</span>
                   </div>
                 </div>
-                <DrawingCardThumb drawing={d}/>
+                <DrawingCardThumb drawing={d} pins={thumbPins}/>
                 <div style={{color:"rgba(0,0,0,0.3)",fontSize:16,flexShrink:0,alignSelf:"center"}}>›</div>
               </div>
             );
@@ -14126,11 +14151,23 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       e.stopPropagation();e.preventDefault();
       const pinEl=e.currentTarget;
       const startRect=target.getBoundingClientRect();
+      // Capture grab offset so the pin tracks the user's finger/cursor
+      // from its grabbed point rather than snapping its center to the
+      // cursor on first move. Without this, tapping a pin off-center
+      // causes it to jump the moment drag starts (feels broken on touch).
+      const pinRect=pinEl.getBoundingClientRect();
+      const grabOffsetX=e.clientX-(pinRect.left+pinRect.width/2);
+      const grabOffsetY=e.clientY-(pinRect.top+pinRect.height/2);
       let moved=false;
+      const computePct=(clientX,clientY,rect)=>{
+        const effX=clientX-grabOffsetX;
+        const effY=clientY-grabOffsetY;
+        const x=Math.max(0,Math.min(100,((effX-rect.left)/rect.width)*100));
+        const y=Math.max(0,Math.min(100,((effY-rect.top)/rect.height)*100));
+        return{x,y};
+      };
       const onMove=ev=>{
-        const x=((ev.clientX-startRect.left)/startRect.width)*100;
-        const y=((ev.clientY-startRect.top)/startRect.height)*100;
-        if(x<0||x>100||y<0||y>100)return;
+        const{x,y}=computePct(ev.clientX,ev.clientY,startRect);
         moved=true;
         pinEl.style.left=x+"%";pinEl.style.top=y+"%";
       };
@@ -14140,10 +14177,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
         document.removeEventListener("pointercancel",onUp);
         try{pinEl.releasePointerCapture?.(ev.pointerId);}catch{}
         if(!moved){setActivePin(isActive?null:p.id);return;}
-        // Persist final position
-        const rect=target.getBoundingClientRect();
-        const x=Math.max(0,Math.min(100,((ev.clientX-rect.left)/rect.width)*100));
-        const y=Math.max(0,Math.min(100,((ev.clientY-rect.top)/rect.height)*100));
+        const{x,y}=computePct(ev.clientX,ev.clientY,target.getBoundingClientRect());
         movePin(p.id,parseFloat(x.toFixed(2)),parseFloat(y.toFixed(2)));
       };
       try{pinEl.setPointerCapture?.(e.pointerId);}catch{}
