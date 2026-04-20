@@ -58,7 +58,10 @@
       { "name": "trade", "type": "text" },
       { "name": "assigned_to", "type": "text" },
       { "name": "timestamp_utc", "type": "text" },
-      { "name": "fieldProvenance", "type": "json" }
+      { "name": "fieldProvenance", "type": "json" },
+      { "name": "lat", "type": "number" },
+      { "name": "lng", "type": "number" },
+      { "name": "mapZoom", "type": "number" }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",

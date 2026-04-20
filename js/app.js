@@ -8546,7 +8546,7 @@ function MapsSettings({onClose}){
 }
 
 // ── Tag on Map (Google Maps pin canvas) ──────────────────────────
-function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped,onViewEntry}){
+function MapPanel({currentProject,member,defects,onSaveEntry,onUpdateDefect,company,onSnapped,onViewEntry}){
   const mapRef=useRef(null);
   const searchRef=useRef(null);
   const mapObj=useRef(null);
@@ -9685,30 +9685,35 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped,o
   // pinned elsewhere on the map.
   const pinExistingEntry=async(defect)=>{
     if(!pendingPin||saving||!defect?.id)return;
-    const hadGps=typeof defect.lat==="number"&&typeof defect.lng==="number";
-    if(hadGps){
-      const prev=`${defect.lat.toFixed(5)}, ${defect.lng.toFixed(5)}`;
+    const existingCoords=parseDefectCoords(defect);
+    if(existingCoords){
+      const prev=`${existingCoords.lat.toFixed(5)}, ${existingCoords.lng.toFixed(5)}`;
       const next=`${pendingPin.lat.toFixed(5)}, ${pendingPin.lng.toFixed(5)}`;
       if(!confirm(`"${defect.title||"Entry"}" is already on the map at ${prev}.\n\nMove it to ${next}?`))return;
     }
     setSaving(true);
     try{
       const zoom=mapObj.current?.getZoom();
-      const payload={lat:pendingPin.lat,lng:pendingPin.lng,mapZoom:zoom||17};
-      console.log("[MapPanel] pinExistingEntry → updating defect",defect.id,payload);
+      const latStr=pendingPin.lat.toFixed(5);
+      const lngStr=pendingPin.lng.toFixed(5);
+      // Preserve any existing location text (e.g. "Ground Floor > Living Room")
+      // while stripping previous map-coord tags so re-pinning doesn't stack
+      // duplicate coordinates. parseDefectCoords picks coords up from either
+      // the native lat/lng columns or a "X, Y" match inside location/description
+      // — we write BOTH so the pin surfaces even on PocketBase collections
+      // whose defects schema is missing the native lat/lng/mapZoom fields.
+      const cleanLoc=(defect.location||"").replace(/\s*\[?-?\d+\.\d+\s*,\s*-?\d+\.\d+\]?\s*/g,"").trim();
+      const coordTag=`[${latStr}, ${lngStr}]`;
+      const newLocation=cleanLoc?`${cleanLoc} ${coordTag}`:`Map ${coordTag}`;
+      const payload={lat:pendingPin.lat,lng:pendingPin.lng,mapZoom:zoom||17,location:newLocation};
       const result=await DB.defects.update(defect.id,payload);
-      console.log("[MapPanel] pinExistingEntry result:",result);
-      // Force-refresh the subscription's data by briefly re-rendering via a
-      // state bump — the SSE event should land in <1s but some PocketBase
-      // builds skip events on tiny PATCHes. This guarantees the map redraws.
-      setTimeout(()=>{
-        const latOk=typeof result?.lat==="number"||(result?.lat!=null&&!isNaN(parseFloat(result.lat)));
-        const lngOk=typeof result?.lng==="number"||(result?.lng!=null&&!isNaN(parseFloat(result.lng)));
-        if(!latOk||!lngOk){
-          console.warn("[MapPanel] Updated defect response missing numeric lat/lng — server schema may lack these fields. Response:",result);
-          alert("Pinned, but the server didn't return a location — the pin may not appear until you reload.\n\nThis usually means the PocketBase defects collection is missing the `lat` / `lng` / `mapZoom` fields. Check the admin UI.");
-        }
-      },50);
+      // Optimistic local-state update via parent callback. Guarantees the
+      // marker appears immediately even when the server's lat/lng columns
+      // are missing OR the realtime SSE event is slow/lost.
+      if(typeof onUpdateDefect==="function"){
+        const merged={...defect,...(result||{}),lat:pendingPin.lat,lng:pendingPin.lng,mapZoom:zoom||17,location:newLocation};
+        onUpdateDefect(merged);
+      }
       cancelPending();
       setPinMode(true);
       setSavedToast(true);setTimeout(()=>setSavedToast(false),2200);
@@ -10002,7 +10007,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped,o
 }
 
 // ── Drawings & Floor Plan Pins ────────────────────────────────────
-function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntry,initialCompare,embedded,onViewEntry}){
+function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntry,onUpdateDefect,initialCompare,embedded,onViewEntry}){
   const[drawings,setDrawings]=useState([]);const[loading,setLoading]=useState(true);
   const[viewing,setViewing]=useState(null);
   const[uploading,setUploading]=useState(false);
@@ -12311,7 +12316,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         </div>
 
         {subMode==="map"?(
-          <MapPanel currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry} company={company} onViewEntry={onViewEntry} onSnapped={(rec)=>{setDrawings(prev=>[rec,...prev]);setSubMode("drawing");setViewing(rec);}}/>
+          <MapPanel currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry} onUpdateDefect={onUpdateDefect} company={company} onViewEntry={onViewEntry} onSnapped={(rec)=>{setDrawings(prev=>[rec,...prev]);setSubMode("drawing");setViewing(rec);}}/>
         ):(<>
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf,.pdf,.tif,.tiff" onChange={uploadDrawing} style={{display:"none"}}/>
         <input ref={convertRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf" multiple onChange={convertJpgsToPdf} style={{display:"none"}}/>
@@ -15750,7 +15755,7 @@ function App(){
       <div style={{flex:1,overflowY:"auto",paddingBottom:84}}>
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
-        {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} onViewEntry={setViewing}/>}
+        {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} onUpdateDefect={updateDefect} onViewEntry={setViewing}/>}
         {tab==="defects"&&<DefectsList defects={defects} archivedDefects={archivedDefects} onView={setViewing} onUpdate={updateDefect} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onRestore={restoreDefects} onHardDelete={hardDeleteDefects} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")} onOpenInReview={(payload)=>setReviewModal(payload)}/>}
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} member={member} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
       </div>
