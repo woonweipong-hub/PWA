@@ -1911,7 +1911,8 @@ function exportReportAll(defects,drawings,savedComparisons,projectName,langCode)
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
   a.download=`SiteShrimp_Report_${(projectName||"Export").replace(/\s/g,"_")}_${new Date().toLocaleDateString("en-GB").replace(/\//g,"-")}.csv`;
-  a.click();
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
 }
 
 // ── OSM tile-stitching helpers for reliable PDF map exports ─────
@@ -4419,6 +4420,7 @@ function SmtpSetup(){
   const[saving,setSaving]=useState(false);
   const[testing,setTesting]=useState(false);
   const[result,setResult]=useState(null);
+  const[errMsg,setErrMsg]=useState("");
   const[showPassword,setShowPassword]=useState(false);
   const preset=SMTP_PRESETS.find(p=>p.name===provider)||SMTP_PRESETS[0];
   const isCustom=provider===t("email.custom_domain");
@@ -4431,20 +4433,21 @@ function SmtpSetup(){
   const canSave=email.trim()&&password.trim()&&host.trim();
   const saveSmtp=async()=>{
     if(!canSave)return;
-    setSaving(true);setResult(null);
+    setSaving(true);setResult(null);setErrMsg("");
     try{
       await DB.configureSmtp(host,port,email,password,email,"SiteShrimp");
       local.set(SMTP_KEY,{provider,email,password,host,port,configured:true});
       setResult("saved");
-    }catch(e){console.error(e);setResult("fail");}
-    setSaving(false);setTimeout(()=>{if(result==="saved")setResult(null);},3000);
+      setTimeout(()=>setResult(r=>r==="saved"?null:r),3000);
+    }catch(e){console.error(e);setErrMsg(e.message||"Unknown error");setResult("fail");}
+    setSaving(false);
   };
   const testSmtp=async()=>{
-    setTesting(true);setResult(null);
+    setTesting(true);setResult(null);setErrMsg("");
     try{
       await DB.testSmtp(email);
       setResult("test_ok");
-    }catch(e){console.error(e);setResult("test_fail");}
+    }catch(e){console.error(e);setErrMsg(e.message||"Unknown error");setResult("test_fail");}
     setTesting(false);
   };
   return(
@@ -4482,8 +4485,8 @@ function SmtpSetup(){
         )}
       </div>
       {result==="test_ok"&&<div style={{marginTop:10,padding:"10px 12px",background:"rgba(52,199,89,0.08)",borderRadius:8,fontSize:12,color:"#34c759",fontWeight:600}}>✓ {t("email.test_success")}</div>}
-      {result==="test_fail"&&<div style={{marginTop:10,padding:"10px 12px",background:"rgba(255,59,48,0.08)",borderRadius:8,fontSize:12,color:"#ff3b30",fontWeight:600}}>✗ {t("email.test_fail")}</div>}
-      {result==="fail"&&<div style={{marginTop:10,padding:"10px 12px",background:"rgba(255,59,48,0.08)",borderRadius:8,fontSize:12,color:"#ff3b30",fontWeight:600}}>✗ {t("email.save_fail")}</div>}
+      {result==="test_fail"&&<div style={{marginTop:10,padding:"10px 12px",background:"rgba(255,59,48,0.08)",borderRadius:8,fontSize:12,color:"#ff3b30",fontWeight:600}}>✗ {t("email.test_fail")}{errMsg&&<div style={{fontSize:10,marginTop:4,opacity:0.8}}>{errMsg}</div>}</div>}
+      {result==="fail"&&<div style={{marginTop:10,padding:"10px 12px",background:"rgba(255,59,48,0.08)",borderRadius:8,fontSize:12,color:"#ff3b30",fontWeight:600}}>✗ {t("email.save_fail")}{errMsg&&<div style={{fontSize:10,marginTop:4,opacity:0.8}}>{errMsg}</div>}</div>}
     </div>
   );
 }
@@ -6280,14 +6283,23 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
   // User toggle persisted per device so the Review list stays translated
   // across sessions. Defaults ON when UI is non-English AND AI is configured
   // (value to a multi-lang team) — otherwise OFF.
-  const currentUiLang=(typeof getCurrentLang==="function"?getCurrentLang():"en")||"en";
-  const aiDisplayAvailable=typeof aiEnabled!=="undefined"?aiEnabled:!!local.get(GEMINI_KEY);
   const[translateDisplay,setTranslateDisplay]=useState(()=>{
     const saved=local.get(DISPLAY_XLATE_PREF_KEY);
     if(typeof saved==="boolean")return saved;
-    return currentUiLang!=="en";
+    return (typeof getCurrentLang==="function"?getCurrentLang():"en")!=="en";
   });
+  // true once the user manually toggles the checkbox — prevents auto-flip from overriding their choice
+  const userSetXlateRef=React.useRef(false);
+  const setTranslateDisplayByUser=(val)=>{userSetXlateRef.current=true;setTranslateDisplay(val);};
   useEffect(()=>{local.set(DISPLAY_XLATE_PREF_KEY,translateDisplay);},[translateDisplay]);
+  const[currentUiLang,setCurrentUiLang]=useState(()=>(typeof getCurrentLang==="function"?getCurrentLang():"en")||"en");
+  useEffect(()=>onLangChange(code=>{
+    setCurrentUiLang(code);
+    // Auto-flip the translate toggle when language switches mid-session,
+    // unless the user has manually toggled it this session.
+    if(!userSetXlateRef.current) setTranslateDisplay(code!=="en");
+  }),[]);
+  const aiDisplayAvailable=typeof aiEnabled!=="undefined"?aiEnabled:!!local.get(GEMINI_KEY);
   // Per-entry "Show original" toggles — session-only, not persisted
   const[showOriginalIds,setShowOriginalIds]=useState(()=>new Set());
   const toggleShowOriginal=(id)=>setShowOriginalIds(prev=>{
@@ -6339,7 +6351,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
       {source==="entries"&&aiDisplayAvailable&&(
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,padding:"7px 10px",background:translateDisplay?"rgba(88,86,214,0.08)":"rgba(0,0,0,0.04)",border:"1px solid "+(translateDisplay?"rgba(88,86,214,0.3)":"rgba(0,0,0,0.08)"),borderRadius:10}}>
           <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",flex:1}}>
-            <input type="checkbox" checked={translateDisplay} onChange={e=>setTranslateDisplay(e.target.checked)}/>
+            <input type="checkbox" checked={translateDisplay} onChange={e=>setTranslateDisplayByUser(e.target.checked)}/>
             <div style={{flex:1}}>
               <div style={{fontSize:11,fontWeight:700,color:translateDisplay?"#3a39a6":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>🌐 TRANSLATE TO MY LANGUAGE</div>
               <div style={{fontSize:9,color:"rgba(0,0,0,0.45)",lineHeight:1.4,marginTop:1}}>Entries logged in other languages get AI-translated to your UI language. Originals preserved. Cached per entry.</div>
@@ -7866,13 +7878,15 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
                     location via the configured AI provider. Helps teams where
                     each worker logs in their own language (Mandarin, Vietnamese,
                     Bahasa, Tamil, Burmese, etc.) but the export must be uniform. */}
+                {exportLang!=="en"&&(
                 <label style={{display:"flex",alignItems:"flex-start",gap:8,marginTop:10,padding:"8px 10px",background:(aiEnabled?"rgba(88,86,214,0.08)":"rgba(0,0,0,0.04)"),borderRadius:6,cursor:aiEnabled?"pointer":"not-allowed",opacity:aiEnabled?1:0.55}} title={aiEnabled?"":"AI Setup required — configure in Settings → AI Setup to enable."}>
                   <input type="checkbox" checked={translateFreeText&&aiEnabled} disabled={!aiEnabled} onChange={e=>setTranslateFreeText(e.target.checked)} style={{marginTop:2,flexShrink:0}}/>
                   <div style={{flex:1}}>
                     <div style={{fontSize:11,fontWeight:700,color:aiEnabled?"#3a39a6":"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.03em"}}>🌐 ALSO TRANSLATE FREE TEXT</div>
-                    <div style={{fontSize:9,color:"rgba(0,0,0,0.45)",lineHeight:1.4,marginTop:2}}>{aiEnabled?"Title / description / location get AI-translated to export language for a uniform report. Adds ~30s for large reports.":"Needs AI Setup — Settings → AI Setup."}</div>
+                    <div style={{fontSize:9,color:"rgba(0,0,0,0.45)",lineHeight:1.4,marginTop:2}}>{aiEnabled?"Title / description / location get AI-translated to export language for a uniform report.":"Needs AI Setup — Settings → AI Setup."}</div>
                   </div>
                 </label>
+                )}
               </div>
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang);}catch(e){alert("Export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true,langCode:exportLang});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
