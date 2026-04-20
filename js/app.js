@@ -9336,9 +9336,29 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
       }catch{}
       clusterRef.current=null;
     }
-    // Persist a defect's new coords after it's dragged on the map
+    // Persist a defect's new coords after it's dragged on the map. Writes
+    // the coordinates into both the native lat/lng columns AND the location
+    // text field (preserving any existing location text, stripping stale
+    // coord tags first) so the pin position survives on PocketBase schemas
+    // that are missing native lat/lng columns — parseDefectCoords picks
+    // them up from the location regex fallback. Mirrors pinExistingEntry's
+    // write pattern so drag-to-move and tap-to-pin behave identically.
     const saveDefectMove=async(d,newLat,newLng)=>{
-      try{await DB.defects.update(d.id,{lat:newLat,lng:newLng});}catch(e){console.warn("pin move save failed",e);}
+      try{
+        const latStr=newLat.toFixed(5);
+        const lngStr=newLng.toFixed(5);
+        const cleanLoc=(d.location||"").replace(/\s*\[?-?\d+\.\d+\s*,\s*-?\d+\.\d+\]?\s*/g,"").trim();
+        const coordTag=`[${latStr}, ${lngStr}]`;
+        const newLocation=cleanLoc?`${cleanLoc} ${coordTag}`:`Map ${coordTag}`;
+        const zoomNow=mapObj.current?.getZoom?.();
+        const payload={lat:newLat,lng:newLng,location:newLocation};
+        if(typeof zoomNow==="number")payload.mapZoom=zoomNow;
+        const result=await DB.defects.update(d.id,payload);
+        if(typeof onPatchDefectLocal==="function"){
+          const merged={...d,...(result||{}),lat:newLat,lng:newLng,location:newLocation,...(typeof zoomNow==="number"?{mapZoom:zoomNow}:{})};
+          onPatchDefectLocal(merged);
+        }
+      }catch(e){console.warn("pin move save failed",e);}
     };
     // Permanent-delete a defect's GPS location (unpins from map, entry stays)
     const unpinDefect=async(d)=>{
@@ -9888,7 +9908,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
         </div>
       )}
       <div style={{position:"relative"}}>
-        <div ref={mapRef} style={{width:"100%",height:"min(55dvh,480px)",minHeight:260,borderRadius:12,border:"1px solid rgba(0,0,0,0.12)",background:"#e5e3dc",overscrollBehavior:"contain",touchAction:"pan-x pan-y"}}/>
+        <div ref={mapRef} style={{width:"100%",height:"min(calc(100dvh - 360px),460px)",minHeight:260,borderRadius:12,border:"1px solid rgba(0,0,0,0.12)",background:"#e5e3dc",overscrollBehavior:"contain",touchAction:"pan-x pan-y",marginBottom:8}}/>
         {/* Counter badge — parity with REVIEW > MAP. Hidden when Quick Log
             is open so it doesn't overlap the pending-pin affordance. */}
         {mapDefects.length>0&&!pendingPin&&!showList&&(
