@@ -9477,13 +9477,17 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
         }
         return m;
       });
-      // Group into a MarkerClusterGroup. Custom cluster icon reflects the
-      // severity mix so users spot hotspots at a glance.
+      // MarkerClusterGroup interferes with draggable markers — drag starts
+      // are intercepted by the cluster's own pointer handling so pins can't
+      // be moved reliably. Disable clustering at any realistic zoom level
+      // (disableClusteringAtZoom:1 — clusters only form at world view).
+      // Custom cluster icon is preserved for the rare world-zoom case.
       if(L.markerClusterGroup){
         const group=L.markerClusterGroup({
           showCoverageOnHover:false,
           spiderfyOnMaxZoom:true,
           maxClusterRadius:40,
+          disableClusteringAtZoom:1,
           iconCreateFunction:(cluster)=>{
             const children=cluster.getAllChildMarkers();
             const sevs=children.map(c=>c._defect?.severity);
@@ -9908,7 +9912,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
         </div>
       )}
       <div style={{position:"relative"}}>
-        <div ref={mapRef} style={{width:"100%",height:"min(calc(100dvh - 360px),460px)",minHeight:260,borderRadius:12,border:"1px solid rgba(0,0,0,0.12)",background:"#e5e3dc",overscrollBehavior:"contain",touchAction:"pan-x pan-y",marginBottom:8}}/>
+        <div ref={mapRef} style={{width:"100%",height:"min(calc(100dvh - 420px),420px)",minHeight:240,borderRadius:12,border:"1px solid rgba(0,0,0,0.12)",background:"#e5e3dc",overscrollBehavior:"contain",touchAction:"pan-x pan-y",marginBottom:12}}/>
         {/* Counter badge — parity with REVIEW > MAP. Hidden when Quick Log
             is open so it doesn't overlap the pending-pin affordance. */}
         {mapDefects.length>0&&!pendingPin&&!showList&&(
@@ -15775,7 +15779,7 @@ function App(){
       })}/>}
 
       {/* Main content */}
-      <div style={{flex:1,overflowY:"auto",paddingBottom:84}}>
+      <div style={{flex:1,overflowY:"auto",paddingBottom:"calc(100px + env(safe-area-inset-bottom,0px))"}}>
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} onPatchDefectLocal={updated=>setDefects(prev=>prev.map(d=>d.id===updated.id?updated:d))} onViewEntry={setViewing}/>}
