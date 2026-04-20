@@ -242,6 +242,24 @@
     "deleteRule": "@request.auth.id != ''"
   },
   {
+    "name": "map_markups",
+    "type": "base",
+    "schema": [
+      { "name": "companyId", "type": "text", "required": true },
+      { "name": "projectId", "type": "text", "required": true },
+      { "name": "type", "type": "text", "required": true },
+      { "name": "color", "type": "text" },
+      { "name": "text", "type": "text", "options": { "max": 1000 } },
+      { "name": "geo", "type": "json" },
+      { "name": "createdBy", "type": "text" }
+    ],
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''"
+  },
+  {
     "name": "counters",
     "type": "base",
     "schema": [
