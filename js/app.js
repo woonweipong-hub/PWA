@@ -1395,6 +1395,14 @@ async function geminiGenerate(apiKey,body){
   return res;
 }
 
+// Last AI failure reason — captured by the provider-specific analyzers and
+// surfaced in the user-facing "AI could not analyze" alert so the user can
+// see the actual failure without opening DevTools. Also mirrored onto
+// window.__lastAiError for console debugging.
+function _setAiError(msg){
+  try{window.__lastAiError=msg||null;}catch{}
+}
+
 // Extract JSON from a text response that may be wrapped in code fences or
 // preceded by prose. Tries direct parse first, then strips fences, then
 // extracts the first balanced {...} block as a last resort so a verbose
@@ -1444,7 +1452,9 @@ async function analyzeWithGemini(apiKey,base64Image,prompt){
     }
     if(!res.ok){
       const errText=await res.text().catch(()=>"");
-      console.error("[AI] Gemini HTTP",res.status,errText.slice(0,400));
+      const msg=`Gemini HTTP ${res.status} — ${errText.slice(0,200)||"no body"}`;
+      console.error("[AI]",msg);
+      _setAiError(msg);
       return null;
     }
     const data=await res.json();
@@ -1452,12 +1462,22 @@ async function analyzeWithGemini(apiKey,base64Image,prompt){
     const nonThought=parts.filter(p=>p.text&&!p.thought);
     const text=(nonThought.length?nonThought.pop():parts.filter(p=>p.text).pop()||{}).text||"";
     if(!text){
-      console.error("[AI] Gemini returned no text. finishReason:",data.candidates?.[0]?.finishReason,"promptFeedback:",data.promptFeedback,"raw:",JSON.stringify(data).slice(0,500));
+      const finish=data.candidates?.[0]?.finishReason||"unknown";
+      const block=data.promptFeedback?.blockReason||"";
+      const msg=`Gemini returned no text (finish: ${finish}${block?", block: "+block:""})`;
+      console.error("[AI]",msg,"raw:",JSON.stringify(data).slice(0,500));
+      _setAiError(msg);
       return null;
     }
-    return _parseAiJson(text,"Gemini");
+    const parsed=_parseAiJson(text,"Gemini");
+    if(!parsed){
+      _setAiError("Gemini response could not be parsed as JSON — see console for raw output");
+    }
+    return parsed;
   }catch(err){
-    console.error("[AI] Gemini error:",err);
+    const msg=`Gemini request failed — ${err.message||err}`;
+    console.error("[AI]",msg);
+    _setAiError(msg);
     return null;
   }
 }
@@ -1473,13 +1493,19 @@ async function analyzeWithOllama(cfg,base64Image,prompt){
     });
     if(!res.ok){
       const errText=await res.text().catch(()=>"");
-      console.error("[AI] Ollama HTTP",res.status,errText.slice(0,400));
+      const msg=`Ollama HTTP ${res.status} — ${errText.slice(0,200)||"no body"}`;
+      console.error("[AI]",msg);
+      _setAiError(msg);
       return null;
     }
     const data=await res.json();
-    return _parseAiJson(data.response||"","Ollama");
+    const parsed=_parseAiJson(data.response||"","Ollama");
+    if(!parsed)_setAiError("Ollama response could not be parsed as JSON — see console");
+    return parsed;
   }catch(err){
-    console.error("[AI] Ollama error:",err);
+    const msg=`Ollama request failed — ${err.message||err} (is Ollama running? HTTPS page can't reach http://localhost)`;
+    console.error("[AI]",msg);
+    _setAiError(msg);
     return null;
   }
 }
@@ -1502,13 +1528,19 @@ async function analyzeWithOpenAI(cfg,base64Image,prompt){
     });
     if(!res.ok){
       const errText=await res.text().catch(()=>"");
-      console.error("[AI] OpenAI HTTP",res.status,errText.slice(0,400));
+      const msg=`OpenAI HTTP ${res.status} — ${errText.slice(0,200)||"no body"}`;
+      console.error("[AI]",msg);
+      _setAiError(msg);
       return null;
     }
     const data=await res.json();
-    return _parseAiJson(data.choices?.[0]?.message?.content||"","OpenAI");
+    const parsed=_parseAiJson(data.choices?.[0]?.message?.content||"","OpenAI");
+    if(!parsed)_setAiError("OpenAI response could not be parsed as JSON — see console");
+    return parsed;
   }catch(err){
-    console.error("[AI] OpenAI error:",err);
+    const msg=`OpenAI request failed — ${err.message||err}`;
+    console.error("[AI]",msg);
+    _setAiError(msg);
     return null;
   }
 }
@@ -5277,6 +5309,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       // 3) Real API call. Pass context from previous entry when available so
       // AI can make sharper guesses for sequential same-area logging.
       const compressed=await compressPhoto(photo,600,0.7);
+      try{window.__lastAiError=null;}catch{}
       const result=await analyzePhoto(compressed||photo,buildContextPrompt(last));
       if(result&&(result.title||result.description)){
         local.set(AI_LIMIT_KEY,{date:today,count:todayCount+1});
@@ -5284,7 +5317,12 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         setAiResult(result);
         applyAiResult(result);
       }else{
-        alert("AI could not analyze the photo. Try a clearer image or log manually.");
+        // Surface the actual failure reason so the user can act on it
+        // (expired key, blocked project, CORS, offline) without needing
+        // to open DevTools. Falls back to the generic message when no
+        // specific reason was captured by the provider.
+        const detail=(typeof window!=="undefined"&&window.__lastAiError)||"";
+        alert("AI could not analyze the photo.\n\n"+(detail?detail+"\n\n":"")+"Try a clearer image, check AI settings, or log manually.");
       }
     }catch(e){alert("AI analysis error: "+e.message);}
     setAnalyzing(false);
