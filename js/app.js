@@ -4471,7 +4471,9 @@ function GeminiSettings({onClose,companyId}){
             <div style={{background:ok?"rgba(48,209,88,0.1)":"rgba(255,59,48,0.1)",border:`1px solid ${ok?"rgba(48,209,88,0.3)":"rgba(255,59,48,0.3)"}`,borderRadius:10,padding:"12px 16px",marginBottom:16,color:ok?"#1a7a35":"#cc0000",fontSize:13,fontWeight:600}}>
               <div>{ok?"✓ AI connected! Photos will be auto-analyzed.":"✗ Connection failed."}</div>
               {detail&&<div style={{fontSize:11,fontWeight:500,marginTop:4,opacity:0.85,wordBreak:"break-word"}}>{detail}</div>}
-              {!ok&&<div style={{fontSize:11,fontWeight:500,marginTop:6,opacity:0.75}}>Verify the key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" style={{color:"#cc0000",textDecoration:"underline"}}>aistudio.google.com/apikey</a> — or check that Generative Language API is enabled in Google Cloud.</div>}
+              {!ok&&provider==="gemini"&&<div style={{fontSize:11,fontWeight:500,marginTop:6,opacity:0.75}}>Verify the key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" style={{color:"#cc0000",textDecoration:"underline"}}>aistudio.google.com/apikey</a> — or check that Generative Language API is enabled in Google Cloud.</div>}
+              {!ok&&provider==="ollama"&&<div style={{fontSize:11,fontWeight:500,marginTop:6,opacity:0.75}}>Is Ollama running and the model pulled (<code>ollama pull llava</code>)? If the app is served over HTTPS (e.g. siteshrimp.org), browsers block HTTPS→HTTP requests to <code>localhost</code>. Run the app locally, or allow the origin at <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code> and add your Ollama URL.</div>}
+              {!ok&&provider==="openai"&&<div style={{fontSize:11,fontWeight:500,marginTop:6,opacity:0.75}}>Verify the key at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" style={{color:"#cc0000",textDecoration:"underline"}}>platform.openai.com/api-keys</a> — and confirm the base URL and model (e.g. <code>gpt-4o-mini</code>) match what your key has access to.</div>}
             </div>
           );
         })()}
