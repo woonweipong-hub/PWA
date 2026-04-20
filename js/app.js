@@ -5073,23 +5073,25 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           ||DEFAULT_SUBZONES.find(s=>needle.includes(s.toLowerCase()));
         writeAiIfEmpty("locationSubzone",subzoneMatch||roomHint.trim());
       }
-      // Level / Floor — low-confidence guess from photo context, empty-only
+      // Level / Floor — low-confidence guess from photo context, empty-only.
+      // Prefer preset match; fall back to the AI's raw string so users see
+      // what AI proposed (they can verify or correct).
       if(result.level_floor&&result.level_floor.trim()){
         const needle=result.level_floor.trim().toLowerCase();
         const levelMatch=DEFAULT_LEVELS.find(l=>l.toLowerCase()===needle)
           ||DEFAULT_LEVELS.find(l=>l.toLowerCase().includes(needle))
           ||DEFAULT_LEVELS.find(l=>needle.includes(l.toLowerCase()));
-        if(levelMatch)writeAiIfEmpty("locationLevel",levelMatch);
+        writeAiIfEmpty("locationLevel",levelMatch||result.level_floor.trim());
       }
-      // Zone — low-confidence guess, empty-only. Only write when AI produced
-      // an exact match — no raw fallback, since zones are project-specific
-      // labels the AI can't reliably invent.
+      // Zone — low-confidence guess, empty-only. Same preset-first-then-raw
+      // rule as Level so users always see something to verify, even when
+      // AI's guess doesn't match the project's zone naming.
       if(result.zone&&result.zone.trim()){
         const needle=result.zone.trim().toLowerCase();
         const zoneMatch=DEFAULT_ZONES.find(z=>z.toLowerCase()===needle)
           ||DEFAULT_ZONES.find(z=>z.toLowerCase().includes(needle))
           ||DEFAULT_ZONES.find(z=>needle.includes(z.toLowerCase()));
-        if(zoneMatch)writeAiIfEmpty("locationZone",zoneMatch);
+        writeAiIfEmpty("locationZone",zoneMatch||result.zone.trim());
       }
       // Time needed — match DURATION_OPTIONS, fallback raw, empty-only
       let resolvedDuration=null;
@@ -5103,8 +5105,9 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       }
       // Due date — prefer Time Needed (Same day → today, "2 days" → +2 etc.)
       // so Due Date stays consistent with the work effort AI estimated. Fall
-      // back to severity (Critical=+1, Major=+7, Minor=+30) when duration is
-      // missing/TBD. Empty-only so batch carry-overs survive.
+      // back to severity (Critical=+1, Major=+7, Minor=+30) when duration
+      // isn't in the known list. Force-overwrite when the existing dueDate
+      // was AI-sourced (recompute on re-analyze); preserve when human-set.
       const durationDays={
         "same day":0,"1 day":1,"2 days":2,"3 days":3,
         "1 week":7,"2 weeks":14,"1 month":30,"2 months":60,"3 months":90
@@ -5114,7 +5117,13 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       if(dueDays==null)dueDays={Critical:1,Major:7,Minor:30}[u.severity]??null;
       if(dueDays!=null){
         const d=new Date();d.setDate(d.getDate()+dueDays);
-        writeAiIfEmpty("dueDate",d.toISOString().slice(0,10));
+        const iso=d.toISOString().slice(0,10);
+        const existingProv=prov.dueDate;
+        const canOverwrite=!u.dueDate||!existingProv||existingProv.source!=="human";
+        if(canOverwrite){
+          u.dueDate=iso;
+          prov.dueDate=aiProv;
+        }
       }
       // Cost change — safe default. Only write when AI's suggestion matches
       // a known option so we don't leak free-text into a strict enum.
