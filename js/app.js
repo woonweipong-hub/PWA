@@ -8736,6 +8736,12 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
   const[status,setStatus]=useState("loading"); // loading | ready | error
   const[pendingPin,setPendingPin]=useState(null);
   const[mapPickerSearch,setMapPickerSearch]=useState("");
+  // Re-pin mode: when set, the next tap on the map creates an additional
+  // map_pins row for this entryId — no picker, no pending-pin modal.
+  // Entered via the "+ PIN HERE AGAIN" button on a marker's preview card.
+  const[rePinMapEntryId,setRePinMapEntryId]=useState(null);
+  const rePinMapEntryIdRef=useRef(null);
+  useEffect(()=>{rePinMapEntryIdRef.current=rePinMapEntryId;},[rePinMapEntryId]);
   const[savedDefault,setSavedDefault]=useState(false);
   const[qTitle,setQTitle]=useState("");
   const[qSev,setQSev]=useState("Minor");
@@ -8859,6 +8865,11 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
         map.addListener("click",e=>{
           const tool=markupToolRef.current;
           if(tool){handleGmapsMarkupClick(e.latLng,map,g,tool);return;}
+          // Re-pin shortcut: tap drops a new map_pins row for the tracked entry.
+          if(rePinMapEntryIdRef.current){
+            dropMapPinForEntry(rePinMapEntryIdRef.current,e.latLng.lat(),e.latLng.lng());
+            return;
+          }
           if(!pinModeRef.current)return;
           setPendingPin({lat:e.latLng.lat(),lng:e.latLng.lng()});
           if(markersRef.current.pending)markersRef.current.pending.setMap(null);
@@ -9457,6 +9468,11 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
           // Markup-drawing tool takes priority over pin-drop
           const tool=markupToolRef.current;
           if(tool){handleMapMarkupClick(e.latlng,map,L,tool);return;}
+          // Re-pin shortcut: tap drops a new map_pins row for the tracked entry.
+          if(rePinMapEntryIdRef.current){
+            dropMapPinForEntry(rePinMapEntryIdRef.current,e.latlng.lat,e.latlng.lng);
+            return;
+          }
           if(!pinModeRef.current)return;
           setPendingPin({lat:e.latlng.lat,lng:e.latlng.lng});
           if(markersRef.current.pending)markersRef.current.pending.remove();
@@ -9929,6 +9945,29 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
   //   On backends without the map_pins collection, gracefully falls back
   //   to asking the user whether to MOVE the existing primary pin — this
   //   preserves the pre-multi-pin UX on older deployments.
+  // Drop a map_pins row directly (no picker, no pending-pin modal) for the
+  // given entry at the given coords. Called from the re-pin shortcut: user
+  // taps "+ PIN HERE AGAIN" on a marker's preview card, then taps a new
+  // spot on the map.
+  const dropMapPinForEntry=async(entryId,lat,lng)=>{
+    try{
+      const zoom=mapObj.current?.getZoom();
+      await DB.mapPins.create({
+        companyId:company?.companyId||"",
+        projectId:currentProject?.id||"default",
+        entryId,
+        lat,lng,
+        mapZoom:zoom||17,
+        label:"",
+      });
+      setRePinMapEntryId(null);
+      setSavedToast(true);setTimeout(()=>setSavedToast(false),2200);
+    }catch(e){
+      console.error("[MapPanel] dropMapPinForEntry failed:",e);
+      alert("Failed to drop pin: "+(e.message||e));
+      setRePinMapEntryId(null);
+    }
+  };
   const moveExistingPrimary=async(defect,zoom)=>{
     const latStr=pendingPin.lat.toFixed(5);
     const lngStr=pendingPin.lng.toFixed(5);
@@ -10197,7 +10236,18 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
           <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800}}>Pin saved — tap the map to add another.</span>
         </div>
       )}
-      {canEdit&&pinMode&&!pendingPin&&!markupTool&&!savedToast&&(
+      {canEdit&&rePinMapEntryId&&!savedToast&&(()=>{
+        const rpDefect=(defects||[]).find(d=>d.id===rePinMapEntryId);
+        const title=(rpDefect?.title||"ENTRY").toUpperCase();
+        return (
+          <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"rgba(88,86,214,0.1)",border:"1px solid rgba(88,86,214,0.35)",borderRadius:10,fontSize:12,color:"#3a39a6"}}>
+            <span style={{fontSize:14}}>📍</span>
+            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,flex:1}}>TAP THE MAP TO ADD ANOTHER LOCATION FOR "{title}"</span>
+            <button onClick={()=>setRePinMapEntryId(null)} style={{background:"rgba(0,0,0,0.08)",border:"none",borderRadius:6,padding:"3px 8px",color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,cursor:"pointer"}}>CANCEL</button>
+          </div>
+        );
+      })()}
+      {canEdit&&pinMode&&!pendingPin&&!markupTool&&!savedToast&&!rePinMapEntryId&&(
         <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:10,fontSize:12,color:"#b34800"}}>
           <span style={{fontSize:14}}>📍</span>
           <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{t("maps.drop_pin_hint")||"Tap the map to drop a pin and create an entry"}</span>
@@ -10289,12 +10339,20 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
             </div>
             <button onClick={()=>setFocusedDefectId(null)} title="Close preview" aria-label="Close preview" style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:"50%",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:18,lineHeight:1,color:"rgba(0,0,0,0.55)",flexShrink:0}}>×</button>
           </div>
-          <div style={{display:"flex",gap:8,marginTop:10}}>
+          <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap"}}>
             {onViewEntry&&<button onClick={()=>{
               // Synthetic map_pin → open the parent entry, not the synthetic row.
               const target=focusedDefect._parentEntryId?(defects||[]).find(x=>x.id===focusedDefect._parentEntryId)||focusedDefect:focusedDefect;
               onViewEntry(target);setFocusedDefectId(null);
-            }} style={{flex:1,padding:"9px 10px",borderRadius:8,border:"1px solid rgba(255,107,0,0.35)",background:"rgba(255,107,0,0.08)",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>✏ EDIT</button>}
+            }} style={{flex:"1 1 80px",padding:"9px 10px",borderRadius:8,border:"1px solid rgba(255,107,0,0.35)",background:"rgba(255,107,0,0.08)",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>✏ EDIT</button>}
+            {canEdit&&<button onClick={()=>{
+              // Set re-pin mode: next tap on the map drops another location
+              // row for this same entry. Resolve synthetic ids to parent.
+              const eid=focusedDefect._parentEntryId||focusedDefect.id;
+              setRePinMapEntryId(eid);
+              setFocusedDefectId(null);
+              setPinMode(true);
+            }} title="Tap the map after this to drop another location for the same entry" style={{flex:"1 1 110px",padding:"9px 10px",borderRadius:8,border:"1px solid rgba(88,86,214,0.35)",background:"rgba(88,86,214,0.08)",color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>📍 PIN AGAIN</button>}
             <button onClick={async()=>{
               // Synthetic map_pin → delete the pin row. Primary pin → clear lat/lng on the defect.
               if(focusedDefect._mapPinId){
@@ -14084,12 +14142,15 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   };
 
   // Save pin linked to entry (subscription auto-updates pins list)
+  // After saving, keep placing mode ON so the user can tap to drop the
+  // next pin without re-clicking ADD PIN — same sticky behaviour as Map.
   const savePin=async(entryId)=>{
     if(!linkEntry)return;
     try{
       await DB.pins.create({drawingId:drawing.id,entryId,pageNum:linkEntry.pageNum||1,x:linkEntry.x,y:linkEntry.y,label:""});
     }catch(e){alert("Failed to place pin: "+e.message);}
-    setLinkEntry(null);
+    setLinkEntry(null);setPickerSearch("");
+    setPlacing(true);
   };
 
   // Delete pin (subscription auto-updates pins list)
@@ -15415,6 +15476,8 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
                     await DB.pins.create({drawingId:drawing.id,entryId,pageNum:linkEntry.pageNum||1,x:linkEntry.x,y:linkEntry.y,label:""});
                   }
                   setQuickCreate(false);setQTitle("");setQSev("Major");setQPhoto(null);setLinkEntry(null);
+                  // Keep placing ON so the next tap drops another pin — matches Map.
+                  setPlacing(true);
                 }catch(e){alert("Failed: "+e.message);}
                 setQSaving(false);
               }} style={{flex:1,padding:12,borderRadius:10,border:"none",background:qTitle.trim()?"#ff6b00":"rgba(255,255,255,0.1)",color:qTitle.trim()?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{qSaving?"SAVING...":"CREATE & PIN"}</button>
