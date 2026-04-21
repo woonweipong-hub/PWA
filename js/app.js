@@ -2127,7 +2127,23 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   try{allMapPins=await DB.mapPins.list();}catch{}
   const mapPinsByEntry={};allMapPins.forEach(mp=>{(mapPinsByEntry[mp.entryId]=mapPinsByEntry[mp.entryId]||[]).push(mp);});
   const pinCountByEntry={};(allPins||[]).forEach(p=>{pinCountByEntry[p.entryId]=(pinCountByEntry[p.entryId]||0)+1;});
-  const mapDefects=incMap?(defects||[]).filter(d=>typeof d.lat==="number"&&typeof d.lng==="number"):[];
+  // Build the set of GPS-pinned marker rows for the consolidated map page:
+  // primary pins (defect.lat/lng) PLUS synthetic markers for every map_pins
+  // row so additional locations appear on the ALL PINS ON MAP overview and
+  // in the per-pin legend table. Previously the overview only rendered
+  // primary pins — users who used PIN AGAIN saw their extra locations
+  // missing from the exported PDF.
+  const primaryMapDefects=incMap?(defects||[]).filter(d=>typeof d.lat==="number"&&typeof d.lng==="number"):[];
+  const defectsById={};(defects||[]).forEach(d=>{defectsById[d.id]=d;});
+  const syntheticMapPinMarkers=incMap?allMapPins.map(mp=>{
+    const parent=defectsById[mp.entryId];
+    if(!parent)return null;
+    const lat=typeof mp.lat==="number"?mp.lat:parseFloat(mp.lat);
+    const lng=typeof mp.lng==="number"?mp.lng:parseFloat(mp.lng);
+    if(!Number.isFinite(lat)||!Number.isFinite(lng))return null;
+    return {...parent,_mapPinId:mp.id,lat,lng};
+  }).filter(Boolean):[];
+  const mapDefects=[...primaryMapDefects,...syntheticMapPinMarkers];
   // Two modes:
   //   - Lossless (default on laptops): PDF-source drawings go in via pdf-lib
   //     copyPages, bit-for-bit vector, native A1/A3 page size. Per-drawing
@@ -8106,6 +8122,14 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
       setReportPins(flat);
     }).catch(e=>console.warn("[Report] Pin load failed:",e));
   },[reportDrawings]);
+  // Extra map_pins rows — additional GPS locations for defects that
+  // recur at multiple map points. These are N:1 with defects (like
+  // drawing pins), so the REPORT needs them to count / render correctly.
+  const[reportMapPins,setReportMapPins]=useState([]);
+  useEffect(()=>{
+    if(!currentProject?.id)return;
+    DB.mapPins.list(`projectId="${currentProject.id}"`).then(items=>setReportMapPins(items||[])).catch(()=>{});
+  },[currentProject?.id]);
   const savedComparisons=getSavedComparisons(currentProject?.id);
   const drawingsWithAnnotations=reportDrawings.filter(d=>getDrawingMarkup(d.id).length>0||getDrawingNotes(d.id).length>0||reportPins.some(p=>p.drawingId===d.id));
   const totalMarkups=reportDrawings.reduce((s,d)=>s+getDrawingMarkup(d.id).length,0);
@@ -8377,7 +8401,21 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
           {key:"defects",val:incDefects,set:setIncDefects,icon:"📋",label:t("report.defect_entries"),count:filtered.length,color:"#ff3b30"},
           {key:"drawings",val:incDrawings,set:setIncDrawings,icon:"📐",label:t("report.pdf_drawings"),count:drawingsWithAnnotations.length,sub:`${totalPins} ${t("report.pins")} · ${totalMarkups} ${t("report.markups")} · ${totalNotes} ${t("report.notes")}`,color:"#ff6b00"},
           {key:"comparisons",val:incComparisons,set:setIncComparisons,icon:"🔍",label:t("report.saved_comparisons"),count:savedComparisons.length,color:"#5856d6"},
-          {key:"map",val:incMap,set:setIncMap,icon:<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign:"-2px"}}><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>,label:t("maps.map_view"),count:(filtered.filter(d=>typeof d.lat==="number"&&typeof d.lng==="number")).length,color:"#34aadc",sub:local.get(GMAPS_KEY)?t("maps.all_on_map"):t("maps.no_api_key")}
+          (()=>{
+            // MAP VIEW section — counts TOTAL pinned locations, not distinct entries.
+            // That includes each defect's primary GPS pin (lat/lng on the defect)
+            // + every map_pins row (the additional locations the user drops via
+            // PIN AGAIN or long-press). Previously only primary pins were counted,
+            // which made the count read 0 even after users pinned several times.
+            const filteredIds=new Set(filtered.map(d=>d.id));
+            const primaryCount=filtered.filter(d=>typeof d.lat==="number"&&typeof d.lng==="number").length;
+            const extraCount=reportMapPins.filter(mp=>filteredIds.has(mp.entryId)).length;
+            const totalMapPins=primaryCount+extraCount;
+            const subText=totalMapPins===0
+              ? "Long-press the map (or toggle ADD PIN) to start pinning entries."
+              : `${primaryCount} primary + ${extraCount} extra location${extraCount===1?"":"s"}. OSM map is included in PDF export.`;
+            return {key:"map",val:incMap,set:setIncMap,icon:<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign:"-2px"}}><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>,label:t("maps.map_view"),count:totalMapPins,color:"#34aadc",sub:subText};
+          })()
         ].map(sec=>(
           <button key={sec.key} onClick={()=>sec.set(v=>!v)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",marginBottom:6,borderRadius:10,border:`1.5px solid ${sec.val?sec.color+"40":"rgba(0,0,0,0.08)"}`,background:sec.val?sec.color+"0a":"#fafafa",cursor:"pointer",textAlign:"left"}}>
             <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${sec.val?sec.color:"rgba(0,0,0,0.15)"}`,background:sec.val?sec.color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#fff",flexShrink:0}}>{sec.val?"✓":""}</div>
@@ -15785,6 +15823,7 @@ const DdIcon=({name,size=16})=>{
     case"pin":return <svg {...p}><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>;
     case"blueprint":return <svg {...p}><path d="M4 20L20 4"/><path d="M4 20h13"/><path d="M4 20V7"/></svg>;
     case"server":return <svg {...p}><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><circle cx="7" cy="7" r="0.7" fill="currentColor"/><circle cx="7" cy="17" r="0.7" fill="currentColor"/></svg>;
+    case"mail":return <svg {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>;
     default:return null;
   }
 };
@@ -16410,6 +16449,7 @@ function App(){
                 // the top (succinct), then shows 3 hosting paths for power
                 // users who want to move on from siteshrimp.org cloud.
                 {label:t("settings.storage"),desc:t("settings.storage_desc"),icon:"server",optional:true,onClick:()=>{setShowStorage(true);setShowSettingsMenu(false);}},
+                {label:t("settings.email")||"Email Setup",desc:t("settings.email_desc")||"SMTP for report emails",icon:"mail",optional:true,onClick:()=>{setShowEmail(true);setShowSettingsMenu(false);}},
                 {label:t("settings.maps"),desc:t("settings.maps_desc"),icon:"pin",optional:true,onClick:()=>{setShowMaps(true);setShowSettingsMenu(false);}},
                 {section:t("language.title")},
                 {label:t("settings.language"),desc:(languages.find(l=>l.code===lang)||{}).name||"English",icon:"globe",optional:true,onClick:()=>{setShowLangPicker(true);setShowSettingsMenu(false);}},

@@ -392,6 +392,8 @@
     "telegram_desc": "即時缺陷提醒",
     "storage": "儲存和託管",
     "storage_desc": "可選·文件+伺服器所在的位置",
+    "email": "電子郵件設定",
+    "email_desc": "可選 · 用於發送報告電子郵件的 SMTP",
     "maps": "地圖",
     "maps_desc": "Google 地圖位置固定",
     "language": "語言",

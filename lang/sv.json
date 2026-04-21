@@ -392,6 +392,8 @@
     "telegram_desc": "Defekt pingar i realtid",
     "storage": "Lagring & Hosting",
     "storage_desc": "VALFRITT · Där filer + server bor",
+    "email": "E-postinställningar",
+    "email_desc": "VALFRITT · SMTP för att skicka rapportmail",
     "maps": "Kartor",
     "maps_desc": "Google Maps platsfäste",
     "language": "Språk",

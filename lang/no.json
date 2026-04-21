@@ -392,6 +392,8 @@
     "telegram_desc": "Sanntidsfeil pinger",
     "storage": "Lagring og hosting",
     "storage_desc": "VALGFRITT · Hvor filer + server bor",
+    "email": "E-postoppsett",
+    "email_desc": "VALGFRI · SMTP for sending av rapport-e-poster",
     "maps": "Kart",
     "maps_desc": "Google Maps posisjonsfesting",
     "language": "Språk",

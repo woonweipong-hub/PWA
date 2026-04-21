@@ -392,6 +392,8 @@
     "telegram_desc": "Thông báo lỗi thời gian thực",
     "storage": "Lưu trữ & Lưu trữ",
     "storage_desc": "TÙY CHỌN · Nơi tập tin + máy chủ hoạt động",
+    "email": "Cài đặt email",
+    "email_desc": "TÙY CHỌN · SMTP để gửi email báo cáo",
     "maps": "Bản đồ",
     "maps_desc": "Ghim vị trí trên Google Maps",
     "language": "Ngôn ngữ",

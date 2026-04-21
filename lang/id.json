@@ -392,6 +392,8 @@
     "telegram_desc": "Ping cacat real-time",
     "storage": "Penyimpanan & Hosting",
     "storage_desc": "OPSIONAL · Tempat file + server berada",
+    "email": "Pengaturan Email",
+    "email_desc": "OPSIONAL · SMTP untuk mengirim email Laporan",
     "maps": "Peta",
     "maps_desc": "Penyematan lokasi Google Maps",
     "language": "Bahasa",

@@ -392,6 +392,8 @@
     "telegram_desc": "Echtzeit-Mängelmeldungen",
     "storage": "Speicherung und Hosting",
     "storage_desc": "OPTIONAL · Wo Dateien + Server leben",
+    "email": "E-Mail-Setup",
+    "email_desc": "OPTIONAL · SMTP zum Versenden von Berichts-E-Mails",
     "maps": "Karten",
     "maps_desc": "Standortfixierung in Google Maps",
     "language": "Sprache",

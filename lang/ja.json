@@ -392,6 +392,8 @@
     "telegram_desc": "リアルタイム欠陥通知",
     "storage": "ストレージとホスティング",
     "storage_desc": "オプション · ファイルとサーバーが存在する場所",
+    "email": "電子メールの設定",
+    "email_desc": "オプション · レポート電子メールを送信するための SMTP",
     "maps": "地図",
     "maps_desc": "Google マップの場所の固定",
     "language": "言語",

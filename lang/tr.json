@@ -392,6 +392,8 @@
     "telegram_desc": "Gerçek zamanlı kusur ping'leri",
     "storage": "Depolama ve Barındırma",
     "storage_desc": "İSTEĞE BAĞLI · Dosyaların + sunucunun bulunduğu yer",
+    "email": "E-posta Kurulumu",
+    "email_desc": "İSTEĞE BAĞLI · Rapor e-postalarını göndermek için SMTP",
     "maps": "Haritalar",
     "maps_desc": "Google Haritalar konum sabitleme",
     "language": "Dil",

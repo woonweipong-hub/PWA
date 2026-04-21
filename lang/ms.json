@@ -392,6 +392,8 @@
     "telegram_desc": "Ping kecacatan masa nyata",
     "storage": "Storan & Pengehosan",
     "storage_desc": "PILIHAN · Tempat fail + pelayan hidup",
+    "email": "Persediaan E-mel",
+    "email_desc": "PILIHAN · SMTP untuk menghantar e-mel Laporan",
     "maps": "Peta",
     "maps_desc": "Penyematan lokasi Peta Google",
     "language": "Bahasa",

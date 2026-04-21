@@ -392,6 +392,8 @@
     "telegram_desc": "Reaaliaikainen vika ping",
     "storage": "Varastointi ja isännöinti",
     "storage_desc": "VALINNAINEN · Missä tiedostot + palvelin sijaitsevat",
+    "email": "Sähköpostin asetukset",
+    "email_desc": "VALINNAINEN · SMTP raporttisähköpostien lähettämiseen",
     "maps": "Kartat",
     "maps_desc": "Google Maps -sijainnin kiinnitys",
     "language": "Kieli",

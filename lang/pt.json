@@ -392,6 +392,8 @@
     "telegram_desc": "Pings de defeitos em tempo real",
     "storage": "Armazenamento e hospedagem",
     "storage_desc": "OPCIONAL · Onde ficam os arquivos + servidor",
+    "email": "Configuração de e-mail",
+    "email_desc": "OPCIONAL · SMTP para envio de e-mails de Relatório",
     "maps": "Mapas",
     "maps_desc": "Fixação de localização do Google Maps",
     "language": "Idioma",

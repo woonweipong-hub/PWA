@@ -392,6 +392,8 @@
     "telegram_desc": "Defekte pinger i realtid",
     "storage": "Opbevaring & Hosting",
     "storage_desc": "VALGFRI · Hvor filer + server bor",
+    "email": "E-mail opsætning",
+    "email_desc": "VALGFRI · SMTP til afsendelse af rapportmails",
     "maps": "Kort",
     "maps_desc": "Google Maps fastgørelse af placering",
     "language": "Sprog",

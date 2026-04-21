@@ -392,6 +392,8 @@
     "telegram_desc": "Notifications de défauts en temps réel",
     "storage": "Stockage et hébergement",
     "storage_desc": "FACULTATIF · Où vivent les fichiers + le serveur",
+    "email": "Configuration de la messagerie",
+    "email_desc": "FACULTATIF · SMTP pour l'envoi d'e-mails de rapport",
     "maps": "Cartes",
     "maps_desc": "Épinglage de localisation sur Google Maps",
     "language": "Langue",

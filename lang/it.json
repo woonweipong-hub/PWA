@@ -392,6 +392,8 @@
     "telegram_desc": "Ping dei difetti in tempo reale",
     "storage": "Archiviazione e hosting",
     "storage_desc": "FACOLTATIVO · Dove risiedono i file + il server",
+    "email": "Configurazione e-mail",
+    "email_desc": "FACOLTATIVO · SMTP per l'invio di e-mail di report",
     "maps": "Mappe",
     "maps_desc": "Blocco della posizione di Google Maps",
     "language": "Lingua",

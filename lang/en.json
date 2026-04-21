@@ -392,6 +392,8 @@
     "telegram_desc": "Real-time defect pings",
     "storage": "Storage & Hosting",
     "storage_desc": "OPTIONAL · Where files + server live",
+    "email": "Email Setup",
+    "email_desc": "OPTIONAL · SMTP for sending Report emails",
     "maps": "Maps",
     "maps_desc": "Google Maps location pinning",
     "language": "Language",
