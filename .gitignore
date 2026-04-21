@@ -29,6 +29,7 @@ preview-*.html
 
 # Internal operations playbook (private — supports paid setup service)
 deploy/pocketbase/SELFHOST_SETUP_GUIDE.md
+deploy/pocketbase/MIGRATE_VM.md
 
 # Ephemeral planning docs — working state, archived once shipped
 planning/
