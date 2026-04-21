@@ -308,6 +308,10 @@ const DB = (() => {
   const pins = crud('pins');
   const mapMarkups = crud('map_markups');
   const mapPins = crud('map_pins');
+  const ontologyComponents = crud('ontology_components');
+  const ontologyDefectTypes = crud('ontology_defect_types');
+  const ontologyCheckpoints = crud('ontology_checkpoints');
+  const ontologyTrades = crud('ontology_trades');
 
   // ── High-level helpers ───────────────────────────────────────────
   const helpers = {
@@ -407,6 +411,10 @@ const DB = (() => {
     pins,
     mapMarkups,
     mapPins,
+    ontologyComponents,
+    ontologyDefectTypes,
+    ontologyCheckpoints,
+    ontologyTrades,
     ...helpers,
     async sendEmail(recipients, subject, html) {
       return apiJson('/api/send-email', 'POST', { recipients, subject, html });

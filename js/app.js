@@ -5207,8 +5207,307 @@ function ProvChip({prov}){
   return null;
 }
 
+// ── CONQUAS Check Wizard (Phase 3.1) ─────────────────────────────
+// Guided pass/fail walkthrough for BCA CONQUAS (Private Residential) 2025.
+// Opt-in per project: only shown when currentProject.ontology_edition is set
+// and the server has the ontology_* collections seeded (Phase 2).
+//
+// Flow:
+//   1. Pick element tile (Floor / Wall / Ceiling / Door / Window / Component / M&E)
+//   2. Walk checkpoints in order — tap PASS or FAIL on each
+//   3. FAIL forces a photo (capture=environment). Optional note.
+//   4. Summary screen — saves one defects row per FAIL via existing onSave pipeline.
+function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
+  const[loading,setLoading]=useState(true);
+  const[error,setError]=useState(null);
+  const[components,setComponents]=useState([]);
+  const[checkpoints,setCheckpoints]=useState([]);
+  const[defectTypes,setDefectTypes]=useState([]);
+  const[step,setStep]=useState("pickElement");
+  const[pickedId,setPickedId]=useState(null);
+  const[idx,setIdx]=useState(0);
+  const[results,setResults]=useState([]);
+  const[failPhoto,setFailPhoto]=useState(null);
+  const[failNote,setFailNote]=useState("");
+  const[saving,setSaving]=useState(false);
+  const fileRef=useRef();
+
+  // Fetch ontology once on open. Edition pin comes from the current project.
+  useEffect(()=>{
+    const edition=currentProject?.ontology_edition;
+    if(!edition){setError("not_available");setLoading(false);return;}
+    const f=`edition = "${edition}"`;
+    Promise.all([
+      DB.ontologyComponents.list(f,"phase,itemId"),
+      DB.ontologyCheckpoints.list(f,"itemId"),
+      DB.ontologyDefectTypes.list(f,"itemId"),
+    ]).then(([c,cp,dt])=>{
+      if(!c||!c.length){setError("not_available");}
+      else{setComponents(c);setCheckpoints(cp||[]);setDefectTypes(dt||[]);}
+      setLoading(false);
+    }).catch(err=>{
+      console.error("CONQUAS: failed to load ontology",err);
+      setError("not_available");setLoading(false);
+    });
+  },[currentProject?.id]);
+
+  const activeCheckpoints=useMemo(()=>{
+    if(!pickedId)return[];
+    return checkpoints.filter(cp=>cp.component_id===pickedId);
+  },[pickedId,checkpoints]);
+
+  const pickedComponent=components.find(c=>c.itemId===pickedId);
+  const current=activeCheckpoints[idx];
+  const total=activeCheckpoints.length;
+  const failCount=results.filter(r=>r.status==="fail").length;
+  const passCount=results.filter(r=>r.status==="pass").length;
+  const tierSev={"1X":"Minor","2X":"Major","3X":"Critical"};
+
+  const pickElement=(itemId)=>{
+    setPickedId(itemId);setIdx(0);setResults([]);
+    setFailPhoto(null);setFailNote("");
+    setStep("walk");
+  };
+  const advance=(nextResults)=>{
+    if(idx+1>=activeCheckpoints.length){setStep("summary");}
+    else{setIdx(idx+1);setFailPhoto(null);setFailNote("");}
+  };
+  const recordPass=()=>{
+    const nr=[...results,{checkpointId:current.itemId,status:"pass"}];
+    setResults(nr);advance(nr);
+  };
+  const handleFailPhoto=(e)=>{
+    const f=(e.target.files||[])[0];
+    if(!f)return;
+    const r=new FileReader();
+    r.onload=()=>setFailPhoto(r.result);
+    r.readAsDataURL(f);
+    if(fileRef.current)fileRef.current.value="";
+  };
+  const recordFail=()=>{
+    if(!failPhoto)return;
+    const nr=[...results,{checkpointId:current.itemId,status:"fail",photo:failPhoto,note:failNote.trim()}];
+    setResults(nr);advance(nr);
+  };
+  const goBackStep=()=>{
+    if(idx>0){setIdx(idx-1);setResults(prev=>prev.slice(0,-1));setFailPhoto(null);setFailNote("");}
+    else{setPickedId(null);setResults([]);setStep("pickElement");}
+  };
+  const saveAll=async()=>{
+    const fails=results.filter(r=>r.status==="fail");
+    if(!fails.length){onClose();return;}
+    setSaving(true);
+    let saved=0;
+    for(const r of fails){
+      const cp=checkpoints.find(x=>x.itemId===r.checkpointId);
+      if(!cp)continue;
+      const related=Array.isArray(cp.related_defect_type_ids)?cp.related_defect_type_ids:[];
+      const dtId=related[0]||null;
+      const dt=dtId?defectTypes.find(x=>x.itemId===dtId):null;
+      const severity=tierSev[cp.tier]||"Minor";
+      const descParts=[];
+      if(dt&&dt.name)descParts.push(dt.name);
+      if(dt&&dt.measurement_threshold)descParts.push(dt.measurement_threshold);
+      if(r.note)descParts.push(r.note);
+      let compressed=r.photo;
+      try{const c=await compressPhoto(r.photo);if(c)compressed=c;}catch(_){}
+      try{
+        await onSave({
+          title:cp.description||"CONQUAS checkpoint",
+          description:descParts.join(" · "),
+          location:"",locationDisplay:"",
+          severity,status:"Open",
+          component:pickedComponent?pickedComponent.name:"",
+          component_id:pickedId,
+          checkpoint_id:cp.itemId,
+          defect_type_id:dtId,
+          nc_tier:cp.tier||"",
+          entryType:"CONQUAS Check",
+          photo:compressed,extraPhotos:[],
+          projectId:currentProject?.id||"default",
+          projectName:currentProject?.name||"",
+          loggedBy:member?.name||"",
+          loggedByRole:member?.role||"",
+          assignee:member?.name||"",
+          createdAt:DB.serverTimestamp(),
+          updatedAt:DB.serverTimestamp(),
+          comments:[]
+        });
+        saved++;
+      }catch(err){console.error("CONQUAS save failed for checkpoint "+cp.itemId,err);}
+    }
+    setSaving(false);
+    try{alert("Saved "+saved+" of "+fails.length+" defect(s).");}catch(_){}
+    onClose();
+  };
+
+  // ── Render ──
+  const overlay={position:"fixed",inset:0,zIndex:400,background:"#f0ede8",overflowY:"auto",animation:"fadeIn 0.2s ease"};
+  const topBar={position:"sticky",top:0,background:"#1a1a1a",padding:"12px 16px",display:"flex",alignItems:"center",gap:10,zIndex:1,borderBottom:"1px solid rgba(255,255,255,0.06)"};
+  const topBarBtn={background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"};
+
+  if(loading){
+    return(
+      <div style={overlay}>
+        <div style={topBar}>
+          <button onClick={onClose} style={topBarBtn}>{t("conquas.close")}</button>
+          <div style={{color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,letterSpacing:"0.08em"}}>{t("conquas.wizard_title")}</div>
+        </div>
+        <div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.5)"}}>
+          <Spin size={20}/>
+          <div style={{marginTop:12,fontSize:13}}>{t("conquas.loading")}</div>
+        </div>
+      </div>
+    );
+  }
+  if(error==="not_available"){
+    return(
+      <div style={overlay}>
+        <div style={topBar}>
+          <button onClick={onClose} style={topBarBtn}>{t("conquas.close")}</button>
+          <div style={{color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,letterSpacing:"0.08em"}}>{t("conquas.wizard_title")}</div>
+        </div>
+        <div style={{maxWidth:320,margin:"80px auto",padding:"20px 16px",textAlign:"center",color:"rgba(0,0,0,0.7)",lineHeight:1.5,fontSize:14}}>
+          {t("conquas.not_available")}
+        </div>
+      </div>
+    );
+  }
+
+  if(step==="pickElement"){
+    // Phase-1 elements only for Phase 3.1 (Internal Finishes).
+    const phase1=components.filter(c=>(c.phase===1||c.phase==="1"||c.category==="Internal Finishes"));
+    return(
+      <div style={overlay}>
+        <div style={topBar}>
+          <button onClick={onClose} style={topBarBtn}>{t("conquas.close")}</button>
+          <div style={{color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,letterSpacing:"0.08em"}}>{t("conquas.wizard_title")}</div>
+        </div>
+        <div style={{padding:"20px 16px 60px"}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",marginBottom:4}}>{t("conquas.pick_element")}</div>
+          <div style={{fontSize:12,color:"rgba(0,0,0,0.5)",marginBottom:20}}>📁 {currentProject?.name||"—"} · {t("conquas.pick_element_desc")}</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            {phase1.map(c=>(
+              <button key={c.itemId} onClick={()=>pickElement(c.itemId)} style={{padding:"22px 14px",background:"#fff",border:"1.5px solid rgba(0,0,0,0.12)",borderRadius:14,cursor:"pointer",textAlign:"left",display:"flex",flexDirection:"column",gap:6}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:17,color:"#1a1a1a",lineHeight:1.15}}>{c.name}</div>
+                <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",fontWeight:700,letterSpacing:"0.06em"}}>
+                  {(checkpoints.filter(cp=>cp.component_id===c.itemId).length)} checkpoints
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if(step==="walk"&&current){
+    const tierColor=current.tier==="3X"?"#ff3b30":current.tier==="2X"?"#ff9500":"rgba(0,0,0,0.55)";
+    const tierLabel=current.tier==="1X"?t("conquas.tier_1x"):current.tier==="2X"?t("conquas.tier_2x"):current.tier==="3X"?t("conquas.tier_3x"):current.tier;
+    return(
+      <div style={overlay}>
+        <div style={topBar}>
+          <button onClick={goBackStep} style={topBarBtn}>{t("conquas.back")}</button>
+          <div style={{color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,letterSpacing:"0.08em",flex:1}}>{pickedComponent?pickedComponent.name.toUpperCase():""}</div>
+          <div style={{color:"rgba(255,255,255,0.5)",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{(t("conquas.walk_subtitle")||"").replace("{current}",String(idx+1)).replace("{total}",String(total))}</div>
+        </div>
+        <div style={{padding:"20px 16px 140px"}}>
+          {/* Progress bar */}
+          <div style={{height:4,background:"rgba(0,0,0,0.08)",borderRadius:2,marginBottom:16,overflow:"hidden"}}>
+            <div style={{height:"100%",width:((idx)/(total||1)*100)+"%",background:"#ff6b00",transition:"width 0.2s"}}/>
+          </div>
+          {/* Tier chip */}
+          <div style={{fontSize:10,fontWeight:700,color:tierColor,letterSpacing:"0.08em",marginBottom:8,fontFamily:"'Barlow Condensed',sans-serif"}}>{tierLabel}</div>
+          {/* Checkpoint description */}
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:700,color:"#1a1a1a",lineHeight:1.3,marginBottom:12}}>{current.description}</div>
+          {/* Pass criteria */}
+          {current.pass_criteria&&(
+            <div style={{background:"rgba(0,0,0,0.03)",border:"1px solid rgba(0,0,0,0.06)",borderRadius:10,padding:"10px 12px",marginBottom:20}}>
+              <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.45)",letterSpacing:"0.08em",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif"}}>{t("conquas.pass_criteria")}</div>
+              <div style={{fontSize:13,color:"rgba(0,0,0,0.75)",lineHeight:1.4}}>{current.pass_criteria}</div>
+            </div>
+          )}
+          {/* Action: fail-photo flow */}
+          {failPhoto?(
+            <div>
+              <img src={failPhoto} alt="" style={{width:"100%",maxHeight:260,objectFit:"cover",borderRadius:12,marginBottom:12}}/>
+              <textarea value={failNote} onChange={e=>setFailNote(e.target.value)} placeholder={t("conquas.note_placeholder")} style={{width:"100%",minHeight:70,padding:"10px 12px",border:"1px solid rgba(0,0,0,0.12)",borderRadius:10,fontSize:13,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box",marginBottom:12}}/>
+              <button onClick={recordFail} style={{width:"100%",height:54,background:"#ff3b30",border:"none",borderRadius:14,color:"#fff",fontSize:16,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",cursor:"pointer"}}>{t("conquas.next")}</button>
+              <button onClick={()=>{setFailPhoto(null);setFailNote("");}} style={{width:"100%",marginTop:8,background:"none",border:"none",color:"rgba(0,0,0,0.4)",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,cursor:"pointer"}}>{t("conquas.back")}</button>
+            </div>
+          ):(
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <button onClick={recordPass} style={{height:72,background:"#30d158",border:"none",borderRadius:14,color:"#fff",fontSize:20,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",cursor:"pointer"}}>{t("conquas.pass")}</button>
+              <button onClick={()=>fileRef.current&&fileRef.current.click()} style={{height:72,background:"#ff3b30",border:"none",borderRadius:14,color:"#fff",fontSize:20,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",cursor:"pointer"}}>{t("conquas.fail")}</button>
+            </div>
+          )}
+          <input type="file" accept="image/*" capture="environment" ref={fileRef} onChange={handleFailPhoto} style={{display:"none"}}/>
+        </div>
+      </div>
+    );
+  }
+
+  if(step==="summary"){
+    const fails=results.filter(r=>r.status==="fail");
+    return(
+      <div style={overlay}>
+        <div style={topBar}>
+          <button onClick={onClose} style={topBarBtn}>{t("conquas.close")}</button>
+          <div style={{color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,letterSpacing:"0.08em"}}>{t("conquas.summary_title")}</div>
+        </div>
+        <div style={{padding:"20px 16px 140px"}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",marginBottom:4}}>{pickedComponent?pickedComponent.name:""}</div>
+          <div style={{fontSize:12,color:"rgba(0,0,0,0.5)",marginBottom:20}}>📁 {currentProject?.name||"—"}</div>
+          <div style={{display:"flex",gap:10,marginBottom:20}}>
+            <div style={{flex:1,padding:"14px 12px",background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:12,textAlign:"center"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:800,color:"#30d158"}}>{passCount}</div>
+              <div style={{fontSize:10,fontWeight:700,color:"#30d158",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("conquas.pass")}</div>
+            </div>
+            <div style={{flex:1,padding:"14px 12px",background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:12,textAlign:"center"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:800,color:"#ff3b30"}}>{failCount}</div>
+              <div style={{fontSize:10,fontWeight:700,color:"#ff3b30",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("conquas.fail")}</div>
+            </div>
+          </div>
+          {fails.length===0?(
+            <div style={{padding:"24px 16px",background:"rgba(48,209,88,0.05)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:12,textAlign:"center",color:"rgba(0,0,0,0.7)",fontSize:13,lineHeight:1.5,marginBottom:20}}>
+              {t("conquas.summary_none")}
+            </div>
+          ):(
+            <div style={{background:"#fff",borderRadius:12,border:"1px solid rgba(0,0,0,0.08)",marginBottom:20,overflow:"hidden"}}>
+              {fails.map((r,i)=>{
+                const cp=checkpoints.find(x=>x.itemId===r.checkpointId);
+                return(
+                  <div key={i} style={{padding:"12px 14px",borderBottom:i<fails.length-1?"1px solid rgba(0,0,0,0.06)":"none",display:"flex",gap:10,alignItems:"center"}}>
+                    {r.photo&&<img src={r.photo} alt="" style={{width:48,height:48,objectFit:"cover",borderRadius:8,flexShrink:0}}/>}
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:13,color:"#1a1a1a",fontWeight:600,lineHeight:1.25,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis"}}>{cp?cp.description:r.checkpointId}</div>
+                      <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",fontWeight:700,letterSpacing:"0.06em",fontFamily:"'Barlow Condensed',sans-serif"}}>{cp?cp.tier:""} · {tierSev[cp&&cp.tier]||"Minor"}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div style={{position:"sticky",bottom:0,background:"rgba(240,237,232,0.97)",backdropFilter:"blur(8px)",padding:"12px 16px",borderTop:"1px solid rgba(0,0,0,0.08)",margin:"0 -16px",width:"calc(100% + 32px)"}}>
+            {fails.length>0?(
+              <button onClick={saveAll} disabled={saving} style={{width:"100%",height:54,background:saving?"rgba(0,0,0,0.1)":"#ff6b00",border:"none",borderRadius:14,color:saving?"rgba(0,0,0,0.3)":"#fff",fontSize:16,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",cursor:saving?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                {saving?<><Spin size={16}/><span>{t("conquas.saving")}</span></>:(t("conquas.save_all")||"").replace("{n}",String(failCount))}
+              </button>
+            ):(
+              <button onClick={onClose} style={{width:"100%",height:54,background:"#30d158",border:"none",borderRadius:14,color:"#fff",fontSize:16,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",cursor:"pointer"}}>{t("conquas.save_done")}</button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback — should never reach
+  return <div style={overlay}><div style={topBar}><button onClick={onClose} style={topBarBtn}>{t("conquas.close")}</button></div></div>;
+}
+
 // ── Log Entry (with AI + Batch + Multi-photo) ────────────────────
-function LogDefect({member,company,currentProject,members,onSave,existingDefects=[],onViewEntry,onTagDrawing}){
+function LogDefect({member,company,currentProject,members,onSave,existingDefects=[],onViewEntry,onTagDrawing,onStartConquas}){
   const savedWorkCat=local.get(WORK_CATEGORY_KEY)||"Building Defects (Landed)";
   const blank={title:"",location:"",severity:"Major",description:"",assignee:member?.name||"",photos:[],
     component:"",issue:"",locationLevel:"",locationZone:"",locationSubzone:"",locationGrid:"",
@@ -5789,6 +6088,14 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         <div style={{fontSize:10,fontWeight:700,color:"#ff6b00",background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("log.quick_capture")}</div>
       </div>
       <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:20}}>📁 {currentProject?.name||"—"} · {t("log.photo_speak_type")}</div>
+
+      {/* ── CONQUAS Check entry (Phase 3.1) — only when project is CONQUAS-enabled ── */}
+      {currentProject?.ontology_edition&&onStartConquas&&(
+        <button onClick={onStartConquas} style={{width:"100%",padding:"12px 14px",marginBottom:16,background:"rgba(88,86,214,0.08)",border:"1.5px solid rgba(88,86,214,0.3)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <span style={{fontSize:16}}>📋</span>
+          <span>{t("conquas.start_button")}</span>
+        </button>
+      )}
 
       {/* ── 1. TAKE PHOTO — big prominent capture ── */}
       <div style={{marginBottom:16}}>
@@ -15939,6 +16246,7 @@ function App(){
   },[showSettingsMenu]);
   const[showAvatarMenu,setShowAvatarMenu]=useState(false);const avatarMenuTimer=useRef(null);
   const[showAiSearch,setShowAiSearch]=useState(false);
+  const[showConquas,setShowConquas]=useState(false);
   const[nlFilters,setNlFilters]=useState(null);
   const[queueCount,setQueueCount]=useState(0);
   const[syncing2,setSyncing2]=useState(false);
@@ -16598,7 +16906,7 @@ function App(){
 
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:"calc(100px + env(safe-area-inset-bottom,0px))"}}>
-        {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")}/>}
+        {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")} onStartConquas={()=>setShowConquas(true)}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} onPatchDefectLocal={updated=>setDefects(prev=>prev.map(d=>d.id===updated.id?updated:d))} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onViewEntry={setViewing}/>}
         {tab==="defects"&&<DefectsList defects={defects} archivedDefects={archivedDefects} onView={setViewing} onUpdate={updateDefect} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onRestore={restoreDefects} onHardDelete={hardDeleteDefects} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")} onOpenInReview={(payload)=>setReviewModal(payload)}/>}
@@ -16623,6 +16931,7 @@ function App(){
       {reviewModal?.type==="drawing"&&<DrawingViewer drawing={reviewModal.drawing} onClose={()=>setReviewModal(null)} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect}/>}
       {reviewModal?.type==="comparison"&&<DrawingsPanel onClose={()=>setReviewModal(null)} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} initialCompare={reviewModal.comparison}/>}
       {showAiSearch&&<AiSearch defects={defects} onClose={()=>setShowAiSearch(false)} onApplyFilters={f=>{setNlFilters(f);setTab("defects");}}/>}
+      {showConquas&&<ConquasCheckWizard currentProject={currentProject} company={company} member={member} onSave={addDefect} onClose={()=>setShowConquas(false)}/>}
       {viewing&&<DefectDetail defect={viewing} onClose={()=>setViewing(null)} onUpdate={updateDefect} onDelete={(id)=>setDefects(prev=>prev.filter(d=>d.id!==id))} member={member} company={company} members={members} allDefects={defects}/>}
       {showHelp&&(
         <div style={{position:"fixed",inset:0,zIndex:500,background:"#1a1a1a",overflowY:"auto"}}>
