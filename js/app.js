@@ -3033,27 +3033,47 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
           try{
             const srcDoc=await PDFDocument.load(bytes,{ignoreEncryption:true});
             if(sw.sourcePageIdx<srcDoc.getPageCount()){
-              const [copied]=await outDoc.copyPages(srcDoc,[sw.sourcePageIdx]);
-              outDoc.addPage(copied);
-              targetPage=copied;
-              nativeWpt=copied.getWidth();
-              nativeHpt=copied.getHeight();
-              // Enforce min page size so tiny source PDFs (letter, slides)
-              // don't produce postcard-sized pages in the lossless export.
-              // Scales both content and media box, keeping aspect and vector
-              // fidelity. Any API error here is logged and skipped — layout
-              // still works at native size.
-              try{
-                const MIN_LONG_PT=594/0.352778; // A2 long side in points
-                const longSide=Math.max(nativeWpt,nativeHpt);
-                if(longSide>0&&longSide<MIN_LONG_PT){
+              const srcPage=srcDoc.getPage(sw.sourcePageIdx);
+              const srcW=srcPage.getWidth();
+              const srcH=srcPage.getHeight();
+              const MIN_LONG_PT=594/0.352778; // A2 long side in points
+              const longSide=Math.max(srcW,srcH);
+              if(longSide>=MIN_LONG_PT){
+                // Source PDF is already at least A2 — copy as-is (fastest,
+                // preserves the original vectors exactly).
+                const [copied]=await outDoc.copyPages(srcDoc,[sw.sourcePageIdx]);
+                outDoc.addPage(copied);
+                targetPage=copied;
+                nativeWpt=copied.getWidth();
+                nativeHpt=copied.getHeight();
+              }else{
+                // Source is smaller than A2 — embed the source page as a
+                // Form XObject and draw it to fill a brand-new A2-sized
+                // page edge-to-edge. This makes the content fill [0,0,W,H]
+                // in the new page, which is what the pin/note helpers
+                // assume when they compute (pin.x/100)*nativeWpt. Using
+                // scaleContent+setSize preserved original content position
+                // and broke pin alignment — this path fixes that.
+                try{
                   const k=MIN_LONG_PT/longSide;
-                  if(typeof copied.scaleContent==="function")copied.scaleContent(k,k);
-                  if(typeof copied.scaleAnnotations==="function")copied.scaleAnnotations(k,k);
-                  copied.setSize(nativeWpt*k,nativeHpt*k);
-                  nativeWpt*=k;nativeHpt*=k;
+                  const newW=srcW*k;
+                  const newH=srcH*k;
+                  const embedded=await outDoc.embedPage(srcPage);
+                  targetPage=outDoc.addPage([newW,newH]);
+                  targetPage.drawPage(embedded,{x:0,y:0,width:newW,height:newH});
+                  nativeWpt=newW;
+                  nativeHpt=newH;
+                }catch(embedErr){
+                  // Embedding failed — fall back to plain copyPages so the
+                  // drawing still exports (at its native small size).
+                  console.warn("pdf-lib: embedPage failed, copying at native size",embedErr);
+                  const [copied]=await outDoc.copyPages(srcDoc,[sw.sourcePageIdx]);
+                  outDoc.addPage(copied);
+                  targetPage=copied;
+                  nativeWpt=copied.getWidth();
+                  nativeHpt=copied.getHeight();
                 }
-              }catch(scaleErr){console.warn("pdf-lib: page scale failed",scaleErr);}
+              }
             }
           }catch(e){console.warn("pdf-lib: copyPages failed, will raster",sw,e);}
         }
