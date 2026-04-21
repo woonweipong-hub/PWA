@@ -56,7 +56,12 @@
     "tap_to_place": "TRYK FOR AT PLACERE",
     "tap_to_speak": "TRYK FOR AT TALE",
     "list": "LISTE ▼",
-    "close_list": "▲ LUK"
+    "close_list": "▲ LUK",
+    "link_to_entry": "LINK TIL ADGANG",
+    "pick_or_create": "Vælg en eksisterende post, der skal fastgøres her, eller opret en ny",
+    "search_entries": "Søg poster efter titel/sted...",
+    "tap_to_add_another_location": "TRYK FOR AT TILFØJE EN ANDEN PLACERING FOR",
+    "remove_this_location": "Vil du fjerne denne placering? Indgangen og dens andre placeringer bliver."
   },
   "status": {
     "open": "Åben",

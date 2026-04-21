@@ -56,7 +56,12 @@
     "tap_to_place": "TAP TO PLACE",
     "tap_to_speak": "TAP TO SPEAK",
     "list": "LIST ▼",
-    "close_list": "▲ CLOSE"
+    "close_list": "▲ CLOSE",
+    "link_to_entry": "LINK TO ENTRY",
+    "pick_or_create": "Pick an existing entry to pin here, or create a new one",
+    "search_entries": "Search entries by title / location...",
+    "tap_to_add_another_location": "TAP TO ADD ANOTHER LOCATION FOR",
+    "remove_this_location": "Remove this location? The entry and its other locations stay."
   },
   "status": {
     "open": "Open",

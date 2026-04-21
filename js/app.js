@@ -1950,17 +1950,34 @@ function exportCSV(defects,projectName){
 }
 
 // Full report export — defects + drawing annotations + saved comparisons in one CSV
-function exportReportAll(defects,drawings,savedComparisons,projectName,langCode){
+async function exportReportAll(defects,drawings,savedComparisons,projectName,langCode){
   // Resolve dropdown option values in the chosen export language. Falls back
   // to English (which is the storage value) when langCode is missing/unknown.
   const tx=v=>(langCode&&typeof tOptIn==="function"?tOptIn(langCode,v):v)||"";
   const esc=v=>`"${String(v==null?"":v).replace(/"/g,'""')}"`;
+  // Fetch pin / map_pin rows so the occurrence count per entry reflects how
+  // many physical locations the defect was captured at. Safe-fallback to
+  // empty arrays if the collections are unavailable (older PB instances).
+  let allPins=[],allMapPins=[];
+  try{allPins=await DB.pins.list();}catch{}
+  try{allMapPins=await DB.mapPins.list();}catch{}
+  const pinsByEntry={};allPins.forEach(p=>{(pinsByEntry[p.entryId]=pinsByEntry[p.entryId]||[]).push(p);});
+  const mapPinsByEntry={};allMapPins.forEach(mp=>{(mapPinsByEntry[mp.entryId]=mapPinsByEntry[mp.entryId]||[]).push(mp);});
+  const drawingById={};(drawings||[]).forEach(d=>{drawingById[d.id]=d;});
   const lines=[];
   // Section 1: Defect entries
   lines.push("# DEFECT ENTRIES");
-  const defectHeaders=["ID","Entry Type","Title","Component","Issue","Location","Severity","Status","Assignee","Trade","Logged By","Role","Date","Due Date","Duration","Cost Impact","Cost Responsible","Cost Amount","Description","Comments"];
+  const defectHeaders=["ID","Entry Type","Title","Component","Issue","Location","Severity","Status","Assignee","Trade","Logged By","Role","Date","Due Date","Duration","Cost Impact","Cost Responsible","Cost Amount","Description","Comments","Occurrences","Pin Locations"];
   lines.push(defectHeaders.join(","));
   (defects||[]).forEach(d=>{
+    const pins=pinsByEntry[d.id]||[];
+    const mps=mapPinsByEntry[d.id]||[];
+    const hasPrimary=typeof d.lat==="number"&&typeof d.lng==="number";
+    const occurrences=pins.length+mps.length+(hasPrimary?1:0);
+    const locParts=[];
+    if(hasPrimary)locParts.push(`GPS ${d.lat.toFixed(5)},${d.lng.toFixed(5)}`);
+    mps.forEach(mp=>locParts.push(`GPS ${Number(mp.lat).toFixed(5)},${Number(mp.lng).toFixed(5)}`));
+    pins.forEach(p=>{const dr=drawingById[p.drawingId];locParts.push(`DWG ${(dr?.name||"?")}${p.pageNum>1?" p."+p.pageNum:""}`);});
     lines.push([
       d.defect_id||d.id||"",
       d.entryType||"Defect",
@@ -1972,7 +1989,9 @@ function exportReportAll(defects,drawings,savedComparisons,projectName,langCode)
       d.dueDate||"",esc(tx(d.duration)),
       esc(tx(d.costImpact)),esc(tx(d.costResponsible)),d.costAmount||"",
       esc(d.description),
-      esc((d.comments||[]).map(c=>`${c.by}: ${c.text}`).join(" | "))
+      esc((d.comments||[]).map(c=>`${c.by}: ${c.text}`).join(" | ")),
+      occurrences,
+      esc(locParts.join(" | "))
     ].join(","));
   });
   // Section 2: Drawing annotations (notes + markup counts)
@@ -2101,6 +2120,13 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   const incMap=opts.incMap!==false;
   const gmapsKey=opts.gmapsKey||"";
   const mapProvider=opts.mapProvider||(gmapsKey?"gmaps":"osm");
+  // Fetch extra map_pins rows so the PDF can note occurrence count per entry
+  // when the same defect was pinned at multiple map locations. Failure to
+  // fetch degrades to "zero extras" rather than blocking the export.
+  let allMapPins=[];
+  try{allMapPins=await DB.mapPins.list();}catch{}
+  const mapPinsByEntry={};allMapPins.forEach(mp=>{(mapPinsByEntry[mp.entryId]=mapPinsByEntry[mp.entryId]||[]).push(mp);});
+  const pinCountByEntry={};(allPins||[]).forEach(p=>{pinCountByEntry[p.entryId]=(pinCountByEntry[p.entryId]||0)+1;});
   const mapDefects=incMap?(defects||[]).filter(d=>typeof d.lat==="number"&&typeof d.lng==="number"):[];
   // Two modes:
   //   - Lossless (default on laptops): PDF-source drawings go in via pdf-lib
@@ -2453,6 +2479,25 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
         badge("OVERDUE",bx2,y+3,[200,0,0]);
       }
       y+=8;
+
+      // Occurrence count — drawing pins + GPS primary + extra map pins.
+      // Only shown when > 1 so single-location entries stay clean.
+      {
+        const drawPinCount=pinCountByEntry[d.id]||0;
+        const mpCount=(mapPinsByEntry[d.id]||[]).length;
+        const hasPrimaryGps=typeof d.lat==="number"&&typeof d.lng==="number";
+        const occurrences=drawPinCount+mpCount+(hasPrimaryGps?1:0);
+        if(occurrences>1){
+          doc.setFontSize(7);doc.setFont(undefined,"bold");doc.setTextColor(88,86,214);
+          const parts=[];
+          if(drawPinCount>0)parts.push(`${drawPinCount} drawing pin${drawPinCount===1?"":"s"}`);
+          const gpsTotal=(hasPrimaryGps?1:0)+mpCount;
+          if(gpsTotal>0)parts.push(`${gpsTotal} map location${gpsTotal===1?"":"s"}`);
+          doc.text(`📍 LOCATIONS · ${occurrences} total (${parts.join(", ")})`,margin+1,y);
+          doc.setTextColor(0);
+          y+=5;
+        }
+      }
 
       // ── Fields grid (2 columns) ──
       const col1=margin+1,col2=margin+contentW*0.5;
@@ -7167,6 +7212,65 @@ function DefectMiniMap({defect,allDefects}){
   );
 }
 
+// Lists every location where this entry is pinned — drawings (name + page),
+// primary GPS pin, and any additional map_pins rows. Subscribes live so new
+// locations added elsewhere show up without reopening the entry.
+function EntryLocations({defect}){
+  const[pins,setPins]=useState([]);
+  const[mapPins,setMapPins]=useState([]);
+  const[drawings,setDrawings]=useState([]);
+  useEffect(()=>{
+    if(!defect?.id)return;
+    const unsubPins=DB.pins.subscribe(`entryId="${defect.id}"`,items=>setPins(items||[]));
+    const unsubMp=DB.mapPins.subscribe(`entryId="${defect.id}"`,items=>setMapPins(items||[]));
+    // drawings list — used to resolve drawing names for pin rows
+    DB.drawings.list().then(d=>setDrawings(d||[])).catch(()=>{});
+    return()=>{try{unsubPins();}catch{}try{unsubMp();}catch{}};
+  },[defect?.id]);
+  const drawingById={};drawings.forEach(d=>{drawingById[d.id]=d;});
+  const hasPrimaryGps=parseDefectCoords(defect)!=null;
+  const total=pins.length+mapPins.length+(hasPrimaryGps?1:0);
+  if(total<=1)return null; // only show section when there are multiple locations
+  return(
+    <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,border:"1px solid rgba(88,86,214,0.2)"}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a1a1a",letterSpacing:"0.02em"}}>📍 LOCATIONS</div>
+        <span style={{background:"rgba(88,86,214,0.15)",color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,padding:"2px 8px",borderRadius:10}}>{total}</span>
+      </div>
+      <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",marginBottom:10}}>Same defect captured at {total} locations. Each location is a separate pin — delete a pin to remove just that location.</div>
+      <div style={{display:"flex",flexDirection:"column",gap:6}}>
+        {hasPrimaryGps&&(()=>{
+          const c=parseDefectCoords(defect);
+          return (
+            <div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",background:"rgba(0,0,0,0.03)",borderRadius:8,fontSize:12}}>
+              <span style={{background:"#ff6b00",color:"#fff",borderRadius:6,padding:"2px 7px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10}}>GPS</span>
+              <span style={{flex:1,fontFamily:"monospace",fontSize:11,color:"rgba(0,0,0,0.7)"}}>{c.lat.toFixed(5)}, {c.lng.toFixed(5)}</span>
+              <span style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>PRIMARY</span>
+            </div>
+          );
+        })()}
+        {mapPins.map(mp=>(
+          <div key={mp.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",background:"rgba(88,86,214,0.06)",borderRadius:8,fontSize:12}}>
+            <span style={{background:"#5856d6",color:"#fff",borderRadius:6,padding:"2px 7px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10}}>GPS</span>
+            <span style={{flex:1,fontFamily:"monospace",fontSize:11,color:"rgba(0,0,0,0.7)"}}>{Number(mp.lat).toFixed(5)}, {Number(mp.lng).toFixed(5)}</span>
+          </div>
+        ))}
+        {pins.map(p=>{
+          const dr=drawingById[p.drawingId];
+          const name=dr?.name||"(drawing removed)";
+          const pg=p.pageNum||1;
+          return (
+            <div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",background:"rgba(255,107,0,0.06)",borderRadius:8,fontSize:12}}>
+              <span style={{background:"#ff6b00",color:"#fff",borderRadius:6,padding:"2px 7px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10}}>DWG</span>
+              <span style={{flex:1,color:"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{name}{dr?.pageCount>1||pg>1?` · p.${pg}`:""}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[],allDefects=[],embedded=false}){
   const[status,setStatus]=useState(defect.status);
   const[comment,setComment]=useState("");const[saving,setSaving]=useState(false);const[deleting,setDeleting]=useState(false);
@@ -7444,6 +7548,9 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
             <DefectMiniMap defect={defect} allDefects={allDefects}/>
           </div>
         )}
+
+        {/* All pin locations for this entry (drawings + GPS + extra map pins) */}
+        <EntryLocations defect={defect}/>
 
         {defect.photo&&(()=>{
           const origPhoto=typeof defect.photo==="string"?defect.photo:Array.isArray(defect.photo)&&defect.photo[0]?defect.photo[0]:null;
@@ -8139,10 +8246,10 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
                 </label>
                 )}
               </div>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang);}catch(e){alert("Export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang);}catch(e){alert("Export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true,langCode:exportLang});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false,langCode:exportLang});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang);await new Promise(r=>setTimeout(r,600));await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang);await new Promise(r=>setTimeout(r,600));await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
               <button onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);const result=await exportToGoogleSheets(defs,currentProject?.name,company?.companyName,exportLang);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
             </div>
           )}
@@ -8556,6 +8663,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
   const providerRef=useRef(getMapProvider());
   const[status,setStatus]=useState("loading"); // loading | ready | error
   const[pendingPin,setPendingPin]=useState(null);
+  const[mapPickerSearch,setMapPickerSearch]=useState("");
   const[savedDefault,setSavedDefault]=useState(false);
   const[qTitle,setQTitle]=useState("");
   const[qSev,setQSev]=useState("Minor");
@@ -8612,13 +8720,31 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
   const provider=providerRef.current;
   const canEdit=member?.role!=="viewer";
 
+  // Extra map_pins rows — same defect pinned at additional locations.
+  // Subscribed per-project so visibility matches the defects filter.
+  const[extraMapPins,setExtraMapPins]=useState([]);
+  useEffect(()=>{
+    const pid=currentProject?.id||"default";
+    return DB.mapPins.subscribe(`projectId="${pid}"`,items=>setExtraMapPins(items||[]));
+  },[currentProject?.id]);
+
   // Use the same parseDefectCoords as REVIEW > MAP for exact parity —
   // handles null lat/lng by falling back to parsing the description/location
   // text (e.g. "Pinned on map at 1.32915, 103.70271").
-  const mapDefects=(defects||[]).map(d=>{
+  const baseMapDefects=(defects||[]).map(d=>{
     const c=parseDefectCoords(d);
     return c?{...d,lat:c.lat,lng:c.lng}:null;
   }).filter(Boolean);
+  // Synthetic markers for map_pins: clone the parent defect's fields (title,
+  // severity, status, colour) but substitute the map_pin's coords and tag
+  // the row with _mapPinId so drag/delete target the pin row, not the defect.
+  const defectsById={};(defects||[]).forEach(d=>{defectsById[d.id]=d;});
+  const syntheticMapPinMarkers=extraMapPins.map(mp=>{
+    const parent=defectsById[mp.entryId];
+    if(!parent)return null;
+    return {...parent,id:`mp:${mp.id}`,_mapPinId:mp.id,_parentEntryId:parent.id,lat:mp.lat,lng:mp.lng,mapZoom:mp.mapZoom};
+  }).filter(Boolean);
+  const mapDefects=[...baseMapDefects,...syntheticMapPinMarkers];
   // Resolve the focused defect (for the slide-up preview card) and supply
   // a pan helper that the chip strip + marker taps can call. Placed here
   // so mapDefects is already in scope.
@@ -9306,9 +9432,9 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
   const hasAutoFitRef=useRef(false);
   const fitToAllPins=()=>{
     if(!mapObj.current)return;
-    // Reuse the same tolerant lat/lng parse as the render path so "fit" works
-    // for any record that renders a pin, including string-number round-trips.
-    const pts=(defects||[]).map(d=>{
+    // Use mapDefects so both primary pins and map_pins synthetic markers are
+    // included in the fit bounds — otherwise "FIT" would miss extra locations.
+    const pts=mapDefects.map(d=>{
       const lat=typeof d.lat==="number"?d.lat:parseFloat(d.lat);
       const lng=typeof d.lng==="number"?d.lng:parseFloat(d.lng);
       return Number.isFinite(lat)&&Number.isFinite(lng)?{lat,lng}:null;
@@ -9351,12 +9477,20 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
     // write pattern so drag-to-move and tap-to-pin behave identically.
     const saveDefectMove=async(d,newLat,newLng)=>{
       try{
+        const zoomNow=mapObj.current?.getZoom?.();
+        // Synthetic map_pin marker — move only the pin row, don't touch the
+        // parent defect's primary lat/lng.
+        if(d._mapPinId){
+          const payload={lat:newLat,lng:newLng};
+          if(typeof zoomNow==="number")payload.mapZoom=zoomNow;
+          await DB.mapPins.update(d._mapPinId,payload);
+          return;
+        }
         const latStr=newLat.toFixed(5);
         const lngStr=newLng.toFixed(5);
         const cleanLoc=(d.location||"").replace(/\s*\[?-?\d+\.\d+\s*,\s*-?\d+\.\d+\]?\s*/g,"").trim();
         const coordTag=`[${latStr}, ${lngStr}]`;
         const newLocation=cleanLoc?`${cleanLoc} ${coordTag}`:`Map ${coordTag}`;
-        const zoomNow=mapObj.current?.getZoom?.();
         const payload={lat:newLat,lng:newLng,location:newLocation};
         if(typeof zoomNow==="number")payload.mapZoom=zoomNow;
         const result=await DB.defects.update(d.id,payload);
@@ -9366,8 +9500,14 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
         }
       }catch(e){console.warn("pin move save failed",e);}
     };
-    // Permanent-delete a defect's GPS location (unpins from map, entry stays)
+    // Permanent-delete a defect's GPS location (unpins from map, entry stays).
+    // For synthetic map_pin markers this removes only that location row.
     const unpinDefect=async(d)=>{
+      if(d._mapPinId){
+        if(!confirm("Remove this location? The entry and its other locations stay."))return;
+        try{await DB.mapPins.delete(d._mapPinId);}catch(e){alert("Failed to remove location: "+e.message);}
+        return;
+      }
       if(!confirm("Remove this entry's map pin?\n(The entry itself will stay — only its GPS location is cleared.)"))return;
       try{await DB.defects.update(d.id,{lat:null,lng:null,mapZoom:null});}catch(e){alert("Failed to remove pin: "+e.message);}
     };
@@ -9710,42 +9850,41 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
   };
 
   // Pin an existing defect at the tapped lat/lng. Mirrors the Tag on
-  // Drawings "link existing entry" path — user's existing entries can
-  // be geolocated after the fact, or moved if they were previously
-  // pinned elsewhere on the map.
+  // Drawings "link existing entry" path.
+  // - If the defect has no GPS yet, fills defect.lat/lng (primary location).
+  // - If it already has GPS, creates a map_pins row so the same defect can
+  //   recur at multiple map locations. This mirrors the N:1 pattern that
+  //   drawing pins already use.
   const pinExistingEntry=async(defect)=>{
     if(!pendingPin||saving||!defect?.id)return;
-    const existingCoords=parseDefectCoords(defect);
-    if(existingCoords){
-      const prev=`${existingCoords.lat.toFixed(5)}, ${existingCoords.lng.toFixed(5)}`;
-      const next=`${pendingPin.lat.toFixed(5)}, ${pendingPin.lng.toFixed(5)}`;
-      if(!confirm(`"${defect.title||"Entry"}" is already on the map at ${prev}.\n\nMove it to ${next}?`))return;
-    }
     setSaving(true);
     try{
       const zoom=mapObj.current?.getZoom();
-      const latStr=pendingPin.lat.toFixed(5);
-      const lngStr=pendingPin.lng.toFixed(5);
-      // Preserve any existing location text (e.g. "Ground Floor > Living Room")
-      // while stripping previous map-coord tags so re-pinning doesn't stack
-      // duplicate coordinates. parseDefectCoords picks coords up from either
-      // the native lat/lng columns or a "X, Y" match inside location/description
-      // — we write BOTH so the pin surfaces even on PocketBase collections
-      // whose defects schema is missing the native lat/lng/mapZoom fields.
-      const cleanLoc=(defect.location||"").replace(/\s*\[?-?\d+\.\d+\s*,\s*-?\d+\.\d+\]?\s*/g,"").trim();
-      const coordTag=`[${latStr}, ${lngStr}]`;
-      const newLocation=cleanLoc?`${cleanLoc} ${coordTag}`:`Map ${coordTag}`;
-      const payload={lat:pendingPin.lat,lng:pendingPin.lng,mapZoom:zoom||17,location:newLocation};
-      const result=await DB.defects.update(defect.id,payload);
-      // Optimistic local-state update via parent callback. Guarantees the
-      // marker appears immediately even when the server's lat/lng columns
-      // are missing OR the realtime SSE event is slow/lost. Uses a local-
-      // patch prop (NOT the full updateDefect that also opens Entry Detail
-      // via setViewing) so pinning an existing entry doesn't navigate away
-      // from the map.
-      if(typeof onPatchDefectLocal==="function"){
-        const merged={...defect,...(result||{}),lat:pendingPin.lat,lng:pendingPin.lng,mapZoom:zoom||17,location:newLocation};
-        onPatchDefectLocal(merged);
+      const existingCoords=parseDefectCoords(defect);
+      if(existingCoords){
+        // Additive: create a map_pins row. Primary defect.lat/lng is untouched.
+        await DB.mapPins.create({
+          companyId:company?.companyId||"",
+          projectId:currentProject?.id||"default",
+          entryId:defect.id,
+          lat:pendingPin.lat,
+          lng:pendingPin.lng,
+          mapZoom:zoom||17,
+          label:"",
+        });
+      }else{
+        // First-time pin: fill the primary defect.lat/lng.
+        const latStr=pendingPin.lat.toFixed(5);
+        const lngStr=pendingPin.lng.toFixed(5);
+        const cleanLoc=(defect.location||"").replace(/\s*\[?-?\d+\.\d+\s*,\s*-?\d+\.\d+\]?\s*/g,"").trim();
+        const coordTag=`[${latStr}, ${lngStr}]`;
+        const newLocation=cleanLoc?`${cleanLoc} ${coordTag}`:`Map ${coordTag}`;
+        const payload={lat:pendingPin.lat,lng:pendingPin.lng,mapZoom:zoom||17,location:newLocation};
+        const result=await DB.defects.update(defect.id,payload);
+        if(typeof onPatchDefectLocal==="function"){
+          const merged={...defect,...(result||{}),lat:pendingPin.lat,lng:pendingPin.lng,mapZoom:zoom||17,location:newLocation};
+          onPatchDefectLocal(merged);
+        }
       }
       cancelPending();
       setPinMode(true);
@@ -10037,8 +10176,22 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
             <button onClick={()=>setFocusedDefectId(null)} title="Close preview" aria-label="Close preview" style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:"50%",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:18,lineHeight:1,color:"rgba(0,0,0,0.55)",flexShrink:0}}>×</button>
           </div>
           <div style={{display:"flex",gap:8,marginTop:10}}>
-            {onViewEntry&&<button onClick={()=>{onViewEntry(focusedDefect);setFocusedDefectId(null);}} style={{flex:1,padding:"9px 10px",borderRadius:8,border:"1px solid rgba(255,107,0,0.35)",background:"rgba(255,107,0,0.08)",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>✏ EDIT</button>}
-            <button onClick={async()=>{if(!confirm("Remove GPS pin from this entry?"))return;await DB.defects.update(focusedDefect.id,{lat:null,lng:null,mapZoom:null});setFocusedDefectId(null);}} style={{flex:1,padding:"9px 10px",borderRadius:8,border:"1px solid rgba(255,59,48,0.3)",background:"rgba(255,59,48,0.07)",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>✕ UNPIN</button>
+            {onViewEntry&&<button onClick={()=>{
+              // Synthetic map_pin → open the parent entry, not the synthetic row.
+              const target=focusedDefect._parentEntryId?(defects||[]).find(x=>x.id===focusedDefect._parentEntryId)||focusedDefect:focusedDefect;
+              onViewEntry(target);setFocusedDefectId(null);
+            }} style={{flex:1,padding:"9px 10px",borderRadius:8,border:"1px solid rgba(255,107,0,0.35)",background:"rgba(255,107,0,0.08)",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>✏ EDIT</button>}
+            <button onClick={async()=>{
+              // Synthetic map_pin → delete the pin row. Primary pin → clear lat/lng on the defect.
+              if(focusedDefect._mapPinId){
+                if(!confirm("Remove this location? The entry and its other locations stay."))return;
+                try{await DB.mapPins.delete(focusedDefect._mapPinId);}catch(e){alert("Failed to remove location: "+e.message);return;}
+              }else{
+                if(!confirm("Remove GPS pin from this entry?"))return;
+                await DB.defects.update(focusedDefect.id,{lat:null,lng:null,mapZoom:null});
+              }
+              setFocusedDefectId(null);
+            }} style={{flex:1,padding:"9px 10px",borderRadius:8,border:"1px solid rgba(255,59,48,0.3)",background:"rgba(255,59,48,0.07)",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>✕ UNPIN</button>
           </div>
         </div>
       )}
@@ -10048,30 +10201,42 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
           the inline Quick Log form below. */}
       {pendingPin&&!mapQuickCreate&&(()=>{
         const projDefects=(defects||[]).filter(d=>!currentProject||d.projectId===currentProject.id||d.projectId==="default");
+        // Count map_pins per entry so the badge reflects total GPS locations.
+        const mpByEntry={};extraMapPins.forEach(mp=>{mpByEntry[mp.entryId]=(mpByEntry[mp.entryId]||0)+1;});
+        const q=(mapPickerSearch||"").trim().toLowerCase();
+        const filtered=q?projDefects.filter(d=>(d.title||"").toLowerCase().includes(q)||(d.location||"").toLowerCase().includes(q)||(d.severity||"").toLowerCase().includes(q)):projDefects;
         return(
           <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:1200,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={cancelPending}>
-            <div onClick={e=>e.stopPropagation()} style={{background:"#1a1a1a",borderRadius:16,padding:20,width:"100%",maxWidth:420,maxHeight:"80vh",overflowY:"auto"}}>
+            <div onClick={e=>e.stopPropagation()} style={{background:"#1a1a1a",borderRadius:16,padding:20,width:"100%",maxWidth:420,maxHeight:"85vh",display:"flex",flexDirection:"column"}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff",marginBottom:4}}>LINK TO ENTRY</div>
-              <div style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:6}}>Select an existing entry or create new</div>
-              <div style={{fontSize:10,color:"rgba(255,255,255,0.35)",fontFamily:"monospace",marginBottom:14}}>📍 {pendingPin.lat.toFixed(5)}, {pendingPin.lng.toFixed(5)}</div>
-              <button onClick={()=>setMapQuickCreate(true)} style={{width:"100%",background:"rgba(255,107,0,0.15)",border:"2px dashed rgba(255,107,0,0.4)",borderRadius:10,padding:"12px 14px",marginBottom:12,cursor:"pointer",textAlign:"center",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13}}>+ CREATE NEW ENTRY & PIN HERE</button>
-              {projDefects.length===0&&<div style={{color:"rgba(255,255,255,0.3)",textAlign:"center",padding:20,fontSize:12}}>No entries in this project yet.</div>}
-              {projDefects.map(d=>{
-                const hasGps=typeof d.lat==="number"&&typeof d.lng==="number";
-                const color=SEV_COLOR[d.severity]||"#8e8e93";
-                return(
-                  <button key={d.id} onClick={()=>pinExistingEntry(d)} disabled={saving} style={{width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 14px",marginBottom:8,cursor:saving?"not-allowed":"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:10,borderLeft:`4px solid ${color}`}}>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.title||"Untitled"}</div>
-                      <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.severity||"—"} · {d.status||"Open"}{d.location?" · "+d.location:""}</div>
-                    </div>
-                    {hasGps&&(
-                      <span title="Already on the map — tapping will move it here" style={{fontSize:9,fontWeight:700,color:"#ff9500",background:"rgba(255,149,0,0.18)",padding:"3px 6px",borderRadius:4,flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:0.5}}>📍 ON MAP</span>
-                    )}
-                  </button>
-                );
-              })}
-              <button onClick={cancelPending} style={{width:"100%",background:"none",border:"1px solid rgba(255,255,255,0.15)",borderRadius:10,padding:12,color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",marginTop:4}}>{t("actions.cancel")}</button>
+              <div style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:6}}>Pick an existing entry to pin here — same defect can live at many locations.</div>
+              <div style={{fontSize:10,color:"rgba(255,255,255,0.35)",fontFamily:"monospace",marginBottom:10}}>📍 {pendingPin.lat.toFixed(5)}, {pendingPin.lng.toFixed(5)}</div>
+              {projDefects.length>5&&(
+                <input autoFocus={false} value={mapPickerSearch} onChange={e=>setMapPickerSearch(e.target.value)} placeholder="Search entries by title / location..." style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",marginBottom:10,boxSizing:"border-box"}}/>
+              )}
+              <div style={{flex:1,overflowY:"auto",marginRight:-4,paddingRight:4}}>
+                <button onClick={()=>setMapQuickCreate(true)} style={{width:"100%",background:"rgba(255,107,0,0.15)",border:"2px dashed rgba(255,107,0,0.4)",borderRadius:10,padding:"12px 14px",marginBottom:12,cursor:"pointer",textAlign:"center",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13}}>+ CREATE NEW ENTRY & PIN HERE</button>
+                {projDefects.length===0&&<div style={{color:"rgba(255,255,255,0.3)",textAlign:"center",padding:20,fontSize:12}}>No entries in this project yet.</div>}
+                {filtered.length===0&&projDefects.length>0&&<div style={{color:"rgba(255,255,255,0.3)",textAlign:"center",padding:12,fontSize:12}}>No entries match "{mapPickerSearch}"</div>}
+                {filtered.map(d=>{
+                  const hasGps=parseDefectCoords(d)!=null;
+                  const mpCount=mpByEntry[d.id]||0;
+                  const totalLocations=(hasGps?1:0)+mpCount;
+                  const color=SEV_COLOR[d.severity]||"#8e8e93";
+                  return(
+                    <button key={d.id} onClick={()=>pinExistingEntry(d)} disabled={saving} style={{width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 14px",marginBottom:8,cursor:saving?"not-allowed":"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:10,borderLeft:`4px solid ${color}`}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.title||"Untitled"}</div>
+                        <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.severity||"—"} · {d.status||"Open"}{d.location?" · "+d.location:""}</div>
+                      </div>
+                      {totalLocations>0&&(
+                        <span title={hasGps?"Already has a map location — pinning adds another":"Already has extra map location(s)"} style={{fontSize:10,fontWeight:800,color:"#9d9bff",background:"rgba(88,86,214,0.22)",padding:"3px 8px",borderRadius:10,flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",border:"1px solid rgba(88,86,214,0.35)"}}>📍{totalLocations}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <button onClick={()=>{cancelPending();setMapPickerSearch("");}} style={{width:"100%",background:"none",border:"1px solid rgba(255,255,255,0.15)",borderRadius:10,padding:12,color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",marginTop:10}}>{t("actions.cancel")}</button>
             </div>
           </div>
         );
@@ -13457,6 +13622,11 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   const[pins,setPins]=useState([]);const[loading,setLoading]=useState(true);
   const[placing,setPlacing]=useState(false);const[linkEntry,setLinkEntry]=useState(null);
   const[quickCreate,setQuickCreate]=useState(false);
+  // Re-pin mode: when set, the next drawing tap creates an additional pin for
+  // this entryId (same defect at another location) — bypasses the entry picker.
+  // Entered via long-press on an existing pin OR via the picker search dropdown.
+  const[rePinEntryId,setRePinEntryId]=useState(null);
+  const[pickerSearch,setPickerSearch]=useState("");
   const[qTitle,setQTitle]=useState("");const[qSev,setQSev]=useState("Major");const[qSaving,setQSaving]=useState(false);
   const qPhotoRef=useRef();const[qPhoto,setQPhoto]=useState(null);
   const[scale,setScale]=useState(1);const[offset,setOffset]=useState({x:0,y:0});
@@ -13642,9 +13812,16 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     if(!target){alert("Drawing not ready — wait for it to load, then try again.");return;}
     const rect=target.getBoundingClientRect();
     if(!rect.width||!rect.height){alert("Drawing not loaded yet — wait a moment and try again.");return;}
-    const x=((e.clientX-rect.left)/rect.width*100).toFixed(2);
-    const y=((e.clientY-rect.top)/rect.height*100).toFixed(2);
-    setLinkEntry({x:parseFloat(x),y:parseFloat(y),pageNum:currentPage});
+    const x=parseFloat(((e.clientX-rect.left)/rect.width*100).toFixed(2));
+    const y=parseFloat(((e.clientY-rect.top)/rect.height*100).toFixed(2));
+    // Re-pin mode: next tap drops another pin for the same entry — no picker.
+    if(rePinEntryId){
+      DB.pins.create({drawingId:drawing.id,entryId:rePinEntryId,pageNum:currentPage,x,y,label:""})
+        .catch(err=>alert("Failed to place pin: "+err.message));
+      setRePinEntryId(null);setPlacing(false);
+      return;
+    }
+    setLinkEntry({x,y,pageNum:currentPage});
     setPlacing(false);
   };
 
@@ -14451,6 +14628,17 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       const grabOffsetX=e.clientX-(pinRect.left+pinRect.width/2);
       const grabOffsetY=e.clientY-(pinRect.top+pinRect.height/2);
       let moved=false;
+      let longPressFired=false;
+      // Long-press (550ms still-hold) → enter re-pin mode for this entry.
+      // Next tap on the drawing drops another pin linked to the same defect.
+      const longPressTimer=setTimeout(()=>{
+        if(moved)return;
+        longPressFired=true;
+        setRePinEntryId(p.entryId);
+        setPlacing(true);
+        setActivePin(null);
+        try{if(navigator.vibrate)navigator.vibrate(30);}catch{}
+      },550);
       const computePct=(clientX,clientY,rect)=>{
         const effX=clientX-grabOffsetX;
         const effY=clientY-grabOffsetY;
@@ -14461,13 +14649,16 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       const onMove=ev=>{
         const{x,y}=computePct(ev.clientX,ev.clientY,startRect);
         moved=true;
+        clearTimeout(longPressTimer);
         pinEl.style.left=x+"%";pinEl.style.top=y+"%";
       };
       const onUp=ev=>{
+        clearTimeout(longPressTimer);
         document.removeEventListener("pointermove",onMove);
         document.removeEventListener("pointerup",onUp);
         document.removeEventListener("pointercancel",onUp);
         try{pinEl.releasePointerCapture?.(ev.pointerId);}catch{}
+        if(longPressFired)return; // long-press already handled
         if(!moved){setActivePin(isActive?null:p.id);return;}
         const{x,y}=computePct(ev.clientX,ev.clientY,target.getBoundingClientRect());
         movePin(p.id,parseFloat(x.toFixed(2)),parseFloat(y.toFixed(2)));
@@ -14519,7 +14710,11 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
         </div>
         <button onClick={()=>{setViewMode(v=>!v);if(!viewMode){setPlacing(false);setMarkupMode(false);}}} title="View mode — zoom & pan" style={{width:36,height:36,borderRadius:10,border:viewMode?"2px solid #2da845":"2px solid rgba(255,255,255,0.15)",background:viewMode?"rgba(52,199,89,0.25)":"rgba(255,255,255,0.08)",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>👁</button>
         {canPin&&!markupMode&&!viewMode&&(
-          <button onClick={()=>{setPlacing(!placing);setViewMode(false);}} style={{background:placing?"#ff6b00":"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>
+          <button onClick={()=>{
+            const next=!placing;
+            setPlacing(next);setViewMode(false);
+            if(!next)setRePinEntryId(null); // cancelling placing also cancels re-pin
+          }} style={{background:placing?"#ff6b00":"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>
             {placing?t("actions.tap_to_place"):"📌 ADD PIN"}
           </button>
         )}
@@ -14534,7 +14729,13 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       </div>
 
       {/* Placing mode indicator */}
-      {placing&&!viewMode&&<div style={{background:"#ff6b00",padding:"8px 16px",textAlign:"center",color:"#fff",fontSize:12,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",flexShrink:0}}>TAP ON THE DRAWING TO PLACE A PIN</div>}
+      {placing&&!viewMode&&(()=>{
+        const rpDefect=rePinEntryId?defects.find(d=>d.id===rePinEntryId):null;
+        const msg=rpDefect
+          ?`TAP TO ADD ANOTHER LOCATION FOR "${(rpDefect.title||"ENTRY").toUpperCase()}"`
+          :"TAP ON THE DRAWING TO PLACE A PIN";
+        return <div style={{background:rpDefect?"#5856d6":"#ff6b00",padding:"8px 16px",textAlign:"center",color:"#fff",fontSize:12,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",flexShrink:0}}>{msg}</div>;
+      })()}
       {viewMode&&<div style={{background:"#34c759",padding:"6px 16px",textAlign:"center",color:"#fff",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",flexShrink:0}}>VIEW MODE — pinch or scroll to zoom · drag to pan · tap VIEW to exit</div>}
 
       {/* Markup toolbar */}
@@ -14875,28 +15076,45 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
       )}
 
       {/* Entry picker modal */}
-      {linkEntry&&!quickCreate&&(
+      {linkEntry&&!quickCreate&&(()=>{
+        // Per-entry pin count on THIS drawing (covers all pages).
+        // Helps users spot entries already pinned multiple times here.
+        const pinCountByEntry={};
+        pins.forEach(pp=>{pinCountByEntry[pp.entryId]=(pinCountByEntry[pp.entryId]||0)+1;});
+        const q=pickerSearch.trim().toLowerCase();
+        const filtered=q?defects.filter(d=>(d.title||"").toLowerCase().includes(q)||(d.location||"").toLowerCase().includes(q)||(d.severity||"").toLowerCase().includes(q)):defects;
+        return (
         <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-          <div style={{background:"#1a1a1a",borderRadius:16,padding:20,width:"100%",maxWidth:400,maxHeight:"70vh",overflowY:"auto"}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff",marginBottom:4}}>LINK TO ENTRY</div>
-            <div style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:16}}>Select an existing entry or create new</div>
-            {/* Quick-create button */}
-            {onSaveEntry&&(
-              <button onClick={()=>setQuickCreate(true)} style={{width:"100%",background:"rgba(255,107,0,0.15)",border:"2px dashed rgba(255,107,0,0.4)",borderRadius:10,padding:"12px 14px",marginBottom:12,cursor:"pointer",textAlign:"center",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13}}>+ CREATE NEW ENTRY & PIN HERE</button>
+          <div style={{background:"#1a1a1a",borderRadius:16,padding:20,width:"100%",maxWidth:400,maxHeight:"80vh",display:"flex",flexDirection:"column"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff",marginBottom:4}}>{t("actions.link_to_entry")||"LINK TO ENTRY"}</div>
+            <div style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:12}}>{t("actions.pick_or_create")||"Pick an existing entry to pin here, or create a new one"}</div>
+            {defects.length>5&&(
+              <input autoFocus={false} value={pickerSearch} onChange={e=>setPickerSearch(e.target.value)} placeholder={t("actions.search_entries")||"Search entries by title / location..."} style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:13,fontFamily:"'Barlow Condensed',sans-serif",marginBottom:10,boxSizing:"border-box"}}/>
             )}
-            {defects.length===0&&!onSaveEntry&&<div style={{color:"rgba(255,255,255,0.3)",textAlign:"center",padding:20}}>No entries to link</div>}
-            {defects.map(d=>(
-              <button key={d.id} onClick={()=>savePin(d.id)} style={{width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 14px",marginBottom:8,cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:10,borderLeft:`4px solid ${SEV_COLOR[d.severity]}`}}>
-                <div style={{flex:1}}>
-                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#fff"}}>{d.title}</div>
-                  <div style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>{d.severity} · {d.status} · {d.location}</div>
-                </div>
-              </button>
-            ))}
-            <button onClick={()=>setLinkEntry(null)} style={{width:"100%",background:"none",border:"1px solid rgba(255,255,255,0.15)",borderRadius:10,padding:12,color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",marginTop:4}}>{t("actions.cancel")}</button>
+            <div style={{flex:1,overflowY:"auto",marginRight:-4,paddingRight:4}}>
+              {onSaveEntry&&(
+                <button onClick={()=>setQuickCreate(true)} style={{width:"100%",background:"rgba(255,107,0,0.15)",border:"2px dashed rgba(255,107,0,0.4)",borderRadius:10,padding:"12px 14px",marginBottom:12,cursor:"pointer",textAlign:"center",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13}}>+ CREATE NEW ENTRY & PIN HERE</button>
+              )}
+              {defects.length===0&&!onSaveEntry&&<div style={{color:"rgba(255,255,255,0.3)",textAlign:"center",padding:20}}>No entries to link</div>}
+              {filtered.length===0&&defects.length>0&&<div style={{color:"rgba(255,255,255,0.3)",textAlign:"center",padding:12,fontSize:12}}>No entries match "{pickerSearch}"</div>}
+              {filtered.map(d=>{
+                const count=pinCountByEntry[d.id]||0;
+                return (
+                <button key={d.id} onClick={()=>savePin(d.id)} style={{width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 14px",marginBottom:8,cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:10,borderLeft:`4px solid ${SEV_COLOR[d.severity]}`}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.title}</div>
+                    <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.severity} · {d.status}{d.location?" · "+d.location:""}</div>
+                  </div>
+                  {count>0&&<span title="Already pinned on this drawing" style={{flexShrink:0,background:"rgba(88,86,214,0.22)",color:"#9d9bff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,padding:"3px 8px",borderRadius:10,border:"1px solid rgba(88,86,214,0.35)"}}>📍{count}</span>}
+                </button>
+                );
+              })}
+            </div>
+            <button onClick={()=>{setLinkEntry(null);setPickerSearch("");}} style={{width:"100%",background:"none",border:"1px solid rgba(255,255,255,0.15)",borderRadius:10,padding:12,color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",marginTop:10}}>{t("actions.cancel")}</button>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Quick-create entry form */}
       {linkEntry&&quickCreate&&(

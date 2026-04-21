@@ -469,6 +469,29 @@ routerAdd("POST", "/api/configure-smtp", (e) => {
   }
 });
 
+// ====== CASCADE DELETE: pins and map_pins that point to a defect ======
+// When a defect is deleted, remove its drawing pins and map pins so the
+// UI doesn't render orphan markers that open a 404 entry detail.
+// All errors are swallowed — a cleanup failure must never block or
+// 400 the original defect delete (which already succeeded at this point).
+onRecordAfterDeleteSuccess((e) => {
+  try {
+    var entryId = e.record.getString("id");
+    if (!entryId) return e.next();
+    try {
+      var pins = $app.findRecordsByFilter("pins", "entryId = {:eid}", "", 1000, 0, { eid: entryId });
+      pins.forEach(function (p) { try { $app.delete(p); } catch (_) {} });
+    } catch (_) {}
+    try {
+      var mpins = $app.findRecordsByFilter("map_pins", "entryId = {:eid}", "", 1000, 0, { eid: entryId });
+      mpins.forEach(function (p) { try { $app.delete(p); } catch (_) {} });
+    } catch (_) {}
+  } catch (err) {
+    console.log("Cascade-delete hook error (ignored):", err);
+  }
+  return e.next();
+}, "defects");
+
 // ====== TEST SMTP (send a test email to verify config) ======
 routerAdd("POST", "/api/test-smtp", (e) => {
   var auth = e.auth;

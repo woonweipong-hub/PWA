@@ -56,7 +56,12 @@
     "tap_to_place": "NAPAUTA SIJOITTAAKSESI",
     "tap_to_speak": "NAPAUTA PUHUAKSESI",
     "list": "LISTA ▼",
-    "close_list": "▲ SULJE"
+    "close_list": "▲ SULJE",
+    "link_to_entry": "LINKKI SISÄÄNTÖÖN",
+    "pick_or_create": "Valitse olemassa oleva merkintä kiinnitettäväksi tähän tai luo uusi",
+    "search_entries": "Hae merkintöjä otsikon/paikan mukaan...",
+    "tap_to_add_another_location": "LISÄÄ TOINEN SIJAINTI napauttamalla",
+    "remove_this_location": "Poistetaanko tämä sijainti? Sisäänkäynti ja sen muut paikat säilyvät."
   },
   "status": {
     "open": "Avoin",

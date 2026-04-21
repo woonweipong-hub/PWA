@@ -56,7 +56,12 @@
     "tap_to_place": "TRYCK FÖR ATT PLACERA",
     "tap_to_speak": "TRYCK FÖR ATT TALA",
     "list": "LISTA ▼",
-    "close_list": "▲ STÄNG"
+    "close_list": "▲ STÄNG",
+    "link_to_entry": "LÄNK TILL ANMÄLAN",
+    "pick_or_create": "Välj en befintlig post att fästa här, eller skapa en ny",
+    "search_entries": "Sök poster efter titel/plats...",
+    "tap_to_add_another_location": "TRYCK FÖR ATT LÄGA TILL EN ANNAN PLATS FÖR",
+    "remove_this_location": "Vill du ta bort den här platsen? Entrén och dess andra platser stannar."
   },
   "status": {
     "open": "Öppen",

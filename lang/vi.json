@@ -56,7 +56,12 @@
     "tap_to_place": "CHẠM ĐỂ ĐẶT",
     "tap_to_speak": "CHẠM ĐỂ NÓI",
     "list": "DANH SÁCH ▼",
-    "close_list": "▲ ĐÓNG"
+    "close_list": "▲ ĐÓNG",
+    "link_to_entry": "LIÊN KẾT ĐỂ THAM GIA",
+    "pick_or_create": "Chọn một mục hiện có để ghim ở đây hoặc tạo một mục mới",
+    "search_entries": "Tìm kiếm các mục theo tiêu đề / vị trí...",
+    "tap_to_add_another_location": "NHẤN ĐỂ THÊM VỊ TRÍ KHÁC CHO",
+    "remove_this_location": "Xóa vị trí này? Lối vào và các vị trí khác của nó vẫn được giữ nguyên."
   },
   "status": {
     "open": "Mở",

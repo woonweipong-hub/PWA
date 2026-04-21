@@ -56,7 +56,12 @@
     "tap_to_place": "点击放置",
     "tap_to_speak": "点击说话",
     "list": "列表 ▼",
-    "close_list": "▲ 关闭"
+    "close_list": "▲ 关闭",
+    "link_to_entry": "条目链接",
+    "pick_or_create": "选择一个现有条目固定在此处，或创建一个新条目",
+    "search_entries": "按标题/位置搜索条目...",
+    "tap_to_add_another_location": "点击添加另一个位置",
+    "remove_this_location": "删除这个位置吗？ 入口及其其他位置保留。"
   },
   "status": {
     "open": "待处理",

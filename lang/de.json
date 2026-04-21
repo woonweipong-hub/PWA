@@ -56,7 +56,12 @@
     "tap_to_place": "TIPPEN ZUM PLATZIEREN",
     "tap_to_speak": "TIPPEN ZUM SPRECHEN",
     "list": "LISTE ▼",
-    "close_list": "▲ SCHLIEßEN"
+    "close_list": "▲ SCHLIEßEN",
+    "link_to_entry": "LINK ZUM EINTRAG",
+    "pick_or_create": "Wählen Sie einen vorhandenen Eintrag aus, um ihn hier anzupinnen, oder erstellen Sie einen neuen",
+    "search_entries": "Einträge nach Titel / Ort suchen...",
+    "tap_to_add_another_location": "TIPP, UM EINEN ANDEREN STANDORT HINZUFÜGEN",
+    "remove_this_location": "Diesen Standort entfernen? Der Eintrag und seine anderen Standorte bleiben erhalten."
   },
   "status": {
     "open": "Offen",

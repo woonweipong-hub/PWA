@@ -56,7 +56,12 @@
     "tap_to_place": "タップして配置",
     "tap_to_speak": "タップして話す",
     "list": "リスト ▼",
-    "close_list": "▲ 閉じる"
+    "close_list": "▲ 閉じる",
+    "link_to_entry": "エントリーへのリンク",
+    "pick_or_create": "既存のエントリを選択してここに固定するか、新しいエントリを作成します",
+    "search_entries": "タイトル/場所でエントリを検索...",
+    "tap_to_add_another_location": "タップして別の場所を追加します",
+    "remove_this_location": "この場所を削除しますか? エントリとその他の場所は残ります。"
   },
   "status": {
     "open": "未対応",

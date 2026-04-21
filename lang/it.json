@@ -56,7 +56,12 @@
     "tap_to_place": "TOCCA PER POSIZIONARE",
     "tap_to_speak": "TOCCA PER PARLARE",
     "list": "ELENCO ▼",
-    "close_list": "▲ CHIUDI"
+    "close_list": "▲ CHIUDI",
+    "link_to_entry": "LINK ALL'INGRESSO",
+    "pick_or_create": "Scegli una voce esistente da aggiungere qui o creane una nuova",
+    "search_entries": "Cerca voci per titolo/località...",
+    "tap_to_add_another_location": "TOCCA PER AGGIUNGERE UN'ALTRA POSIZIONE PER",
+    "remove_this_location": "Rimuovere questa posizione? La voce e le sue altre posizioni rimangono."
   },
   "status": {
     "open": "Aperto",

@@ -56,7 +56,12 @@
     "tap_to_place": "KETUK UNTUK MENEMPATKAN",
     "tap_to_speak": "KETUK UNTUK BICARA",
     "list": "DAFTAR ▼",
-    "close_list": "▲ TUTUP"
+    "close_list": "▲ TUTUP",
+    "link_to_entry": "LINK KE MASUK",
+    "pick_or_create": "Pilih entri yang sudah ada untuk dipasangi pin di sini, atau buat entri baru",
+    "search_entries": "Cari entri berdasarkan judul / lokasi...",
+    "tap_to_add_another_location": "KETUK UNTUK MENAMBAHKAN LOKASI LAIN UNTUK",
+    "remove_this_location": "Hapus lokasi ini? Entri dan lokasi lainnya tetap ada."
   },
   "status": {
     "open": "Terbuka",

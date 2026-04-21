@@ -56,7 +56,12 @@
     "tap_to_place": "YERLEŞTIRMEK İÇİN DOKUN",
     "tap_to_speak": "KONUŞMAK İÇİN DOKUN",
     "list": "LİSTE ▼",
-    "close_list": "▲ KAPAT"
+    "close_list": "▲ KAPAT",
+    "link_to_entry": "GİRİŞ BAĞLANTISI",
+    "pick_or_create": "Buraya sabitlemek için mevcut bir girişi seçin veya yeni bir giriş oluşturun",
+    "search_entries": "Girişleri başlığa / konuma göre arayın...",
+    "tap_to_add_another_location": "BAŞKA BİR KONUM EKLEMEK İÇİN DOKUNUN",
+    "remove_this_location": "Bu konum kaldırılsın mı? Giriş ve diğer yerleri kalır."
   },
   "status": {
     "open": "Açık",

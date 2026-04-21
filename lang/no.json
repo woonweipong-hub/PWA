@@ -56,7 +56,12 @@
     "tap_to_place": "TRYKK FOR Å PLASSERE",
     "tap_to_speak": "TRYKK FOR Å SNAKKE",
     "list": "LISTE ▼",
-    "close_list": "▲ LUKK"
+    "close_list": "▲ LUKK",
+    "link_to_entry": "LINK TIL PÅGANG",
+    "pick_or_create": "Velg en eksisterende oppføring for å feste her, eller opprett en ny",
+    "search_entries": "Søk oppføringer etter tittel/sted...",
+    "tap_to_add_another_location": "TRYKK FOR Å LEGG TIL EN ANNEN STED FOR",
+    "remove_this_location": "Vil du fjerne denne plasseringen? Inngangen og dens andre steder forblir."
   },
   "status": {
     "open": "Åpen",

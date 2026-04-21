@@ -56,7 +56,12 @@
     "tap_to_place": "KETUK UNTUK LETAK",
     "tap_to_speak": "KETUK UNTUK BERCAKAP",
     "list": "SENARAI ▼",
-    "close_list": "▲ TUTUP"
+    "close_list": "▲ TUTUP",
+    "link_to_entry": "PAUTAN KE PENYERTAAN",
+    "pick_or_create": "Pilih entri sedia ada untuk disematkan di sini atau buat yang baharu",
+    "search_entries": "Cari entri mengikut tajuk / lokasi...",
+    "tap_to_add_another_location": "KETIK UNTUK MENAMBAH LOKASI LAIN UNTUK",
+    "remove_this_location": "Alih keluar lokasi ini? Kemasukan dan lokasi lain kekal."
   },
   "status": {
     "open": "Terbuka",

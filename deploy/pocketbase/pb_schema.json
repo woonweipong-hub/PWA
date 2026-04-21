@@ -260,6 +260,24 @@
     "deleteRule": "@request.auth.id != ''"
   },
   {
+    "name": "map_pins",
+    "type": "base",
+    "schema": [
+      { "name": "companyId", "type": "text", "required": true },
+      { "name": "projectId", "type": "text", "required": true },
+      { "name": "entryId", "type": "text", "required": true },
+      { "name": "lat", "type": "number", "required": true },
+      { "name": "lng", "type": "number", "required": true },
+      { "name": "mapZoom", "type": "number" },
+      { "name": "label", "type": "text" }
+    ],
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''"
+  },
+  {
     "name": "counters",
     "type": "base",
     "schema": [

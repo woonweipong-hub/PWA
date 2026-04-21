@@ -56,7 +56,12 @@
     "tap_to_place": "點擊放置",
     "tap_to_speak": "點擊說話",
     "list": "清單 ▼",
-    "close_list": "▲ 關閉"
+    "close_list": "▲ 關閉",
+    "link_to_entry": "條目連結",
+    "pick_or_create": "選擇一個現有條目固定在此處，或建立一個新條目",
+    "search_entries": "按標題/位置搜尋條目...",
+    "tap_to_add_another_location": "點擊新增另一個位置",
+    "remove_this_location": "刪除這個位置嗎？ 入口及其其他位置保留。"
   },
   "status": {
     "open": "待處理",

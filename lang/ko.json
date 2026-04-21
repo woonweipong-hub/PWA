@@ -56,7 +56,12 @@
     "tap_to_place": "탭하여 배치",
     "tap_to_speak": "탭하여 말하기",
     "list": "목록 ▼",
-    "close_list": "▲ 닫기"
+    "close_list": "▲ 닫기",
+    "link_to_entry": "항목 링크",
+    "pick_or_create": "여기에 고정할 기존 항목을 선택하거나 새 항목을 만드세요.",
+    "search_entries": "제목/위치별로 항목 검색...",
+    "tap_to_add_another_location": "다른 위치를 추가하려면 탭하세요.",
+    "remove_this_location": "이 위치를 삭제하시겠습니까? 항목과 다른 위치는 그대로 유지됩니다."
   },
   "status": {
     "open": "미처리",
