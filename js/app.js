@@ -8862,6 +8862,20 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
         });
       }
       if(canEdit){
+        // Shared handler so both tap (in pinMode) and long-press
+        // (rightclick/contextmenu, also fired by mobile touch-hold) drop a
+        // pending pin. Long-press bypasses pinMode so phone users don't
+        // have to toggle a mode button first.
+        const gmapsDropPending=(latLng)=>{
+          if(rePinMapEntryIdRef.current){
+            dropMapPinForEntry(rePinMapEntryIdRef.current,latLng.lat(),latLng.lng());
+            return;
+          }
+          setPendingPin({lat:latLng.lat(),lng:latLng.lng()});
+          if(markersRef.current.pending)markersRef.current.pending.setMap(null);
+          const pendingSvg=`<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="10" fill="#ff6b00" stroke="#fff" stroke-width="3"/><text x="17" y="18" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="900" fill="#fff" font-family="sans-serif">+</text></svg>`;
+          markersRef.current.pending=new g.Marker({position:latLng,map,icon:{url:"data:image/svg+xml;utf8,"+encodeURIComponent(pendingSvg),scaledSize:new g.Size(34,34),anchor:new g.Point(17,17)},zIndex:9999});
+        };
         map.addListener("click",e=>{
           const tool=markupToolRef.current;
           if(tool){handleGmapsMarkupClick(e.latLng,map,g,tool);return;}
@@ -8871,10 +8885,13 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
             return;
           }
           if(!pinModeRef.current)return;
-          setPendingPin({lat:e.latLng.lat(),lng:e.latLng.lng()});
-          if(markersRef.current.pending)markersRef.current.pending.setMap(null);
-          const pendingSvg=`<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="10" fill="#ff6b00" stroke="#fff" stroke-width="3"/><text x="17" y="18" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="900" fill="#fff" font-family="sans-serif">+</text></svg>`;
-          markersRef.current.pending=new g.Marker({position:e.latLng,map,icon:{url:"data:image/svg+xml;utf8,"+encodeURIComponent(pendingSvg),scaledSize:new g.Size(34,34),anchor:new g.Point(17,17)},zIndex:9999});
+          gmapsDropPending(e.latLng);
+        });
+        // Long-press → rightclick on Google Maps. Fires regardless of pinMode.
+        map.addListener("rightclick",e=>{
+          if(markupToolRef.current)return;
+          try{if(navigator.vibrate)navigator.vibrate(25);}catch{}
+          gmapsDropPending(e.latLng);
         });
         map.addListener("dblclick",()=>{
           if(markupToolRef.current==="line"&&markupDrawRef.current?.points?.length>=2)finishPolyline();
@@ -9464,21 +9481,34 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
       }).addTo(map);
       mapObj.current=map;
       if(canEdit){
-        map.on("click",e=>{
-          // Markup-drawing tool takes priority over pin-drop
-          const tool=markupToolRef.current;
-          if(tool){handleMapMarkupClick(e.latlng,map,L,tool);return;}
-          // Re-pin shortcut: tap drops a new map_pins row for the tracked entry.
+        // Shared handler so tap (in pinMode) and long-press (Leaflet's
+        // contextmenu event, which fires on mobile touch-and-hold) share
+        // the same drop-pending-pin logic. Long-press bypasses pinMode.
+        const leafletDropPending=(latlng)=>{
           if(rePinMapEntryIdRef.current){
-            dropMapPinForEntry(rePinMapEntryIdRef.current,e.latlng.lat,e.latlng.lng);
+            dropMapPinForEntry(rePinMapEntryIdRef.current,latlng.lat,latlng.lng);
             return;
           }
-          if(!pinModeRef.current)return;
-          setPendingPin({lat:e.latlng.lat,lng:e.latlng.lng});
+          setPendingPin({lat:latlng.lat,lng:latlng.lng});
           if(markersRef.current.pending)markersRef.current.pending.remove();
           // Brighter, larger pending pin with pulse so users notice it
           const pendingHtml=`<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="15" fill="#ff6b00" opacity="0.3"><animate attributeName="r" values="10;15;10" dur="1.2s" repeatCount="indefinite"/></circle><circle cx="17" cy="17" r="10" fill="#ff6b00" stroke="#fff" stroke-width="3"/><text x="17" y="18" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="900" fill="#fff" font-family="'Barlow Condensed',sans-serif">+</text></svg>`;
-          markersRef.current.pending=L.marker([e.latlng.lat,e.latlng.lng],{icon:L.divIcon({className:"",html:pendingHtml,iconSize:[34,34],iconAnchor:[17,17]}),interactive:false,zIndexOffset:9999}).addTo(map);
+          markersRef.current.pending=L.marker([latlng.lat,latlng.lng],{icon:L.divIcon({className:"",html:pendingHtml,iconSize:[34,34],iconAnchor:[17,17]}),interactive:false,zIndexOffset:9999}).addTo(map);
+        };
+        map.on("click",e=>{
+          const tool=markupToolRef.current;
+          if(tool){handleMapMarkupClick(e.latlng,map,L,tool);return;}
+          if(rePinMapEntryIdRef.current){leafletDropPending(e.latlng);return;}
+          if(!pinModeRef.current)return;
+          leafletDropPending(e.latlng);
+        });
+        // Long-press → Leaflet `contextmenu` event, which fires on
+        // mobile touch-and-hold. Bypasses pinMode so phone users can
+        // drop a pin without toggling a mode button first.
+        map.on("contextmenu",e=>{
+          if(markupToolRef.current)return;
+          try{if(navigator.vibrate)navigator.vibrate(25);}catch{}
+          leafletDropPending(e.latlng);
         });
         map.on("dblclick",e=>{
           // Finish a multi-click polyline
@@ -14239,22 +14269,56 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   // - Otherwise (view mode or normal): single finger pans
   const dragRef=useRef(null);
   const pointerCount=useRef(0);
+  // Long-press on empty drawing area opens the pin picker at that spot —
+  // gives phone users a direct "add pin here" gesture without first toggling
+  // ADD PIN mode. Fires after 500ms still-hold; any finger movement > 8px
+  // or multi-touch cancels it so pan/zoom still feel responsive.
+  const longPressRef=useRef({timer:null,fired:false,startX:0,startY:0});
+  const cancelLongPress=()=>{if(longPressRef.current.timer){clearTimeout(longPressRef.current.timer);longPressRef.current.timer=null;}};
   const onPointerDown=e=>{
     pointerCount.current++;
     if(viewMode)handleDoubleTap();
     // Second pointer lands → cancel any in-progress pan so pinch takes over cleanly
-    if(pointerCount.current>=2){dragRef.current=null;return;}
+    if(pointerCount.current>=2){dragRef.current=null;cancelLongPress();return;}
     const needMultiTouch=markupMode||placing;
     if(!needMultiTouch){
       dragRef.current={startX:e.clientX-offset.x,startY:e.clientY-offset.y};
     }
+    // Arm long-press only when pin placement is sensible (can pin + not in
+    // markup mode + not in viewMode) and we're not already in placing/re-pin.
+    if(canPin&&!markupMode&&!viewMode&&!placing&&!activePin){
+      longPressRef.current.fired=false;
+      longPressRef.current.startX=e.clientX;
+      longPressRef.current.startY=e.clientY;
+      longPressRef.current.timer=setTimeout(()=>{
+        longPressRef.current.timer=null;
+        longPressRef.current.fired=true;
+        const target=isImage?imgRef.current:canvasRef.current;
+        if(!target)return;
+        const rect=target.getBoundingClientRect();
+        if(!rect.width||!rect.height)return;
+        const x=parseFloat((((longPressRef.current.startX)-rect.left)/rect.width*100).toFixed(2));
+        const y=parseFloat((((longPressRef.current.startY)-rect.top)/rect.height*100).toFixed(2));
+        if(x<0||x>100||y<0||y>100)return; // long-press outside the drawing edge
+        setLinkEntry({x,y,pageNum:currentPage});
+        try{if(navigator.vibrate)navigator.vibrate(25);}catch{}
+        // Cancel pan so the long-press doesn't leave the drawing drifting.
+        dragRef.current=null;
+      },500);
+    }
   };
   const onPointerMove=e=>{
+    // Cancel long-press if the user starts dragging — they want to pan, not pin.
+    if(longPressRef.current.timer){
+      const dx=e.clientX-longPressRef.current.startX;
+      const dy=e.clientY-longPressRef.current.startY;
+      if(dx*dx+dy*dy>64)cancelLongPress(); // ~8px movement threshold
+    }
     // When 2+ fingers are down, onTouchMove handles pinch+pan; skip pointer pan to avoid jitter
     if(pointerCount.current>=2)return;
     if(dragRef.current){setOffset({x:e.clientX-dragRef.current.startX,y:e.clientY-dragRef.current.startY});}
   };
-  const onPointerUp=()=>{pointerCount.current=Math.max(0,pointerCount.current-1);if(pointerCount.current===0)dragRef.current=null;};
+  const onPointerUp=()=>{cancelLongPress();pointerCount.current=Math.max(0,pointerCount.current-1);if(pointerCount.current===0)dragRef.current=null;};
 
   // Pinch-to-zoom for mobile — zooms toward pinch midpoint
   const lastPinchDist=useRef(null);
@@ -15010,7 +15074,16 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
                 </div>
                 <div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginBottom:6}}>{d.severity} · {d.status}{d.assignee?` · ${d.assignee}`:""}</div>
               </>):(<div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginBottom:6}}>Entry not found</div>)}
-              {canPin&&<button onClick={e=>{e.stopPropagation();deletePin(p.id);setActivePin(null);}} style={{width:"100%",background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:6,padding:"6px 10px",color:"#ff6b6b",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>REMOVE PIN</button>}
+              {canPin&&(
+                <div style={{display:"flex",gap:6}}>
+                  <button onClick={e=>{
+                    e.stopPropagation();
+                    setRePinEntryId(p.entryId);setPlacing(true);setActivePin(null);
+                    try{if(navigator.vibrate)navigator.vibrate(20);}catch{}
+                  }} title="Next tap drops another pin for this same entry" style={{flex:1,background:"rgba(88,86,214,0.18)",border:"1px solid rgba(88,86,214,0.35)",borderRadius:6,padding:"6px 10px",color:"#9d9bff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>📍 DUPLICATE</button>
+                  <button onClick={e=>{e.stopPropagation();deletePin(p.id);setActivePin(null);}} style={{flex:1,background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:6,padding:"6px 10px",color:"#ff6b6b",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>🗑 DELETE</button>
+                </div>
+              )}
             </div>
           )}
         </div>
