@@ -1972,10 +1972,13 @@ async function exportReportAll(defects,drawings,savedComparisons,projectName,lan
   (defects||[]).forEach(d=>{
     const pins=pinsByEntry[d.id]||[];
     const mps=mapPinsByEntry[d.id]||[];
-    const hasPrimary=typeof d.lat==="number"&&typeof d.lng==="number";
+    // Tolerant coord parse — catches entries whose lat/lng only live in
+    // the location text, matching how pins render on the live map.
+    const primaryCoords=parseDefectCoords(d);
+    const hasPrimary=primaryCoords!=null;
     const occurrences=pins.length+mps.length+(hasPrimary?1:0);
     const locParts=[];
-    if(hasPrimary)locParts.push(`GPS ${d.lat.toFixed(5)},${d.lng.toFixed(5)}`);
+    if(hasPrimary)locParts.push(`GPS ${primaryCoords.lat.toFixed(5)},${primaryCoords.lng.toFixed(5)}`);
     mps.forEach(mp=>locParts.push(`GPS ${Number(mp.lat).toFixed(5)},${Number(mp.lng).toFixed(5)}`));
     pins.forEach(p=>{const dr=drawingById[p.drawingId];locParts.push(`DWG ${(dr?.name||"?")}${p.pageNum>1?" p."+p.pageNum:""}`);});
     lines.push([
@@ -2620,13 +2623,19 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
       }
 
       // ── Map thumbnail (if entry has GPS coords) ──
+      // Resolve coords via parseDefectCoords so the label works for entries
+      // whose lat/lng live in the location text fallback (not just native
+      // columns) — matches the way pins render on the live map.
       const mapImg=mapImgCache.get(d.id);
       if(mapImg&&mapImg.width>0){
+        const coordsForLabel=parseDefectCoords(d);
+        const latStr=coordsForLabel?coordsForLabel.lat.toFixed(5):"—";
+        const lngStr=coordsForLabel?coordsForLabel.lng.toFixed(5):"—";
         const mw=contentW-2;
         const mh=mw*(mapImg.height/mapImg.width);
         checkPage(mh+8);
         doc.setFontSize(6.5);doc.setFont(undefined,"bold");doc.setTextColor(140);
-        doc.text(`🗺 MAP LOCATION  ·  ${d.lat.toFixed(5)}, ${d.lng.toFixed(5)}`,margin+1,y);
+        doc.text(`🗺 MAP LOCATION  ·  ${latStr}, ${lngStr}`,margin+1,y);
         doc.setTextColor(0);y+=2;
         try{doc.addImage(mapImg,"PNG",margin+1,y,mw,mh,undefined,"SLOW");}catch{}
         y+=mh+3;
