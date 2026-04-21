@@ -218,7 +218,9 @@
       { "name": "file", "type": "file", "required": true, "options": { "maxSelect": 1, "maxSize": 52428800, "mimeTypes": ["application/pdf", "image/jpeg", "image/png", "image/webp", "image/tiff"] } },
       { "name": "pageCount", "type": "number" },
       { "name": "uploadedBy", "type": "text" },
-      { "name": "uploadedAt", "type": "text" }
+      { "name": "uploadedAt", "type": "text" },
+      { "name": "archivedAt", "type": "text" },
+      { "name": "archivedBy", "type": "text" }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",

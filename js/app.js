@@ -10384,7 +10384,12 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
 
 // ── Drawings & Floor Plan Pins ────────────────────────────────────
 function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntry,onPatchDefectLocal,onBulkUpdate,onBulkDelete,initialCompare,embedded,onViewEntry}){
+  // Active drawings = visible by default. Archived = retrievable for
+  // ARCHIVE_GRACE_DAYS (7d) before the sweep hard-deletes them. The split
+  // happens client-side off archivedAt, same pattern as defects.
   const[drawings,setDrawings]=useState([]);const[loading,setLoading]=useState(true);
+  const[archivedDrawings,setArchivedDrawings]=useState([]);
+  const[showArchived,setShowArchived]=useState(false);
   const[viewing,setViewing]=useState(null);
   const[uploading,setUploading]=useState(false);
   const[allPins,setAllPins]=useState([]);
@@ -10506,7 +10511,13 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     if(!company?.companyId||!currentProject?.id)return;
     setLoading(true);
     DB.drawings.list(`companyId="${company.companyId}" && projectId="${currentProject.id}"`).then(items=>{
-      setDrawings(items);setLoading(false);
+      // Split active vs archived so the default DRAWINGS view only shows
+      // live drawings. Archived stay retrievable until the 7-day sweep
+      // hard-deletes them.
+      const isArchived=d=>!!(d.archivedAt&&String(d.archivedAt).length>0);
+      setDrawings((items||[]).filter(d=>!isArchived(d)));
+      setArchivedDrawings((items||[]).filter(isArchived));
+      setLoading(false);
       // Auto-open compare when the parent passes an initialCompare. Two shapes:
       //   1) A full saved-comparison object (from REVIEW > COMPARISONS tap)  —
       //      has baseId + targetId + saved markups/audit/AI; load it properly
@@ -10539,6 +10550,31 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     }));
     return()=>unsubs.forEach(u=>u());
   },[drawings]);
+
+  // Auto-sweep archived drawings older than 7 days. Admin-only so a
+  // non-admin device doesn't spam failing DELETE requests. Fires when
+  // the archived list changes (including right after load).
+  useEffect(()=>{
+    if(member?.role!=="Admin"||!archivedDrawings.length)return;
+    const GRACE_MS=7*24*60*60*1000;
+    const cutoff=Date.now()-GRACE_MS;
+    const expired=archivedDrawings.filter(d=>{
+      const t=Date.parse(d.archivedAt||"");
+      return Number.isFinite(t)&&t<cutoff;
+    });
+    if(!expired.length)return;
+    (async()=>{
+      const sweptIds=new Set();
+      for(const d of expired){
+        try{
+          await purgeDrawingChildren(d.id);
+          await DB.drawings.delete(d.id);
+          sweptIds.add(d.id);
+        }catch(e){console.warn("drawings sweep failed",d.id,e);}
+      }
+      if(sweptIds.size)setArchivedDrawings(prev=>prev.filter(d=>!sweptIds.has(d.id)));
+    })();
+  },[archivedDrawings,member?.role]);
 
   const uploadDrawing=async e=>{
     const file=e.target.files?.[0];
@@ -11212,43 +11248,107 @@ Requirements:
     convertCancelRef.current=false;
   };
 
-  const deleteDrawing=async id=>{
-    if(!confirm("Delete this drawing and all its pins?"))return;
+  // Purge associated storage for a drawing ID (call only when hard-deleting).
+  // Pins live on the server; notes + markup are localStorage keyed by drawingId.
+  const purgeDrawingChildren=async(id)=>{
     try{
-      // Delete associated pins first
       const pins=await DB.pins.list(`drawingId="${id}"`);
-      for(const p of pins)await DB.pins.delete(p.id);
+      for(const p of pins){try{await DB.pins.delete(p.id);}catch{}}
+    }catch{}
+    try{
+      const notes=local.get(DRAWING_NOTES_KEY)||{};
+      const markup=local.get(DRAWING_MARKUP_KEY)||{};
+      delete notes[id];delete markup[id];
+      local.set(DRAWING_NOTES_KEY,notes);local.set(DRAWING_MARKUP_KEY,markup);
+    }catch{}
+  };
+  // Archive one drawing — writes archivedAt/archivedBy; self-verifies the
+  // field stuck and falls back to hard-delete + warning if the backend
+  // schema is missing those fields (same safety net as defects archive).
+  const archiveOneDrawing=async(id)=>{
+    const now=new Date().toISOString();
+    const by=member?.name||"";
+    await DB.drawings.update(id,{archivedAt:now,archivedBy:by});
+    let persisted=true;
+    try{
+      const check=await DB.drawings.get(id);
+      if(!check||!check.archivedAt)persisted=false;
+    }catch{/* verify GET failed — trust the 200 */}
+    if(!persisted){
+      if(!window._siteshrimp_drawings_archive_drift_warned){
+        window._siteshrimp_drawings_archive_drift_warned=true;
+        alert("Heads up — this backend's 'drawings' collection is missing the archive fields (archivedAt / archivedBy). Drawing archive + 7-day retrieval can't work without them, so DELETE is falling back to permanent removal.\n\nFix: open the PocketBase admin UI, edit the 'drawings' collection, and add two text fields: archivedAt and archivedBy. Then retry the delete to restore soft-archive.");
+      }
+      await purgeDrawingChildren(id);
       await DB.drawings.delete(id);
-      setDrawings(prev=>prev.filter(d=>d.id!==id));
+      return{mode:"hardDeleted"};
+    }
+    return{mode:"archived",archivedAt:now,archivedBy:by};
+  };
+  const deleteDrawing=async id=>{
+    if(!confirm("Delete this drawing?\n\nMoved to Archive — retrievable within 7 days, then auto-deleted along with its pins. Admins can permanently delete from Archive."))return;
+    try{
+      const r=await archiveOneDrawing(id);
+      if(r.mode==="archived"){
+        setDrawings(prev=>prev.filter(d=>d.id!==id));
+        setArchivedDrawings(prev=>{
+          const moving=drawings.find(d=>d.id===id);
+          return moving?[{...moving,archivedAt:r.archivedAt,archivedBy:r.archivedBy},...prev]:prev;
+        });
+      }else{
+        setDrawings(prev=>prev.filter(d=>d.id!==id));
+      }
     }catch(e){alert("Delete failed: "+e.message);}
   };
   const bulkDeleteDrawings=async()=>{
     if(!canDeleteDrawings||selectedDrawingIds.size===0)return;
     const count=selectedDrawingIds.size;
-    if(!confirm(`Permanently delete ${count} drawing${count>1?"s":""} and all their pins? This cannot be undone.`))return;
+    if(!confirm(`Delete ${count} drawing${count>1?"s":""}?\n\nMoved to Archive — retrievable within 7 days, then auto-deleted along with their pins. Admins can permanently delete from Archive.`))return;
     setBulkBusy(true);
     let ok=0,failed=0;
     const ids=Array.from(selectedDrawingIds);
+    const archivedMoves=[];
+    const hardDeletedIds=new Set();
     for(const id of ids){
       try{
-        const pins=await DB.pins.list(`drawingId="${id}"`);
-        for(const p of pins)await DB.pins.delete(p.id);
-        await DB.drawings.delete(id);
-        // Localstorage notes/markup are keyed by drawingId — sweep them too so
-        // we don't leak orphaned annotations.
-        try{
-          const notes=local.get(DRAWING_NOTES_KEY)||{};
-          const markup=local.get(DRAWING_MARKUP_KEY)||{};
-          delete notes[id];delete markup[id];
-          local.set(DRAWING_NOTES_KEY,notes);local.set(DRAWING_MARKUP_KEY,markup);
-        }catch{}
+        const r=await archiveOneDrawing(id);
+        if(r.mode==="archived"){
+          const moving=drawings.find(d=>d.id===id);
+          if(moving)archivedMoves.push({...moving,archivedAt:r.archivedAt,archivedBy:r.archivedBy});
+        }else{
+          hardDeletedIds.add(id);
+        }
         ok++;
-      }catch(e){console.warn("bulk drawing delete failed",id,e);failed++;}
+      }catch(e){console.warn("bulk drawing archive failed",id,e);failed++;}
     }
     setDrawings(prev=>prev.filter(d=>!selectedDrawingIds.has(d.id)));
-    alert(`Deleted ${ok} drawing${ok===1?"":"s"}${failed?` · ${failed} failed`:""}.`);
+    if(archivedMoves.length)setArchivedDrawings(prev=>[...archivedMoves,...prev]);
+    alert(`Archived ${ok} drawing${ok===1?"":"s"}${failed?` · ${failed} failed`:""}.`);
     exitDrawingSelect();
     setBulkBusy(false);
+  };
+  // Restore an archived drawing back into the active list. Clears
+  // archivedAt/archivedBy on the server.
+  const restoreDrawing=async(id)=>{
+    try{
+      await DB.drawings.update(id,{archivedAt:"",archivedBy:""});
+      setArchivedDrawings(prev=>prev.filter(d=>d.id!==id));
+      setDrawings(prev=>{
+        const moving=archivedDrawings.find(d=>d.id===id);
+        return moving?[{...moving,archivedAt:"",archivedBy:""},...prev]:prev;
+      });
+    }catch(e){alert("Restore failed: "+e.message);}
+  };
+  // Hard-delete an archived drawing (Admin only, from archived view).
+  // Cascades pins + localStorage annotations so nothing orphans.
+  const hardDeleteDrawing=async(id)=>{
+    if(!canDeleteDrawings)return;
+    if(!confirm("Permanently delete this drawing and all its pins? This cannot be undone."))return;
+    try{
+      await purgeDrawingChildren(id);
+      await DB.drawings.delete(id);
+      setArchivedDrawings(prev=>prev.filter(d=>d.id!==id));
+    }catch(e){alert("Delete failed: "+e.message);}
   };
   const bulkRenameDrawings=async()=>{
     if(!canRenameDrawings||selectedDrawingIds.size===0)return;
@@ -12830,7 +12930,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
 
         {loading&&<div style={{textAlign:"center",padding:40}}><Spin size={20}/></div>}
 
-        {!loading&&drawings.length===0&&(
+        {!loading&&drawings.length===0&&archivedDrawings.length===0&&(
           <div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0"}}>
             <div style={{fontSize:32,marginBottom:8}}>📐</div>
             <div style={{fontSize:14}}>No drawings yet</div>
@@ -12841,6 +12941,18 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
               </button>
             )}
           </div>
+        )}
+
+        {/* Archived drawings toggle — only surfaces when there ARE archived
+            drawings to restore. Keeps the DRAWINGS view clean the rest of
+            the time. Lives inside the DRAWINGS tab (not REVIEW) because
+            users looking to restore a drawing think in drawing context. */}
+        {!loading&&!selectMode&&archivedDrawings.length>0&&(
+          <button onClick={()=>setShowArchived(v=>!v)} style={{width:"100%",marginBottom:12,padding:"10px 14px",background:showArchived?"rgba(88,86,214,0.1)":"rgba(0,0,0,0.04)",border:"1px dashed "+(showArchived?"rgba(88,86,214,0.35)":"rgba(0,0,0,0.15)"),borderRadius:10,color:showArchived?"#5856d6":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:8}}>
+            <span>{showArchived?"▾":"▸"}</span>
+            <span>{showArchived?"HIDE":"SHOW"} ARCHIVED DRAWINGS ({archivedDrawings.length})</span>
+            <span style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontWeight:600,marginLeft:"auto"}}>Retrievable 7 days</span>
+          </button>
         )}
 
         {drawings.map(d=>{
@@ -12962,6 +13074,38 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
             </div>
           );
         })}
+
+        {/* Archived drawings — dimmed cards with RESTORE / FOREVER.
+            Only visible when the user has toggled SHOW ARCHIVED above. */}
+        {showArchived&&archivedDrawings.length>0&&(
+          <div style={{marginTop:4}}>
+            <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:8,padding:"0 2px"}}>ARCHIVED · retrievable for 7 days</div>
+            {archivedDrawings.map(d=>{
+              const fileUrl=DB.fileUrl("drawings",d.id,d.file);
+              const isImage=/\.(jpg|jpeg|png|gif|webp|tif|tiff)$/i.test(d.file);
+              const archivedMs=Date.parse(d.archivedAt||"");
+              const daysLeft=Number.isFinite(archivedMs)?Math.max(0,7-Math.floor((Date.now()-archivedMs)/86400000)):7;
+              return (
+                <div key={d.id} style={{background:"#fff",borderRadius:14,marginBottom:12,overflow:"hidden",border:"1px dashed rgba(0,0,0,0.15)",opacity:0.75}}>
+                  <div style={{position:"relative",background:"#f8f8f6",overflow:"hidden",minHeight:60}}>
+                    {isImage
+                      ? <img src={fileUrl} alt={d.name} style={{width:"100%",maxHeight:"28vh",objectFit:"contain",display:"block",background:"#f8f8f6",filter:"grayscale(0.4)"}}/>
+                      : <DrawingThumb url={fileUrl}/>}
+                    <div style={{position:"absolute",top:8,left:8,background:"rgba(0,0,0,0.55)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,padding:"3px 8px",borderRadius:6,letterSpacing:0.5}}>ARCHIVED · {daysLeft}D LEFT</div>
+                  </div>
+                  <div style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#1a1a1a",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.name}</div>
+                      <div style={{fontSize:10,color:"rgba(0,0,0,0.5)"}}>Archived {d.archivedAt?new Date(d.archivedAt).toLocaleDateString():""}{d.archivedBy?" · by "+d.archivedBy:""}</div>
+                    </div>
+                    <button onClick={()=>restoreDrawing(d.id)} title="Restore this drawing — it goes back into the Live list" style={{background:"rgba(48,209,88,0.12)",border:"1px solid rgba(48,209,88,0.35)",borderRadius:8,padding:"7px 12px",color:"#1a7a35",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>↩ RESTORE</button>
+                    {canDeleteDrawings&&<button onClick={()=>hardDeleteDrawing(d.id)} title="Permanently delete now — skip the 7-day grace" style={{background:"rgba(255,59,48,0.12)",border:"1px solid rgba(255,59,48,0.35)",borderRadius:8,padding:"7px 12px",color:"#cc0000",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>🗑 FOREVER</button>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </>)}
       </div>
 
