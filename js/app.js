@@ -6485,7 +6485,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
   const applyBulkDelete=async()=>{
     if(!selectedIds.size)return;
     if(source==="entries"){
-      if(!confirm(`Permanently delete ${selectedIds.size} entr${selectedIds.size===1?"y":"ies"}?\n\nThis also removes their drawing pins and cannot be undone.`))return;
+      if(!confirm(`Delete ${selectedIds.size} entr${selectedIds.size===1?"y":"ies"}?\n\nMoved to Archive — retrievable within 7 days, then auto-deleted. Admins can permanently delete from Archive.`))return;
       setBulkSaving(true);
       try{
         const res=await onBulkDelete(Array.from(selectedIds));
@@ -7499,7 +7499,7 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
   };
 
   const deleteDefect=async()=>{
-    if(!canDelete||!confirm("Archive this entry? It'll disappear from Review, Report and exports, but stays retrievable from the Archive panel for Admins. Permanent delete is available from Archive."))return;
+    if(!canDelete||!confirm("Delete this entry?\n\nMoved to Archive — retrievable within 7 days, then auto-deleted. Admins can permanently delete from Archive."))return;
     setDeleting(true);
     try{
       // Soft-delete: record who/when, entry stays in PocketBase.
@@ -7518,7 +7518,7 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
         <button onClick={onClose} style={{background:"rgba(0,0,0,0.08)",border:"none",borderRadius:20,padding:"7px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{embedded?"◀ BACK TO MAP":t("actions.back")}</button>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a",flex:1}}>ENTRY DETAIL</div>
         {canUpdate&&!editing&&<button onClick={()=>{setEditFields({title:defect.title||"",description:defect.description||"",severity:defect.severity||"Major",location:defect.location||"",assignee:defect.assignee||"",component:defect.component||"",issue:defect.issue||"",trade:defect.trade||"",entryType:defect.entryType||"Defect",workCategory:defect.workCategory||"Building Defects (Landed)",locationLevel:defect.locationLevel||"",locationZone:defect.locationZone||"",locationSubzone:defect.locationSubzone||"",locationGrid:defect.locationGrid||"",dueDate:defect.dueDate||"",duration:defect.duration||"",costImpact:defect.costImpact||"",costResponsible:defect.costResponsible||"",costAmount:defect.costAmount||"",costRemarks:defect.costRemarks||""});setEditing(true);}} style={{background:"rgba(255,107,0,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.edit")}</button>}
-        {canDelete&&<button onClick={deleteDefect} disabled={deleting} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{deleting?"...":t("actions.delete")}</button>}
+        {canDelete&&<button onClick={deleteDefect} disabled={deleting} title="Delete — moves to Archive, retrievable within 7 days" style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{deleting?"...":t("actions.delete")}</button>}
       </div>
       <div style={{padding:16}}>
         {editing?(
@@ -9901,9 +9901,24 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
   // Pin an existing defect at the tapped lat/lng. Mirrors the Tag on
   // Drawings "link existing entry" path.
   // - If the defect has no GPS yet, fills defect.lat/lng (primary location).
-  // - If it already has GPS, creates a map_pins row so the same defect can
-  //   recur at multiple map locations. This mirrors the N:1 pattern that
-  //   drawing pins already use.
+  // - If it already has GPS, tries to create a map_pins row so the same
+  //   defect can recur at multiple map locations (N:1 like drawing pins).
+  //   On backends without the map_pins collection, gracefully falls back
+  //   to asking the user whether to MOVE the existing primary pin — this
+  //   preserves the pre-multi-pin UX on older deployments.
+  const moveExistingPrimary=async(defect,zoom)=>{
+    const latStr=pendingPin.lat.toFixed(5);
+    const lngStr=pendingPin.lng.toFixed(5);
+    const cleanLoc=(defect.location||"").replace(/\s*\[?-?\d+\.\d+\s*,\s*-?\d+\.\d+\]?\s*/g,"").trim();
+    const coordTag=`[${latStr}, ${lngStr}]`;
+    const newLocation=cleanLoc?`${cleanLoc} ${coordTag}`:`Map ${coordTag}`;
+    const payload={lat:pendingPin.lat,lng:pendingPin.lng,mapZoom:zoom||17,location:newLocation};
+    const result=await DB.defects.update(defect.id,payload);
+    if(typeof onPatchDefectLocal==="function"){
+      const merged={...defect,...(result||{}),lat:pendingPin.lat,lng:pendingPin.lng,mapZoom:zoom||17,location:newLocation};
+      onPatchDefectLocal(merged);
+    }
+  };
   const pinExistingEntry=async(defect)=>{
     if(!pendingPin||saving||!defect?.id)return;
     setSaving(true);
@@ -9911,29 +9926,34 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
       const zoom=mapObj.current?.getZoom();
       const existingCoords=parseDefectCoords(defect);
       if(existingCoords){
-        // Additive: create a map_pins row. Primary defect.lat/lng is untouched.
-        await DB.mapPins.create({
-          companyId:company?.companyId||"",
-          projectId:currentProject?.id||"default",
-          entryId:defect.id,
-          lat:pendingPin.lat,
-          lng:pendingPin.lng,
-          mapZoom:zoom||17,
-          label:"",
-        });
-      }else{
-        // First-time pin: fill the primary defect.lat/lng.
-        const latStr=pendingPin.lat.toFixed(5);
-        const lngStr=pendingPin.lng.toFixed(5);
-        const cleanLoc=(defect.location||"").replace(/\s*\[?-?\d+\.\d+\s*,\s*-?\d+\.\d+\]?\s*/g,"").trim();
-        const coordTag=`[${latStr}, ${lngStr}]`;
-        const newLocation=cleanLoc?`${cleanLoc} ${coordTag}`:`Map ${coordTag}`;
-        const payload={lat:pendingPin.lat,lng:pendingPin.lng,mapZoom:zoom||17,location:newLocation};
-        const result=await DB.defects.update(defect.id,payload);
-        if(typeof onPatchDefectLocal==="function"){
-          const merged={...defect,...(result||{}),lat:pendingPin.lat,lng:pendingPin.lng,mapZoom:zoom||17,location:newLocation};
-          onPatchDefectLocal(merged);
+        // Try to add a map_pins row (multi-location). If the collection
+        // isn't available on this backend, fall back to the old "move"
+        // behaviour with a confirm — so the user can at least complete
+        // the action rather than hit a hard error.
+        let mapPinsOk=false;
+        try{
+          await DB.mapPins.create({
+            companyId:company?.companyId||"",
+            projectId:currentProject?.id||"default",
+            entryId:defect.id,
+            lat:pendingPin.lat,
+            lng:pendingPin.lng,
+            mapZoom:zoom||17,
+            label:"",
+          });
+          mapPinsOk=true;
+        }catch(err){
+          // Typical failure: "Missing or invalid collection context" on
+          // backends that don't yet have the map_pins collection. Offer
+          // to move the primary pin as a fallback.
+          const prev=`${existingCoords.lat.toFixed(5)}, ${existingCoords.lng.toFixed(5)}`;
+          const next=`${pendingPin.lat.toFixed(5)}, ${pendingPin.lng.toFixed(5)}`;
+          const moveOk=confirm(`This backend doesn't support multi-location pins yet.\n\n"${defect.title||"Entry"}" is already on the map at ${prev}.\n\nMove it to ${next}?`);
+          if(!moveOk){setSaving(false);return;}
+          await moveExistingPrimary(defect,zoom);
         }
+      }else{
+        await moveExistingPrimary(defect,zoom);
       }
       cancelPending();
       setPinMode(true);
@@ -10075,7 +10095,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
             {onBulkDelete&&(
               <button onClick={async()=>{
                 const n=selectedPinIds.size;
-                if(!confirm(`DELETE ${n} selected entr${n===1?"y":"ies"}?\n\nThis archives the entries themselves (not just their pins). You can restore from REVIEW > Archived.`))return;
+                if(!confirm(`DELETE ${n} selected entr${n===1?"y":"ies"}?\n\nMoved to Archive — retrievable within 7 days, then auto-deleted. Admins can permanently delete from Archive.`))return;
                 try{
                   const res=await onBulkDelete(Array.from(selectedPinIds));
                   clearPinSelection();
@@ -15856,7 +15876,7 @@ function App(){
   };
   // Hard-delete: permanently remove from PocketBase. Only usable from the
   // Archive panel by Admins — the default "DELETE" action everywhere else
-  // is a soft archive.
+  // is a soft archive (auto-cleaned after ARCHIVE_GRACE_DAYS).
   const hardDeleteDefects=async(ids)=>{
     if(!ids||!ids.length)return{ok:0,failed:0};
     if(member?.role!=="Admin"){alert("Only Admins can permanently delete entries.");return{ok:0,failed:ids.length};}
@@ -15867,6 +15887,10 @@ function App(){
         try{
           const pins=await DB.pins.list(`entryId="${id}"`);
           for(const p of pins){try{await DB.pins.delete(p.id);}catch{}}
+        }catch{}
+        try{
+          const mps=await DB.mapPins.list(`entryId="${id}"`);
+          for(const mp of mps){try{await DB.mapPins.delete(mp.id);}catch{}}
         }catch{}
         await DB.defects.delete(id);
         deletedSet.add(id);

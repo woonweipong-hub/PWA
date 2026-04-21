@@ -61,7 +61,9 @@
       { "name": "fieldProvenance", "type": "json" },
       { "name": "lat", "type": "number" },
       { "name": "lng", "type": "number" },
-      { "name": "mapZoom", "type": "number" }
+      { "name": "mapZoom", "type": "number" },
+      { "name": "archivedAt", "type": "text" },
+      { "name": "archivedBy", "type": "text" }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
