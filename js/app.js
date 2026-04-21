@@ -2232,13 +2232,18 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   doc.setFontSize(11);doc.setFont(undefined,"normal");doc.setTextColor(200);
   doc.text(`${projectName||"Project"} — ${now.toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}`,margin,40);
 
-  // Entry count badge — show combined tally
+  // Entry count badge — show combined tally across every selected section.
+  // Map pins = primary GPS pins on defects + extra map_pins rows; shown here
+  // so users see the MAP VIEW toggle reflected in the cover summary, not
+  // just in the body of the report.
   const drawingCount=(drawings||[]).length;
   const comparisonCount=(savedComparisons||[]).length;
+  const mapPinCount=mapDefects.length;
   const parts=[];
   if(total>0)parts.push(`${total} entries`);
   if(drawingCount>0)parts.push(`${drawingCount} drawings`);
   if(comparisonCount>0)parts.push(`${comparisonCount} comparisons`);
+  if(mapPinCount>0)parts.push(`${mapPinCount} map pin${mapPinCount===1?"":"s"}`);
   doc.setFontSize(9);doc.setTextColor(255,107,0);
   doc.text(parts.length>0?parts.join(" · "):"No sections selected",margin,48);
   doc.setTextColor(0);
@@ -2270,6 +2275,15 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     doc.text("COMPARISONS",xOff,y);
     doc.setFontSize(28);doc.setFont(undefined,"bold");doc.setTextColor(88,86,214);
     doc.text(String(comparisonCount),xOff,y+12);
+    xOff+=45;
+  }
+  // Map pins — primary + map_pins extras. Reflects the MAP VIEW toggle
+  // so the on-site export summary matches what the user selected.
+  if(mapPinCount>0){
+    doc.setFontSize(9);doc.setFont(undefined,"bold");doc.setTextColor(100);
+    doc.text("MAP PINS",xOff,y);
+    doc.setFontSize(28);doc.setFont(undefined,"bold");doc.setTextColor(52,170,220);
+    doc.text(String(mapPinCount),xOff,y+12);
     xOff+=45;
   }
   // Overdue count
