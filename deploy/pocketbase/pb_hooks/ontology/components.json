@@ -1,0 +1,58 @@
+{
+  "$schema": "https://siteshrimp.org/schemas/ontology-v1.json",
+  "dataset": {
+    "edition": "bca-conquas-pr-2025",
+    "edition_title": "BCA CONQUAS (Private Residential)",
+    "version": "0.1.0-draft",
+    "generated_at": "2026-04-21T00:00:00Z",
+    "generated_by": "extraction from .claude/skills/construction-defects/SKILL.md",
+    "lifecycle": {
+      "status": "draft",
+      "effective_from": "2026-04-01",
+      "effective_to": null,
+      "supersedes": "bca-conquas-2022-r2-v5 (for private residential tenders)",
+      "superseded_by": null
+    },
+    "provenance": {
+      "authority": "BCA (Building and Construction Authority, Singapore)",
+      "document_id": "BCA-CIRC-CPQ-QCD-C20251113",
+      "document_title": "Launch of CONQUAS (Private Residential)",
+      "document_date": "2025-11-13",
+      "document_url": "https://www1.bca.gov.sg/buildsg/quality/conquas",
+      "mirror_url": "https://www.ies.org.sg/wp-content/uploads/BCA-Circular-on-Launch-of-CONQUAS-Private-Residential.pdf",
+      "primary_source_pdf": "BCA-Circular-on-Launch-of-CONQUAS-Private-Residential.pdf",
+      "manual_pdf": "conquas-(private-residential)-manual.pdf",
+      "section_ref": "Annex Table 2 (weightages) + Table 3 (Internal Finishes)",
+      "checksum_sha256": null,
+      "checksum_last_verified": null
+    },
+    "review": {
+      "review_status": "needs_customer_validation",
+      "created_at": "2026-04-21",
+      "last_verified_at": null,
+      "last_verified_by": null,
+      "next_review_due": "2026-10-21",
+      "review_notes": "Initial extraction from skill file. Requires eye-check against original BCA circular PDF before publishing to production."
+    },
+    "license_note": "Verbatim excerpts of regulatory text are the BCA's copyright. Use in SiteShrimp is for interoperable compliance tooling only."
+  },
+  "items": [
+    { "id": "if_floor", "name": "Floor", "category": "Internal Finishes", "assessment_weight_pct": 40, "parent_id": null, "phase": 1, "verbatim_source": "BCA Circular Annex Table 3, row 'Floor'", "gip_references": ["bca-gip-ceramic-tiling.pdf", "bca-gip-natural-stone-finishes.pdf", "bca-gip-agglomerated-stone-tiling.pdf", "bca-gip-timber-flooring.pdf", "bca-gip-engineered-wood.pdf", "bca-gip-vinyl-flooring.pdf"], "provenance_override": null, "needs_review": true },
+    { "id": "if_wall", "name": "Wall", "category": "Internal Finishes", "assessment_weight_pct": 40, "parent_id": null, "phase": 1, "verbatim_source": "BCA Circular Annex Table 3, row 'Wall'", "gip_references": ["bca-gip-ceramic-tiling.pdf", "bca-gip-painting.pdf", "bca-gip-drywall-partition.pdf"], "provenance_override": null, "needs_review": true },
+    { "id": "if_ceiling", "name": "Ceiling", "category": "Internal Finishes", "assessment_weight_pct": 40, "parent_id": null, "phase": 1, "verbatim_source": "BCA Circular Annex Table 3, row 'Ceiling'", "gip_references": ["bca-gip-painting.pdf", "bca-gip-drywall-partition.pdf"], "provenance_override": null, "needs_review": true },
+    { "id": "if_door", "name": "Door", "category": "Internal Finishes", "assessment_weight_pct": 40, "parent_id": null, "phase": 1, "verbatim_source": "BCA Circular Annex Table 3, row 'Door'", "gip_references": ["bca-gip-timber-doors.pdf"], "provenance_override": null, "needs_review": true },
+    { "id": "if_window", "name": "Window", "category": "Internal Finishes", "assessment_weight_pct": 40, "parent_id": null, "phase": 1, "verbatim_source": "BCA Circular Annex Table 3, row 'Window'", "gip_references": ["bca-gip-aluminium-window.pdf"], "provenance_override": null, "needs_review": true },
+    { "id": "if_component", "name": "Component", "category": "Internal Finishes", "assessment_weight_pct": 40, "parent_id": null, "phase": 1, "verbatim_source": "BCA Circular Annex Table 3, row 'Component' (covers sanitary, shower screens, mirrors, glass items)", "gip_references": ["bca-gip-pbu.pdf", "bca-gip-waterproofing-internal.pdf"], "provenance_override": null, "needs_review": true },
+    { "id": "if_me_fittings", "name": "M&E Fittings", "category": "Internal Finishes", "assessment_weight_pct": 40, "parent_id": null, "phase": 1, "verbatim_source": "BCA Circular Annex Table 3, row 'M&E Fittings'", "gip_references": [], "provenance_override": null, "needs_review": true },
+    { "id": "ft_wtt", "name": "Window Water-Tightness Test (WTT)", "category": "Functional Tests", "assessment_weight_pct": 40, "parent_id": null, "phase": 2, "verbatim_source": "BCA Circular — Table 1 Banding (WTT NC threshold)", "note": "Project Band threshold ≤1 non-compliance for Band 1–2.", "provenance_override": null, "needs_review": true },
+    { "id": "ft_wpt", "name": "Wet-Area Water-Tightness Test (WPT)", "category": "Functional Tests", "assessment_weight_pct": 40, "parent_id": null, "phase": 2, "verbatim_source": "BCA Circular — Table 1 Banding (WPT NC threshold)", "note": "Project Band threshold ≤1 non-compliance for Band 1–2.", "provenance_override": null, "needs_review": true },
+    { "id": "ft_pull_off", "name": "Pull-Off Tests (internal wall tiles)", "category": "Functional Tests", "assessment_weight_pct": 40, "parent_id": null, "phase": 2, "verbatim_source": "BCA Circular — Functional Tests list", "provenance_override": null, "needs_review": true },
+    { "id": "ft_heat_soak", "name": "Heat Soak Tests", "category": "Functional Tests", "assessment_weight_pct": 40, "parent_id": null, "phase": 2, "verbatim_source": "BCA Circular — Functional Tests list", "note": "+3-year warranty for all glasses.", "provenance_override": null, "needs_review": true },
+    { "id": "ft_wtt_self", "name": "WTT Self-Test", "category": "Functional Tests", "assessment_weight_pct": 40, "parent_id": null, "phase": 2, "verbatim_source": "BCA Circular — Functional Tests list", "provenance_override": null, "needs_review": true },
+    { "id": "ft_wpt_self", "name": "WPT Self-Test", "category": "Functional Tests", "assessment_weight_pct": 40, "parent_id": null, "phase": 2, "verbatim_source": "BCA Circular — Functional Tests list", "provenance_override": null, "needs_review": true },
+    { "id": "ef_envelope", "name": "External Finishes (envelope)", "category": "External Finishes", "assessment_weight_pct": 20, "parent_id": null, "phase": 2, "verbatim_source": "BCA Circular Annex Table 2 (weightages)", "note": "Placeholder — EF sub-elements (painting, cladding, sealants) are Phase 2 scope.", "provenance_override": null, "needs_review": true }
+  ],
+  "changelog": [
+    { "version": "0.1.0-draft", "date": "2026-04-21", "summary": "Initial extraction from construction-defects skill file. 14 items: 7 IF (Phase 1), 6 FT placeholders (Phase 2), 1 EF placeholder (Phase 2)." }
+  ]
+}

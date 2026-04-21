@@ -1,0 +1,114 @@
+{
+  "$schema": "https://siteshrimp.org/schemas/ontology-v1.json",
+  "dataset": {
+    "edition": "bca-conquas-pr-2025",
+    "edition_title": "BCA CONQUAS (Private Residential)",
+    "version": "0.1.0-draft",
+    "generated_at": "2026-04-21T00:00:00Z",
+    "generated_by": "extraction from .claude/skills/construction-defects/SKILL.md",
+    "lifecycle": {
+      "status": "draft",
+      "effective_from": "2026-04-01",
+      "effective_to": null,
+      "supersedes": "bca-conquas-2022-r2-v5 (Table 3 severity tiers for residential)",
+      "superseded_by": null
+    },
+    "provenance": {
+      "authority": "BCA (Building and Construction Authority, Singapore)",
+      "document_id": "BCA-CIRC-CPQ-QCD-C20251113",
+      "document_title": "Launch of CONQUAS (Private Residential)",
+      "document_date": "2025-11-13",
+      "document_url": "https://www1.bca.gov.sg/buildsg/quality/conquas",
+      "primary_source_pdf": "BCA-Circular-on-Launch-of-CONQUAS-Private-Residential.pdf",
+      "section_ref": "Annex Table 3 — Internal Finishes defect tiers",
+      "checksum_sha256": null,
+      "bca_non_exhaustive_flag": true
+    },
+    "review": {
+      "review_status": "needs_customer_validation",
+      "created_at": "2026-04-21",
+      "last_verified_at": null,
+      "next_review_due": "2026-10-21",
+      "review_notes": "BCA explicitly marks Table 3 as 'Non-exhaustive'. Treat as a minimum baseline; expect additions over time."
+    }
+  },
+  "tier_definitions": {
+    "1X": { "label": "Finishings", "nc_weight": 1, "description": "Minor defect — finish quality", "verbatim_source": "BCA Circular — Defect severity categories section" },
+    "2X": { "label": "Functionality / Liveability", "nc_weight": 2, "description": "Major defect — affects use", "verbatim_source": "BCA Circular — Defect severity categories section" },
+    "3X": { "label": "Functionality / Liveability", "nc_weight": 3, "description": "Major defect, higher impact — affects use and integrity", "verbatim_source": "BCA Circular — Defect severity categories section" }
+  },
+  "severity_mapping_ui": { "1X": "Minor", "2X": "Major", "3X": "Critical" },
+  "items": [
+    { "id": "flr_1x_stains", "element": "Floor", "typical_component_ids": ["if_floor"], "tier": "1X", "name": "Stains", "measurement_threshold": null, "verbatim_source_row": "Floor · 1X Finishings", "needs_review": true },
+    { "id": "flr_1x_alignment", "element": "Floor", "typical_component_ids": ["if_floor"], "tier": "1X", "name": "Alignment", "measurement_threshold": null, "verbatim_source_row": "Floor · 1X Finishings", "needs_review": true },
+    { "id": "flr_1x_jointing", "element": "Floor", "typical_component_ids": ["if_floor"], "tier": "1X", "name": "Jointing", "measurement_threshold": null, "verbatim_source_row": "Floor · 1X Finishings", "needs_review": true },
+    { "id": "flr_1x_damages_finish", "element": "Floor", "typical_component_ids": ["if_floor"], "tier": "1X", "name": "Damages - Scratches, dents, chips", "measurement_threshold": null, "verbatim_source_row": "Floor · 1X Finishings", "needs_review": true },
+    { "id": "flr_2x_unevenness", "element": "Floor", "typical_component_ids": ["if_floor"], "tier": "2X", "name": "Unevenness", "measurement_threshold": "> 6mm/1.2m", "verbatim_source_row": "Floor · 2X Functionality/Liveability", "needs_review": true },
+    { "id": "flr_2x_hollowness", "element": "Floor", "typical_component_ids": ["if_floor"], "tier": "2X", "name": "Hollowness", "measurement_threshold": "For tiled floor — any hollow area", "verbatim_source_row": "Floor · 2X Functionality/Liveability", "needs_review": true },
+    { "id": "flr_3x_cracks_veins", "element": "Floor", "typical_component_ids": ["if_floor"], "tier": "3X", "name": "Damages - Cracks, Open veins felt with hand", "measurement_threshold": ">0.5mm width AND >100mm length", "verbatim_source_row": "Floor · 3X Functionality/Liveability", "needs_review": true },
+    { "id": "flr_3x_chipped_timber", "element": "Floor", "typical_component_ids": ["if_floor"], "tier": "3X", "name": "Chipped timber", "measurement_threshold": null, "verbatim_source_row": "Floor · 3X Functionality/Liveability", "needs_review": true },
+    { "id": "flr_3x_delamination_timber", "element": "Floor", "typical_component_ids": ["if_floor"], "tier": "3X", "name": "Delamination", "measurement_threshold": "≥1 spot on timber finishing", "verbatim_source_row": "Floor · 3X Functionality/Liveability", "needs_review": true },
+    { "id": "flr_3x_lippage_tiled", "element": "Floor", "typical_component_ids": ["if_floor"], "tier": "3X", "name": "Lippage for tiled floors", "measurement_threshold": null, "verbatim_source_row": "Floor · 3X Functionality/Liveability", "needs_review": true },
+
+    { "id": "wal_1x_cracks_plaster", "element": "Wall", "typical_component_ids": ["if_wall"], "tier": "1X", "name": "Cracks on plastered walls", "measurement_threshold": null, "verbatim_source_row": "Wall · 1X Finishings", "needs_review": true },
+    { "id": "wal_1x_patchy", "element": "Wall", "typical_component_ids": ["if_wall"], "tier": "1X", "name": "Patchy/roughness", "measurement_threshold": null, "verbatim_source_row": "Wall · 1X Finishings", "needs_review": true },
+    { "id": "wal_1x_alignment", "element": "Wall", "typical_component_ids": ["if_wall"], "tier": "1X", "name": "Alignment", "measurement_threshold": null, "verbatim_source_row": "Wall · 1X Finishings", "needs_review": true },
+    { "id": "wal_1x_jointing", "element": "Wall", "typical_component_ids": ["if_wall"], "tier": "1X", "name": "Jointing", "measurement_threshold": null, "verbatim_source_row": "Wall · 1X Finishings", "needs_review": true },
+    { "id": "wal_1x_damages_finish", "element": "Wall", "typical_component_ids": ["if_wall"], "tier": "1X", "name": "Damages - Scratches, dents, chips", "measurement_threshold": null, "verbatim_source_row": "Wall · 1X Finishings", "needs_review": true },
+    { "id": "wal_2x_unevenness", "element": "Wall", "typical_component_ids": ["if_wall"], "tier": "2X", "name": "Unevenness", "measurement_threshold": ">6mm/1.2m", "verbatim_source_row": "Wall · 2X Functionality/Liveability", "needs_review": true },
+    { "id": "wal_2x_squareness", "element": "Wall", "typical_component_ids": ["if_wall"], "tier": "2X", "name": "Squareness", "measurement_threshold": ">8mm over 300mm", "verbatim_source_row": "Wall · 2X Functionality/Liveability", "needs_review": true },
+    { "id": "wal_2x_hollowness", "element": "Wall", "typical_component_ids": ["if_wall"], "tier": "2X", "name": "Hollowness", "measurement_threshold": "For tiled wall — any hollow area", "verbatim_source_row": "Wall · 2X Functionality/Liveability", "needs_review": true },
+    { "id": "wal_3x_cracks_veins", "element": "Wall", "typical_component_ids": ["if_wall"], "tier": "3X", "name": "Damages - Visible cracks on finished walls OR open veins felt with hand", "measurement_threshold": ">0.5mm width AND >100mm length", "verbatim_source_row": "Wall · 3X Functionality/Liveability", "needs_review": true },
+    { "id": "wal_3x_delamination_timber", "element": "Wall", "typical_component_ids": ["if_wall"], "tier": "3X", "name": "Delamination", "measurement_threshold": "≥1 spot on timber finishing", "verbatim_source_row": "Wall · 3X Functionality/Liveability", "needs_review": true },
+
+    { "id": "cel_1x_stains", "element": "Ceiling", "typical_component_ids": ["if_ceiling"], "tier": "1X", "name": "Stains", "measurement_threshold": null, "verbatim_source_row": "Ceiling · 1X Finishings", "needs_review": true },
+    { "id": "cel_1x_patchy", "element": "Ceiling", "typical_component_ids": ["if_ceiling"], "tier": "1X", "name": "Patchy/roughness", "measurement_threshold": null, "verbatim_source_row": "Ceiling · 1X Finishings", "needs_review": true },
+    { "id": "cel_1x_jointing", "element": "Ceiling", "typical_component_ids": ["if_ceiling"], "tier": "1X", "name": "Jointing", "measurement_threshold": null, "verbatim_source_row": "Ceiling · 1X Finishings", "needs_review": true },
+    { "id": "cel_1x_damages_finish", "element": "Ceiling", "typical_component_ids": ["if_ceiling"], "tier": "1X", "name": "Damages - Hairline cracks on plastered ceiling, chips, dents, scratches", "measurement_threshold": null, "verbatim_source_row": "Ceiling · 1X Finishings", "needs_review": true },
+    { "id": "cel_3x_cracked_board", "element": "Ceiling", "typical_component_ids": ["if_ceiling"], "tier": "3X", "name": "Damages - Cracked ceiling board", "measurement_threshold": ">0.5mm width AND 100mm length", "verbatim_source_row": "Ceiling · 3X Functionality/Liveability", "needs_review": true },
+
+    { "id": "dor_1x_joints_gaps", "element": "Door", "typical_component_ids": ["if_door"], "tier": "1X", "name": "Inconsistent joints/gaps", "measurement_threshold": null, "verbatim_source_row": "Door · 1X Finishings", "needs_review": true },
+    { "id": "dor_1x_damages_finish", "element": "Door", "typical_component_ids": ["if_door"], "tier": "1X", "name": "Damages - Scratches, dents, chips", "measurement_threshold": null, "verbatim_source_row": "Door · 1X Finishings", "needs_review": true },
+    { "id": "dor_2x_fitting", "element": "Door", "typical_component_ids": ["if_door"], "tier": "2X", "name": "Fitting - movement, difficulty in open/closing, loose, functionally deficient", "measurement_threshold": null, "verbatim_source_row": "Door · 2X Functionality/Liveability", "needs_review": true },
+    { "id": "dor_3x_misalignment", "element": "Door", "typical_component_ids": ["if_door"], "tier": "3X", "name": "Misalignment & unevenness", "measurement_threshold": ">3mm/m OR 1.2m spirit level", "verbatim_source_row": "Door · 3X Functionality/Liveability", "needs_review": true },
+    { "id": "dor_3x_cracked_leaf_frame", "element": "Door", "typical_component_ids": ["if_door"], "tier": "3X", "name": "Damages - Cracked timber door leaf/frame", "measurement_threshold": null, "verbatim_source_row": "Door · 3X Functionality/Liveability", "needs_review": true },
+    { "id": "dor_3x_accessories", "element": "Door", "typical_component_ids": ["if_door"], "tier": "3X", "name": "Accessories Defects - Missing/broken/improper fixing of accessories, corroded accessories etc", "measurement_threshold": null, "verbatim_source_row": "Door · 3X Functionality/Liveability", "needs_review": true },
+
+    { "id": "win_1x_joints_gaps", "element": "Window", "typical_component_ids": ["if_window"], "tier": "1X", "name": "Inconsistent joints/gaps", "measurement_threshold": null, "verbatim_source_row": "Window · 1X Finishings", "needs_review": true },
+    { "id": "win_1x_damages_finish", "element": "Window", "typical_component_ids": ["if_window"], "tier": "1X", "name": "Damages - Scratches, dents", "measurement_threshold": null, "verbatim_source_row": "Window · 1X Finishings", "needs_review": true },
+    { "id": "win_2x_fitting", "element": "Window", "typical_component_ids": ["if_window"], "tier": "2X", "name": "Fitting - movement, difficulty in open/closing, loose, functionally deficient", "measurement_threshold": null, "verbatim_source_row": "Window · 2X Functionality/Liveability", "needs_review": true },
+    { "id": "win_3x_cracked_frame_pane", "element": "Window", "typical_component_ids": ["if_window"], "tier": "3X", "name": "Damages - Cracked/chipped frame, cracked/chipped/broken windowpanes", "measurement_threshold": null, "verbatim_source_row": "Window · 3X Functionality/Liveability", "needs_review": true },
+    { "id": "win_3x_accessories", "element": "Window", "typical_component_ids": ["if_window"], "tier": "3X", "name": "Accessories Defects - Missing/broken/improper fixing of accessories, corroded accessories etc", "measurement_threshold": null, "verbatim_source_row": "Window · 3X Functionality/Liveability", "needs_review": true },
+
+    { "id": "cmp_1x_joints_gaps", "element": "Component", "typical_component_ids": ["if_component"], "tier": "1X", "name": "Inconsistent joints/gaps", "measurement_threshold": null, "verbatim_source_row": "Component · 1X Finishings", "needs_review": true },
+    { "id": "cmp_1x_unevenness", "element": "Component", "typical_component_ids": ["if_component"], "tier": "1X", "name": "Unevenness", "measurement_threshold": null, "verbatim_source_row": "Component · 1X Finishings", "needs_review": true },
+    { "id": "cmp_1x_tonality", "element": "Component", "typical_component_ids": ["if_component"], "tier": "1X", "name": "Tonality", "measurement_threshold": null, "verbatim_source_row": "Component · 1X Finishings", "needs_review": true },
+    { "id": "cmp_1x_misalignment", "element": "Component", "typical_component_ids": ["if_component"], "tier": "1X", "name": "Misalignment", "measurement_threshold": null, "verbatim_source_row": "Component · 1X Finishings", "needs_review": true },
+    { "id": "cmp_1x_damages_finish", "element": "Component", "typical_component_ids": ["if_component"], "tier": "1X", "name": "Damages - Scratches, dents", "measurement_threshold": null, "verbatim_source_row": "Component · 1X Finishings", "needs_review": true },
+    { "id": "cmp_2x_fitting", "element": "Component", "typical_component_ids": ["if_component"], "tier": "2X", "name": "Fitting - movement, difficulty in open/closing, loose, functionally deficient", "measurement_threshold": null, "verbatim_source_row": "Component · 2X Functionality/Liveability", "needs_review": true },
+    { "id": "cmp_3x_cracked_sanitary_glass", "element": "Component", "typical_component_ids": ["if_component"], "tier": "3X", "name": "Damages - Cracked sanitary ware, cracked/chipped/broken shower screen, mirror and any glass items", "measurement_threshold": null, "verbatim_source_row": "Component · 3X Functionality/Liveability", "needs_review": true },
+    { "id": "cmp_3x_accessories", "element": "Component", "typical_component_ids": ["if_component"], "tier": "3X", "name": "Accessories Defects - Missing/broken/improper fixing of accessories, corroded accessories, etc", "measurement_threshold": null, "verbatim_source_row": "Component · 3X Functionality/Liveability", "needs_review": true },
+
+    { "id": "mep_1x_joints_gaps", "element": "M&E Fittings", "typical_component_ids": ["if_me_fittings"], "tier": "1X", "name": "Inconsistent joints/gaps", "measurement_threshold": null, "verbatim_source_row": "M&E Fittings · 1X Finishings", "needs_review": true },
+    { "id": "mep_1x_unevenness", "element": "M&E Fittings", "typical_component_ids": ["if_me_fittings"], "tier": "1X", "name": "Unevenness", "measurement_threshold": null, "verbatim_source_row": "M&E Fittings · 1X Finishings", "needs_review": true },
+    { "id": "mep_1x_misalignment", "element": "M&E Fittings", "typical_component_ids": ["if_me_fittings"], "tier": "1X", "name": "Misalignment", "measurement_threshold": null, "verbatim_source_row": "M&E Fittings · 1X Finishings", "needs_review": true },
+    { "id": "mep_1x_damages_finish", "element": "M&E Fittings", "typical_component_ids": ["if_me_fittings"], "tier": "1X", "name": "Damages - Scratches, dents", "measurement_threshold": null, "verbatim_source_row": "M&E Fittings · 1X Finishings", "needs_review": true },
+    { "id": "mep_2x_fitting", "element": "M&E Fittings", "typical_component_ids": ["if_me_fittings"], "tier": "2X", "name": "Fitting - movement, difficulty in open/closing, loose, functionally deficient", "measurement_threshold": null, "verbatim_source_row": "M&E Fittings · 2X Functionality/Liveability", "needs_review": true },
+    { "id": "mep_3x_damages_fcu", "element": "M&E Fittings", "typical_component_ids": ["if_me_fittings"], "tier": "3X", "name": "Damages - All types of damages e.g. crack, chip, etc, fan coil unit leaking", "measurement_threshold": null, "verbatim_source_row": "M&E Fittings · 3X Functionality/Liveability", "needs_review": true },
+    { "id": "mep_3x_accessories", "element": "M&E Fittings", "typical_component_ids": ["if_me_fittings"], "tier": "3X", "name": "Accessories Defects - Missing/broken/improper fixing of accessories, corroded accessories, etc", "measurement_threshold": null, "verbatim_source_row": "M&E Fittings · 3X Functionality/Liveability", "needs_review": true }
+  ],
+  "hdb_non_defects_exclusions": {
+    "scope_flag": "Apply when user context = HDB BTO / SERS / SBF",
+    "source": {
+      "authority": "HDB (Housing & Development Board, Singapore)",
+      "document_url": "https://www.mynicehome.gov.sg/hdb-how-to/move-into-your-flat/a-guide-to-defects-inspection-for-your-new-hdb-bto-flat/",
+      "document_date": null
+    },
+    "exact_wording": "slight colour variations in the floor tiles or timber flooring, or width of the tile grouting. These variations are normal characteristics resulting from natural material properties and the manual nature of construction work, and are not considered defects.",
+    "note": "Do NOT label these as defects when project context is HDB. AI prompt should recognise and return null defect_type_id.",
+    "needs_review": true
+  },
+  "changelog": [
+    { "version": "0.1.0-draft", "date": "2026-04-21", "summary": "Initial extraction — ~50 defect types across 7 IF elements, 3 tiers (1X/2X/3X), HDB non-defect exclusions included." }
+  ]
+}

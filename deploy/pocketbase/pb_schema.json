@@ -63,7 +63,11 @@
       { "name": "lng", "type": "number" },
       { "name": "mapZoom", "type": "number" },
       { "name": "archivedAt", "type": "text" },
-      { "name": "archivedBy", "type": "text" }
+      { "name": "archivedBy", "type": "text" },
+      { "name": "component_id", "type": "text" },
+      { "name": "defect_type_id", "type": "text" },
+      { "name": "checkpoint_id", "type": "text" },
+      { "name": "nc_tier", "type": "text" }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
@@ -113,7 +117,8 @@
       { "name": "code", "type": "text" },
       { "name": "createdBy", "type": "text" },
       { "name": "createdAt", "type": "text" },
-      { "name": "archived", "type": "bool" }
+      { "name": "archived", "type": "bool" },
+      { "name": "ontology_edition", "type": "text" }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
@@ -293,5 +298,88 @@
     "createRule": "@request.auth.id != ''",
     "updateRule": "@request.auth.id != ''",
     "deleteRule": "@request.auth.id != ''"
+  },
+  {
+    "name": "ontology_components",
+    "type": "base",
+    "schema": [
+      { "name": "edition", "type": "text", "required": true },
+      { "name": "version", "type": "text", "required": true },
+      { "name": "itemId", "type": "text", "required": true },
+      { "name": "name", "type": "text", "required": true },
+      { "name": "category", "type": "text" },
+      { "name": "assessment_weight_pct", "type": "number" },
+      { "name": "parent_id", "type": "text" },
+      { "name": "phase", "type": "number" },
+      { "name": "verbatim_source", "type": "text" },
+      { "name": "gip_references", "type": "json" },
+      { "name": "note", "type": "text" },
+      { "name": "provenance_override", "type": "json" },
+      { "name": "needs_review", "type": "bool" }
+    ],
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null
+  },
+  {
+    "name": "ontology_defect_types",
+    "type": "base",
+    "schema": [
+      { "name": "edition", "type": "text", "required": true },
+      { "name": "version", "type": "text", "required": true },
+      { "name": "itemId", "type": "text", "required": true },
+      { "name": "element", "type": "text" },
+      { "name": "typical_component_ids", "type": "json" },
+      { "name": "tier", "type": "text" },
+      { "name": "name", "type": "text", "required": true },
+      { "name": "measurement_threshold", "type": "text" },
+      { "name": "verbatim_source_row", "type": "text" },
+      { "name": "needs_review", "type": "bool" }
+    ],
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null
+  },
+  {
+    "name": "ontology_checkpoints",
+    "type": "base",
+    "schema": [
+      { "name": "edition", "type": "text", "required": true },
+      { "name": "version", "type": "text", "required": true },
+      { "name": "itemId", "type": "text", "required": true },
+      { "name": "component_id", "type": "text" },
+      { "name": "tier", "type": "text" },
+      { "name": "description", "type": "text", "required": true },
+      { "name": "pass_criteria", "type": "text", "options": { "max": 2000 } },
+      { "name": "related_defect_type_ids", "type": "json" }
+    ],
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null
+  },
+  {
+    "name": "ontology_trades",
+    "type": "base",
+    "schema": [
+      { "name": "edition", "type": "text", "required": true },
+      { "name": "version", "type": "text", "required": true },
+      { "name": "itemId", "type": "text", "required": true },
+      { "name": "name", "type": "text", "required": true },
+      { "name": "gip_reference", "type": "text" },
+      { "name": "edition_of_gip", "type": "text" },
+      { "name": "typical_component_ids", "type": "json" },
+      { "name": "description", "type": "text", "options": { "max": 2000 } }
+    ],
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null
   }
 ]

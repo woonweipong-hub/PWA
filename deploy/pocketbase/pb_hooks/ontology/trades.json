@@ -1,0 +1,156 @@
+{
+  "$schema": "https://siteshrimp.org/schemas/ontology-v1.json",
+  "dataset": {
+    "edition": "bca-conquas-pr-2025",
+    "edition_title": "BCA Good Industry Practices — Trade List",
+    "version": "0.1.0-draft",
+    "generated_at": "2026-04-21T00:00:00Z",
+    "generated_by": "extraction from BCA GIP guide titles (17 guides)",
+    "lifecycle": {
+      "status": "draft",
+      "effective_from": "2026-04-01",
+      "effective_to": null,
+      "supersedes": null,
+      "superseded_by": null
+    },
+    "provenance": {
+      "authority": "BCA",
+      "document_source": "BCA Good Industry Practices (CONQUAS Enhancement Series)",
+      "document_url": "https://www1.bca.gov.sg/resources/guidebooks-and-publications/?filters=%5B%7B%22id%22%3A%22category%22%2C%22items%22%3A%5B%7B%22id%22%3A%22construction+quality%22%7D%5D%7D%5D&page=1",
+      "count_of_guides": 17,
+      "note": "Each trade ties back to a specific GIP guide PDF containing the authoritative workmanship criteria for that trade."
+    },
+    "review": {
+      "review_status": "needs_customer_validation",
+      "created_at": "2026-04-21",
+      "last_verified_at": null,
+      "next_review_due": "2026-10-21",
+      "review_notes": "GIP guides are updated periodically — re-check BCA publications page when new edition indicated by a guide title or date change."
+    }
+  },
+  "items": [
+    {
+      "id": "trade_ceramic_tiling",
+      "name": "Ceramic Tiling",
+      "gip_reference": "bca-gip-ceramic-tiling.pdf",
+      "edition_of_gip": "3rd Edition",
+      "typical_component_ids": ["if_floor", "if_wall"],
+      "description": "Ceramic and porcelain tile installation on floors and walls. Covers substrate prep, adhesive, grouting, movement joints."
+    },
+    {
+      "id": "trade_natural_stone",
+      "name": "Natural Stone Finishes",
+      "gip_reference": "bca-gip-natural-stone-finishes.pdf",
+      "typical_component_ids": ["if_floor", "if_wall"],
+      "description": "Marble, granite and other natural stone finishes. Substrate, fixing, sealing, and polishing."
+    },
+    {
+      "id": "trade_agglomerated_stone",
+      "name": "Agglomerated Stone Tiling",
+      "gip_reference": "bca-gip-agglomerated-stone-tiling.pdf",
+      "typical_component_ids": ["if_floor", "if_wall"],
+      "description": "Engineered / composite stone tile installation."
+    },
+    {
+      "id": "trade_painting",
+      "name": "Painting",
+      "gip_reference": "bca-gip-painting.pdf",
+      "typical_component_ids": ["if_wall", "if_ceiling"],
+      "description": "Paint application — surface prep, primer, topcoat, drying, touch-up."
+    },
+    {
+      "id": "trade_waterproofing_internal",
+      "name": "Waterproofing for Internal Wet Areas",
+      "gip_reference": "bca-gip-waterproofing-internal.pdf",
+      "typical_component_ids": ["if_floor", "if_wall", "if_component"],
+      "description": "Internal wet-area waterproofing (bathrooms, kitchens, balconies)."
+    },
+    {
+      "id": "trade_waterproofing_external",
+      "name": "Waterproofing for External Wall",
+      "gip_reference": "bca-gip-waterproofing-external.pdf",
+      "typical_component_ids": ["ef_envelope"],
+      "description": "External wall waterproofing. Applies to External Finishes (Phase 2 component)."
+    },
+    {
+      "id": "trade_aluminium_window",
+      "name": "Aluminium Window",
+      "gip_reference": "bca-gip-aluminium-window.pdf",
+      "typical_component_ids": ["if_window"],
+      "description": "Aluminium window installation — frame, pane, sealant, operation."
+    },
+    {
+      "id": "trade_timber_doors",
+      "name": "Timber Doors",
+      "gip_reference": "bca-gip-timber-doors.pdf",
+      "typical_component_ids": ["if_door"],
+      "description": "Timber door installation — frame, leaf, ironmongery, alignment."
+    },
+    {
+      "id": "trade_timber_flooring",
+      "name": "Timber Flooring",
+      "gip_reference": "bca-gip-timber-flooring.pdf",
+      "typical_component_ids": ["if_floor"],
+      "description": "Solid timber flooring — substrate, fixing, finishing."
+    },
+    {
+      "id": "trade_engineered_wood",
+      "name": "Engineered Wood Flooring",
+      "gip_reference": "bca-gip-engineered-wood.pdf",
+      "typical_component_ids": ["if_floor"],
+      "description": "Engineered wood flooring — click-lock or glued installation."
+    },
+    {
+      "id": "trade_vinyl_flooring",
+      "name": "Vinyl Flooring",
+      "gip_reference": "bca-gip-vinyl-flooring.pdf",
+      "typical_component_ids": ["if_floor"],
+      "description": "Vinyl flooring — roll, tile, and plank (LVT) installation."
+    },
+    {
+      "id": "trade_wardrobes_cabinets",
+      "name": "Wardrobes & Kitchen Cabinets",
+      "gip_reference": "bca-gip-wardrobes-cabinets.pdf",
+      "typical_component_ids": ["if_component"],
+      "description": "Built-in carpentry — wardrobes, kitchen cabinets, shelving."
+    },
+    {
+      "id": "trade_precast_concrete",
+      "name": "Precast Concrete Elements",
+      "gip_reference": "bca-gip-precast-concrete.pdf",
+      "typical_component_ids": ["if_wall", "ef_envelope"],
+      "description": "Precast concrete wall/slab elements — jointing, sealing, finishing."
+    },
+    {
+      "id": "trade_drywall_partition",
+      "name": "Drywall Internal Partition",
+      "gip_reference": "bca-gip-drywall-partition.pdf",
+      "typical_component_ids": ["if_wall", "if_ceiling"],
+      "description": "Drywall internal partition walls and ceilings — framing, boards, jointing, finishing."
+    },
+    {
+      "id": "trade_pbu",
+      "name": "Prefabricated Bathroom Unit (PBU)",
+      "gip_reference": "bca-gip-pbu.pdf",
+      "typical_component_ids": ["if_component", "if_me_fittings"],
+      "description": "Prefabricated Bathroom Unit — installation, connection, fittings."
+    },
+    {
+      "id": "trade_me_general",
+      "name": "M&E — General",
+      "gip_reference": null,
+      "typical_component_ids": ["if_me_fittings"],
+      "description": "Mechanical & electrical fittings — switches, outlets, light fittings, fan coil units. No single GIP guide — refer to SS standards + manufacturer specs."
+    },
+    {
+      "id": "trade_design_materials",
+      "name": "Design & Materials Selection (advisory)",
+      "gip_reference": "bca-gip-design-materials-vol1.pdf, bca-gip-design-materials-vol2.pdf",
+      "typical_component_ids": [],
+      "description": "High-level quality preferences (Vol 1) + material/system choices (Vol 2). Advisory only — not a trade for assignment; used for specification review."
+    }
+  ],
+  "changelog": [
+    { "version": "0.1.0-draft", "date": "2026-04-21", "summary": "Initial extraction — 17 BCA GIP trades + 1 advisory entry, each mapped to typical inspection components." }
+  ]
+}
