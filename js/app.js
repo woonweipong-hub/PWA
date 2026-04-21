@@ -9967,11 +9967,33 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
           mapPinsOk=true;
         }catch(err){
           // Typical failure: "Missing or invalid collection context" on
-          // backends that don't yet have the map_pins collection. Offer
-          // to move the primary pin as a fallback.
+          // backends that don't yet have the map_pins collection. Show
+          // the one-time setup steps, then offer the "move primary pin"
+          // fallback so the user can still complete the action.
           const prev=`${existingCoords.lat.toFixed(5)}, ${existingCoords.lng.toFixed(5)}`;
           const next=`${pendingPin.lat.toFixed(5)}, ${pendingPin.lng.toFixed(5)}`;
-          const moveOk=confirm(`This backend doesn't support multi-location pins yet.\n\n"${defect.title||"Entry"}" is already on the map at ${prev}.\n\nMove it to ${next}?`);
+          if(!window._siteshrimp_mappins_warned){
+            window._siteshrimp_mappins_warned=true;
+            alert(
+              "Multi-location pins need a one-time backend setup.\n\n"+
+              "Open the PocketBase admin UI (e.g. https://api.siteshrimp.org/_/ ) and:\n"+
+              "1. Click 'New collection'\n"+
+              "2. Name it:  map_pins  (Type: Base)\n"+
+              "3. Add fields:\n"+
+              "     companyId  (Text, required)\n"+
+              "     projectId  (Text, required)\n"+
+              "     entryId    (Text, required)\n"+
+              "     lat        (Number, required)\n"+
+              "     lng        (Number, required)\n"+
+              "     mapZoom    (Number)\n"+
+              "     label      (Text)\n"+
+              "4. In the 'API Rules' tab, set all five rules to:  @request.auth.id != ''\n"+
+              "5. Save.\n\n"+
+              "Hard-reload the app (Ctrl+Shift+R) and multi-location pinning will work.\n\n"+
+              "For now, would you like to MOVE this entry's primary pin to the new location instead?"
+            );
+          }
+          const moveOk=confirm(`"${defect.title||"Entry"}" is already on the map at ${prev}.\n\nMove it to ${next}?\n(Multi-location pinning needs the backend setup above.)`);
           if(!moveOk){setSaving(false);return;}
           await moveExistingPrimary(defect,zoom);
         }
