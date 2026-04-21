@@ -7505,11 +7505,34 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
       // Soft-delete: record who/when, entry stays in PocketBase.
       const now=new Date().toISOString();
       await DB.defects.update(defect.id,{archivedAt:now,archivedBy:member?.name||""});
-      // Optimistically remove from parent state so UI doesn't flash the
-      // archived entry until SSE catches up.
+      // Verify the archive fields actually persisted — on backends whose
+      // 'defects' collection is missing archivedAt/archivedBy, PocketBase
+      // silently drops the update and the entry reappears in Live after
+      // relogin. Fall back to hard-delete so DELETE has its expected
+      // visible effect, and warn once per session.
+      let persisted=true;
+      try{
+        const check=await DB.defects.get(defect.id);
+        if(!check||!check.archivedAt)persisted=false;
+      }catch{/* treat as persisted if verify fails */}
+      if(!persisted){
+        if(!window._siteshrimp_archive_drift_warned){
+          window._siteshrimp_archive_drift_warned=true;
+          alert("Heads up — this backend's 'defects' collection is missing the archive fields (archivedAt / archivedBy). Archive + 7-day retrieval can't work without them, so DELETE is falling back to permanent removal.\n\nFix: open the PocketBase admin UI, edit the 'defects' collection, and add two text fields: archivedAt and archivedBy. Then retry the delete to restore soft-archive.");
+        }
+        try{
+          const pins=await DB.pins.list(`entryId="${defect.id}"`);
+          for(const p of pins){try{await DB.pins.delete(p.id);}catch{}}
+        }catch{}
+        try{
+          const mps=await DB.mapPins.list(`entryId="${defect.id}"`);
+          for(const mp of mps){try{await DB.mapPins.delete(mp.id);}catch{}}
+        }catch{}
+        try{await DB.defects.delete(defect.id);}catch{}
+      }
       if(typeof onDelete==="function")onDelete(defect.id);
       onClose();
-    }catch(e){alert("Failed to archive: "+e.message);setDeleting(false);}
+    }catch(e){alert("Failed to delete: "+e.message);setDeleting(false);}
   };
 
   return(
@@ -15834,9 +15857,40 @@ function App(){
     const by=member?.name||"";
     let ok=0,failed=0;
     const archivedIds=new Set();
+    // Detect backends whose defects collection is missing the archivedAt /
+    // archivedBy fields: PocketBase silently drops unknown fields on update,
+    // so the client thinks archive succeeded but the server has the record
+    // unchanged — on next relogin the record reappears in the Live list.
+    // Verify once per session, warn the user so they know the backend needs
+    // a schema update, then fall back to hard-delete with cascade so the
+    // action still has the user-visible effect of "removed from Live."
+    const schemaDriftKey="_siteshrimp_archive_drift_warned";
     for(const id of ids){
       try{
         await DB.defects.update(id,{archivedAt:now,archivedBy:by});
+        // Verify persistence — a 200 here doesn't guarantee the fields stuck.
+        let persisted=true;
+        try{
+          const check=await DB.defects.get(id);
+          if(!check||!check.archivedAt)persisted=false;
+        }catch{/* verify GET failed — assume persisted; the write 200'd */}
+        if(!persisted){
+          if(!window[schemaDriftKey]){
+            window[schemaDriftKey]=true;
+            alert("Heads up — this backend's 'defects' collection is missing the archive fields (archivedAt / archivedBy). Archive + 7-day retrieval can't work without them, so DELETE is falling back to permanent removal.\n\nFix: open the PocketBase admin UI, edit the 'defects' collection, and add two text fields: archivedAt and archivedBy. Then retry the delete to restore soft-archive.");
+          }
+          // Hard-delete cascade so the entry at least disappears from Live
+          // (matches the user-visible expectation of "deleted").
+          try{
+            const pins=await DB.pins.list(`entryId="${id}"`);
+            for(const p of pins){try{await DB.pins.delete(p.id);}catch{}}
+          }catch{}
+          try{
+            const mps=await DB.mapPins.list(`entryId="${id}"`);
+            for(const mp of mps){try{await DB.mapPins.delete(mp.id);}catch{}}
+          }catch{}
+          try{await DB.defects.delete(id);}catch{}
+        }
         archivedIds.add(id);
         ok++;
       }catch(e){console.warn("archive failed for",id,e);failed++;}
