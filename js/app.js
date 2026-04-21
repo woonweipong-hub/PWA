@@ -2444,11 +2444,15 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
       // laptops or printed. User-set mapZoom still wins.
       const z=d.mapZoom||18;
       const color=SEV_COLOR[d.severity]||"#ff6b00";
+      // Per-entry map thumbnail — rendered at 1000x500 (2:1) so the final
+      // image fills the defect card's content width comfortably and stays
+      // readable on print. The previous 600x240 looked half-size on the
+      // page because the 2.5:1 strip was narrow AND low-resolution.
       let src;
       if(mapProvider==="gmaps"&&gmapsKey){
-        src=staticMapUrl("gmaps",d.lat,d.lng,z,"600x240");
+        src=staticMapUrl("gmaps",d.lat,d.lng,z,"1000x500");
       }else{
-        try{src=await _renderOsmComposite(d.lat,d.lng,z,600,240,[{lat:d.lat,lng:d.lng,color}]);}
+        try{src=await _renderOsmComposite(d.lat,d.lng,z,1000,500,[{lat:d.lat,lng:d.lng,color}]);}
         catch{src=null;}
       }
       if(!src){mapImgCache.set(d.id,null);return;}
@@ -2515,7 +2519,10 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
           if(drawPinCount>0)parts.push(`${drawPinCount} drawing pin${drawPinCount===1?"":"s"}`);
           const gpsTotal=(hasPrimaryGps?1:0)+mpCount;
           if(gpsTotal>0)parts.push(`${gpsTotal} map location${gpsTotal===1?"":"s"}`);
-          doc.text(`📍 LOCATIONS · ${occurrences} total (${parts.join(", ")})`,margin+1,y);
+          // No leading emoji — jsPDF's default Helvetica has no Unicode
+          // glyphs above U+00FF, so emoji bytes render as garbled Latin-1
+          // sequences (e.g. 📍 becomes "Ø=ÜÍ") in the exported PDF.
+          doc.text(`LOCATIONS  ·  ${occurrences} total (${parts.join(", ")})`,margin+1,y);
           doc.setTextColor(0);
           y+=5;
         }
@@ -2631,13 +2638,18 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
         const coordsForLabel=parseDefectCoords(d);
         const latStr=coordsForLabel?coordsForLabel.lat.toFixed(5):"—";
         const lngStr=coordsForLabel?coordsForLabel.lng.toFixed(5):"—";
-        const mw=contentW-2;
+        // Use full content width (no -2 inset) so the map spans the same
+        // edge-to-edge width as the photo above.
+        const mw=contentW;
         const mh=mw*(mapImg.height/mapImg.width);
         checkPage(mh+8);
         doc.setFontSize(6.5);doc.setFont(undefined,"bold");doc.setTextColor(140);
-        doc.text(`🗺 MAP LOCATION  ·  ${latStr}, ${lngStr}`,margin+1,y);
+        // No leading emoji — jsPDF's default Helvetica has no Unicode
+        // glyphs above U+00FF, so emoji bytes render as garbled Latin-1
+        // sequences in the exported PDF (e.g. 🗺 becomes "Ø=Ýú").
+        doc.text(`MAP LOCATION  ·  ${latStr}, ${lngStr}`,margin,y);
         doc.setTextColor(0);y+=2;
-        try{doc.addImage(mapImg,"PNG",margin+1,y,mw,mh,undefined,"SLOW");}catch{}
+        try{doc.addImage(mapImg,"PNG",margin,y,mw,mh,undefined,"SLOW");}catch{}
         y+=mh+3;
       }
 
