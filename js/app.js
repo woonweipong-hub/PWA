@@ -2754,6 +2754,16 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
                   const scale=longPx>A1_MM?A1_MM/longPx:longPx<A4_MM?A4_MM/longPx:1;
                   srcWmm=rawW*scale;srcHmm=rawH*scale;
                 }
+                // Enforce a minimum longest-side of A2 (594mm) so small slide /
+                // letter-size source PDFs don't produce postcard-sized pages.
+                // Gives mobile (fast mode) the same readable page size as the
+                // lossless path, which the user asked for.
+                const MIN_LONG_MM=594;
+                const longSide=Math.max(srcWmm,srcHmm);
+                if(longSide>0&&longSide<MIN_LONG_MM){
+                  const k=MIN_LONG_MM/longSide;
+                  srcWmm*=k;srcHmm*=k;
+                }
                 const orient=srcWmm>srcHmm?"l":"p";
                 doc.addPage([srcWmm,srcHmm],orient);
                 const captionH=10;
@@ -2797,20 +2807,35 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
         const img=new Image();
         await new Promise(resolve=>{img.onload=resolve;img.onerror=resolve;img.src=sc.overlayThumb;});
         if(img.width>0&&img.height>0){
-          doc.addPage();y=18;
-          doc.setFontSize(11);doc.setFont(undefined,"bold");doc.setTextColor(88,86,214);
-          doc.text(`${sc.baseName||"Base"} vs ${sc.targetName||"Target"}`,margin,y);
-          doc.setTextColor(0);y+=6;
-          doc.setFontSize(8);doc.setFont(undefined,"normal");
-          doc.text(`+${sc.totalAdded||0} added, -${sc.totalRemoved||0} removed${sc.savedAt?" · "+fmtDate(sc.savedAt):""}`,margin,y);y+=6;
-          const ratio=img.height/img.width;
-          const imgW=contentW;
-          const imgH=Math.min(imgW*ratio,pageH-y-margin-10);
-          const actualW=imgH/(ratio||1);
-          doc.addImage(sc.overlayThumb,"JPEG",margin,y,Math.min(imgW,actualW),imgH,undefined,"SLOW");
-          y+=imgH+4;
+          // Put each comparison on an A2-sized page sized to the overlay's
+          // aspect ratio, with the image filling the page edge-to-edge below
+          // a slim caption band. Same page size across fast + lossless modes
+          // so a comparison on mobile matches one on a laptop.
+          const imgAspect=img.width/img.height;
+          const A2_LONG=594,A2_SHORT=420;
+          let pW,pH;
+          if(imgAspect>=1){pW=A2_LONG;pH=Math.max(A2_SHORT,pW/imgAspect);}
+          else{pH=A2_LONG;pW=Math.max(A2_SHORT,pH*imgAspect);}
+          const orient=pW>=pH?"l":"p";
+          doc.addPage([pW,pH],orient);
+          const captionH=12;
+          doc.setFontSize(12);doc.setFont(undefined,"bold");doc.setTextColor(88,86,214);
+          doc.text(`${sc.baseName||"Base"} vs ${sc.targetName||"Target"}`,6,7);
+          doc.setFontSize(8);doc.setFont(undefined,"normal");doc.setTextColor(80);
+          doc.text(`+${sc.totalAdded||0} added, -${sc.totalRemoved||0} removed${sc.savedAt?" · "+fmtDate(sc.savedAt):""}`,6,11);
+          doc.setTextColor(0);
+          // Fill the page with the overlay below the caption band, aspect-preserved.
+          const availW=pW,availH=pH-captionH;
+          let iw=availW,ih=iw/imgAspect;
+          if(ih>availH){ih=availH;iw=ih*imgAspect;}
+          const ix=(pW-iw)/2,iy=captionH+(availH-ih)/2;
+          doc.addImage(sc.overlayThumb,"JPEG",ix,iy,iw,ih,undefined,"SLOW");
+          // AI report, if present, goes on its own portrait page so it's readable.
           if(sc.aiReport){
-            y+=4;doc.setFontSize(9);doc.setFont(undefined,"bold");doc.text("AI Diff Report:",margin,y);y+=5;
+            doc.addPage();y=18;
+            doc.setFontSize(11);doc.setFont(undefined,"bold");doc.setTextColor(88,86,214);
+            doc.text(`AI Diff Report — ${sc.baseName||"Base"} vs ${sc.targetName||"Target"}`,margin,y);
+            doc.setTextColor(0);y+=7;
             doc.setFont(undefined,"normal");doc.setFontSize(8);
             const rptLines=doc.splitTextToSize(sc.aiReport,contentW);
             for(const rl of rptLines){if(y>pageH-15){doc.addPage();y=18;}doc.text(rl,margin,y);y+=3.8;}
@@ -3013,6 +3038,22 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
               targetPage=copied;
               nativeWpt=copied.getWidth();
               nativeHpt=copied.getHeight();
+              // Enforce min page size so tiny source PDFs (letter, slides)
+              // don't produce postcard-sized pages in the lossless export.
+              // Scales both content and media box, keeping aspect and vector
+              // fidelity. Any API error here is logged and skipped — layout
+              // still works at native size.
+              try{
+                const MIN_LONG_PT=594/0.352778; // A2 long side in points
+                const longSide=Math.max(nativeWpt,nativeHpt);
+                if(longSide>0&&longSide<MIN_LONG_PT){
+                  const k=MIN_LONG_PT/longSide;
+                  if(typeof copied.scaleContent==="function")copied.scaleContent(k,k);
+                  if(typeof copied.scaleAnnotations==="function")copied.scaleAnnotations(k,k);
+                  copied.setSize(nativeWpt*k,nativeHpt*k);
+                  nativeWpt*=k;nativeHpt*=k;
+                }
+              }catch(scaleErr){console.warn("pdf-lib: page scale failed",scaleErr);}
             }
           }catch(e){console.warn("pdf-lib: copyPages failed, will raster",sw,e);}
         }
@@ -3036,6 +3077,14 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
               const pngImg=await outDoc.embedPng(pngBytes);
               const nativeSrc=page.getViewport({scale:1});
               nativeWpt=nativeSrc.width;nativeHpt=nativeSrc.height;
+              // Enforce min page size (A2 long side) here too so raster
+              // fallback matches the vector path for small source PDFs.
+              const MIN_LONG_PT=594/0.352778;
+              const longSide=Math.max(nativeWpt,nativeHpt);
+              if(longSide>0&&longSide<MIN_LONG_PT){
+                const k=MIN_LONG_PT/longSide;
+                nativeWpt*=k;nativeHpt*=k;
+              }
               targetPage=outDoc.addPage([nativeWpt,nativeHpt]);
               targetPage.drawImage(pngImg,{x:0,y:0,width:nativeWpt,height:nativeHpt});
               try{await srcDoc.destroy();}catch{}
