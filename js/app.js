@@ -2128,12 +2128,15 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   const mapPinsByEntry={};allMapPins.forEach(mp=>{(mapPinsByEntry[mp.entryId]=mapPinsByEntry[mp.entryId]||[]).push(mp);});
   const pinCountByEntry={};(allPins||[]).forEach(p=>{pinCountByEntry[p.entryId]=(pinCountByEntry[p.entryId]||0)+1;});
   // Build the set of GPS-pinned marker rows for the consolidated map page:
-  // primary pins (defect.lat/lng) PLUS synthetic markers for every map_pins
-  // row so additional locations appear on the ALL PINS ON MAP overview and
-  // in the per-pin legend table. Previously the overview only rendered
-  // primary pins — users who used PIN AGAIN saw their extra locations
-  // missing from the exported PDF.
-  const primaryMapDefects=incMap?(defects||[]).filter(d=>typeof d.lat==="number"&&typeof d.lng==="number"):[];
+  // primary pins (defect.lat/lng OR coords parsed from the location text)
+  // PLUS synthetic markers for every map_pins row so additional locations
+  // appear on the ALL PINS ON MAP overview and in the per-pin legend table.
+  // Previously the overview only checked typeof d.lat === "number" — which
+  // missed entries whose coords live in the text-based fallback.
+  const primaryMapDefects=incMap?(defects||[]).map(d=>{
+    const c=parseDefectCoords(d);
+    return c?{...d,lat:c.lat,lng:c.lng}:null;
+  }).filter(Boolean):[];
   const defectsById={};(defects||[]).forEach(d=>{defectsById[d.id]=d;});
   const syntheticMapPinMarkers=incMap?allMapPins.map(mp=>{
     const parent=defectsById[mp.entryId];
@@ -8402,13 +8405,16 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
           {key:"drawings",val:incDrawings,set:setIncDrawings,icon:"📐",label:t("report.pdf_drawings"),count:drawingsWithAnnotations.length,sub:`${totalPins} ${t("report.pins")} · ${totalMarkups} ${t("report.markups")} · ${totalNotes} ${t("report.notes")}`,color:"#ff6b00"},
           {key:"comparisons",val:incComparisons,set:setIncComparisons,icon:"🔍",label:t("report.saved_comparisons"),count:savedComparisons.length,color:"#5856d6"},
           (()=>{
-            // MAP VIEW section — counts TOTAL pinned locations, not distinct entries.
-            // That includes each defect's primary GPS pin (lat/lng on the defect)
-            // + every map_pins row (the additional locations the user drops via
-            // PIN AGAIN or long-press). Previously only primary pins were counted,
-            // which made the count read 0 even after users pinned several times.
+            // MAP VIEW section — counts TOTAL pinned locations across all
+            // sources. parseDefectCoords handles both native lat/lng columns
+            // AND legacy "Map: 1.33, 103.74" strings in the location text,
+            // so entries pinned on older PocketBase schemas still count.
+            // Extra locations (map_pins rows) added via PIN AGAIN or long-
+            // press are summed in too. Previously only the native lat/lng
+            // column path was checked, which read 0 for entries whose
+            // coords lived in the text-based fallback.
             const filteredIds=new Set(filtered.map(d=>d.id));
-            const primaryCount=filtered.filter(d=>typeof d.lat==="number"&&typeof d.lng==="number").length;
+            const primaryCount=filtered.filter(d=>parseDefectCoords(d)!=null).length;
             const extraCount=reportMapPins.filter(mp=>filteredIds.has(mp.entryId)).length;
             const totalMapPins=primaryCount+extraCount;
             const subText=totalMapPins===0
