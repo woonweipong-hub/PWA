@@ -5207,16 +5207,84 @@ function ProvChip({prov}){
   return null;
 }
 
-// ── CONQUAS Check Wizard (Phase 3.1) ─────────────────────────────
+// ── CONQUAS: AI-assisted checkpoint analysis (Phase 3.2a) ────────
+// Sends one compressed photo + filtered checkpoints for a single element to
+// the user's configured AI provider (Gemini / OpenAI / Ollama). Returns
+// {verdicts, reasons, rawPhoto} or {error}.
+//
+// Token budget target: ~700-1000 tokens per call.
+//   - Prompt (system + rules):     ~200 tokens
+//   - Checkpoints (filtered, short ids + desc): ~200 tokens
+//   - Photo (1280px / q0.82 → tile): ~260 tokens
+//   - Output JSON:                 ~50-200 tokens
+//
+// At Gemini Flash 2.5 paid rates this is ~$0.0005 per call. Free tier covers
+// ~1500 calls/day — well beyond any realistic SME use.
+async function analyzeCONQUASPhoto(photoDataUrl,elementName,checkpoints){
+  if(!isAiConfigured())return{error:"no_ai"};
+  if(!photoDataUrl)return{error:"no_photo"};
+  const items=(checkpoints||[]).map(cp=>{
+    const tier=cp.tier||"";
+    const desc=(cp.description||"").replace(/\s+/g," ").trim();
+    return `${cp.itemId} (${tier}): ${desc}`;
+  }).join("\n");
+  const prompt=[
+    "BCA CONQUAS (Private Residential) 2025 inspection AI.",
+    "",
+    `Element: ${elementName}`,
+    "",
+    "Classify this photo against each checkpoint:",
+    `  "p" = PASS (criterion met, no defect visible)`,
+    `  "f" = FAIL (defect clearly visible in photo)`,
+    `  "u" = UNCERTAIN (cannot determine from photo)`,
+    "",
+    "Return JSON only (no prose, no fences):",
+    `{"v":{"<id>":"p|f|u",...},"r":{"<id>":"short reason",...}}`,
+    "",
+    "Rules:",
+    "- Return reasons ONLY for f and u verdicts, max 15 words each",
+    "- Be CONSERVATIVE: if in doubt, return u",
+    "- Do NOT invent defects not visible in photo",
+    "- Respect BCA tier thresholds (3X cracks: >0.5mm AND >100mm)",
+    "- Hollowness / tap-tests / measurements cannot be judged from photo alone → u",
+    "",
+    "Checkpoints:",
+    items
+  ].join("\n");
+  try{
+    // Compress to 1280px + q0.82 — sweet spot for CONQUAS defect detection
+    // vs token economy. Larger photos burn tokens with diminishing return;
+    // smaller lose fine-crack detail.
+    const compressed=await compressPhoto(photoDataUrl,1280,0.82);
+    const photo=compressed||photoDataUrl;
+    const result=await analyzePhoto(photo,prompt);
+    if(!result||typeof result!=="object")return{error:"parse"};
+    const verdicts=result.v||result.verdicts||null;
+    if(!verdicts||typeof verdicts!=="object")return{error:"parse"};
+    const reasons=result.r||result.reasons||{};
+    return{verdicts,reasons,rawPhoto:photo};
+  }catch(err){
+    console.error("CONQUAS AI analyze failed:",err);
+    return{error:"network",detail:String(err&&err.message||err)};
+  }
+}
+
+// ── CONQUAS Check Wizard (Phase 3.1 + 3.2a AI mode) ──────────────
 // Guided pass/fail walkthrough for BCA CONQUAS (Private Residential) 2025.
 // Opt-in per project: only shown when currentProject.ontology_edition is set
 // and the server has the ontology_* collections seeded (Phase 2).
 //
-// Flow:
-//   1. Pick element tile (Floor / Wall / Ceiling / Door / Window / Component / M&E)
-//   2. Walk checkpoints in order — tap PASS or FAIL on each
-//   3. FAIL forces a photo (capture=environment). Optional note.
-//   4. Summary screen — saves one defects row per FAIL via existing onSave pipeline.
+// Flows:
+//   AI MODE (default when AI is configured):
+//     Pick element → take photo → AI returns preliminary verdicts →
+//     user reviews fails/uncertains (passes auto-accepted) → save
+//
+//   MANUAL MODE (fallback when AI unavailable, or explicit user choice):
+//     Pick element → walk checkpoints → tap PASS or FAIL on each →
+//     FAIL requires photo + optional note → summary → save
+//
+// Both modes save into the same `defects` table with identical schema, so
+// Phase 4 REPORT integration doesn't need to distinguish.
 function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
   const[loading,setLoading]=useState(true);
   const[error,setError]=useState(null);
@@ -5230,7 +5298,15 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
   const[failPhoto,setFailPhoto]=useState(null);
   const[failNote,setFailNote]=useState("");
   const[saving,setSaving]=useState(false);
+  // Phase 3.2a AI-mode state
+  const[aiPhoto,setAiPhoto]=useState(null);      // raw photo from camera (base64)
+  const[aiBusy,setAiBusy]=useState(false);        // true while Gemini is processing
+  const[aiVerdicts,setAiVerdicts]=useState({});   // {checkpointId: 'p'|'f'|'u'}
+  const[aiReasons,setAiReasons]=useState({});     // {checkpointId: 'short reason'}
+  const[aiOverrides,setAiOverrides]=useState({}); // user-flipped verdicts
+  const[aiErrorMsg,setAiErrorMsg]=useState("");   // last AI failure message
   const fileRef=useRef();
+  const aiFileRef=useRef();
 
   // Fetch ontology once on open. Edition pin comes from the current project.
   useEffect(()=>{
@@ -5266,6 +5342,65 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
   const pickElement=(itemId)=>{
     setPickedId(itemId);setIdx(0);setResults([]);
     setFailPhoto(null);setFailNote("");
+    setAiPhoto(null);setAiVerdicts({});setAiReasons({});setAiOverrides({});setAiErrorMsg("");
+    // AI-mode default when configured, else go straight to manual walk
+    setStep(isAiConfigured()?"modeChoice":"walk");
+  };
+  // ── AI mode handlers ──
+  const aiHandlePhoto=(e)=>{
+    const f=(e.target.files||[])[0];
+    if(!f)return;
+    const r=new FileReader();
+    r.onload=()=>{setAiPhoto(r.result);setStep("aiAnalyzing");runAiAnalysis(r.result);};
+    r.readAsDataURL(f);
+    if(aiFileRef.current)aiFileRef.current.value="";
+  };
+  const runAiAnalysis=async(photoData)=>{
+    setAiBusy(true);setAiErrorMsg("");
+    const res=await analyzeCONQUASPhoto(photoData,pickedComponent?pickedComponent.name:"",activeCheckpoints);
+    setAiBusy(false);
+    if(res.error){
+      setAiErrorMsg(res.detail||res.error);
+      setStep("aiError");
+      return;
+    }
+    setAiVerdicts(res.verdicts||{});
+    setAiReasons(res.reasons||{});
+    if(res.rawPhoto)setAiPhoto(res.rawPhoto); // keep compressed version for upload
+    setAiOverrides({});
+    setStep("aiReview");
+  };
+  const finalVerdict=(cpId)=>aiOverrides[cpId]||aiVerdicts[cpId]||"u";
+  const cycleVerdict=(cpId)=>{
+    // p → f → u → p
+    const cur=finalVerdict(cpId);
+    const next=cur==="p"?"f":cur==="f"?"u":"p";
+    setAiOverrides(prev=>({...prev,[cpId]:next}));
+  };
+  const aiReviewCounts=()=>{
+    let p=0,f=0,u=0;
+    activeCheckpoints.forEach(cp=>{
+      const v=finalVerdict(cp.itemId);
+      if(v==="p")p++;else if(v==="f")f++;else u++;
+    });
+    return{p,f,u};
+  };
+  const saveAllFromAi=async()=>{
+    // Build the same shape as manual walk's `results` array, then reuse saveAll.
+    const newResults=activeCheckpoints.map(cp=>{
+      const v=finalVerdict(cp.itemId);
+      if(v==="p")return{checkpointId:cp.itemId,status:"pass"};
+      // For fails, attach the single AI photo as evidence. Reason (if any)
+      // becomes the defect's note.
+      return{checkpointId:cp.itemId,status:"fail",photo:aiPhoto,note:aiReasons[cp.itemId]||""};
+    });
+    setResults(newResults);
+    // Go to summary, which already has saveAll wired up.
+    setStep("summary");
+  };
+  const switchToManual=()=>{
+    setAiPhoto(null);setAiVerdicts({});setAiReasons({});setAiOverrides({});setAiErrorMsg("");
+    setIdx(0);setResults([]);setFailPhoto(null);setFailNote("");
     setStep("walk");
   };
   const advance=(nextResults)=>{
@@ -5497,6 +5632,157 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
               <button onClick={onClose} style={{width:"100%",height:54,background:"#30d158",border:"none",borderRadius:14,color:"#fff",fontSize:16,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",cursor:"pointer"}}>{t("conquas.save_done")}</button>
             )}
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if(step==="modeChoice"){
+    return(
+      <div style={overlay}>
+        <div style={topBar}>
+          <button onClick={()=>{setPickedId(null);setStep("pickElement");}} style={topBarBtn}>{t("conquas.back")}</button>
+          <div style={{color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,letterSpacing:"0.08em",flex:1}}>{pickedComponent?pickedComponent.name.toUpperCase():""}</div>
+          <button onClick={onClose} style={topBarBtn}>{t("conquas.close")}</button>
+        </div>
+        <div style={{padding:"20px 16px 40px"}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#1a1a1a",marginBottom:6}}>{t("conquas.choose_mode")}</div>
+          <div style={{fontSize:12,color:"rgba(0,0,0,0.5)",marginBottom:24}}>{t("conquas.choose_mode_desc")}</div>
+          {/* AI mode card */}
+          <button onClick={()=>{setStep("aiCapture");setTimeout(()=>aiFileRef.current&&aiFileRef.current.click(),50);}} style={{width:"100%",padding:"18px 18px",background:"rgba(88,86,214,0.08)",border:"1.5px solid rgba(88,86,214,0.3)",borderRadius:14,cursor:"pointer",textAlign:"left",marginBottom:12,display:"block"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#5856d6",letterSpacing:"0.04em",marginBottom:4}}>📷 {t("conquas.ai_mode_title")}</div>
+            <div style={{fontSize:12,color:"rgba(0,0,0,0.65)",lineHeight:1.4}}>{t("conquas.ai_mode_desc")}</div>
+          </button>
+          {/* Manual walk card */}
+          <button onClick={()=>setStep("walk")} style={{width:"100%",padding:"18px 18px",background:"#fff",border:"1.5px solid rgba(0,0,0,0.12)",borderRadius:14,cursor:"pointer",textAlign:"left",display:"block"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a",letterSpacing:"0.04em",marginBottom:4}}>▶ {t("conquas.manual_mode_title")}</div>
+            <div style={{fontSize:12,color:"rgba(0,0,0,0.65)",lineHeight:1.4}}>{t("conquas.manual_mode_desc")}</div>
+          </button>
+        </div>
+        <input type="file" accept="image/*" capture="environment" ref={aiFileRef} onChange={aiHandlePhoto} style={{display:"none"}}/>
+      </div>
+    );
+  }
+
+  if(step==="aiCapture"){
+    // Shown briefly while the camera sheet opens. User-cancel returns here.
+    return(
+      <div style={overlay}>
+        <div style={topBar}>
+          <button onClick={()=>setStep("modeChoice")} style={topBarBtn}>{t("conquas.back")}</button>
+          <div style={{color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,letterSpacing:"0.08em",flex:1}}>{pickedComponent?pickedComponent.name.toUpperCase():""}</div>
+          <button onClick={onClose} style={topBarBtn}>{t("conquas.close")}</button>
+        </div>
+        <div style={{padding:"40px 16px",textAlign:"center"}}>
+          <div style={{fontSize:48,marginBottom:16}}>📷</div>
+          <div style={{fontSize:14,color:"rgba(0,0,0,0.6)",marginBottom:20,lineHeight:1.5}}>{t("conquas.ai_waiting_photo")}</div>
+          <button onClick={()=>aiFileRef.current&&aiFileRef.current.click()} style={{background:"#ff6b00",border:"none",borderRadius:12,padding:"12px 24px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>{t("conquas.take_photo")}</button>
+        </div>
+        <input type="file" accept="image/*" capture="environment" ref={aiFileRef} onChange={aiHandlePhoto} style={{display:"none"}}/>
+      </div>
+    );
+  }
+
+  if(step==="aiAnalyzing"){
+    return(
+      <div style={overlay}>
+        <div style={topBar}>
+          <div style={{color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,letterSpacing:"0.08em"}}>{t("conquas.wizard_title")}</div>
+        </div>
+        <div style={{padding:"40px 16px",textAlign:"center"}}>
+          {aiPhoto&&<img src={aiPhoto} alt="" style={{width:"100%",maxWidth:240,maxHeight:240,objectFit:"cover",borderRadius:12,marginBottom:24}}/>}
+          <Spin size={24}/>
+          <div style={{marginTop:16,fontSize:14,color:"rgba(0,0,0,0.7)",fontWeight:600,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>{t("conquas.ai_analyzing")}</div>
+          <div style={{marginTop:6,fontSize:11,color:"rgba(0,0,0,0.4)"}}>{t("conquas.ai_analyzing_sub")}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if(step==="aiError"){
+    return(
+      <div style={overlay}>
+        <div style={topBar}>
+          <button onClick={onClose} style={topBarBtn}>{t("conquas.close")}</button>
+          <div style={{color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,letterSpacing:"0.08em"}}>{t("conquas.wizard_title")}</div>
+        </div>
+        <div style={{padding:"32px 16px",textAlign:"center"}}>
+          <div style={{fontSize:40,marginBottom:12}}>⚠️</div>
+          <div style={{fontSize:15,color:"rgba(0,0,0,0.8)",fontWeight:700,marginBottom:8,fontFamily:"'Barlow Condensed',sans-serif"}}>{t("conquas.ai_failed")}</div>
+          <div style={{fontSize:12,color:"rgba(0,0,0,0.5)",lineHeight:1.4,marginBottom:24,maxWidth:320,marginLeft:"auto",marginRight:"auto"}}>{aiErrorMsg||t("conquas.ai_failed_generic")}</div>
+          <div style={{display:"flex",flexDirection:"column",gap:10,maxWidth:280,margin:"0 auto"}}>
+            <button onClick={()=>{setAiErrorMsg("");setStep("aiCapture");setTimeout(()=>aiFileRef.current&&aiFileRef.current.click(),50);}} style={{height:48,background:"#ff6b00",border:"none",borderRadius:12,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>{t("conquas.retake")}</button>
+            <button onClick={switchToManual} style={{height:48,background:"#fff",border:"1.5px solid rgba(0,0,0,0.12)",borderRadius:12,color:"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>▶ {t("conquas.switch_manual")}</button>
+          </div>
+        </div>
+        <input type="file" accept="image/*" capture="environment" ref={aiFileRef} onChange={aiHandlePhoto} style={{display:"none"}}/>
+      </div>
+    );
+  }
+
+  if(step==="aiReview"){
+    const counts=aiReviewCounts();
+    const canSave=counts.u===0; // all uncertain must be resolved first
+    const verdictColor=v=>v==="p"?"#30d158":v==="f"?"#ff3b30":"#ff9500";
+    const verdictBg=v=>v==="p"?"rgba(48,209,88,0.08)":v==="f"?"rgba(255,59,48,0.08)":"rgba(255,149,0,0.1)";
+    const verdictLabel=v=>v==="p"?t("conquas.pass"):v==="f"?t("conquas.fail"):t("conquas.uncertain");
+    return(
+      <div style={overlay}>
+        <div style={topBar}>
+          <button onClick={()=>setStep("modeChoice")} style={topBarBtn}>{t("conquas.back")}</button>
+          <div style={{color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,letterSpacing:"0.08em",flex:1}}>{t("conquas.ai_review_title")}</div>
+          <button onClick={onClose} style={topBarBtn}>{t("conquas.close")}</button>
+        </div>
+        <div style={{padding:"16px 16px 140px"}}>
+          {/* Photo + element label */}
+          <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:16,padding:12,background:"#fff",borderRadius:12,border:"1px solid rgba(0,0,0,0.08)"}}>
+            {aiPhoto&&<img src={aiPhoto} alt="" style={{width:72,height:72,objectFit:"cover",borderRadius:10,flexShrink:0}}/>}
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a",marginBottom:2}}>{pickedComponent?pickedComponent.name:""}</div>
+              <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.5)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif"}}>
+                {counts.p} {t("conquas.pass")} · {counts.f} {t("conquas.fail")} · {counts.u} {t("conquas.uncertain")}
+              </div>
+            </div>
+          </div>
+          {counts.u>0&&(
+            <div style={{padding:"10px 12px",background:"rgba(255,149,0,0.1)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:10,marginBottom:12,fontSize:12,color:"#b46700",lineHeight:1.4}}>
+              {t("conquas.review_uncertain_prompt")}
+            </div>
+          )}
+          {/* Checkpoint review list */}
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {activeCheckpoints.map(cp=>{
+              const v=finalVerdict(cp.itemId);
+              const aiV=aiVerdicts[cp.itemId]||"u";
+              const wasOverridden=!!aiOverrides[cp.itemId]&&aiOverrides[cp.itemId]!==aiV;
+              const reason=aiReasons[cp.itemId]||"";
+              return(
+                <button key={cp.itemId} onClick={()=>cycleVerdict(cp.itemId)} style={{padding:"12px 14px",background:verdictBg(v),border:`1.5px solid ${verdictColor(v)}`,borderRadius:12,cursor:"pointer",textAlign:"left",display:"block"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:reason?6:0}}>
+                    <div style={{width:36,height:36,borderRadius:"50%",background:verdictColor(v),color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:800,flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif"}}>
+                      {v==="p"?"✓":v==="f"?"✗":"?"}
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:13,fontWeight:700,color:"#1a1a1a",lineHeight:1.3,marginBottom:2}}>{cp.description}</div>
+                      <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",fontWeight:700,letterSpacing:"0.06em",fontFamily:"'Barlow Condensed',sans-serif"}}>
+                        {cp.tier||""} · {verdictLabel(v).toUpperCase()}{wasOverridden?" · "+t("conquas.user_override"):""}
+                      </div>
+                    </div>
+                  </div>
+                  {reason&&(v==="f"||v==="u")&&(
+                    <div style={{marginLeft:46,fontSize:11,color:"rgba(0,0,0,0.55)",fontStyle:"italic",lineHeight:1.35}}>"{reason}"</div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{marginTop:16,fontSize:10,color:"rgba(0,0,0,0.4)",textAlign:"center",lineHeight:1.4}}>{t("conquas.tap_to_flip")}</div>
+        </div>
+        {/* Sticky save bar */}
+        <div style={{position:"fixed",bottom:0,left:0,right:0,maxWidth:430,margin:"0 auto",background:"rgba(240,237,232,0.97)",backdropFilter:"blur(8px)",padding:"12px 16px",borderTop:"1px solid rgba(0,0,0,0.08)"}}>
+          <button onClick={saveAllFromAi} disabled={!canSave} style={{width:"100%",height:54,background:canSave?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:14,color:canSave?"#fff":"rgba(0,0,0,0.3)",fontSize:16,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",cursor:canSave?"pointer":"not-allowed"}}>
+            {canSave?(t("conquas.confirm_save")||"").replace("{f}",String(counts.f)).replace("{p}",String(counts.p)):t("conquas.resolve_uncertain_first")}
+          </button>
         </div>
       </div>
     );

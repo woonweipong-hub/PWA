@@ -227,7 +227,7 @@
     "saving": "儲存...",
     "tier_1x": "1X · 裝飾（次要）",
     "tier_2x": "2X·功能（主要）",
-    "tier_3x": "3X · Functionality (Critical)",
+    "tier_3x": "3X·功能（關鍵）",
     "element": {
       "floor": "地面",
       "wall": "牆",
@@ -236,7 +236,28 @@
       "window": "窗戶",
       "component": "組件（衛生/玻璃）",
       "me_fittings": "機電配件"
-    }
+    },
+    "choose_mode": "檢查模式",
+    "choose_mode_desc": "人工智慧可以根據所有檢查點分析一張照片。 您查看結果。",
+    "ai_mode_title": "人工智慧檢查",
+    "ai_mode_desc": "拍一張照片。 AI 預先填寫每個檢查點的通過/失敗/不確定。 你確認一下。",
+    "manual_mode_title": "手動行走",
+    "manual_mode_desc": "親自走過每個檢查站。 最適合離線或人工智慧不可用時。",
+    "ai_waiting_photo": "為您正在檢查的元件拍一張清晰的照片。",
+    "take_photo": "拍照",
+    "ai_analyzing": "用人工智慧分析...",
+    "ai_analyzing_sub": "通常 2-3 秒",
+    "ai_failed": "AI 無法分析這張照片",
+    "ai_failed_generic": "檢查您的網路連線或 AI 金鑰，或切換到手動步行。",
+    "retake": "再拍一張照片",
+    "switch_manual": "切換至手動行走",
+    "ai_review_title": "查看人工智慧結果",
+    "review_uncertain_prompt": "在儲存之前點擊任何不確定的項目將其標記為通過或失敗。",
+    "tap_to_flip": "點擊任意行即可循環通過→失敗→不確定。",
+    "uncertain": "不確定",
+    "user_override": "你改變了",
+    "confirm_save": "儲存 {f} 缺陷（{p} 透過已確認）",
+    "resolve_uncertain_first": "首先解決不確定的問題"
   },
   "review": {
     "title": "審查",
