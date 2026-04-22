@@ -430,6 +430,46 @@
       {
         "name": "ontology_edition",
         "type": "text"
+      },
+      {
+        "name": "ft_wtt_applicable",
+        "type": "number"
+      },
+      {
+        "name": "ft_wtt_fails",
+        "type": "number"
+      },
+      {
+        "name": "ft_wpt_applicable",
+        "type": "number"
+      },
+      {
+        "name": "ft_wpt_fails",
+        "type": "number"
+      },
+      {
+        "name": "ft_wft_applicable",
+        "type": "number"
+      },
+      {
+        "name": "ft_wft_fails",
+        "type": "number"
+      },
+      {
+        "name": "ft_pull_off_status",
+        "type": "text"
+      },
+      {
+        "name": "ft_heat_soak_status",
+        "type": "text"
+      },
+      {
+        "name": "ft_wtt_self_test_status",
+        "type": "text"
+      },
+      {
+        "name": "ft_wpt_self_test_status",
+        "type": "text"
       }
     ],
     "listRule": "@request.auth.id != ''",
