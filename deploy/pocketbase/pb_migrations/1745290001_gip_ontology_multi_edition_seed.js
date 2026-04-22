@@ -43,15 +43,42 @@ migrate((app) => {
     return null;
   }
 
+  // Byte-accurate UTF-8 decoder. The String.fromCharCode fallback used in the
+  // original CONQUAS seed migration corrupted multi-byte characters (em dash,
+  // smart quotes, accented letters) because it treats each byte as Latin-1.
+  // Fixed here so any future GIP / HDB / LTA / Greenmark / CORENET X / QM
+  // seed loaded through this migration keeps its text intact.
+  function bytesToUtf8String(bytes) {
+    if (typeof bytes === "string") return bytes;
+    let out = "";
+    const len = bytes.length;
+    for (let i = 0; i < len;) {
+      const b1 = bytes[i++] & 0xFF;
+      if (b1 < 0x80) { out += String.fromCharCode(b1); continue; }
+      if ((b1 & 0xE0) === 0xC0) {
+        const b2 = bytes[i++] & 0xFF;
+        out += String.fromCharCode(((b1 & 0x1F) << 6) | (b2 & 0x3F));
+        continue;
+      }
+      if ((b1 & 0xF0) === 0xE0) {
+        const b2 = bytes[i++] & 0xFF, b3 = bytes[i++] & 0xFF;
+        out += String.fromCharCode(((b1 & 0x0F) << 12) | ((b2 & 0x3F) << 6) | (b3 & 0x3F));
+        continue;
+      }
+      // 4-byte UTF-8 → surrogate pair
+      const b2 = bytes[i++] & 0xFF, b3 = bytes[i++] & 0xFF, b4 = bytes[i++] & 0xFF;
+      const cp = ((b1 & 0x07) << 18) | ((b2 & 0x3F) << 12) | ((b3 & 0x3F) << 6) | (b4 & 0x3F);
+      const off = cp - 0x10000;
+      out += String.fromCharCode(0xD800 | (off >> 10), 0xDC00 | (off & 0x3FF));
+    }
+    return out;
+  }
+
   function readJson(dir, name) {
     try {
       const bytes = $os.readFile(dir + "/" + name);
       if (!bytes || bytes.length === 0) return null;
-      let text;
-      if (typeof bytes === "string") text = bytes;
-      else if (typeof $toString === "function") text = $toString(bytes);
-      else text = String.fromCharCode.apply(null, bytes);
-      return JSON.parse(text);
+      return JSON.parse(bytesToUtf8String(bytes));
     } catch (err) {
       console.log("Multi-edition seed: failed to read " + name + " — " + err);
       return null;

@@ -4282,11 +4282,39 @@ function UserManagement({onClose,company,member,members}){
 }
 
 // ── Project Management ────────────────────────────────────────────
+// Default CONQUAS edition assigned to new projects so the QUALITY CHECK
+// wizard + REPORT card appear automatically. Users can disable per project
+// from the same settings UI. Kept as a named constant so later editions
+// (QM, CONQUAS 2022, HDB, etc.) can slot in without hunting through code.
+const DEFAULT_ONTOLOGY_EDITION = "bca-conquas-pr-2025";
+
 function ProjectManagement({onClose,company,member,projects,currentProject,onSelect}){
   const[newName,setNewName]=useState("");const[adding,setAdding]=useState(false);
   const[editingId,setEditingId]=useState(null);const[editName,setEditName]=useState("");
   const[archived,setArchived]=useState([]);const[showArchived,setShowArchived]=useState(false);
+  // Optimistic local overrides for ontology_edition so the chip reflects
+  // the user's last action without waiting for a parent re-fetch. Shape:
+  // { [projectId]: editionString | "" }. Merged with projects[i].ontology_edition
+  // at render time; empty-string means "explicitly disabled".
+  const[editionOverrides,setEditionOverrides]=useState({});
+  const[editionBusy,setEditionBusy]=useState(null); // projectId currently saving
   const canManage=["Admin","Manager"].includes(member?.role);
+  const editionOf=(p)=>{
+    if(Object.prototype.hasOwnProperty.call(editionOverrides,p.id))return editionOverrides[p.id];
+    return p.ontology_edition||"";
+  };
+  const setEditionFor=async(id,edition)=>{
+    if(editionBusy)return;
+    setEditionBusy(id);
+    try{
+      await DB.projects.update(id,{ontology_edition:edition||""});
+      setEditionOverrides(prev=>({...prev,[id]:edition||""}));
+      // If this is the current project, propagate so the wizard button + REPORT
+      // card pick up the change without requiring a project re-select.
+      if(currentProject?.id===id)onSelect({...currentProject,id,name:currentProject.name,ontology_edition:edition||""});
+    }catch(e){alert("Could not update framework: "+(e?.message||e));}
+    setEditionBusy(null);
+  };
 
   // Project sort order is persisted per-company in localStorage. No schema
   // change needed — the ordering is a UI preference, not a shared data model
@@ -4373,8 +4401,11 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
   const addProject=async()=>{
     if(!newName.trim())return;setAdding(true);
     try{
-      const ref=await DB.projects.create({companyId:company.companyId,name:newName.trim(),createdAt:DB.serverTimestamp(),createdBy:DB.auth.currentUser?.id});
-      onSelect({id:ref.id,name:newName.trim()});
+      // Default new projects to CONQUAS so the wizard + Quality Check card
+      // appear automatically. User can disable per project via the chip in
+      // this panel if they're tracking something non-CONQUAS.
+      const ref=await DB.projects.create({companyId:company.companyId,name:newName.trim(),ontology_edition:DEFAULT_ONTOLOGY_EDITION,createdAt:DB.serverTimestamp(),createdBy:DB.auth.currentUser?.id});
+      onSelect({id:ref.id,name:newName.trim(),ontology_edition:DEFAULT_ONTOLOGY_EDITION});
       setNewName("");
     }catch(e){alert(e.message);}
     setAdding(false);
@@ -4410,10 +4441,26 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
                 <button onClick={()=>setEditingId(null)} style={{background:"rgba(0,0,0,0.1)",border:"none",borderRadius:8,padding:"8px 12px",fontSize:12,cursor:"pointer"}}>✕</button>
               </div>
             ):(
-              <div onClick={()=>{if(!draggingId){onSelect(p);onClose();}}} style={{cursor:draggingId?"grabbing":"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div>
-                  <div style={{fontWeight:700,fontSize:14,color:currentProject?.id===p.id?"#fff":"#1a1a1a"}}>{p.name}</div>
+              <div onClick={()=>{if(!draggingId){onSelect(p);onClose();}}} style={{cursor:draggingId?"grabbing":"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                <div style={{minWidth:0,flex:1}}>
+                  <div style={{fontWeight:700,fontSize:14,color:currentProject?.id===p.id?"#fff":"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis"}}>{p.name}</div>
                   {currentProject?.id===p.id&&<div style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginTop:2}}>Currently active</div>}
+                  {/* CONQUAS framework toggle. Tap to enable if not set;
+                      tap to disable if set. Busy-state disables re-entry. */}
+                  {canManage&&(()=>{
+                    const ed=editionOf(p);
+                    const active=currentProject?.id===p.id;
+                    const on=!!ed;
+                    const busy=editionBusy===p.id;
+                    const bg=on?(active?"rgba(255,255,255,0.2)":"rgba(88,86,214,0.12)"):(active?"rgba(255,255,255,0.15)":"rgba(0,0,0,0.05)");
+                    const fg=on?(active?"#fff":"#5856d6"):(active?"rgba(255,255,255,0.85)":"rgba(0,0,0,0.5)");
+                    const border=on?(active?"1px solid rgba(255,255,255,0.35)":"1px solid rgba(88,86,214,0.3)"):(active?"1px solid rgba(255,255,255,0.25)":"1px solid rgba(0,0,0,0.1)");
+                    return(
+                      <button onClick={e=>{e.stopPropagation();setEditionFor(p.id,on?"":DEFAULT_ONTOLOGY_EDITION);}} disabled={busy} style={{marginTop:5,background:bg,border:border,borderRadius:6,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,letterSpacing:"0.04em",color:fg,cursor:busy?"wait":"pointer",display:"inline-flex",alignItems:"center",gap:5}} title={on?`CONQUAS framework enabled (${ed}). Tap to disable.`:"Tap to enable the CONQUAS wizard + Quality Check card on this project."}>
+                        {busy?<Spin size={10}/>:<span>{on?"⚖️ CONQUAS ✓":"+ ENABLE CONQUAS"}</span>}
+                      </button>
+                    );
+                  })()}
                 </div>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
                   {canManage&&<button onClick={e=>{e.stopPropagation();setEditingId(p.id);setEditName(p.name);}} style={{background:currentProject?.id===p.id?"rgba(255,255,255,0.2)":"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"5px 10px",color:currentProject?.id===p.id?"#fff":"#666",fontSize:12,cursor:"pointer"}}>Rename</button>}
@@ -5360,8 +5407,13 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
   const[aiReasons,setAiReasons]=useState({});     // {checkpointId: 'short reason'}
   const[aiOverrides,setAiOverrides]=useState({}); // user-flipped verdicts
   const[aiErrorMsg,setAiErrorMsg]=useState("");   // last AI failure message
+  // Single-checkpoint AI helper during manual walk. Separate from aiPhoto so a
+  // mid-walk AI check doesn't clobber an in-progress batch AI review.
+  const[askAiBusy,setAskAiBusy]=useState(false);
+  const[askAiHint,setAskAiHint]=useState(""); // shown when AI says uncertain
   const fileRef=useRef();
   const aiFileRef=useRef();
+  const askAiRef=useRef();
 
   // Fetch ontology once on open. Edition pin comes from the current project.
   useEffect(()=>{
@@ -5485,8 +5537,50 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
     setResults(nr);advance(nr);
   };
   const goBackStep=()=>{
-    if(idx>0){setIdx(idx-1);setResults(prev=>prev.slice(0,-1));setFailPhoto(null);setFailNote("");}
-    else{setPickedId(null);setResults([]);setStep("pickElement");}
+    if(idx>0){setIdx(idx-1);setResults(prev=>prev.slice(0,-1));setFailPhoto(null);setFailNote("");setAskAiHint("");}
+    else{setPickedId(null);setResults([]);setStep("pickElement");setAskAiHint("");}
+  };
+  // Per-checkpoint AI helper during manual walk. User snaps a photo,
+  // analyzeCONQUASPhoto scores just this one checkpoint, result auto-fills:
+  //   pass       → record the pass and advance
+  //   fail       → set failPhoto + reason so existing fail-review UI kicks in
+  //   uncertain  → leave on the same screen, show AI note as a hint and let
+  //                the user decide via PASS/FAIL
+  const handleAskAiPhoto=async(e)=>{
+    const f=(e.target.files||[])[0];
+    if(!f){if(askAiRef.current)askAiRef.current.value="";return;}
+    const r=new FileReader();
+    r.onload=async()=>{
+      const dataUrl=r.result;
+      setAskAiBusy(true);setAskAiHint("");
+      try{
+        const res=await analyzeCONQUASPhoto(dataUrl,pickedComponent?pickedComponent.name:"",[current]);
+        if(res&&res.error){
+          setAskAiHint(res.error==="no_ai"?"AI is not configured. Open Settings → AI Setup.":"AI request failed. Use PASS or FAIL manually.");
+        } else if(res&&res.verdicts){
+          const v=String(res.verdicts[current.itemId]||"").toLowerCase();
+          const reason=String((res.reasons||{})[current.itemId]||"").trim();
+          const photoToKeep=res.rawPhoto||dataUrl;
+          if(v==="p"){
+            const nr=[...results,{checkpointId:current.itemId,status:"pass"}];
+            setResults(nr);advance(nr);
+          }else if(v==="f"){
+            setFailPhoto(photoToKeep);
+            if(reason)setFailNote(reason);
+          }else{
+            setAskAiHint(reason||"AI couldn't decide — use PASS or FAIL.");
+          }
+        } else {
+          setAskAiHint("AI returned no verdict — use PASS or FAIL manually.");
+        }
+      }catch(err){
+        console.error("ASK AI failed",err);
+        setAskAiHint("AI request failed. Use PASS or FAIL manually.");
+      }
+      setAskAiBusy(false);
+      if(askAiRef.current)askAiRef.current.value="";
+    };
+    r.readAsDataURL(f);
   };
   const saveAll=async()=>{
     const fails=results.filter(r=>r.status==="fail");
@@ -5645,12 +5739,28 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
               <button onClick={()=>{setFailPhoto(null);setFailNote("");}} style={{width:"100%",marginTop:8,background:"none",border:"none",color:"rgba(0,0,0,0.4)",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,cursor:"pointer"}}>{t("conquas.back")}</button>
             </div>
           ):(
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              <button onClick={recordPass} style={{height:72,background:"#30d158",border:"none",borderRadius:14,color:"#fff",fontSize:20,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",cursor:"pointer"}}>{t("conquas.pass")}</button>
-              <button onClick={()=>fileRef.current&&fileRef.current.click()} style={{height:72,background:"#ff3b30",border:"none",borderRadius:14,color:"#fff",fontSize:20,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",cursor:"pointer"}}>{t("conquas.fail")}</button>
-            </div>
+            <>
+              {/* ASK AI — per-checkpoint helper. Takes one photo, classifies
+                  the current checkpoint only, pre-fills pass / fail / reason.
+                  Hidden when AI isn't configured so the UI doesn't dead-end. */}
+              {isAiConfigured()&&(
+                <button onClick={()=>askAiRef.current&&askAiRef.current.click()} disabled={askAiBusy} style={{width:"100%",height:52,background:askAiBusy?"rgba(88,86,214,0.15)":"rgba(88,86,214,0.1)",border:"1.5px solid rgba(88,86,214,0.4)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em",cursor:askAiBusy?"wait":"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                  {askAiBusy?<><Spin size={14}/><span>AI ANALYSING…</span></>:<><span>🤖</span><span>ASK AI — TAKE A PHOTO</span></>}
+                </button>
+              )}
+              {askAiHint&&(
+                <div style={{background:"rgba(255,149,0,0.1)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:10,padding:"10px 12px",marginBottom:10,fontSize:12,color:"#b46700",lineHeight:1.4}}>
+                  <b>AI:</b> {askAiHint}
+                </div>
+              )}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <button onClick={recordPass} style={{height:72,background:"#30d158",border:"none",borderRadius:14,color:"#fff",fontSize:20,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",cursor:"pointer"}}>{t("conquas.pass")}</button>
+                <button onClick={()=>fileRef.current&&fileRef.current.click()} style={{height:72,background:"#ff3b30",border:"none",borderRadius:14,color:"#fff",fontSize:20,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",cursor:"pointer"}}>{t("conquas.fail")}</button>
+              </div>
+            </>
           )}
           <input type="file" accept="image/*" capture="environment" ref={fileRef} onChange={handleFailPhoto} style={{display:"none"}}/>
+          <input type="file" accept="image/*" capture="environment" ref={askAiRef} onChange={handleAskAiPhoto} style={{display:"none"}}/>
         </div>
       </div>
     );
