@@ -319,6 +319,26 @@
       {
         "name": "batch_weighted_applicable",
         "type": "number"
+      },
+      {
+        "name": "media_hash",
+        "type": "text"
+      },
+      {
+        "name": "source_type",
+        "type": "text"
+      },
+      {
+        "name": "work_stage",
+        "type": "text"
+      },
+      {
+        "name": "timezone",
+        "type": "text"
+      },
+      {
+        "name": "iso_filename",
+        "type": "text"
       }
     ],
     "listRule": "@request.auth.id != ''",
@@ -346,6 +366,10 @@
       },
       {
         "name": "createdAt",
+        "type": "text"
+      },
+      {
+        "name": "code",
         "type": "text"
       }
     ],
@@ -1220,6 +1244,18 @@
       {
         "name": "createdAt",
         "type": "date"
+      },
+      {
+        "name": "media_hash",
+        "type": "text"
+      },
+      {
+        "name": "work_stage",
+        "type": "text"
+      },
+      {
+        "name": "timezone",
+        "type": "text"
       }
     ],
     "listRule": "@request.auth.id != ''",

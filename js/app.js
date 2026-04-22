@@ -14,6 +14,115 @@ const local={
 // Sanitize user input for safe HTML embedding (Telegram, email reports)
 function sanitize(str){return String(str||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 
+// ── Phase 3.9 — ISO 19650 metadata + evidence integrity ──────────
+// Capture timezone (IANA) for every record. SiteShrimp stores UTC timestamps
+// but capture-timezone is a legal/contract anchor for multi-region teams.
+function captureTimezone(){
+  try{return Intl.DateTimeFormat().resolvedOptions().timeZone||"";}catch{return "";}
+}
+
+// SHA-256 hash of a data URL or Blob for evidence integrity + duplicate
+// detection. Runs client-side via WebCrypto — works offline. Returns a hex
+// string; empty string on error so callers can save records even if the
+// browser doesn't expose subtle (old iOS, some TWA flavours).
+async function mediaHash(dataUrlOrBlob){
+  try{
+    if(!dataUrlOrBlob)return"";
+    let bytes;
+    if(typeof dataUrlOrBlob==="string"){
+      const base64=(dataUrlOrBlob.split(",")[1])||"";
+      if(!base64)return"";
+      const bin=atob(base64);
+      bytes=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+    }else if(dataUrlOrBlob instanceof Blob){
+      bytes=new Uint8Array(await dataUrlOrBlob.arrayBuffer());
+    }else{return"";}
+    if(!crypto||!crypto.subtle||!crypto.subtle.digest)return"";
+    const buf=await crypto.subtle.digest("SHA-256",bytes);
+    const arr=Array.from(new Uint8Array(buf));
+    return arr.map(b=>b.toString(16).padStart(2,"0")).join("");
+  }catch{return"";}
+}
+
+// Short, filesystem-safe slug for fallback when a short code is missing.
+// Keeps ASCII letters/digits, uppercases, truncates.
+function slugCode(s,len=6){
+  if(!s)return"XX";
+  const clean=String(s).normalize("NFKD").replace(/[^\x00-\x7F]/g,"").replace(/[^a-zA-Z0-9]/g,"").toUpperCase();
+  if(!clean)return"XX";
+  return clean.slice(0,len)||"XX";
+}
+
+// Map SiteShrimp trade → ISO 19650 role code (§5 Annex A Table A.2).
+const ISO_ROLE_BY_TRADE={
+  "Architectural":"A","Arch":"A","Finishes":"A","Painting":"A","Tiling":"A","Carpentry":"A","Waterproofing":"A","Interior":"A",
+  "Structural":"S","Structure":"S","Concrete":"S","Steel":"S","Precast":"S",
+  "Mechanical":"M","HVAC":"M","M&E":"M","MEP":"M","Plumbing":"M",
+  "Electrical":"E","Lighting":"E","Wiring":"E",
+  "Civil":"C","Landscape":"C","Drainage":"C","Roads":"C",
+  "QS":"Q","Cost":"Q","Quantity":"Q"
+};
+function roleFromTrade(trade){
+  if(!trade)return"Z";
+  return ISO_ROLE_BY_TRADE[trade]||ISO_ROLE_BY_TRADE[trade.trim()]||"Z";
+}
+
+// Map SiteShrimp status → ISO 19650 suitability code (§5.1.8).
+const ISO_SUITABILITY_BY_STATUS={
+  "Open":"S2","In Progress":"S3","InProgress":"S3","Done":"S4","Verified":"A1","Closed":"A2"
+};
+function suitabilityFromStatus(status){
+  return ISO_SUITABILITY_BY_STATUS[status]||"S2";
+}
+
+// Construction phase code — SiteShrimp work_stage → ISO 19650 work-stage
+// shorthand. Kept short (2-3 chars) for filename brevity.
+const ISO_STAGE_SHORT={
+  "pre_pour":"PP","rebar":"RB","formwork":"FW","pre_cover_up":"PC",
+  "installation":"IN","testing":"TS","commissioning":"CM",
+  "handover":"HO","dlp":"DL","post_occupancy":"PO"
+};
+
+// Build an ISO 19650-style filename for any artefact. All fields get safe
+// placeholders when missing — "ZZ" per the standard for "whole project /
+// not applicable". Output is bare filename (caller appends the extension).
+//
+// Format: {Project}-{Originator}-{Volume}-{Level}-{Type}-{Role}-{Number}-{Suitability}-{YYYYMMDD}
+function buildIso19650Filename({project,company,block,level,type,role,number,status,date,stage}){
+  const proj=slugCode(project&&(project.code||project.name),6);
+  const orig=slugCode(company&&(company.code||company.name||company.companyName),4);
+  const vol=(block&&String(block).trim())||"ZZ";
+  const lvl=(level&&String(level).trim())||"ZZ";
+  const typeCode=type||"PH";
+  const roleCode=role||"Z";
+  const num=(number||"0000").toString().slice(0,10);
+  const sfx=suitabilityFromStatus(status);
+  const stageCode=stage?(ISO_STAGE_SHORT[stage]||""):"";
+  const d=date?new Date(date):new Date();
+  const yyyymmdd=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
+  const parts=[proj,orig,vol,lvl,typeCode,roleCode,num,sfx,yyyymmdd];
+  if(stageCode)parts.splice(5,0,stageCode); // insert stage between type and role when present
+  return parts.map(p=>String(p).replace(/[^A-Za-z0-9_]/g,"").toUpperCase()).join("-");
+}
+
+// Convenience: derive an ISO filename for a defect record.
+function isoNameForDefect(defect,company,project,{type,ext}={}){
+  const name=buildIso19650Filename({
+    project:project||{code:defect.projectCode,name:defect.projectName},
+    company,
+    block:defect.block||"",
+    level:defect.locationLevel||"",
+    type:type||"PH",
+    role:roleFromTrade(defect.trade),
+    number:(defect.id||defect.defect_id||"").slice(0,8),
+    status:defect.status,
+    date:defect.createdAt||defect.timestamp_utc||new Date(),
+    stage:defect.work_stage
+  });
+  return ext?`${name}.${ext.replace(/^\./,"")}`:name;
+}
+
 function compressPhoto(dataUrl,maxPx=1800,quality=0.8){
   return new Promise(resolve=>{
     const img=new Image();
@@ -3087,7 +3196,20 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     doc.setTextColor(0);
   }
 
-  const baseName=`SiteShrimp_Report_${(projectName||"Export").replace(/\s/g,"_")}_${now.toLocaleDateString("en-GB").replace(/\//g,"-")}`;
+  // Phase 3.9 — ISO 19650-style filename for the PDF. Falls back to the
+  // legacy human-readable name if project / company codes aren't set so
+  // nothing breaks for teams that haven't configured the short codes yet.
+  const iso=(opts&&opts.companyCode&&opts.projectCode)
+    ? buildIso19650Filename({
+        project:{code:opts.projectCode,name:projectName},
+        company:{code:opts.companyCode,name:companyName},
+        block:opts.block||"",level:opts.level||"",
+        type:"RP",role:"Z",
+        number:(opts.reportNumber||"0001"),
+        status:"Info",date:now
+      })
+    : null;
+  const baseName=iso||`SiteShrimp_Report_${(projectName||"Export").replace(/\s/g,"_")}_${now.toLocaleDateString("en-GB").replace(/\//g,"-")}`;
   const fileName=baseName+".pdf";
   const csvName=baseName+"_measurements.csv";
   // Trigger the companion CSV right after the PDF so the user ends up with
@@ -9506,9 +9628,9 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
                 )}
               </div>
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang);}catch(e){alert("Export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true,langCode:exportLang,conquasStats});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false,langCode:exportLang,conquasStats});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang);await new Promise(r=>setTimeout(r,600));await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang,conquasStats});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true,langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4)});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false,langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4)});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang);await new Promise(r=>setTimeout(r,600));await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4)});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
               <button onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);const result=await exportToGoogleSheets(defs,currentProject?.name,company?.companyName,exportLang);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
             </div>
           )}
@@ -17559,6 +17681,23 @@ function App(){
   const addDefect=async data=>{
     if(!company?.companyId||!currentProject)return;
 
+    // Phase 3.9 — auto-capture evidence + ISO metadata if the caller didn't
+    // provide them. Runs on every defect save (LogDefect, CONQUAS wizard,
+    // quick-pin, batch import, telegram bridge). These anchors (hash, tz,
+    // source) support tamper-detection and ISO 19650 filenames later.
+    try{
+      if(!data.timezone)data.timezone=captureTimezone();
+      if(!data.source_type){
+        if(data.entryType==="CONQUAS Check")data.source_type="conquas_wizard";
+        else if(data.voice_file_id||data.transcript_text)data.source_type="voice";
+        else if(data.photo)data.source_type="photo";
+        else data.source_type="manual";
+      }
+      if(!data.media_hash&&data.photo){
+        try{data.media_hash=await mediaHash(data.photo);}catch{}
+      }
+    }catch(metaErr){console.warn("auto-capture metadata failed",metaErr);}
+
     try{
       const saved=await uploadDefect(data,company.companyId);
 
@@ -18288,7 +18427,7 @@ function App(){
                       ),
                       // AI Section
                       React.createElement(Section,{icon:"🤖",title:"AI — YOUR OWN MODELS",color:"#5856d6"},
-                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"Use any AI provider for photo analysis, auto-fill (title, severity, trade, assignee), natural-language search, PDF diff reports, and Contract Advisor (defect-to-requirement mapping using PSSCOC, BCA CONQUAS, BCA Good Industry Practice, HDB checklists, or your own uploaded contracts/requirements). You choose the model, you control the cost."),
+                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"SiteShrimp digitalises the manual checks, records, and reports that every construction site runs — across active supervision, completion handover, and post-completion DLP / façade inspection. One AI-assisted workflow for private developers and public-sector sites (BCA, HDB, LTA, JTC, MOE, MOHH) alike. Bring any AI provider for photo analysis, auto-fill (title, severity, trade, assignee), natural-language search, PDF diff reports, and Contract Advisor (defect-to-requirement mapping using PSSCOC, BCA CONQUAS, BCA Good Industry Practice, HDB checklists, or your own uploaded documents). You choose the model, you control the cost."),
                         React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:8}},
                           React.createElement("div",{style:{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"10px 12px"}},
                             React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"#5856d6",marginBottom:4}},"GOOGLE GEMINI (Free)"),
@@ -18413,7 +18552,7 @@ function App(){
                 <div style={{color:"rgba(255,255,255,0.78)",fontSize:12,lineHeight:1.7,fontFamily:"'Barlow',sans-serif"}}>
                   <div style={{marginBottom:16}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ffcc00",letterSpacing:"0.05em",marginBottom:6}}>PURPOSE</div>
-                    <div style={{color:"rgba(255,255,255,0.72)"}}>SiteShrimp is a vibe programming project created for learning purposes and offered free for public use. It is self-driven, non-commercial, and shared to inspire open collaboration.</div>
+                    <div style={{color:"rgba(255,255,255,0.72)",lineHeight:1.6}}>SiteShrimp digitalises the manual checks, records, and reports that every construction site runs — from active-site supervision through completion handover to post-completion defects-liability and façade inspection. One photo-driven, AI-assisted workflow for private developers and public-sector sites (BCA, HDB, LTA, JTC, MOE, MOHH) alike: capture a defect in one photo, AI pre-fills severity, classification, location and follow-up, and the record lands in CONQUAS / Quality Mark-aligned format with ISO 19650-compatible naming on export. Self-driven, offered free for user-facing features, shared to help the built-environment industry move from clipboards to evidence-grade digital records.</div>
                   </div>
 
                   <div style={{background:"rgba(255,204,0,0.08)",border:"1px solid rgba(255,204,0,0.3)",borderRadius:12,padding:"14px 16px",marginBottom:18}}>
