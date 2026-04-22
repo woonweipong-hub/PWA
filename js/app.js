@@ -5397,7 +5397,11 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
   const[pickedId,setPickedId]=useState(null);
   const[idx,setIdx]=useState(0);
   const[results,setResults]=useState([]);
-  const[failPhoto,setFailPhoto]=useState(null);
+  // Phase 3.8C — multi-photo per checkpoint. failPhoto kept as an alias for
+  // failPhotos[0] to minimise code churn; new code should read failPhotos.
+  const[failPhotos,setFailPhotos]=useState([]);
+  const failPhoto=failPhotos[0]||null;
+  const setFailPhoto=(p)=>setFailPhotos(p?[p]:[]);
   const[failNote,setFailNote]=useState("");
   const[saving,setSaving]=useState(false);
   // Phase 3.2a AI-mode state
@@ -5523,17 +5527,28 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
     const nr=[...results,{checkpointId:current.itemId,status:"pass"}];
     setResults(nr);advance(nr);
   };
+  // Phase 3.8C — accumulate photos. Each tap of "+ ADD PHOTO" / gallery
+  // picker appends to failPhotos so one checkpoint can carry up to 10
+  // shots (different angles, reference scale, close-up of crack, etc.).
   const handleFailPhoto=(e)=>{
-    const f=(e.target.files||[])[0];
-    if(!f)return;
-    const r=new FileReader();
-    r.onload=()=>setFailPhoto(r.result);
-    r.readAsDataURL(f);
+    const files=Array.from(e.target.files||[]);
+    if(!files.length)return;
+    const readers=files.slice(0,10).map(f=>new Promise(res=>{
+      const r=new FileReader();
+      r.onload=()=>res(r.result);
+      r.onerror=()=>res(null);
+      r.readAsDataURL(f);
+    }));
+    Promise.all(readers).then(arr=>{
+      const valid=arr.filter(Boolean);
+      if(valid.length)setFailPhotos(prev=>[...prev,...valid].slice(0,10));
+    });
     if(fileRef.current)fileRef.current.value="";
   };
+  const removeFailPhoto=(idx)=>setFailPhotos(prev=>prev.filter((_,i)=>i!==idx));
   const recordFail=()=>{
-    if(!failPhoto)return;
-    const nr=[...results,{checkpointId:current.itemId,status:"fail",photo:failPhoto,note:failNote.trim()}];
+    if(!failPhotos.length)return;
+    const nr=[...results,{checkpointId:current.itemId,status:"fail",photo:failPhotos[0],extraPhotos:failPhotos.slice(1),note:failNote.trim()}];
     setResults(nr);advance(nr);
   };
   const goBackStep=()=>{
@@ -5771,13 +5786,29 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
               <div style={{fontSize:13,color:"rgba(0,0,0,0.75)",lineHeight:1.4}}>{current.pass_criteria}</div>
             </div>
           )}
-          {/* Action: fail-photo flow */}
-          {failPhoto?(
+          {/* Action: fail-photo flow — supports up to 10 photos per
+              checkpoint (Phase 3.8C). Main photo (first) used as defect
+              primary; rest saved as extraPhotos + observation.extra_photos. */}
+          {failPhotos.length>0?(
             <div>
-              <img src={failPhoto} alt="" style={{width:"100%",maxHeight:260,objectFit:"cover",borderRadius:12,marginBottom:12}}/>
+              {/* Main photo (first) */}
+              <img src={failPhotos[0]} alt="" style={{width:"100%",maxHeight:260,objectFit:"cover",borderRadius:12,marginBottom:8}}/>
+              {/* Extra-photo thumbnails + add-more tile */}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(64px, 1fr))",gap:6,marginBottom:12}}>
+                {failPhotos.slice(1).map((p,i)=>(
+                  <div key={i+1} style={{position:"relative",aspectRatio:"1/1",borderRadius:8,overflow:"hidden",background:"rgba(0,0,0,0.05)"}}>
+                    <img src={p} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                    <button onClick={()=>removeFailPhoto(i+1)} style={{position:"absolute",top:2,right:2,width:20,height:20,borderRadius:"50%",background:"rgba(0,0,0,0.6)",color:"#fff",border:"none",fontSize:11,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>×</button>
+                  </div>
+                ))}
+                {failPhotos.length<10&&(
+                  <button onClick={()=>fileRef.current&&fileRef.current.click()} style={{aspectRatio:"1/1",background:"rgba(255,107,0,0.08)",border:"1.5px dashed rgba(255,107,0,0.4)",borderRadius:8,color:"#ff6b00",fontSize:20,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}} title="Add another photo">+</button>
+                )}
+              </div>
+              <div style={{fontSize:10,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.04em",marginBottom:4}}>{failPhotos.length} / 10 PHOTO{failPhotos.length===1?"":"S"}</div>
               <textarea value={failNote} onChange={e=>setFailNote(e.target.value)} placeholder={t("conquas.note_placeholder")} style={{width:"100%",minHeight:70,padding:"10px 12px",border:"1px solid rgba(0,0,0,0.12)",borderRadius:10,fontSize:13,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box",marginBottom:12}}/>
               <button onClick={recordFail} style={{width:"100%",height:54,background:"#ff3b30",border:"none",borderRadius:14,color:"#fff",fontSize:16,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",cursor:"pointer"}}>{t("conquas.next")}</button>
-              <button onClick={()=>{setFailPhoto(null);setFailNote("");}} style={{width:"100%",marginTop:8,background:"none",border:"none",color:"rgba(0,0,0,0.4)",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,cursor:"pointer"}}>{t("conquas.back")}</button>
+              <button onClick={()=>{setFailPhotos([]);setFailNote("");}} style={{width:"100%",marginTop:8,background:"none",border:"none",color:"rgba(0,0,0,0.4)",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,cursor:"pointer"}}>{t("conquas.back")}</button>
             </div>
           ):(
             <>
@@ -5801,8 +5832,10 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
             </>
           )}
           {/* Phase 3.8A — no capture="environment" → OS picker offers camera,
-              gallery and files, so users can upload existing photos too. */}
-          <input type="file" accept="image/*" ref={fileRef} onChange={handleFailPhoto} style={{display:"none"}}/>
+              gallery and files, so users can upload existing photos too.
+              Phase 3.8C — fail-photo input is `multiple` so users can pick
+              several gallery images at once (camera mode still captures one). */}
+          <input type="file" accept="image/*" multiple ref={fileRef} onChange={handleFailPhoto} style={{display:"none"}}/>
           <input type="file" accept="image/*" ref={askAiRef} onChange={handleAskAiPhoto} style={{display:"none"}}/>
         </div>
       </div>
