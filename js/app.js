@@ -9193,10 +9193,9 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   // project.ontology_edition. "*" is a wildcard (always-on, like PSSCOC
   // Construction Works 2020). Only runs if nothing was previously saved for
   // this project (selectedRefIds is empty AND no localStorage entry).
-  useEffect(()=>{
-    if(!refManifestLoaded||!REF_SELECTED_KEY)return;
-    const stored=localStorage.getItem(REF_SELECTED_KEY);
-    if(stored!==null)return; // respect explicit user choice (even empty [])
+  // computeRefDefaults is also used by the DEFAULTS button in the picker
+  // toolbar so the effect and the manual toggle share one source of truth.
+  const computeRefDefaults=useCallback(()=>{
     const wc=currentProject?.workCategory||"";
     const ed=currentProject?.ontology_edition||"";
     const defaults=new Set();
@@ -9206,9 +9205,28 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
       const edHit=(d.defaultEditions||[]).some(e=>e==="*"||e===ed);
       if(catHit||edHit)defaults.add(d.id);
     }
+    return defaults;
+  },[refManifest.documents,currentProject?.workCategory,currentProject?.ontology_edition]);
+  useEffect(()=>{
+    if(!refManifestLoaded||!REF_SELECTED_KEY)return;
+    const stored=localStorage.getItem(REF_SELECTED_KEY);
+    if(stored!==null)return; // respect explicit user choice (even empty [])
+    const defaults=computeRefDefaults();
     if(defaults.size)setSelectedRefIds(defaults);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[refManifestLoaded,currentProject?.id]);
+  // Bulk picker actions used by the SELECT ALL · NONE · DEFAULTS toolbar
+  // at the top of the Reference Documents picker. Saves the user ~25
+  // taps when they want everything in or everything out.
+  const selectAllRefs=()=>{
+    const all=new Set();
+    for(const d of refManifest.documents){
+      if(!d.textExtractionFailed)all.add(d.id);
+    }
+    setSelectedRefIds(all);
+  };
+  const clearAllRefs=()=>setSelectedRefIds(new Set());
+  const resetRefsToDefaults=()=>setSelectedRefIds(computeRefDefaults());
   // Persist selection per-project whenever it changes.
   useEffect(()=>{
     if(!REF_SELECTED_KEY)return;
@@ -10083,6 +10101,14 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
             )}
             {refPickerOpen&&(
               <div style={{marginTop:10,display:"flex",flexDirection:"column",gap:10}}>
+                {/* Global bulk-select toolbar. Saves users ~25 taps when
+                    they want to tick everything, clear all, or snap back
+                    to the project's smart defaults. */}
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",padding:"4px 2px"}}>
+                  <button onClick={selectAllRefs} style={{background:"rgba(88,86,214,0.1)",border:"1px solid rgba(88,86,214,0.3)",borderRadius:6,padding:"4px 10px",color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,letterSpacing:"0.05em",cursor:"pointer"}}>✓ SELECT ALL</button>
+                  <button onClick={clearAllRefs} style={{background:"rgba(0,0,0,0.05)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:6,padding:"4px 10px",color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,letterSpacing:"0.05em",cursor:"pointer"}}>NONE</button>
+                  <button onClick={resetRefsToDefaults} style={{background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.3)",borderRadius:6,padding:"4px 10px",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,letterSpacing:"0.05em",cursor:"pointer"}} title="Snap back to the smart defaults for this project's work category and CONQUAS edition">↺ SMART DEFAULTS</button>
+                </div>
                 {Object.entries(refManifest.groups||{}).sort((a,b)=>(a[1].order||0)-(b[1].order||0)).map(([gid,g])=>{
                   const docs=refManifest.documents.filter(d=>d.group===gid);
                   if(!docs.length)return null;
