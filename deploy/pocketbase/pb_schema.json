@@ -1143,5 +1143,89 @@
     "createRule": null,
     "updateRule": null,
     "deleteRule": null
+  },
+  {
+    "name": "conquas_observations",
+    "type": "base",
+    "schema": [
+      {
+        "name": "companyId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "projectId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "observation_batch_id",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "component_id",
+        "type": "text"
+      },
+      {
+        "name": "component_name",
+        "type": "text"
+      },
+      {
+        "name": "checkpoint_id",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "checkpoint_description",
+        "type": "text"
+      },
+      {
+        "name": "nc_tier",
+        "type": "text"
+      },
+      {
+        "name": "verdict",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "note",
+        "type": "text"
+      },
+      {
+        "name": "photo",
+        "type": "text"
+      },
+      {
+        "name": "extra_photos",
+        "type": "json"
+      },
+      {
+        "name": "defect_id",
+        "type": "text"
+      },
+      {
+        "name": "logged_by",
+        "type": "text"
+      },
+      {
+        "name": "logged_by_role",
+        "type": "text"
+      },
+      {
+        "name": "source",
+        "type": "text"
+      },
+      {
+        "name": "createdAt",
+        "type": "date"
+      }
+    ],
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id != ''",
+    "deleteRule": "@request.auth.id != ''"
   }
 ]

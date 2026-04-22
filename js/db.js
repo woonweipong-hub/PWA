@@ -312,6 +312,8 @@ const DB = (() => {
   const ontologyDefectTypes = crud('ontology_defect_types');
   const ontologyCheckpoints = crud('ontology_checkpoints');
   const ontologyTrades = crud('ontology_trades');
+  // Phase 3.8B — full CONQUAS audit trail (pass + fail + uncertain + photos)
+  const conquasObservations = crud('conquas_observations');
 
   // ── High-level helpers ───────────────────────────────────────────
   const helpers = {
@@ -415,6 +417,7 @@ const DB = (() => {
     ontologyDefectTypes,
     ontologyCheckpoints,
     ontologyTrades,
+    conquasObservations,
     ...helpers,
     async sendEmail(recipients, subject, html) {
       return apiJson('/api/send-email', 'POST', { recipients, subject, html });
