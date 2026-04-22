@@ -1,10 +1,10 @@
 BCA Construction Quality Assessment System
 
-                                  CONQUAS® (Private Residential)
+                               CONQUAS® (Private Residential)
 
-13 November 2025
+20 April 2026
 
-                  CONQUAS® (Private Residential)
+               CONQUAS® (Private Residential)
 
                                                                                                                        2
 
@@ -18,13 +18,13 @@ While every effort has been made to ensure the accuracy of the information prese
 publication, neither the Authority nor its employees or agents can accept responsibility for any loss or
 damage incurred in connection with the use of the contents.
 
-13 November 2025
+20 April 2026
 
-                  CONQUAS® (Private Residential)
+               CONQUAS® (Private Residential)
 
                                                                                                                         3
 
-                  CONTENTS
+               CONTENTS
 
 1.0 INTRODUCTION.................................................................................................... 4
          1.1 Objectives of CONQUAS
@@ -47,14 +47,14 @@ damage incurred in connection with the use of the contents.
 
 APPENDICES
 
-Appendix 1    Quality Standards for Internal Finishes Works........................................... 24
-Appendix 2    Quality Standards for External Finishes Works........................................... 30
-Appendix 3    Quality Standards for Functional Tests...................................................... 39
-Revision Log  ………………………………………………………………………………………………………………. 40
+Appendix 1     Quality Standards for Internal Finishes Works........................................... 24
+Appendix 2     Quality Standards for External Finishes Works........................................... 30
+Appendix 3     Quality Standards for Functional Tests...................................................... 39
+Revision Log   ………………………………………………………………………………………………………………. 40
 
-13 November 2025
+20 April 2026
 
-                            CONQUAS® (Private Residential)
+                         CONQUAS® (Private Residential)
 
                                                                                                                        4
 
@@ -87,9 +87,9 @@ Revision Log  …………………………………………………………
          architectural works and assessments shall be completed prior to application for Temporary
          Occupation Permit or Certificate of Statutory Completion inspection, whichever comes first.
 
-13 November 2025
+20 April 2026
 
-                  CONQUAS® (Private Residential)
+               CONQUAS® (Private Residential)
 
                                                                                                                5
 
@@ -142,9 +142,9 @@ Revision Log  …………………………………………………………
          impact liveability and functionality, whilst maintaining a balance between construction
          productivity and quality.
 
-13 November 2025
+20 April 2026
 
-                  CONQUAS® (Private Residential)
+               CONQUAS® (Private Residential)
 
                                                                                                                6
 
@@ -192,15 +192,16 @@ some time.
 
 (b) Functional Tests
 
-         Functional tests include checks on window and wet area water-tightness as well as QP’s
-         declaration on the results for 100% EN 14179-2 heat soak test for tempered glass (including
-         laminated tempered glass) and Pull-Off-Test for Internal Wall Tiles. For projects that adopt
-         PPVC, a maximum of 30% of the total window water-tightness test samples and 20% of the
-         total wet area water tightness test samples could be carried out in the factory.
+         Functional tests include checks on window, wet area water-tightness and water flow tests at
+         common areas as well as QP’s declaration on the results for 100% EN 14179-2 heat soak test
+         for tempered glass (including laminated tempered glass) and Pull-Off-Test for Internal Wall
+         Tiles. For projects that adopt PPVC, a maximum of 30% of the total window water-tightness
+         test samples and 20% of the total wet area water tightness test samples could be carried out
+         in the factory.
 
-13 November 2025
+20 April 2026
 
-                  CONQUAS® (Private Residential)
+               CONQUAS® (Private Residential)
 
                                                                                                   7
 
@@ -214,15 +215,15 @@ some time.
 The weightages allocation for Internal Finishes, Functional Tests, External Finishes are as
 follows:
 
-Components              Weightages
+               Components              Weightages
 
-Internal Finishes (IF)  40%
-Functional Tests (FT)   40%
-External Finishes (EF)  20%
+               Internal Finishes (IF)  40%
+               Functional Tests (FT)   40%
+               External Finishes (EF)  20%
 
-13 November 2025
+20 April 2026
 
-                                    CONQUAS® (Private Residential)
+                                                   CONQUAS® (Private Residential)
 
                                                                                                    8
 
@@ -283,7 +284,7 @@ External Finishes (EF)  20%
                                                         For PPVC project, maximum 30% of
                                                         the test samples could be from factory
 
-13 November 2025
+20 April 2026
 
                                                                                 CONQUAS® (Private Residential)
 
@@ -344,7 +345,7 @@ Field Window Water-                 200 For PPVC project, maximum 30% of
 
                                          the test samples could be from factory
 
-13 November 2025
+20 April 2026
 
                                                         CONQUAS® (Private Residential)
 
@@ -395,7 +396,7 @@ Field Window Water-                 200 For PPVC project, maximum 30% of
                          m2      set
                                                  project Qualified Person
 
-13 November 2025
+20 April 2026
 
                                              CONQUAS® (Private Residential)
 

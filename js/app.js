@@ -2992,6 +2992,46 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   }
 
   // ═══════════════════════════════════════════════════════════════════
+  // CONQUAS QUALITY CHECK (Internal Finishes — weighted NC rate, R1 §3.3)
+  // ═══════════════════════════════════════════════════════════════════
+  if(opts&&opts.conquasStats){
+    const cs=opts.conquasStats;
+    doc.addPage();y=18;
+    heading("QUALITY CHECK — INTERNAL FINISHES",purple);
+    doc.setFontSize(9);doc.setFont(undefined,"normal");doc.setTextColor(0);
+    doc.text(`Weighted NC rate: ${cs.rate.toFixed(1)}%`,margin,y);y+=5;
+    doc.text(`Projected IF Band: ${cs.band}  (BCA CONQUAS Private Residential R1 §3.3)`,margin,y);y+=5;
+    doc.text(`${cs.totalWeightedNCs} weighted non-compliance(s) of ${cs.totalWeightedApplicable} applicable; ${cs.failCount} defect(s) across ${cs.batchCount} assessment(s); ${cs.totalChecks} checkpoint(s) assessed.`,margin,y);y+=6;
+    // Per-element table
+    if(cs.componentRows&&cs.componentRows.length){
+      const body=cs.componentRows.map(r=>[
+        r.name,
+        String(r.totalChecks||0),
+        String(r.failCount),
+        String(r.weightedNCs),
+        r.weightedApplicable?String(r.weightedApplicable):"—",
+        r.weightedApplicable?r.rate.toFixed(1)+"%":"—"
+      ]);
+      doc.autoTable({
+        startY:y,margin:{left:margin,right:margin},
+        head:[["Element","Checks","NCs","Wt NC","Wt Applic.","Rate"]],
+        body,theme:"striped",styles:{fontSize:8,cellPadding:2},
+        headStyles:{fillColor:[88,86,214],textColor:255}
+      });
+      y=doc.lastAutoTable.finalY+6;
+    }
+    // Tier breakdown
+    doc.setFontSize(9);
+    doc.text(`NC weightages: 1X = ${cs.byTier["1X"]||0}  ·  2X = ${cs.byTier["2X"]||0}  ·  3X = ${cs.byTier["3X"]||0}`,margin,y);y+=8;
+    // Disclaimer
+    doc.setFontSize(7);doc.setTextColor(150);
+    const disc="Projection only — not official CONQUAS Band. 0% = all pass, 100% = all fail; lower is better. Based on Internal Finishes (IF) only per BCA CONQUAS (Private Residential) R1 §3.3 weighted formula. Full project band requires Functional Tests (WTT, WPT, WFT) and External Finishes, plus QP declaration on Pull-Off + Heat Soak + WTT/WPT self-tests. Final accountability rests with the accredited checker, QP, or assessor — not this app.";
+    const discLines=doc.splitTextToSize(disc,contentW);
+    for(const dl of discLines){if(y>pageH-12){doc.addPage();y=18;}doc.text(dl,margin,y);y+=3.5;}
+    doc.setTextColor(0);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   // CONTRACT ADVISORY
   // ═══════════════════════════════════════════════════════════════════
   if(contractAdvisory){
@@ -5335,6 +5375,11 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
   const failCount=results.filter(r=>r.status==="fail").length;
   const passCount=results.filter(r=>r.status==="pass").length;
   const tierSev={"1X":"Minor","2X":"Major","3X":"Critical"};
+  // BCA CONQUAS R1 §3.2(a): 1X/2X/3X are "NC weightages". The banding table
+  // column header (§3.3) explicitly labels the rate "Project weighted NC
+  // rate" — so each non-compliance contributes its tier number to both the
+  // numerator and (via batch_weighted_applicable) the denominator.
+  const tierWeight={"1X":1,"2X":2,"3X":3};
 
   const pickElement=(itemId)=>{
     setPickedId(itemId);setIdx(0);setResults([]);
@@ -5429,6 +5474,17 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
     const fails=results.filter(r=>r.status==="fail");
     if(!fails.length){onClose();return;}
     setSaving(true);
+    // One UUID per wizard run groups all fails into an "observation batch"
+    // so REPORT can compute the BCA-weighted NC rate (R1 §3.3) and the
+    // drawing viewer can cluster pins one-per-batch.
+    const batchId=(typeof crypto!=="undefined"&&crypto.randomUUID)
+      ? crypto.randomUUID()
+      : "batch_"+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
+    const batchTotalChecks=activeCheckpoints.length;
+    // R1 §3.3 denominator: sum of tier weights across all checkpoints that
+    // were attempted in this batch. Matches "Total applicable no. of NCs"
+    // in the weighted-rate formula.
+    const batchWeightedApplicable=activeCheckpoints.reduce((sum,cp)=>sum+(tierWeight[cp.tier]||0),0);
     let saved=0;
     for(const r of fails){
       const cp=checkpoints.find(x=>x.itemId===r.checkpointId);
@@ -5454,6 +5510,9 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
           checkpoint_id:cp.itemId,
           defect_type_id:dtId,
           nc_tier:cp.tier||"",
+          observation_batch_id:batchId,
+          batch_total_checks:batchTotalChecks,
+          batch_weighted_applicable:batchWeightedApplicable,
           entryType:"CONQUAS Check",
           photo:compressed,extraPhotos:[],
           projectId:currentProject?.id||"default",
@@ -8877,6 +8936,70 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   const bySev=SEVERITY.map(s=>({s,count:filtered.filter(d=>d.severity===s).length}));
   const byAssignee=allAssignees.map(t=>({t,open:filtered.filter(d=>d.assignee===t&&d.status==="Open").length,total:filtered.filter(d=>d.assignee===t).length})).filter(x=>x.total>0);
 
+  // CONQUAS weighted NC-rate stats (per R1 §3.3). Numerator = Σ tier-weight
+  // of every CONQUAS Check defect in the project. Denominator = Σ
+  // batch_weighted_applicable across distinct observation batches (each
+  // batch stamps its applicable sum once at save; we dedupe by batch_id so
+  // multiple fails in the same batch don't inflate the denominator).
+  // Per-element breakdown follows the same pattern but grouped by component.
+  // "IF only" because FT (WTT/WPT/WFT) and EF aren't yet captured in the
+  // schema — the card clearly caveats this rather than mis-labelling as
+  // Project band.
+  const CONQUAS_TIER_WEIGHT={"1X":1,"2X":2,"3X":3};
+  const conquasStats=(()=>{
+    const conquasDefects=filtered.filter(d=>d.entryType==="CONQUAS Check"&&d.nc_tier);
+    if(!conquasDefects.length)return null;
+    const batches=new Map(); // batch_id -> {weightedApplicable, totalChecks, component}
+    for(const d of conquasDefects){
+      if(!d.observation_batch_id)continue;
+      if(!batches.has(d.observation_batch_id)){
+        batches.set(d.observation_batch_id,{
+          weightedApplicable:Number(d.batch_weighted_applicable)||0,
+          totalChecks:Number(d.batch_total_checks)||0,
+          component:d.component||"(unspecified)",
+          componentId:d.component_id||""
+        });
+      }
+    }
+    const totalWeightedApplicable=Array.from(batches.values()).reduce((s,b)=>s+b.weightedApplicable,0);
+    const totalChecks=Array.from(batches.values()).reduce((s,b)=>s+b.totalChecks,0);
+    const totalWeightedNCs=conquasDefects.reduce((s,d)=>s+(CONQUAS_TIER_WEIGHT[d.nc_tier]||0),0);
+    const failCount=conquasDefects.length;
+    const rate=totalWeightedApplicable>0?(totalWeightedNCs/totalWeightedApplicable*100):0;
+    // R1 §3.3 banding thresholds applied to IF-only projection
+    let band=6;
+    if(rate<6)band=1;
+    else if(rate<10)band=2;
+    else if(rate<15)band=3;
+    else if(rate<20)band=4;
+    else if(rate<25)band=5;
+    // Per element
+    const byComponent=new Map();
+    for(const d of conquasDefects){
+      const key=d.component||"(unspecified)";
+      if(!byComponent.has(key))byComponent.set(key,{name:key,failCount:0,weightedNCs:0,weightedApplicable:0,totalChecks:0,componentId:d.component_id||""});
+      const row=byComponent.get(key);
+      row.failCount+=1;
+      row.weightedNCs+=CONQUAS_TIER_WEIGHT[d.nc_tier]||0;
+    }
+    // Component-level denominator from batches
+    for(const b of batches.values()){
+      const key=b.component;
+      if(!byComponent.has(key))byComponent.set(key,{name:key,failCount:0,weightedNCs:0,weightedApplicable:0,totalChecks:0,componentId:b.componentId||""});
+      const row=byComponent.get(key);
+      row.weightedApplicable+=b.weightedApplicable;
+      row.totalChecks+=b.totalChecks;
+    }
+    // Compute per-component rate
+    const componentRows=Array.from(byComponent.values()).map(r=>({
+      ...r,rate:r.weightedApplicable>0?(r.weightedNCs/r.weightedApplicable*100):0
+    })).sort((a,b)=>b.rate-a.rate);
+    // By tier
+    const byTier={"1X":0,"2X":0,"3X":0};
+    for(const d of conquasDefects)if(byTier[d.nc_tier]!==undefined)byTier[d.nc_tier]+=1;
+    return{failCount,totalChecks,totalWeightedNCs,totalWeightedApplicable,rate,band,componentRows,byTier,batchCount:batches.size};
+  })();
+
   const runContractAdvisor=async()=>{
     if(!isAiConfigured()){
       setContractError("AI is not configured. Open Settings → AI Setup first.");
@@ -9057,9 +9180,9 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
                 )}
               </div>
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang);}catch(e){alert("Export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true,langCode:exportLang});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false,langCode:exportLang});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang);await new Promise(r=>setTimeout(r,600));await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true,langCode:exportLang,conquasStats});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false,langCode:exportLang,conquasStats});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang);await new Promise(r=>setTimeout(r,600));await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang,conquasStats});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
               <button onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);const result=await exportToGoogleSheets(defs,currentProject?.name,company?.companyName,exportLang);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
             </div>
           )}
@@ -9205,6 +9328,70 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
       </div>
 
       {incDefects&&<>
+      {conquasStats&&(
+        <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,border:"1px solid rgba(88,86,214,0.2)"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,gap:8}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#1a1a1a",letterSpacing:"0.03em"}}>
+              ⚖️ QUALITY CHECK — Internal Finishes
+            </div>
+            <div style={{fontSize:10,fontWeight:700,color:"#5856d6",background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:6,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>
+              PROJECTED IF BAND {conquasStats.band}
+            </div>
+          </div>
+          {/* Rate + bar */}
+          <div style={{marginBottom:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
+              <span style={{fontSize:11,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.04em"}}>WEIGHTED NC RATE</span>
+              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:conquasStats.rate>=25?"#ff3b30":conquasStats.rate>=15?"#ff9500":conquasStats.rate>=10?"#5856d6":"#30d158"}}>
+                {conquasStats.rate.toFixed(1)}%
+              </span>
+            </div>
+            <div style={{background:"rgba(0,0,0,0.06)",borderRadius:4,height:8,overflow:"hidden"}}>
+              <div style={{background:conquasStats.rate>=25?"#ff3b30":conquasStats.rate>=15?"#ff9500":conquasStats.rate>=10?"#5856d6":"#30d158",height:"100%",width:`${Math.min(100,conquasStats.rate)}%`,borderRadius:4,transition:"width 0.3s ease"}}/>
+            </div>
+            <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",marginTop:6,lineHeight:1.4}}>
+              {conquasStats.totalWeightedNCs} weighted non-compliance{conquasStats.totalWeightedNCs!==1?"s":""} of {conquasStats.totalWeightedApplicable} applicable · {conquasStats.failCount} defect{conquasStats.failCount!==1?"s":""} across {conquasStats.batchCount} assessment{conquasStats.batchCount!==1?"s":""} ({conquasStats.totalChecks} checkpoint{conquasStats.totalChecks!==1?"s":""} assessed)
+            </div>
+          </div>
+          {/* By element */}
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.45)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>BY ELEMENT</div>
+            {conquasStats.componentRows.map((r,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"5px 0",borderBottom:i<conquasStats.componentRows.length-1?"1px solid rgba(0,0,0,0.05)":"none"}}>
+                <span style={{fontSize:12,color:"#1a1a1a",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis"}}>{r.name}</span>
+                <span style={{fontSize:10,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,minWidth:88,textAlign:"right"}}>
+                  {r.failCount} NC · wt {r.weightedNCs}/{r.weightedApplicable||"—"}
+                </span>
+                <span style={{fontSize:12,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",minWidth:48,textAlign:"right",color:r.rate>=25?"#ff3b30":r.rate>=15?"#ff9500":r.rate>=10?"#5856d6":"#30d158"}}>
+                  {r.weightedApplicable>0?r.rate.toFixed(1)+"%":"—"}
+                </span>
+              </div>
+            ))}
+          </div>
+          {/* By NC weightage */}
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.45)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>BY NC WEIGHTAGE</div>
+            <div style={{display:"flex",gap:8}}>
+              <div style={{flex:1,padding:"8px 10px",background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:8,textAlign:"center"}}>
+                <div style={{fontSize:9,fontWeight:700,color:"#1d8f3e",letterSpacing:"0.05em",fontFamily:"'Barlow Condensed',sans-serif"}}>1X FINISHINGS</div>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#1d8f3e"}}>{conquasStats.byTier["1X"]||0}</div>
+              </div>
+              <div style={{flex:1,padding:"8px 10px",background:"rgba(255,149,0,0.08)",border:"1px solid rgba(255,149,0,0.2)",borderRadius:8,textAlign:"center"}}>
+                <div style={{fontSize:9,fontWeight:700,color:"#b46700",letterSpacing:"0.05em",fontFamily:"'Barlow Condensed',sans-serif"}}>2X FUNCTIONALITY</div>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#b46700"}}>{conquasStats.byTier["2X"]||0}</div>
+              </div>
+              <div style={{flex:1,padding:"8px 10px",background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:8,textAlign:"center"}}>
+                <div style={{fontSize:9,fontWeight:700,color:"#cc0000",letterSpacing:"0.05em",fontFamily:"'Barlow Condensed',sans-serif"}}>3X LIVEABILITY</div>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#cc0000"}}>{conquasStats.byTier["3X"]||0}</div>
+              </div>
+            </div>
+          </div>
+          {/* Disclaimer — critical: don't mis-brand as full CONQUAS Band */}
+          <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",lineHeight:1.5,background:"rgba(255,149,0,0.06)",border:"1px solid rgba(255,149,0,0.18)",borderRadius:8,padding:"8px 10px"}}>
+            <b>Projection only — not official CONQUAS Band.</b> 0% = all pass, 100% = all fail; lower is better. Based on Internal Finishes (IF) only per BCA CONQUAS (Private Residential) R1 §3.3 weighted formula. Full project band requires Functional Tests (WTT, WPT, WFT) and External Finishes, plus QP declaration on Pull-Off + Heat Soak + WTT/WPT self-tests. Final accountability rests with the accredited checker, QP, or assessor — not this app.
+          </div>
+        </div>
+      )}
       <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14}}>
         <div style={lbl()}>{t("report.by_severity")}</div>
         {bySev.map(({s,count})=>(

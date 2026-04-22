@@ -3,71 +3,323 @@
     "name": "defects",
     "type": "base",
     "schema": [
-      { "name": "companyId", "type": "text", "required": true },
-      { "name": "projectId", "type": "text", "required": true },
-      { "name": "projectName", "type": "text" },
-      { "name": "entryType", "type": "text", "required": true },
-      { "name": "title", "type": "text", "required": true },
-      { "name": "description", "type": "text", "options": { "max": 5000 } },
-      { "name": "severity", "type": "text" },
-      { "name": "status", "type": "text", "required": true },
-      { "name": "component", "type": "text" },
-      { "name": "locationLevel", "type": "text" },
-      { "name": "locationZone", "type": "text" },
-      { "name": "locationSubzone", "type": "text" },
-      { "name": "locationGrid", "type": "text" },
-      { "name": "locationDisplay", "type": "text" },
-      { "name": "location", "type": "text" },
-      { "name": "assignee", "type": "text" },
-      { "name": "assigneeId", "type": "text" },
-      { "name": "dueDate", "type": "text" },
-      { "name": "duration", "type": "text" },
-      { "name": "actualCompleted", "type": "text" },
-      { "name": "costImpact", "type": "text" },
-      { "name": "costAmount", "type": "text" },
-      { "name": "costResponsible", "type": "text" },
-      { "name": "costDoc", "type": "file", "options": { "maxSelect": 3, "maxSize": 10485760, "mimeTypes": ["application/pdf", "image/jpeg", "image/png", "image/webp"] } },
-      { "name": "costRemarks", "type": "text", "options": { "max": 2000 } },
-      { "name": "loggedBy", "type": "text" },
-      { "name": "loggedByRole", "type": "text" },
-      { "name": "photo", "type": "file", "options": { "maxSelect": 5, "maxSize": 10485760, "mimeTypes": ["image/jpeg", "image/png", "image/webp"] } },
-      { "name": "photoOriginal", "type": "file", "options": { "maxSelect": 5, "maxSize": 10485760, "mimeTypes": ["image/jpeg", "image/png", "image/webp"] } },
-      { "name": "comments", "type": "json" },
-      { "name": "closedAt", "type": "text" },
-      { "name": "verifiedAt", "type": "text" },
-      { "name": "verifiedBy", "type": "text" },
-      { "name": "drawingPinId", "type": "text" },
-      { "name": "defect_id", "type": "text" },
-      { "name": "telegram_user", "type": "text" },
-      { "name": "transcript_text", "type": "text", "options": { "max": 5000 } },
-      { "name": "voice_file_id", "type": "text" },
-      { "name": "photo_file_id", "type": "text" },
-      { "name": "photo_url", "type": "text", "options": { "max": 2000 } },
-      { "name": "initiated_by", "type": "text" },
-      { "name": "responsible_party", "type": "text" },
-      { "name": "follow_up_by", "type": "text" },
-      { "name": "remarks", "type": "text" },
-      { "name": "cost", "type": "text" },
-      { "name": "quality", "type": "text" },
-      { "name": "target_fix_date", "type": "text" },
-      { "name": "resolved_date", "type": "text" },
-      { "name": "input_source", "type": "text" },
-      { "name": "unit", "type": "text" },
-      { "name": "category", "type": "text" },
-      { "name": "defect_type", "type": "text" },
-      { "name": "trade", "type": "text" },
-      { "name": "assigned_to", "type": "text" },
-      { "name": "timestamp_utc", "type": "text" },
-      { "name": "fieldProvenance", "type": "json" },
-      { "name": "lat", "type": "number" },
-      { "name": "lng", "type": "number" },
-      { "name": "mapZoom", "type": "number" },
-      { "name": "archivedAt", "type": "text" },
-      { "name": "archivedBy", "type": "text" },
-      { "name": "component_id", "type": "text" },
-      { "name": "defect_type_id", "type": "text" },
-      { "name": "checkpoint_id", "type": "text" },
-      { "name": "nc_tier", "type": "text" }
+      {
+        "name": "companyId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "projectId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "projectName",
+        "type": "text"
+      },
+      {
+        "name": "entryType",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "title",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "options": {
+          "max": 5000
+        }
+      },
+      {
+        "name": "severity",
+        "type": "text"
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "component",
+        "type": "text"
+      },
+      {
+        "name": "locationLevel",
+        "type": "text"
+      },
+      {
+        "name": "locationZone",
+        "type": "text"
+      },
+      {
+        "name": "locationSubzone",
+        "type": "text"
+      },
+      {
+        "name": "locationGrid",
+        "type": "text"
+      },
+      {
+        "name": "locationDisplay",
+        "type": "text"
+      },
+      {
+        "name": "location",
+        "type": "text"
+      },
+      {
+        "name": "assignee",
+        "type": "text"
+      },
+      {
+        "name": "assigneeId",
+        "type": "text"
+      },
+      {
+        "name": "dueDate",
+        "type": "text"
+      },
+      {
+        "name": "duration",
+        "type": "text"
+      },
+      {
+        "name": "actualCompleted",
+        "type": "text"
+      },
+      {
+        "name": "costImpact",
+        "type": "text"
+      },
+      {
+        "name": "costAmount",
+        "type": "text"
+      },
+      {
+        "name": "costResponsible",
+        "type": "text"
+      },
+      {
+        "name": "costDoc",
+        "type": "file",
+        "options": {
+          "maxSelect": 3,
+          "maxSize": 10485760,
+          "mimeTypes": [
+            "application/pdf",
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+          ]
+        }
+      },
+      {
+        "name": "costRemarks",
+        "type": "text",
+        "options": {
+          "max": 2000
+        }
+      },
+      {
+        "name": "loggedBy",
+        "type": "text"
+      },
+      {
+        "name": "loggedByRole",
+        "type": "text"
+      },
+      {
+        "name": "photo",
+        "type": "file",
+        "options": {
+          "maxSelect": 5,
+          "maxSize": 10485760,
+          "mimeTypes": [
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+          ]
+        }
+      },
+      {
+        "name": "photoOriginal",
+        "type": "file",
+        "options": {
+          "maxSelect": 5,
+          "maxSize": 10485760,
+          "mimeTypes": [
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+          ]
+        }
+      },
+      {
+        "name": "comments",
+        "type": "json"
+      },
+      {
+        "name": "closedAt",
+        "type": "text"
+      },
+      {
+        "name": "verifiedAt",
+        "type": "text"
+      },
+      {
+        "name": "verifiedBy",
+        "type": "text"
+      },
+      {
+        "name": "drawingPinId",
+        "type": "text"
+      },
+      {
+        "name": "defect_id",
+        "type": "text"
+      },
+      {
+        "name": "telegram_user",
+        "type": "text"
+      },
+      {
+        "name": "transcript_text",
+        "type": "text",
+        "options": {
+          "max": 5000
+        }
+      },
+      {
+        "name": "voice_file_id",
+        "type": "text"
+      },
+      {
+        "name": "photo_file_id",
+        "type": "text"
+      },
+      {
+        "name": "photo_url",
+        "type": "text",
+        "options": {
+          "max": 2000
+        }
+      },
+      {
+        "name": "initiated_by",
+        "type": "text"
+      },
+      {
+        "name": "responsible_party",
+        "type": "text"
+      },
+      {
+        "name": "follow_up_by",
+        "type": "text"
+      },
+      {
+        "name": "remarks",
+        "type": "text"
+      },
+      {
+        "name": "cost",
+        "type": "text"
+      },
+      {
+        "name": "quality",
+        "type": "text"
+      },
+      {
+        "name": "target_fix_date",
+        "type": "text"
+      },
+      {
+        "name": "resolved_date",
+        "type": "text"
+      },
+      {
+        "name": "input_source",
+        "type": "text"
+      },
+      {
+        "name": "unit",
+        "type": "text"
+      },
+      {
+        "name": "category",
+        "type": "text"
+      },
+      {
+        "name": "defect_type",
+        "type": "text"
+      },
+      {
+        "name": "trade",
+        "type": "text"
+      },
+      {
+        "name": "assigned_to",
+        "type": "text"
+      },
+      {
+        "name": "timestamp_utc",
+        "type": "text"
+      },
+      {
+        "name": "fieldProvenance",
+        "type": "json"
+      },
+      {
+        "name": "lat",
+        "type": "number"
+      },
+      {
+        "name": "lng",
+        "type": "number"
+      },
+      {
+        "name": "mapZoom",
+        "type": "number"
+      },
+      {
+        "name": "archivedAt",
+        "type": "text"
+      },
+      {
+        "name": "archivedBy",
+        "type": "text"
+      },
+      {
+        "name": "component_id",
+        "type": "text"
+      },
+      {
+        "name": "defect_type_id",
+        "type": "text"
+      },
+      {
+        "name": "checkpoint_id",
+        "type": "text"
+      },
+      {
+        "name": "nc_tier",
+        "type": "text"
+      },
+      {
+        "name": "observation_batch_id",
+        "type": "text"
+      },
+      {
+        "name": "batch_total_checks",
+        "type": "number"
+      },
+      {
+        "name": "batch_weighted_applicable",
+        "type": "number"
+      }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
@@ -79,10 +331,23 @@
     "name": "companies",
     "type": "base",
     "schema": [
-      { "name": "name", "type": "text", "required": true },
-      { "name": "adminId", "type": "text" },
-      { "name": "adminEmail", "type": "text" },
-      { "name": "createdAt", "type": "text" }
+      {
+        "name": "name",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "adminId",
+        "type": "text"
+      },
+      {
+        "name": "adminEmail",
+        "type": "text"
+      },
+      {
+        "name": "createdAt",
+        "type": "text"
+      }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
@@ -94,13 +359,37 @@
     "name": "members",
     "type": "base",
     "schema": [
-      { "name": "companyId", "type": "text", "required": true },
-      { "name": "userId", "type": "text", "required": true },
-      { "name": "name", "type": "text" },
-      { "name": "email", "type": "text" },
-      { "name": "role", "type": "text", "required": true },
-      { "name": "jobTitle", "type": "text" },
-      { "name": "joinedAt", "type": "text" }
+      {
+        "name": "companyId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "userId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "text"
+      },
+      {
+        "name": "email",
+        "type": "text"
+      },
+      {
+        "name": "role",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "jobTitle",
+        "type": "text"
+      },
+      {
+        "name": "joinedAt",
+        "type": "text"
+      }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
@@ -112,13 +401,36 @@
     "name": "projects",
     "type": "base",
     "schema": [
-      { "name": "companyId", "type": "text", "required": true },
-      { "name": "name", "type": "text", "required": true },
-      { "name": "code", "type": "text" },
-      { "name": "createdBy", "type": "text" },
-      { "name": "createdAt", "type": "text" },
-      { "name": "archived", "type": "bool" },
-      { "name": "ontology_edition", "type": "text" }
+      {
+        "name": "companyId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "code",
+        "type": "text"
+      },
+      {
+        "name": "createdBy",
+        "type": "text"
+      },
+      {
+        "name": "createdAt",
+        "type": "text"
+      },
+      {
+        "name": "archived",
+        "type": "bool"
+      },
+      {
+        "name": "ontology_edition",
+        "type": "text"
+      }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
@@ -130,14 +442,40 @@
     "name": "invites",
     "type": "base",
     "schema": [
-      { "name": "companyId", "type": "text", "required": true },
-      { "name": "code", "type": "text", "required": true },
-      { "name": "role", "type": "text" },
-      { "name": "jobTitle", "type": "text" },
-      { "name": "createdBy", "type": "text" },
-      { "name": "expiresAt", "type": "text" },
-      { "name": "usedBy", "type": "text" },
-      { "name": "usedAt", "type": "text" }
+      {
+        "name": "companyId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "code",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "role",
+        "type": "text"
+      },
+      {
+        "name": "jobTitle",
+        "type": "text"
+      },
+      {
+        "name": "createdBy",
+        "type": "text"
+      },
+      {
+        "name": "expiresAt",
+        "type": "text"
+      },
+      {
+        "name": "usedBy",
+        "type": "text"
+      },
+      {
+        "name": "usedAt",
+        "type": "text"
+      }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
@@ -149,9 +487,20 @@
     "name": "settings",
     "type": "base",
     "schema": [
-      { "name": "companyId", "type": "text", "required": true },
-      { "name": "key", "type": "text", "required": true },
-      { "name": "value", "type": "json" }
+      {
+        "name": "companyId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "key",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "json"
+      }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
@@ -163,18 +512,69 @@
     "name": "activity",
     "type": "base",
     "schema": [
-      { "name": "entryId", "type": "text", "required": true },
-      { "name": "companyId", "type": "text", "required": true },
-      { "name": "type", "type": "text", "required": true },
-      { "name": "action", "type": "text" },
-      { "name": "oldValue", "type": "text" },
-      { "name": "newValue", "type": "text" },
-      { "name": "comment", "type": "text", "options": { "max": 5000 } },
-      { "name": "userId", "type": "text" },
-      { "name": "userName", "type": "text" },
-      { "name": "userRole", "type": "text" },
-      { "name": "photo", "type": "file", "options": { "maxSelect": 1, "maxSize": 10485760, "mimeTypes": ["image/jpeg", "image/png", "image/webp"] } },
-      { "name": "timestamp", "type": "text" }
+      {
+        "name": "entryId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "companyId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "type",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "action",
+        "type": "text"
+      },
+      {
+        "name": "oldValue",
+        "type": "text"
+      },
+      {
+        "name": "newValue",
+        "type": "text"
+      },
+      {
+        "name": "comment",
+        "type": "text",
+        "options": {
+          "max": 5000
+        }
+      },
+      {
+        "name": "userId",
+        "type": "text"
+      },
+      {
+        "name": "userName",
+        "type": "text"
+      },
+      {
+        "name": "userRole",
+        "type": "text"
+      },
+      {
+        "name": "photo",
+        "type": "file",
+        "options": {
+          "maxSelect": 1,
+          "maxSize": 10485760,
+          "mimeTypes": [
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+          ]
+        }
+      },
+      {
+        "name": "timestamp",
+        "type": "text"
+      }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
@@ -186,12 +586,34 @@
     "name": "location_presets",
     "type": "base",
     "schema": [
-      { "name": "companyId", "type": "text", "required": true },
-      { "name": "projectId", "type": "text", "required": true },
-      { "name": "type", "type": "text", "required": true },
-      { "name": "parentValue", "type": "text" },
-      { "name": "value", "type": "text", "required": true },
-      { "name": "sortOrder", "type": "number" }
+      {
+        "name": "companyId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "projectId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "type",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "parentValue",
+        "type": "text"
+      },
+      {
+        "name": "value",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "sortOrder",
+        "type": "number"
+      }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
@@ -203,9 +625,20 @@
     "name": "component_presets",
     "type": "base",
     "schema": [
-      { "name": "companyId", "type": "text", "required": true },
-      { "name": "value", "type": "text", "required": true },
-      { "name": "sortOrder", "type": "number" }
+      {
+        "name": "companyId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "sortOrder",
+        "type": "number"
+      }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
@@ -217,15 +650,57 @@
     "name": "drawings",
     "type": "base",
     "schema": [
-      { "name": "companyId", "type": "text", "required": true },
-      { "name": "projectId", "type": "text", "required": true },
-      { "name": "name", "type": "text", "required": true },
-      { "name": "file", "type": "file", "required": true, "options": { "maxSelect": 1, "maxSize": 52428800, "mimeTypes": ["application/pdf", "image/jpeg", "image/png", "image/webp", "image/tiff"] } },
-      { "name": "pageCount", "type": "number" },
-      { "name": "uploadedBy", "type": "text" },
-      { "name": "uploadedAt", "type": "text" },
-      { "name": "archivedAt", "type": "text" },
-      { "name": "archivedBy", "type": "text" }
+      {
+        "name": "companyId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "projectId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "file",
+        "type": "file",
+        "required": true,
+        "options": {
+          "maxSelect": 1,
+          "maxSize": 52428800,
+          "mimeTypes": [
+            "application/pdf",
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/tiff"
+          ]
+        }
+      },
+      {
+        "name": "pageCount",
+        "type": "number"
+      },
+      {
+        "name": "uploadedBy",
+        "type": "text"
+      },
+      {
+        "name": "uploadedAt",
+        "type": "text"
+      },
+      {
+        "name": "archivedAt",
+        "type": "text"
+      },
+      {
+        "name": "archivedBy",
+        "type": "text"
+      }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
@@ -237,12 +712,35 @@
     "name": "pins",
     "type": "base",
     "schema": [
-      { "name": "drawingId", "type": "text", "required": true },
-      { "name": "entryId", "type": "text", "required": true },
-      { "name": "pageNum", "type": "number", "required": true },
-      { "name": "x", "type": "number", "required": true },
-      { "name": "y", "type": "number", "required": true },
-      { "name": "label", "type": "text" }
+      {
+        "name": "drawingId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "entryId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "pageNum",
+        "type": "number",
+        "required": true
+      },
+      {
+        "name": "x",
+        "type": "number",
+        "required": true
+      },
+      {
+        "name": "y",
+        "type": "number",
+        "required": true
+      },
+      {
+        "name": "label",
+        "type": "text"
+      }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
@@ -254,13 +752,40 @@
     "name": "map_markups",
     "type": "base",
     "schema": [
-      { "name": "companyId", "type": "text", "required": true },
-      { "name": "projectId", "type": "text", "required": true },
-      { "name": "type", "type": "text", "required": true },
-      { "name": "color", "type": "text" },
-      { "name": "text", "type": "text", "options": { "max": 1000 } },
-      { "name": "geo", "type": "json" },
-      { "name": "createdBy", "type": "text" }
+      {
+        "name": "companyId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "projectId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "type",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "color",
+        "type": "text"
+      },
+      {
+        "name": "text",
+        "type": "text",
+        "options": {
+          "max": 1000
+        }
+      },
+      {
+        "name": "geo",
+        "type": "json"
+      },
+      {
+        "name": "createdBy",
+        "type": "text"
+      }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
@@ -272,13 +797,39 @@
     "name": "map_pins",
     "type": "base",
     "schema": [
-      { "name": "companyId", "type": "text", "required": true },
-      { "name": "projectId", "type": "text", "required": true },
-      { "name": "entryId", "type": "text", "required": true },
-      { "name": "lat", "type": "number", "required": true },
-      { "name": "lng", "type": "number", "required": true },
-      { "name": "mapZoom", "type": "number" },
-      { "name": "label", "type": "text" }
+      {
+        "name": "companyId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "projectId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "entryId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "lat",
+        "type": "number",
+        "required": true
+      },
+      {
+        "name": "lng",
+        "type": "number",
+        "required": true
+      },
+      {
+        "name": "mapZoom",
+        "type": "number"
+      },
+      {
+        "name": "label",
+        "type": "text"
+      }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
@@ -290,8 +841,16 @@
     "name": "counters",
     "type": "base",
     "schema": [
-      { "name": "key", "type": "text", "required": true },
-      { "name": "value", "type": "number", "required": true }
+      {
+        "name": "key",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "number",
+        "required": true
+      }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
@@ -303,19 +862,62 @@
     "name": "ontology_components",
     "type": "base",
     "schema": [
-      { "name": "edition", "type": "text", "required": true },
-      { "name": "version", "type": "text", "required": true },
-      { "name": "itemId", "type": "text", "required": true },
-      { "name": "name", "type": "text", "required": true },
-      { "name": "category", "type": "text" },
-      { "name": "assessment_weight_pct", "type": "number" },
-      { "name": "parent_id", "type": "text" },
-      { "name": "phase", "type": "number" },
-      { "name": "verbatim_source", "type": "text" },
-      { "name": "gip_references", "type": "json" },
-      { "name": "note", "type": "text" },
-      { "name": "provenance_override", "type": "json" },
-      { "name": "needs_review", "type": "bool" }
+      {
+        "name": "edition",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "version",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "itemId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "category",
+        "type": "text"
+      },
+      {
+        "name": "assessment_weight_pct",
+        "type": "number"
+      },
+      {
+        "name": "parent_id",
+        "type": "text"
+      },
+      {
+        "name": "phase",
+        "type": "number"
+      },
+      {
+        "name": "verbatim_source",
+        "type": "text"
+      },
+      {
+        "name": "gip_references",
+        "type": "json"
+      },
+      {
+        "name": "note",
+        "type": "text"
+      },
+      {
+        "name": "provenance_override",
+        "type": "json"
+      },
+      {
+        "name": "needs_review",
+        "type": "bool"
+      }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
@@ -327,16 +929,50 @@
     "name": "ontology_defect_types",
     "type": "base",
     "schema": [
-      { "name": "edition", "type": "text", "required": true },
-      { "name": "version", "type": "text", "required": true },
-      { "name": "itemId", "type": "text", "required": true },
-      { "name": "element", "type": "text" },
-      { "name": "typical_component_ids", "type": "json" },
-      { "name": "tier", "type": "text" },
-      { "name": "name", "type": "text", "required": true },
-      { "name": "measurement_threshold", "type": "text" },
-      { "name": "verbatim_source_row", "type": "text" },
-      { "name": "needs_review", "type": "bool" }
+      {
+        "name": "edition",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "version",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "itemId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "element",
+        "type": "text"
+      },
+      {
+        "name": "typical_component_ids",
+        "type": "json"
+      },
+      {
+        "name": "tier",
+        "type": "text"
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "measurement_threshold",
+        "type": "text"
+      },
+      {
+        "name": "verbatim_source_row",
+        "type": "text"
+      },
+      {
+        "name": "needs_review",
+        "type": "bool"
+      }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
@@ -348,14 +984,45 @@
     "name": "ontology_checkpoints",
     "type": "base",
     "schema": [
-      { "name": "edition", "type": "text", "required": true },
-      { "name": "version", "type": "text", "required": true },
-      { "name": "itemId", "type": "text", "required": true },
-      { "name": "component_id", "type": "text" },
-      { "name": "tier", "type": "text" },
-      { "name": "description", "type": "text", "required": true },
-      { "name": "pass_criteria", "type": "text", "options": { "max": 2000 } },
-      { "name": "related_defect_type_ids", "type": "json" }
+      {
+        "name": "edition",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "version",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "itemId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "component_id",
+        "type": "text"
+      },
+      {
+        "name": "tier",
+        "type": "text"
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "pass_criteria",
+        "type": "text",
+        "options": {
+          "max": 2000
+        }
+      },
+      {
+        "name": "related_defect_type_ids",
+        "type": "json"
+      }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
@@ -367,14 +1034,45 @@
     "name": "ontology_trades",
     "type": "base",
     "schema": [
-      { "name": "edition", "type": "text", "required": true },
-      { "name": "version", "type": "text", "required": true },
-      { "name": "itemId", "type": "text", "required": true },
-      { "name": "name", "type": "text", "required": true },
-      { "name": "gip_reference", "type": "text" },
-      { "name": "edition_of_gip", "type": "text" },
-      { "name": "typical_component_ids", "type": "json" },
-      { "name": "description", "type": "text", "options": { "max": 2000 } }
+      {
+        "name": "edition",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "version",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "itemId",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "gip_reference",
+        "type": "text"
+      },
+      {
+        "name": "edition_of_gip",
+        "type": "text"
+      },
+      {
+        "name": "typical_component_ids",
+        "type": "json"
+      },
+      {
+        "name": "description",
+        "type": "text",
+        "options": {
+          "max": 2000
+        }
+      }
     ],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
