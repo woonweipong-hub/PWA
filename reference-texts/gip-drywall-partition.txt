@@ -1,0 +1,396 @@
+FOREWORD
+
+                     The Building and Construction Authority’s (BCA) Construction Quality Assessment System
+                     (CONQUAS) has been widely adopted as the de facto national yardstick for measuring the
+                     quality of building projects. To meet the rising expectations of homeowners, the Quality
+                     Mark (QM) Scheme was launched in 2002 to promote a higher consistency in workmanship
+                     standards for residential developments. Besides setting standards and measuring the level
+                     of workmanship through CONQUAS and QM, BCA has developed a series of publications of
+                     Good Industry Practices Guide for different trades.
+
+                     This “Good Industry Practices – Drywall Internal Partition” is part of the CONQUAS
+                     Enhancement Series on Good Industry Practices. A noticeable increase in the use of drywall has
+                     been observed in the construction industry over the years. Drywall construction has emerged
+                     as one of the leading options towards achieving quality finishing with higher productivity
+                     without compromising its primary functionality as an internal wall. The use of drywall is also
+                     encouraged and recognised under CONQUAS 8th edition. This guide shares with the industry
+                     some of the good practices adopted by practitioners and contractors who consistently
+                     deliver high quality work in drywall construction. It provides simple and practical illustrations
+                     to users on how good quality work can be achieved with high productivity. Common defects
+                     associated with drywall internal partition and their corresponding remedies are highlighted.
+                     With the tight manpower constraints faced by the industry, drywall construction is a highly
+                     practical option.
+
+                     This guide is not meant to be a definitive textbook on how drywall must be designed and
+                     installed, nor is it the final word on quality, as there will always be new materials and methods
+                     with changing technology. To obtain more comprehensive information and guidance, readers
+                     should seek advice from professional designers and material suppliers. We gratefully
+                     acknowledge the contributions of the practitioners to this guide and trust that the industry will
+                     find this publication useful in its pursuit of quality excellence. We welcome any contributions
+                     from readers that may improve future editions of this guide.
+
+                   Lam Siew Wah
+                     Deputy Chief Executive Officer
+                     Industry Development
+                     Building and Construction Authority
+
+ACKNOWLEDGEMENT
+
+This “Good Industry Practices Guide – Drywall Internal Partition” was developed with inputs
+from Architects, Developers, Builders, Specialist Contractors and members from various
+industry associations and organisations.
+
+A Technical Committee was formed to review the contents and good practices identified. We
+wish to thank the members of the Technical Committee for their valuable contributions.
+
+Technical Committee:                        BCA
+Chairman​		Mr Ding Hock Hui​			             BCA
+Deputy Chairman​		Mr Tan Boon Kee​​			      BCA
+Secretary​		Mr Gary Chua Chei Seong​​		     BCA
+		Ms Jacelyn Yeo Hui Ping​​		               BCA
+Members ​		Mr Ng Kam Leong ​			             BCA
+		Mr Ramamoorthy Rajendran​​		              BCA
+		Ms Jayanthi Peariahsamy ​		               HDB
+		Mr Donald Ng​ 				                        SCAL
+		Mr Zachary Chua​			                       REDAS
+		Mr Chng Chee Beow ​			                    Singapore Institute of Architects
+		Mr Richard Lai​			                        City Developments Ltd
+		Mr Gary Cher​				                         Dragages Singapore Pte Ltd
+		Mr Thierry Brezac​			                     Tiong Seng Contractors Pte Ltd
+		Mr Colin Tan​				                         Woh Hup Pte Ltd
+		Mr Jerry Lam​				                         Pacific Interiors Supply (PIS Pte Ltd)
+		Mr Billy Cho and Mr Daniel Lee​		         Boral Plasterboard (Malaysia) Sdn Bhd
+		Mr Teo Wee Hwee​			
+
+We would also like to thank the following organisations and individuals for their valuable
+
+feedback in the review of this guide:
+
+	​
+
+Singapore Civil Defence Force				           Dragages Singapore Pte Ltd
+
+Institution of Engineers Singapore				      Lian Beng Construction (1988) Pte Ltd
+
+Singapore Institute of Building Limited			  Mr Russell Cole
+
+CapitaLand Limited							Er. Rose Nguan
+
+City Developments Ltd						                 Ms Tan Lay Twan
+
+Ong & Ong Corporation						                 Mr Desmond Hill
+
+Tan Tian Chong
+Group Director
+
+Technology Development Division
+
+CONTENTS
+
+1. INTRODUCTION                                                   1
+
+2. DESIGN                                                         2		
+
+2.1 Drywall Systems                                               3
+
+3. MATERIAL SELECTION                                             6
+
+3.1 Framing System                                                6		
+
+3.2 Board Usage                                                   8
+
+3.3 Infill and Insulation Materials                               10
+
+3.4 Type of Joint Materials                                       11
+
+3.5 Accessories                                                   13
+
+3.6 Tools Selection                                               15
+
+			
+4. DELIVERY, HANDLING AND STORAGE                                 17
+
+				
+5. PREPARATORY WORKS                                              19
+
+5.1 Approved Shop Drawing, Method Statement, Material and Sample  19		
+
+5.2 Contact Surface Preparation                                   21
+
+5.3 Setting Out Preparation                                       23
+
+6. INSTALLATION                                                   25			
+
+6.1 Framing Works                                                  25
+6.2 Opening                                                        28
+6.3 Additional Supports for M&E Services and Other Fixtures        30		
+6.4 Board Installation                                             32
+6.5 Infill and Insulation Installation                             36		
+6.6 Joint Treatment                                                37
+6.7 Fixing Items to Drywall                                        42
+
+7. PROTECTION                                                     43			
+
+			
+8. WET AREAS APPLICATION                                          45
+
+8.1 Board System                                                  45		
+
+8.2 Recommended Good Practices                                    46
+
+9. RECOMMENDED DETAILING                                          48
+
+10. COMMON DEFECTS AND REMEDIES                                   52
+
+			
+APPENDIX                                                          58
+
+Appendix A. Wall Comparison By Function Requirements              58
+
+Appendix B. Sample of Fixing Items                                59
+
+Appendix C. Sample of Inspection and Test Plan                    61
+
+Appendix D. Request for Inspection Form                           67
+
+REFERENCES                                                        68
+
+   1. INTRODUCTION
+
+        Internal wall is an essential element for all buildings. There are different types of
+        materials used for internal wall construction. Given the high and increasing property
+        prices, home owners’ expectations of quality homes and buildings have also risen
+        in tandem. The tight manpower situation has also led to finding solutions that are
+        productive, cost effective and environmentally friendly.
+
+        Drywall construction has emerged as the leading option towards achieving quality
+        finishing with higher productivity without compromising its primary functionality as an
+        internal wall. Drywalls are lightweight (approximately 10-15% the weight of conventional
+        brick walls), which can result in reduced structural loads on foundations thus reducing
+        structural, piling and foundation costs. Mechanical and electrical services can easily
+        be embedded within drywalls. There is no need to hack walls to embed services
+        as when conventional brick or block walls are used. The use of drywalls facilitates
+        dry construction, eliminating messy plastering works as its smooth and even surfaces
+        are ready to receive paint finishes directly. Drywall systems are easily installed, can
+        be redesigned and quickly relocated according to one’s needs with no noisy and
+        untidy hacking of concrete or bricks. Drywall construction is cleaner, quieter and
+        environmentally friendly.
+
+        Apart from high quality finish and productivity, drywall systems contribute to higher
+        buildable and constructability scores where minimum standards are now mandated.
+        Designers and builders should consider this system for their projects. In the CONQUAS
+        8th edition, the use of drywalls and its impact on quality are also recognised and
+        encouraged. Award points are given where drywalls are used leading to improved
+        CONQUAS score for the project.
+
+        While there are some common misperceptions about drywalls, this guide serves to
+        dispel them. With improvements in manufacturing technology and design, drywalls are
+        now able to meet, if not exceed, the standards expected of conventional brick or block
+        wall construction in areas like acoustic performance, thermal insulation and resistance
+        to fire and damp conditions. This has led to many leading and progressive developers
+        using drywalls in their higher end residential projects.
+
+        This guide therefore provides simple and practical tips on how good quality drywall
+        can be achieved on site. It highlights the salient quality issues involved in the design,
+        material selection, and installation of drywalls. Following the processes in this guide
+        will lead to higher quality standards, better buildable and constructability scores and
+        improved productivity.
+
+1
+
+2. DESIGN
+
+There is a wide range of wall partitions available in the market. Design of wall partition should take into
+consideration the functional performance, structural performance and appearance. In this guide, the focus
+will be on drywall internal partition system. Where the drywall is designed to meet fire safety standards e.g.
+as fire compartmentation wall, the regulatory requirements should be followed.
+
+Table 2.1 Brick Wall and Drywall Comparison by Functional Requirements (Based on floor to floor
+height of 3m)
+
+       Requirements          Conventional Brick               Drywall Partition
+                                (100mm thick)                 (~100mm thick)
+Weight
+Productivity                          900 kg/ m                      ~113 kg/ m
+                                 4 – 7m²/man-day                20– 25m²/man-day
+Non-Combustibility
+BS 476 : Pt 4                   Deemed to satisfy                         Pass
+
+Fire Rating                            120 mins                        120 mins
+BS 476 : Pt 20 & Pt 22
+Sound Insulation                  STC35 – STC40                        ~ STC50
+Usage in Wet Areas                        Yes                              Yes
+
+                             By surface hacking               By fitting services before
+                                                                        closing up
+
+On-Site Installation of
+Concealed Wiring, Ducting &
+Pipework
+
+Surface Appearance               Smooth with plastering       Smooth after joint compound
+Applied Finishes: Tiling       (Only with skilled plasterer)
+Joint Treatment                                                                 Yes
+                                               Yes            Joint tape is used to seal joint
+Fastener Types                                                followed by application of joint
+Flexibility of Relocation          Mesh reinforcement
+                              between brick and adjoining                  compound
+
+                                  concrete column/wall           • Anti-corrosion Screws
+                                                                 • Cavity Anchors
+                               • Plastic Plugs
+                               • Chemical Anchors                      Quick and easy
+                               • Impact Anchors
+
+                             Slow, Noisy, Dusty and Untidy
+
+For more comparison, please refer to Appendix A
+
+                                                                                                                2
+
+DESIGN
+
+2.1 Drywall Systems                                             Design Solution            Acoustical Solution
+                                                                                           Impact Solution
+The following are the usual design considerations               Wet Area Solution
+and features in drywall systems:-                    Figure 2.1a Example in a Unit Layout
+
+      • architectural;
+      • impact;
+      • fire resistance;
+      • acoustics;
+      • wet area usage; and
+      • high wall.
+
+Figure 2.1 Drywall Design Considerations & Features
+
+          Design Consideration                                            Features
+1. Architectural                                     • Design flexibility
+                                                     • Flatter and smoother surface
+                                                     • Better finishes
+
+2. Impact                                            • Protection in high activity areas
+                                                     • Inter-tenancy wall security
+
+            3. Fire Resistance                        • Up to 4 hours fire rating
+            4. Acoustics                              • Non-combustible board
+
+3                                                    • Noise control from both interior and exterior
+                                                     • Ability to develop quiet zones
+
+          Design Consideration                                                            DESIGN
+5. Wet Area Usage
+                                                     Features
+                                • Protection against steam & moisture
+                                • Better mould resistance
+                                • Better finishes
+
+6. High Wall                    • Structural stability*
+                                • Higher productivity
+                                • Better finishes
+
+                                  To PE’s design
+
+                                                                                                  4
+
+3. MATERIAL SELECTION
+
+Different drywall systems have varying performance properties. This requires careful selection of materials to meet
+the performance requirements of the internal wall. The main material components for a drywall system include:-
+
+     • Framing system
+     • Plasterboard
+     • Infill and Insulation Material
+     • Joint Materials
+     • Accessories
+     • Tools
+
+3.1 Framing System
+
+The framing system comprises pre-measured locking runners/tracks with starter studs and bracing. The
+system will also take into consideration the provision of openings and additional support for other features
+according to the design.
+
+Figure 3.1a Framing System
+
+              Components  Description
+
+Runner/Track              The runners/tracks shall be galvanised steel
+                          U-section. They should be tight fit, solid web,
+                          and no less than thickness of studs.
+
+                          All steel sections are rolled from G250 tensile
+                          steel and galvanised to Z180 specification and
+                          having minimum section properties shown on
+                          approved shop drawings.
+
+Stud                      The studs shall be galvanized steel C-studs.
+                          They are to be installed onto the runner/track
+                          vertically.
+
+                          All steel sections are rolled from G250 tensile
+                          steel and galvanised to Z180 specification and
+                          having minimum section properties shown on
+                          approved shop drawings.
+
+Bracing                   Provide all braced framing of load bearing steel
+                          stud framing at regular interval in accordance
+                          to approved shop drawings and method
+                          statement. They are essential at locations
+                          such as door opening, M&E services and other
+                          fixtures to withstand the imposed load.
+
+                                                                                                                     6
+
+   MATERIAL SELECTION
+
+            Components                                           Description
+
+   Opening                                     Studs should be boxed and mechanically
+                                               fastened to the runner/track sections around
+                                               all window and door openings, as a minimum.
+
+   Additional Support for M&E Services and     The interval of additional support to follow
+   Other Fixtures                              approved shop drawings and method
+                                               statement e.g. for fan coil unit (FCU), bedroom
+                                               wardrobe, kitchen cabinet, etc.
+
+   Figure 3.1b Fire-rated Door Framing Layout
+
+                          Fire Rated
+
+7
+
+                                   MATERIAL SELECTION
+
+3.2 Board Usage
+
+Drywall plasterboard selection is dependent on its usage (Table 2.1). It is critical to use the right product at
+the right location. The common types of boards used locally are gypsum based and calcium silicate mineral
+boards. There are other types of boards available in the industry such as cement board, metamorphic mineral
+board, etc. These boards have to fulfil one or more of the 4 main types of wall functions as indicated in Figure
+3.2a according to the design intent. Figure 3.2b illustrates the different types of plasterboard edge profile.
+
+Figure 3.2a Types of Boards                           Description
+
+                 Types of Boards   • Single layer board.
+                                   • Impact resistance and durability.
+     Standard                      • Multi-purpose wall lining.
+
+Abuse Resistance                   • Single layer board.
+
+                                   • Outperforms standard board in terms of
+
+                                        abrasion, indentation and penetration.
+
+                                   • Pull-Down Test.
+
+High Performance Sound Insulation  • Single or multi-layer board (Typically one to
+
+                                        four boards).
+
+                                   • Sound Transmission Class (STC) value of
+
+                                        drywall ranges from 40 to 60.
+
+                                   • Acoustical Theory of ‘Mass-Spring-Mass’.

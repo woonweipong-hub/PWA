@@ -1,0 +1,394 @@
+PREFABRICATED
+
+BATHROOM UNIT (PBU)
+
+GOOD INDUSTRY PRACTICES
+
+                            PREFABRICATED BATHROOM UNIT (PBU) | 1
+
+CONQUAS Enhancement Series
+
+           FOREWORD
+
+The Building and Construction Authority’s (BCA) Construction Quality Assessment System (CONQUAS) has been
+widely adopted as the de facto national yardstick for measuring the workmanship quality of building projects. To
+meet the rising expectations of homeowners, the Quality Mark (QM) Scheme was launched in 2002 to promote
+a higher consistency in workmanship standards for private residential developments. To help projects achieve
+the standards in CONQUAS and QM, BCA has developed a series of publications on Good Industry Practices
+for different trades.
+
+This “Good Industry Practices – Prefabricated Bathroom Unit (PBU)” is part of the CONQUAS Enhancement
+Series to promote good practices. The PBU has been identified as a technology that can achieve consistent high
+quality workmanship and productivity, provided it is done correctly with proper planning, design and execution.
+PBUs are pre-‐­ assembled off site complete with services and fittings. Much of the labour intensive trade activities
+are now carried out in a controlled factory type environment shielded from the elements. The PBUs can be
+produced in parallel with other critical construction site of activities, thus shortening the construction period.
+Recognising these benefits in high quality and productivity, the use of PBUs will be mandated for all residential
+government land sales (GLS) sites in later part of 2014.
+
+The use of PBUs is also encouraged and recognised under CONQUAS 8th edition. Higher buildable design
+scores can also be achieved by projects that include PBUs in their designs. This guide shares some of the
+good practices adopted by practitioners and contractors who consistently deliver high quality work in PBU
+construction. It provides simple and practical illustrations on how good quality work can be achieved with higher
+productivity. Quality checks and critical inspections for PBUs are highlighted. This edition focuses on the Precast
+Concrete Volumetric System PBU, while other types of PBUs will be covered in subsequent publications.
+
+This guide is not meant to be a definitive publication on or dictate how PBUs must be designed and installed. As
+there will always be new materials and construction methods, it will evolve with time and changing technology. To
+obtain more comprehensive information and guidance, readers should seek professional advice from designers
+and suppliers of PBUs. We gratefully acknowledge the contributions of practitioners in the production of this
+guide and trust that the industry will find this publication useful. We welcome any contributions from readers to
+further improve this and subsequent editions of this guide.
+
+Lam Siew Wah
+
+Deputy Chief Executive Officer
+Industry Development
+Building and Construction Authority
+
+             ACKNOWLEDGEMENT
+
+This “Good Industry Practices – Prefabricated Bathroom Unit (PBU)” was developed with inputs from Architects, Developers,
+Builders, Specialist Contractors and members from various industry associations and organisations.
+
+A Technical Committee was formed to review the contents and good practices identified. We wish to thank the members of the
+Technical Committee for their valuable contributions.
+
+Technical Committee:
+
+Chairman              Mr Ding Hock Hui           Building and Construction Authority
+                                                 Building and Construction Authority
+Dy Chairman           Mr Tan Boon Kee
+
+Working Committee     Mr Rajendran Ramamoorthy   Building and Construction Authority
+                      Mr Ng Kam Leong            Building and Construction Authority
+                      Mr Gary Chua Chei Seong    Building and Construction Authority
+                      Ms Jacelyn Yeo Hui Ping    Building and Construction Authority
+                      Mr Stephen Chan Keng Huat  Building and Construction Authority
+                      Mr Kelven Yee Weng Cheong  Building and Construction Authority
+
+Members               Mr Ng Thiam Min            Housing and Development Board
+                      Mr Richard Lai             Singapore Institute of Architects
+                      Mr Lim Thiam Kooi          Singapore Contractors Association Ltd
+                      Mr Ryan Lim                Singapore Contractors Association Ltd
+                      Mr Keith Ooi               Real Estate Development Association of Singapore
+                      Mr Lim Song King           City Developments Ltd
+                      Mr Kelvin Lo               CapitaLand Ltd
+                      Mr Eddie Lam               Woh Hup (Pte) Ltd
+                      Mr Thierry Brezac          Dragages Singapore Pte ltd
+                      Mr Chiang Kian Hong        Tiong Seng Contractors Pte Ltd
+                      Mr Ichiro Okamoto          Shimizu Corporation (Singapore Office)
+                      Mr Yong Chiang Boon        Eastern Pretech Pte Ltd
+                      Mr Tan Bian Tiong          Excel Precast Pte Ltd
+                      Mr Dennis Chew             Excel Precast Pte Ltd
+                      Mr William Ling            Sembcorp EOSM Pte Ltd
+                      Mr Wong Lok Toon           Squire Mech Pte Ltd
+                      Mr Teo Wee Hwee            USGBORAL
+                      Mr Billy Cho               USGBORAL
+
+We would like to thank the following organizations for their valuable feedback in the review of this guide:
+
+Building and Construction Authority
+Er Rose Nguan 		  Construction Productivity Centre (CPC)
+
+Er Tan Chong Lin  Building Engineering (BE)
+
+Deva Lutchia 		   Building Plan & Management (BPM)
+
+Building and Construction Authority Academy
+Mr Qin Hao 		     Centre For Construction IT
+
+Agencies and Associations
+
+Housing and Development Board (HDB)
+Singapore Institute of Architects (SIA)
+Institution of Engineers, Singapore (IES)
+Real Estate Development Association of Singapore (REDAS)
+Association of Consulting Engineers Singapore (ACES)
+
+Developers                                                Architects / Consultants
+
+CapitaLand Residential Singapore Pte Ltd                  DP Architects Pte Ltd
+City Developments Ltd                                     DCA Architects Pte Ltd
+Keppel Land International Limited
+Bukit Sembawang Estates Ltd                               PBU Manufacturers
+
+Contractors                                               Excel Precast Pte Ltd
+                                                          Eastern Pretech Pte Ltd
+Dragages Singapore Pte Ltd
+Straits Construction Singapore Pte Ltd                    Others
+Tiong Seng Contractors Pte Ltd
+Woh Hup Pte Ltd                                           Hansgrohe Pte Ltd
+Shimizu Corporation                                       Gerberit South East Asia Pte Ltd
+Hexacon Construction Pte Ltd
+Lum Chang Building Contractors Pte Ltd
+
+Tan Tian Chong
+
+Group Director
+Technology Development Division
+Building and Construction Authority
+
+CONTENTS
+
+1. INTRODUCTION                                      1
+
+2. TYPES OF PBU                                      2
+
+3. PRECAST CONCRETE VOLUMETRIC SYSTEM PBU            4
+
+3.1  Design Considerations                           5
+
+3.2  Bathroom Production                             11
+
+3.3  Protection, Transportation and Lifting          17
+
+3.4  Installation                                    18
+
+3.5  M&E Connections and Final Fixings               20
+
+3.6  Maintenance, Replacement and Renovation         28
+
+4. GOOD PRACTICES IN INSTALLATION,                   34
+
+ARCHITECTURAL FINISHES, M&E SERVICES AND RENOVATION
+
+4.1  Installation                                    34
+
+4.2  Architectural Finishes                          37
+
+4.3  M & E Services                                  39
+
+4.4  Renovation                                      42
+
+5. CRITICAL INSPECTIONS AND QUALITY CHECKS           44
+
+5.1  Critical Functionality Inspection and Tests     44
+
+5.2  Quality Checks                                  48
+
+APPENDIX                                             52
+
+APPENDIX A: SAMPLE OF INSPECTION AND TEST PLAN
+
+     PRECAST CONCRETE SHELL                          52
+
+     PRECAST BATHROOM AT MANUFACTURER’S FACTORY      56
+
+     PRECAST BATHROOM (SITE INSTALLATION)            58
+
+APPENDIX B: REQUEST FOR INSPECTION FORM
+
+     PRECAST FORMWORK                                60
+
+     PRECAST CONCRETING                              61
+
+     ARCHITECTURAL FLOOR / WALL                      63
+
+REFERENCES                                           64
+
+8 | PREFABRICATED BATHROOM UNIT (PBU)
+
+1. INTRODUCTION
+
+           The bathroom is an indispensable component in all buildings.
+           The conventional method of constructing a bathroom on site
+           involves many labour intensive building trades such as brick
+           or block work, waterproofing, finishes, plumbing, sanitary,
+           electrical works and accessories installation. This requires
+           extensive manpower, time and co-ordination among trades
+           within a restricted site environment.
+
+           A prefabricated bathroom unit (PBU) refers to a bathroom unit
+           preassembled off-site complete with finishes, sanitary wares,
+           concealed pipes, conduits, ceiling and bathroom cabinets
+           before installing into position. A PBU which integrates various
+           trades and constructed in an off-site factory environment can
+           achieve consistent and high quality workmanship and improved
+           site productivity.
+
+           The introduction of PBU can address the extensive on-site
+           manpower, time, and coordination issues. Off-site fabrication
+           can run parallel to other construction site activities, thereby
+           shortening the construction cycle. The effects of inclement
+           weather downtime are also minimized. Other benefits of
+           PBU include better control of materials, streamlined factory
+           fabrication and production processes, less co-ordination with
+           multiple trades/parties, less abortive work for construction
+           sites, etc.
+
+           PBUs have been widely used around the world including Japan,
+           USA, UK, Italy and many other countries. There are many types
+           and variants of PBU in the market. In Singapore, both HDB and
+           private developers have used PBUs in some projects since the
+           mid-90s.
+
+           This edition focuses on Precast Concrete Volumetric System
+           PBU i.e. PBU with concrete floor and walls, for residential
+           developments. The other types of PBUs will be covered in
+           subsequent publications.
+
+                                 PREFABRICATED BATHROOM UNIT (PBU) | 1
+
+ 2. TYPES OF PBU
+
+  2.1 There are many types of PBU and it is essential to understand the characteristics of each type before
+
+     its selection for use. The above pictures show 2 main types viz. PBU formed with concrete base and walls of
+     concrete or other materials e.g. drywall, steel panel, etc. and PBU with fibre reinforced walls and floor panels.
+     Each type has its own characteristics. Developers, consultants and builders should evaluate and select the type that
+     meets their project requirements and this should be incorporated into their project planning and design.
+
+2 | PREFABRICATED BATHROOM UNIT (PBU)
+
+Table 2.1 Comparison of Different Types of PBU
+
+Weight              Precast          Lightweight         Steel Wall       Drywall PBU          FRP PBU
+                   Concrete         Concrete PBU         Panel PBU
+                  Volumetric                                              ~2 tonnes (with     < 2 tonnes
+                                      ~3.5 tonnes      ~2.5 to 5 tonnes       finishes)      (with finishes)
+                      PBU            (with finishes)    (with finishes)
+                 (Monolithic)
+
+                ~3.4 to 9 tonnes
+                 (with finishes)
+
+Handling and    No additional       No additional      May requires       May requires       May requires
+transportation    temporary           temporary          additional         additional         additional
+                  stiffening          stiffening        temporary          temporary           temporary
+                   required            required          stiffening         stiffening        stiffening, if
+
+                                                                                             preassembled
+                                                                                                  off site
+
+ Installation      Usually by           Critical or        Critical or        Critical or       Designed
+   Method       critical path (top  non-critical path  non-critical path  non-critical path     for on-site
+                 down) method                                                                  installation
+   Hoisting     Needs hoisting           method           installation       installation
+ Machinery                                                                                   Needs hoisting
+                     by crane             Needs        Needs hoisting     Needs hoisting         by crane
+ Familiar to                           hoisting by         by crane           by crane           crane, if
+renovators in       Similar to
+maintenance,      conventional             crane                                             preassembled
+replacement                                                                                       off-site
+/ renovation        bathroom          Similar to       Cannot use         May use
+                                    conventional                                                 Affected
+    works                                              conventional       conventional        panel can be
+                                      bathroom
+                                                       method of chisel method of chisel        removed;
+                                                                                              Alternatively,
+                                                       and hammer; and hammer to             entire PBU can
+                                                                                               be changed
+                                                       Heating is remove tiles and
+
+                                                       required to cutter to create
+
+                                                       remove tiles       openings in
+
+                                                       installed by glue board to replace
+
+                                                                          piping;
+
+                                                                          Easy to patch
+
+                                                                          opening
+
+Provision for     Similar to          Similar to       Need to specify    Need to specify    Need to specify
+ Barrier-Free   conventional        conventional         locations of       locations of       locations of
+Accessibility                                             supports in        supports in        supports in
+Requirements      bathroom            bathroom           Homeowner          Homeowner          Homeowner
+                                                         User Manual        User Manual        User Manual
+
+                                                       PREFABRICATED BATHROOM UNIT (PBU) | 3
+
+ 3. PRECAST CONCRETE
+ VOLUMETRIC SYSTEM PBU
+
+     Precast concrete volumetric prefabricated bathroom unit (PBU) is one of the most commonly used PBU systems in
+     Singapore. Its main advantage is its robustness and readiness to accommodate repair and maintenance, which far
+     outweighs the disadvantages posed by its heavier weight and the top down installation method (critical path).
+     This chapter outlines the considerations in design, production, installation and maintenance of precast concrete
+     volumetric PBU including architectural and M&E work sequence, transportation, lifting and protection, installation and
+     replacement.
+4 | PREFABRICATED BATHROOM UNIT (PBU)
+
+3.1 Design Considerations
+
+Design parameters are critical for any construction work. In the case of PBU, design parameters such as
+structural, architectural, M&E works, installation, and subsequent maintenance challenges must be determined
+early to ensure that the PBU system is integrated and can be incorporated in the overall building design. A good
+PBU design should provide practical solutions to address potential issues arising in different stages of PBU’s
+life cycle including future renovation. It is also important the design meets the requirements in the Code on
+Accessibility in the Built Environment.
+
+3.1.1 Architectural Design Considerations
+
+a. Dimension                                               b. Location of Service Ducts and Access
+
+                                                             for Maintenance
+
+                                                                                                                                 Gap between PBU and
+                                                                                                                                   structural slab above
+                                                                                                                                    can be covered by
+                                                                                                                                       drywall board.
+
+                                                            It is a good practice
+                                                              to locate services
+                                                             near to the edge of
+
+                                                           PBU for ease of future
+                                                                maintenance.
+
+                                                           Example of vertical soil stack accessible from within dwelling unit
+
+An efficient volumetric system requires careful            The routing and connection of services should be
+consideration and confirmation of the overall              predetermined and coordinated with the PBU manufacturer
+dimensions. The overall dimensions and design should       during the design stage.
+take into consideration space/floor area taken up by
+the double wall/floor systems, structural drop slab and
+storage heater (if any) to ensure effective use of space.
+The types of bathrooms should be standardized to
+achieve economy of scale production while providing
+sufficient design variation.
+
+                                                           PREFABRICATED BATHROOM UNIT (PBU) | 5
+
+c. Layout
+
+The locations of door and window openings and layout
+of fixtures and M&E services should be functional and
+practical. The formwork mould for volumetric PBU production
+is dependent on the locations of these openings. It is
+recommended that the general layout of the prefabricated
+bathroom unit be provided in the homeowner user manual.
+
+                                       Door                    Window
+
+Sanitary Wares                         Architectural Fixtures
+
+                                                               M&E Services
+
+6 | PREFABRICATED BATHROOM UNIT (PBU)
+
+The location of the service shaft is critical to the maintenance of the precast concrete PBU.
+
+                          Î
+
+The service shaft is not
+accessible once PBU is
+installed into position.
+
+Drywall Partition         
+
+                                       The orientation of this vertical service shaft
+                                       makes repair and maintenance works
+                                       more accessible.
+
+It is important to make the vertical service shaft accessible for future repair and maintenance works of the PBU.
+
+                          PREFABRICATED BATHROOM UNIT (PBU) | 7
+
+3.1.2 Structural Design Considerations
+
+As precast concrete PUB typically weighs up to 9 tons, it is necessary to ensure that the structural strength
+of different types of receiving platforms are adequately designed.

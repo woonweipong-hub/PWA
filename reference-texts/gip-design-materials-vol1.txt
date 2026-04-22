@@ -1,0 +1,414 @@
+Foreword
+
+The Building and Construction Authority’s (BCA) Construction Quality Assessment System
+(CONQUAS) has been widely adopted as the de facto national yardstick for measuring the quality
+of building projects. Besides setting standards and measuring the level of workmanship through
+CONQUAS, BCA is developing a series of publications of Good Industry Practices Guide for different
+trades.
+
+This “Good Industry Practices – Design and Material Selection for Quality – Volume 1” shares with
+the industry some of the good practices adopted by developers, practitioners and contractors who
+consistently deliver high quality work through thoughtful design and choice of materials in construction,
+particularly in residential buildings. These practices are taken from projects that achieved high
+CONQUAS/Quality Mark scores. The examples in this guide highlight some of these noteworthy
+projects. While the other guides in the series focus on “doing things right”, this guide focuses on
+“doing the right thing” through careful design choices and materials selection.
+
+This guide is not meant to be a deﬁnitive textbook on building design and material selection to achieve
+high quality. Neither is it the ﬁnal word on quality, as there will be new materials and methods. To
+obtain more comprehensive information and guidance, readers should seek advice from professional
+designers and material suppliers. We gratefully acknowledge the contributions of these practitioners
+and trust that the industry will ﬁnd this publication useful in its pursuit of quality excellence. We
+welcome any contributions from readers that may add to or improve future editions of this guide.
+
+Lam Siew Wah
+
+Deputy Chief Executive Ofﬁcer
+Industry and Corporate Development
+Building and Construction Authority
+
+Acknowledgement
+
+This Good Industry Practices Guide – “Design and Material Selection for Quality – Volume 1” was
+developed with inputs from Architects, Developers, Builders, Specialist Contractors and members
+from various industry associations.
+
+We would like to thank the following ﬁrms for their support, contributions and sharing of knowledge
+in making this possible:
+
+Ando Singapore Pte Ltd
+City Developments Ltd
+Dragages Singapore Pte Ltd
+Far East Organization
+Kajima Overseas Asia Pte Ltd
+Shimizu Corporation (Singapore)
+Sumitomo Mitsui Construction Co, Ltd
+Tiong Seng Contractors (Pte) Ltd
+Woh Hup (Pte) Ltd
+
+We would also like to thank the following organizations and individuals for their valuable feedback in
+the review of this guide:
+
+Boral Plasterboard (Singapore)
+CapitaLand Residential Ltd
+Design Studio Furniture Ltd
+DP Architects Pte Ltd
+Eastern Pretech Pte Ltd
+Singapore Contractors Association Ltd
+Singapore Institute of Building Ltd
+Team Design Architects Pte Ltd
+Wheelock Properties (Singapore) Limited
+Wing Tai Property Management Pte Ltd
+Yongnam Holdings Ltd
+Mr Colin Tan
+Mr George Soh
+Mr Roger Lai
+Dr Uma Maheswaran
+
+Tan Tian Chong
+
+Director
+Technology Development Division
+
+                                          GOOD INDUSTRY PRACTICES
+DESIGN AND MATERIAL SELECTION FOR QUALITY - VOLUME 1
+
+CONTENTS
+
+Introduction                                                        5
+
+1.0 An Overview of Buildable Design and Quality                     7
+
+2.0 Inﬂuence of Layouts/Shapes on Quality and Constructability      15
+
+3.0 Quality Issues in Conventional Methods & Materials              21
+
+4.0 Quality Features in Structural Elements                         29
+
+4.1 Steel Structures
+4.2 Precast Concrete Elements
+
+5.0 Quality Features in Architectural Elements                      47
+
+5.1 Prefabricated Bathrooms
+5.2 Drywall Partitions
+
+6.0 Design and Detailing for Quality in Architectural Components    73
+
+6.1 Timber Doors
+6.2 Cabinets and other Components
+
+7.0 Design and Detailing for Quality at Adjoining Locations/Trades  91
+
+7.1 Architectural Finishes
+7.2 Embedded /Concealed Services
+
+8.0 Example Projects                                                109
+
+References and Further Reading                                      117
+
+                                                                                                            5
+
+                                                          INTRODUCTION
+
+Since 1999, the Building and Construction Authority (BCA) have produced a series of 9 Good Industry
+Practices Guides. These guides detail work processes and methods of installation for various ﬁnishing
+trades e.g. ceramic tiling, timber ﬂooring, waterprooﬁng works, etc. If the guidelines are followed
+closely, one can expect the resultant end product to be a high quality building of workmanship
+excellence. These guides have been used as reference standards in quality assessments under
+BCA’s CONQUAS or Quality Mark (QM) schemes.
+
+While it is possible to achieve high quality standards by following closely these guides, sometimes
+the proper design, detailing or choice of material can often reduce the time and effort required during
+construction to achieve the same or better end result. Some conventional methods, materials or
+designs may require the employment of more skilled workers to work in difﬁcult circumstances and
+therefore take a longer time to complete the works. Such skilled workers are invariably in short supply
+and as projects usually have to be completed within very tight schedules, workmanship quality is
+often sacriﬁced.
+
+Good design is an integral and essential part of construction. Good design facilitates construction work
+to be carried out optimally within time and cost constraints. It addresses the following aspects:
+• Safety
+• Meeting end–user’s needs
+• Functionality
+• Build Quality
+• Buildability
+• Sustainability
+• Aesthetics
+
+To strike a balance in all the aspects and achieve good quality in the ﬁnal product, plans and
+speciﬁcations should be carefully designed, reviewed at each stage and corrected before construction
+starts. Overlooking any of these may result in additional time and cost to rectify the works.
+
+This guide attempts to distill many good design practices and material choices observed in various
+CONQUAS and QM projects that have achieved workmanship quality excellence as reﬂected in
+their high CONQUAS/ QM scores. Industry professionals can learn and apply these practices in
+their projects for better quality achievement. As each building’s design objective may be different
+from another, it may be necessary to be selective or customize the mentioned practices to meet the
+speciﬁc needs of the project. This guide has made comparisons with some designs choices that may
+be difﬁcult to build or has inherent difﬁculties in achieving quality. This does not mean such designs
+cannot be employed. It only means that more time, attention and higher cost may be incurred to
+achieve the same quality result.
+
+This guide is the ﬁrst of 2 volumes and focuses on good design choices for workmanship excellence.
+The subsequent volume will cover other design choices and material selection that impacts quality.
+
+                          1.0
+
+                           AN OVERVIEW OF
+BUILDABLE DESIGN AND QUALITY
+
+8
+
+    1.0 AN OVERVIEW OF BUILDABLE DESIGN AND QUALITY
+
+      “Buildabilty” is the extent to which the design of a building facilitates ease of construction.
+      Buildable design often has a direct implication on quality achievement in a project. Projects with
+      better quality performance (as measured by CONQUAS- Construction Quality Assessment System)
+      invariably are also those that had adopted good buildable designs. Examples of such projects,
+      which can be found in I-QUAS (Information on Construction Quality-ref: www.bca.gov.sg) include
+      commercial, residential, institutional and mixed developments like The Esparis, Monterey Park,
+      Savannah Park, The Pier, Icon, One Marina and ITE Simei.
+      The developer, designer and builder each has a signiﬁcant role towards achieving better buildable
+      design and quality in construction. This chapter illustrates examples of good buildable designs and
+      its contribution to quality.
+
+        Fig. 1.1 - Examples of projects with good buildable designs and high quality performance scores.
+
+                                                                                                            9
+
+                           1.0 AN OVERVIEW OF BUILDABLE DESIGN AND QUALITY
+
+1.1 EXAMPLES OF GOOD BUILDABLE DESIGNS
+The following are examples from residential projects that adopted good design concepts such as
+ﬂat plate slab, curtain wall, drywall partitions, prefabricated bathrooms, screed-less ﬂoor, etc. All
+these buildable systems facilitate ease of construction leading to good quality workmanship.
+
+                    Drywall
+
+Flat plate slab                                                                Prefabricated bathrooms
+
+Precast shear wall                                                             Screed-less ﬂoor
+
+                    Curtain wall
+
+Fig. 1.2 - Buildable systems contribute to efﬁcient and quality construction.
+
+10
+
+    1.0 AN OVERVIEW OF BUILDABLE DESIGN AND QUALITY
+
+1.1.1 Flat plate slab                              Fig. 1.3 - Flat plate slab: No secondary beams,
+                                                   less joints and better ﬁnish.
+The ﬂoor slab has no intermediate or secondary
+beams. This improves the construction cycle
+time and productivity. The quality of the slab
+surface is also better as there are less joints
+in the system formwork. The M&E system
+can be accommodated easily under the slab
+since there are no intermediate beams causing
+obstructions.
+
+1.1.2 Drywall partitions
+
+Drywall partitions have many advantages
+compared to conventional wet trade partitions.
+Quality ﬁnish, speed of construction, ease of
+installation and reconstruction are the key
+attractions. See Chapter 5.2 for more details of
+its features and advantages.
+
+1.1.3 Prefabricated bathrooms                      Fig. 1.4 - Drywall partitions: Increasing use in
+                                                   residential building construction.
+Bathrooms are prefabricated in a factory and
+installed on site. This innovative method results  Fig. 1.5 - Prefabricated bathrooms: Improved
+in better tolerances and the workmanship is        technology for quick installation
+signiﬁcantly better than conventional bathroom
+construction. The off-site production often
+makes the manufacture of the bathroom no
+longer a critical activity that may affect other
+construction works on site. The different
+techniques in production and installation are
+explained in Chapter 5.1.
+
+                                                                                                           11
+
+                           1.0 AN OVERVIEW OF BUILDABLE DESIGN AND QUALITY
+
+1.1.4 Screed-less ﬂooring
+A combination of suitable adhesives and a
+leveled concrete ﬂoor slab makes the system
+practical. Using this method, screeding, one of
+the “messy” trade in ﬂooring installation, can
+be eliminated. Hollowness in ﬂooring, which
+is caused mainly by incompatibility between
+substrate and screed, can also be minimized.
+
+                                                                                         Fig. 1.6 - Screed-less ﬂooring installation: Better
+                                                                                         productivity and quality.
+
+1.1.5 Curtain wall
+The fabrication of curtain wall components are carried out in the factory and this reduces site work and
+allows greater control over component quality. The site operations require only installation works. The
+process of installation is much faster compared to wet trade methods. Since the method of assembly
+is a dry process, the required tolerances and workmanship can be controlled closely. When selecting
+curtain wall system, considerations should be given to sustainability and environmental factors such
+as using Low-E glass panels.
+
+   Fig. 1.7- Curtain wall systems: Saves time, better quality facade
+    Curtain walls
+    • No scaffolding
+    • No wet trades
+    • Less workmanship issues
+
+12
+
+    1.0 AN OVERVIEW OF BUILDABLE DESIGN AND QUALITY
+
+1.1.6 Modular system walls
+
+The modular system RC (Reinforced Concrete)
+perimeter walls have less joints and the surfaces
+are smoother. A thin skim-coat is sufﬁcient to
+carry the ﬁnal architectural ﬁnish. Construction
+is neater and productivity higher compared to
+conventional walls. This system reduces risk of
+hollowness, surface cracks and unevenness in
+wall surface, which are usually associated with
+plastered ﬁnish walls.
+
+                                                   Fig. 1.8 - Less joints and good surface ﬁnish in modular
+                                                   system RC walls
+
+1.1.7 Precast shear walls
+
+The precast shear wall system eliminates inﬁll work like brick or block work and wet trades like
+plastering. External walls have better water tightness against the elements. Proper design and
+execution of precast system will give good quality ﬁnish surfaces that require minimum preparatory
+work before painting. Gondolas, instead of scaffolding, can be used to carry out the ﬁnishing work;
+this saves costs and expedites the construction process. Other features and advantages of using
+precast elements are highlighted in Chapter 4.2.
+
+Fig. 1.9 - External shear walls: Better            Fig. 1.10 - No scaffolding and plastering required
+water - tightness                                  to get ﬁnal ﬁnish.
+
+                                                                                                           13
+
+                           1.0 AN OVERVIEW OF BUILDABLE DESIGN AND QUALITY
+
+Good buildable design requires careful consideration and planning. It should lead to designs that
+improve construction processes, ease of construction, reduced dependency on on-site manpower
+and improved quality. Although the initial cost of construction of buildable designs may be higher
+than conventional methods in some cases, consideration should be given to its beneﬁts of higher
+productivity, faster completion time and better build quality.
+
+                            2.0
+
+INFLUENCE OF LAYOUTS/SHAPES ON
+  QUALITY AND CONSTRUCTABILITY
+
+16
+
+    2.0 INFLUENCE OF LAYOUTS/SHAPES ON QUALITY AND CONSTRUCTABILITY
+
+        Straightforward and uncomplicated design layouts and shapes facilitate ease of construction and
+        maintenance, enhance productivity and lead to better quality workmanship. There is reduced need
+        for closer co-ordination between trades and hence less dependency to achieve the desired build
+        quality. This becomes more signiﬁcant where mass production is involved. This chapter shows some
+        examples of layouts, shapes and details and their inﬂuence on quality and constructability.
+
+        2.1 ADVANTAGES OF CLEAR-CUT
+                 LAYOUT
+
+        Layouts of regular shapes and without tight
+        corners facilitate ease of construction. It is
+        easier to achieve the desired workmanship
+        quality in the ﬁnishing work.
+
+                                                                                                   Fig. 2.1 - Regular layout with less tight-corners is
+                                                                                                   easier to build and achieve quality.
+
+       2.1.1 Less corners and turns – Ease of architectural works
+        Layouts with standard room dimensions, less corners and turns facilitate execution of ﬁne architectural
+        ﬁnishing works like skirtings, painting, silicon seals, etc. The ease of working over straight surfaces
+        results in consistent and better workmanship. The beneﬁts are enhanced where there is repetition
+        of similar design at every ﬂoor.
+
+             Fig. 2.2 - Less corners and turns: Easier to carry out architectural ﬁnishing works.
+
+                                                                                                           17
+
+         2.0 INFLUENCE OF LAYOUTS/SHAPES ON QUALITY AND CONSTRUCTABILITY
+
+2.1.2 Regular shapes suit prefabricated components
+Regular shapes that are used repeatedly generally facilitate prefabricated components like curtain-
+walls, full height windows and drywall partitions to be used. Such factory made components have
+better dimensional accuracy and assembly tolerances can be better controlled during erection. This
+leads to considerable reduction in site manpower and better quality output.
+
+   Fig. 2.3 - Regular and repeated shapes suit prefabricated components.
+
+2.2 QUALITY AND CONSTRUCTABILITY CHALLENGES OF CREATIVE SHAPES
+         AND LAYOUTS IN INTERNAL FINISHES
+
+Creative layouts (see Fig. 2.4) generally have more turns and joints. It poses a greater challenge
+to complete the architectural works in internal ﬁnishes with the desired quality. More thought and
+attention need to be paid to interfacing details, where one trade interfaces with another e.g. joining
+of marble and timber ﬂoor, termination of wet and dry areas, etc. In addition, ﬁne architectural works
+like skirting installation, silicone application to gaps and ﬁllings, need to be executed carefully within
+the constraints of the unique shape or layout. In many cases, using traditional wet trades that involve
+intricate manual cutting of materials to suit the shape or layout may make it more difﬁcult to achieve
+workmanship quality in addition to slowing the progress of the works.
+
+                                                                      This has become more signiﬁcant in residential
+                                                                      properties where end-users’ expectations are
+                                                                      higher. Furthermore, more combination of
+                                                                      material ﬁnishes and ﬁttings are involved in
+                                                                      residential buildings than commerical buildings.
+                                                                      Hence clear-cut layouts, precise detailing and
+                                                                      right sequence of execution are key factors to
+                                                                      achieve desired quality in internal ﬁnishes.
+
+   Fig. 2.4 - Creative shapes and layouts : A challenge
+   in ﬁnishing ﬁne architectural details.
+
+18
+
+    2.0 INFLUENCE OF LAYOUTS/SHAPES ON QUALITY AND CONSTRUCTABILITY
+
+Fig. 2.5 - More attention/skill needed to get ﬁnal  Fig. 2.6 - Too many skirting pieces/joints to get the
+shape and ﬁnish.                                    required proﬁle.
+
+Fig. 2.7 - Small recesses: Difﬁcult to carry out    Fig. 2.8 - Protrusions in aluminium capping due to
+works like skirting, etc.                           too many jointing segments.
+
+Fig. 2.9 - Circular columns with masonry ﬁnishes    Fig.2.10 - Skirting requires many small segments
+require more preparation time.                      to form curve.
+
+                                                                                               19
+
+2.0 INFLUENCE OF LAYOUTS/SHAPES ON QUALITY AND CONSTRUCTABILITY
+
+Fig. 2.11 - Circular column abuts wall: Jointing line  Fig.2.12- Marble needs to be cut manually to suit
+is a challenge to ﬁnish.                               proﬁle.
+
+The above examples are not meant to discourage professionals from creative designs. The emphasis
+here is to highlight the challenges posed by creative shapes and layouts and its impact on quality and
+constructability, particularly where a project has a large number of units which needs to be completed
+within a limited time frame. In addition, workers with the right training and skills are needed to carry
+out the ﬁne architectural ﬁnishing works. Apart from employing workers with the appropriate skills,
+the builder also needs to carefully organize and sequence the works so as not to impact construction
+progress and its quality.
+
+                             3.0
+
+                                    QUALITY ISSUES IN
+CONVENTIONAL METHODS & MATERIALS
+
+22
+
+    3.0 QUALITY ISSUES IN CONVENTIONAL METHODS & MATERIALS
+
+        Conventional designs that comprise beams, columns, brick/block inﬁlls and plastering have inherent
+        inefﬁciencies during construction. Brick/block wall inﬁlls are labour-intensive and cement-sand
+        plastering, a wet process, is often messy and requires more preparatory work.

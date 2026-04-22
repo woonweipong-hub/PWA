@@ -1,0 +1,549 @@
+PUBLIC SECTOR
+STANDARD CONDITIONS OF CONTRACT
+
+       FOR CONSTRUCTION WORKS
+                           2020
+
+Public Sector Standard Conditions of Contract for Construction Works 2020
+
+© Building and Construction Authority
+
+First published  1995
+Second edition   July 1999
+Reprint          March 2000
+Reprint          October 2002
+Third edition    January 2004
+Fourth edition   March 2005
+Fifth edition    December 2006
+Sixth edition    December 2008
+Seventh edition  July 2014
+Eighth edition   July 2020
+
+All rights reserved. No part of this publication may be reproduced or copied by any means without the prior
+written permission of the copyright holder, application of which should be addressed to the Chief Executive
+Officer, Building and Construction Authority, 52 Jurong Gateway Road #12-01, Singapore 608550.
+
+                                    CONTENTS
+
+                                                                         Page
+
+1    Definitions and Interpretation
+
+1.1  Definitions                                                         1
+
+1.2  Singular and Plural                                                 3
+
+1.3  Headings and Marginal Notes                                         3
+
+1.4  Joint and Several Liability                                         4
+
+2    Superintending Officer and Superintending Officer's Representative
+
+2.1  Superintending Officer's Authority                                  4
+
+2.2  Superintending Officer's Representative                             4
+
+2.3  Superintending Officer's Authority to Delegate                      4
+
+2.4  Appointment of Assistants                                           4
+
+2.5  Instructions by Superintending Officer                              5
+
+2.6  Failure to Comply with Superintending Officer's Instructions        5
+
+2.7  Urgent repairs                                                      5
+
+2.8  No Obligation to Exercise Powers                                    6
+
+3    Contract Documents
+
+3.1  Contract Documents to be Taken as Mutually Explanatory              6
+
+3.2  Custody and Supply of Drawings and Documents                        6
+
+3.3  Drawings to be Kept on Site                                         6
+
+3.4  Need for Further Drawings etc                                       7
+
+3.5  Further Supplementary Drawings etc. and Instructions                7
+
+3.6  Delay and Time                                                      7
+
+4    General Obligations of the Contractor
+
+4.1  Contractor's General Responsibilities                               8
+
+4.2  Site Operations and Methods of Construction                         8
+
+4.3  Contractor's Responsibility for Subcontractors                      8
+
+4.4  Responsibility for Identifying Ambiguities, Discrepancies, etc      8
+
+4.5  Security Deposit                                                    9
+
+4.6  Sufficiency of Tender                                               9
+
+4.7  Patents, Trademarks, Copyrights, etc                                10
+
+4.8  Confidentiality of Information Supplied to Contractor               10
+
+Clause 4.8 was added on 21 June 2024. Refer to the List of Amendments for PSSCOC for Construction Works
+2020 (8th Edition Jul 2020) for amendments made.
+
+5    Sub-Surface and Ground Conditions
+
+5.1  Inspection of Site and Geotechnical Information                     11
+
+5.2  Adverse Physical Conditions                                         11
+
+5.3  Underground Services                                                11
+
+6    Permanent Works Designed by the Contractor
+
+6.1  Contractor's Design Responsibility                                  12
+
+6.2  Submission of Documents Prior to Commencement                       12
+
+6.3  Submission of Documents after Completion                            12
+
+6.4  Amendment and Modification of Accepted Design                       12
+
+Contents/1
+(Eighth Edition July 2020)
+
+7     Notices and Fees
+
+7.1   Generally                                                13
+
+7.2   Variations Arising from Compliance                       13
+
+7.3   Cost of Compliance                                       13
+
+8     Setting Out
+
+8.1   Accurate Setting Out                                     14
+
+8.2   Errors in Setting Out                                    14
+
+9     Programme for the Works
+
+9.1   Programme to be Furnished                                14
+
+9.2   Revision of Programme                                    15
+
+9.3   Acceptance of Programme                                  15
+
+9.4   Failure to Submit Adequate Programme                     15
+
+10    Quality in Construction
+
+10.1  Plant, Material, Goods and Workmanship                   16
+
+10.2  Contractor to Provide Everything Necessary for Testing   16
+
+10.3  Cost of Samples                                          16
+
+10.4  Cost of Test                                             16
+
+10.5  Examination and Measurement of Works before Covering Up  17
+
+10.6  Uncovering and Making Openings                           17
+
+10.7  Defects during the Progress of the Works                 17
+
+10.8  Default of Contractor in Compliance                      18
+
+11    Administration
+
+11.1  Days and Hours of Working                                18
+
+11.2  Contractor's Representative                              18
+
+11.3  Removal of Workmen and Other Personnel                   19
+
+11.4  Access for Superintending Officer                        19
+
+12    Possession of Site And Commencement Of Works
+
+12.1  Commencement of Works                                    19
+
+12.2  Site Possession                                          19
+
+12.3  Failure to Give Possession                               20
+
+12.4  Rights of Access etc                                     20
+
+12.5  Other Contractors                                        20
+
+13    Suspension
+
+13.1  Suspension of Work                                       21
+
+13.2  Suspension lasting more than 90 days                     21
+
+Contents/2
+(Eighth Edition July 2020)
+
+14    Time for Completion
+
+14.1  Contractor to Complete on Time                         22
+
+14.2  Extension of the Time for Completion                   22
+
+14.3  Notice                                                 24
+
+15    Expediting Progress of Works
+
+15.1  Notification to Expedite                               25
+
+15.2  Work to Expedite Progress                              25
+
+16    Liquidated Damages
+
+16.1  Payment by the Contractor                              25
+
+16.2  Reduction of Liquidated Damages                        25
+
+16.3  Employer's Common Law Rights for Damages               26
+
+16.4  Extension of Time During Delay Period                  26
+
+17    Substantial Completion
+
+17.1  Certificate of Substantial Completion                  27
+
+17.2  Access for Remedial Work                               27
+
+17.3  Completion of Phase or Part                            27
+
+18    Defects
+
+18.1  Completion of Outstanding Works and Remedying Defects  28
+
+18.2  Cost of Remedying Defects                              28
+
+18.3  Diminution in Value of Works                           29
+
+18.4  Notify and Search for Defects                          29
+
+18.5  Liability at Common Law                                29
+
+19    Variations to the Works
+
+19.1  Variations                                             29
+
+19.2  Power to Order Variations                              30
+
+19.3  Submission of Quotations                               30
+
+19.4  Alternative Proposals by Contractor                    30
+
+20    Valuation of Variations
+
+20.1  Valuation Methods                                      31
+
+20.2  Agreement on Valuation                                 32
+
+20.3  Provisional Sum Items                                  33
+
+20.4  Daywork                                                33
+
+20.5  Adjustments to the Schedule of Rates                   33
+
+Clause 20.5 was added w.e.f. 1 September 2021. Refer to the List of Amendments for PSSCOC for
+Construction Works 2020 (8th Edition Jul 2020) for amendments made.
+
+Contents/3
+(Eighth Edition July 2020)
+
+21    Measurement
+
+21.1  Contractor to Attend Measurement                             34
+
+21.2  Contractor to Provide Assistance                             34
+
+21.3  Record of Measurements                                       34
+
+21.4  Failure to Agree Measurements                                34
+
+22    Claims for Loss and Expense
+
+22.1  Reasons for Loss and Expense                                 35
+
+22.2  Sufficiency of Loss and Expense                              36
+
+23    Procedure for Claims
+
+23.1  Notice of Claims                                             37
+
+23.2  Contemporary Records                                         37
+
+23.3  Substantiation of Claims                                     37
+
+23.4  Access to Contractor's Books and Documents                   37
+
+23.5  Payment of Claims                                            38
+
+23.6  Failure to Comply                                            38
+
+24    Construction Equipment Temporary Works Materials and Goods
+
+24.1  Exclusive Use for the Works                                  39
+
+24.2  Vesting                                                      39
+
+24.3  Employer Not Liable for Damage                               39
+
+24.4  Conditions for Hire of Construction Equipment                39
+
+24.5  Revesting and Removal                                        40
+
+24.6  Incorporation of Clause in Subcontracts                      40
+
+25    General Responsibilities
+
+25.1  Care of the Works                                            40
+
+25.2  Excepted Risks                                               41
+
+26    Indemnity Provisions
+
+26.1  Injury to Persons                                            42
+
+26.2  Damage to Property                                           42
+
+26.3  Contractor to Rectify Damage                                 42
+
+27    Insurance for Personal Injury, Work Injury Compensation and
+
+      Property Damage
+
+27.1  The Policies                                                 43
+
+27.2  Damage to Property when Contractor Not Negligent             43
+
+27.3  Default in Insuring                                          44
+
+Contents/4
+(Eighth Edition July 2020)
+
+28    Insurance of the Works
+
+28.1  Risks to be Insured                                                 44
+
+28.2  Application of Insurance Moneys                                     45
+
+29    Damage to Property of Employer or Government
+
+29.1  Costs of Making Good Damage Loss or Injury                          46
+
+30    Assignment and Subcontracting
+
+30.1  Assignment by Contractor                                            47
+
+30.2  Subcontractors                                                      47
+
+31    Termination by The Employer
+
+31.1  Termination for Default                                             47
+
+31.2  Effects of Termination for Default                                  49
+
+31.3  Liquidated Damages after Termination                                49
+
+31.4  Termination without Default                                         50
+
+32    Progress Payments and Final Account
+
+32.1  Payment Claims                                                      51
+
+32.2  Payment Certificates                                                51
+
+32.3  Correction of Certificates                                          52
+
+32.4  Final Payment Claim                                                 52
+
+32.5  Interim Final Account, Final Account and Final Account Certificate  52
+
+32.6  Period for Honouring Certificate                                    54
+
+32.7  Claim and Payment of Goods and Services Tax                         54
+
+32.8  Delay in Certification                                              55
+
+32.9  Factoring                                                           55
+
+Clause 32.9 was added on 7 March 2023. Refer to the List of Amendments for PSSCOC for Construction
+Works 2020 (8th Edition Jul 2020) for amendments made.
+
+33    Fluctuations
+
+33.1  Schedule of Materials                                               57
+
+33.2  Payment                                                             58
+
+33.3  Contractor in Delay                                                 58
+
+33.4  Subcontract Work                                                    58
+
+34    Final Completion Certificate
+
+34.1  Time for Issue                                                      58
+
+34.2  Certificate not Conclusive                                          58
+
+Contents/5
+(Eighth Edition July 2020)
+
+35    Settlement of Disputes
+
+35.1  Reference to the Superintending Officer                           59
+
+35.2  Reference to Arbitration                                          59
+
+35.3  Arbitration in Event of Termination                               59
+
+35.4  Powers of the Arbitrator                                          60
+
+35.5  Reference to Adjudication                                         60
+
+35.6  Mediation                                                         60
+
+36    Recovery by the Employer                                          60
+
+37    Governing Law & Notices
+
+37.1  Law                                                               61
+
+37.2  Notices                                                           61
+
+38    Compliance with Prevailing Law                                    62
+
+39    Compliance with Progressive Wage Mark Requirements                62
+
+Clause 39 was added on 7 March 2023. Refer to the List of Amendments for PSSCOC for Construction Works
+2020 (8th Edition Jul 2020) for amendments made.
+
+40    Compliance with Workplace Safety and Health (“WSH”) Requirements  64
+
+Clause 40 was added on 21 June 2024. Refer to the List of Amendments for PSSCOC for Construction Works
+2020 (8th Edition Jul 2020) for amendments made.
+
+Option Module A             Bills of Quantities
+Option Module B             Unused Materials or Goods not Delivered to Site
+Option Module C             Nominated Subcontractors
+Option Module D             Lump Sum Advance Payment for Prefabricated Prefinished Volumetric
+                            Construction (PPVC)
+
+Contents/6
+(Eighth Edition July 2020)
+
+PUBLIC SECTOR
+STANDARD CONDITIONS OF CONTRACT
+for Construction Works
+
+1 DEFINITIONS AND INTERPRETATION
+
+1.1 Definitions
+
+In the Contract (as hereinafter defined) the following words and expressions shall have the meanings
+hereby assigned to them except where the context otherwise requires:
+
+(a) "Appendix" means the appendix to these Conditions.
+
+(b) "Claimed Amount" means the whole or part of any payment claimed by the Contractor in a
+          Payment Claim pursuant to Clause 32.1(1).
+
+(c) "Conditions" means the Standard Conditions and Particular Conditions (if any) of Contract
+          for Construction Work contained in the Contract and Option Modules specified in the
+          Appendix.
+
+(d) “Contract” means the Conditions and Appendix, the Specifications, Drawings, Schedule of
+          Rates (if any), Bills of Quantities (if any), the Tender, Letter of Acceptance, Agreement
+          and such other letters and documents as the parties may expressly identify in writing and
+          agree as forming part of the contract.
+
+(e) "Contract Sum" means the lump sum set out in the Letter of Acceptance, and shall be fixed
+          subject only to adjustments expressly provided for in the Conditions.
+
+(f)  "Contractor" means the person or firm or corporation whose Tender has been accepted by
+
+     the Employer and includes the Contractor's legal personal representatives and any person
+
+     to whom the rights or liabilities of the Contractor have been assigned or transferred with
+
+     agreement in writing of the Employer under Clause 30.1.
+
+(g) "Construction Equipment" means all equipment, apparatus and things of whatsoever nature
+          required for the execution and completion of both the Temporary Works and the Permanent
+          Works and the remedying of any defects therein, but does not include Plant, materials,
+          goods or work or other things intended to be part of the Works.
+
+(h) "Contractor's Representative" means the person duly appointed pursuant to Clause 11.2(1)
+          of the Conditions.
+
+(i)  “Date of Substantial Completion” means the date stated in a certificate issued pursuant to
+
+     Clause 17.1 or Clause 17.3.
+
+(j)  "Defect" means any part of the Works not executed provided or completed in accordance
+
+     with the Contract. For the avoidance of doubt and without limiting the generality of the
+
+     expression the term shall be taken to include any item of Plant, material, goods or work
+
+     incorporated or used in the Works which does not or may not conform to the relevant
+
+     quality standards or pass the tests prescribed in or to be inferred from the Contract.
+
+_____________________________________________________________________________________________
+
+Public Sector Standard Conditions of Contract for Construction Works (Eighth Edition July 2020)  1
+
+(k) “Defects Liability Period” means the Defects Liability Period set out in the Appendix
+          hereof, calculated from:
+
+     (a) the Date of Substantial Completion of the Works certified by the Superintending
+               Officer in accordance with Clause 17; or
+
+     (b) in the event of more than one Certificate of Substantial Completion having been
+               issued by the Superintending Officer under Clause 17, the respective Dates of
+               Substantial Completion so certified.
+
+(l)  "Drawings" means the drawings referred to in the Contract including such drawings which
+
+     have been prepared by the Contractor and accepted by the Superintending Officer pursuant
+
+     to Clause 6.2 and such other drawings as may from time to time be issued or accepted in
+
+     writing by the Superintending Officer.
+
+(m) "Employer" means the government or the statutory body specified in the Appendix.
+
+(n) "Final Account Certificate" means the document issued by the Superintending Officer
+          under Clause 32.5.
+
+(o) “Final Payment Claim” means a claim for payment made by the Contractor pursuant to
+          Clause 32.4(1).
+
+(p) "Letter of Acceptance" means the formal acceptance by the Employer of the Tender.
+
+(q) "Loss and Expense" means:
+          (i) the direct relevant costs of labour, Plant, Construction Equipment, materials, or goods
+                 actually incurred; and
+          (ii) costs of an overhead nature actually and necessarily incurred on the Site but in either
+                 case only in so far they would not otherwise have been incurred and which were not
+                 and should not have been provided for by the Contractor; and
+          (iii) 15% of any such costs, such 15% to be inclusive of and in lieu of any profits, head
+                 office or other administrative overheads, financing charges (including foreign
+                 exchange losses) and any other costs, loss or expense of whatsoever nature and
+                 howsoever arising.
+
+(r)  “Option Module” means an Option Module appearing at the end of the Conditions.
+
+(s) "Payment Claim" means a claim for payment made by the Contractor pursuant to Clause
+          32.1(1).
+
+(t)  "Payment Certificate" means a certificate issued by the Superintending Officer pursuant to
+
+     Clause 32.2(1) or Clause 32.5(1)(a) in res

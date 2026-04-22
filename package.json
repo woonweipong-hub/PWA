@@ -4,7 +4,8 @@
     "sync-inline-en": "node tools/sync-inline-en.js",
     "bump-cache": "node tools/bump-cache.js",
     "check:i18n": "node tools/check-i18n.js",
-    "translate": "node tools/translate.js"
+    "translate": "node tools/translate.js",
+    "extract:refs": "node tools/extract-reference-pdfs.js"
   },
   "devDependencies": {
     "@babel/cli": "^7.28.6",

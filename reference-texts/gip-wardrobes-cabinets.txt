@@ -1,0 +1,199 @@
+S/No                   Activity               Responsibility Inspection          Requirement  Acceptance                 Frequency       Records
+                                                                         Method    Reference     Criteria
+                                                                                                                                         Approved
+1 SUBMISSION                                  MC/ADO  Review                      -           Approved                   Initial stage  submissions
+                                              MC/ADO  Review
+1.1 Shop drawings                             MC/ADO  Review                      -           Conform to specifications  Initial stage   Approved
+1.2 Sample submission                                                                                                                   submissions
+1.3 Quality plan                                                                  -           Conform to specifications  Initial stage
+                                                                                                                                         Approved
+2 INCOMING MATERIALS INSPECTION               MC      Visual/                    Section 5.1  As per approved samples Each delivery     submissions
+
+2.1 Carcass                                           Measurement                                                                         Delivery
+2.2 Door panel                                                                                                                           document
+2.3 Ironmongery                               MC      Visual/                    Section 5.1  As per approved samples Each delivery       Delivery
+                                                                                                                                         document
+3 IN - PROCESS INSPECTION                             Measurement                                                                         Delivery
+                                                                                                                                         document
+3.1 Setting out (i.e. Height & Level )        MC      Visual/                    Section 5.2  As per approved samples Each delivery
+3.2 Installation of carcass                                                                                                             Checklist @
+3.3 Installation of filler                            Measurement                                                                       Appendix B
+3.4 Installation of door panels                                                                                                         Checklist @
+3.5 Touch up and handover                     MC      Visual/                    Section 6.1  Conform to specifications  Each item      Appendix B
+                                                                                                                                        Checklist @
+                                                      Measurement                                                                       Appendix B
+                                                                                                                                        Checklist @
+                                              MC      Visual/                    Section 6.1  Conform to specifications  Each item      Appendix B
+                                                                                                                                        Checklist @
+                                                      Measurement                                                                       Appendix B
+
+                                              MC      Visual                     Section 6.1  Conform to specifications  Each item
+
+                                              MC      Visual                     Section 6.1  Conform to specifications  Each item
+
+                                              MC      Visual                     Section 6.1  Conform to specifications  Each item
+
+Prepared by                                   Verified by                                     Approved by
+Date                                          Date                                            Date
+LEGEND
+             MC – Main contractor/ Installer    ADO – Architect/ Designer/ Owner
+
+S/No                   Activity               Responsibility Inspection          Requirement  Acceptance                 Frequency      Records
+                                                                         Method    Reference     Criteria
+
+1 SUBMISSION                                  MC/ADO  Review                      -           Approved                   Initial stage  Approved
+                                              MC/ADO  Review
+1.1 Shop drawings                             MC/ADO  Review                                                                            submissions
+1.2 Sample submission
+1.3 Quality plan                                                                  -           Conform to specifications  Initial stage  Approved
+
+                                                                                                                                        submissions
+
+                                                                                  -           Conform to specifications  Initial stage  Approved
+
+                                                                                                                                        submissions
+
+2 INCOMING MATERIALS INSPECTION               MC      Visual/                    Section 5.1  As per approved samples Each delivery     Delivery
+
+2.1 Carcass                                           Measurement                                                                       document
+2.2 Door panel
+2.3 Ironmongery                               MC      Visual/                    Section 5.1  As per approved samples Each delivery     Delivery
+
+                                                      Measurement                                                                       document
+
+                                              MC      Visual/                    Section 5.2  As per approved samples Each delivery     Delivery
+
+                                                      Measurement                                                                       document
+
+3 IN - PROCESS INSPECTION                     MC      Visual/                    Section 6.1  Conform to specifications  Each item      Checklist @
+
+3.1 Setting out (i.e. Height & Level )                Measurement                                                                       Appendix B
+3.2 Installation of carcass
+3.3 Installation of filler                    MC      Visual/                    Section 6.1  Conform to specifications  Each item      Checklist @
+3.4 Installation of worktop
+3.5 Installation of accessories                       Measurement                                                                       Appendix B
+
+                                              MC      Visual                     Section 6.1  Conform to specifications  Each item      Checklist @
+
+                                                                                                                                        Appendix B
+
+                                              MC      Visual/                    Section 6.1  Conform to specifications  Each item      Checklist @
+
+                                                      Measurement                                                                       Appendix B
+
+                                              MC      Visual/                    Section 6.1  Conform to specifications  Each item      Checklist @
+
+                                                      Measurement                                                                       Appendix B
+
+Prepared by                                   Verified by                                     Approved by
+Date                                          Date                                            Date
+LEGEND
+             MC – Main contractor/ Installer    ADO – Architect/ Designer/ Owner
+
+                Checklist                                Acceptance criteria/                Date of Remarks
+                                                       Requirement reference               Inspection
+PREPARATORY WORKS
+1. Check condition of floor                     Floor must be leveled, dry and free
+2. Check condition of wall behind wardrobe.     from debris
+
+3. Check position and levelness of plywood      Wall areas behind wardrobe should
+    plinth                                      be painted before installation of
+                                                wardrobe
+
+                                                Plywood plinth must be positioned
+                                                at approved location
+
+INSTALLING WARDROBE
+
+4. Check dimensions of wardrobe carcass         Conform to approved shop drawing
+
+5. Install wardrobe                             Refer to Table 6.1
+
+6. Check alignment and plumb of wardrobe        Wardrobe carcass is horizontally and
+     carcass                                    vertically aligned
+
+7. Install filler                               Refer to Table 6.1
+
+8. Install drawer compartments                  Smooth operation
+
+9. Install shelves                              Shelving are properly adjusted and rests
+                                                firmly on the shelf studs
+
+10. Install door panel                          Refer to Table 6.1
+
+11. Check alignment and plumb of door panel     Door panel is horizontally and vertically
+     and consistent gap between door panel and  aligned.
+     wardrobe carcass                           Consistent gap between door panel and
+                                                wardrobe carcass
+
+12. Check correct type of ironmongeries         Conform to specifications
+
+13. Patch nail holes                            All nail holes are properly patcheds
+
+14. Protect completed door panel                Protective materials to remain intact
+     & ironmongery                              after installation
+
+Checklist                                       Acceptance criteria/                                      Date of Remarks
+                                               Requirement reference                                    Inspection
+
+PREPARATORY WORKS                              Ceiling should be painted
+1. Check condition of ceiling
+
+2. Check condition of wall and floor           Wall behind upper kitchen cabinet
+                                               should be plastered
+                                               Kitchen wall and floor tiles should be
+                                               completed
+
+3. Check location of M&E services              Concealed M&E services must be
+                                               clearly marked
+
+4. Check pressure test on gas and water pipes Pressure test on gas and water pipes
+                                                                    running behind the cabinet must be
+                                                                    successfully completed
+
+5. Check water inlets and outlets              Water inlets and outlets should be
+                                               plugged off
+
+6. Check levelness of concrete plinth          Concrete plinth must be leveled
+
+7. Check site measurements                     Conform to approved drawings
+
+8. Check routing of electrical cabling, water  Conform to approved drawings
+     and gas pipes
+
+INSTALLING KITCHEN CABINET
+
+9. Check dimensions of cabinet carcass         Conform to approved shop drawings
+                                               Refer to Table 6.2
+10. Install kitchen cabinet                    Cabinet carcass is horizontally and
+                                               vertically aligned
+11. Check alignment and plumb of cabinet       Conform to approved shop drawings
+     carcass
+                                               Refer to Table 6.2
+12. Install worktop base panel and cut out     Refer to Table 6.2
+     opening for installation of appliances    Shelving are properly adjusted and rests
+                                               firmly on the shelf studs.
+13. Install top kitchen cabinet                Conform to approved shop drawings
+
+14. Install filler
+
+15. Install shelves and accessories
+
+Checklist                                        Acceptance criteria/                    Date of Remarks
+                                                Requirement reference                  Inspection
+
+INSTALLING KITCHEN CABINET (CONT’D)
+
+16. Install door panel, drawer, and handle      Smooth operation
+
+17. Check alignment and plumb of door panel     Door panel is horizontally and
+     and consistent gap between door panel and  vertically aligned.
+     cabinet carcass                            Consistent gap between door panel
+                                                and cabinet carcass
+
+18. Check correct type of ironmongeries         Conform to specifications
+
+19. Patch nail holes                            All nail holes are properly patched
+
+20. Protect completed door panel                Protective materials to remain intact
+     & ironmongery                              after installation

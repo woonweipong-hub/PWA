@@ -1,0 +1,536 @@
+PUBLIC SECTOR
+STANDARD CONDITIONS OF CONTRACT
+
+                          LITE
+       FOR CONSTRUCTION WORKS
+
+                           2025
+
+Public Sector Standard Conditions of Contract Lite for Construction Works 2025
+
+© Building and Construction Authority
+
+First published  March 2025
+
+All rights reserved. No part of this publication may be reproduced or copied by any means without the prior
+written permission of the copyright holder, application of which should be addressed to the Chief Executive
+Officer, Building and Construction Authority, 52 Jurong Gateway Road #12-01, Singapore 608550.
+
+                                        CONTENTS
+
+                                                                                                               Page
+
+1  DEFINITIONS AND INTERPRETATION                                   1
+
+1.1 Definitions                                                     1
+
+1.2 Singular and Plural                                             3
+
+1.3 Headings and Marginal Notes                                     3
+
+1.4 Joint and Several Liability                                     4
+
+2  SUPERINTENDING OFFICER AND SUPERINTENDING OFFICER'S
+
+   REPRESENTATIVE                                                   4
+
+2.1 Superintending Officer's Authority                              4
+
+2.2 Superintending Officer's Representative                         4
+
+2.3 Superintending Officer's Authority to Delegate                  4
+
+2.4 Intentionally Left Blank                                        4
+
+2.5 Instructions by Superintending Officer                          5
+
+2.6 Failure to Comply with Superintending Officer's Instructions    5
+
+2.7 Urgent Repairs                                                  5
+
+2.8 No Obligation to Exercise Powers                                5
+
+3  CONTRACT DOCUMENTS                                               6
+
+3.1 Contract Documents to be Taken as Mutually Explanatory          6
+
+3.2 Custody and Supply of Drawings and Documents                    6
+
+3.3 Drawings to be Kept on Site                                     6
+
+3.4 Need for Further Drawings etc.                                  7
+
+3.5 Further Supplementary Drawings etc. and Instructions            7
+
+3.6 Delay and Time                                                  7
+
+4  GENERAL OBLIGATIONS OF THE CONTRACTOR                            8
+
+4.1 Contractor's General Responsibilities                           8
+
+4.2 Site Operations and Methods of Construction                     8
+
+4.3 Contractor's Responsibility for Subcontractors                  8
+
+4.4 Responsibility for Identifying Ambiguities, Discrepancies, etc  8
+
+4.5 Intentionally Left Blank                                        9
+
+4.6 Sufficiency of Tender                                           9
+
+4.7 Patents, Trademarks, Copyrights, etc                            9
+
+4.8 Confidentiality of Information Supplied to Contractor           9
+
+5  SUB-SURFACE AND GROUND CONDITIONS                                10
+
+5.1 Inspection of Site and Geotechnical Information                 10
+
+5.2 Adverse Physical Conditions                                     10
+
+5.3 Underground Services                                            10
+
+6  PERMANENT WORKS DESIGNED BY THE CONTRACTOR                       11
+
+6.1 Contractor's Design Responsibility                              11
+
+6.2 Submission of Documents Prior to Commencement                   11
+
+6.3 Submission of Documents after Completion                        11
+
+6.4 Amendment and Modification of Accepted Design                   11
+
+Contents/1
+(March 2025)
+
+7   NOTICES AND FEES                                          12
+
+7.1 Generally                                                 12
+
+7.2 Variations Arising from Compliance                        12
+
+7.3 Cost of Compliance                                        12
+
+8   SETTING OUT                                               13
+
+8.1 Accurate Setting Out                                      13
+
+8.2 Errors in Setting Out                                     13
+
+9   PROGRAMME FOR THE WORKS                                   13
+
+9.1 Programme to be Furnished                                 13
+
+9.2 Intentionally Left Blank                                  14
+
+9.3 Acceptance of Programme                                   14
+
+9.4 Failure to Submit Adequate Programme                      14
+
+10  QUALITY IN CONSTRUCTION                                   14
+
+10.1 Plant, Materials, Goods and Workmanship                  14
+
+10.2 Contractor to Provide Everything Necessary for Testing   14
+
+10.3 Cost of Samples                                          14
+
+10.4 Cost of Test                                             15
+
+10.5 Examination and Measurement of Works before Covering Up  15
+
+10.6 Uncovering and Making Openings                           15
+
+10.7 Defects during the Progress of the Works                 16
+
+10.8 Default of Contractor in Compliance                      16
+
+11  ADMINISTRATION                                            16
+
+11.1 Days and Hours of Working                                16
+
+11.2 Contractor's Representative                              17
+
+11.3 Removal of Workmen and Other Personnel                   17
+
+11.4 Access for Superintending Officer                        17
+
+12  POSSESSION OF SITE AND COMMENCEMENT OF WORKS              17
+
+12.1 Commencement of Works                                    17
+
+12.2 Site Possession                                          18
+
+12.3 Failure to Give Possession                               18
+
+12.4 Rights of Access etc                                     18
+
+12.5 Other Contractors                                        18
+
+13  SUSPENSION                                                19
+
+13.1 Suspension of Work                                       19
+
+13.2 Suspension Lasting More than 90 Days                     19
+
+14  TIME FOR COMPLETION                                       20
+
+14.1 Contractor to Complete on Time                           20
+
+14.2 Extension of the Time for Completion                     20
+
+14.3 Notice                                                   22
+
+Contents/2
+(March 2025)
+
+15  EXPEDITING PROGRESS OF WORKS                            23
+
+15.1 Notification to Expedite                               23
+
+15.2 Work to Expedite Progress                              23
+
+16  LIQUIDATED DAMAGES                                      23
+
+16.1 Payment by the Contractor                              23
+
+16.2 Reduction of Liquidated Damages                        23
+
+16.3 Employer's Common Law Rights for Damages               24
+
+16.4 Extension of Time During Delay Period                  24
+
+17  SUBSTANTIAL COMPLETION                                  24
+
+17.1 Certificate of Substantial Completion                  24
+
+17.2 Access for Remedial Work                               25
+
+17.3 Completion of Phase or Part                            25
+
+18  DEFECTS                                                 25
+
+18.1 Completion of Outstanding Works and Remedying Defects  25
+
+18.2 Cost of Remedying Defects                              26
+
+18.3 Diminution in Value of Works                           26
+
+18.4 Notify and Search for Defects                          26
+
+18.5 Liability at Common Law                                26
+
+19  VARIATIONS TO THE WORKS                                 27
+
+19.1 Variations                                             27
+
+19.2 Power to Order Variations                              27
+
+19.3 Intentionally left blank                               27
+
+19.4 Alternative Proposals by Contractor                    28
+
+20  VALUATION OF VARIATIONS                                 29
+
+20.1 Valuation Methods                                      29
+
+20.2 Agreement on Valuation                                 29
+
+20.3 Provisional Sum Items                                  30
+
+20.4 Intentionally Left Blank                               30
+
+20.5 Adjustments to the Schedule of Rates                   30
+
+21  MEASUREMENT                                             30
+
+21.1 Contractor to Attend Measurement                       30
+
+21.2 Contractor to Provide Assistance                       31
+
+21.3 Record of Measurements                                 31
+
+21.4 Failure to Agree Measurements                          31
+
+22  CLAIMS FOR LOSS AND EXPENSE                             31
+
+22.1 Reasons for Loss and Expense                           31
+
+22.2 Sufficiency of Loss and Expense                        32
+
+Contents/3
+(March 2025)
+
+23  PROCEDURE FOR CLAIMS                                     33
+
+23.1 Notice of Claims                                        33
+
+23.2 Contemporary Records                                    33
+
+23.3 Substantiation of Claims                                33
+
+23.4 Access to Contractor's Books and Documents              33
+
+23.5 Payment of Claims                                       34
+
+23.6 Failure to Comply                                       34
+
+24  CONSTRUCTION EQUIPMENT, TEMPORARY WORKS, MATERIALS AND
+
+    GOODS                                                    35
+
+24.1 Exclusive Use for the Works                             35
+
+24.2 Vesting                                                 35
+
+24.3 Employer not Liable for Damage                          35
+
+24.4 Conditions for Hire of Construction Equipment           35
+
+24.5 Revesting and Removal                                   36
+
+24.6 Incorporation of Clause in Subcontracts                 36
+
+25  GENERAL RESPONSIBILITIES                                 36
+
+25.1 Care of the Works                                       36
+
+25.2 Excepted Risks                                          37
+
+26  INDEMNITY PROVISIONS                                     38
+
+26.1 Injury to Persons                                       38
+
+26.2 Damage to Property                                      38
+
+26.3 Contractor to Rectify Damage                            38
+
+27  INSURANCE FOR PERSONAL INJURY, WORK INJURY AND PROPERTY
+
+    DAMAGE                                                   39
+
+27.1 The Policies                                            39
+
+27.2 Damage to Property when Contractor Not Negligent        40
+
+27.3 Default in Insuring                                     40
+
+28  INSURANCE OF THE WORKS                                   41
+
+28.1 Risks to be Insured                                     41
+
+28.2 Application of Insurance Moneys                         42
+
+29  DAMAGE TO PROPERTY OF EMPLOYER OR GOVERNMENT             42
+
+29.1 Costs of Making Good Damages Loss or Injury             42
+
+30  ASSIGNMENT AND SUBCONTRACTING                            43
+
+30.1 Assignment by Contractor                                43
+
+30.2 Subcontractors                                          43
+
+31  TERMINATION BY THE EMPLOYER                              43
+
+31.1 Termination for Default                                 43
+
+31.2 Effects of Termination for Default                      45
+
+31.3 Liquidated Damages after Termination                    45
+
+31.4 Termination Without Default                             46
+
+Contents/4
+(March 2025)
+
+32  PROGRESS PAYMENTS AND FINAL ACCOUNT                                         47
+
+32.1 Payment Claims                                                             47
+
+32.2 Payment Certificates                                                       47
+
+32.3 Correction of Certificates                                                 48
+
+32.4 Final Payment Claim                                                        48
+
+32.5 Final Account and Final Account Certificate                                48
+
+32.6 Period for Honouring Certificate                                           49
+
+32.7 Claim and Payment of Goods and Services Tax                                50
+
+32.8 Delay in Certification                                                     50
+
+32.9 Factoring                                                                  51
+
+33  INTENTIONALLY LEFT BLANK                                                    52
+
+34  FINAL COMPLETION CERTIFICATE                                                53
+
+34.1 Time for Issue                                                             53
+
+34.2 Certificate not Conclusive                                                 53
+
+35  SETTLEMENT OF DISPUTES                                                      53
+
+35.1 Reference to the Superintending Officer                                    53
+
+35.2 Reference to Arbitration                                                   54
+
+35.3 Arbitration in Event of Termination                                        54
+
+35.4 Powers of the Arbitrator                                                   54
+
+35.5 Reference to Adjudication                                                  55
+
+35.6 Mediation                                                                  55
+
+36  RECOVERY BY THE EMPLOYER                                                    55
+
+37  GOVERNING LAW & NOTICES                                                     56
+
+37.1 Law                                                                        56
+
+37.2 Notices                                                                    56
+
+38  COMPLIANCE WITH PREVAILING LAW                                              57
+
+39  COMPLIANCE WITH PROGRESSIVE WAGE MARK REQUIREMENTS                          57
+
+40  INTENTIONALLY LEFT BLANK                                                    58
+
+Option Module A                Bills of Quantities
+Option Module B                Unused Materials or Goods not Delivered to Site
+Option Module C                Nominated Subcontractors
+Option Module D                Intentionally Left Blank
+
+Contents/5
+(March 2025)
+
+PUBLIC SECTOR
+STANDARD CONDITIONS OF CONTRACT
+LITE
+for Construction Works
+
+1 DEFINITIONS AND INTERPRETATION
+
+1.1 Definitions
+
+In the Contract (as hereinafter defined) the following words and expressions shall have the meanings
+hereby assigned to them except where the context otherwise requires:
+
+(a) "Appendix" means the appendix to these Conditions.
+
+(b) "Claimed Amount" means the whole or part of any payment claimed by the Contractor in
+          a Payment Claim pursuant to Clause 32.1(1).
+
+(c) "Conditions" means the Standard Conditions and Particular Conditions (if any) of Contract
+          for Construction Work contained in the Contract and Option Modules specified in the
+          Appendix.
+
+(d) “Contract” means the Conditions and Appendix, the Specifications, Drawings, Schedule of
+          Rates (if any), Bills of Quantities (if any), the Tender, Letter of Acceptance, Agreement
+          and such other letters and documents as the parties may expressly identify in writing and
+          agree as forming part of the contract.
+
+(e) "Contract Sum" means the lump sum set out in the Letter of Acceptance, and shall be fixed
+          subject only to adjustments expressly provided for in the Conditions.
+
+(f)  "Contractor" means the person or firm or corporation whose Tender has been accepted by
+
+     the Employer and includes the Contractor's legal personal representatives and any person
+
+     to whom the rights or liabilities of the Contractor have been assigned or transferred with
+
+     agreement in writing of the Employer under Clause 30.1.
+
+(g) "Construction Equipment" means all equipment, apparatus and things of whatsoever nature
+          required for the execution and completion of both the Temporary Works and the Permanent
+          Works and the remedying of any defects therein, but does not include Plant, materials,
+          goods or work or other things intended to be part of the Works.
+
+(h) "Contractor's Representative" means the person duly appointed pursuant to Clause 11.2(1)
+          of the Conditions.
+
+(i)  “Date of Substantial Completion” means the date stated in a certificate issued pursuant to
+
+     Clause 17.1 or Clause 17.3.
+
+_____________________________________________________________________________________________
+
+Public Sector Standard Conditions of Contract Lite for Construction Works (March 2025)         1
+
+(j)  "Defect" means any part of the Works not executed provided or completed in accordance
+
+     with the Contract. For the avoidance of doubt and without limiting the generality of the
+
+     expression the term shall be taken to include any item of Plant, material, goods or work
+
+     incorporated or used in the Works which does not or may not conform to the relevant
+
+     quality standards or pass the tests prescribed in or to be inferred from the Contract.
+
+(k) “Defects Liability Period” means the Defects Liability Period set out in the Appendix
+          hereof, calculated from:
+
+     (i)  the Date of Substantial Completion of the Works certified by the Superintending
+
+          Officer in accordance with Clause 17; or
+
+     (ii) in the event of more than one Certificate of Substantial Completion having been
+               issued by the Superintending Officer under Clause 17, the respective Dates of
+               Substantial Completion so certified.
+
+(l)  "Drawings" means the drawings referred to in the Contract including such drawings which
+
+     have been prepared by the Contractor and accepted by the Superintending Officer pursuant
+
+     to Clause 6.2 and such other drawings as may from time to time be issued or accepted in
+
+     writing by the Superintending Officer.
+
+(m) "Employer" means the government or the statutory body specified in the Appendix.
+
+(n) "Final Account Certificate" means the document issued by the Superintending Officer
+          under Clause 32.5.
+
+(o) “Final Payment Claim” means a claim for payment made by the Contractor pursuant to
+          Clause 32.4(1).
+
+(p) "Letter of Acceptance" means the formal acceptance by the Employer of the Tender.
+
+(q) "Loss and Expense" means:
+
+     (i)  the direct relevant costs of labour, Plant, Construction Equipment, materials, or
+
+          goods actually incurred; and
+
+     (ii) costs of an overhead nature actually and necessarily incurred on the Site but in
+               either case only in so far as they would not otherwise have been incurred and
+               which were not and should not have been provided for by the Contractor; and
+
+     (iii) 15% of any such costs, such 15% to be inclusive of and in lieu of any profits, head
+               office or other administrative overheads, financing charges (including foreign
+               exchange losses) and any other costs, loss or expense of whatsoever nature and
+               howsoever arising.
+
+(r)  “Option Module” means an Option Module appearing at the end of the Conditions.
+
+(s) "Payment Claim" means a claim for payment made by the Contractor pursuant to Clause
+          32.1(1).
+
+(t)  "Payment Certificate" means a certificate issued by the Superintending Officer pursuant to
+
+     Clause 32.2(1) or Clause 32.5(1)(a) in response to a Payment Claim or Final Payment Claim
+
+     made by the Contractor.
+
+(u) "Permanent Works" means the works of a permanent nature (including Plant) to be
+          executed in accordance with the Contract.
+
+_____________________________________________________________________________________________
+
+Public Sector Standard Conditions of Contract Lite for Construction Works (March 2025)         2
+
+          (v) "Plant" means mach

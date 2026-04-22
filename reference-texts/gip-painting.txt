@@ -1,0 +1,381 @@
+GOOD INDUSTRY PRACTICES
+
+Copyright @ 2004 Building and Construction Authority, Singapore. All rights reserved. This document or any part thereof may not be
+reproduced for any reason whatsoever in any form or means whatsoever and howsoever without the prior written consent and approval of
+the Building and Construction Authority.
+
+Whilst every effort has been made to ensure the accuracy of the information contained in this publication, the Building and Construction
+Authority, its employees or agents shall not be responsible for any mistake or inaccuracy that may be contained herein and all such liability
+and responsibility are expressly disclaimed by these said parties.
+
+The publication includes advertisements of suppliers who have, in one way or another, contributed in the development of this publication.
+The Building and Construction Authority does not endorse the products included in the advertisements. It is the responsibility of the users
+to select appropriate products and ensure the selected products meet their specific requirements.
+
+ISBN: 981-05-1531-6
+
+Foreword
+
+The Building and Construction Authority (BCA) has been promoting the use of Construction
+Quality Assessment System or CONQUAS 21 as the de facto national yardstick for measuring
+the workmanship quality of building projects. To meet the rising expectation of the
+homeowners, the Quality Mark (QM) Scheme was launched in July 2002 to promote a
+higher consistency in workmanship standards for residential developments.
+This “Good Industry Practices – Painting” is part of the CONQUAS 21 Enhancement Series
+on Good Industry Practices. The purpose of the guide is to share with the industry the
+good painting practices adopted by practitioners and to raise awareness of the different
+paint systems, the selection criteria and application processes. It provides simple and
+practical suggestions on how good quality painting can be achieved on site. Common
+defects associated with paints, their causes and preventive measures are also highlighted
+in this guide.
+In this second edition, the guide has been revised to include more good practices,
+photographs and graphical presentations for easier reference and better illustration.
+It should, however, be pointed out that this guide is not meant to dictate how painting
+work must be carried out. It only serves to illustrate some of the good practices that
+designers and applicators have adopted in selecting and applying paints. We gratefully
+acknowledge the contributions of these practitioners and trust that the industry will find
+this publication useful in its pursuit of quality excellence.
+
+Lam Siew Wah
+Deputy Chief Executive Officer
+Industry Development
+Building and Construction Authority
+
+Acknowledgement
+
+“Good Industry Practices – Painting” was first published in 2001. A Technical Committee
+for Good Industry Practices for Painting was then formed to review and endorse on the
+good practices identified.
+
+We wish to again thank the members of the Technical Committee for their valuable
+contributions.
+
+Technical Committee for Good Industry Practices – Painting
+
+Chairman : Mr Allen Ang Aik Leng                 BCA
+Secretary : Ms Jessica Lim Sok Wei               BCA
+Members : Mr Yee Kee Kong                        REDAS
+                                                 SIA
+                   Mr Chan Kok Way               SCAL
+                   Mr Simon Lee                  Nippon Paint (S) Co Pte Ltd
+                   Ms Lynn M Lee                 ICI Paints (S) Pte Ltd
+                   Ms Koh Sock Sang              I.R.E Corporation Pte Ltd
+                   Mr Matthias Chia              SKK (S) Pte Ltd
+                   Ms Doris Tan                  PSB
+                   Dr Lim Chooi Seng             NUS
+                   A/Prof. Michael Chew Yit Lin
+
+For this edition, we would like to thank the following organisations and individuals for
+their supports and contributions in the review of this guide.
+
+Real Estate Developers’ Association of Singapore (REDAS)
+Singapore Institute of Architects (SIA)
+The Singapore Contractors Association Ltd (SCAL)
+Housing & Development Board (HDB)
+Woh Hup (Pte) Ltd
+Ando Corporation (Singapore Branch)
+
+Dragages Singapore Pte Ltd
+Shimizu Corporation (Singapore Office)
+Look Architects
+Nippon Paint (S) Co Pte Ltd
+ICI Paints (S) Pte Ltd
+SKK (S) Pte Ltd
+STO SEA Pte Ltd
+Cristin Farbwerkzeuge (Far East) Pte Ltd
+Mr Lee Ho Mein
+Mr Larry H.Brual
+Mr Yan Naing Soe
+Mr Khoo Boo Seong
+Mr Alan Ng
+Mr Look Boon Gee
+Ms Lynn M Lee
+Mr Vincent Chia
+Ms Koh Sock Sang
+Ms Doris Tan
+Ms Audra Lee
+Mr Lawrence T P Goh
+
+Tan Tian Chong
+Director
+Technology Development Division
+
+Contents
+
+1. Introduction                                             1
+
+1.1 Functions of Paint                                      1
+
+1.2 Paint Systems and Components                            2
+
+1.3 Classification of Paint                                 3
+
+1.4 Properties of Paint                                     3
+
+2. Material Selection                                       4
+
+2.1 Selection of Paint System                               4
+
+3. Delivery and Storage                                     16
+
+3.1 Delivery                                                16
+
+3.2 Storage of Paints                                       16
+
+3.3 Storage and Maintenance of Application Tools            16
+
+4. Preparatory Work                                         17
+
+4.1 Planning                                                17
+
+4.2 Surface Preparation                                     17
+
+4.3 Paint Preparation                                       21
+
+4.4 Protection Works Before Paint Application               22
+
+4.5 Safety                                                  24
+
+5. Application                                              25
+
+5.1 Guidelines to Good Paint Application                    25
+
+5.2 Application Tools                                       26
+
+5.3 Application Methods                                     27
+
+5.4 Protection Works After Application                      29
+
+5.5 Inspection of Completed Works                           29
+
+6. Common Defects                                           30
+
+Appendix                                                    39
+
+APPENDIX A : Examples of Paints Classified by Resin &       39
+
+              some of their General Properties
+
+APPENDIX B : Categories of Environment According to         40
+
+              their Corrosive Nature
+
+APPENDIX C : Laboratory Tests on Paint System               42
+
+APPENDIX D : Sample of Inspection and Test Plan             43
+
+APPENDIX E : Sample Checklist for In-process Inspection on  45
+
+              Painting Works
+
+APPENDIX F : Sample Checklist for Final Inspection on       48
+
+              Painting Works
+
+References                                                  49
+
+              1. Introduction
+
+              1.1 FUNCTIONS OF PAINT
+
+              Paint is a fluid that dries to form a continuous solid film when spread over a surface or substrate. Depending
+              on its type and properties, paint can perform one or more of the following functions:
+
+                                  Functions of Paint            Descriptions
+              a) Decorative
+                                                             •  Paint can be used as a coating to decorate a surface
+
+                                                                or substrate. It has a wide variety of colour, texture,
+
+                                                                finishes and gross level.
+
+introduction         Decorative paint for aesthetic purpose  •  Paint can be designed to protect the surface or
+              b) Protective
+
+                                                                substrate against ultra-violet rays, humidity,
+
+                                                                chemicals, corrosion, algae, abrasion etc.
+
+                     Protective paint for fuel tanks         •  Paint can also be formulated for specific uses such
+
+             c) Special Purposes                                as luminous paint that glow in the dark for
+
+                                              FIRE              emergency signage, anti-condensation paint
+                                      EXTINGUISHER
+                                                                to provide an insulating layer to minimise
+                     Luminous paint for emergency signage
+         Table 1.1: Functions of Paint                          condensation, fire retardant paint to enhance the
+1
+                                                                fire resistance of combustible surfaces such as
+
+                                                                softboard or hardboard.
+
+                                                             •  For application of special paints, refer to
+
+                                                                manufacturer’s recommendations.
+
+1.2 PAINT SYSTEMS AND COMPONENTS                                                 Topcoat
+                                                                              Undercoat
+A paint system is basically composed of primer/sealer,                 Texture (Optional)
+undercoat and topcoat as shown in Figure 1.1.                          Primer or Sealer
+Depending on the design requirement, texture coating          Figure 1.1: Typical paint system
+may be provided. Due to volume constraint, this
+guidebook will focus on paints that are commonly
+used in the local market. The functions of each system
+component are illustrated in Table 1.2 below.
+
+System Component    Function                                  Remarks
+Primer
+                    – To improve adhesion                     – Primer should be used to reduce
+                    – To protect metal against corrosion          the porosity of the surface and to
+                    – To reduce porosity of receiving             provide adequate moisture resistant
+                                                                  capability
+                        substrate so as to prevent undue
+                        absorption of resin from subsequent   – Etching Primer should be used
+                        coats of paints                           as pre-treatment on non-ferrous
+                                                                  surfaces such as galvanised metals,
+Sealer              – To resist alkali attack from cement         aluminium to ensure good adhesion
+                        based materials
+                                                              – Sealers are applied to prevent                                                                                                     introduction
+                    – To improve adhesion                         migration of substances from the
+                    – To seal problematic surfaces, e.g.          substrate into later coats and should
+                                                                  be used to reduce the porosity of
+                        resinous wood                             the surface and to provide adequate
+                    – To stabilise loose surface particles        moisture resistant capability
+                    – To reduce porosity of receiving
+
+                        substrate so as to prevent undue
+                        absorption of resin from subsequent
+                        coats of paints
+
+Texture (Optional)  – To give a distinct 3-dimensional        – If applied, this is introduced as the
+                        appearance.                               second coat after application of
+                                                                  sealer/primer. Commonly applied
+                                                                  by spray or roller
+
+                                                              – Textures are available in multiple
+                                                                  colours to simulate the look of
+                                                                  granite, tiles, and wallpaper
+
+                                                              – Mock-ups are important to
+                                                                  understand the appearance of the
+                                                                  product
+
+Undercoat           – To impart opacity and film build        – Choice of undercoat should be
+                    – To level out minor irregularities and       compatible with the primer/sealer
+                                                                  and the finishing coats
+                        provide uniform texture
+                    – To improve inter-coating adhesion
+
+Topcoat             – To provide the required functions       – This is the finishing coat of a paint
+                        of paint as discussed in Section 1.1      system which gives the final
+                                                                  appearance in term of colour, gloss
+                                                                  or sheen to the substrate.
+
+Table 1.2: Functions of the Various Components of a Paint System
+
+                                                                                                                                                                                                2
+
+              1.3 CLASSIFICATION OF PAINT                               Appendix A shows some examples of paints classified
+                                                                        by their resin components and properties. In general,
+              With technological advancements, the traditional          “enamel” refers to solvent-based Alkyd resin which is
+              classification of paints into either enamel or emulsion   generally used for wood and metal surfaces.
+              has become misleading. Today, the industry has enamel
+              paints that can be diluted with water and emulsion        Apart from classifying paints by their resin components,
+              paints that have smooth, glossy finishes. Hence, it       paints may also be classified in accordance with their
+              becomes essential to identify paint by its resin          curing mechanism, solvent used, function and market
+              components to minimise confusion.                         segment as shown in Table 1.3.
+
+                 Classification by                                     Type of Paints
+
+                 Curing Mechanism                                      Baking or Air-dry
+
+                 Solvent for the Paint                                 Water-based or Solvent-based
+
+                 Function of System Component                          Primer, Sealer, Undercoat or Finishing Coat
+
+                 Resin component                                       Epoxy, Alkyd, Acrylic, Polyurethane, etc
+
+                 Market Segment                                        Architectural Coating, Heavy Duty Coating, Marine or
+                                                                       Industrial Coating
+              Table 1.3: Classification of Paint
+
+introduction  1.4 PROPERTIES OF PAINT
+
+              The properties of paint determine the general quality of the coating and its workability, ease of application and
+              resistance characteristics. Table 1.4 shows some basic properties of paints.
+
+                 Properties                                            Examples
+                  Appearance                                           Gloss/ Matt/ Semi-gloss
+                  Application Method                                   By Brush, Roller or Sprayer
+                  Drying Time                                          Fast dry/ Slow dry
+                  Adhesion                                             Adhesion to substrates/ Existing coating/ Intercoating
+                  Mechanical Characteristics                           Hardness/ Flexibility
+                  Resistance                                           Ultra-violet/ Chemical/ Abrasion/ Fungus/ Algae
+                  Outdoor Durability                                   Gloss retention/ Colour / Ultra-violet
+                  Storage Stability                                    Settling tendency/ Viscosity stability
+              Table 1.4: Essential Properties of Paint
+
+3
+
+2. Material Selection
+
+2.1 SELECTION OF PAINT SYSTEM                                                                                           material selection
+
+Different types and grades of paint systems have varying application and performance properties. Figure 2.1
+summarises the key considerations in determining the existing condition of coated surface as well as in selecting
+the appropriate paint system.
+
+                                                    Figure 2.1: Selection of Paint System
+
+                                                        FOR COATED SURFACE
+
+                                               To ascertain the presence of defects and problems
+                 • Presence of seepage, peeling, discoloration, algae growth, etc.
+                 • Refer to Section 6 for the types of defects.
+
+                                                     To determine the root cause(s) of defects
+                 • Sources of moisture, use of incorrect paint system, presence of alkaline, too porous substrate ,
+
+                      improper design of building and its facade etc.
+
+                                                              To rectify the root cause(s)
+                 • Install waterproofing, provide proper drainage of condensed water from air-conditioners, reduce
+
+                      the density of foliage to reduce the occurrence of algae, etc.
+                 • Refer to Section 6 for the recommended remedy
+
+                       FOR UNCOATED SURFACE
+
+Type of Substrate and                    Basic Selection Criteria
+its Conditions
+                       • The common types of substrates are concrete/ cement based, timber and metal
+Type of Environment        surfaces. Different substrates require different types of primer/sealer. For example,
+                           external concrete wall surface will require the use of alkali resisting sealer whilst
+                           ferrous metal surface will require corrosion inhibitive primer.
+
+                       • Conditions refer to the substrate’s profile, porosity, and existing conditions etc.
+                       • Refer to Tables 2.1, 2.2 and 2.3 for details.
+
+                       • Internal or external.
+                       • Identify types of adverse elements that the paint system will be subjected to.
+                       • Refer to Appendix B for detail classification.
+
+Expected Appearance    • Colour, texture and gloss level
+                       • Colour retention properties
+
+Expected Performance   • Durability period, weather resistance, algal resistance, UV resistance, alkali resistance,
+                           scrub resistances, chemical resistance, waterproofing characteristic, etc.
+
+Budget                 • Balance and reconcile a realistic budget with the expectations.
+
+                                                                                                                     4
+
+                    In general, the various paint components used (that is the primer, sealer, intermediate coat and topcoat) should
+                    be compatible. Tables 2.1 to 2.3 provide useful information on the various common paint systems available for
+                    different surfaces and purposes. The following explanatory notes are for the use of Table 2.1 to 2.3.
+
+                    Column Headings           Explanatory Notes
+                    Surface
+                                              Receiving surfaces are categorised according to the type of base substance of the
+                                              substrate, i.e.

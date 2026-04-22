@@ -1,0 +1,302 @@
+GOOD INDUSTRY PRACTICES
+
+Copyright @ 2004 Building and Construction Authority, Singapore. All rights reserved. This document or any part thereof may not be
+reproduced for any reason whatsoever in any form or means whatsoever and howsoever without the prior written consent and approval of
+the Building and Construction Authority.
+
+Whilst every effort has been made to ensure the accuracy of the information contained in this publication, the Building and Construction
+Authority, its employees or agents shall not be responsible for any mistake or inaccuracy that may be contained herein and all such liability
+and responsibility are expressly disclaimed by these said parties.
+
+The publication includes advertisements of suppliers who have, in one way or another, contributed in the development of this publication.
+The Building and Construction Authority does not endorse the products included in the advertisements. It is the responsibility of the users
+to select appropriate products and ensure the selected products meet their specific requirements.
+
+ISBN: 981-05-1532-4
+
+Foreword
+
+The Building and Construction Authority (BCA) has been promoting the use of Construction
+Quality Assessment System or CONQUAS 21 as the de facto national yardstick for measuring
+the workmanship quality of building projects. To meet the rising expectations of
+homeowners, the Quality Mark (QM) Scheme was launched in July 2002 to promote
+a higher consistency in workmanship standards for residential developments.
+
+Besides setting standards and assessing the level of workmanship through CONQUAS 21
+and QM Schemes, BCA is developing a series of publications called CONQUAS 21 Good
+Industry Practices Guides to share with the industry good work practices adopted by
+practitioners and contractors who consistently deliver high quality work.
+
+This “Good Industry Practices – Waterproofing for External Wall” is part of the CONQUAS
+21 Enhancement Series on Good Industry Practices. Waterproofing for external walls is
+one of the more problematic areas in building work. This guide provides simple and
+practical tips to assist designers in designing external walls with good waterproofing
+performance and contractors in achieving high quality workmanship. Photographs and
+graphical representations are used extensively in the guide to provide easy reference and
+better illustration.
+
+It must, however, be pointed out that this guide only serves to illustrate some of the good
+practices designers and contractors have adopted while designing and installing external
+walls. This guide is not meant to be a text book on how external walls must be designed
+and installed. We gratefully acknowledge the contributions of these practitioners and trust
+that the industry will find this publication useful in its pursuit of quality excellence.
+
+Lam Siew Wah
+Deputy Chief Executive Officer
+Industry Development
+Building and Construction Authority
+
+Acknowledgement
+
+“Good Industry Practices –Waterproofing for External Wall” was developed with inputs
+from architects, main contractors, precasters, waterproofing suppliers and members from
+the various professional associations.
+
+We would like to thank the following contractors for sharing their good practices with us
+and volunteering their project sites for our documentation:
+
+Woh Hup (Pte) Ltd
+Dragages Singapore Pte Ltd
+Tiong Seng Contractors (Pte) Ltd
+Poh Lian Construction Pte Ltd
+Shimizu Corporation (Singapore Office)
+
+We would also like to thank the following organisations and firms for their valuable
+comments towards the completion of this guidebook:
+
+Housing and Development Board
+Real Estate Developers’ Association of Singapore
+Singapore Institute of Architects
+Institution of Engineers, Singapore
+Singapore Contractors Association Ltd
+Hong Leong Asia Ltd
+Mapei Far East Pte Ltd
+ACS Amview Contract Services Pte Ltd
+Fermold Pte Ltd
+Excel Precast Pte Ltd
+Eastern Pretech Pte Ltd
+
+Tan Tian Chong
+Director
+Technology Development Division
+
+Contents
+
+1. Introduction                                     1
+
+2. Design of External Walls                         1
+
+2.1 General                                         1
+
+2.2 Choice of External Wall System                  1
+
+2.3 External Precast Walls                          2
+
+2.4 External Masonry Brickwalls                     8
+
+2.5 Other Design Considerations                     12
+
+3. Material Selection                               16
+
+3.1 Concrete Constituents                           16
+
+3.2 Sealant and Backer Rods                         16
+
+3.3 Clay Bricks                                     17
+
+3.4 Cement Mortar                                   18
+
+3.5 Damp-proof Course                               19
+
+3.6 Bonding Bar Systems, Reinforcement and Lintels  19
+
+3.7 Beads Used In External Plastering               19
+
+4. Delivery, Handling & Storage                     20
+
+4.1 Precast Components                              20
+
+4.2 Bricks, Cement, Sand and Others                 22
+
+5. External Wall construction                       26
+
+5.1 Erection of External Precast Walls              26
+
+5.2 Cast In-Situ Reinforced Concrete Walls          29
+
+5.3 Bricklaying                                     31
+
+5.4 External Plastering and Skim Coat               37
+
+6. Testing                                          42
+
+Appendix                                            44
+
+Appendix A Sample Inspection and Test Plans         44
+
+Appendix B Sample Checklists                        50
+
+References                                          55
+
+                                        1. Introduction
+
+                                        In a survey conducted by BCA in year 2003 involving      speeds experienced by high-rise buildings also
+                                        about 10,000 private residential units, water seepage    increase the likelihood of water seepage. Building
+                                        through external walls was found to be a common          envelopes must, therefore, be adequately designed
+                                        defect faced by homeowners. The survey findings also     and constructed to prevent ingress of water.
+                                        showed that the use of single layer brickwall is the
+                                        most common cause of water seepage through external      There are various external wall systems used in the
+                                        walls. Almost 90% of the water seepage occurred          local industry, including precast concrete walls, cast
+                                        through cracks in the plastered brickwalls. In general,  in-situ reinforced concrete walls, brickwalls, curtain
+                                        water seepage through external walls occurred within     walls, cladding walls, concrete block walls, etc.
+                                        the first five years of building completion.
+                                                                                                 Due to volume constraint, this publication focuses on
+                                        Water seepage through the external walls is              precast concrete walls, cast in-situ reinforced concrete
+                                        unacceptable to the occupants. The problem is further    walls and plastered brickwalls. It provides industry
+                                        compounded by Singapore’s high humidity and              good practices to help achieve durable and effective
+                                        abundant rainfall throughout the year. High wind         waterproofing of the building envelope.
+
+introduction/ design of external walls  2. Design of External Walls
+
+                                        2.1. GENERAL                                             walls are exposed to severe weather conditions, more
+                                                                                                 extensive surface waterproofing should be employed.
+                                        The ingress of rainwater impinging on external walls
+                                        usually occurs though joints and cracks in the walls.    This chapter focuses on the design aspects of precast
+                                        To a lesser extent, seepage through absorption and       concrete walls and plastered brickwalls.
+                                        permeation may also occur depending on the material
+                                        and thickness of the walls.                              2.2. CHOICE OF EXTERNAL
+                                                                                                        WALL SYSTEM
+                                        Watertightness of external walls is usually achieved by
+                                        using suitable materials, providing adequate wall        The common types of external walls include cast in-
+                                        thickness, designing proper construction details, as     situ reinforced concrete (RC) walls, precast concrete
+                                        well as providing surface rendering and finishes which   walls and masonry brickwalls.
+                                        serve as barrier against water ingress. Where external
+
+                                        Figure 2.1: Common types of external wall system
+
+                   Reinforced Concrete (RC) Wall  Precast Concrete Wall                          Masonry Brickwall
+1
+
+                                        1. Introduction
+
+                                        In a survey conducted by BCA in year 2003 involving      speeds experienced by high-rise buildings also
+                                        about 10,000 private residential units, water seepage    increase the likelihood of water seepage. Building
+                                        through external walls was found to be a common          envelopes must, therefore, be adequately designed
+                                        defect faced by homeowners. The survey findings also     and constructed to prevent ingress of water.
+                                        showed that the use of single layer brickwall is the
+                                        most common cause of water seepage through external      There are various external wall systems used in the
+                                        walls. Almost 90% of the water seepage occurred          local industry, including precast concrete walls, cast
+                                        through cracks in the plastered brickwalls. In general,  in-situ reinforced concrete walls, brickwalls, curtain
+                                        water seepage through external walls occurred within     walls, cladding walls, concrete block walls, etc.
+                                        the first five years of building completion.
+                                                                                                 Due to volume constraint, this publication focuses on
+                                        Water seepage through the external walls is              precast concrete walls, cast in-situ reinforced concrete
+                                        unacceptable to the occupants. The problem is further    walls and plastered brickwalls. It provides industry
+                                        compounded by Singapore’s high humidity and              good practices to help achieve durable and effective
+                                        abundant rainfall throughout the year. High wind         waterproofing of the building envelope.
+
+introduction/ design of external walls  2. Design of External Walls
+
+                                        2.1. GENERAL                                             walls are exposed to severe weather conditions, more
+                                                                                                 extensive surface waterproofing should be employed.
+                                        The ingress of rainwater impinging on external walls
+                                        usually occurs though joints and cracks in the walls.    This chapter focuses on the design aspects of precast
+                                        To a lesser extent, seepage through absorption and       concrete walls and plastered brickwalls.
+                                        permeation may also occur depending on the material
+                                        and thickness of the walls.                              2.2. CHOICE OF EXTERNAL
+                                                                                                        WALL SYSTEM
+                                        Watertightness of external walls is usually achieved by
+                                        using suitable materials, providing adequate wall        The common types of external walls include cast in-
+                                        thickness, designing proper construction details, as     situ reinforced concrete (RC) walls, precast concrete
+                                        well as providing surface rendering and finishes which   walls and masonry brickwalls.
+                                        serve as barrier against water ingress. Where external
+
+                                        Figure 2.1: Common types of external wall system
+
+                   Reinforced Concrete (RC) Wall  Precast Concrete Wall                          Masonry Brickwall
+1
+
+Water seepage usually occurs through the fabric of         These include joints between precast concrete elements,
+building elements or through the gaps between these        between precast and cast in-situ elements, as well as
+elements. For effective watertightness, the wall system    between precast elements and window/door frames
+should be constructed with impervious material and         or other fittings. Joint detailing and the use of suitable
+with minimal joints. Large precast concrete panels         sealant should, hence, be carefully considered during
+and cast in-situ RC construction with low water cement     the design stage. Joints with complicated profiles are
+ratio, in general, have better watertightness performance  difficult to seal and this may affect the watertightness
+than brickwalls, which have extensive joints between       of the building envelope.
+layers of bricks. In addition, precast walls have many
+other benefits over cast in-situ concrete walls and        There are two types of joint detailing employed for
+brickwalls, such as better quality, higher buildability    precast concrete walls, namely the one-stage joint and
+and better durability.                                     two-stage joint. One-stage joint is a simple butt joint
+                                                           with sealant applied against a backer rod at the external
+Hence, the use of precast concrete walls is strongly       face of the wall. One-stage joint offers only a single
+recommended for external wall construction.                line of defence against water seepage. Pressure drop
+                                                           may occur across the one-stage joint and water may
+2.3. EXTERNAL PRECAST WALLS                                seep through micro cracks or hairline cracks. Two-
+                                                           stage joint (Figure 2.2), on the other hand, provides
+Precast joints are the weakest links in ensuring           two defence lines against water ingress. Experience has
+watertightness of the external precast concrete walls.     shown that two stage joints give better watertightness
+                                                           performance than one-stage joints.
+Figure 2.2: Two-stage joint detailing
+                                                           EXTERNAL  Sealant                                              design of external walls
+  Self-adhesive                                                      Backer rod
+  compressible
+  waterproofing strip
+
+Non-shrink grout
+
+                                                                     Infill concrete
+
+INTERNAL          EXTERNAL                                 INTERNAL
+
+Two-stage horizontal joint (Sectional view)                Two-stage vertical joint (Plan view)
+
+2.3.1 HORIZONTAL JOINTS                                    Figure 2.3 shows the typical details for a horizontal
+                                                           joggled joint. The joint is sealed with high strength
+For horizontal joints of precast walls, joggled joints     non-shrink grout and an approved self-adhesive
+(as shown in Figure 2.3) provide better watertightness     compressible waterproofing strip. In addition, an
+performance than the butt joints. The matching             approved flexible cementitious waterproofing
+upstand and downstand profile of the joggled joint         membrane may be used at the inner corner of the
+prevents inflow of water through the building envelope.    intersection between the wall panel and beam/slab
+The height of the upstand and downstand is dependent       for enhanced watertightness performance.
+on the exposure conditions, wall thickness and type
+of precast wall (load-bearing or non load-bearing). It
+generally ranges from 35mm for mild exposure to
+100mm for severe exposure condition.
+
+                                                                                                                       2
+
+                          Figure 2.3: Typical sectional view of horizontal joggled joint (for non load-bearing walls)
+
+                                                                                                                       Precast panel
+
+                          Approved self-adhesive                                                                   [A] ≥ 35mm
+                          compressible waterproofing strip                                                         [B] ≥ 35mm
+                                                                                                                   [B] [C] ≤ 1
+                                     High strength non-shrink grout
+                                                                                                     [C]
+
+                                                          100mm                        15mm
+
+design of external walls  Approved flexible cementitious                                                         [B]
+                          waterproofing membrance                                                                15mm
+                                                                                                     [A]
+                          Typical
+                          storey level
+
+                                                                     100mm
+
+                                                                                                                       Slope 1:10
+
+                                                                                             Fillet
+
+                                                          Cast in-situ beam
+
+                          INTERNAL                                                                                     EXTERNAL
+
+                          The gap at the external wall face is usually not sealed      of the joint. For such sealing system, the sealant must
+                          to allow incident water in the joint to drain off. If this   be discontinued at regular intervals (at intersections
+                          gap is also to be sealed (eg. for aesthetic reasons), the    with the vertical joints) to drain off incident water
+                          joint can be fully sealed using non-shrink grout, with       that has managed to seep into the gap (Figure 2.4b).
+                          a backer rod and an appropriate sealant installed at
+                          the exterior end of the joint (Figure 2.4a).

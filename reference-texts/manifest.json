@@ -1,0 +1,362 @@
+{
+  "generatedAt": "2026-04-22",
+  "maxCharsPerDoc": 20000,
+  "groups": {
+    "contracts": {
+      "label": "Contracts",
+      "order": 1
+    },
+    "conquas": {
+      "label": "BCA CONQUAS",
+      "order": 2
+    },
+    "bca_gip": {
+      "label": "BCA Good Industry Practice",
+      "order": 3
+    },
+    "hdb": {
+      "label": "HDB",
+      "order": 4
+    }
+  },
+  "documents": [
+    {
+      "id": "psscoc-construction-2020",
+      "group": "contracts",
+      "label": "PSSCOC for Construction Works 2020",
+      "description": "Public Sector Standard Conditions of Contract — Construction Works (2020)",
+      "file": "reference-texts/psscoc-construction-2020.txt",
+      "chars": 20000,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [
+        "*"
+      ],
+      "defaultEditions": [
+        "*"
+      ]
+    },
+    {
+      "id": "psscoc-construction-lite-2025",
+      "group": "contracts",
+      "label": "PSSCOC Construction Works Lite 2025",
+      "description": "Simplified PSSCOC for smaller works (2025)",
+      "file": "reference-texts/psscoc-construction-lite-2025.txt",
+      "chars": 20000,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [],
+      "defaultEditions": []
+    },
+    {
+      "id": "psscoc-design-build-2020",
+      "group": "contracts",
+      "label": "PSSCOC for Design and Build 2020",
+      "description": "Design-and-build variant of PSSCOC (2020)",
+      "file": "reference-texts/psscoc-design-build-2020.txt",
+      "chars": 20000,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [],
+      "defaultEditions": []
+    },
+    {
+      "id": "conquas-private-residential",
+      "group": "conquas",
+      "label": "CONQUAS (Private Residential) Manual",
+      "description": "BCA CONQUAS manual for private residential — effective 1 Apr 2026",
+      "file": "reference-texts/conquas-private-residential.txt",
+      "chars": 20626,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [
+        "Building Defects (Landed)",
+        "Building Defects (Highrise)"
+      ],
+      "defaultEditions": [
+        "private-residential-2026"
+      ]
+    },
+    {
+      "id": "conquas-2022-r2-v5",
+      "group": "conquas",
+      "label": "CONQUAS 2022 R2 V5",
+      "description": "CONQUAS 2022 R2 v5 — non-residential (offices, retail, industrial, institutional)",
+      "file": "reference-texts/conquas-2022-r2-v5.txt",
+      "chars": 20365,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [
+        "Facilities Management"
+      ],
+      "defaultEditions": [
+        "2022"
+      ]
+    },
+    {
+      "id": "conquas-circular-2025",
+      "group": "conquas",
+      "label": "BCA Circular — Launch of CONQUAS (Private Residential)",
+      "description": "BCA/CPQ/QCD/C20251113 launch circular (13 Nov 2025)",
+      "file": "reference-texts/conquas-circular-2025.txt",
+      "chars": 20644,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [
+        "Building Defects (Landed)",
+        "Building Defects (Highrise)"
+      ],
+      "defaultEditions": [
+        "private-residential-2026"
+      ]
+    },
+    {
+      "id": "bca-quality-mark-scheme-2025",
+      "group": "conquas",
+      "label": "BCA Quality Mark Scheme",
+      "description": "BCA Quality Mark (QM) scheme guide — unit-by-unit assessment (22 May 2025)",
+      "file": "reference-texts/bca-quality-mark-scheme-2025.txt",
+      "chars": 17194,
+      "truncated": false,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [],
+      "defaultEditions": []
+    },
+    {
+      "id": "gip-painting",
+      "group": "bca_gip",
+      "label": "Painting",
+      "description": "BCA GIP — Painting",
+      "file": "reference-texts/gip-painting.txt",
+      "chars": 20568,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [
+        "Interior Works"
+      ],
+      "defaultEditions": []
+    },
+    {
+      "id": "gip-ceramic-tiling",
+      "group": "bca_gip",
+      "label": "Ceramic Tiling",
+      "description": "BCA GIP — Ceramic Tiling (3rd Ed)",
+      "file": "reference-texts/gip-ceramic-tiling.txt",
+      "chars": 20959,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [
+        "Interior Works"
+      ],
+      "defaultEditions": []
+    },
+    {
+      "id": "gip-natural-stone-finishes",
+      "group": "bca_gip",
+      "label": "Natural Stone Finishes",
+      "description": "BCA GIP — Marble & Granite / Natural Stone Finishes",
+      "file": "reference-texts/gip-natural-stone-finishes.txt",
+      "chars": 20774,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [],
+      "defaultEditions": []
+    },
+    {
+      "id": "gip-agglomerated-stone-tiling",
+      "group": "bca_gip",
+      "label": "Agglomerated Stone Tiling",
+      "description": "BCA GIP — Agglomerated Stone (engineered/composite stone)",
+      "file": "reference-texts/gip-agglomerated-stone-tiling.txt",
+      "chars": 0,
+      "truncated": false,
+      "textExtractionFailed": true,
+      "defaultWorkCats": [],
+      "defaultEditions": []
+    },
+    {
+      "id": "gip-waterproofing-internal",
+      "group": "bca_gip",
+      "label": "Waterproofing — Internal Wet Areas",
+      "description": "BCA GIP — Waterproofing for Internal Wet Areas",
+      "file": "reference-texts/gip-waterproofing-internal.txt",
+      "chars": 0,
+      "truncated": false,
+      "textExtractionFailed": true,
+      "defaultWorkCats": [
+        "Building Defects (Landed)",
+        "Building Defects (Highrise)"
+      ],
+      "defaultEditions": []
+    },
+    {
+      "id": "gip-waterproofing-external",
+      "group": "bca_gip",
+      "label": "Waterproofing — External Wall",
+      "description": "BCA GIP — Waterproofing for External Wall",
+      "file": "reference-texts/gip-waterproofing-external.txt",
+      "chars": 20532,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [
+        "Building Defects (Landed)",
+        "Building Defects (Highrise)"
+      ],
+      "defaultEditions": []
+    },
+    {
+      "id": "gip-aluminium-window",
+      "group": "bca_gip",
+      "label": "Aluminium Window",
+      "description": "BCA GIP — Aluminium Window",
+      "file": "reference-texts/gip-aluminium-window.txt",
+      "chars": 20953,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [
+        "Building Defects (Highrise)"
+      ],
+      "defaultEditions": []
+    },
+    {
+      "id": "gip-timber-doors",
+      "group": "bca_gip",
+      "label": "Timber Doors",
+      "description": "BCA GIP — Timber Doors",
+      "file": "reference-texts/gip-timber-doors.txt",
+      "chars": 0,
+      "truncated": false,
+      "textExtractionFailed": true,
+      "defaultWorkCats": [
+        "Interior Works"
+      ],
+      "defaultEditions": []
+    },
+    {
+      "id": "gip-timber-flooring",
+      "group": "bca_gip",
+      "label": "Timber Flooring",
+      "description": "BCA GIP — Timber Flooring",
+      "file": "reference-texts/gip-timber-flooring.txt",
+      "chars": 20644,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [],
+      "defaultEditions": []
+    },
+    {
+      "id": "gip-engineered-wood",
+      "group": "bca_gip",
+      "label": "Engineered Wood Flooring",
+      "description": "BCA GIP — Engineered Wood Flooring",
+      "file": "reference-texts/gip-engineered-wood.txt",
+      "chars": 20346,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [],
+      "defaultEditions": []
+    },
+    {
+      "id": "gip-vinyl-flooring",
+      "group": "bca_gip",
+      "label": "Vinyl Flooring",
+      "description": "BCA GIP — Vinyl Flooring",
+      "file": "reference-texts/gip-vinyl-flooring.txt",
+      "chars": 20032,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [],
+      "defaultEditions": []
+    },
+    {
+      "id": "gip-wardrobes-cabinets",
+      "group": "bca_gip",
+      "label": "Wardrobes & Kitchen Cabinets",
+      "description": "BCA GIP — Wardrobes & Kitchen Cabinets",
+      "file": "reference-texts/gip-wardrobes-cabinets.txt",
+      "chars": 13909,
+      "truncated": false,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [
+        "Interior Works"
+      ],
+      "defaultEditions": []
+    },
+    {
+      "id": "gip-precast-concrete",
+      "group": "bca_gip",
+      "label": "Precast Concrete Elements",
+      "description": "BCA GIP — Precast Concrete Elements",
+      "file": "reference-texts/gip-precast-concrete.txt",
+      "chars": 0,
+      "truncated": false,
+      "textExtractionFailed": true,
+      "defaultWorkCats": [],
+      "defaultEditions": []
+    },
+    {
+      "id": "gip-drywall-partition",
+      "group": "bca_gip",
+      "label": "Drywall Internal Partition",
+      "description": "BCA GIP — Drywall Internal Partition",
+      "file": "reference-texts/gip-drywall-partition.txt",
+      "chars": 19966,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [
+        "Interior Works"
+      ],
+      "defaultEditions": []
+    },
+    {
+      "id": "gip-pbu",
+      "group": "bca_gip",
+      "label": "Prefabricated Bathroom Unit (PBU)",
+      "description": "BCA GIP — Prefabricated Bathroom Unit",
+      "file": "reference-texts/gip-pbu.txt",
+      "chars": 20915,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [
+        "Building Defects (Highrise)"
+      ],
+      "defaultEditions": []
+    },
+    {
+      "id": "gip-design-materials-vol1",
+      "group": "bca_gip",
+      "label": "Design & Materials Selection — Vol 1",
+      "description": "BCA GIP — Design & Materials Selection for Quality (Vol 1)",
+      "file": "reference-texts/gip-design-materials-vol1.txt",
+      "chars": 20952,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [],
+      "defaultEditions": []
+    },
+    {
+      "id": "gip-design-materials-vol2",
+      "group": "bca_gip",
+      "label": "Design & Materials Selection — Vol 2",
+      "description": "BCA GIP — Design & Materials Selection for Quality (Vol 2)",
+      "file": "reference-texts/gip-design-materials-vol2.txt",
+      "chars": 20942,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [],
+      "defaultEditions": []
+    },
+    {
+      "id": "uncledefect-hdb-bto-checklist",
+      "group": "hdb",
+      "label": "HDB BTO Handover Checklist (UncleDefect)",
+      "description": "Room-by-room checklist for HDB BTO handover — third-party reference",
+      "file": "reference-texts/uncledefect-hdb-bto-checklist.txt",
+      "chars": 9053,
+      "truncated": false,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [],
+      "defaultEditions": []
+    }
+  ]
+}

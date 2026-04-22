@@ -1,0 +1,421 @@
+BCA Construction Quality Assessment System
+                                             CONQUAS® 2022
+
+25 May 2023
+
+             CONQUAS® 2022
+
+                                                                                                                       2
+
+                         CONQUAS®
+
+                                THE BCA
+       CONSTRUCTION QUALITY ASSESSMENT SYSTEM
+
+Copyright @ 2022 by the Building and Construction Authority, Singapore. All rights
+reserved. No part may be reproduced, in any form or by any means, without
+permission in writing from the publisher.
+While every effort has been made to ensure the accuracy of the information presented
+in this publication, neither the Authority nor its employees or agents can accept
+responsibility for any loss or damage incurred in connection with the use of the
+contents.
+
+25 May 2023
+
+             CONQUAS® 2022
+
+                                                                                       3
+
+             CONTENTS
+
+1.0 INTRODUCTION....................................................................................................4
+         1.1 Objectives of CONQUAS
+         1.2 Scope of CONQUAS
+         1.3 Derivation of CONQUAS
+         1.4 CONQUAS Assessor
+
+2.0 CONQUAS.............................................................................................................11
+         2.1 Components to be assessed
+         2.2 The Weightages
+         2.3 Sampling
+
+3.0 THE ASSESSMENT.................................................................................................14
+         3.1 Assessment Approach
+         3.2 Assessment
+         3.3 Bonus Points
+         3.4 Major Defects
+         3.5 Moderation Framework
+         3.6 Computation of CONQUAS Score
+         3.7 Publication of CONQUAS Scores and/or CONQUAS Bands
+
+APPENDICES
+
+Appendix 1   Quality Standards for Internal Finishes Works........................................... 36
+Appendix 2   Quality Standards for External Finishes Works.......................................... 47
+Appendix 3   Quality Standards for Materials and Functional Tests............................... 55
+Appendix 4   Defects Grouping Guide for Assessment of Internal Finishes.................... 57
+Appendix 5   Building Grouping Guide………………………………………………………………………… 58
+
+Revision Log ………………………………………………………………………………………………………………. 59
+
+25 May 2023
+
+             CONQUAS® 2022
+
+                                                                                                                       4
+
+1.0 INTRODUCTION
+
+         Construction Quality Assessment System (CONQUAS) 2022 is now the eleventh
+         edition of the CONQUAS assessment scheme after more than 30 years of
+         implementation.
+
+         The key changes are as follows:
+
+             a. Internal Finishes (For Private Residential Projects only)
+                     i. Based on the distribution of defects from complaints raised during
+                           Defects Liability Period (DLP), the weightages for internal finishes were
+                           adjusted to ensure it commensurate with end users’ expectation on
+                           quality
+
+             b. Installation Methods Verification and Functional Tests (For Private
+                  Residential Projects only)
+                     i. Introduced Water Flow Test for dwelling unit corridor, footpath,
+                           exposed walkway in carpark, lift lobbies and basement carpark to
+                           address issues of ponding at common areas
+                    ii. Introduced 100% EN 14179-2 heat soak test for tempered glass
+                           (including laminated tempered glass) used at balcony, roof canopy and
+                           shower screen (Self-Testing) + 3-year warranty for all glasses to address
+                           issues of shattered glasses within dwelling units and common areas
+                   iii. Implement self-testing for Pull-Off-Test for Internal Wall Tiles (based
+                           on project’s QP declaration) in place of actual tests to streamline
+                           assessment process
+
+             c. External Work Assessment (For Private Residential Projects only)
+                     i. Added assessment of suspended Swimming Pool for signs of water
+                           leakages
+
+             d. Moderation Framework
+                     i. Expanded moderation scope to cover validated major latent defects
+                           and contravention of regulatory requirement/s
+
+             e. Bonus Points
+                     i. Removed from CONQUAS Assessment Framework
+
+1.1 Objectives of CONQUAS
+
+         The Building and Construction Authority (BCA) developed the CONQUAS in
+         conjunction with major public sector agencies and various leading industry
+         professional bodies, organizations and firms to measure the quality level achieved in
+         a completed building project.
+
+         CONQUAS was designed with three objectives:
+
+         (a) To have a standard quality assessment system for new building projects.
+         (b) To make quality assessment objective by:
+
+                  - measuring constructed works against workmanship standards
+                      and specification.
+
+25 May 2023
+
+             CONQUAS® 2022
+
+                                                                                                                       5
+
+                  - using a sampling approach to suitably represent the whole
+                      project.
+
+         (c) To enable quality assessment to be carried out systematically within
+                  reasonable cost and time.
+
+         CONQUAS is an independent assessment. Unless specified in the building contract,
+         project engineers or architects should not use CONQUAS to decide if the building or
+         parts of the building project are acceptable.
+
+1.2 Scope of CONQUAS
+
+         CONQUAS sets out the standards for the various aspects of construction work and
+         award points for works that meet the standards. These points are then summed up
+         to give the CONQUAS Score and/or CONQUAS Banda for the building project.
+
+         CONQUAS covers most aspects of general building architectural works and
+         assessments shall be completed prior to application for TOP or CSC inspection,
+         whichever comes first.
+
+a It reflects a project’s (private residential) CONQUAS performance (which is determined by BCA's
+CONQUAS assessment and consideration of validated feedback from homeowners), or a firm’s CONQUAS
+track records based on its CONQUAS project performance/s over the past 6 years. The performance is
+represented on a banding scale, with Band 1 being the best (very low incidence of major defects) and Band 6
+being unsatisfactory (higher incidence of major defects). Based on past records, projects with Band 1 had very
+low incidence of major defects.
+
+25 May 2023
+
+             CONQUAS® 2022
+
+                                                                                          6
+
+The assessment consists of four components:
+         (1) Internal Finishes,
+         (2) Installation Methods Verification and Functional Tests,
+         (3) External Finishes, and
+         (4) Bonus Points – discontinued for projects with construction tenders
+                  called from 1 July 2023
+
+Each component is further divided into different items for assessment. However, the
+assessment excludes works such as piling, heavy foundation and sub-structure works
+which are heavily equipment-based, buried or covered and usually called under
+separate contracts or sub-contracts. Design, choice of materials and end users’
+aesthetic preferences are also excluded from the assessment.
+
+The building is assessed primarily on workmanship standards achieved through
+factory and site inspection. For projects using Design for Manufacturing and Assembly
+(DfMA) technologies, assessments will be done throughout the construction process
+with the Installation Methods Verification and some of the Functional Tests carried
+out in the factory.
+
+The assessment on the functional performance of selected services and installations
+help to safeguard the interest of building occupants in relation to liveability, comfort
+and defects which surface only after some time.
+
+To ensure the robustness of the CONQUAS score, major defects will be taken into
+consideration depending on when such major defects are detected, or adverse
+feedback on such major defects are received as follows:
+
+(a) Where major defects are detected during the assessment, such major defects
+        will affect the scoring during the assessment;
+
+(b) Where adverse feedback on major defects are received from end-users during
+        the period from the completion of the assessment to the issuance of the
+        CONQUAS score and/or CONQUAS band, the CONQUAS score and/or
+        CONQUAS band will be moderated before being issued;
+
+(c) Where valid adverse feedback on major defects are received from end-users
+        after the date of issuance of the CONQUAS score and/or CONQUAS band, the
+        CONQUAS score and/or CONQUAS band will be further moderated.
+
+In addition, the 3-tier CONQUAS Scheme (see Table A) was introduced to help
+developers/contractors further raise the quality of their new private residential
+developments. This involves a higher sampling rate assessment where more samples
+will be covered and more areas for improvement identified. The 3-tier CONQUAS
+Scheme will apply to all CONQUAS applications for new *private residential
+developments.
+
+The 3-tier CONQUAS Scheme is applicable where:
+(a) developers or main contractors, in the past 3 years,
+
+        i. with no CONQUAS track record for *private residential development, or
+       ii. has at least one *private residential development graded Band 4 or 5 or
+       iii. has at least one *private residential development in Band 6 or with major
+
+              defects4 affecting ≥ 20 units or 5% of all units, whichever is lower or at
+
+25 May 2023
+
+             CONQUAS® 2022
+
+                                                                                                              7
+
+              common areas in > 3 or > 5 common area locations for projects with < 500
+              units and > 500 units respectively or
+       iv. has from the time after the application is made to any time before 20% of
+              the required internal finishes of the project have been completed at least
+              one *private residential development in Band 6 or with major defects4
+              affecting > 20 units or 5% of all units, whichever is lower or at common
+              areas in > 3 or > 5 common area locations for projects with < 500 units
+              and > 500 units respectively
+
+(Upon the expiry of the 3-year period, BCA retains the discretion to impose Tier 3
+CONQUAS assessment if BCA assesses that the major defects have not been
+reasonably addressed.)
+
+(b) all other developers or main contractors
+         i. to be decided after the initial CONQUAS band 3 is generated
+
+*Note: Includes private mixed developments with residential component.
+
+25 May 2023
+
+             CONQUAS® 2022
+
+                                                                                                       8
+
+                 Table A – 3-Tier CONQUAS Scheme
+
+S/N  Applicants                       Tier 1                     Tier 2a        Tier 2b        Tier 3
+
+                                      25%                        50%            100%           100%
+
+                                      sampling                   sampling1      sampling (all  checks2
+                                                                 (50% of the    units will be
+                                      (25% of the                units will be  checked, and   (all
+                                                                 checked, and   sampling will  locations
+                                      units will be              sampling will  be             within all
+                                                                 be             conducted      units will
+                                      checked,                   conducted      within units)  be
+                                                                                               checked)
+                                      and
+
+                                      sampling
+
+                                      will                   be
+
+                                      conducted within units)
+
+                                      within
+
+                                      units)
+
+a)   Developers or main contractors   -                          During         When the -
+
+     i. with no CONQUAS track record                             CONQUAS initial
+
+     for *private residential                                    application    CONQUAS
+     development in the past 3                                                  band3 is in
+
+     years, or                                                                  Band 4 or 5
+
+     ii. has at least one *private -                                                           -
+
+     residential development in the
+
+     past 3 years in Band 4 or 5, or
+
+                   iii. has at least one *private -              -              -              During
+                           residential development in the
+                           past 3 years in Band 6 or with                                      CONQUAS
+                           major defects4 affecting ≥ 20
+                           units or 5% of all units,                                           application
+                           whichever is lower or at
+                           common areas in ≥ 3 or ≥ 5            During         During         -
+                           common area locations for
+                           projects with < 500 units and ≥       CONQUAS CONQUAS
+                           500 units respectively
+                                                                 assessments5 assessments5
+                 Upon the expiry of the 3-year period,
+                 BCA retains the discretion to impose
+                 Tier 3 CONQUAS assessment if BCA
+                 assesses that the major defects4 have
+                 not been reasonably addressed.
+
+                   iv. has from the time after the -
+                           application is made to any time
+                           before 20% of the required
+                           internal finishes of the project
+                           have been completed at least
+                           one *private residential
+                           development in Band 6 or with
+                           major defects4 affecting ≥ 20
+                           units or 5% of all units,
+                           whichever is lower or at
+
+25 May 2023
+
+                                                                                               CONQUAS® 2022
+
+                                                                                                 9
+
+             common areas in > 3 or > 5
+             common area locations for
+             projects with < 500 units and >
+             500 units respectively
+
+b)           All other developers or main During  When the When the -
+
+             contractors                         CONQUAS initial            CONQUAS
+
+             i. to be decided after the initial  application CONQUAS score, after
+
+             CONQUAS band 3 is generated          band 3 is in 50% of the
+
+                                                  Band 4 or 5 required
+
+                                                                            architectural
+
+                                                                            internal
+
+                                                                            finishes
+
+                                                                            samples are
+
+                                                                            completed,
+
+                                                                            fall in Band 4
+
+                                                                            or 5
+
+    *Note: Includes private mixed developments with residential component.
+
+1Additional samples will be taken on: architectural internal finishes samples, wet areas water tightness tests for
+toilets/bathrooms, window water tightness tests.
+2 100% checks refer to all locations within all dwelling units in a project will be checked. Projects will be required to
+ meet prevailing CONQUAS Band 2.
+3 The initial CONQUAS band will be derived after 20% (for tier 2a) and 50% (for tier 2b) of the required architectural
+ internal finishes samples are completed.
+4 Major defects refer to defects that would generally not be acceptable to end-users as specified under section 3.4 in
+ this manual.
+5 Projects will be escalated one tier up from the prevailing tier imposed.
+
+1.3 Derivation of CONQUAS
+
+         The minimum standards were derived from discussions with the major public sector
+         agencies, developers, consultants and contractors based on the general
+         specifications used in their projects.
+
+         To match the expectations from the end users, feedback through complaints,
+         homeowners’ survey findings and defects listings were also considered in refining the
+         weightages and assessment standards.
+
+         In developing CONQUAS, studies and numerous trials were conducted to fine-tune its
+         new test techniques and assessment standards. Moderation of the scoring/banding
+         system was carried out along with trials to ensure accuracy, consistency and alignment
+         with end users’ expectations.
+
+25 May 2023
+
+                                                                                            CONQUAS® 2022
+
+                                                                                                                       10
+
+1.4 CONQUAS Assessor
+
+         BCA CONQUAS assessors undergo a rigorous training programme. They are required
+         to attend BCA's in-house CONQUAS training and calibration programme to ensure
+         competency and consistency in the assessment.
+
+25 May 2023
+
+             CONQUAS® 2022
+
+We transform the Built Environment Sector and shape a liveable and smart Built Environment for Singapore  11
+
+2.0 CONQUAS
+
+2.1 Components to be assessed
+
+The CONQUAS assessment is divided into four main components –
+
+         (a) Internal Finishes,
+         (b) Installation Methods Verification and Functional Tests,
+         (c) External Finishes, and
+         (d) Bonus Points – discontinued for projects with construction tenders
+
+                  called from 1 July 2023.
+
+(a) Internal Finishes
+
+         Internal finishes deal mainly with the finishes and components. This is the part
+         where the quality and standard of workmanship are most visible. The
+         assessment covers:
+
+         (i) architectural finishes, which includes floors, internal walls, ceiling,
+                  doors, windows and components. Components include permanent
+                  internal fixtures (such as wardrobe, kitchen cabinet, vanity top, mirror,
+                  bathtub, water closet, shower screen, basin etc.), and permanent
+                  external fixtures (such signage, railings, unit number plates, lift fittings,
+                  letter box, lightings, metal gate, etc.).
+
+         (ii) basic M&E fittings, which includes taps and mixers, WC, floor traps,
+                  electrical switches, trunkings, fan coil unit, air-con diffuser, light fittings,
+                  CCTV camera, shower head, etc.

@@ -1,0 +1,467 @@
+Copyright @ 2016 Building and Construction Authority, Singapore. All rights reserved. This
+document or any part thereof may not be reproduced for any reason whatsoever in any form
+or means whatsoever and howsoever without prior written consent and approval of the
+Building and Construction Authority.
+
+This publication contains information that has been contributed by the Building and
+Construction Authority and members of the Technical Committee (comprising agencies,
+professional bodies, associations, developers, builders and suppliers). Whilst every effort
+has been made to ensure the accuracy of the information contained in this publication, the
+Building and Construction Authority (including its employees) and the members of their
+Technical Committee (including their employees shall not be responsible for any mistake or
+inaccuracy that may be contained herein and all such liability and responsibility are expressly
+disclaimed by these said parties.
+
+The Building and Construction Authority does not endorse any of the products contained in
+this publication. It is the responsibility of the readers to select the appropriate products and
+ensure the selected products meet their specific requirements.
+
+ISBN: 978-981-09-8354-3
+
+FOREWORD
+
+The Building and Construction Authority’s (BCA) Construction Quality Assessment System
+(CONQUAS) has been widely adopted as the de facto national yardstick for measuring the
+workmanship quality of building projects. To meet the rising expectations of homeowners,
+the Quality Mark (QM) Scheme was launched in 2002 to promote a higher consistency in
+workmanship standards for private residential developments. To help projects achieve the
+standards in CONQUAS and QM, BCA has developed a series of publications on Good Industry
+Practices for different trades.
+
+This “Good Industry Practices – Engineered Wood Flooring” is part of the CONQUAS
+Enhancement Series to promote good practices. Engineered Wood Flooring is an emerging
+product that addresses a myriad of competing issues like environmental sustainability, use of
+productive technologies and need for high construction quality. The smart use of renewable
+resources in a factory environment leads to a high quality product that is as good as, if not
+better than, flooring comprised of solid timber. Engineered Wood Flooring is environmentally
+friendly, reduces labour intensive trades and attains consistent high quality that is cost
+effective.
+
+This guide shares some of the good practices adopted by practitioners and contractors
+on how good workmanship quality Engineered Wood Flooring can be achieved on site. It
+provides simple and practical illustrations on the types of Engineered Wood Flooring, quality
+checks during manufacture and proper installation methods. Common issues associated
+with Engineered Wood Flooring, their causes and possible solutions to address them are
+highlighted.
+
+This guide is not meant to be a definitive publication on or dictate how Engineered Wood
+Flooring must be designed and installed. It only serves to illustrate some of the good
+practices designers and contractors have adopted while designing and installing Engineered
+Wood Flooring. We gratefully acknowledge the contributions of practitioners in the production
+of this guide and trust that the industry will find this publication useful. We welcome any
+contributions from readers to further improve this and subsequent editions of this guide.
+
+Lam Siew Wah
+Deputy Chief Executive Officer
+Industry Development
+Building and Construction Authority
+
+ACKNOWLEDGEMENT
+
+This “Good Industry Practices – Engineered Wood Flooring” was developed with inputs
+from Architects, Developers, Builders, Specialist Contractors and members from various
+industry associations and organizations.
+
+A Technical Committee was formed to review the contents and good practices identified.
+We wish to thank the members of the Technical Committee for their valuable contributions.
+
+Technical Committee:
+
+Chairman   Mr Ding Hock Hui             Building and Construction Authority
+                                        Building and Construction Authority
+Dy Chairman Mr Tan Boon Kee
+
+Working    Mr Rajendran Ramamoorthy     Building and Construction Authority
+Committee  Ms Jayanthi d/o Peariahsamy  Building and Construction Authority
+           Mr Gary Chua Chei Seong      Building and Construction Authority
+           Mr Willie Koh Woei Liet      Building and Construction Authority
+           Mr Philip Wong Yew Heng      Building and Construction Authority
+           Mr Anson Wong                Building and Construction Authority
+           Mr Lim Zee Keong             Building and Construction Authority
+
+Members    Ms Angie Lim Meng Shwu       Housing and Development Board
+           Mr Choy Kah Kin              Singapore Institute of Architects
+           Mr Alex Pang Tze Kin         Singapore Contractors Association Limited
+           Ms Alice Tse                 CapitaLand Limited
+           Mr Lai Kok Heng              City Developments Limited
+           Mr Pu Suan Hau               Wing Tai Property Management Pte Ltd
+           Ms Suria binte Abdul Rahman  Straits Construction Singapore Pte Ltd
+           Mr Selvamani Murugappan      Woh Hup (Private) Ltd
+           Mr Raymond Yew               Bona Far East & Pacific Pte Ltd
+           Mr Syvester Law              Jason Parquet Holdings Limited
+           Ms Jesseline Yap             Mapei Far East Pte Ltd
+           Ms Tan Lih Tuan              Sin Kim Heng Marketing Pte Ltd
+
+We would like to thank the following agencies, organizations, firms and persons for their
+valuable feedback in the review of this guide:
+
+		
+
+Building and Construction Authority
+
+Er Lam Siew Wah       Deputy CEO
+
+Mr Ang Lian Aik 		    Group Director, Construction Productivity Centre (CPC)
+
+Agencies, Organizations and Firms
+Housing and Development Board
+Australian Timber Floor Association
+CapitaLand Limited
+Wing Tai Property Management Pte Ltd
+ADDP Architects LLP
+Architects 61 Private Limited
+Straits Construction Singapore Pte Ltd			
+Woh Hup Pte Ltd				
+B.K.B. Hevea Products Sdn. Bhd.
+Goodrich Global Pte Ltd
+Syarikat Malaysia Wood Industries Sdn. Bhd.
+
+We would also like to thank Syarikat Malaysia Wood Industries Sdn. Bhd. for sharing Unilin’s
+patented click system in this guide.
+
+Ang Kian Seng
+Group Director
+Technology Development Division
+Building and Construction Authority
+
+CONTENTS
+
+1 INTRODUCTION										1	
+
+2 DESIGN                                                        2
+
+											
+
+2.1 Common Types of Engineered Wood System				                  2
+
+2.2 Subfloor										3
+
+2.3 Timber Planks									5
+
+		
+
+			 2.3.1 Structure of Engineered Wood Plank					               6
+
+			 2.3.2 Engineered Wood Floor Manufacturing Process			        8
+
+			 2.3.3 Manufacturing Process – Full Plank					               9
+
+			 2.3.4 Manufacturing Process – Multi-strip Plank				         9
+
+			 2.3.5 Manufacturing Process – Full & Multi-strip Planks			  10
+
+			2.3.6 Method of Joining Planks							11
+
+			2.3.7 Types of Edge Finishes							13
+
+2.4 Selection of Adhesive								14
+
+2.5 Provision for Movement					                                 15
+
+2.6 Joint Interface with Other Materials						                  15
+
+2.7 Other Considerations                                        16
+
+3 DELIVERY, HANDLING AND STORAGE                                17
+
+											
+
+3.1 Delivery (Factory to Site) for Engineered Wood              17
+
+			3.1.1 Handling								                                       18
+
+		
+
+			 3.1.2 Storage                                               18
+
+3.2 Adhesive                                                    19
+
+			 3.2.1 Delivery                                              19
+
+			 3.2.2 Handling                                              19
+
+			3.2.3 Storage									19
+
+4 PREPARATORY WORKS									2	 0
+		
+
+5 INSTALLATION                                                 23
+
+6 PROTECTION                                                   29
+
+											
+
+6.1 Factory & Delivery Protection				                          29
+
+6.2 Site Storage Protection                                    29
+
+       6.3 After Installation Protection							3	 0
+		
+
+7 MAINTENANCE                                                  31
+
+											
+
+7.1 Maintenance Cycle                                          31
+
+7.2 Other Maintenance Considerations                           32
+
+8 COMMON DEFECTS AND RECTIFICATION                             36
+
+											
+
+8.1 Pre-installation Rectification                             36
+
+8.2 Good Practices and Common Defects                          36
+
+8.3 Rectification                                              41
+
+			 8.3.1 Repair Kits for Minor Defects                        41
+
+          8.3.2 Re-coating of Pre-finished Floors              41
+
+			 8.3.3 Re-sanding and Re-application of Protective Coating  41
+
+APPENDIX
+
+											
+
+Appendix A : Sample of Inspection and Test Plan                42
+
+Appendix B : Sample of Inspection Form                         47
+
+REFERENCES                                                     48
+
+1. INTRODUCTION
+
++LJK SURSHUW\ SULFHV KLJK HQGXVHU H[SHFWDWLRQV IRU TXDOLW\ ͤQLVKLQJ DPLGVW D WLJKW
+
+RSWLRQZLWKDVLPSOLͤHGLQVWDOODWLRQSURFHVVDVFRPSDUHGWRFRQYHQWLRQDOWLPEHUIORRULQJ
+7KLVJXLGHSURYLGHVVLPSOHDQGSUDFWLFDOWLSVRQKRZJRRGTXDOLW\HQJLQHHUHGZRRGIORRULQJ
+FDQ EH LQVWDOOHG RQ VLWH ,W KLJKOLJKWV WKH VDOLHQW TXDOLW\ LVVXHV LQYROYLQJ GHVLJQ LQVWDOODWLRQ
+WRKLJKTXDOLW\VWDQGDUGVDQGLPSURYHGSURGXFWLYLW\
+
+  2. DESIGN
+
+     2.1 Common Types of Engineered Wood System
+      Engineered wood flooring can be laid directly onto the subfloor or an underlay based on the
+      following systems:
+      Direct Lay to Subfloor
+      For direct laying of engineered wood, the flooring strips are glued to the subfloor using
+      compatible adhesive. This is effective for subfloor that meets evenness tolerance. This
+      method of laying provides a solid feel for the user.
+
+      With Underlay and Fixed
+      The engineered wood flooring strips are glued to an underlay (plywood, rubber or felt)
+      which is fixed to the subfloor using suitable adhesive and/or nailing. If plywood is used, it is
+      recommended to use Water Boil Proof (WBP) plywood.
+
+      With Underlay and Floating
+      The underlay is not fixed to the subfloor and the engineered wood flooring strips are installed
+      without fixing to the underlay. This method provides a floating feel.
+
+2
+
+          Design
+
+The underlay can accommodate subfloor unevenness (within 3mm in 2 metres) and provide
+a smooth surface to receive the engineered wood. However, this should not be used as the
+solution to correct the levelness of the floor screed. Proper supervision and good workmanship
+are critical and should be employed to achieve the required levelness of the floor screed.
+
+The underlay helps to cushion the flooring and makes it comfortable to walk on. Some
+underlays also act as a moisture barrier protecting the wood from any moisture ingress from
+the concrete floor and dampen the sound of steps making it a friendly environment for the
+user and also neighbours in the lower floor.
+
+Each engineered wood floor manufacturer provides recommendations for installation of its
+product. These should be adhered to.
+
+2.2 Subfloor
+
+The condition of subfloor greatly affects the performance of the engineered wood flooring.
+The following are key factors that need to be taken into consideration.
+
+Moisture
+
+          There are various methods, be it non-destructive or
+          destructive, to test the moisture in the concrete / floor
+          screed.
+
+          One of the methods is to check the Relative Humidity (RH)
+          of concrete. This is done by drilling a small hole in the
+          subfloor based on tester’s specification 24hrs before the
+          testing and sealing it up. A reading within the hole 24hrs
+          later will indicate the RH of the concrete. The optimum is to
+          have the RH below 80%.
+
+          The common method used in Singapore is measuring the
+          moisture content of the subfloor. This is by placing the
+          measuring device on the subfloor surface. The surface
+          moisture content should be less than 6% or as specified by
+          the flooring manufacturer.
+
+          If RH or moisture content exceeds the requirement, moisture
+          barrier is to be applied on the subfloor surface.
+
+                                                                                                3
+
+   Evenness                                                                                Design
+   Hardness
+   Cleanliness  A relatively flat subfloor, with a tolerance of 3mm over
+                2m length, allows proper and even adhesion of the
+                engineered wood flooring and result in even floor finish.
+                Excessive unevenness of the subfloor may lead to air
+                pockets between the engineered wood flooring and the
+                subfloor and thus cause noise and excessive deflection
+                of the floor under foot traffic. Excessive unevenness
+                would also result in over-usage or wastage of adhesive.
+                If the evenness of the floor screed is not within the
+                required tolerance, proper rectification or self-levelling
+                compound could be considered to be applied to the
+                surface to achieve the required levelness.
+
+                The subfloor surface should not be brittle or chip off or
+                crack when tested for hardness. This is to ensure that
+                the subfloor has the capacity to receive the nailing of
+                underlay or the engineered wood flooring. The rigidity
+                and hardness of the subfloor can be tested by tapping
+                a hammer on the surface or using the grid-scratching
+                method.
+
+                The subfloor surface needs to be clean and free from
+                debris, paint and dust before the underlay or wood
+                flooring is installed as impurities will affect the bonding.
+                The subfloor surface can be grinded and vacuumed to
+                prepare it for the next process.
+
+4
+
+                                                                                                                                    Design
+
+2.3 Timber Planks
+
+There are wide selections of timber species in engineered wood flooring. Timber being a
+natural product will have natural attributes e.g. knots, grains and various colours and tone.
+There can be big contrast of tone and colour even within a single species. In the production
+process, manufacturers would sort them in categories and collection. Some collections have
+minimum colour variation and a knot free look, while some would have contrasting tone with
+prominent knots. The photographs below show some of the collections available.
+
+Clear and well balanced                  Rustic with natural attributes
+
+End users should be informed of the features and characteristic of the floor that they have
+selected. While attempts are made to sort to the control sample, it would be difficult to
+produce identical and consistent look as timber is a natural product.
+
+Engineered wood flooring can be produced with a single plank lamella or 2-3 strips lamella.
+Single plank generally cost more and would have lesser colour variation and tonality within
+the board. Functionally, single plank and 2-3 strips plank are similar.
+
+                         Full plank top
+
+                         Multi strip top
+                                                                                                   5
+
+   2.3.1 Structure of Engineered Wood Plank                                        Design
+
+                                                                     1
+                                                                     2
+                                                                     3
+                                                                     4
+
+   1. Finishing Layer  • UV-cured solvent free lacquer or oil, wax.
+
+   2. Hardwood Wear Layer • Solid wood layer, most commonly 2-4mm thick.
+      (commonly known as 		
+      Lamella)
+
+   3. Core Layer       • Usually made of hardwood, spruce or compressed plywood
+                         with thickness based on manufacturer’s specification.
+
+                       • Absorbs stress and strain and keeps the floor stable.
+
+   4. Back Layer       • Usually plywood or medium soft wood.
+
+                       • Combines with other layers to prevent the floor from cupping
+                         and warping.
+
+6
+
+                                                                                                                                    Design
+
+Engineered wood plank provides increased stability with each layer running at a 90 degree
+angle to the layer above. This restricts the widthwise movement of adjacent layers and helps
+to reduce warping within each strip.
+Some of the popular solid wood species used in flooring and their respective hardness rating
+are shown below. This chart is not to be considered as an absolute indication of the hardness
+or performance of the flooring according to the type of wood used. For engineered wood
+flooring, other factors that affect the performance of the flooring include the type of core
+layer, thickness of lamella and finishing layer.
+
+                                                                                                                             7
+
+                                                                                   Design
+
+2.3.2 Engineered Wood Floor Manufacturing Process
+
+DELIVERY                          PURCHASE                                         MULTI STRIP
+FULL PLANK  (Selection of required wood species - Critical)
+
+                            KILN DRY PROCESS
+                        (Control moisture content)
+
+                              ROUGH MILLING
+                        (Plane / mould raw wood)
+
+            CONDITIONING
+
+                           SPLITTING
+            (Splitting face layers into lamellas)
+
+                            GRADING
+            (Selecting & sorting face lamellas)
+
+                                   COMPOSING MULTI STRIP SURFACE
+                                                     PATTERN
+
+                CORE PROCESS
+            (Composing core mat)
+
+                                  PRESS PROCESS
+            (Pressing the face lamellas on the core & back layer)
+
+                   SANDING PROCESS
+            (Sanding and calibrating planks)
+
+               FINISHING PROCESS
+            (Different surface finishes)
+
+              PROFILING PROCESS
+            (Locking system profiling)
+
+            TESTING & QA / QC CHECKS
+
+                                                     PACKING PROCESS
+                                       (Protect and final check before transport)
+
+8
+
+                                                                Design
+
+2.3.3 QA/QC Checks and Good Practices in Manufacturing Process
+
+High quality engineered wood planks can be achieved as the full manufacturing process and
+the finishing coats are done in factory. Automated process and well planned quality checks
+at necessary stages deliver consistent quality planks.
+
+Process                Good Practices
+Splitting of lamellas
+                       • Thickness checks on the lamellas after the
+                         splitting process help to achieve consistency
+                         in size.
+
+Grading of lamellas
+
+                       • The lamellas are sorted according to 		
+                         shades and natural attributes.

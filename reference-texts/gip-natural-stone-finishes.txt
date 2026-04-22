@@ -1,0 +1,402 @@
+CONQUAS Enhancement Series
+
+NATURAL STONE
+     FINISHES
+
+              GOOD INDUSTRY PRACTICES
+
+                                                                                                                                                Natural Stone Finishes
+
+Copyright @ 2018 Building and Construction Authority, Singapore. All rights reserved. This document or
+any part thereof may not be reproduced for any reason whatsoever in any form or means whatsoever and
+however without prior written consent and approval of the Building and Construction Authority.
+This publication contains information that has been contributed by the Building and Construction Authority
+and members of Technical Review Committee (comprising associations, developers, agencies, professionals
+and suppliers). Whilst every effort has been made to ensure the accuracy of the information contained in
+this publication, the Building and Construction Authority, its employees, the members of their Technical
+Review Committee and their employees shall not be responsible for any mistakes or inaccuracies that may
+be contained herein and all such liability and responsibility are expressly disclaimed by these said parties.
+The Building and Construction Authority does not approve or endorse the products contained in this publication.
+It is the responsibility of the readers to select the appropriate products and ensure the selected products meet
+their specific requirements.
+ISBN: 978-981-11-6304-3
+
+Natural Stone Finishes
+
+      FOREWORD
+
+          The Building and Construction Authority’s (BCA) Construction Quality Assessment System (CONQUAS) has
+          been widely adopted as the de facto national yardstick for measuring the workmanship quality of building
+          projects. To meet rising expectations of homeowners, the Quality Mark (QM) Scheme was launched in 2002 to
+          promote higher consistency in workmanship standards for private residential developments. To help projects
+          achieve the standards in CONQUAS and QM, BCA has developed a series of publications on Good Industry
+          Practices for different trades.
+          The Good Industry Practices Guides are part of the CONQUAS Enhancement Series which share some of the
+          good practices adopted by practitioners and contractors on how good workmanship quality can be achieved
+          on site. BCA has updated this guide to keep pace with new practices, construction methods, materials and
+          products adopted by the industry. The “Good Industry Practices – Marble & Granite Finishes” has now been
+          renamed to “Good Industry Practices – Natural Stone Finishes” guide.
+          This updated guide will be more inclusive as it aims to provide clear and practical illustrations on the quality
+          checks of natural stones during manufacturing and installation. Common issues associated with natural stone
+          finishes, their causes and possible solutions to address them are also highlighted.
+          This guide is not meant to be a definitive dictation on how natural stones must be designed and installed. It only
+          serves to illustrate some of the good practices designers and contractors have adopted while designing and
+          installing natural stones. We gratefully acknowledge the contributions of practitioners in the production of this
+          guide and trust that the industry will find this publication useful. We welcome any contributions from readers to
+          further improve any subsequent editions of this guide.
+
+          Neo Choon Keong
+          Deputy Chief Executive Officer
+          Industry Development
+          Building and Construction Authority
+
+                                                                                 Natural Stone Finishes
+
+ACKNOWLEDGEMENT
+
+This edition of ‘Good Industry Practices – Natural Stone Finishes’ was developed with inputs from architects,
+developers, builders, specialist contractors and members of various industry associations and organisations.
+
+A Technical Review Committee was formed to review the contents and good practices identified. We wish to
+thank the members of the Technical Review Committee for their valuable contributions.
+
+Technical Review Committee for Good Industry Practices – Natural Stone Finishes
+
+Chairman:			
+
+Mr Tan Boon Kee			             BCA
+
+Vice-Chairman:		               BCA
+Mr Goh Thiam Lai			
+
+Members:			
+
+Mr Sam Leong			                HDB
+
+Mr Jason Lee			                SIA
+
+Mr Zachary Chua			             SCAL
+
+Mr Tan Hui			                  City Developments Limited
+
+Ms Jane Low			                 Keppel Land
+
+Ms Low Siew Woon		             Architects 61
+
+Ms Jesseline Yap			            Mapei Far East Pte Ltd
+
+Ms Wendy Ang			                Laticrete South East Asia Pte Ltd
+
+Mr Andy Lee			                 Stonrich Pte Ltd
+
+Mr Keith Ong			                OES Construction Pte Ltd
+
+Working Committee:             BCA
+Ms Jayanthi d/o Peariahsamy		  BCA
+Mr Gary Chua			                BCA
+Ms Josephine Lee			            BCA
+Mr Eugene Goh			               BCA
+Mr William Lee			              BCA
+Mr Daing Hashim Bin Ahmad		    BCA
+Mr John Koh			                 BCA
+Mr Shawn Lee			
+
+Natural Stone Finishes
+
+          We would like to thank the following agencies, organisations and firms for their valuable feedback in the review
+          of this guide:
+
+          Agencies, Organisations and Firms
+          Jurong Town Corporation (JTC)
+          Society of Project Managers (SPM)
+          ADDP Architects LLP
+          Straits Construction Singapore Pte Ltd
+          Woh Hup (Private) Limited
+          Dragages Singapore Pte Ltd
+          Koh Brothers Building & Civil Engineering Contractor (Pte) Ltd
+          China Construction (South Pacific) Development Co. Pte Ltd
+          Ho Lee Construction Pte Ltd
+          Daiya Engineering & Construction Pte Ltd
+          Unison Construction Pte Ltd
+
+          Ang Lian Aik
+          Group Director
+          Construction Productivity and Quality Group
+          Building and Construction Authority
+
+CONTENT PAGE                                               Natural Stone Finishes
+
+CONTENTS                                                      1
+
+1.0 INTRODUCTION                                              1
+                                                              1
+2.0 DESIGN                                                    1
+                                                              1
+2.1.          Stones Selection                                2
+                                                              2
+			           2.1.1. Types of Stone                           2
+                                                              3
+			           2.1.2. Characteristics of Stone			              4
+                                                              4
+			           2.1.3. Types of Surface Finishes				            4
+                                                              4
+			           2.1.4. Wet Areas                                5
+                                                              6
+			           2.1.5. Slip Resistance                          6
+                                                              6
+			           2.1.6. Selection Criteria				                   7
+                                                              7
+			           2.1.7. Dimensional Stability                    7
+                                                              8
+			           2.1.8. Confirmation of Stones Selection         9
+                                                              9
+				                    2.1.8.A. Mock-up at Site              10
+                                                              12
+      		                2.1.8.B. Pre-lay at Factory           12
+                                                              12
+      		                2.1.8.C. Dry Lay at Site              12
+                                                              12
+2.2.          Adhesive
+                                                              13
+			           2.2.1. Types of Adhesive                        13
+                                                              13
+			           2.2.2. Classifications of Adhesive
+                                                              14
+			           2.2.3. Adhesive Selection                       14
+                                                              16
+2.3.          Grout                                           16
+                                                              16
+			           2.3.1. Classifications of Grout                 16
+                                                              16
+			           2.3.2. Grout Performance Criteria
+                                                              17
+2.4.          Impregnators                                    17
+                                                              18
+2.5.          Movement Joints                                 20
+                                                              21
+2.6.          Adjoining Locations / Trades                    21
+                                                              21
+2.7.          Anchorage System
+                                                              25
+2.8.          Waterproofing
+                                                              26
+			           2.8.1. Rising Dampness				                      29
+
+			           2.8.2. Direct Contact with Water			             30
+
+			           2.8.3. Mixing-Water Transmissions        		
+
+3.0 DELIVERY, HANDLING AND STORAGE
+
+3.1.          Stones
+
+3.2.          Adhesives, Beddings And Grouting Materials
+
+4.0 PREPARATORY WORKS
+
+4.1.          Surface Preparation
+
+4.2.          Screeding / Rendering
+
+			 4.2.1. Sceeding
+
+			 4.2.2. Rendering
+
+4.3.          Stones Preparation
+
+			           4.3.1. Cutting of Stones
+
+5.0 INSTALLATION
+
+5.1.          Adhesive Preparation
+
+5.2.          Laying Stones
+
+5.3.          Grouting
+
+5.4.          Movement Joint Installation
+
+5.5.          Final Process After Installation
+
+5.6.          Inspection of Completed Works
+
+6.0 PROTECTION
+
+7.0 COMMON FEEDBACK
+
+7.1.          Repairing Works
+
+8.0 MAINTENANCE
+
+APPENDIX A – B
+
+REFERENCES
+
+Natural Stone Finishes  INTRODUCTION / DESIGN
+
+1.0 INTRODUCTION
+
+A natural stone finish is a system comprising no less than substrate, adhesive, stone, grout and movement
+joints. All components are equally important and intimately related to one another. Adequate compatibility must
+exist among the components as they could only function collectively. The system could only be as strong as the
+weakest component, if not worse.
+
+Therefore, material selection, system design, method identification, installation execution and maintenance
+must take into consideration the performance characteristics of each individual component, and the in-situ
+environmental conditions that prevail during the installation process as well as the long term usage. These
+considerations are similar for new technologies and materials in Design for Manufacturing and Assembly such
+as Prefabricated Prefinished Volumetric Construction (PPVC) and Prefabricated Bathroom Unit (PBU). It is
+recommended to refer to the respective guides for natural stone installation in these technologies.
+
+Due to the volume constraint, this guide will focus on interior installation and finishes of natural stones.
+
+2.0 DESIGN
+
+To achieve good stone finishes, it is critical to take into account the material selection besides proper installation
+and quality control. It is important to understand the characteristics of the selected materials as well as their
+compatibility with one another to achieve optimal performance.
+
+2.1. STONES SELECTION
+
+Natural stones are cut into blocks at the quarry and then transported to a processing plant where they are cut
+into slabs. Modern tools such as the wire diamond cutter has improved the precision and quality of cutting
+blocks of stone into slabs. The slabs undergo further processing such as polishing, drying, being further cut into
+different sizes and dry laying in factory before getting packed for delivery.
+
+Natural stones are formed under varying conditions, hence no two pieces bear the same composition and
+appearance. Besides geological types, stone names have been greatly compounded from commercial trades
+and quarry origins, making them very difficult to comprehend. To aid selection, the only characteristics that are
+relevant to the performance of the stone finishes are discussed here.
+
+2.1.1. Types of Stone
+
+Stones are classified into 3 categories:
+
+      • Sedimentary stone: Formed from sediments in rivers or glaciers broken off from organic or inorganic
+		 elements, accumulated and consolidated to form rock beds. Limestone and sandstone are examples
+		 of sedimentary stone.
+
+      • Metamorphic stone: Originated due to transformation of existing rocks under very high heat, pressure
+		 and fluid. Marble and slate are examples of metamorphic stone.
+
+      • Igneous stone: Formed from volcanic material such as magma which cooled and solidified. Granite
+		 and basalt are examples of igneous stone.
+
+2.1.2. Characteristics of Stone
+
+The characteristics of stone are dependent on the way they were geologically formed, as such, each type of
+stone is unique. Variations of grain and vein formed differ from stone to stone. Some stones show very little
+variations in colour but may show variations in pattern and grain density while others may show wide variations
+in colour, vein formations and porosity.
+
+                                                                                                                        1
+
+   DESIGN  Natural Stone Finishes
+
+   2.1.3. Types of Surface Finishes
+
+   Surface finishing is another factor that influences stone selection. Different surface finishes provide different
+   characteristics such as slip resistance, chemical resistance, maintenance, etc. Consequently, the surface
+   appearance of processed stone differs markedly from that of unprocessed surface. The different types of
+   surface finishes and its applications are as follows:
+
+         • Polished: A shiny glossy surface is achieved by using diamond abrasives grit followed by polishing
+   		 powder. The surface is very smooth and has a mirror-like effect. Polished stone is not
+   		 porous and has higher resistance to humidity and chemicals. Typically used for internal floorings.
+
+         • Honed: Diamond abrasives are used for honed finishes as well. The surface is smooth, non-reflective
+   		 and is more porous, unlike a polished finish. Typically used at both internal and external areas with less
+   		 exposure to chemical or moisture.
+
+         • Sandblasted: A matte textured surface with no gloss as a result of a pressurised flow of sand and
+   		 water. Typically used for exterior walls.
+
+         • Abrasive: A flat, non-reflective surface with no gloss. Typically used for areas exposed to weather such
+   		 as entries, foyers, etc.
+
+         • Exfoliated (Flamed): A rough and very porous surface that is produced by applying a high temperature
+   		 flame to the surface of the stone causing crystals to pop. Typically used for external areas where slip
+   		 resistance is prioritised.
+
+         • Others: Includes antique, bush hammered, natural cut, etc.
+
+   2.1.4. Wet Areas
+
+   Wet areas are areas within a building that are exposed to water splashing or direct wetting. Wet areas are
+   commonly installed with discharge outlets and provided with water inlet supply. Installation of stones in wet
+   areas require good design and planning. Due to their natural properties such as porosity and vulnerability to
+   moisture ingress, it is important to seek the supplier’s recommendation when selecting stones in wet areas.
+   Marble, Limestone, Quartzite and Slate are some of the suitable choices of natural stones in wet areas.
+
+   Fall in wet areas should be laid towards the discharge outlet in accordance to specification and drawings.
+   Insufficient gradient, uneven laying of stones and lippages in wet area may lead to ponding and possibly
+   staining of the stones.
+
+   For natural stones that are exposed to weather or outdoor conditions, it is important to follow the recommendation
+   of the designers, manufacturers or suppliers on the suitability of stones, types of adhesive, types of stone
+   sealer, and types of grout (if any) etc. to achieve the optimum performance of these materials.
+
+   2.1.5. Slip Resistance
+
+   Most natural stones would have good slip resistance under clean and dry condition regardless of their surface
+   finishes. However, when wet and/or contaminated, the slip resistance may deteriorate or drop, especially so
+   if stone is of a polished finish. For safety, the slip resistance class of the selected stone can be established in
+   accordance to SS 485:2011 for testing of dry floor friction.
+
+   Mineral or resin polymer floor coating may be applied to improve slip resistance of an existing floor. Resin
+   polymer floor coating dries to a matt sheen and requires 3 days of curing. Mineral floor coating is virtually
+   translucent and the usage is immediate when it dries but has a lower Slip Resistance Value as compared to
+   resin polymer.
+
+2
+
+Natural Stone Finishes                 DESIGN
+
+2.1.6. Selection Criteria
+
+Prior to starting stonework, it is important to ensure that the selected stones are able to meet the project
+specifications. Table 2.1.6 provides guidance on the selection criteria.
+
+Table 2.1.6. Stone selection criteria
+
+Stone selection         Requirements
+criteria
+1. Stone condition      - Variations in colour, shade, texture and vein patterns are unavoidable.
+                        - Inherent variations, geographical location and climate of the country of origin should be taken
+
+                          into consideration when selecting stones.
+
+2. Traffic and load     - Appropriate types of stone should be used for light and heavy traffic areas depending on the
+   conditions             load conditions. Harder stones are preferred for heavy traffic condition such as loading and
+                          unloading areas.
+
+                        - For heavy traffic condition, based surface of stones should be flat to ensure sufficient adhesion
+                          and stability.
+
+3. Abrasion             - For flooring application, harder stones should be used.
+   resistance
+                        - Minimum abrasion resistance for stone floors used in:
+                        a) Public areas such as lift lobby, stairway and entrance, shopping mall and MRT station shall
+                        		 be 10 ~ 12 in accordance to ASTM C241.
+                        b) Residential areas with light foot traffic shall be 8 in accordance to ASTM C241.
+
+                        - To prevent uneven wear, the abrasion resistance shall not differ by more than 5 in accordance
+                          to ASTM C241 if different stones are used together.
+
+4. Chemical stability   - There shall be no chemically unstable minerals, especially in white stones, that may impair the
+                          durability of the stones or cause objectionable staining.
+
+                        - If in doubt, petrographic examination is recommended to be carried out to identify potentially
+                          unstable minerals such as mica, pyrite etc. before installation.
+
+5. Slip resistance      - For safety reason, the slip resistance classification needs to be established based on usage
+                          of the location. Reference can be made to SS 485:2011.
+
+6. Thickness            - Stones must be sufficiently thick to resist load due to traffic and impact. The thickness of:
+                        a) Stone tiles are up to 12mm thick and no greater than 610mm along any dimensions in
+                        		 accordance to EN 12057.
+                        b) Stone slabs are greater than 12mm up to 80mm thick and of any dimensions in accordance
+                        		 to EN 12058.
+
+                        - If different thickness of floor and wall stones are used, inconsistent tonality could occur even
+                          if it is of the same colour tone.

@@ -1,0 +1,368 @@
+FOREWORD
+
+The Building and Construction Authority’s (BCA) Construction Quality Assessment
+System (CONQUAS) has been widely adopted as the de facto national yardstick
+for measuring the quality of building projects. To meet the rising expectations of
+homeowners, the Quality Mark (QM) Scheme was launched in 2002 to promote a
+higher consistency in workmanship standards for residential developments. Besides
+setting standards and measuring the level of workmanship through CONQUAS and
+QM, BCA has developed a series of publications of Good Industry Practices Guide for
+different trades.
+
+This “Good Industry Practices – Design and Material Selection for Quality – Volume 2”
+follows from Volume 1 published in 2008. It shares with the industry some of the good
+practices adopted by developers, practitioners and contractors who consistently deliver
+high quality work through thoughtful design and choice of materials in construction,
+particularly in residential buildings. These practices are drawn largely from projects
+that achieved high CONQUAS/QM scores. The examples in this guide highlight some of
+these noteworthy projects. While the other guides in the series focus on “doing things
+right”, this guide (including Vol. 1) is different in that it focuses on “doing the right thing”
+through careful design choices and materials selection.
+
+Some “new” methods and materials are featured in this guide. Comparisons are made
+with traditional methods and materials that may have inherent difficulties in achieving
+quality. With a renewed long term drive for higher productivity, these new methods and
+materials are worth considering to achieve both high quality and productivity.
+
+This guide is not meant to be a definitive textbook on building design and material
+selection, nor is it the final word on quality, as there will always be new materials
+and methods with changing technology. To obtain more comprehensive information
+and guidance, readers should seek advice from professional designers and material
+suppliers. We gratefully acknowledge the contributions of the practitioners to this
+guide and trust that the industry will find this publication useful in its pursuit of quality
+excellence. We welcome any contributions from readers that may improve future
+editions of this guide.
+
+Lam Siew Wah
+Deputy Chief Executive Officer
+Industry Development
+Building and Construction Authority
+
+ACKNOWLEDGEMENT
+
+This Good Industry Practices Guide – “Design and Material Selection for Quality –
+Volume 2” was developed with inputs from Architects, Developers, Builders, Specialist
+Contractors and members from various industry associations. A Technical Committee
+was then formed to review the contents and good practices identified. We wish to
+thank the members of the Technical Committee for their valuable contributions.
+
+Technical Committee:
+
+Chairman   Mr Ding Hock Hui             BCA
+                                        BCA
+Secretary  Mr Ramamoorthy Rajendran     BCA
+                                        BCA
+Members    Mr Tan Boon Kee              BCA
+                                        REDAS
+           Mr Ken Ho Chee Hong          Singapore Institute of Architects
+                                        Dragages Singapore Pte Ltd
+           Ms Jayanthi d/o Peariahsamy  Woh Hup Pte Ltd
+                                        Tiong Seng Contractors Pte Ltd
+           Ms Quek Chay Hoon            GeoEng Consultants
+
+           Mr Richard Lai
+
+           Mr George Soh
+
+           Mr Jerry Lam
+
+           Mr Colin Tan
+
+           Mr Jayaraman Adalarasu
+
+We would also like to thank the following organizations and individuals for their
+valuable feedback in the review of this guide:
+
+           Mr Eddie Wong                City Developments Ltd
+           Mr Kwan Cheng Fai            Singapore Institute of Architects
+           Mr Ooi Eng Guan              ChoiceHomes Investments Pte Ltd
+           Ms Audrey Perez              Dragages Singapore Pte Ltd
+           Ms Trixie Tng                Quarella Composite Stones
+           Mr Christopher Tan           Multibuild Pte Ltd
+           Ms Jessline Yap              Mapei Far East Pte Ltd
+           Mr Wendy Ang                 Laticrete South East Asia Pte Ltd
+           Mr Alvin Leow                Faberca Pte Ltd
+           Ms Tan Lih Tuan              Sin Kim Heng Marketing Pte Ltd
+           Mr Kevin Coburn              Heinrich König & Co. KG
+           Mr B.J. Chan                 Design Studio Furniture Ltd
+           Mr Antonio Siu               King Wai Group Pte Ltd
+           Mr Alfred Lim                GoldField Construction Pte Ltd
+
+Tan Tian Chong
+Director
+Technology Development Division
+
+                           CONTENTS
+
+INTRODUCTION                                           5
+
+1 AGGLOMERATED MARBLE                                  7
+
+2 ENGINEERED QUARTZ STONE                              17
+
+3 RECTIFIED CERAMIC TILES                              23
+
+4 LIGHTWEIGHT COMPOSITE STONE PANELS                   31
+
+5 BEDDING ADHESIVES FOR STONES AND TILES               37
+
+6 GROUTING FOR STONES AND TILES                        45
+
+7 IMPREGNATORS FOR NATURAL STONES                      51
+
+8 ENGINEERED HARDWOOD FLOOR                            57
+
+9 FILLERS FOR REPAIR AND REINSTATING STONE AND TIMBER  65
+
+10 HONEYCOMB TIMBER DOOR AND INTEGRATED ARCHITRAVE FRAME 75
+
+11 COMPOSITE FIBRE PLASTIC MATERIAL                    81
+
+12 WATERPROOFING OF REINFORCED CONCRETE FLAT ROOF      87
+
+13 M&E FITTINGS AND ACCESSORIES                        93
+
+EXAMPLE PROJECTS                                       103
+
+REFERENCES                                             117
+
+INTRODUCTION
+
+The Building and Construction Authority launched Volume One of the Good Industry
+Practices Guide on "Design and Material Selection for Quality" in 2008. The guide
+attempted to showcase buildable and constructible designs that facilitate good
+workmanship as observed in various projects with high CONQUAS and QM scores.
+This includes the use of steel structures, drywall partitions, precast elements,
+prefabricated bathrooms and other factory made components for higher productivity,
+faster completion time and better build quality. This second volume continues from
+where the first volume has left. It now focuses on material selection, primarily the
+architectural components, that impacts quality during construction.
+
+Quality often comes at a price. It would be ideal if higher quality can be achieved
+without increasing costs. Apart from initial costs, the chosen product must also be
+functional, aesthetically pleasing, easy to install and maintain thereafter. Generally,
+though not always, the use of higher quality material may incur higher initial cost. This
+has to be balanced against possible savings in time (due to ease of installation), better
+customer satisfaction (due to better quality workmanship) and lower maintenance
+costs during use (due to less defects and durability of the product). Apart from
+these, there are other intangible benefits to the developer or builder’s reputation, if
+they consistently deliver high quality projects. These factors need to be considered
+and balanced against each other when making a choice of which material to use.
+For example, some choices highlighted in this guide, like use of special fillers and
+techniques to repair and restore stone and timber are costly and are not intended for
+ordinary or widespread use. They are presented in this guide to highlight the availability
+of such precision techniques which can be utilised where circumstances permit.
+
+Unlike manufacturing, construction is often carried out in an open environment
+subject to unpredictable weather conditions and other environmental factors. This
+affects productivity and quality outcomes. Build quality is often dependant on the
+skill level of the workmen employed and how trade sub-contractors are managed and
+co-ordinated. This can be minimized by shifting much of the work to a manufacturing
+or factory environment which is not affected by weather conditions and the
+processes are largely automated. Thus the use of precisely made factory products
+requiring minimal on-site labour for installation will help to raise productivity levels,
+ensure better consistency in workmanship and improve overall build quality. This is
+evident from the many materials listed in this guide.
+
+1 AGGLOMERATED
+          MARBLE
+
+8 • GOOD INDUSTRY PRACTICES
+
+                                           1 AGGLOMERATED MARBLE
+
+1.1 BACKGROUND                             Fig. 1.1 – Raw material for agglomerated marble: Selected marble boulders.
+
+Marble is a metamorphic rock originating
+from limestone or calcium carbonate
+(CaCo3). Agglomerated marble, also
+known as reconstituted or compressed
+marble, is produced by binding selected
+marble chips (93 to 95%) with specially
+formulated resin (7 to 5%). It is one of
+alternative choices to natural marble, as
+a large part of agglomerated marble
+consists of natural marble chips and
+therefore possess similar characteristics
+of marble.
+
+                                           In natural marble production, large rocks are acquired from quarries. After cutting
+                                           the selected rocks, the remaining boulders are classified as residue. In the past,
+                                           the excess material was treated as waste or used as substrate for roads. This is
+                                           not an efficient use of limited natural resources and does not contribute positively
+                                           to environmental sustainability. The need to make full use of the natural stone
+                                           substance to produce a product similar to natural marble led to agglomerated
+                                           marble as a natural stone substitute.
+
+                                           Fig. 1.2 – Natural marble: Acquired from selected large rocks.
+
+                                           Fig. 1.3 – Agglomerated marble: Produced from selected boulders.
+
+                                                                                                                                                                                  9
+
+1.2 AN OVERVIEW OF A TYPICAL PRODUCTION CYCLE
+
+       1                                           2                                    3
+
+Selected marble boulders are crushed        Marble granules are mixed with       Large marble blocks are produced
+                                            specially formulated polyster resin
+and sieved into various sizes.              and compacted under vacuum by        and cured for few days.
+                                            vibro-compression technology.
+
+       4                                           5                                    6
+
+Cured agglomerated marble blocks            Unpolished slabs are calibrated      Different stages of polishing are
+                                            using digital automatic machine to   carried by automatic machines, the
+are sawn into slabs.                        ensure uniform size and thickness.   transformation process is closely
+                                                                                 similar to natural marble production.
+
+       7                                           8
+
+Cutting into required sizes by a laser      Final sorting, packing in cardboard
+machine to ensure dimensional               boxes and stacking on wooden
+accuracy.                                   pallets before dispatch.
+
+Fig. 1.4 – Overview of a production cycle.
+
+10 • GOOD INDUSTRY PRACTICES
+
+Marble Boulder  Aggregates                           Proprietary Formula
+
+Mixing→Loading→Moulding             Block            Gang Saw  Un-Polished Slob
+Under Vibro-compression
+
+Calibration Polishing               Cutting          Sorting and Packaging
+
+Fig. 1.5 – A schematic outline of production cycle.
+
+1.3 QUALITY FEATURES IN AGGLOMERATED MARBLE
+
+a. Homogeneous body and re-polishable
+
+Agglomerated marble is made of the same materials and the whole body is
+homogeneous. Gentle grinding and polishing after installation make the floor
+surface smooth and shiny. This same quality finish can still be achieved years after
+installation by re-grinding and re-polishing. The measurement of hardness (MOH)
+scale for agglomerated marble is just slightly higher than natural marble. Thus,
+the tools and equipment used for polishing natural marble can be employed for
+agglomerated marble.
+
+Fig. 1.6 – Homogeneous body can be                   Fig. 1.7 – Polishing tools are similar to those for natural marble.
+repeatedly polished and renewed.
+
+                                                                                                                                                                                  11
+
+b. Less effort required on dry lay
+
+Most end users especially in residential
+developments prefer to have a consistent
+colour tone in the finishing work. Dry lay
+or pre-selection is not an uncommon
+practice when using natural stones. This
+is to minimize tonality and other issues
+inherent in the natural material. Dry lay is
+often a meticulous, time consuming and
+labour intensive process, especially in
+large scale residential projects. Sufficient
+space is also required to carry out this
+process. Separate dry lay shop drawings
+based on layouts need to be prepared
+and the selected marble must be installed
+according to the numbered sequence to
+ensure consistent results.
+
+                                                                            Fig. 1.8 – Dry lay requires additional manpower and sufficient space for segregation and storage.
+
+                                                                            Fig. 1.9 – Direct installation (without dry lay) saves time and cost in construction.
+
+                                                            The addition of resin and inorganic pigments in agglomerated marble production
+                                                            process helps to minimize tone variations in the same batch of production. However
+                                                            there may be variations between different batches of production. It is therefore
+                                                            advisable that orders be placed for the total requirement for a project, so that the
+                                                            manufacturer can blend the raw materials in one batch and minimize the risk of
+                                                            tonality differences.
+
+12 • GOOD INDUSTRY PRACTICES
+Fig. 1.10 – Sorting stones by production “batch code” to minimize tone varitation.
+Fig. 1.11 – Tonality consistency is a key feature in agglomerated marble finish.
+
+                                                                                                                                                                                  13
+
+c. Less inherent imperfections in the surface
+
+The inherent imperfections like open veins, tone variations and pinholes are common in natural stones. These imperfections are
+sometimes classified as “defects” by end users. In most situations, it is not easy to rectify these flaws, especially after installation.
+Much time and cost need to be expended to address such “imperfections”, apart from the inconvenience to end users. For this reason,
+dry laying is often necessary in natural stone works. A well controlled mechanism in the manufacturing process for agglomerated
+marble, together with the compressed vacuum technology will reduce concerns like pin holes and open veins in flooring.
+
+   Fig. 1.12 – Difficult to address inherent flaws in natural stones, especially after installation.
+
+1.4 QUALITY CONSIDERATIONS AND PREVENTIVE
+MEASURES IN AGGLOMERATED MARBLE
+
+a. Stain ingress and etching
+
+Stains: All natural stones are porous to a certain extent with micro interconnected
+capillaries through which liquids and gases can move. Agglomerated marble, although
+considered a dense material, have similar porosity characteristics like natural marble
+as they are made substantially from the same material. Given sufficient time, liquid
+and moisture can penetrate the material and cause staining. Porosity is also affected
+by its finish – a highly polished marble is a little harder to penetrate than marble with a
+honed (matt) finish. Due to presence of iron in the stone, prolonged exposed to water
+may develop stain marks. The other common sources of stains are spillage and ingress
+of liquids like juice, coffee, etc.
+Etching: Calcite-based stone such as marble, limestone and travertine reacts with
+acidic substances on contact, leaving dull marks or even deep furrows over time. This
+is known as acid etching. The use of inappropriate materials for maintenance like acidic
+or alkalis products can cause such etching. Even mild household acids, including cola,
+wine, vinegar, lemon juice and milk, can damage these types of stone. The milder the
+acid, the longer it takes to etch; stronger acids can damage the stone in seconds.
+
+   Fig. 1.13 – Liquid ingress and acid reactions are main reasons for stain and etching.
+
+   14 • GOOD INDUSTRY PRACTICES
+
+To prevent strain ingress, it is suggested that a compatible impregnator be applied
+on the surfaces of agglomerated marbles. Impregnator is a subsurface treatment,
+formulated to penetrate the stone which enhances resistance to stains. The impregnator
+will resist stain ingress from top and block entry of salts from bottom. Further information
+on impregnators and its application can be found in Chapter 7.
+
+                                                                                              IMPREGNATOR
+                                                                                              MARBLE
+
+                                                                                              ADHESIVE
+                                                                                              SUBSTRATE
+
+Fig. 1.14 – Application of suitable impregnator enhances stain resistance.
+
+b. Scratch and damage
+
+The Measurement Of Hardness (MOH) scale value for agglomerated marble is about
+3.5 to 4.5. This is slightly higher than natural marble (see MOH scale range). The MOH
+scale measures material resistance to hardness. A material lower on the MOH scale
+will not scratch or cause damage to a material higher on the MOH scale. For example,
+a piece of hard plastic (MOH #2) will not scratch calcite (marble) (MOH #3). However,
+a grain of sand (MOH #6) will scratch calcite (marble) but not quartz (granite) (MOH
+#7). The major composition of agglomerated marble is calcite, hence it tends to get
+scratched or damaged if it is exposed in heavy traffic areas. Furthermore during
+construction, many activities take place concurrently. Proper protection is therefore
+necessary to prevent damage to agglomerated stone by other trades.
+
+Fig. 1.15 – Scratches and damage by other trades during construction.                         MOH SCALE RANGE:
+                                                                                                 10 Diamond
+                                                                                                 9 Corundum
+                                                                                                 8 Topaz
+                                                                                                 7 Quartz (Granite)
+                                                                                                 6 Feldspar (Granite)
+                                                                                                 5 Apatite
+                                                                                                 4 Fluorite
+                                                                                                 3 Calcite (Most Marbles)
+                                                                                                 2 Gypsum
+                                                                                                 1 Talc
+
+                                                                                              Agglomerated marble MOH value:
+                                                                                              3.5 to 4.5
+
+Fig.

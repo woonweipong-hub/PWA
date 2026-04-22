@@ -1,0 +1,321 @@
+BCA Quality Mark Scheme
+
+Guide on Quality Mark Scheme
+
+Application & Pre-Assessment
+1. Applicants are advised to apply after their CONQUAS application for the project
+
+    has been approved.
+2. Developer/Contractor are encouraged to send the project team for the CONQUAS
+
+    training workshop to better equip them with knowledge on the standard and scoring
+    system.
+
+Assessment
+
+In-Process Inspection
+1. Random in-process check on the following 4 trades will be carried out during the
+
+    construction stage of the project:
+a) Waterproofing works to bathrooms
+b) Stone/tiling installation works
+c) Timber flooring installation
+d) Window installation
+2. The entire process for the above-mentioned trades will be verified by BCA against
+
+    the submitted approved method statements and also compared against BCA’s
+    good industry practice guides. Arrangement for the in-process inspection can be
+    made through the CQM on-line system at http://www.bca.gov.sg/cqmonline/.
+3. A report on the observations arising from the review of the submitted approved
+    method statements and the random in-process site verification will be given to the
+    project team upon completion of each session.
+
+Waterponding Test
+
+1.Bathrooms within unit
+a) All residential units will be subjected to waterponding test (bathrooms only).
+b) All the bathrooms found within the residential units are to be ponded at least 24
+
+    hours on the completed bathroom flooring (with final finish in place).
+c) The joints between the floor tiles and floor trap cover or discharge outlet must be
+
+    exposed to the waterponding test. Only the perforated areas are to be sealed. The
+    entire floor should be flooded to a minimum of 25mm of water as measured from
+    the highest point of the area.
+d) BCA assessors will verify whether there are any leakages at the immediate unit
+    below the ponded unit. Units detected with leakages will have to be re-assessed.
+e) If the false ceilings for the bathrooms are already installed during assessment,
+    please arrange to remove the access panel and provide proper access to the false
+    ceiling opening together with torchlight to facilitate the assessment.
+
+Rev Date: 22 May 2025  Pg 1 of 6
+
+          BCA Quality Mark Scheme
+
+2.Roof above residential units, Planter Box and/or Space that span over
+the living and/or bedrooms
+1. All RC roofs above the residential units, planter box and/or space that are located
+
+    above the living and/or bedrooms will be subjected to waterponding test.
+2. The ponding duration should be at least 24 hours, on the finished flooring.
+3. Units detected with leakages will have to be re-assessed.
+4. A method statement on the waterponding test providing details on method of
+
+    ponding & sealing of all floor openings is to be submitted to BCA at least 2 weeks
+    before the actual ponding test.
+
+Internal Finish Assessment
+1. Assessment will cover all locations of the unit but excludes household shelters.
+2. Project is to provide the unit layout plan for all units prepared/scheduled for
+
+    assessment.
+3. Assessment is based on objective criteria as set out in the CONQUAS manual on
+
+    workmanship standards for internal finish.
+4. Ensure water and electricity supply including the air-condition is turned on in each
+
+    unit to facilitate assessment. The water supply is to enable the assessors to visually
+    check for any leakages in the plumbing and sanitary pipes & fittings. The electrical
+    supply has to be turned on to enable the assessors to determine whether the
+    wirings in the electrical sockets are correctly wired using socket tester. The air-
+    conditioning has to be turned on (at least 1 hour before assessment) to enable the
+    assessors to determine whether it is functionally working and also ensure there are
+    no leakages.
+5. Units are to be ready prior to the scheduled time of assessment.
+6. Ensure all protective provision made to easily damaged architectural items such
+    as doors, iron mongeries, windows, wardrobe, cabinets and fan coil units etc are
+    removed prior to assessment by BCA.
+7. The presence of the developer’s site representative during assessment is required.
+8. Unit that fails to meet the minimum threshold score set by BCA are allowed re-
+    score opportunities. Defects are to be rectified before arranging for the re-score.
+9. Provide access to units with major defects for follow-up verification by BCA on the
+    status of these defects. This applies to units that meet the minimum internal finish
+    unit score stipulated by BCA for the issue of the Quality Mark certificate. Major
+    defects are largely classified as defects that would generally not be acceptable to
+    homeowners. Examples are as follow:
+    a) Any missing/broken accessories for the architectural items assessed.
+    b) Any cracked/chipped/broken window panes, shower screens, mirrors and any
+    glass items.
+    c) Any visually visible cracked tiles/stones, timber doors & floorings, ceiling boards
+    and cracks on painted walls etc.
+    d) Functionally deficient doors, windows, wardrobes and cabinets, tap, water
+    closet, switches etc.
+    e) Fan coil unit leaking; water seepage through walls or windows etc.
+    f) Misaligned door frame - only for cases where verticality tolerance > 3mm per
+    door frame height.
+10. Units that are selected for window watertightness test under CONQUAS and failed
+    will have to be re-tested.
+
+Rev Date: 22 May 2025  Pg 2 of 6
+
+             BCA Quality Mark Scheme
+
+11. *Weightage for QM Assessment for projects under CONQUAS 9th Edition and
+    CONQUAS 2019:
+
+Architectural      Weightage (%)        Defect Category       Defect Weightage
+Item
+               CONQUAS 9th Edition /           Finishing    CONQUAS 9th Edition /
+1.Floor            CONQUAS 2019       Alignment & Evenness      CONQUAS 2019
+
+                            24          Crack & Damages                 7.2
+                                             Hollowness                 4.2
+2.Internal                  15                  Jointing                7.2
+                                               Finishing                 3
+Wall                                                                    2.4
+                                      Alignment & Evenness             3.75
+3.Ceiling                   15          Crack & Damages                 1.8
+                                             Hollowness                6.75
+4.Door                      12                  Jointing                1.5
+                                               Finishing                1.2
+5.Window                    12                                          3.0
+                                      Alignment & Evenness              3.0
+6.Component                 11          Crack & Damages                 4.5
+                                             Roughness                 3.75
+7.M&E                       11                  Jointing               0.75
+                                            Joints & Gap                1.2
+Fittings                                                                1.2
+                                      Alignment & Evenness              3.0
+                                       Material & Damages               3.6
+                                            Functionality               3.0
+                                       Accessories Defects              1.2
+                                            Joints & Gap                1.2
+                                                                        3.0
+                                      Alignment & Evenness              4.8
+                                       Material & Damages               1.8
+                                            Functionality               1.1
+                                       Accessories Defects              2.2
+                                            Joints & Gap                4.4
+                                                                       1.65
+                                      Alignment & Evenness             1.65
+                                       Material & Damages               1.1
+                                            Functionality               1.1
+                                       Accessories Defects              3.3
+                                            Joints & Gap                4.4
+                                                                        1.1
+                                      Alignment & Evenness
+                                       Material & Damages
+                                            Functionality
+                                       Accessories Defects
+
+      Total            100
+
+        *Subject to change
+
+Rev Date: 22 May 2025                                       Pg 3 of 6
+
+             BCA Quality Mark Scheme
+
+12. *Weightage for QM Assessment for projects under CONQUAS 2022 (construction
+    tender called from 1 June 2022):
+
+Architectural  Weightage (%)            Defect Category     Defect Weightage
+Item
+               CONQUAS 2022                    Finishing      CONQUAS 2022
+1.Floor                               Alignment & Evenness
+                      20                                               6
+                                        Crack & Damages               3.5
+2.Internal                  13               Hollowness                6
+                                                Jointing              2.5
+Wall                                           Finishing               2
+                                                                     3.25
+3.Ceiling                   7         Alignment & Evenness           1.55
+                                        Crack & Damages              5.85
+4.Door                      18               Hollowness               1.3
+                                                Jointing             1.05
+5.Window                    13                 Finishing              1.4
+                                                                      1.4
+6.Component                 20        Alignment & Evenness            2.1
+                                        Crack & Damages              1.75
+7.M&E                       9                Roughness               0.35
+                                                Jointing              1.8
+Fittings                                    Joints & Gap              1.8
+                                                                      4.5
+                                      Alignment & Evenness            5.4
+                                       Material & Damages             4.5
+                                            Functionality             1.3
+                                       Accessories Defects            1.3
+                                            Joints & Gap             3.25
+                                                                      5.2
+                                      Alignment & Evenness           1.95
+                                       Material & Damages              2
+                                            Functionality              4
+                                       Accessories Defects             8
+                                            Joints & Gap               3
+                                                                       3
+                                      Alignment & Evenness            0.9
+                                       Material & Damages             0.9
+                                            Functionality             2.7
+                                       Accessories Defects            3.6
+                                            Joints & Gap              0.9
+
+                                      Alignment & Evenness
+                                       Material & Damages
+                                            Functionality
+                                       Accessories Defects
+
+      Total            100
+
+        *Subject to change
+
+Rev Date: 22 May 2025                                       Pg 4 of 6
+
+BCA Quality Mark Scheme
+
+13. QM threshold score (minimum score that each dwelling unit is required to achieve
+
+after the assessment, including re-scoring):
+
+                                                                QM threshold score
+
+QM projects with construction tender called from 1 June 2020    85
+
+QM projects with construction tender called before 1 June 2020  80
+
+CONQUAS Internal finish and Internal Wet Area Scoring
+1. All the units in the residential development will be considered for the CONQUAS
+
+    internal finish scoring. Likewise, all toilets and bathrooms that are subjected to the
+    waterponding test will be considered for the CONQUAS wet areas watertightness
+    scoring. This provides an actual representation on the internal finish quality and
+    internal wet area integrity of the project.
+
+QM Tiered Rating System
+1. The tiered rating system provides recognition to developers and builders that
+
+    achieve quality excellence beyond the minimum requirements.
+
+   Performance criteria for award of “Star”, “Excellent” and “Merit” ratings are as
+   follows:
+Applicable to QM projects with construction tender called from 1st June 2020
+
+  QM     Average QM Unit     Waterponding Test       Window Water-Tightness Test
+Tiered           Score*         Passing Rate**                 Passing Rate***
+Rating
+        92 Points and above           100%          (Based on CONQUAS sampling)
+ Star
+                                                                       100%
+
+Excellent 90 to < 92 Points  99% and above                      99% and above
+
+Merit   85 to < 90 Points    98% and above                      98% and above
+
+Applicable to QM projects with construction tender called before 1st June 2020
+
+Star    85 Points and above                   100%              NA
+
+Excellent 83 to < 85 Points  99% and above                      NA
+
+Merit   80 to < 83 Points    98% and above                      NA
+
+ i. *Based on initial assessment results of all locations (include balconies/private
+        enclosed spaces) within all the dwelling units of the entire project.
+
+ii. **Based on initial assessment results of bathrooms/toilets in all the dwelling units
+        of the entire project.
+
+iii. ***Based on initial assessment results of CONQUAS sampling.
+iv. A unit is deemed to have met the wet area waterponding test requirement only if
+
+        all the toilets/bathrooms within the unit and roofs/wet areas located directly above
+        the unit cleared the initial wet area waterponding tests.
+v. A Project’s QM tiered rating may be downgraded if there is/are valid complaint(s)
+        on major workmanship defects received by BCA e.g. window/wall seepage,
+        interfloor leakages, functionally deficient doors/windows etc.
+vi. If the project is subjected to Tier-3 CONQUAS, the project will not be eligible for
+        the "Tiered Rating System for Quality Mark".
+
+Rev Date: 22 May 2025                                           Pg 5 of 6
+
+          BCA Quality Mark Scheme
+
+Request for Assessment
+1. Arrangement for Quality Mark assessment can be made through the CQM on-line
+
+     system at http://www.bca.gov.sg/qcdcqmonline/. The respective blocks and unit
+     nos. that are ready for assessment must be stated in the request, failing which,
+     request will be rejected. Bookings open on every Tuesday 08:00 hrs to
+     Wednesday 23:59 hrs and all requests should reach BCA by every Wednesday of
+     the week; one week before the assessment.
+2. In order to better manage the assessment schedule, projects are requested not to
+     over-book assessments but rather book schedules that reflect the actual units that
+     are ready for assessment.
+3. Projects that do not fulfill the requested numbers of units to be assessed or cancel
+     any assessment more than twice in a week, shall be accorded a lower priority in
+     the scheduling when they request for subsequent QM assessments.
+
+Post Assessment
+1. Applicants are required to provide feedback on homeowners’ concern pertaining
+
+    to internal finish defects found within the units during the defects liability period.
+    These data will enable BCA to determine the areas of concern and fine-tune the
+    corresponding weightages so that the scoring system continues to effectively
+    address homeowners’ expectation.
+
+Contact Number                       Wong Chee Hong – 6804 4406
+                                     (wong_chee_hong@bca.gov.sg)
+ Queries on Quality Mark Assessment
+                                     Stephen Chan - 6730 4468
+                                     (stephen_chan@bca.gov.sg)
+
+Rev Date: 22 May 2025                Pg 6 of 6

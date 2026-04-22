@@ -1,0 +1,334 @@
+GOOD INDUSTRY PRACTICES
+
+Copyright @ 2004 Building and Construction Authority, Singapore. All rights reserved. This document or any part thereof may not be
+reproduced for any reason whatsoever in any form or means whatsoever and howsoever without the prior written consent and approval of
+the Building and Construction Authority.
+
+Whilst every effort has been made to ensure the accuracy of the information contained in this publication, the Building and Construction
+Authority, its employees or agents shall not be responsible for any mistake or inaccuracy that may be contained herein and all such liability
+and responsibility are expressly disclaimed by these said parties.
+
+The publication includes advertisements of suppliers who have, in one way or another, contributed in the development of this publication.
+The Building and Construction Authority does not endorse the products included in the advertisements. It is the responsibility of the users
+to select appropriate products and ensure the selected products meet their specific requirements.
+
+ISBN: 981-05-1533-2
+
+Foreword
+
+The Building and Construction Authority (BCA) has been promoting the use of Construction
+Quality Assessment System or CONQUAS 21 as the de facto national yardstick for measuring
+the workmanship quality of building projects. To meet the rising expectation of the
+homeowners, the Quality Mark (QM) Scheme was launched in July 2002 to promote a
+higher consistency in workmanship standards for residential developments.
+
+Besides setting standards and assessing the level of workmanship through CONQUAS 21
+and QM Schemes, BCA is developing a series of publications called the CONQUAS 21
+Good Industry Practices Guides to share with the industry good work practices adopted
+by practitioners and contractors who consistently deliver high quality work.
+
+This “Good Industry Practices – Timber Flooring” is part of the CONQUAS 21
+Enhancement Series on Good Industry Practices. Timber flooring is widely used in
+building work. This guide provides simple and practical tips to users on how good
+quality timber flooring can be achieved on site. Common complaints associated with
+timber flooring and their causes are highlighted. Charts, photographs, graphical
+representations and tables are used extensively in the guide to provide easy reference
+and better illustration of the practices.
+
+It should, however, be pointed out that this guide is not meant to dictate how timber
+flooring must be designed and installed. It only serves to illustrate some of the good
+practices designers and contractors have adopted while designing and installing timber
+flooring. We gratefully acknowledge the contributions of these practitioners and trust that
+the industry will find this publication useful in its pursuit of quality excellence.
+
+Lam Siew Wah
+Deputy Chief Executive Officer
+Industry Development
+Building and Construction Authority
+
+Acknowledgement
+
+“Good Industry Practices – Timber Flooring” was developed with inputs from architects,
+main contractors, timber flooring suppliers/installers and members from the various
+professional associations.
+We would like to thank the following suppliers and contractors for sharing their good
+practices with us and volunteering their project sites for our documentation:
+Dragages Singapore Pte Ltd
+Shimizu Corporation (Singapore Office)
+Woh Hup (Pte) Ltd
+Jason Parquet Specialist (S) Pte Ltd
+Sin Kim Heng Marketing Pte Ltd
+We would also like to thank the following organisations and firms for their valuable
+comments towards the completion of this guidebook:
+Housing and Development Board
+Real Estate Developers’ Association of Singapore
+Singapore Institute of Architects
+Singapore Contractors Association Ltd
+V + Sim Consultants
+Cheap & Beauty Teak Parquet Pte Ltd
+Mapei Far East Pte Ltd
+
+Tan Tian Chong
+Director
+Technology Development Division
+
+Contents
+
+1. Introduction                              1
+
+2. Design                                    1
+
+2.1 Common Types of Timber Flooring Systems  1
+
+2.2 Application of Damp Proof Membrane       2
+
+2.3 Timber                                   3
+
+2.4 Adhesives                                4
+
+2.5 Finishing Coats                          5
+
+2.6 Provision for Movement                   5
+
+3. Delivery, Handling and Storage            6
+
+3.1 Timber                                   6
+
+3.2 Adhesives and Finishing Coats            7
+
+4. Preparatory Works                         8
+
+5. Installation                              12
+
+5.1 Laying Timber Flooring                   12
+
+5.2 Sanding                                  15
+
+5.3 Applying Finishing Coat                  17
+
+5.4 Installing Timber Skirting               18
+
+5.5 Inspection                               19
+
+6. Protection                                22
+
+7. Maintenance                               23
+
+8. Common Complaints                         23
+
+Appendix A-C                                 28
+
+References                                   41
+
+                      1. Introduction
+
+                      Timber flooring is popular for its warm sense of touch              Therefore, design, material selection, preparatory works,
+                      and variety of styles and patterns. It is important to              installation, protection and maintenance must take
+                      note that timber flooring is a system which comprises               into consideration the performance characteristics of
+                      the substrate, plywood sub-base (if applicable), timber             each individual component as well as the in-situ
+                      strips /parquets /blocks, adhesive (and/or nails) and               environmental conditions that prevail during the
+                      expansion gaps. All components are equally important                installation process. This guide adopts the quality
+                      and closely related to one another. Adequate                        standards set out in CONQUAS 21 and includes the
+                      compatibility must exist among these components as                  CONQUAS quality assessments criteria in the
+                      they could only function collectively. The system                   recommended inspection checklists.
+                      could only be as strong as the weakest component, if
+                      not worse.                                                          Due to volume constraint, this guide focuses on the
+                                                                                          installation of timber strips and parquet flooring for
+                                                                                          residential projects.
+
+                      2. Design
+
+introduction/ design  There is a wide range of timber flooring, adhesives                 2.1. COMMON TYPES OF TIMBER
+                      and finishing coats available in the market. This guide                    FLOORING SYSTEMS
+                      book focuses only on those commonly used systems
+                      and products.                                                       There are various timber flooring systems available in
+                                                                                          the market, including timber strip flooring, parquet
+                                                                                          flooring and wood block flooring. Table 2.1 shows
+                                                                                          the various types of timber flooring systems and
+                                                                                          installation methods commonly used in residential
+                                                                                          projects.
+
+                      Table 2.1 Types of Timber Flooring Systems and Installation Methods
+
+                      1.  Types of Timber Flooring Systems
+
+                      1.1. Parquet Flooring
+
+                          – Parquet flooring is made up of strips of proprietary
+                               products, in varying lengths depending on the layout
+                               design, for direct installation on the floor screed.
+
+                          – Appendix A shows the common types of design
+                               and layout patterns for parquet flooring.
+
+                      1.2. Timber Strip Flooring
+
+                            – Timber strips usually come with tongue-and-groove
+                                  joints. The dimensions of these strips vary, depending
+                                  on the type of timber used and the manufacturer’s
+                                  specifications.
+
+                            – Timber strips are usually laid on
+                                  plywood sub-base with adhesive
+                                  and secret nails.
+
+                                                                                          Secret Nails
+
+1
+
+                      1. Introduction
+
+                      Timber flooring is popular for its warm sense of touch              Therefore, design, material selection, preparatory works,
+                      and variety of styles and patterns. It is important to              installation, protection and maintenance must take
+                      note that timber flooring is a system which comprises               into consideration the performance characteristics of
+                      the substrate, plywood sub-base (if applicable), timber             each individual component as well as the in-situ
+                      strips /parquets /blocks, adhesive (and/or nails) and               environmental conditions that prevail during the
+                      expansion gaps. All components are equally important                installation process. This guide adopts the quality
+                      and closely related to one another. Adequate                        standards set out in CONQUAS 21 and includes the
+                      compatibility must exist among these components as                  CONQUAS quality assessments criteria in the
+                      they could only function collectively. The system                   recommended inspection checklists.
+                      could only be as strong as the weakest component, if
+                      not worse.                                                          Due to volume constraint, this guide focuses on the
+                                                                                          installation of timber strips and parquet flooring for
+                                                                                          residential projects.
+
+                      2. Design
+
+introduction/ design  There is a wide range of timber flooring, adhesives                 2.1. COMMON TYPES OF TIMBER
+                      and finishing coats available in the market. This guide                    FLOORING SYSTEMS
+                      book focuses only on those commonly used systems
+                      and products.                                                       There are various timber flooring systems available in
+                                                                                          the market, including timber strip flooring, parquet
+                                                                                          flooring and wood block flooring. Table 2.1 shows
+                                                                                          the various types of timber flooring systems and
+                                                                                          installation methods commonly used in residential
+                                                                                          projects.
+
+                      Table 2.1 Types of Timber Flooring Systems and Installation Methods
+
+                      1.  Types of Timber Flooring Systems
+
+                      1.1. Parquet Flooring
+
+                          – Parquet flooring is made up of strips of proprietary
+                               products, in varying lengths depending on the layout
+                               design, for direct installation on the floor screed.
+
+                          – Appendix A shows the common types of design
+                               and layout patterns for parquet flooring.
+
+                      1.2. Timber Strip Flooring
+
+                            – Timber strips usually come with tongue-and-groove
+                                  joints. The dimensions of these strips vary, depending
+                                  on the type of timber used and the manufacturer’s
+                                  specifications.
+
+                            – Timber strips are usually laid on
+                                  plywood sub-base with adhesive
+                                  and secret nails.
+
+                                                                                          Secret Nails
+
+1
+
+2.  Methods of Installation
+
+2.1. Direct Installation Method
+
+    Skirting
+    Expansion gap
+    Timber strip
+    Adhesive
+
+    Floor screed
+
+    – For direct installation method, it is important that the floor screed is relatively flat to give an even bedding
+         surface for the adhesive to ensure evenness of the timber finishes. The floor screed should be laid within
+         the tolerance of ±3mm per 2m length.
+
+    – If the evenness of the floor screed is not within the required tolerance, a self leveling screed could be
+         applied to the surface to achieve the required levelness.
+
+2.2. Plywood Sub-base Method                                                                                                      design
+
+                                                         Skirting
+                                                         Expansion gap
+                                                         Timber strip
+                                                         Secret nail
+                                                         Adhesive
+                                                         Plywood
+                                                         Adhesive
+                                                         Concrete nail
+                                                         Floor screed
+
+    – Plywood is used as sub-base over floor screed to accommodate slight unevenness of the screed and provide
+         a smooth surface to receive the timber flooring. However, this should not be used as the solution to
+         correct the levelness of the floor screed. Proper supervision and good workmanship are critical and should
+         be employed to achieve the required levelness of the floor screed.
+
+    – It is advisable to use WBP Preservative treated plywood.
+
+    – The plywood should be adhered to the floor screed using a suitable adhesive and nailed down to the
+         screed using concrete nails. Care should be taken not to damage any embedded M&E services where
+         applicable. It is not advisable to nail the plywood without using adhesive. The adhesive helps to hold
+         the plywood in-place and minimise hollow sound resulted from uneven floor screed and voids left
+         between the plywood and screed.
+
+2.2. APPLICATION OF DAMP PROOF                                          be provided with a damp proof membrane. It is
+       MEMBRANE                                                         important to note that the adhesive used for the
+                                                                        installation of timber flooring is not meant to serve
+To keep the timber flooring within acceptable moisture                  as a damp proof membrane. Its sole function is to
+content limit, timber flooring installed on concrete                    bond the timber flooring to the concrete base.
+floors which are in contact with the ground should
+
+                                                                                                                               2
+
+        2.3. TIMBER                                              Timber species can generally be identified by their
+                                                                 trade names. The timber species commonly used for
+        Timber is generally produced from two classes of trees,  timber flooring are shown in Appendix A.
+        namely the softwoods and the hardwoods. The
+        classification of softwoods and hardwoods is botanical   When selecting timber flooring, besides considering
+        and may be misleading as some of the softwoods may       the styles and colour options, the designer should
+        exceed most hardwoods in hardness.                       ensure that the selected timber species are able to meet
+                                                                 the project specifications. Table 2.2 provides some
+                                                                 guidance on the selection of timber species for flooring.
+
+        Table 2.2 Selection of Timber Species
+
+        Selection Criteria         Properties / Characteristics Requirements
+
+        1. Timber Appearance       – As a natural material, timber is expected to have variations in grain and colour.
+                                       If more uniform tonality is required, prior agreement between the designer
+                                       and supplier should be arranged.
+
+design  2. Moisture Content and    – It is important to know the behaviour of timber species in relation to moisture.
+            Dimensional Stability  – Timber absorbs moisture from the atmosphere. Changes in relative humidity
+
+        3. Wear Resistance             of the atmosphere, for example, due to intermittent air-conditioning in
+        4. Slip Resistance             building, can cause dimensional changes in timber flooring. Sufficient
+                                       provision at the perimeters should be made to accommodate expansion of
+                                       the flooring.
+                                   – Different timber species exhibit different moisture stability but they generally
+                                       shrink and swell more in the direction of the annual growth rings (tangentially)
+                                       and only slightly along the grain (longitudinally). Hence, plain-sawn timber
+                                       tends to shrink and swell more in width than quarter-sawn timber *.
+                                   – Timber should be kiln dried and the moisture content requirements should
+                                       comply with the requirements specified in SS CP1.
+                                   – Unless otherwise specified, dimension variation of the timber shall comply
+                                       with the SS CP1. The permissible variation should be as follows:
+                                       • Width : ±0.75mm
+                                       • Thickness : ±0.40mm
+
+                                   – Wear resistance depends on the species of timber. Janka hardness is commonly
+                                       used to indicate the resistance of timber to wear, denting and marring.
+                                       Appendix A shows the hardness rating of the commonly used timber species.
+
+                                   – The pattern of sawing can also affect the wear resistance. Quarter-sawn flooring
+                                       has better wear resistance than plain-sawn flooring.
+
+                                   – Application of suitable surface finishing, especially those based on
+                                       polyurethanes, can help to slow down the rate of wear of timber flooring.
+
+                                   – Slip resistance of timber flooring is generally acceptable when the surface is
+                                       dry.

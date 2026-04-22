@@ -1,0 +1,399 @@
+GOOD INDUSTRY PRACTICES
+
+Copyright @ 2004 Building and Construction Authority, Singapore. All rights reserved. This document or any part thereof may not be
+reproduced for any reason whatsoever in any form or means whatsoever and howsoever without the prior written consent and approval of
+the Building and Construction Authority.
+
+Whilst every effort has been made to ensure the accuracy of the information contained in this publication, the Building and Construction
+Authority, its employees or agents shall not be responsible for any mistake or inaccuracy that may be contained herein and all such liability
+and responsibility are expressly disclaimed by these said parties.
+
+The publication includes advertisements of suppliers who have, in one way or another, contributed in the development of this publication.
+The Building and Construction Authority does not endorse the products included in the advertisements. It is the responsibility of the users
+to select appropriate products and ensure the selected products meet their specific requirements.
+
+ISBN: 981-05-1530-8
+
+Foreword
+
+The Building and Construction Authority (BCA) has been promoting the use of Construction
+Quality Assessment System or CONQUAS 21 as the de facto national yardstick for measuring
+the workmanship quality of building projects. To meet the rising expectation of the
+homeowners, the Quality Mark (QM) Scheme was launched in July 2002 to promote a
+higher consistency in workmanship standards for residential developments.
+
+Besides setting standards and assessing the level of workmanship through CONQUAS 21
+and QM Schemes, BCA is developing a series of publications called the CONQUAS 21
+Good Industry Practices Guides to share with the industry good work practices adopted
+by practitioners and contractors who consistently deliver high quality work.
+
+This “Good Industry Practices – Aluminium Window” is part of the CONQUAS 21
+Enhancement Series on Good Industry Practices. Windows are major components of
+buildings. This guide provides simple and practical tips to users on how good quality
+fabrication and site installation can be achieved. Common defects associated with
+aluminium window as well as their causes and preventive measures are also highlighted.
+ Photographs and graphical representations are used extensively in the guide to provide
+easy reference and better illustration of the practices.
+
+It should, however, be pointed out that this guide is not meant to dictate how aluminium
+window must be designed and installed. It only serves to illustrate some of the good
+practices designers and contractors have adopted while designing and installing aluminium
+window. We gratefully acknowledge the contributions of these practitioners and trust that
+the industry will find this publication useful in its pursuit of quality excellence.
+
+Lam Siew Wah
+Deputy Chief Executive Officer
+Industry Development
+Building and Construction Authority
+
+Acknowledgement
+
+“Good Industry Practices – Aluminium Window” was developed with inputs from building
+contractors, aluminium window suppliers/installers and members from the various
+professional associations.
+
+We would like to thank the following suppliers and contractors for sharing their good
+practices with us and volunteering their project sites for our documentation:
+
+Dragages Singapore Pte Ltd
+Shimizu Corporation (Singapore Office)
+Woh Hup (Pte) Ltd
+Compact Metal Industries Ltd
+G James Singapore Pte Ltd
+Merdeka Construction Co. Pte Ltd
+YKK AP Singapore Pte Ltd
+
+We would also like to thank the following organisations and individuals for their valuable
+comments towards the completion of this guidebook.
+
+Housing and Development Board
+Real Estate Developers’ Association of Singapore
+Singapore Institute of Architects
+Singapore Contractors Association Ltd
+Working Group for Singapore Standard SS212
+PSB Corporation
+Mr Ng Lye Hock, Director (Managing for Excellence Office), Urban Redevelopment Authority
+Mr Russell Cole (Associate Director), Arup Singapore Pte Ltd
+
+Tan Tian Chong
+Director
+Technology Development Division
+
+Contents
+
+1. Introduction                               1
+
+2. Design                                     2
+
+2.1 Type of Window System                     2
+
+2.2 Type of Framing System                    4
+
+2.3 Structural Support                        7
+
+2.4 Weathering Resistance                     7
+
+3. Material Selection                         11
+
+4. Fabrication                                15
+
+4.1 Mockup and Samples                        15
+
+4.2 Fabrication Tolerances                    16
+
+4.3 Fabrication and Assembly of Window Frame  17
+
+4.4 Glazing                                   20
+
+4.5 Protection                                22
+
+4.6 Labelling                                 23
+
+5. Delivery, Storage and Handling             24
+
+5.1 Delivery                                  24
+
+5.2 Storage                                   24
+
+5.3 Handling                                  25
+
+6. Preparatory Works                          26
+
+7. Installation                               29
+
+7.1 Installation of Window Main Frame         29
+
+7.2 Installation of Window Glazing            41
+
+7.3 Installation of Window Inner Frame        45
+
+7.4 Installation of Fixed Glass Panel         48
+
+7.5 Installation of Accessories               50
+
+7.6 Watertightness Test                       50
+
+8. Protection and Cleaning                    53
+
+8.1 Protection                                53
+
+8.2 Cleaning                                  55
+
+9. Common Defects and Remedies                56
+
+Appendix A–C                                  61
+
+References                                    68
+
+              1. Introduction
+
+              Windows are major components of buildings. A recent       Due to volume constraint, this guidebook focuses on
+              survey conducted by BCA on private residential            aluminium frame windows which are commonly used
+              buildings showed that water seepage through windows       in the local industry, with emphasis on enhancing
+              is a common building defect which is unacceptable         watertightness performance and minimizing physical
+              to owners. In addition, CONQUAS assessment data           defects of the windows.
+              on Window Watertightness Test show that even newly
+              completed buildings have a small but significant rate     For more information on the safety aspects on
+              of water seepage. Beside water seepage defects,           installation and maintenance of windows, please
+              CONQUAS results also show that, poor jointing and         refer to the specific requirements for the installation
+              material/ component damages are major defect areas        and retrofitting works relating to windows prescribed
+              for windows.                                              in the Building Control Regulations. The Fifth
+                                                                        Schedule of the Building Control Regulations specifies
+              In general, a window is designed to:                      the performance-based requirements on the design
+                                                                        of windows. The acceptable solution is based on
+              • provide view;                                           compliance to SS 212 Specification for Aluminium
+              • admit light;                                            Alloy Windows. In addition, only trained and approved
+              • allow for natural ventilation; and                      contractors registered in BCA Contractors Registry
+              • give a pleasing façade.                                 under the regulatory workhead RW01 can carry out
+                                                                        installation and retrofitting of windows.
+              Window design and installation should also cut down
+introduction  noise transmission, reduce solar heat gain, keep out
+              rainwater and provide security to the occupants.
+
+              Window can be fabricated from a variety of materials,
+              for example, timber, plastic, metal, etc. It is a system
+              and comprises various components as follows
+              (Figure 1.1):
+
+              • head;
+              • jamb;
+              • sill;
+              • sash;
+              • mullion;
+              • transom; and
+              • accessories
+
+              Figure 1.1: Components of window
+
+              Mullion
+
+                                                                        Head
+                                                                        Transom
+
+                                                                        Sash
+
+              Sill                                                      Jamb
+
+                                                                        Accessories
+
+1
+
+2. Design
+
+It is critical to consider the following factors in window  2.1. TYPE OF WINDOW SYSTEM
+design:
+                                                            Windows are usually classified according to the types
+• type of window system;                                    of operation as follow:
+• type of framing system;
+• structural support; and                                   • fixed glass;
+• weathering resistance.                                    • casement;
+                                                            • top hung (awning);
+Other design considerations such as accommodation           • bottom hung (hopper);
+of building movement, drainage path and internal            • sliding;
+frame ventilation are equally important, however, due       • louvred; and
+to volume constraint, this guide focuses on the four        • bay window.
+factors listed above.
+
+Table 2.1 Common types of windows used in the local industry
+
+Type of Window                                                Description
+
+1. Fixed Glass                                                • Has a fixed glazed sash
+
+                                                              • Designed mainly for providing view, admitting
+                                                                  light and for aesthetics purposes
+
+                Casement
+                Window
+
+                Fixed                                                                                                 design
+                Window
+
+2. Casement                                                   • Sash opens on hinges, pivots or friction stays
+
+                                                              • Allows airflow through almost the entire area
+                                                                  of the window opening
+
+                                                              • Designed mainly for providing view, admitting
+                                                                  light, allowing for natural ventilation and for
+                                                                  aesthetics purposes
+
+                                                                                                                   2
+
+design            Type of Window             Description
+                    3. Top Hung (Awning)     • Similar to casement window, except that the
+                    4. Bottom Hung (Hopper)
+                    5. Sliding                   sash is connected by friction stays at the top of
+                                                 the window frame
+                    6. Louvred               • Designed mainly for providing view, admitting
+                                                 light and allowing for natural ventilation
+      3
+                                             • Similar to top hung window, except that the
+                                                 sash is connected by friction stays at the bottom
+                                                 of the window frame
+
+                                             • Designed mainly for providing view, admitting
+                                                 light and allowing for natural ventilation
+
+                                             • Consists of two or more sashes, which slide
+                                                 horizontally or vertically along tracks
+
+                                             • Does not require space for swinging of sashes,
+                                                 hence, useful at locations next to passage ways
+
+                                             • Except for specially designed window, not
+                                                 possible to achieve ventilation through the entire
+                                                 window opening
+
+                                             • Designed mainly for providing view, admitting
+                                                 light, allowing natural ventilation and for
+                                                 aesthetics purposes
+
+                                             • Comprises horizontal glass panes, which are
+                                                 either fixed at an angle, or adjustable to control
+                                                 the amount of light and ventilation through the
+                                                 window
+
+                                             • Designed mainly for admitting light and allowing
+                                                 for natural ventilation
+
+Type of Window                                          Description
+7. Bay Window
+                                                        • Generally comprises a series of windows
+                                                            assembled in a polygonal arrangement
+
+                                                        • Projects outward from the external facade of a
+                                                            building
+
+                                                        • Designed mainly for providing view, admitting
+                                                            light and allowing for natural ventilation.
+                                                            Can be a pleasant element to a building façade.
+
+2.2. TYPE OF FRAMING SYSTEM                             2.2.1. SUB-FRAME SYSTEM
+
+There are generally three methods of fixing the window  This system has a sub-frame that is cast in or anchored
+frames to the wall structures:                          onto the wall structure. The main window frame is
+                                                        subsequently mounted onto the sub-frame at a later
+• sub-frame system;                                     stage when all other trades have completed their works
+• cast-in window system; and                            (Figure 2.1).
+• lug system
+                                                                                                                                              design
+In general, the sub-frame and cast-in window system
+have better watertightness performance than the
+conventional lug system.
+
+Figure 2.1: Sub-frame system
+
+                                             Window sub frame
+                                            Window main frame
+
+a) Installation of sub-frame at an earlier                     b) Installation of main frame at a later stage
+     construction stage.                                            of construction.
+
+                                                                                                                                           4
+
+        The main advantages and disadvantages of the sub-frame system are summerised in Table 2.2.
+
+        Table 2.2 Advantages and disadvantages of sub-frame system
+
+        Advantages                                                      Disadvantages
+
+        • Generally has better weather tightness performance            • Smaller dimensional tolerances of the wall opening
+                                                                              are allowed
+        • Can be used for precast or cast in-situ wall systems
+              which do not require plastering
+
+        • Allows greater flexibility in the sequencing of works
+              of other trades; the sub-frame is installed first so
+              that wet trades around the window can be completed
+              before subsequent installation of the main frame
+              and
+
+        • The outer frames are installed after all wet trades
+              around the windows are completed and hence, are
+              subject to lower risk of physical damages
+
+design  2.2.2. CAST-IN WINDOW SYSTEM                                    of sealant to seal the gaps between the window frame
+                                                                        and wall, cast-in window system has superior
+        For cast-in window system, the frames are cast together         watertightness performance over the conventional
+        with the precast façade. This helps to raise site               lug system.
+        productivity and achieve higher workmanship quality
+        in the installation of the window frames. Through               The main advantages and disadvantages of the cast-
+        eliminating the need for site grouting or application           in window system are summerised in Table 2.3.
+
+        Table 2.3 Advantages and disadvantages of the cast-in window system
+
+        Advantages                                                      Disadvantages
+
+        • Eliminate the need for site grouting or application           • Require close coordination between window supplier
+              of sealant to seal the gaps between window frames               and precaster
+              and walls
+
+        • Superior watertightness performance                           • Rectification and replacement could be more costly
+
+        • Installation of window main frame is carried out at
+              the precast yard where tighter quality control is easier
+              to administer
+
+5
+
+2.2.3. LUG SYSTEM
+
+The conventional lug system, which is commonly used in the local industry, comes with pre-fastened galvanised
+straps/brackets.
+Figure 2.2: Lug system
+
+                                                                        Window outer frame
+                                                                        Window inner frame
+
+                                                                            (window sash)
+
+                                                                          Pre-fastened lugs
+
+a) Window frame prior to installation                     b) Installation of window frame by
+                                                               ramsetting the straps to the wall
+
+The frame is mounted in position by ramsetting the straps/ brackets to the wall as shown in Figure 2.2. The lug         design
+system is commonly used for installing window frame on plastered walls where the lugs can be fixed to the wall
+and embedded in the plaster.
+
+The main advantages and disadvantages of the lug system are summerised in Table 2.4.
+
+Table 2.4 Advantages and disadvantages of the lug system
+
+Advantages                                                Disadvantages
+
+• Less stringent dimensional tolerances for the           • Quality of finishing and watertightness performance
+      structural openings since the lugs are adjustable         is highly workmanship dependent
+
+                                                          • The outer frames, which are installed at the early
+                                                                stage of construction, are vulnerable to damages by
+                                                                works of other trades
+
+                                                                                                                     6
+
+        2.3. STRUCTURAL SUPPORT                                           structural system to minimise deflection in the window
+                                                                          (Figure 2.3).
+        Inadequate design may transfer the vertical load from
+        the wall/structure above the window to the window                 Similarly if the window abuts the structural beam
+        frame and glass panel.

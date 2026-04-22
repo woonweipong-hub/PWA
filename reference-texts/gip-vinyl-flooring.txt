@@ -1,0 +1,441 @@
+Good Industry Practices for
+
+    VINYL FLOORING
+
+IDEAS for
+
+• Design
+• Installation
+• Maintenance
+
+Copyright © 2020 Building and Construction Authority, Singapore. All rights reserved. This document or
+any part thereof may not be reproduced for any reason whatsoever in any form or means whatsoever and
+howsoever without prior written consent and approval of the Building and Construction Authority.
+
+This publication contains information that has been contributed by the Building and Construction
+Authority and members of the Technical Committee (comprising agencies, professional bodies,
+associations, developers, builders and suppliers). Whilst every effort has been made to ensure the accuracy
+of the information contained in this publication, the Building and Construction Authority (including
+its employees) and the members of their Technical Committee (including their employees) shall not
+be responsible for any mistake or inaccuracy that may be contained herein and all such liability and
+responsibility are expressly disclaimed by these said parties.
+
+The Building and Construction Authority does not endorse any of the products contained in this publication.
+It is the responsibility of the readers to select the appropriate products and ensure the selected products
+meets their specific requirements.
+
+ISBN: 978-981-14-7322-7
+
+GOOD INDUSTRY PRACTICES FOR VINYL FLOORING  01
+
+FOREWORD
+
+The Building and Construction Authority’s (BCA) Construction Quality Assessment System (CONQUAS) has
+been widely adopted as the de facto national yardstick for measuring the workmanship quality of building
+projects. To meet rising expectations of homeowners, the Quality Mark (QM) Scheme was launched in
+2002 to promote consistent high workmanship standards for private residential developments. To help
+projects achieve the standard in CONQUAS and QM, BCA has developed a series of publications on Good
+Industry Practices for different trades.
+
+The “Good Industry Practices – Vinyl Flooring” guide is part of the CONQUAS Enhancement Series which
+collates and shares some of the good practices adopted by industry practitioners and contractors on
+how good workmanship quality can be achieved in Vinyl Flooring work. It provides simple and practical
+illustrations on the types of vinyl flooring, quality checks during manufacture and proper installation
+methods. Common issues associated with Vinyl Flooring, their causes and possible solutions to address
+them are highlighted.
+
+This guide is not meant to be a definitive dictation on how Vinyl Flooring must be designed and installed.
+It only serves to illustrate some of the good practices designers and contractors have adopted while
+designing and installing Vinyl Flooring. We gratefully acknowledge the contributions of the industry
+practitioners in the development of this guide and trust that the industry will find this publication useful.
+
+Neo Choon Keong
+Deputy Chief Executive Officer
+Industry Development
+Building and Construction Authority
+
+02                                GOOD INDUSTRY PRACTICES FOR VINYL FLOORING
+
+ACKNOWLEDGEMENT
+
+The “Good Industry Practices – Vinyl Flooring” was developed with inputs from Architects, Developers,
+Builders, Specialist Contractors and members from various industry associations and organisations.
+
+A Technical Committee was formed to review the contents and good practices identified. We wish to
+thank the members of the Technical Committee for their valuable contributions.
+
+TECHNICAL COMMITTEE:
+
+Chairman  Mr Tan Boon Kee          Building and Construction Authority
+
+Deputy Chairman Mr Goh Thiam Lai   Building and Construction Authority
+
+Working Committee Mr Ken Ho        Building and Construction Authority
+
+          Mr Wong Mun Hong         Building and Construction Authority
+
+          Mr Sunthara Raju Pillai  Building and Construction Authority
+
+          Mr See Hwee Heong        Building and Construction Authority
+
+          Mr John Koh Kwok Kong    Building and Construction Authority
+
+Members   Ms Lee Wen Peng          Housing and Development Board
+
+          Mr John Koh              Singapore Contractors Association Ltd
+
+          Mr Ernest Yang           Aurum Land Private Limited
+
+          Mr Koon Wai Leong        Hoi Hup Realty Pte Ltd
+
+          Mr Selvamani Murugappan Woh Hup (Private) Ltd
+
+          Ms Suria Binte Abdul Rahman Straits Construction Singapore Pte Ltd
+
+          Mr Jimmy Qu              Qingjian International (South Pacific)
+                                   Group Development Co., Pte Ltd
+
+          Mr Kwok Heng Leong       Teambuild Engineering and Construction Pte Ltd
+
+          Mr Andy Hua Tai Sua      Singapore Engineering & Construction Pte Ltd
+
+          Ms Jesseline Yap         Mapei Far East Pte Ltd
+
+          Mr Andy Soh              ARDEX Singapore Pte Ltd
+
+          Mr Casey Tan             Laflor Living Pte Ltd
+
+          Mr Brandon Heng Puay Shyan Spazio Concepts Pte Ltd
+
+GOOD INDUSTRY PRACTICES FOR VINYL FLOORING   03
+
+We would like to thank the following agencies, organisations and firms for their valuable feedback in the
+review of this guide:
+
+AGENCIES, ORGANISATIONS AND FIRMS
+• Housing and Development Board
+• Singapore Contractors Association Limited (SCAL)
+• Aurum Land Private Limited
+• Hoi Hup Realty Pte Ltd
+• Woh Hup (Private) Ltd
+• Straits Construction Singapore Pte Ltd
+• Qingjian International (South Pacific) Group Development., Pte Ltd
+• Teambuild Engineering and Construction Pte Ltd
+• Singapore Engineering & Construction Pte Ltd
+• Mapei Far East Pte Ltd
+• ARDEX Singapore Pte Ltd
+• Laflor Living Pte Ltd
+• Spazio Concepts Pte Ltd
+• TÜV SÜD PSB
+
+Ang Lian Aik
+Group Director
+Construction Productivity and Quality Group
+Building and Construction Authority
+
+04                                   GOOD INDUSTRY PRACTICES FOR VINYL FLOORING
+
+CONTENTS
+
+1.0 INTRODUCTION                                                                 05
+
+    1.1 Background                                                               05
+
+    1.2 Composition, Construction and Characteristic                             05
+
+    1.3 Pros and Cons                                                            06
+
+2.0 DESIGN CONSIDERATIONS                                                        07
+
+    2.1 Type		                                                                   07
+
+    2.2 Thickness                                                                07
+
+    2.3 Wear Layer                                                               07
+
+    2.4 Thermal Movement and Joints                                              08
+
+    2.5 Adhesive                                                                 09
+
+		2.5.1 Acrylic Adhesive                                                         10
+
+		2.5.2 Urethane Adhesive                                                        10
+
+		 2.5.3 Modified Silane Adhesive                                                10
+
+    2.6 Green Vinyl Flooring                                                     10
+
+    2.7 Plasticizers                                                             11
+
+    2.8 Specification                                                            11
+
+3.0 INSTALLATION                                                                 13
+
+    3.1 Methods                                                                  13
+
+    3.2 Moisture in Concrete and C&S (Cement and Sand) Substrates                13
+
+    3.3 Level of Concrete and C&S Substrates                                     14
+
+    3.4 Curing Compound, Sealer, Hardener Issues                                 14
+
+    3.5 Acclimatization                                                          15
+
+    3.6 Equipment                                                                15
+
+		 3.6.1 Vinyl Sheet Flooring (Glued-down method)                                15
+
+		 3.6.2. Vinyl Tile/Plank Floor (Floating method)                               15
+
+    3.7 Handling and Storage                                                     16
+
+    3.8 Installing Vinyl Flooring with Stripes                                   16
+
+    3.9 Installation Guides                                                      16
+
+		3.9.1 Preparation                                                              16
+
+		 3.9.2 Glue-down Vinyl Sheet Installation                                      17
+
+		 3.9.3 Heat Weld Seaming the joint                                             21
+
+		 3.9.4 Floating Vinyl Plank Installation                                       22
+
+		 3.9.5 Skirting for Vinyl Plank                                                24
+
+    3.10 Repairing                                                               26
+
+4. MAINTENANCE                                                                   27
+
+    4.1 Recommended Maintenance                                                  27
+
+    4.2 Common issues                                                            27
+
+		4.2.1 Telegraphing                                                             27
+
+		4.2.2 Bubbling/Detachment                                                      28
+
+		4.2.3 Tonality                                                                 28
+
+		 4.2.4 Failure of heat welded seam                                             28
+
+		 4.2.5 Peaking and Curling in Vinyl Tile/Plank                                 28
+
+5.0 REFERENCES                                                                   29
+
+GOOD INDUSTRY PRACTICES FOR VINYL FLOORING  05
+
+1.0 INTRODUCTION
+
+1.1 Background
+
+Vinyl flooring is getting popular with the advancement in manufacturing processes especially in the
+photo printing technology where it can literally mimic any kind of surface including the texture and
+carpet pile (woven).
+
+Vinyl flooring is easy and economical to maintain as it resists wear and tear and keep its shine without wax,
+polish or buffing. Unlike most natural flooring, it is not affected by water and easy to replace.
+
+While it is offered as an alternate floor finish over timber, stone, ceramic and carpet in terms of cost
+and productivity, vinyl flooring also has its challenges especially on increasing awareness on safety and
+environment aspects.
+
+This guidebook focuses on vinyl flooring applications for new built construction, which comprises the
+majority usage.
+
+1.2 Composition, Construction & Characteristic
+
+The main composition of vinyl flooring is plastic resin manufactured from ethylene and chlorine, i.e.
+Polyvinyl Chloride (PVC). Currently, it is available in sheet, tile or plank format with solid or rotogravure
+finishes.
+
+The common thickness ranges from 2mm to 5mm.
+
+Some vinyl flooring is made of recycled vinyl but can be more prone to expansion and contraction.
+
+Vinyl sheet is normally glued down to the substrate. Vinyl tile and plank can be glued (some with self-
+adhesive option) or laid as floating system with “Lock & Click” or tongue and groove.
+
+Cushion underlayment can be incorporated for better acoustic and comfort.
+
+There is a type of vinyl flooring called Vinyl Composite Tile (VCT) that has very little vinyl as a binder of
+which 85% are limestone. The advantage is limestone is rigid with minimal movement when exposed
+to hot or cold temperature. However, it has lower static load resistance and breaks easily due to irregular
+subfloor surface. In addition, it is susceptible to water and require regular waxing to seal the surface to
+prevent water penetration. In view of the properties, it is not suitable for local application and hence not
+be covered in this guide.
+
+06  GOOD INDUSTRY PRACTICES FOR VINYL FLOORING
+
+1.3 Pros and Cons
+
+Pros
+Vinyl flooring is a cost effective option, easy and fast to install with no tonality issue (provided it is from
+same batch of production). It is not susceptible to moisture as compared with timber, stone, ceramic and
+carpet. For application with adhesive, urethane or modified-silane adhesives will be a better choice to
+avoid issues in contact with moisture/water.
+
+Vinyl Flooring can be easily replaced (no hacking involved) and ready for foot traffic almost immediately
+especially for those that adopts floating installation.
+
+Maintenance cost is low as only daily sweeping or dry mopping is required. The design can also be catered
+to hide and disguise dirt from day-to-day foot traffic.
+
+Cons
+However, it is not as hard as stone and ceramic and susceptible to scratches especially for pure vinyl
+flooring. This can be overcome by incorporating a special UV coated wear layer with varying thickness to
+reduce scratch, stain, scuff, gouge and improve chemical resistance.
+
+In addition, not all vinyl flooring are suitable for heavy duty/traffic areas e.g factory, warehouse etc. Please
+check with the manufacturer for recommendation.
+
+Vinyl flooring, especially vinyl tile and plank can be subjected to peaking and curling when exposed to
+direct sunlight over a prolonged period.
+
+        GOOD INDUSTRY PRACTICES FOR VINYL FLOORING              07
+
+2.0 DESIGN CONSIDERATION
+
+2.1 Type
+
+Vinyl flooring are mainly classified as homogeneous and heterogeneous.
+
+Homogeneous vinyl comprises a single layer with a wear layer (preferred) and is usually in solid colours. It
+is ideal for heavy foot traffic areas e.g. healthcare, office, etc due to its rigidity and toughness.
+
+Heterogeneous vinyl is made up of multi-layers. As it is in layers, it can incorporate various patterns and
+textures including mimicking wood and stone texture and feel.
+
+Heterogeneous vinyl typically has multiple layers incorporating a non-slip layer (for floating installation),
+glass fibre reinforced core (for thermal expansion and contraction control), the print and topped with a
+wear layer.
+
+                                                Typical structure of PVC
+                                                type of vinyl flooring
+
+2.2 Thickness
+
+5mm click and lock vinyl floor tiles are commonly used for residential buildings, whereas 2mm to 3mm
+vinyl sheets are used for commercial and institutional buildings.
+
+2.3 Wear Layer
+
+The common wear layer is polyurethane (i.e. PU coating) and most recommendations make reference to
+the thickness of the wear layer for durability and type of application.
+
+The table below summarises the common recommendations:
+
+EU      ASTM Recommendations
+
+1.0 mm  20 mil for 15 years commercial or lifetime residential
+
+0.55 mm 12 mil for 10 years commercial or 30 years residential
+
+0.3 mm  6 mil   for 5 years commercial or 15 years residential
+
+08  GOOD INDUSTRY PRACTICES FOR VINYL FLOORING
+
+2.4 Thermal Movement and Joints
+
+Areas that are exposed to direct sunlight for prolonged period might lead to peak and curl at the edges.
+
+Thermal movement can cause the following:
+   • Gapping especially at end joints or tent up particularly for vinyl tile and planks;
+   • Disengagement of interlocking in floating floor or de-bond adhesive; and
+   • Fading of the surface finishing.
+
+Vinyl flooring with fibreglass reinforcement will help to enhance dimensional stability.
+
+Providing expansion joint at edges of the floor, usually 3mm to 5mm, will help to minimise the impact. It
+is advisable to avoid butt joint especially with other materials. Finishing off with a capping is an alternative
+that is commonly done.
+
+GOOD INDUSTRY PRACTICES FOR VINYL FLOORING  09
+
+It is always good practice to do a mock up at the actual location for long term testing. Always check with
+the manufacturer for their recommendations.
+
+Ultra violet (UV) shield curtain and window/sliding door will help to minimise impact of peaking and
+curling at the edge.
+
+2.5 Adhesives
+
+The common adhesives used are as follows:
+     a. Acrylic – Water Based
+     b. Urethane – Synthetic resin based
+     c. Modified Silane – Polymer based
+
+Different types of vinyl have unique properties, which requires usage of correct types of adhesives as per
+specialist recommendations.
+
+Preferred properties are as follows:
+     a. Fast drying – normal 3-5 days
+     b. Low Volatile Organic Compounds (VOCs)
+
+Pressure sensitive adhesive type could be considered for easy replacement of vinyl flooring. In any case,
+please consult the manufacturer for suitability of location to be used.
+
+Please note that multipurpose adhesive can work well with felt-backed sheet vinyl but not with
+homogenous vinyl due to plasticizer migration.
+
+Adhesives can be applied using roller, trowel or by spraying.
+
+10  GOOD INDUSTRY PRACTICES FOR VINYL FLOORING
+
+2.5.1 Acrylic Adhesive
+Acrylic adhesive in water dispersion is economical and generally low in VOCs and therefore ideal for indoor
+application. As it is water-based, excess can be easily removed and will not mess up the surface.
+
+Usage of non-water based adhesive is recommended for areas which have high probability of contacting
+water (example: area outside washroom).
+
+2.5.2 Urethane Adhesive
+Epoxy or polyurethane adhesives are that provide ultimate strength for most of the floor coverings for
+internal and external application.
+
+However, any excess must be cleaned immediately as it would be difficult to remove once cured. Once
+the adhesive cured, it is moisture and weather resistance especially for external use.
+
+2.5.3 Modified Silane Adhesive
+Modified silanes are one component adhesives which react and cure under the action of moisture. During
+curing, by polycondensation, it emits methanol. Once cured, it is elastic. There are two types of modified
+silanes, i.e. polyether or polyurethane. Polyether modified silane is more elastic.
+
+The main advantage of modified silanes is that it does not require primer prior to application. In most
+cases, cleaning of the surface is enough to ensure adhesion.
+
+Typical properties of modified silane adhesive are as follows:
+     a. Elastic and flexible
+     b. Tensile strength between 1 MPa to 4 MPa
+     c. Maximum elongation of 100% to 300%
+     d. Very good resistance to moisture or thermal load
+     e. Extremely resistant to high levels of moisture and alkalinity
+     f. Adhere to most surfaces with/without primer or activator subject to subfloor condition.
+     g. Free of water, solvents, VOCs and hazardous chemicals
+     h. Do not contain harmful isocyanate
+
+2.6 Green Vinyl Flooring
+
+Though vinyl flooring made from virgin vinyl is preferred, for sustainability, recycled vinyl may be added
+in. Virgin vinyl is the highest grade, pure vinyl with very low impurities used in making vinyl records. The
+recycled vinyl referred here is the discarded vinyl product, or semi-finished product, that are diverted
+from waste for use within a new product. Vinyl flooring using recycled PVC from unknown sources are not
+recommended as it might contain contaminates and toxic, especially heavy metals, and the properties
+will not be stable.
+
+Reusing vinyl is a matter of melting down the old product and blending it with virgin resin to produce the
+new vinyl flooring.
+
+There are environmental friendly vinyl flooring certified by Singapore Green Building Council (SGBC)which
+is commonly used in Singapore.
+
+GOOD INDUSTRY PRACTICES FOR VINYL FLOORING                                                              11
+
+2.7 Plasticizers
+
+Plasticizers are chemical added to vinyl to make it flexible. Avoid using vinyl flooring that uses phthalates
+as plasticizer as it may cause health issues (including reproductive issues) and some are even known to
+be carcinogens. Bio-based plasticizers are a good alternative as it does not pose a health risk or harm the
+environment.
+
+Some plasticizers can react with adhesive and cause a problem called plasticizers migration.

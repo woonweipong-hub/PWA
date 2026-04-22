@@ -1,0 +1,440 @@
+BCA Construction Quality Assessment System
+
+                                  CONQUAS® (Private Residential)
+
+13 November 2025
+
+                  CONQUAS® (Private Residential)
+
+                                                                                                                       2
+
+                           CONQUAS®
+
+                                                        THE BCA
+                                CONSTRUCTION QUALITY ASSESSMENT SYSTEM
+Copyright @ 2025 by the Building and Construction Authority, Singapore. All rights reserved. No part
+may be reproduced, in any form or by any means, without permission in writing from the publisher.
+While every effort has been made to ensure the accuracy of the information presented in this
+publication, neither the Authority nor its employees or agents can accept responsibility for any loss or
+damage incurred in connection with the use of the contents.
+
+13 November 2025
+
+                  CONQUAS® (Private Residential)
+
+                                                                                                                        3
+
+                  CONTENTS
+
+1.0 INTRODUCTION.................................................................................................... 4
+         1.1 Objectives of CONQUAS
+         1.2 Scope of CONQUAS (Private residential)
+         1.3 Development of CONQUAS (Private Residential)
+
+2.0 CONQUAS (Private Residential)............................................................................ 6
+         2.1 Components to be assessed
+         2.2 The Weightages
+         2.3 Sampling
+
+3.0 THE ASSESSMENT.................................................................................................13
+         3.1 Assessment Approach
+         3.2 Assessment
+         3.3 CONQUAS Project Band
+         3.4 Major Defects
+         3.5 3 Tier CONQUAS Scheme
+         3.6 Moderation Framework
+         3.7 Publication of CONQUAS Bands
+
+APPENDICES
+
+Appendix 1    Quality Standards for Internal Finishes Works........................................... 24
+Appendix 2    Quality Standards for External Finishes Works........................................... 30
+Appendix 3    Quality Standards for Functional Tests...................................................... 39
+Revision Log  ………………………………………………………………………………………………………………. 40
+
+13 November 2025
+
+                            CONQUAS® (Private Residential)
+
+                                                                                                                       4
+
+1.0 INTRODUCTION
+
+         Construction Quality Assessment System (CONQUAS) Private Residential is now the twelfth
+         edition of the CONQUAS assessment scheme after more than 35 years of implementation.
+
+1.1 Objectives of CONQUAS
+
+         The Building and Construction Authority (BCA) developed the CONQUAS in conjunction with
+         major public sector agencies and various leading industry professional bodies, organisations
+         and firms to measure the quality level achieved in a completed building project.
+         CONQUAS was designed with three objectives:
+         (a) To have a standard quality assessment system for new building projects.
+         (b) To make quality assessment objective by:
+
+                        • measuring constructed works against workmanship standards
+                             and specifications; and
+
+                        • using a sampling approach to suitably represent the whole
+                             project.
+
+         (c) To enable quality assessment to be carried out systematically within reasonable cost
+                   and time.
+
+         CONQUAS is an independent assessment. Unless specified in the building contract, project
+         engineers or architects should not use CONQUAS to decide if the building or parts of the
+         building project are acceptable. CONQUAS covers most aspects of general building
+         architectural works and assessments shall be completed prior to application for Temporary
+         Occupation Permit or Certificate of Statutory Completion inspection, whichever comes first.
+
+13 November 2025
+
+                  CONQUAS® (Private Residential)
+
+                                                                                                               5
+
+1.2 Scope of CONQUAS (Private Residential)
+
+         CONQUAS (Private Residential) is specifically for private residential projects and the
+         residential component of private mixed development projects. It places greater emphasis on
+         major defects that impact functionality and liveability while maintaining balance between
+         construction productivity and quality.
+
+         It also aims to provide a greater differentiation (by banding) in CONQUAS performance
+         between projects/developers/builders.
+
+         The key enhancements of CONQUAS (Private Residential) from earlier editions are as follows:
+
+              Calibration of Project CONQUAS performance:
+
+        a. New scoring methodology with pre-requisites on critical tests, to provide greater
+              differentiation (by banding) between projects’ CONQUAS performances
+
+        b. Higher passing rate of windows water-tightness test to 10% non-compliance (from
+              current 15%)
+
+        c. Revised weightages of the assessment components with greater emphasis on functional
+              tests that affects liveability
+
+        d. Revised classification of major defects to place greater emphasis on areas with greater
+              impact on homeowners in terms of liveability and functionality
+
+              Streamlined CONQUAS assessments:
+
+        e. Streamlined Internal Finishes defects categories by minimising checks on areas that have
+              insignificant impact on functionality and liveability e.g. removable stains, floor tonality etc
+
+        f. Removed Installation Method Verification assessments to streamline assessment
+              process
+
+1.3 Development of CONQUAS (Private Residential)
+
+         CONQUAS (Private Residential) was co-developed by developers, consultants, builders and
+         BCA.
+
+         During development, we refined the weightages and assessment standards by considering
+         feedback from multiple sources: feedback and survey findings from homeowners, reported
+         defect during the Defect Liability Period (DLP) and BCA’s past CONQUAS assessment data.
+         Extensive studies and numerous trials were also conducted to fine-tune the new assessment
+         standards.
+
+         CONQUAS (Private Residential) focuses on addressing critical workmanship-related issues that
+         impact liveability and functionality, whilst maintaining a balance between construction
+         productivity and quality.
+
+13 November 2025
+
+                  CONQUAS® (Private Residential)
+
+                                                                                                               6
+
+2.0 CONQUAS (Private Residential)
+
+2.1 Components to be assessed
+
+The CONQUAS assessment is divided into three main components –
+
+                   (a) Internal Finishes,
+                   (b) Functional Tests, and
+                   (c) External Finishes
+
+Each component is further divided into different items for assessment. However, the assessment
+excludes works such as piling, heavy foundation and sub-structure works which are heavily
+equipment-based, buried or covered and usually called under separate contracts or sub-contracts.
+Design, choice of materials and end users’ aesthetic preferences are also excluded from the
+assessment.
+
+The building is assessed primarily on workmanship standards achieved through factory and site
+inspection. For projects using Design for Manufacturing and Assembly (DfMA) technologies,
+assessments will be done throughout the construction process with some of the Functional Tests
+carried out in the factory.
+
+The assessment on the functional performance of selected services and installations help to safeguard
+the interest of homeowners in relation to liveability, comfort and defects which surface only after
+some time.
+
+(a) Internal Finishes
+
+         Internal finishes assessment deals mainly with the finishes and components. This is the part
+         where the quality and standard of workmanship are most visible. The assessment covers:
+
+         (i) architectural finishes, which include floors, internal walls, ceiling, doors, windows and
+                   components. Components include permanent internal fixtures (such as wardrobe,
+                   kitchen cabinet, vanity top, mirror, bathtub, water closet, shower screen, basin etc.),
+                   and permanent external fixtures (such as signage, railings, unit number plates, lift
+                   fittings, letter box, lighting, metal gate, etc.).
+
+         (ii) basic M&E fittings, which include taps and mixers, WC, floor traps, electrical switches,
+                   trunkings, fan coil unit, air-con diffuser, light fittings, CCTV camera, shower head, etc.
+                   At the lift lobby, lift display and call-button panels are checked as M&E basic fittings.
+
+         The quality standards for Internal Finishes are given in Appendix 1.
+
+(b) Functional Tests
+
+         Functional tests include checks on window and wet area water-tightness as well as QP’s
+         declaration on the results for 100% EN 14179-2 heat soak test for tempered glass (including
+         laminated tempered glass) and Pull-Off-Test for Internal Wall Tiles. For projects that adopt
+         PPVC, a maximum of 30% of the total window water-tightness test samples and 20% of the
+         total wet area water tightness test samples could be carried out in the factory.
+
+13 November 2025
+
+                  CONQUAS® (Private Residential)
+
+                                                                                                  7
+
+(c) External Finishes
+
+         External Finishes assessment covers the roofs, external walls and external works at the
+         completion stage of the building.
+
+2.2 The Weightages
+
+The weightages allocation for Internal Finishes, Functional Tests, External Finishes are as
+follows:
+
+Components              Weightages
+
+Internal Finishes (IF)  40%
+Functional Tests (FT)   40%
+External Finishes (EF)  20%
+
+13 November 2025
+
+                                    CONQUAS® (Private Residential)
+
+                                                                                                   8
+
+2.3 Sampling
+
+    As it is resource intensive to assess all elements in a building, CONQUAS uses a sampling
+    system for the assessment. The sampling system, which is based on the gross floor area of the
+    building, will ensure that the assessment adequately represents the entire building.
+
+    The assessment is based on the sampling guidelines table as set out below:
+
+                             Sampling Guidelines Table
+
+    Items                   GFA     Min    Max                                  Remarks
+                            per   Sample  Sample
+                          Sample
+
+1 Internal Finishes       70 m2   90                For all private residential project &
+                                          800 mixed development project with
+
+                                                    residential component
+
+                                                        50% Sampling (50% coverage for all
+
+    Internal Finishes                                   units):
+    (Tier 2a)
+1a                        -       90      1,440 Max Principal samples: 640
+
+                                                        Max Service samples: 640
+
+                                                        Max Circulation samples: 160
+
+                                                        100% Sampling (100% coverage for all
+
+    Internal Finishes                                   units):
+    (Tier 2b)
+1b                        -       90      2,160 Max Principal samples: 1000
+
+                                                        Max Service samples: 1000
+
+                                                        Max Circulation samples: 160
+
+2 External Wall           -       100%    -             100% of the blocks or units
+3 External Work
+4 Roof                    -       1       -             1 for each type of external work
+
+                          -       50%     -             Minimum 50% of the blocks or units
+
+                                                        Conducted by BCA. A sample is
+                                                        defined as 2m length of joint.
+
+    Field Window Water-                                 5% of total number of window panels
+    tightness Test (WTT)
+5                         -       20      100 or 5% of total curtain wall area,
+
+                                                        whichever is applicable
+
+                                                        For PPVC project, maximum 30% of
+                                                        the test samples could be from factory
+
+13 November 2025
+
+                                                                                CONQUAS® (Private Residential)
+
+                                                                                9
+
+                                         50% Sampling
+
+                                         10% of total number of window panels
+                                         or 10% of total curtain wall area,
+                                         whichever is applicable
+
+Field Window Water-
+
+5a tightness Test (WTT)     -  40   200 For PPVC project, maximum 30% of
+
+(Tier 2a)                                the test samples could be from factory
+
+                                         For all private residential project &
+                                         mixed development project with
+                                         residential component
+
+                                         100% Sampling
+
+                                         20% of total number of window panels
+                                         or 20% of total curtain wall area,
+                                         whichever is applicable
+
+Field Window Water-                 200 For PPVC project, maximum 30% of
+
+5b tightness Test (WTT)     -  40        the test samples could be from factory
+
+(Tier 2b & Tier 3)
+
+                                         For all private residential project &
+                                         mixed development project with
+                                         residential component
+
+       Field Window Water-  -  25%  -    Self-Testing with declaration by
+5c tightness Self-Test                   project Qualified Person
+
+       (WTT)
+
+                                         Conducted by BCA:
+
+                                         Residential projects:
+
+                                         • 30% of all bathrooms and/or toilets
+
+       Wet Area Water-                   (by location)
+6 tightness Test (WPT)
+                                         • all will be tested if less than the
+
+                               60   300  minimum sample (for all projects)
+
+                            -
+
+                                         For PPVC project, maximum 20% of
+
+                                         the test samples could be from factory
+
+13 November 2025
+
+                                                        CONQUAS® (Private Residential)
+
+                                                                                    10
+
+                                             50% Sampling (50% of all bathrooms
+                                             and/or toilets):
+                                             Based on number of bathrooms
+                                             and/or toilets
+
+                                             For PPVC project, maximum 20% of
+
+        Wet Area Water-                      the test samples could be from factory
+6a tightness Test (WPT)
+                         -       100   600
+        (Tier 2a)
+                                             For all private residential project &
+        Wet Area Water-
+6b tightness Test (WPT)                      mixed development project with
+                                             residential component
+        (Tier 2b)
+                                             All will be tested if less than the
+        Wet Area Water-                      minimum sample
+6c tightness Self-Test
+                                             100% Sampling (100% coverage for all
+        (WPT)                                uAnllitws)il:l be tested if less than
+                                             Bthaesemdinoinmnuummsbaemr polfebathrooms
+                                             and/or toilets
+
+                                             For PPVC project, maximum 20% of
+                                             the test samples could be from factory
+
+                         -       120   1000  For all private residential project &
+
+                                             mixed development project with
+
+                                             residential component
+
+                                             All will be tested if less than the
+                                             minimum sample
+
+                                 100%        • Self-Testing with declaration by
+                                             project Qualified Person
+                                             • Including flat roof
+
+7  Pull-Off-Test for     10,000  1      5    • 5 tiles per set (by location)
+   Internal Wall tiles                 sets  • Self-Testing with declaration by
+                         m2      set
+                                                 project Qualified Person
+
+13 November 2025
+
+                                             CONQUAS® (Private Residential)
+
+                                                                                                       11
+
+                                                              For all private residential project &
+                                                              mixed development project with
+                                                              residential component
+
+   Water Flow Test for                                        Sample distribution between internal
+                                                              and external areas at 70%:30%
+
+   dwelling unit corridor,
+
+8  lift lobbies, footpaths,  1,500    10         70           Maximum 10m length for unit
+   exposed walkway in         m2                              corridor, footpath, exposed walkway,
+
+   carpark and basement                                       driveway in basement carpark per
+
+   carpark                                                    sample
+
+                                                              Not more than 3 carpark lots per
+                                                              sample in basement carpark
+
+   100% EN 14179-2 Heat                                       Each lift lobby = 1 sample
+
+   Soak Test for tempered                                     For all private residential project &
+                                                              mixed development project with
+                                                              residential component
+
+   glass used at balcony,                                     • Self-Testing with declaration
+
+9 roof canopy and                  -  100%       -                    by project Qualified Person
+
+   shower screen (Self-
+
+   Testing) + 3-year                                          • The 3-year warranty for all
+                                                                  glasses to start from date of
+   warranty for all glasses                                       DLP commencement
+
+A location for internal finishes assessment is a functional space of a building such as a room, hall,
+toilet, kitchen, yard, corridor or lobby.

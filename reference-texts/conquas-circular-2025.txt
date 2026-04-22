@@ -1,0 +1,456 @@
+An MND Statutory Board
+                                         52 Jurong Gateway Road #11-01 Singapore 608550
+
+                                                                               Tel. 1800 3425 222
+                                                                                  www.bca.gov.sg
+
+Our ref: BCA/CPQ/QCD/C20251113           Construction Productivity & Quality Group
+
+13 November 2025
+
+See Distribution List
+
+Dear Sir/Madam
+
+LAUNCH OF CONQUAS (Private Residential)
+
+         The CONQUAS (Construction Quality Assessment System) was first introduced in 1989 to
+provide the built environment with a national standard to measure the workmanship quality of
+building projects. Since then, it has been periodically reviewed to ensure relevancy and effectiveness.
+The CONQUAS has undergone several enhancements to help developers and builders continually
+improve their construction quality and processes.
+
+2. BCA will be implementing CONQUAS (Private Residential), as part of continual enhancement.
+The enhanced framework features revised weightages and assessment standards refined based on
+various feedback sources: homeowners' feedback and survey findings, defects reported during the
+defect liability period (DLP), and past CONQUAS assessment data. CONQUAS (Private Residential)
+focuses on addressing critical construction workmanship-related issues that impact liveability and
+functionality, whilst maintaining a balance between construction productivity and quality. The key
+enhancements of CONQUAS (Private Residential) are:
+
+         Calibration of project CONQUAS performance:
+         a. New scoring methodology, with pre-requisites on critical tests, to provide greater
+
+              differentiation (by banding) between projects’ CONQUAS performances
+         b. Higher passing rate of windows water-tightness test to 10% non-compliance (from
+
+              current 15%)
+         c. Revised weightages of assessment components with greater emphasis on functional tests
+
+              that affect liveability
+         d. Revised classification of major defects to place greater emphasis on areas with greater
+
+              impact on homeowners in terms of liveability and functionality
+
+         Streamlined CONQUAS assessments:
+         e. Streamlined Internal Finishes defects categories by minimising checks on areas that have
+
+              insignificant impact on functionality and liveability e.g. removable stains, floor tonality, etc
+         f. Removed Installation Method Verification assessments to streamline assessment process
+
+                                                                                                                                                        An MND Statutory Board
+                                                                                                                          52 Jurong Gateway Road #11-01 Singapore 608550
+
+                                                                                                                                                                Tel. 1800 3425 222
+                                                                                                                                                                   www.bca.gov.sg
+
+3. The CONQUAS (Private Residential) requirements will apply to private residential projects
+and the residential component of private mixed development projects with construction tenders
+called from 1 April 2026. The CONQUAS (Private Residential) manual is available on the BCA website.
+4. The key changes of CONQUAS (Private Residential) are summarised in the Annex.
+5. We would be grateful if you could disseminate the contents of this circular to your
+staff/members. If you need further clarifications on this matter, you may contact us at
+BCA_CONQUAS_Enquiry@bca.gov.sg.
+6. Thank you.
+
+Yours faithfully
+
+DEREK ANG
+DIRECTOR
+QUALITY AND CERTIFICATION DEPARTMENT
+for CHIEF EXECUTIVE OFFICER
+BUILDING AND CONSTRUCTION AUTHORITY
+
+                                                                                            An MND Statutory Board
+                                                              52 Jurong Gateway Road #11-01 Singapore 608550
+
+                                                                                                    Tel. 1800 3425 222
+                                                                                                       www.bca.gov.sg
+
+ANNEX
+
+CONQUAS (Private Residential)
+
+Table 1: Criteria to determine Project band
+
+Project Band                                 Thresholds
+
+              Project weighted Window         Wet-area water- Status of the
+
+              Non-compliance water-           tightness tests following functional
+
+              (NC) rate        tightness tests (WPT) NC rate  tests (based on QP’s
+
+                               (WTT) NC rate                  declarations and
+
+                                                              supporting
+
+                                                              documents on test
+
+                                                              results):
+
+                                                              a. Pull-Off-
+
+                                                                                       Tests for
+
+                                                                                       internal wall
+
+                                                                                       tiles
+
+                                                              b. Heat soak
+
+                                                                                       tests + 3-
+
+                                                                                       year
+
+                                                                                       warranty for
+
+                                                                                       all glasses
+
+                                                              c. WTT self-
+
+                                                                                       test
+
+                                                              d. WPT self-
+
+                                                                                       test
+
+1             <6%              ≤1 no.         ≤1 no.          Completion                            of
+
+2             ≥6% to <10%                                     requirements with
+                                                              full compliance i.e.
+
+                                                              no NC
+
+3             ≥10% to <15% >1 no. to <10% >1 no. to <2%       Completion                            of
+
+4             ≥15% to <20%                                    requirements but
+                                                              with NCs
+5             ≥20% to <25%
+
+6             ≥25%             ≥10%           ≥2%             Failure to complete
+
+                                                              requirements
+
+Note: The criteria to derive project band are subject to change by BCA as appropriate
+
+                                                                  An MND Statutory Board
+                                    52 Jurong Gateway Road #11-01 Singapore 608550
+
+                                                                          Tel. 1800 3425 222
+                                                                             www.bca.gov.sg
+
+Table 2: CONQUAS (Private Residential) weightages for the assessment components
+
+Assessment components   Weightages  CONQUAS 2022 weightages
+                                    for Private Residential
+Internal Finishes (IF)  40%         projects
+                                    (for reference)
+Functional Tests (FT)   40%         60%
+                                    20%
+External Finishes (EF)  20%         20%
+
+                                                                                                 An MND Statutory Board
+                                                                   52 Jurong Gateway Road #11-01 Singapore 608550
+
+                                                                                                         Tel. 1800 3425 222
+                                                                                                            www.bca.gov.sg
+
+Table 3: CONQUAS (Private Residential) Internal Finishes criteria
+
+The assessment of Internal Finishes categorises defects into three distinct areas namely Finishings,
+Functionality and Liveability. These categories distinguish minor (“1X”) and major defects (“2X” and
+“3X”) based on their severity and impact on functionality and liveability, as shown in table:
+
+ Element   Categories           Non-                      List of Defects (Non-exhaustive)
+Floor                      compliance
+          Finishings     (NC) weightages  Stains, Alignment, Jointing, Damages - Scratches, dents,
+Wall      Functionality                   chips
+          / Liveability          1X       Unevenness (> 6mm/1.2m), Hollowness (for tiled floor as
+Ceiling                          2X       long as it is hollow)
+          Finishings             3X       Damages-Cracks, Open veins felt with hand (>0.5mm width
+          Functionality                   and >100mm length), Chipped timber, Delamination (≥1
+          / Liveability          1X       spot on timber finishing), Lippage for tiled floors
+                                 2X       Cracks on plastered walls, Patchy/roughness, Alignment,
+          Finishings             3X       Jointing, Damages - Scratches, dents, chips
+          Functionality                   Unevenness (>6mm/1.2m), Squareness (>8mm over
+          / Liveability          1X       300mm), Hollowness (for tiled wall as long as it is hollow)
+                                 3X       Damages - Visible cracks on finished walls OR open veins
+                                          felt with hand (>0.5mm width and >100mm length),
+                                          Delamination (≥1 spot on timber finishing)
+                                          Stains, Patchy/roughness, Jointing, Damages - Hairline
+                                          cracks on plastered ceiling, chips, dents, scratches
+                                          Damages - Cracked ceiling board (>0.5mm width and 100m
+                                          length)
+
+Door      Finishings     1X               Inconsistent joints/gaps, Damages - Scratches, dents, chips
+
+          Functionality  2X               Fitting - movement, difficulty in open/closing, loose,
+          / Liveability
+                                          functionally deficient
+
+                         3X               Misalignment & unevenness (>3mm/m or 1.2m spirit
+
+                                          level), Damages - Cracked timber door leaf/frame,
+
+                                          Accessories Defects - Missing/broken/improper fixing of
+                                          accessories, corroded accessories etc
+
+Window    Finishings     1X               Inconsistent joints/gaps, Damages - Scratches, dents
+
+          Functionality  2X               Fitting - movement, difficulty in open/closing, loose,
+          / Liveability
+                                          functionally deficient
+
+                         3X               Damages - Cracked/chipped frame, cracked/chipped/
+
+                                          broken windowpanes, Accessories Defects -
+                                          Missing/broken/improper fixing of accessories, corroded
+                                          accessories etc
+
+                                                                                             An MND Statutory Board
+                                                               52 Jurong Gateway Road #11-01 Singapore 608550
+
+                                                                                                     Tel. 1800 3425 222
+                                                                                                        www.bca.gov.sg
+
+Element   Categories       NC          List of Defects (Non-exhaustive)
+
+                           weightages
+
+Component Finishings       1X          Inconsistent joints/gaps, Unevenness, Tonality,
+
+                                       Misalignment, Damages - Scratches, dents
+
+          Functionality /  2X          Fitting - movement, difficulty in open/closing, loose,
+
+          Liveability                  functionally deficient
+
+                           3X          Damages - Cracked sanitary ware, cracked/chipped/broken
+
+                                       shower screen, mirror and any glass items, Accessories
+
+                                       Defects - Missing/broken/improper fixing of accessories,
+
+                                       corroded accessories, etc
+
+M&E       Finishings       1X          Inconsistent joints/gaps, Unevenness, Misalignment,
+
+Fittings                               Damages - Scratches, dents
+
+          Functionality /  2X          Fitting - movement, difficulty in open/closing, loose,
+
+          Liveability                  functionally deficient
+
+                           3X          Damages - All types of damages e.g. crack, chip, etc, fan
+
+                                       coil unit leaking
+
+                                       Accessories Defects - Missing/broken/improper fixing of
+
+                                       accessories, corroded accessories, etc
+
+Note: The list of assessable defects is subject to change by BCA as appropriate
+
+                                                                                                                                                        An MND Statutory Board
+                                                                                                                          52 Jurong Gateway Road #11-01 Singapore 608550
+
+                                                                                                                                                                Tel. 1800 3425 222
+                                                                                                                                                                   www.bca.gov.sg
+
+DISTRIBUTION (via e-mail only):
+
+President
+Board of Architects, Singapore (BOA)
+5 Maxwell Road
+#01-03 Tower Block MND Complex
+Singapore 069110
+
+President
+Professional Engineers Board, Singapore (PEB)
+52 Jurong Gateway Road #07-03
+Singapore 608550
+
+President
+Institution of Engineers, Singapore (IES)
+70, Bukit Tinggi Road
+Singapore 289758
+
+President
+Association of Consulting Engineers Singapore (ACES)
+18 Sim Ming Lane
+#06-01, Midview City
+Singapore 573960
+
+President
+Real Estate Developers’ Association of Singapore (REDAS)
+190 Clemenceau Avenue
+#07-01 Singapore Shopping Centre
+Singapore 239924
+
+President
+Singapore Contractors’ Association Limited (SCAL)
+1 Bukit Merah Lane 2
+Construction House
+Singapore 159760
+
+President
+Singapore Institute of Architects (SIA)
+79 Neil Road
+Singapore 088904
+
+                                                                                                                                                        An MND Statutory Board
+                                                                                                                          52 Jurong Gateway Road #11-01 Singapore 608550
+
+                                                                                                                                                                Tel. 1800 3425 222
+                                                                                                                                                                   www.bca.gov.sg
+
+President
+Society of Project Managers (SPM)
+200 Braddell Road
+BCA Braddell Campus, Block H, Level 2
+Singapore 579700
+
+President
+Singapore Institute of Building Limited (SIBL)
+9 Ah Hood Road, #02-04
+Singapore 329975
+
+President
+Singapore Institute of Surveyors & Valuers
+110 Middle Road
+#09-00 Chiat Hong Building
+Singapore 188968
+
+President
+Specialists Trade Alliance of Singapore
+200 Braddell Road
+BCA Braddell Campus Block B (B2-8) #02-16
+Singapore 579700
+
+Executive Director
+Singapore Green Building Council
+200 Braddell Road
+BCA Braddell Campus Block H #02-04
+Singapore 579700
+
+Group Director (Building Quality)
+Housing & Development Board
+HDB Hub
+480 Lorong 6 Toa Payoh
+Singapore 310480
+
+Director of Infrastructure School Campus Department
+Ministry of Education
+285 Ghim Moh Road
+Blk B Level 4
+Singapore 279622
+
+                                                                                                                                                        An MND Statutory Board
+                                                                                                                          52 Jurong Gateway Road #11-01 Singapore 608550
+
+                                                                                                                                                                Tel. 1800 3425 222
+                                                                                                                                                                   www.bca.gov.sg
+
+Chief (Sports Infrastructure Group)
+Sport Singapore
+3 Stadium Drive
+Singapore 397630
+
+Group Director (Contracts & Procurement Division)
+JTC Corporation
+The JTC Summit
+8 Jurong Town Hall Road
+Singapore 609434
+
+Group Director (Development Services)
+Urban Redevelopment Authority
+45 Maxwell Road
+The URA Centre
+Singapore 069118
+
+Assistant Chief Executive Officer (Property & Development)
+Sentosa Development Corporation
+39 Artillery Avenue, Sentosa
+Singapore 099958
+
+Director (Building & Estate Management)
+People’s Association
+9 King George’s Avenue
+Singapore 208581
+
+Director (Estates & Development)
+Singapore Polytechnic
+500 Dover Road
+Singapore 139651
+
+Director (Estate, ECO and Safety Office)
+Ngee Ann Polytechnic
+535 Clementi Road
+Singapore 599489
+
+Director (Estates & Facilities Management)
+Temasek Polytechnic
+21 Tampines Avenue 1
+Singapore 529757
+
+                                                                                  An MND Statutory Board
+                                                    52 Jurong Gateway Road #11-01 Singapore 608550
+
+                                                                                          Tel. 1800 3425 222
+                                                                                             www.bca.gov.sg
+
+Director (Estates Management)
+Nanyang Polytechnic
+180 Ang Mo Kio Avenue 8
+Singapore 569830
+
+Director (Precinct Development)
+National Arts Council
+Goodman Arts Centre
+90 Goodman Road, Block A #01-01
+Singapore 439053
+
+Senior Director (Campus Development & Estates)
+Institute of Technical Education
+2 Ang Mo Kio Drive
+Singapore 567720
+
+Director (Infrastructure Planning & Policy)
+Ministry of Health
+College of Medicine Building
+16 College Road
+Singapore 169854
+
+Healthcare Infrastructure Projects Division (HIPD)
+MOH Holdings Pte Ltd
+1 Maritime Square
+#11-25 Harbourfront Centre
+Singapore 099253
+
+Director (Government Infrastructure Group)
+Government Technology Agency of Singapore
+10 Pasir Panjang Road
+#10-01 Mapletree Business City
+Singapore 117438
+
+Director (Properties & Facilities Management)
+National Library Board
+100 Victoria Street
+#01-02 National Library Building
+Singapore 188064
+
+                                                                                                                                                        An MND Statutory Board
+                                                                                                                          52 Jurong Gateway Road #11-01 Singapore 608550
+
+                                                                                                                                                                Tel.

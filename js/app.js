@@ -1679,24 +1679,26 @@ const CONTRACT_CLAUSE_USES=[
   "Safety and statutory obligations"
 ];
 
-// ── Contract PDF manifest ──────────────────────────────────────────
-const CONTRACT_FILES={
-  PSSCOC:[
-    "PSSCOC for Construction Works 2020.pdf",
-    "PSSCOC for Construction Works Lite 2025.pdf",
-    "PSSCOC for Design and Build 2020.pdf"
-  ],
-  REDAS:[
-    "REDAS Design and Build Conditions of Contract 3rd Ed.pdf"
-  ],
-  SIA:[
-    "Nominated SubContract for Constuction Works 2008.pdf",
-    "Nominated SubContract for Constuction Works 2008 Supplement.pdf",
-    "SIA BC 2016 [With Quantities].pdf",
-    "SIA Building Contract 2016 [With Quantities].pdf",
-    "SIA Minor Works Contract 2012.pdf"
-  ]
-};
+// ── Reference document manifest (pre-extracted at build time) ──────
+// The Requirements/Contract Advisor pulls from bundled reference docs
+// (contracts, CONQUAS manuals, BCA Good Industry Practice trade guides, HDB
+// checklists) plus user uploads. Bundled docs are pre-extracted to
+// reference-texts/*.txt by tools/extract-reference-pdfs.js so the PWA doesn't
+// ship ~30 MB of PDFs — we ship ~500 KB of text instead, load instantly, no
+// PDF.js needed. Manifest is cached after first fetch.
+let _refManifestCache=null;
+async function loadReferenceManifest(){
+  if(_refManifestCache)return _refManifestCache;
+  try{
+    const resp=await fetch("reference-texts/manifest.json",{cache:"no-cache"});
+    if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
+    _refManifestCache=await resp.json();
+    return _refManifestCache;
+  }catch(e){
+    console.warn("reference manifest unavailable:",e.message);
+    return {documents:[],groups:{}};
+  }
+}
 
 // ── PDF text extraction via PDF.js ─────────────────────────────────
 async function extractPdfText(url,maxChars=12000){
@@ -1778,49 +1780,44 @@ async function translateDefectsFreeText(defects,targetLang,onProgress){
   }
 }
 
-// ── Extract texts from selected contract folders ───────────────────
-async function extractContractTexts({usePssoc,useRedas,useSia,onProgress}){
+// ── Load pre-extracted reference texts for selected doc IDs ────────
+// Reads the plain .txt files produced by tools/extract-reference-pdfs.js for
+// each selected reference doc. Result shape matches extractContractTexts
+// (legacy): [{source, text}]. Per-doc caps + total budget prevent token bloat
+// when many docs are selected. Budget is generous (60 KB total) because text
+// files are short and the Advisor works better with more clause coverage.
+async function loadReferenceTexts({selectedIds,onProgress}){
+  const manifest=await loadReferenceManifest();
+  const byId=Object.fromEntries(manifest.documents.map(d=>[d.id,d]));
+  const picked=(selectedIds||[]).map(id=>byId[id]).filter(Boolean).filter(d=>!d.textExtractionFailed);
   const results=[];
-  const folders=[];
-  if(usePssoc)folders.push({label:"PSSCOC",path:"contracts/PSSCOC",files:CONTRACT_FILES.PSSCOC});
-  if(useRedas)folders.push({label:"REDAS",path:"contracts/REDAS",files:CONTRACT_FILES.REDAS});
-  if(useSia)folders.push({label:"SIA",path:"contracts/SIA",files:CONTRACT_FILES.SIA});
-
-  const maxPerFile=10000;
-  const maxTotal=40000;
+  const maxPerFile=15000;
+  const maxTotal=60000;
   let totalLen=0;
-
-  for(const folder of folders){
-    for(const file of folder.files){
-      if(totalLen>=maxTotal)break;
-      const url=`${folder.path}/${file}`;
-      if(onProgress)onProgress(`Reading: ${file}`);
-      try{
-        const remaining=maxTotal-totalLen;
-        const cap=Math.min(maxPerFile,remaining);
-        const text=await extractPdfText(url,cap);
-        if(text){
-          results.push({source:`${folder.label}: ${file}`,text});
-          totalLen+=text.length;
-        }
-      }catch(e){
-        results.push({source:`${folder.label}: ${file}`,text:`(Failed to extract: ${e.message||"unknown error"})`});
+  for(const doc of picked){
+    if(totalLen>=maxTotal){results.push({source:doc.label,text:"(skipped — total reference-text budget reached)"});continue;}
+    if(onProgress)onProgress(`Reading: ${doc.label}`);
+    try{
+      const resp=await fetch(doc.file,{cache:"force-cache"});
+      if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
+      let text=await resp.text();
+      const remaining=maxTotal-totalLen;
+      const cap=Math.min(maxPerFile,remaining);
+      if(text.length>cap)text=text.slice(0,cap);
+      if(text){
+        results.push({source:doc.label,text});
+        totalLen+=text.length;
       }
+    }catch(e){
+      results.push({source:doc.label,text:`(Failed to load: ${e.message||"unknown error"})`});
     }
   }
   return results;
 }
 
-function buildContractAdvisorPrompt({clauseUse,contextText,sourceMode,usePssoc,useRedas,useSia,uploadSummaries,uploadExtracts,extractedTexts,defectsSummary}){
-  const selectedSources=[];
-  if(sourceMode==="existing"){
-    if(usePssoc)selectedSources.push("PSSCOC (public)");
-    if(useRedas)selectedSources.push("REDAS (private)");
-    if(useSia)selectedSources.push("SIA (private)");
-  }
-
+function buildContractAdvisorPrompt({clauseUse,contextText,sourceMode,selectedSourceLabels,uploadSummaries,uploadExtracts,extractedTexts,defectsSummary}){
   const sourceSection=sourceMode==="existing"
-    ? `Selected contract sources: ${selectedSources.join(", ")||"None selected"}`
+    ? `Selected reference sources: ${(selectedSourceLabels||[]).join(", ")||"None selected"}`
     : `User uploaded files:\n${uploadSummaries||"No upload metadata provided"}`;
 
   // Build extracted clause evidence block
@@ -8729,6 +8726,70 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
     if(userContractRef.current)userContractRef.current.value="";
   };
   const removeUserContract=(idx)=>setUserContracts(prev=>prev.filter((_,i)=>i!==idx));
+
+  // Bundled reference-doc manifest (contracts + CONQUAS + BCA-GIP + HDB) and
+  // per-project selection. The user toggles which bundled docs the Advisor
+  // should feed the AI. Selection persists per project so an assessor running
+  // CONQUAS Private Residential on a highrise keeps the same ticks each time.
+  const REF_SELECTED_KEY=currentProject?.id?`siteshrimp_ref_selected_${currentProject.id}`:null;
+  const[refManifest,setRefManifest]=useState({documents:[],groups:{}});
+  const[refManifestLoaded,setRefManifestLoaded]=useState(false);
+  const[selectedRefIds,setSelectedRefIds]=useState(()=>{
+    try{return new Set(REF_SELECTED_KEY?JSON.parse(localStorage.getItem(REF_SELECTED_KEY)||"null")||[]:[]);}
+    catch{return new Set();}
+  });
+  const[refPickerOpen,setRefPickerOpen]=useState(false);
+  useEffect(()=>{
+    loadReferenceManifest().then(m=>{setRefManifest(m);setRefManifestLoaded(true);});
+  },[]);
+  // Smart defaults on first project visit: tick docs whose defaultWorkCats
+  // matches project.workCategory OR whose defaultEditions matches
+  // project.ontology_edition. "*" is a wildcard (always-on, like PSSCOC
+  // Construction Works 2020). Only runs if nothing was previously saved for
+  // this project (selectedRefIds is empty AND no localStorage entry).
+  useEffect(()=>{
+    if(!refManifestLoaded||!REF_SELECTED_KEY)return;
+    const stored=localStorage.getItem(REF_SELECTED_KEY);
+    if(stored!==null)return; // respect explicit user choice (even empty [])
+    const wc=currentProject?.workCategory||"";
+    const ed=currentProject?.ontology_edition||"";
+    const defaults=new Set();
+    for(const d of refManifest.documents){
+      if(d.textExtractionFailed)continue;
+      const catHit=(d.defaultWorkCats||[]).some(c=>c==="*"||c===wc);
+      const edHit=(d.defaultEditions||[]).some(e=>e==="*"||e===ed);
+      if(catHit||edHit)defaults.add(d.id);
+    }
+    if(defaults.size)setSelectedRefIds(defaults);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[refManifestLoaded,currentProject?.id]);
+  // Persist selection per-project whenever it changes.
+  useEffect(()=>{
+    if(!REF_SELECTED_KEY)return;
+    try{localStorage.setItem(REF_SELECTED_KEY,JSON.stringify(Array.from(selectedRefIds)));}catch{}
+  },[selectedRefIds,REF_SELECTED_KEY]);
+  // Reload selection when project changes.
+  useEffect(()=>{
+    try{
+      const raw=REF_SELECTED_KEY?localStorage.getItem(REF_SELECTED_KEY):null;
+      setSelectedRefIds(new Set(raw?JSON.parse(raw)||[]:[]));
+    }catch{setSelectedRefIds(new Set());}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[currentProject?.id]);
+  const toggleRefDoc=(id)=>setSelectedRefIds(prev=>{
+    const next=new Set(prev);
+    if(next.has(id))next.delete(id);else next.add(id);
+    return next;
+  });
+  const setGroupAllRefs=(groupId,enable)=>setSelectedRefIds(prev=>{
+    const next=new Set(prev);
+    for(const d of refManifest.documents){
+      if(d.group!==groupId||d.textExtractionFailed)continue;
+      if(enable)next.add(d.id);else next.delete(d.id);
+    }
+    return next;
+  });
+
   const[sevFilter,setSevFilter]=useState([]);const[statusFilter,setStatusFilter]=useState([]);
   const[assigneeFilter,setAssigneeFilter]=useState([]);const[dateFrom,setDateFrom]=useState("");const[dateTo,setDateTo]=useState("");
   const[showPreview,setShowPreview]=useState(false);
@@ -8833,26 +8894,28 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
     setContractProgress(["⚖️ Starting contract advisor..."]);
 
     try{
-      // Step 1: Auto-detect available contract PDFs and extract text
-      setContractProgress(prev=>[...prev,"Step 1/4: Reading contract PDFs..."]);
-      // Only the PSSCOC folder ships in the public repo; REDAS and SIA are
-      // gitignored. Users bring their own project-specific PDFs via the
-      // upload card below, which merge in as "USER REQUIREMENTS" entries.
-      const builtinTexts=await extractContractTexts({
-        usePssoc:true,useRedas:false,useSia:false,
-        onProgress:(msg)=>setContractProgress(prev=>[...prev,"  📄 "+msg])
-      });
-      // Merge user-uploaded project-specific requirements/contracts. Tagged
-      // with a distinct source label so the AI knows these are the user's
-      // own documents, not the public standard contracts.
+      // Step 1: Load pre-extracted text for selected reference docs
+      setContractProgress(prev=>[...prev,"Step 1/4: Reading selected reference documents..."]);
+      const selectedIds=Array.from(selectedRefIds);
+      const selectedDocs=refManifest.documents.filter(d=>selectedRefIds.has(d.id));
+      const selectedLabels=selectedDocs.map(d=>d.label);
+      const builtinTexts=selectedIds.length>0
+        ?await loadReferenceTexts({
+            selectedIds,
+            onProgress:(msg)=>setContractProgress(prev=>[...prev,"  📄 "+msg])
+          })
+        :[];
+      // Merge user-uploaded project-specific requirements. Tagged with a
+      // distinct source label so the AI knows these are the user's own
+      // documents, not the public bundled references.
       const userTexts=userContracts.map(u=>({source:`USER REQUIREMENTS: ${u.name}`,text:u.text}));
       const extractedTexts=[...builtinTexts,...userTexts];
-      const successCount=extractedTexts.filter(e=>!e.text.startsWith("(Failed")).length;
+      const successCount=extractedTexts.filter(e=>!e.text.startsWith("(Failed")&&!e.text.startsWith("(skipped")).length;
       const totalChars=extractedTexts.reduce((sum,e)=>sum+e.text.length,0);
       if(userTexts.length)setContractProgress(prev=>[...prev,`  📎 Including ${userTexts.length} user-uploaded document(s)`]);
       setContractProgress(prev=>[...prev,successCount>0
-        ?`  ✓ ${successCount} contract(s) read, ~${Math.round(totalChars/1000)}k chars`
-        :"  ⚠ No contract PDFs found — AI will use general knowledge"]);
+        ?`  ✓ ${successCount} reference(s) read, ~${Math.round(totalChars/1000)}k chars`
+        :"  ⚠ No reference documents selected — AI will use general knowledge"]);
 
       // Step 2: Compile defects from report
       setContractProgress(prev=>[...prev,`Step 2/4: Compiling ${filtered.length} defect(s) from report...`]);
@@ -8861,12 +8924,12 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
       ).join("\n")+(filtered.length>30?`\n... and ${filtered.length-30} more defects`:"");
 
       // Step 3: Send to AI
-      setContractProgress(prev=>[...prev,"Step 3/4: AI analyzing defects against contract clauses..."]);
+      setContractProgress(prev=>[...prev,"Step 3/4: AI analyzing defects against reference requirements..."]);
       const prompt=buildContractAdvisorPrompt({
         clauseUse:"General compliance",
         contextText:"",
         sourceMode:"existing",
-        usePssoc:true,useRedas:true,useSia:true,
+        selectedSourceLabels:selectedLabels,
         uploadSummaries:"",uploadExtracts:"",
         extractedTexts,defectsSummary
       });
@@ -9182,13 +9245,80 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
 
           <div style={{background:"rgba(88,86,214,0.05)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontSize:12,lineHeight:1.6,color:"#2f2e55"}}>
             {(()=>{
-              const parts=["the bundled PSSCOC sample (Singapore Public Sector Standard Conditions of Contract)"];
+              const nSel=selectedRefIds.size;
+              const parts=[];
+              if(nSel===1){
+                const d=refManifest.documents.find(x=>selectedRefIds.has(x.id));
+                parts.push(d?`the selected "${d.label}"`:"1 selected reference");
+              }else if(nSel>1){
+                parts.push(`${nSel} selected reference documents`);
+              }else{
+                parts.push("no reference documents (general AI knowledge only)");
+              }
               if(userContracts.length===1)parts.push(`your uploaded "${userContracts[0].name}"`);
               else if(userContracts.length>1)parts.push(`your ${userContracts.length} uploaded PDFs`);
               const sources=parts.length===1?<b>{parts[0]}</b>:<><b>{parts[0]}</b> + <b>{parts.slice(1).join(" + ")}</b></>;
               return<>AI reads {sources} and cross-references the <b>{filtered.length} defect{filtered.length!==1?"s":""}</b> in this report to advise:<br/></>;
             })()}
             <span style={{color:"#5856d6",fontWeight:700}}>Applicable clauses</span> · <span style={{color:"#5856d6",fontWeight:700}}>Responsible parties</span> · <span style={{color:"#5856d6",fontWeight:700}}>Impact & considerations</span> · <span style={{color:"#5856d6",fontWeight:700}}>Actionable follow-ups</span>
+          </div>
+
+          {/* Bundled reference documents picker — contracts, CONQUAS, BCA-GIP
+              trade guides, HDB checklists. All publicly available; included as
+              reference samples with disclaimer (final accountability rests with
+              the assessor/QP/accreditor, not the app or its author). The list
+              and per-doc defaults come from reference-texts/manifest.json
+              generated by tools/extract-reference-pdfs.js. */}
+          <div style={{background:"rgba(88,86,214,0.04)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:10,padding:"10px 12px",marginBottom:12}}>
+            <button onClick={()=>setRefPickerOpen(v=>!v)} style={{width:"100%",background:"transparent",border:"none",padding:0,cursor:"pointer",display:"flex",alignItems:"center",gap:8,textAlign:"left"}}>
+              <div style={{flex:1,fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"rgba(0,0,0,0.65)",letterSpacing:"0.05em"}}>
+                📚 REFERENCE DOCUMENTS ({selectedRefIds.size} selected)
+              </div>
+              <span style={{fontSize:11,color:"#5856d6",fontWeight:700}}>{refPickerOpen?"▲ HIDE":"▼ CHOOSE"}</span>
+            </button>
+            {!refPickerOpen&&selectedRefIds.size>0&&(
+              <div style={{marginTop:6,fontSize:10,color:"rgba(0,0,0,0.55)",lineHeight:1.5,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                {refManifest.documents.filter(d=>selectedRefIds.has(d.id)).map(d=>d.label).join(" · ")||"—"}
+              </div>
+            )}
+            {refPickerOpen&&(
+              <div style={{marginTop:10,display:"flex",flexDirection:"column",gap:10}}>
+                {Object.entries(refManifest.groups||{}).sort((a,b)=>(a[1].order||0)-(b[1].order||0)).map(([gid,g])=>{
+                  const docs=refManifest.documents.filter(d=>d.group===gid);
+                  if(!docs.length)return null;
+                  const usable=docs.filter(d=>!d.textExtractionFailed);
+                  const allOn=usable.length>0&&usable.every(d=>selectedRefIds.has(d.id));
+                  const someOn=usable.some(d=>selectedRefIds.has(d.id));
+                  return(
+                    <div key={gid} style={{background:"#fff",borderRadius:8,padding:"8px 10px"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                        <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#1a1a1a",letterSpacing:"0.03em"}}>{g.label}</div>
+                        <button onClick={()=>setGroupAllRefs(gid,!allOn)} style={{background:allOn?"rgba(88,86,214,0.12)":"rgba(0,0,0,0.06)",border:"none",borderRadius:6,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,color:allOn?"#5856d6":"rgba(0,0,0,0.6)",cursor:"pointer"}}>{allOn?"✓ ALL":someOn?"SOME":"NONE"}</button>
+                      </div>
+                      <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                        {docs.map(d=>{
+                          const disabled=d.textExtractionFailed;
+                          const on=selectedRefIds.has(d.id);
+                          return(
+                            <label key={d.id} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"4px 2px",cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.45:1}}>
+                              <input type="checkbox" checked={on&&!disabled} disabled={disabled} onChange={()=>!disabled&&toggleRefDoc(d.id)} style={{marginTop:3,flexShrink:0}}/>
+                              <div style={{flex:1,minWidth:0}}>
+                                <div style={{fontSize:11,fontWeight:600,color:"#1a1a1a",lineHeight:1.3}}>{d.label}</div>
+                                {d.description&&<div style={{fontSize:10,color:"rgba(0,0,0,0.5)",lineHeight:1.35,marginTop:1}}>{d.description}</div>}
+                                {disabled&&<div style={{fontSize:9,color:"#cc6600",marginTop:2,fontStyle:"italic"}}>Scanned PDF — text extraction not available (OCR required)</div>}
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+                <div style={{fontSize:9,color:"rgba(0,0,0,0.45)",lineHeight:1.5}}>
+                  All documents are publicly available and bundled as reference samples. Final accountability for CONQUAS / QM / DLP assessment rests with the accredited checker, QP, or assessor — not this app.
+                </div>
+              </div>
+            )}
           </div>
 
           {/* User-uploaded requirements / project-specific contracts. Texts
@@ -9214,7 +9344,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
               </div>
             ):(
               <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",lineHeight:1.5,marginTop:4}}>
-                PSSCOC (Singapore) is bundled as a reference sample — it's publicly downloadable from BCA Singapore. For licensed contracts (FIDIC, JCT, AIA, NEC, REDAS, SIA, etc.) or project-specific PDFs (employer's requirements, scope-of-work), upload your own copy here. Text is extracted in your browser and stored locally for this project only — no upload to our servers.
+                The bundled reference documents above (PSSCOC, CONQUAS, BCA-GIP, HDB) are publicly available — included as reference samples. For licensed contracts (FIDIC, JCT, AIA, NEC, REDAS, SIA, etc.) or project-specific PDFs (employer's requirements, scope-of-work, tender addenda), upload your own copy here. Text is extracted in your browser and stored locally for this project only — no upload to our servers.
               </div>
             )}
           </div>
@@ -17436,7 +17566,7 @@ function App(){
                       ),
                       // AI Section
                       React.createElement(Section,{icon:"🤖",title:"AI — YOUR OWN MODELS",color:"#5856d6"},
-                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"Use any AI provider for photo analysis, auto-fill (title, severity, trade, assignee), natural-language search, PDF diff reports, and Contract Advisor (clause-to-defect mapping using PSSCOC/REDAS/SIA). You choose the model, you control the cost."),
+                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"Use any AI provider for photo analysis, auto-fill (title, severity, trade, assignee), natural-language search, PDF diff reports, and Contract Advisor (defect-to-requirement mapping using PSSCOC, BCA CONQUAS, BCA Good Industry Practice, HDB checklists, or your own uploaded contracts/requirements). You choose the model, you control the cost."),
                         React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:8}},
                           React.createElement("div",{style:{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"10px 12px"}},
                             React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"#5856d6",marginBottom:4}},"GOOGLE GEMINI (Free)"),
@@ -17572,7 +17702,7 @@ function App(){
                     ["Not professional advice","Nothing produced by SiteShrimp — including AI-generated contract advisories, clause mappings, defect categorisations, or report content — constitutes legal, contractual, engineering, safety, or other professional advice. Always verify generated outputs against original source documents and consult qualified professionals before acting on matters with legal, financial, safety, or contractual consequences."],
                     ["AI outputs","AI responses may contain errors, omissions, or hallucinated clause references, and may vary between runs. Cross-check every cited clause number and party-responsibility attribution against the source PDF. AI providers (e.g. Google Gemini, OpenAI) handle your prompt content under their own terms — choose a provider and quota that align with your project's confidentiality needs."],
                     ["Data & privacy","User-uploaded contract PDFs are processed in your browser; only the extracted text is transmitted by the app to your configured AI provider. Photos, entries, and drawings are stored on your configured backend (PocketBase / Google Drive / local). Review your organisation's data-handling policy before uploading sensitive documents."],
-                    ["Contract samples","The bundled PSSCOC (Public Sector Standard Conditions of Contract) is included as a reference sample only. It is publicly downloadable from Singapore's Building and Construction Authority (BCA) website (www1.bca.gov.sg); copyright remains with BCA. SiteShrimp's bundling does not grant any licence. Users in jurisdictions outside Singapore should supply their own applicable standard contracts via the upload feature."],
+                    ["Reference documents","The bundled reference documents — PSSCOC (Public Sector Standard Conditions of Contract), BCA CONQUAS manuals (CONQUAS Private Residential, CONQUAS 2022, Quality Mark Scheme), BCA Good Industry Practice trade guides (painting, tiling, waterproofing, doors, windows, etc.), and HDB handover checklists — are included as reference samples only. They are publicly downloadable from Singapore's Building and Construction Authority (BCA), HDB, and other public sources; copyright remains with the respective publishers. SiteShrimp's bundling does not grant any licence, and does not constitute endorsement by BCA, HDB, or any other authority. Final accountability for CONQUAS / Quality Mark / DLP assessment and any contractual decision rests with the accredited checker, Qualified Person (QP), assessor, or legal professional — not this app or its author. Users in jurisdictions outside Singapore should supply their own applicable standards via the upload feature."],
                     ["Sample drawings","Dyckman_First_Floor_sketch.png and Dyckman_Second_Floor_sketch.png — Historic American Buildings Survey (HABS NY,31-NEYO,11-, sheets 2 and 3), courtesy of the Library of Congress Prints & Photographs Division. Public domain (works of U.S. federal government employees). Credited to HABS / LoC as a courtesy; no attribution is legally required."],
                     ["Third-party content","Map tiles are provided by OpenStreetMap contributors (ODbL) and, where configured, Google Maps under its terms. React, Leaflet, PDF.js, jsPDF, ImageTracer, svg2pdf, marker-clusterer, PocketBase, and other libraries are used under their respective open-source licences."],
                   ].map(([title,body])=>(
