@@ -1,0 +1,320 @@
+. Introduction                                                             DN
+
+ . Design                                                                   oo ~NODMONMNO
+
+      2.1. General                                                          ©
+      2.2. Dimensions and Shape of Precast Elements
+     2.3. Concrete Constituents                                         ER  oo
+     2.4. Reinforcement
+     2.5. Mould Design                                                      ©
+     2.6. Joints & Connections
+      2.7. Lifting and Handling Devices                                 N
+                                                                          IS
+ . Fabrication Process
+                                                                        NNN
+     3.1. General                                                         © Oo Pb
+     3.2. Normal Casting Process for Precast Reinforced or Prestressed
+                                                                        WwW
+             Concrete Elements                                            w
+     3.3. Dry Casting Process (Extrusion Method) for Precast Hollow
+                                                                        Ww
+             Core Elements                                                WwW
+
+ . Delivery, Handling a n d Storage                                     Ww
+                                                                          Oo1
+     4.1. Delivery
+     4.2. Handling                                                      Ww
+     4.3. Storage                                                         ©
+
+ . Installation                                                         >
+                                                                          N
+      5.1. General
+      5.2. Installation of Vertical Precast Component                   ~~ bn
+      5.3. Installation of Horizontal Precast Component                   NN
+
+ . Quality Inspection                                                   57
+                                                                        57
+     6.1. General
+     6.2. Inspection of Precast Concrete Elements                       64
+
+ . Common Defects                                                       73
+
+     7.1. Common Defects and Remedies
+
+Appendix A-B
+
+References
+
+    1. Introduction
+
+With the advancements in precast technology, precast concrete elements can be manufactured with relatively
+straightforward repeated process, in different forms and finishes, to meet the rising expectation for faster construction
+and better quality building. In recent years, there has been increased use of precast concrete elements in local
+building industry. In tandem with this trend, CONQUAS has incorporated the workmanship standards required for
+s u c h elements.
+In general, precast concrete elements being manufactured in amore controlled environment, are of better quality
+than the cast in-situ elements. However, it is not uncommon to come across major defects such as extensive chip-
+off and cracks on these elements, which can result in substantial reworks and rectification cost. It is therefore
+practical to address these quality related problems upfront, so as to maximise the benefits of using precast concrete
+elements.
+This guide highlights the salient quality issues involved in the design, production, delivery, site handling, storage
+and installation of precast concrete elements. The requirements and recommendations given are a general
+presentation of the important factors that govern the quality of the precast concrete construction.
+
+Due to the volume constraints, this guide will focus on the quality issues pertaining to the use of common precast
+concrete elements in residential and institutional projects such as facades, walls, columns, beams and slab panels.
+It adopts the quality standards set out in CONQUAS 21 and includes the CONQUAS quality assessment criteria in
+the recommended inspection checklists.
+References have been made to the other BCA publications on “Structural Precast Concrete Handbook”, “Buildable
+Solutions for High-Rise Residential Development”, “Buildable Solutions for Landed Residential Development in
+Singapore” and “Good Industry Practices on Waterproofing for External Wall”.
+
+2.1. GENERAL
+
+The design of precast concrete elements involves understanding the method of fabrication, the implicit constraints
+as well as the various aspects that facilitate the erection and assembly of these elements on site. Salient guidelines
+for the design of precast concrete elements can be found in the Singapore Code of Practices namely CP 6 5 and
+CP 81°. In addition to the design and detailing of precast elements, it is important t o carry out design checks on
+the overall building stability and robustness of the complete structure as recommended in these codes. The design
+should also consider the manufacture, transportation, hoisting and temporary stability of the element and of the
+structure during construction.
+
+To achieve good quality precast concrete elements, it is important t o consider the following aspects during the
+design stage :
+
+e¢ Dimensions and Shape of Precast Elements  e Mould Design
+e Concrete Constituents                      e Joints and Connections
+¢ Reinforcement                              e Lifting and Handling Devices
+
+2.2. DIMENSIONS AND SHAPE OF PRECAST ELEMENTS                                                  Figure 2.2 Multi-tier columns
+
+The optimal dimensions of the precast elements largely depend on the
+capacity of the lifting cranes at the fabrication yard and site as well as the
+transportation limitations. It is however, a good practice t o design for the
+largest possible size to minimise jointing and handling. Integration of different
+elements, such as the beam-wall system, multi-tier columns and three
+dimensional units can be adopted to enhance dimensional controls and
+construction quality.
+
+                                                                Where possible, plan for
+                                                                appropriate repetition and
+                                                                standardisation in the
+                                                                dimensions and shape of the
+                                                                elements, which is desirable
+                                                                for economic of scale and
+                                                                quality assurance. Fewer
+                                                                mould changes will facilitate
+                                                                the production schedule and
+                                                                hence reduce construction
+                                                                time. Nevertheless, precast
+                                                                elements In particular the
+                                                                facade and wall panels, can
+Figure 2.1 Integrated beam and wall panels be designed and modified
+                                                                from t h e typical mould in
+different profiles for greater variations as well as to maximise mould usage.
+However, care should be taken in the design to consider some forms of
+strengthening for panels with significant openings or narrow segment at
+the side of the openings, t o prevent cracking or spalling of the elements
+during installation.
+
+'Refer t o Singapore Code of Practice for Structural U s e of Concrete — CP 6 5 : Part 1 : 1999 and CP 6 5 : Part 2 : 1996 (1999)
+
+“Refer to Singapore Code of Practice for Precast Concrete Slab and Wall Panels — CP 81 : 1999
+
+PRECAST CONCRETE ELEMENTS | DESIGN
+
+2.3. CONCRETE CONSTITUENTS
+
+Depending on the design requirements, a variety of concrete strengths and characteristics can be used to achieve
+optimum performance required of the precast concrete elements. The relevant standards for concrete constituents
+are listed in Table 2.1:
+
+Table 2 . 1 R e l e v a n t s t a n d a r d s for concrete c o n s t i t u e n t s
+
+Items         | Relevant Standards                                                  Comment
+
+Concrete Mix  CP 65                 Concrete mix which is composed of portland cement and water
+              CP 81                 together with fine and coarse aggregates, should be designed to
+              SS 289                achieve the desired workability during concreting, and the durability
+                                    and strength required of t h e final precast elements. In general, t h e
+                                    m i x should achieve a concrete strength of minimum 1 0 N / m m ’ or
+                                    more at early stage for demoulding and higher production efficiency.
+
+Cement        SS 26                 Ordinary portland cement and blended cement are commonly used
+                                    in precast concrete production. High alumina cement should not b e
+                                    used as it may cause substantial loss in concrete strength and
+                                    durability in w a r m , humid conditions.
+
+Aggregates    SS 31                 The maximum size of the coarse aggregates should be established
+                                    in t h e design. The size should b e compatible w i t h t h e minimum
+                                    dimension and usage of t h e precast elements. As a general guide,
+                                    the maximum aggregate size should not b e greater than the specified
+                                    cover to reinforcement or tendons. For machine-extruded concrete
+                                    such as hollow core slabs, whereby the concrete mix is forced
+                                    through rotating augers and steel formers t o create t h e voids, fine
+                                    aggregates have t o b e carefully graded. To achieve quality product,
+                                    the size of the coarse aggregates should be less than 15 or 20 mm,
+                                    depending o n t h e element dimension and machinery type.
+
+Admixtures    SS 3 2 0              Chemical admixtures may be added to enhance the performance of
+                                    the concrete mix by reducing the required water content or to
+                                    accelerate the rate of early strength development. It is recommended
+                                    to carry out trial mixes to determine the optimum design proportion
+                                    of admixtures to be added to concrete mix. Appropriate methods
+                                    of batching and concreting should be used to ensure correct dosage
+                                    so as to avoid any detrimental effects on precast concrete elements.
+
+                                          PRECAST CONCRETE ELEMENTS | DESIGN
+
+2.4. REINFORCEMENT
+
+Apart from concrete constituents, precast concrete elements are often reinforced using welded wire meshes, bars
+or prestressing tendons to achieve the required structural capacity. They are required to be designed to meet the
+crack control, loading capacity and construction load requirements. The relevant standards for reinforcement and
+prestressing tendons are listed in Table 2.2.
+
+Table 2.2 Relevant standards for reinforcement a n d prestressing tendons
+
+Items                 Relevant Standards
+
+Welded Wire Meshes    SS 3 2
+
+Steel Reinforcement   SS 2
+
+Prestressing Tendons  SS 475, CP 65
+
+In designing the reinforcement layout, it is important t o also consider the presence of other cast in-items such as
+pipe sleeves or electrical fixtures. The layout design should be simplified wherever possible, t o avoid congestion
+which may affect the concrete quality due to poor compaction and loss of concrete cover.
+
+Figure 2.3 Potential congestion at connection where there are reinforcement bars and corrugated pipes sleeves
+
+When the projecting reinforcing bars that are required for lap splicing between elements are excessively long, they
+may pose storage and handling problem. In this respect, it is a good practice to adopt mechanical couplers or splice
+system to provide for the structural continuity needed.
+
+PRECAST CONCRETE ELEMENTS | DESIGN
+Figure 2.4 Long projecting bars may pose storage and handling problems
+Figure 2.5 Use of splice sleeve system in place of long projecting reinforced bars
+
+                                                                         PRECAST CONCRETE ELEMENTS | DESIGN
+
+2.5. MOULD DESIGN
+
+Moulds can be made of any suitable materials including steel, timber/plywood, glass
+reinforced concrete (GRC) or a combination of these. The selection of the mould
+materials will depend on the number of usage, required surface finish type
+and quality as well as the shape complexity of the precast elements.
+
+Locally, steel mould is preferred owning to its robustness and precision. In general,
+
+the steel plate thickness adopted for mould design and fabrication varies from a
+
+minimum of 4.5mm to 6mm, which can be used up to 50 ~100 times with proper             Fig 2.6 Example of adjustable
+care and maintenance. Besides, the mould should be designed to allow for appropriate   mould for t h e precast b e a m
+placing and compaction of the concrete. Adequate number of braces, ties and struts     and column production
+should be provided for proper casting and hardening of the concrete. A minimal
+
+number of demountable parts will help to ensure good maintenance of dimensional accuracy during production as
+
+well as to facilitate easy assembly and dismantling. To enhance cost competitiveness, adjustable mould should be
+
+adopted where possible, for greater flexibility and variety in the production of precast concrete elements.
+
+Figure 2.7 Adequate bracing is required for better dimensional controls
+
+Figure 2.8 Examples of battery moulds and mechanised vertical moulds used for wall elements
+
+PRECAST CONCRETE ELEMENTS | DESIGN
+
+For the production of standard elements such as refuse chutes and parapet walls, battery moulds or mechanised
+vertical moulds can be used for better quality and productivity.
+
+2.6. JOINTS & CONNECTIONS
+
+Joints and connections must be designed to adequately transfer the loads from a precast concrete element to the
+supporting structure or to an adjacent element to form the structure. They have to meet the design and performance
+criteria such as strength, ductility, fire resistance, durability and stability. Apart from these structural requirements,
+due considerations should be given to the production and erection process of the elements. To achieve a practical
+and satisfactory connection, the following items should be considered in the design :
+e Standardise the joint and connection types and details
+e¢ Avoid congestion at joints
+e Avoid penetration of forms
+e Allow for production and erection tolerances
+e Plan for easy assembly and accessibility
+A compilation of connection and jointing details commonly used can be found in other BCA publications - “Structural
+Precast Concrete Handbook”, “Buildable Solutions for High-Rise Residential Development” and “Buildable Solutions
+for Landed Residential Development in Singapore”.
+Recommendations on watertightness details and workmanship standards for external wall can be obtained from
+BCA's Good Industry Practices on Waterproofing for External Wall.
+
+Figure 2.9 Examples of joints and connections between different precast elements
+
+                                                                                                  PRECAST CONCRETE ELEMENTS | DESIGN
+
+2.7. LIFTING AND HANDLING DEVICES
+
+In precast concrete construction, lifting and handling devices are required and placed within the elements to facilitate
+the demoulding, handling and erection processes. The type, number and location of these temporary lifting and
+handling devices play an important role, in ensuring that the precast elements are not excessively stressed during
+lifting operation and before jointing works commenced. The factors to be considered are as follows:
+e (Capacity of the lifting and handling devices
+e \Weight and shape of the precast elements
+e Strength of the concrete at the time of lifting
+e Position of any opening or cut-out in the precast elements
+¢ Rigging arrangement
+e Type of lifting clutch, hook or shackle used for handling and installation
+
+Figure 2.10 Lifting and handling devices are required t o facilitate t h e erection process
+
+PRECAST CONCRETE ELEMENTS | DESIGN
+Lifting and handling devices can be prestressing strands or cable loops projecting from the elements, coil threaded
+inserts or proprietary lifting devices. Prestressing strands or cable loops should be designed with adequate safety
+factors before use. Reinforcing bars unless specifically designed, should not be used as lifting loops as they are
+susceptible to breakage during hoisting operations in view of their low ductility.
+Where possible, these lifting and handling devices should be placed at locations that require little or no patching
+after use. If they are required t o be located on the finished face of architectural component such as facade wall
+panels, it will be good to provide recesses. These recesses can then be filled up with proper grout after installation
+to achieve better wall finishes.
+
+Figure 2.11 Different types of devices for lifting operation and temporary support
+
+Figure 2.12 Provisionof lifting anchor with recess former for better finishes
+It is a good practice to adopt proprietary lifting devices that come with specified design load capacity for safe and
+efficient handling. These devices normally come with proper accessories t o form recesses, which can be easily
+patched up after installation.
+
+3. Fabrication Process
+
+3.1. GENERAL
+
+Before fabrication, shop drawings of individual precast elements are required t o be prepared and detailed with the
+following information :
+
+® Project location, reference number of elements, and their locations with respect to the building layout and elevation
+e Dimensions of elements, centre of gravity, weight and concrete volume
+e | ocations of all reinforcing steel, cast-in items for connection, lifting and bracing
+e | ocations of embedded items such as service conduits, blockouts and recesses as well as openings
+e Jointing and interfacing details between elements
+e \Natertightness details at joints
+e Architectural details and treatments where applicable
+
+Any discrepancies among the architectural, structural and production requirements should be resolved before
+confirming these drawings for fabrication to minimise abortive works.
+
+Generally, there are two main types of precast concrete elements, namely precast reinforced concrete elements
+and precast prestressed concrete elements.
+
+                                         Precast Reinforced   Consist of reinforcement bars and/or
+                                                              welded wire meshes within the elements
+                                         Concrete Elements    to provide the tensile strength and
+                                                              resistance against cracks
+            Precast Concrete                                  E x a m p l e s a r e f a c a d e walls, beams,
+                                                              columns, slabs, refuse chutes, staircases
+                    Elements                                  and parapet walls
+
+Concrete components of a building                             Consist of prestressing tendons within the
+that are prefabricated in precast                             elements to provide a predetermined force
+yard or site. They are to be installed                        needed to resist external loadings and
+to their final position in the building                       cracks
+during construction.

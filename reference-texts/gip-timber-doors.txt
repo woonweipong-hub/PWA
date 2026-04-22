@@ -1,0 +1,427 @@
+. Introduction
+
+ . Design
+
+      2.1 Types of Timber Doors
+      2.2. Types of Door Panel
+      2.3. Ironmongery
+      2.4. Standardisation
+      2.5. Structural Support
+      2.6. Planning for Sequence of Installation
+
+  . Material Selection
+
+     3.1. Door Panel and Frame
+      3.2. Door Finishes
+     3.3. [ronmongery
+
+  . Fabrication
+
+      4.1. Planning for Fabrication
+      4.2. Fabrication Process
+
+ . Handling, Delivery and Storage
+
+      5.1. Handling
+      5.2. Delivery
+      5.3. Storage
+
+ . Preparatory Works
+
+  . Installation
+
+      7.1. Installing Swing Door
+      7.2. Installing Sliding Door
+      7.3. Inspection
+
+8. Protection
+
+9. C o m m o n Complaints
+
+Appendix A-B
+
+References
+
+    1. Introduction
+
+The door is a major component of buildings. In selecting the door design, designers should
+take Into consideration the performance characteristics of the various door systems. In
+addition, the choice of ironmongeries, especially the hinges and securing devices, is important
+to ensure that the selected door system meets the specified performance requirements.
+
+The timber door is one of the most common and more problematic areas in building works.
+Defect complaint on timber door is one of the main complaints especially during handing
+over. Some of the common complaints from owners are mentioned in Chapter 9.
+
+This guide is t o share with the industry the good practices to achieve quality timber doors
+through proper door design, handling & storage, preparatory works, installation and protection
+works. It adopts the quality standards set out in CONQUAS 21 and includes the CONQUAS
+quality assessment criteria in the recommended inspection checklists.
+
+Due to volume constraint, this guide focuses on the installation of swing doors for residential
+projects. Fire-rated doors are not covered.
+
+There is a wide range of timber doors and ironmongeries available in the market. This guide focuses only on the
+commonly used products.
+
+2.1. TYPES OF TIMBER DOORS
+
+Table 2.1 shows the types of timber doors commonly used in local residential projects.
+
+Table 2.1 Types of timber doors  Description and uses
+    Types of timber doors
+    1. Swing door
+
+1.1. Traditional system
+
+                                         L—F           __
+
+                                 7  wil                  \
+
+                                    VJ                    \_ DOOR PANEL
+
+                                         VT                    MAIN FRAME
+
+                                                              ARCHITRAVE
+
+                                 Installation of door frame is carried o u t as t h e wall is being erected.
+
+                                 This system is fast being replaced by the sub-frame system as installing
+                                 t h e door frame a t early stage o f construction faces t h e f o l l o w i n g
+                                 problems:
+                                 o Door frame m a y warp or shrink due t o movement, tension, as well
+
+                                     as change in moisture content and temperature during plastering
+                                     or grouting work
+                                 o Door frame m a y b e damaged/ dented by impact of heavy objects
+                                 o Door frame m a y b e stained by c e m e n t mortar or paint
+
+                                 Proper protection of t h e door frame is needed while other trades are
+                                 In progress.
+
+TIMBER DOORS | DESIGN
+
+Types of t i m b e r doors            Description and uses
+1.2. Sub-frame system
+
+                                                                                                    — DOOR PANEL
+
+                                                                             “\__ MAINFRAME
+
+                                                                                  \_ “— ARCHITRAVE
+
+                                                                                                         N\
+
+                                                                                            — SUBFRAME
+
+                                      C o n s i s t s o f a s u b - f r a m e a n d a m a i n frame.
+
+                                      The sub-frame is installed a t t h e early stage o f construction. The
+                                      installation of the main frame will only commence after the completion
+                                      of other internal trades.
+
+                                      Sub-frame is usually fabricated w i t h a smaller w i d t h (about 1 0 m m )
+                                      than t h e main frame t o allow adjustment for any misalignment.
+
+                                      There are two methods of installing t h e sub-frame:
+                                      o before wall erection; and
+                                      o after wall erection
+                                      Installing t h e sub-frame after wall erection is preferred as n o studding
+                                      of door sub-frame is needed.
+
+                                      The advantages of sub-frame system are:
+                                      o Prevent damages t o t h e main frame and save cost and t i m e from
+
+                                          undesirable abortive w o r k s
+                                      o N o staining of door frame by c e m e n t mortar and paint
+                                      o The main frame is less likely to be subjected to warpage or
+
+                                          shrinkage due to differential movement, tension or change in
+                                          moisture content and temperature during plastering or grouting
+                                          work
+
+1.3. Rebated and lift-up door system                        LIFT-UP HINGE
+                                                            DOOR PANEL
+
+                                          BEAT Gas s        rm                 —
+
+                                      yf                    TY Se a diaini da
+
+                                                                                        SUB-FRAME
+                                                                                        ARCHITRAVE
+
+                                      This is a modified sub-frame s y s t e m w i t h t h e following difference:
+                                      0) Concealed gap b e t w e e n door and frame
+                                      0) Better acoustic effect
+                                      0) M o r e convenient and easier t o uplift the door panel w i t h t h e use
+
+                                           of lift up hinges
+
+                                          Lift-up hinges required
+
+Types of t i m b e r doors                                                                 TIMBER DOORS | DESIGN
+2. Sliding door             Description and uses
+
+                               Door panel slides t o t h e left or t o t h e right of t h e doorway.
+
+                            It is generally used in a narrow space w h e r e t h e use of s w i n g door is
+                            not feasible.
+
+                            Recently, pocket wall framing system that hides a sliding door panel
+                            inside a wall is used in s o m e residential projects. This s y s t e m gives
+                            better aesthetics as the track and door panel are hidden inside the
+                            wall. However, repair of any damaged sliding track m a y require one
+                            side of t h e wall t o b e removed.
+
+TIMBER DOORS | DESIGN
+
+2.2. TYPES OF DOOR PANEL
+
+There are a number of different door panel designs. While the door design is chosen by the designers, the contractors
+should also ensure the selected door meets its performance requirements. The types of door panel, material and
+other related requirements are stated in SS 347:1990 Specification for Timber Door. Table 2.2 provides a summary
+of the types of door panel stated in SS 347.
+
+Table 2.2 Types of d o o r panel                                Description
+    Types of door panel
+    1. Flush door
+
+e Flush door is a door having two plane faces w h i c h entirely cover and conceal its structure.
+e |[t includes doors w i t h cellular, intermediate rail, block board or particle board cores.
+
+1.1 With cellular core                                          1.2 W i t h intermediate rail core
+
+                                  RAIL                                       = — INTERMEDIATE
+
+                                  CELLULAR CORE                              —]                     RAIL
+
+                        €—— STILE
+
+                        =         LOCK BLOCK                                     |
+
+                                                                |  —
+
+l
+
+                        <4—       FINISHING FACES
+
+e¢ The door panel c o m e s w i t h cellular type core infill,  e The door panel comprises intermediate rails evenly
+    to w h i c h t h e finishing faces are bonded.                  distributed at a spacing of not exceeding 200mm
+                                                                    centre-to-centre, to which the finishing faces are
+                                                                    bonded.
+
+                                                                                      TIMBER DOORS | DESIGN
+
+Types of door panel                                   Description
+1.3. With block board core                            1.4. With particle board core
+
+F L H H H Eee                 BLOCK                                                          PARTICLE
+|              III
+                              BOARD CORE                                                                    BOARD CORE
+
+|
+
+e The door panel is made of block board cores         e The door panel is m a d e o f particle board cores t o
+    g l u e d edge-to-edge t o f o r m a solid door.      f o r m a solid door. A finishing face is t h e n bonded
+    A finishing face is then bonded over the block        over t h e particle board core.
+    board core.
+
+2. Joinery door
+   e Joinery door has solid vertical members, rails and panels.
+
+2.1. With ledges and braces                           2.2. W i t h frames and ledges
+
+   1           1 [ |4         LEDGE                                  «4               TOP RAIL
+                              BRACE
+                           /
+
+                                                                 «¢                   STILE
+
+      /                                                                               INTERMEDIATE
+                                                                                      RAIL
+         .           A
+
+                                                                                      BOTTOM
+
+   I        I  I  I     I                                            <                RAIL
+
+e Each door should have no less than three            e The framing members should b e joined by means
+    ledges. Braces should be neatly scribed to            of mortises and tenons, or dowels, t o produce a
+    t h e ledges.                                         rigid framing.
+
+TIMBER DOORS | DESIGN
+
+Types of door panel                          Description
+2.3. With panels                             2.4. With louvres
+
+                                TOP RAIL     e The louver blades should not be less than 6mm
+                                PANEL            thick.
+
+   <4
+
+«                      <€4— STILE
+
+   <4                           BOTTOM RAIL
+
+e The panels can b e made of plywood,
+    hardwood, glass or particleboard.
+
+2.3. IRONMONGERY
+
+The selection of quality ironmongeries, especially the hinges and securing devices (i.e. latches or locks), is critical
+t o ensure the performance of door. Table 2.3 describes the types of ironmongery commonly used in the local industry.
+
+Table 2.3 Types of ironmongery               Description and uses
+   Types of ironmongery
+
+1. Door handle, latch & lock                 * |n most cases, door handle, latch & lock work as a
+                                                 set and operate in conjunction w i t h one another.
+
+                                             ¢ Door handles can b e classified in the following two
+                                                 categories:
+
+                                                 o Those that have a basic knob design; and
+                                                 o Those that operate in a lever fashion.
+
+                                             e The type of latch & lock used for a door depends
+                                                 mainly o n t h e degree of security required. Internal
+                                                 door normally require only a latch fitted with suitable
+                                                 handle. Exterior door may require a lock and a latch,
+                                                 which are often incorporated in a single piece.
+
+                                             e The quality and security level of lock vary
+                                                 considerably. Careful selection of lock for exterior
+                                                 door is, hence, critical in ensure adequate security.
+
+Types of ironmongery                                       TIMBER DOORS | DESIGN
+
+                      0)Description and uses
+                      e The common t y p e s o f lock & latch u s e d are as
+
+                          follows:
+                              Mortice lock
+                              This is operated by a latch and a lock. The latch
+                              Is operated by a handle while the lock is operated
+                              by a key.
+
+                         o Security cylinder
+                              This is used w h e n a degree of security is required.
+
+                         o Cylindrical lock
+                              This is mostly used for internal doors. It is relatively
+                              cheaper and easy to install.
+
+                          o Latch
+                             This is normally used for added security for
+
+                             external doors.
+
+                          o Door guard
+                               This is normally u s e d f o r a d d e d security f o r
+                              external doors. It allows the occupier to open
+                               t h e door slightly t o see w h o is outside the door,
+                               and yet remain secured.
+
+                      e The m o s t commonly used hinges for internal and
+                          external doors are butt hinges. For large doors
+                          such as width of door more than 1.2m, pivoted
+                          hinges are quite commonly used.
+
+                      e The number and type of hinges used depends
+                          on the door design (i.e. types and dimensions).
+                          Manufacturer's recommendations and instructions
+                          should b e followed.
+
+TIMBER DOORS | DESIGN     Description and uses
+
+    Types of ironmongery  e A door closer automatically closes the door in a
+    3. Other accessories
+                                c o n t r o l l e d a n d s m o o t h manner. T h e c l o s e r c a n b e
+                                either surface mounted or concealed.
+
+                          ®* The selection of concealed closer is mainly due to
+                               aesthetic consideration. However, if t h e door is
+                               heavy, closer w i t h compatible strength should b e
+                               chosen.
+
+2.4. STANDARDISATION
+
+It is recommended to standardize the door size and door structural opening wherever possible. Table 2.4 shows
+examples of ideal structural opening sizes recommended by manufacturer. The advantages of standardizing the door
+size and opening are as follows:
+
+o Simplify design details and less change of misunderstanding
+
+o Less co-ordination on site
+
+Table 2.4 Ideal structural opening sizes
+
+Location of door          Structural opening sizes (mm)
+
+1. Main entrance                           900
+2. Bedroom                                 950
+3. Bathroom                               1,000
+4. Kitchen                                 800
+                                           850
+                                           900
+                                           700
+                                           750
+                                           850
+                                           900
+
+                                                                                                                             TIMBER DOORS | DESIGN
+
+2.5. STRUCTURAL SUPPORT
+
+Inadequate design may transfer the vertical load of the wall t o the door frame. This affects the ease of operation
+of the door. Vertical load above the door must be designed to be transferred t o a lintel or other structural systems
+to minimize deflection in the door (Figure 2.1).
+Figure 2.1 Types of lintel used for door opening
+
+                                                                                                                                                                                               10
+
+TIMBER DOORS | DESIGN
+
+2.6. PLANNING FOR SEQUENCE OF INSTALLATION
+
+Installation of door involves the fixing of the door frame/ sub-frame at an earlier construction stage and subsequent
+installation of door panel, main frame (for sub-frame system), architrave and ironmongery at the later stage of
+construction. To ensure quality, it is important t o plan and follow the proper sequence of installation. Table 2.5
+summaries the recommended sequence of installation to achieve a quality timber door.
+
+Table 2.5 Sequence of installation for different types of doors
+
+Installing timber door                  Sequence of installation
+
+1. Swing door
+
+1.1. Installing door frame              e [ o r traditional system, installation of door frame is carried out as wall
+                                            Is being erected (before plastering or installing wall tiles).
+
+1.2. Installing architrave, door panel  ® [ o r sub-frame and rebated systems, there are two methods of installing
+      and ironmonery                       the sub-frame:
+                                                 o Before wall erection or
+                                                 o After wall erection
+                                            The installation of main frame is carried o u t only after completion of
+                                            all t h e following trades:
+                                                 o Plastering and painting of wall or wall tiling
+                                                 o Flooring
+                                                 o (Other internal trades, such as installation o f built-in cabinet,
+                                                    etc.
+
+                                        ® |nstallation of architrave, door panel and ironmongery should only
+                                           commence after completion of all the following trades:
+                                                 o Plastering and painting of wall or wall tiling
+                                                 o Flooring
+                                                 o Other internal trades, such as installation o f built-in cabinet,
+                                                    etc.
+
+                                        ® For wall with skirting, the interface between architrave and skirting
+                                           should be well coordinated.
+
+                                        TIMBER DOORS | DESIGN
+
+Installing timber door                  Sequence of installation
+2. Sliding door
+                                           For sliding door, installation of t h e sliding track is carried out after t h e
+2.1.

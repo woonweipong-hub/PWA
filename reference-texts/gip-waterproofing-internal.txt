@@ -1,0 +1,411 @@
+WATERPROOFING FOR
+
+       INTERNAL WET AREAS
+
+Copyright @2003BuildingandConstructionAuthority,Singapore. All rightsreserved.Thisdocument
+or anypart thereofmay not bereproducedfor any reason whatsoever in anyform or mean whatsoever
+andhowsoever withouttheprior writtenconsentandapprovalof theBuildingandConstructionAuthority.
+
+Whilstevery efforthasbeenmadetoensure theaccuracy of theinformationcontainedin thispublication,
+theBuildingandConstructionAuthority,itsemployeesor agentsshallnotberesponsiblefor anymistake
+or inaccuracies that may be containedhereinand all suchliability and responsibility are expressly
+disclaimedby thesesaidparties.
+
+Thepublicationincludes advertisements of suppliers whohave,in one way or another,contributedin
+the development of thispublication.TheBuildingand Construction Authority doesnot endorse the
+productsincludedin theadvertisements.It is theresponsibility of theusers toselect appropriateproducts
+andensure they meet their specificrequirements.
+
+ISBN: 9 8 1 - 0 5 - 0 0 1 6 - 5
+
+         FOREWORD
+
+The Building and Construction Authority’s (BCA) Construction Quality Assessment System
+(CONQUAS 21) has been widely adopted as the de facto national yardstick for measuring the
+qualityofbuildingprojects.Besides settingstandardsandassessingthelevelof workmanship through
+CONQUAS 21,BCA is developingaseries of publications calledCONQUAS 21 GoodIndustry
+Practices Guides to share with the industry good work practices adoptedby practitioners and
+contractors who consistently deliver high quality work.
+
+This “GoodIndustryPractices — Waterproofingfor InternalWet Areas”ispart of theCONQUAS
+21 Enhancement Series on GoodIndustryPractices.Waterproofingof internalwet areasis one of
+themorecommonandproblematic areasin buildingwork.This guideprovides simpleandpractical
+tips to assist designers in designinginternalwet areas waterproofingandcontractorsin achieving
+
+high quality workmanship.
+
+In this secondedition, the guidehasbeenrevised to include additionalgoodpractices.More
+
+photographs, graphical representations and tables are also added for easier reference and better
+
+understandingof thepractices.
+
+It must,however,bepointedout that this guideonly serves to illustratesome of thegoodpractices
+designers andcontractorshave adoptedwhile designingandinstallingwaterproofing for internal
+wet areas. This guide is not meant to be a text book on how waterproofing for internal wet areas
+mustbe designedandinstalled.We gratefully acknowledge the contributions of thesepractitioners
+andtrust that theindustry will find thispublicationusefulin its pursuit of quality excellence.
+
+ J
+
+LAM SIEW WAH
+DEPUTY CHIEF EXECUTIVE OFFICER
+INDUSTRY DEVELOPMENT
+BUILDING AND CONSTRUCTION AUTHORITY
+
+ACKNOWLEDGEMENT
+
+“GoodIndustryPractices —Waterproofingfor InternalWet Areas” was firstpublishedin year 2001,
+with inputs fromarchitects,maincontractors,waterproofingsuppliers/installers andmembers from
+
+the various construction industry professional associations, including the Real Estate Developers’
+Associationof Singapore(REDAS), SingaporeInstitute of Architects(SIA), Institution of Engineers,
+Singapore(IES) and Singapore Contractors AssociationLed (SCAL).
+
+A TechnicalCommittee for GoodIndustryPractices — Waterproofingfor InternalWet Areas was
+thenformedto endorse thegoodpracticesidentified.We wishto againexpress our gratitude to the
+
+Members and Chin Leong Corporation Pte Ltd for their contributions.
+
+Technical Committee for Good Industry Practices —
+
+Waterproofing for Internal Wet Areas
+
+Chairman :   Mr Chin Chi Leong   BCA
+Secretary :  Ms Mary Mattews     BCA
+Members :    Mr Neo Poh Kok      HDB
+
+             Mr Kelly Tan        REDAS
+
+             Mr Mohan Shanmugam  SIA
+             Mr Tan Chit Phee    SIA
+             Mr Goh Tow Peng     IES
+             Mr James Hadden     SCAL
+             Mr Sim Moh Wee      SCAL
+             Mr Michael Wong     Hitchins (FE) Pte Ltd
+
+             Mr Kimiaki Motoya   Shimizu Corporation
+
+             Ms Helen Siew       Tremco Asia Pte Ltd
+
+             Ms See San San      Uni-Strong Pte Led
+
+For this edition, we wouldlike to thank the followingcontractors,suppliers andindividuals for
+their support in thereview of thispublication.
+
+                             WohHup (Pte)Ltd
+                             Dragages SingaporePteLtd
+                             Obayashi Corporation
+                             Shimizu Corporation
+                             Hitchins Group Ltd
+                             Uni-StrongPteLtd
+                             LC UnitedPteLtd
+
+                                Mr Lee Ho Mein
+                                Mr YanNaing Soe
+
+                             Mr GaryLoke
+                             Mr Lim Kian Chye
+
+te A
+
+TAN TIAN CHONG          DIVISION
+DIRECTOR
+
+TECHNOLOGY DEVELOPMENT
+
+CONTENTS
+
+1.  INTRODUCTION
+
+    DESIGN
+
+    2.1 General
+    2.2 PrefabricatedBathroom Units (PBUS)
+    2.3 Substrate
+    2.4 Pipes And Penetrations
+    2.5 Screed
+
+    MATERIAL SELECTION
+
+    3.1 General
+
+    3.2WaterproofingSystemsForInternalWet Areas
+
+    3.3 Selection Criteria
+
+    DELIVERY, STORAGE & HANDLING
+
+    4.1 Delivery
+    4.2 Storage And Handling
+
+    PREPARATION WORKS
+
+    5.1 General
+    5.2 SurfacePreparation
+    5.3 Tests On Cleanliness And Dryness
+    5.4PreparationOf Pipes And Penetrations
+    5.5 Priming
+    5.6 Precast Panels
+
+    INSTALLATION
+
+    6.1 Planning
+    6.2 Tools
+
+    6.3 Mixing
+
+    6.4 Application
+
+7.  PROTECTION      AND COMPLETION    OF WORKS  32
+
+    7.1 Protection                              32
+
+    7.2 Screeding And Final Finishes            32
+
+    7.3 Watertightness Test                     33
+
+8.  DEFECTS AND RECTIFICATION                   35
+
+    8.1 Defects During Service Life             35
+
+    8.2 Defects During Storage And Application  36
+
+    8.3 Rectification                           40
+
+APPENDIX                                        43
+
+REFERENCES                                      56
+
+S     1 . INTRODUCTION
+=rh
+COOo
+      A survey conductedby BCA on private residential 2 . 2 PREFABRICATED BATHROOM
+OS+
+      buildings that were less than 5 years old indicated that   UNITS (PBUs)
+      most incidents of water leakage occurredat the floors
+
+      andinternalwalls of toilets andkitchens.In Singapore       In recent years,bothHDB andprivate developershave
+      where high rise residential estates are common, the        increasinglyusedPBUs.Thefeedback fromhomeowners
+      problem of leakage at ceilings and floors is further       hasbeenencouraging.Some of the advantages of the
+      compoundedwhentheleakcomes fromtheunit above.              prefabricated system over the conventional toilet/
+
+                                                                 bathroom are:
+
+      In enhancing the watertightnessperformance of the          e The various trades involved in the wet area (tiler,
+
+      internal wet areas of buildings, it is important to look      plumber, electrician and waterproofing applicator)
+                                                                    aremadetheresponsibilityof oneparty,reducing
+      athow the structureandthe waterproofingmembrane
+      are detailed.This publicationis a goodpractice guide           chances of errors due to lack of coordination.
+
+      that includes among others, sections on design, selection
+
+      ofmaterialandinstallation.It isintendedtocomplement        e Better controlof thematerialsandprefabrication
+
+      the current Singapore Code of Practice,CP 82: 1999         processin the factory,resultingin higher quality
+
+      titled “Waterproofing of Reinforced Concrete Buildings”.   finishes and lower wastage o f materials.
+
+      2 . DESIGN                                                 e Pipingandelectricalcables arerun in thespace
+
+                                                                     between unit bath’s shell and the building
+                                                                     structure, eliminating the need to chase the
+                                                                     walls/ slabs or embed the services.
+
+      2 . 1 GENERAL                                              ® The entire toilet unit canbe producedin the
+                                                                    factory without affectingsiteoperations,thereby
+      The Designer should refer to applicable local and             shortening the construction cycle and
+      internationalcodes,standards andspecifications when           construction period.
+      designing wet areas to be watertight.
+
+      Thedrawings andspecifications shouldbepreparedin
+      sufficient detail by the Designer to provide proper
+      guidance to the Waterproofing Specialist and other
+      tradesinvolvedin the executionof work in wet areas.
+      It is also important to ensure the compatibility and
+      bondingperformance of themembrane to substrate.
+
+      The structural, architectural and M&E drawings                            Figure 2.1: Interior of a
+      affectingthe wet areas shouldbereviewedtogether for                       prefabricated bathroom
+      reliability of the waterproofingsystem and to ensure
+      consistency in dimensions (eg, final thickness of the
+      floors,M&E configurations,etc).Thereshouldalsobe
+      a goodlevelof awareness and understandingof the
+      structural systembeingused(eg,precast hollow core
+      slab system,castin-situRC system,etc).
+
+S     1 . INTRODUCTION
+=rh
+COOo
+      A survey conductedby BCA on private residential 2 . 2 PREFABRICATED BATHROOM
+OS+
+      buildings that were less than 5 years old indicated that   UNITS (PBUs)
+      most incidents of water leakage occurredat the floors
+
+      andinternalwalls of toilets andkitchens.In Singapore       In recent years,bothHDB andprivate developershave
+      where high rise residential estates are common, the        increasinglyusedPBUs.Thefeedback fromhomeowners
+      problem of leakage at ceilings and floors is further       hasbeenencouraging.Some of the advantages of the
+      compoundedwhentheleakcomes fromtheunit above.              prefabricated system over the conventional toilet/
+
+                                                                 bathroom are:
+
+      In enhancing the watertightnessperformance of the          e The various trades involved in the wet area (tiler,
+
+      internal wet areas of buildings, it is important to look      plumber, electrician and waterproofing applicator)
+                                                                    aremadetheresponsibilityof oneparty,reducing
+      athow the structureandthe waterproofingmembrane
+      are detailed.This publicationis a goodpractice guide           chances of errors due to lack of coordination.
+
+      that includes among others, sections on design, selection
+
+      ofmaterialandinstallation.It isintendedtocomplement        e Better controlof thematerialsandprefabrication
+
+      the current Singapore Code of Practice,CP 82: 1999         processin the factory,resultingin higher quality
+
+      titled “Waterproofing of Reinforced Concrete Buildings”.   finishes and lower wastage o f materials.
+
+      2 . DESIGN                                                 e Pipingandelectricalcables arerun in thespace
+
+                                                                     between unit bath’s shell and the building
+                                                                     structure, eliminating the need to chase the
+                                                                     walls/ slabs or embed the services.
+
+      2 . 1 GENERAL                                              ® The entire toilet unit canbe producedin the
+                                                                    factory without affectingsiteoperations,thereby
+      The Designer should refer to applicable local and             shortening the construction cycle and
+      internationalcodes,standards andspecifications when           construction period.
+      designing wet areas to be watertight.
+
+      Thedrawings andspecifications shouldbepreparedin
+      sufficient detail by the Designer to provide proper
+      guidance to the Waterproofing Specialist and other
+      tradesinvolvedin the executionof work in wet areas.
+      It is also important to ensure the compatibility and
+      bondingperformance of themembrane to substrate.
+
+      The structural, architectural and M&E drawings                            Figure 2.1: Interior of a
+      affectingthe wet areas shouldbereviewedtogether for                       prefabricated bathroom
+      reliability of the waterproofingsystem and to ensure
+      consistency in dimensions (eg, final thickness of the
+      floors,M&E configurations,etc).Thereshouldalsobe
+      a goodlevelof awareness and understandingof the
+      structural systembeingused(eg,precast hollow core
+      slab system,castin-situRC system,etc).
+
+                                     These benefits translate into substantial cost savings,
+                                     aconsistentlyhigh qualityproduct andsimpler quality
+                                     control process.To reap the full benefits of PBUs,
+                                     its use shouldbe consideredat the early designstage.
+                                     PBUs canbe either precast concrete or prefabricated
+                                     lightweight cells with finished walls and floor pre-
+                                     assembledin the factory or assembledon site.More
+                                     details on PBUsin Singapore canbe foundin BCA’s
+                                     publication titled “Reference Guide on Standard
+                                     Prefabricated Building Components”.
+
+Figure 2 . 2 : Different components                                                           Design
+        of a prefabricated bathroom
+
+    I
+
+Pre-assembled bathroom               Another example of a
+
+cell prior to delivery               Pre-assembled PBU
+
+Precast concrete bathroom            Hoisting of precast
+
+w i t h pre-finished concrete        bathroom
+
+e x t e r n a l wall
+
+Figure 2 . 4 : Prefabricated finished walls
+separately lifted and assembled o n site
+
+ubisa d  2 . 3 SUBSTRATE                                          An adequate drop during concrete castingis required
+                                                                  to ensure that the finished level of the wet area
+         2.3.1 Floor                                              is sufficiently lower than the level of adjacent
+                                                                  concrete slab to prevent migration of water into the
+         In general,the use of high quality dense concrete        dryarea.If pipesareencasedin screed,thedroprequired
+         and addition of admixtures in concretehelp to            should take into account the minimum screed
+         enhancethewatertightnessperformanceof thesubstrate.      thickness of 20mm requiredat the lowest level,i.e.,
+         The waterproofingsystemin atypicalwet areaconsists       at the floor water outlet. For wet area adjoining to
+         of the following:
+                                                                  dry area, the membrane should extend 1 5 0 m m from
+             e Concrete slab
+             e Waterproofingmembrane                              the wet area into the concrete slab in adjoining dry
+             e Screed
+                                                                  area (see Fig 2.0).
+             e Tile finish / others
+                                                                  Alternatively, concrete kerbs (see Fig 2.7) may
+         Celaleleleleielaieiaiene-e—  Screed (to drain)           be used to prevent migration of moisture into
+                                                                  dry areas.It is a good practice to cast the kerb
+                                      Waterproofing               monolithically with the concrete slab to prevent
+                                                                  debondingof thekerb.
+                                      membrane
+
+                                      Concrete slab
+
+               Figure 2 . 5 : Typical floor slab with
+         waterproofing membrane and finishes
+
+                                      Waterproofingmembrane to extend
+                                      150mminto the dry area
+
+                                                i                         —                    Finished level lower
+                                                                   A                        than adjacent concrete
+                           Protective                             ATA
+                                                                                        lL slab with adequate
+                       slurry coat                                                            drainage fall
+
+         Floor slab                                                                     | | Water Outlet
+
+                                      Figure 2 . 6 : Adequate drop in floor slab
+
+                                                         B-                             Slight chamfer
+
+                                                              pe                        Screed and floor finish
+
+                                                                                        Waterproofing membrane
+
+                                      4 % 1 RC floor Slab
+
+                                                                                    AA
+
+                                      1 ——               =
+
+                                      150mm
+
+                                      Figure 2.7: Kerb between wet and dry area
+
+2 . 3 . 2 Wall                                           In accordance to CP 82, kerbs should be constructed
+                                                         at the base of walls to act asbarriers to lateral movement
+Joints at walls of wet areas, for example,brickwall to   of water (refer to Fig 2.9). A height of 100mm for the
+reinforcedconcrete columns shouldbe minimized.
+Where joints are unavoidable, the designer should        kerbs shouldbe sufficient for thispurpose.
+consider specifyingreinforcement at these areas (refer
+to Fig 2.8).                                             For wet areas with ahigh amount of water splash,the
+                                                         waterproofingmembraneshouldturnup to aminimum
+                                Reinforced
+                                                         height of 300mm. This will create aminimum tanking
+                             . concrete column §         protection againstmigration of water to spaces adjacent
+
+                                      Ag REed ©          or below the wet area.Note that at theupturn areas,
+                                                         the membrane should extend minimum 100mm
+                                  Egon      i            horizontally from the wall-floor joint to create sufficient
+                                                         lappingwith thesubsequentmembraneapplication(see
+                                                         Fig 2.9). Depending on the designer’s specifications,        Design
+                                                         reinforcement suchas fiberglassmatmaybeusedat the
+                          v i n 4 Reinforcement
+                                                         wall-floor joint.
+                       NMeNa installedat joint
+             Figure 2.8: Reinforcement                   At bath and shower areas,ensure that the waterproofing
+                installed at brick-RC joint
+                                                         membraneis applied to at least1800mmheight and
+The designer should also consider rendering walls to a
+                                                         1500mm width o f the wall (seeFig 2.10 and 2.11),
+minimum height of 300mm from floor level, for a          or the entire width o f the enclosure (seeFig 2.12).
+
+smoothfinishto receive the waterproofingmembrane         The wall or substrate immediately adjacent or behind
+
+upturn (refer to Fig 2.9).

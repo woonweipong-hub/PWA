@@ -1,0 +1,433 @@
+AgglomeratedStone Tiling        GoodIndustryPractices
+
+       Copyright © 2017 Building and Construction Authority, Singapore. All rights reserved. This
+       document or any part thereof may not be reproduced for any reason whatsoever in any form or
+       means whatsoever and howsoever without prior written consent and approval of the Building and
+       Construction Authority.
+
+       This publication contains information that has been contributed by the Building and Construction
+       Authority and members of the TechnicalCommittee (comprising agencies,professionalbodies,
+       associations, developers, builders and suppliers). Whilst every effort has been made to ensure
+       the accuracy of the information contained in this publication, the Building and Construction
+       Authority (including its employees) and the members of their TechnicalCommittee (including
+       their employees) shall not be responsible for any mistake or inaccuracy that may be contained
+       herein and all such liability and responsibility are expressly disclaimedby these saidparties.
+
+       The Building and Construction Authority does not endorse any of the products contained in this
+       publication. It is the responsibility of the readers to select the appropriate products and ensure the
+       selected products meet their specific requirements.
+
+          ISBN: 978-981-11-3492-0
+
+o Ho,                              |   |
+       :
+                                      _3
+       =  ll  Re
+
+GoodIndustryPractices                Agglomerated Stone Tiling
+
+The Building and Construction Authority's (BCA) Construction Quality Assessment System
+(CONQUAS) has been widely adopted as the de facto national yardstick for measuring the
+workmanship quality of building projectsT.omeet rising expectations of homeowners,the Quality
+Mark (QM) Scheme was launched in 2002 to promote consistent high workmanship standards for
+private residential developments. To help projects achieve the standards in CONQUAS and QM,
+BCA has developed a series of publications on Good Industry Practices for different trades.
+
+The "Good Industry Practices — Agglomerated Stone Tiling” guide is part of the CONQUAS
+Enhancement Series which collates and shares some of the good practices adopted by industry
+practitionersand contractorson how good workmanshipquality canbe achievedin Agglomerated
+Stone Tiling work. It provides simple and practical illustrations o n the types of agglomerated stone,
+quality checks during manufacture and proper installation methods. Common issues associated
+with AgglomeratedStoneTiling, their causesandpossiblesolutionsto addressthem arehighlighted.
+
+This guide is not meant to be a definitive dictation on how Agglomerated Stone Tilesmust be
+designed and installed. It only serves to illustrate some of the good practices designers and
+contractors have adopted while designing and installing Agglomerated Stone Tiles. We gratefully
+acknowledge the contributions of the industry practitionersin the development oft h i s guide and
+trust that the industry will find this publication useful.
+
+” Neo Choon Keong
+  Deputy ChiefExecutive Officer
+  Industry Development
+  Buildingand ConstructionAuthority
+
+ACKNOWLEDGEMENT
+
+This“GoodIndustry Practices — AgglomeratedStoneTiling” was developed with inputs from
+Architects,Developers,Builders,Specialist Contractors and members from variousindustry
+associations and organisations.
+
+A TechnicalCommittee was formed to review the contents and good practicesidentified. We
+wish to thank the members of the TechnicalCommittee for their valuable contributions.
+
+T e c h n i c a l Committee:
+
+Chairman ~~Mr TanBoon Kee                 Building and Construction Authority
+
+Working Mr KenHo                          Building and Construction Authority
+Committee Ms Jacelyn Yeo Hui Ping         Building and Construction Authority
+                                          Building and Construction Authority
+                Mr Philip Wong Yew Heng   Building and Construction Authority
+                Mr WongMun Hong           Building and Construction Authority
+                Mr Eugene Goh Jing Horng
+
+Members ~~ Ms Danniel Yong                Housing and Development Board
+
+Mr Edmund Ngoh                            REDAS
+
+Ms Wendy Ang / Ms Chen Lishi              Laticrete South East Asia Pte Ltd
+
+Ms Jesseline Yap / Mr Mohd Alfian         Mapei Far East Pte Ltd
+
+Mr Fan Wyman                              Tiong Seng Contractors (Pte) Ltd
+
+Mr George Soh                             DDS Asia
+
+Mr Choy KahKin                            SingaporeInstitute of Architects
+
+Mr Alex Pang Tze Kin                      Singapore Contractors Association Limited
+
+Mr Jerry Lam                              Woh Hup (Private) Ltd
+
+Ms Phyllis Choo                           Choo Building MaterialCo.PteLtd
+
+Mr Shie Chee Hwa / Mr Steven Cheong Lian Beng Construction Singapore Pte Ltd
+
+Mr TanHui                                 City Developments Limited
+
+GoodIndustryPractices                     Agglomerated Stone Tiling
+
+We would like to thank the following agencies,organisations and firms for their valuable
+feedback in the review oft h i s guide:
+
+Agencies, Organizations a n d Firms
+Housing and Development Board
+Architects 61 Private Limited
+CapitaLand Singapore Limited
+Choo Building Materials Co.Pte.Ltd.
+Keong Hong Construction Pte Ltd
+Lian Beng Construction Singapore Pte Ltd
+Fujian PengXiangIndustrial Co.,Ltd.
+Romastone Co.,Ltd.
+Woh Hup Pte Ltd
+
+Ang Lian Aik
+Group Director
+ConstructionProductivityand QualityGroup
+Buildingand ConstructionAuthority
+
+CONTENTS                                          GoodIndustryPractices
+
+1.0 INTRODUCTION                                               15
+       1.1 Background                                          17
+        1.2 Composition
+       1.3 Characteristics
+                   1.3.1 Moisture Sensitivity
+                   1.3.2 Thermal Movement
+                  1.3.3 Abrasion Resistance
+       14 Manufacturing Process
+       1.5 Transportation and Storage of Product
+
+2.0 DESIGN CONSIDERATIONS
+       2.1 Tile Selection
+        2.2 Finishes
+        2.3 Slip Resistance
+       2.4 Thermal Sensitivity
+        2.5 Wet Areas
+       2.6 Pool & Fountains
+       2.7 Floor Substrate
+       2.8 Wall substrate
+       2.9 Adhesive Selection
+        2.10 Grout
+        2.11 Impregnator
+
+                     Movement Joints
+
+GoodIndustryPractices                                 Agglomerated Stone Tiling
+
+3.0 INSTALLATION                                      34
+
+3.1 Ordering                                          34
+
+3.2 Quality Control at Factory                        34
+
+3.3 Site Storage                                      35
+
+3 4 Tile Layout Plan,Shop Drawing & Method Statement  35
+
+3.5 Quality Control before Tiling                     36
+
+3.6. Application of Sealer                            37
+
+3.7 Floor Tiling                                      37
+
+3.8 WallTiling                                        39
+
+3.9 Tile Levelling System                             39
+
+3.10 Grouting                                         40
+
+3.11 Cutting Tiles                                    41
+
+3.12 Protection                                       43
+
+3.13 Workmanship Tolerances                           44
+
+3.14 Repair                                           45
+
+3.15 Final Touch                                      46
+
+3.16 Cleaning After Installation                      46
+
+3.17 Maintenance                                      47
+
+4.0 REFERENCES                                        48
+
+ AgglomeratedStone Tiling  GoodIndustryPractices
+
+1.0 INTRODUCTION
+
+1.1 Background
+
+Agglomeratedstone tiles are a composite materialproduced by binding stonechips with specially
+formulated resin. The t w o commonly used stones used in producing these products are marble
+and quartz.
+
+This material is a good alternative for natural stone as there is less tonality issue, which thus
+eliminates the need for the time-consuming and labour-intensiveprocess ofd r y laying for sorting
+of pattern and colour tone. Thereis also a wide range of colours to choose from because of the
+extensiverange of coloured stone fillers available.The agglomerated stone tile is physically less
+porous and harder than many types of natural stone. Sinceit has a uniform internal structure,it
+does not have hidden cracks or flaws that may exist in natural stones.
+
+The two commonly usedstonesin producing agglomerated stone tiles aremarble and quartz.
+
+Agglomeratedmarble tiles (carbonate-based),alsoknown asreconstituted or compressedmarble,
+are relatively soft and maintenanceis much easier asre-polishing can revitalizeits appearance.In
+addition, agglomerated marble tiles offer a better range of appearance.
+
+GoodIndustryPractices  Agglomerated Stone Tiling
+
+              Agglomerated quartz tiles (siliceous) are much harder, and they usually measure at 7 of the
+               Measurement of Hardness (MOHSs) scale as compared to most marbles, which measure at about 3.
+             Thismakesit much more resistant to scratches,but makesre-polishing and levelling more difficult
+               on site.
+
+                 Table 1.0 MOHs Hardness Scale
+
+                             MEASUREMENT OF
+                             HARDNESS SCALE
+                             10 Diamond
+                             9 Corundum
+                             3 Topaz
+                             / Quartz (Granite)
+                             6 Feldspar (Granite)
+                             5 Apatite
+                             4 Fluorite
+                             3 Calcite (Most Marbles)
+                             2 Gypsum
+                             1 Talc
+
+              1.2 Composition
+
+             Typical agglomerated stone tiles consist of 93% stone chips and 7% resin by weight. Stone chips
+              are the main filler and other materialslike colour pigment, coloured glasses,sea shells,metals or
+              mirrors may be added to create the desired visualeffect. In general,the larger the sizes of stone
+               chips used, the resin used will be reduced.
+
+              Different types of resins areusedby different manufacturers,with Epoxy and polyester resinsbeing
+              the most commonly used.Some manufacturersmay use cement instead.(Note: Cement based
+              agglomerated stone tiles arenot coveredin this guide asit is less commonly used here.)
+
+              Do note that some polyester resins are not completely UV stable and therefore agglomerated
+               stone tile may not be suitable for outdoor applications. Continuous exposure to UV can cause
+               discoloration of the stone and breakdown oft h e resin binder.
+
+             The mix ratio varies depending on the manufacturer. A higher percentage of resin will increase the
+              coefficient of thermal expansionand reduceabrasionresistance of the agglomeratedstonetiles.In
+              general, agglomerated stone tiles have a higher thermal expansion coefficient than natural stone
+              due to the resincontent.
+
+              As such,the quality of the agglomeratedstonetilesdepends verymuch on the stability of the resin
+
+a binder used.
+
+   AgglomeratedStone Tiling                                        GoodIndustryPractices
+
+1.3 Characteristics
+
+Agglomerated stone tiles have the same performance characteristics of natural stone as
+predominantly 93-95% of the fillers are natural stone. Agglomerated quartz tiles have harder
+wearing properties (higher MOH) than those made with marble as shown in Table 2.0.However,
+once agglomerated quartz tiles are installed, they cannot be ground and polished if there is any
+ippage or unevennessin the flooring.
+
+Table2.0 Technical Characteristics of Engineered Quartz Stone vs Agglomerated Marble
+
+   S NO | CHARACTERISTIC     ENGINEERED QUARTZ     AGGLOMERATED MARBLE
+                             2410 2.5 g/cm?
+   1  Density                0.01 t o - 0.2%       2410 2.5 g/cm’
+                             41-58 Mpa
+   2  Water Absorption       150-240 Mpa           < 0.20%
+                             58-63 (Index)
+   3  Modulus of Rupture     6-7 Mohs              20-35 Mpa
+                             Yes (certain extent)
+   “  Compressive Strength                         110-150 Mpa
+
+   5  Abrasion Resistance                          20-32 (Index)
+
+   6  Hardness                                     3-4 Mohs
+
+\     Acid Resistance                              No              y
+
+Agglomerated quartz tiles are also more resistant to acidic chemicals than agglomerated marble
+tiles due to the presence of mineral deposits — iron in particular, in the marble, when it comes
+in contact with acid and water. Application of a compatible impregnator on the surface of
+agglomerated marble tiles should be considered.
+
+1.3.1 Moisture sensitivity
+
+Agglomeratedstonetiles bound by resinbindersmay show varyingdegrees of moisture sensitivity
+and this characteristic is exhibited by curling, which is causedby differential expansion.Do note
+that the expansion and curling process is not completely reversible once the moisture source is
+eliminated.
+
+As such, resin based agglomerated stone tiles are not recommended for use in external areas,
+swimming pools,or any other water retaining structures e.g.spabaths or fountains.
+
+GoodIndustryPractices  Agglomerated Stone Tiling
+
+1.3.2 Thermal movement
+
+Generally,agglomerated stone tiles have a higher coefficient of thermal expansion than porcelain
+or natural stone due to the resinbinder.Thisis reflectedin the BS 5385-5:2009Walland Floor tiling
+clause 4.4, which recommends a higher frequency of movement joints for agglomerated stones.
+
+1.3.3 Abrasion resistance
+
+Theabrasionresistancefor all agglomeratedstoneproducts reflect their naturalstonecomponents.
+Agglomerated marble tiles have a lower abrasionresistance than agglomerated quartz tiles but
+may still be suitable for usein areas with high traffic.
+
+It is always important to consult the manufacturer for detailed information and technical support
+on the suitability and applicability of the product for its intended use.
+
+Polished finishes are more likely to show scratchmarksif the abrasionresistanceis low. As such,
+it is recommended to have additional polishing with epoxy coating after installation, particularly
+when there is the need for spot levelling to addresslippages or levelling by g r i n d i n gTh. e grinded/
+levelled surfacemay have a matt/patchy appearance due to the different levels of polishing and
+may look wavy from an angle.
+
+AgglomeratedStone Tiling                                                  GoodIndustryPractices
+
+1.4 Manufacturing Process
+
+In general, agglomerated stone tiles are produced by mixing approximately 93% stone chips and
+/% polyester or epoxy resin by weight and pressedinto sheets/slabs(or blocks) using a vibro-
+
+c o m p r e s s i o n V a c u u m process.
+
+Table3.0 A Schematic Outline of Production Cycleof Agglomerated Marble tiles
+
+PROCESSING
+
+add yu                                       4
+
+Marble Boulder            AREregales         Proprietary Formula
+
+                            $
+
+               >            OE o TET u                 Un-Poilished Slab
+                                      Black  Sang Saw
+Mining — Loading —houkding
+                            =»:
+Under Vibro-compression
+
+    L
+
+                          Un-Polished Slab
+
+n.n.,
+
+Calibrabion Polishing
+
+1. A SchematicOutlineofProductionCycle ofAgglomeratedMarble tiles
+2.A SchematicOutlineofProductionCycle ofAgglomeratedQuartz tiles
+
+GoodIndustryPractices                                                                                                                                                                                                     Agglomerated Stone Tiling
+
+            P ux 0s 0 S E               |
+
+                                                            000TO
+                                                                                                                                                                                                      aniPs GEEEESE GREE
+
+            L t PROOPE WEEE ewe
+
+-  . . Mig             |             :
+
+                       1ed3ir-333—2
+
+Agglomeratedmarbleisusuallycastedin blocks while theharder agglomeratedquartzusuallyin slabs
+                                           due to thedifficultyin cutting.
+
+The process of manufacturing agglomerated stone tiles are generally as follows:
+
+1. Process stone chip
+        a. Crushed to size
+
+        b. Purchase from supplier
+
+2. Mix stone chips with mineral filler,resin,additives,colouring agents and then heat the mix
+        a. Polyester or epoxy resin are commonly used as binder
+
+         b. Generally, micronized silica (silex) or micronized feldspar fillers are used with siliceous
+            aggregates (quartz) and calcium carbonate fillers for calcareous aggregates (marble)
+
+        c. The additives,added in smallquantities to the mixes to obtain specific results,are
+            catalysts,which accelerates the hardening oft h e resin.Bifunctionalsilanesmay be
+            added to siliceous aggregatemixes to improve mechanicalstrength
+
+        d. Metal oxide pigments are commonly usedas colouring agent to achieve the required
+            colour effects
+
+3. Castingin mould to form slabs or blocks(Note: AgglomeratedQuartz is usually cast in slabs
+    due to the difficulty in cutting)
+
+4. Compact with high pressure and start vibrocompression vacuum process
+         a. The vacuum compacting process prevents macro-porosity in the compacted mix and
+             micro-porosity in the bonding resins minimising water absorption to 0.02% in weight
+
+5. Cure slabs or blocks
+        a. By heating or naturally.Hydrogen peroxidemay be added to enhance curing.
+
+Agglomerated Stone Tiling                                       GoodIndustryPractices
+
+6. For blocks, c u t i n t o slabs
+
+        a. Using gang saw or wire diamond cutter (preferred as quality of cut is better)
+
+        b. Thickness around 10 mm to 20 mm (maximum thickness for tile according to
+            BS EN 15285:2008)
+
+/ . Calibrate and polish slabs
+        a. Preferably in automatic calibrating-polishing machine
+
+8. Cut slabs into tiles
+
+        a. Preferably using a laser-guidedcutting machine with tolerance of maximum +/-0.05mm
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                £2
+
+                                                                                                                                                                         qo- d: ¥
+                                                                                                                                                                FTLAANGE # — 41
+
+                                            f
+
+                           +»
+
+                           ‘a               oy rr»
+                                             TOE
+                               _EBIAE RNENEE
+                           Ea
+
+                                            1i -

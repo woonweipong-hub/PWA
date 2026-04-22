@@ -168,9 +168,9 @@
       "label": "Agglomerated Stone Tiling",
       "description": "BCA GIP — Agglomerated Stone (engineered/composite stone)",
       "file": "reference-texts/gip-agglomerated-stone-tiling.txt",
-      "chars": 0,
-      "truncated": false,
-      "textExtractionFailed": true,
+      "chars": 19999,
+      "truncated": true,
+      "textExtractionFailed": false,
       "defaultWorkCats": [],
       "defaultEditions": []
     },
@@ -180,9 +180,9 @@
       "label": "Waterproofing — Internal Wet Areas",
       "description": "BCA GIP — Waterproofing for Internal Wet Areas",
       "file": "reference-texts/gip-waterproofing-internal.txt",
-      "chars": 0,
-      "truncated": false,
-      "textExtractionFailed": true,
+      "chars": 20882,
+      "truncated": true,
+      "textExtractionFailed": false,
       "defaultWorkCats": [
         "Building Defects (Landed)",
         "Building Defects (Highrise)"
@@ -224,9 +224,9 @@
       "label": "Timber Doors",
       "description": "BCA GIP — Timber Doors",
       "file": "reference-texts/gip-timber-doors.txt",
-      "chars": 0,
-      "truncated": false,
-      "textExtractionFailed": true,
+      "chars": 20799,
+      "truncated": true,
+      "textExtractionFailed": false,
       "defaultWorkCats": [
         "Interior Works"
       ],
@@ -288,9 +288,9 @@
       "label": "Precast Concrete Elements",
       "description": "BCA GIP — Precast Concrete Elements",
       "file": "reference-texts/gip-precast-concrete.txt",
-      "chars": 0,
-      "truncated": false,
-      "textExtractionFailed": true,
+      "chars": 20442,
+      "truncated": true,
+      "textExtractionFailed": false,
       "defaultWorkCats": [],
       "defaultEditions": []
     },

@@ -3163,7 +3163,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   // ═══════════════════════════════════════════════════════════════════
   if(contractAdvisory){
     doc.addPage();y=18;
-    heading("CONTRACT CLAUSE ADVISORY",purple);
+    heading("REQUIREMENTS ADVISORY",purple);
     doc.setFontSize(9);doc.setFont(undefined,"normal");doc.setTextColor(0);
     const lines=doc.splitTextToSize(contractAdvisory,contentW);
     for(const line of lines){
@@ -9454,7 +9454,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
       return;
     }
     if(filtered.length===0){
-      setContractError("No defects in report. Log defects first, then run Contract Advisor.");
+      setContractError("No defects in report. Log defects first, then run Requirements Advisor.");
       return;
     }
 
@@ -9462,7 +9462,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
     setContractError("");
     setContractSummary("");
     setContractTokens(null);
-    setContractProgress(["⚖️ Starting contract advisor..."]);
+    setContractProgress(["⚖️ Starting Requirements Advisor..."]);
 
     try{
       // Step 1: Load pre-extracted text for selected reference docs
@@ -9514,7 +9514,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
       setContractProgress(prev=>[...prev,
         `Step 4/4: ✓ Advisory complete`+(t?` — ${t.provider}: ${t.prompt.toLocaleString()} prompt + ${t.completion.toLocaleString()} completion = ${t.total.toLocaleString()} tokens`:"")]);
     }catch(e){
-      setContractError(e?.message||"Failed to generate contract advisory.");
+      setContractError(e?.message||"Failed to generate requirements advisory.");
       setContractProgress(prev=>[...prev,"⚠ Workflow ended with an error"]);
     }
     setContractBusy(false);
@@ -10039,7 +10039,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
       {showContractAdvisor&&(
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,border:"2px solid rgba(88,86,214,0.2)"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,gap:10}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a"}}>⚖️ CONTRACT ADVISOR</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a"}}>⚖️ REQUIREMENTS ADVISOR</div>
             {contractBusy&&<div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"#5856d6",fontWeight:700}}><Spin size={12}/><span>RUNNING</span></div>}
           </div>
 
@@ -10151,7 +10151,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
 
           {!contractBusy&&!contractSummary&&(
             <button disabled={contractBusy} onClick={runContractAdvisor} style={{width:"100%",background:"#5856d6",border:"none",borderRadius:10,padding:"14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:10}}>
-              <span>⚖️</span><span>RUN CONTRACT ADVISOR</span>
+              <span>⚖️</span><span>RUN REQUIREMENTS ADVISOR</span>
             </button>
           )}
 
@@ -10167,7 +10167,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
           {contractSummary&&(
             <div>
               <div style={{background:"rgba(26,26,26,0.03)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:10,padding:"12px 14px",marginBottom:10}}>
-                <div style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.5)",letterSpacing:"0.05em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:8}}>CONTRACT CLAUSE ADVISORY</div>
+                <div style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.5)",letterSpacing:"0.05em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:8}}>REQUIREMENTS ADVISORY</div>
                 <div style={{whiteSpace:"pre-wrap",fontSize:12,lineHeight:1.6,color:"#1a1a1a"}}>{contractSummary}</div>
               </div>
               {contractTokens&&(
@@ -18291,6 +18291,29 @@ function App(){
                       [t("help.set_maps"),t("help.set_maps_desc")],
                       [t("help.set_language"),t("help.set_language_desc")],
                     ]],
+                    ["Agencies & frameworks supported",[
+                      ["Private developer sites","Use any defect-tracking or CONQUAS / Quality Mark flow. Requirements Advisor accepts PSSCOC as reference; users upload project-specific (FIDIC, REDAS, SIA, bespoke) terms via the + ADD PDF card."],
+                      ["BCA CONQUAS (Private Residential) R1","Effective 1 April 2026. Live weighted NC rate (IF×0.4 + FT×0.4 + EF×0.2), Band 1–6 projection, AI-assisted checkpoint wizard, observation audit trail. R1 adds Water Flow Test (WFT)."],
+                      ["BCA Quality Mark","Unit-by-unit reference bundled (22 May 2025 guide). Shares the same capture-verify-report loop as CONQUAS. Dedicated QM scope module on the roadmap."],
+                      ["HDB","BTO handover checklist bundled as reference. Same capture-verify-report loop; HDB-specific referencing slots into the Requirements Advisor picker."],
+                      ["LTA, JTC, MOE, MOHH","Public-sector sites use the same defect / inspection / report loop. Agency-specific reference documents can be uploaded per project. ISO 19650-compatible filenames on export keep submissions parseable by CORENET-X workflows."],
+                      ["Façade inspection (PFI)","BCA PFI competent-person guideline available as reference. Visual-check + photo-batch capture flow matches façade-inspection workflow (spalling, cracks, cladding, sealant, corrosion)."],
+                      ["BCA Good Industry Practice (17 trade guides)","Painting, tiling, waterproofing (int + ext), aluminium window, timber doors, timber + vinyl + engineered flooring, wardrobes, drywall, PBU, precast, design & materials (vol 1+2) — all bundled as reference; AI-extractable into structured checkpoints via tools/seed-gip-checkpoints.js."]
+                    ]],
+                    ["Automation & AI-assist",[
+                      ["Photo → record in one tap","AI pre-fills title, description, severity, trade, issue type, CONQUAS checkpoint, work component — from a single photo. Human confirms."],
+                      ["Photo-hash cache","AI results cached by SHA-256 of the photo; re-opening a form with the same photo auto-restores fields without re-spending tokens."],
+                      ["Evidence hash at capture","Every photo hashed client-side (SHA-256) on save — tamper-detection anchor that lives with the record forever, used later for duplicate detection too."],
+                      ["Source-type auto-capture","Record carries how it was created: photo / voice / markup / conquas_wizard / manual / batch_import / telegram — auto-stamped at save, no user input."],
+                      ["Capture timezone","IANA zone (e.g. Asia/Singapore) recorded alongside UTC; matters for multi-region teams and DLP disputes where local time anchors contractual windows."],
+                      ["Auto-fill location from drawing pin","(Roadmap) When you pin on a drawing, block/level parsed from the drawing's filename — one less form field to fill."],
+                      ["Auto-assign follow-up","(Roadmap) Trade-to-subcontractor mapping per project — detected trade routes follow-up to the right team by default."],
+                      ["Voice-to-text everywhere","Title, description, search all accept voice input (Web Speech API); transcript stored on the record."],
+                      ["AI Query bar on REPORT","Natural-language search over defects: 'show all 3X cracks on wall from last week' → filtered list."],
+                      ["Per-checkpoint ASK AI","On the CONQUAS wizard manual walk, a 🤖 ASK AI button sits above PASS / FAIL. Photo → AI verdict for just that one checkpoint → pre-fills pass / fail / reason."],
+                      ["AI batch analysis","AI-mode CONQUAS wizard analyses one photo against ALL checkpoints for the chosen element in one round-trip; user reviews fails + uncertains, passes auto-accepted."],
+                      ["Contract / Requirements Advisor","AI cross-references every defect against selected reference documents (bundled + user-uploaded) and produces clause mappings, responsible parties, recommended actions — for DLP claims, FM SLAs, CONQUAS / QM sign-offs."]
+                    ]],
                     ["Multi-location pins & mobile gestures",[
                       ["Same defect at many spots","One defect / issue can live at many drawing locations AND many GPS map points — no need to duplicate the photo, severity or description. Entry Detail shows a LOCATIONS list with every pin."],
                       ["Pin existing entry again (Drawings)","Tap an existing pin on a drawing → tooltip shows 📍 DUPLICATE and 🗑 DELETE. Tap DUPLICATE → the next tap on the drawing drops another pin for the same entry."],
@@ -18427,7 +18450,7 @@ function App(){
                       ),
                       // AI Section
                       React.createElement(Section,{icon:"🤖",title:"AI — YOUR OWN MODELS",color:"#5856d6"},
-                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"SiteShrimp digitalises the manual checks, records, and reports that every construction site runs — across active supervision, completion handover, and post-completion DLP / façade inspection. One AI-assisted workflow for private developers and public-sector sites (BCA, HDB, LTA, JTC, MOE, MOHH) alike. Bring any AI provider for photo analysis, auto-fill (title, severity, trade, assignee), natural-language search, PDF diff reports, and Contract Advisor (defect-to-requirement mapping using PSSCOC, BCA CONQUAS, BCA Good Industry Practice, HDB checklists, or your own uploaded documents). You choose the model, you control the cost."),
+                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"SiteShrimp digitalises the manual checks, records, and reports that every construction site runs — across active supervision, completion handover, and post-completion DLP / façade inspection. One AI-assisted workflow for private developers and public-sector sites (BCA, HDB, LTA, JTC, MOE, MOHH) alike. Bring any AI provider for photo analysis, auto-fill (title, severity, trade, assignee), natural-language search, PDF diff reports, and Requirements Advisor (defect-to-requirement mapping using PSSCOC, BCA CONQUAS, BCA Good Industry Practice, HDB checklists, or your own uploaded documents). You choose the model, you control the cost."),
                         React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:8}},
                           React.createElement("div",{style:{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"10px 12px"}},
                             React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"#5856d6",marginBottom:4}},"GOOGLE GEMINI (Free)"),
@@ -18517,10 +18540,42 @@ function App(){
                     ["Tag on Map",["Action-driven sub-modes in TAG: 🖼 Tag on Drawing · 🗺 Tag on Map · ⇄ Compare Changes","OpenStreetMap as the free default — no API key, no billing, works out of the box","Google Maps as an optional upgrade (satellite + Places search)","Per-project default map view (save current centre/zoom as project home)","Address search: Nominatim on OSM, Places Autocomplete on Google","Tap-to-drop GPS pin → Quick Log creates a defect with lat/lng/zoom","Multi-location pins: same defect can be pinned at many GPS locations (map_pins collection)","📍 PIN AGAIN button on the marker preview card — next tap drops another location for the same entry","Long-press empty map to drop a pending pin (bypasses the ADD PIN mode toggle, works on both OSM and Google Maps)","Severity-coloured markers for every map-pinned entry","LIST panel: every pinned entry with tap-to-recenter","Drop-pin toggle — pan freely without accidental pins","Entry detail: static map thumbnail + Open in Google Maps deep link","PDF export: per-entry map thumbnails + ALL PINS ON MAP consolidated page (tile-stitched from OSM — no API key needed, works offline-of-staticmap-services)",
 "Consolidated pin overview auto-fits bounds and draws severity-coloured numbered markers (same style as the on-screen LIVE map)","Map markup toolkit: Zone, Radius, Path, Arrow, Dimension (auto-labelled distance), Stamp, Label, Freehand, Photo overlay","All markup types persisted to the map_markups collection per project","Move any markup by dragging the coloured centroid handle (or native drag on Google Maps)","Freehand on Google Maps via transparent canvas overlay","Photo overlay on map — one-click placement with auto bounds; draggable on both providers"]],
                     ["Tag & Compare",["Upload floor plans (JPG, PNG, WEBP, TIF, PDF)","PDF rendering via PDF.js with page navigation","Zoom, pan & pinch-to-zoom (mobile) — works in markup mode too","Center-anchored zoom buttons keep your focal point in place","Zoom / page-nav controls float inside the canvas and never block toolbars","Ring-style defect pins with severity initial","Critical pin pulse animation","Multi-location pins: same defect can be pinned on many drawings and many pages (pins collection is N:1 with entries)","Pin tooltip with 📍 DUPLICATE (re-pin the same entry at next tap) + 🗑 DELETE","Long-press an existing pin → enters re-pin mode for that entry","Long-press empty drawing area → opens LINK TO ENTRY picker at that spot (no need to toggle ADD PIN first)","Sticky ADD PIN mode — stays on after each placement so you can rapid-drop pins","Search box in the LINK TO ENTRY picker + 📍N badge showing how many times each entry is already pinned","Soft-archive deleted drawings (DELETE moves to a 7-day Archive section, 🗑 FOREVER for immediate hard-delete)","▸ SHOW ARCHIVED DRAWINGS toggle inside DRAWINGS tab with RESTORE + FOREVER buttons and 'Xd left' badge","Quick-pin: create entry directly from drawing","Defect heatmap overlay (severity-weighted)","Drawing-level markup (freehand, arrows, circles, text)","Drawing notes — pinned text with author + timestamp","Markup color picker + undo / clear","Select arrow icon for select/move tool (matches Figma/Photoshop conventions)","Tap-to-scale ( − / + ) buttons for selected photo markup","Larger photo resize handle with visible corner indicator","Pin count & severity badges on cards","PDF thumbnail preview in list","Diff dropdown: Single (PDFs) and Batch (Folders) in one menu","Single PDF diff with visual overlay of changes","Compare markup — draw on top of the diff (freehand, arrow, circle, text)","Compare markup: select and drag to reposition any stroke","Compare markup: 4 text size presets (S/M/L/XL)","Compare markup: 9-way text alignment via 3x3 grid menu","Compare markup: color picker retargets selected stroke","Compare markup: delete individual strokes without clearing all","Compare markup: overlay site photos onto the diff (capture or pick from device)","Compare markup: drag photos to reposition, +/− to resize, markup on top","AI diff report with lock / approve audit trail","Saved comparisons with overlay thumbnails (markup composited in)","Batch PDFs Comparison (folder vs folder)","Batch completeness check (missing / extra files)","Batch content comparison (per-file diff with detail)","Batch export (CSV + PDF with per-file changes)","Editable set labels (Tender, As-Built, M&E, etc.)"]],
-                    ["CONQUAS Quality Check (BCA-aligned)",["BCA CONQUAS (Private Residential) R1 alignment — effective 1 April 2026, matches the 20 April 2026 revision that added Water Flow Test (WFT)","Weighted Project NC rate per R1 §3.3: IF × 0.4 + FT × 0.4 + EF × 0.2","Projected Band 1-6 mapped from weighted NC rate (<6% / <10% / <15% / <20% / <25% / ≥25%)","Internal Finishes (IF) — tier-weighted: 1X Finishings / 2X Functionality / 3X Liveability across Floor, Wall, Ceiling, Door, Window, Component, M&E Fittings","AI-assisted checkpoint wizard — take a photo of an element, AI classifies each CONQUAS checkpoint as pass / fail / uncertain, user reviews and saves all fails as linked defects in one batch","Observation batches — every AI wizard run stamps a shared batch_id on its defects so pins cluster one-per-photo on drawings","Functional Tests (FT) capture — WTT (Window water-tightness), WPT (Wet-area water-tightness), WFT (Water flow — common areas, R1-new); inline editor for fails/applicable counts","QP-declared functional test status — Pull-Off-Test (wall tiles), Heat soak test (EN 14179-2 + 3-year warranty), WTT self-test, WPT self-test","External Finishes (EF) capture — Roof, External Wall, External Works direct-count NC rate (R1 §3.3 c)","Per-element breakdown in REPORT — weighted NCs / applicable / rate% per element, with colour-coded severity thresholds","Reference documents picker in Contract Advisor — PSSCOC (3 variants), CONQUAS (Private Residential + 2022 + launch circular), BCA Quality Mark Scheme, 17 BCA Good Industry Practice trade guides (painting, tiling, waterproofing, aluminium window, timber doors, etc.), HDB BTO handover checklist — selectable per project with smart defaults","Pre-extracted reference text at build time — PWA stays compact (~500 KB of text vs ~30 MB of PDFs)","Multi-edition ontology — CONQUAS Private Residential plus per-trade GIP structured checkpoints (seeded from PDF text via tools/seed-gip-checkpoints.js)","Disclaimer auto-adjusts based on which components are captured — turns green and drops 'Projection only' when IF + FT + EF all present","All outputs carry clear disclaimer — projection only until BCA assessor signs off; final accountability rests with the accredited checker, QP, or assessor"]],
+                    ["CONQUAS Quality Check (BCA-aligned)",[
+                      "BCA CONQUAS (Private Residential) R1 alignment — effective 1 April 2026, reflects the 20 April 2026 revision adding Water Flow Test (WFT)",
+                      "Weighted Project NC rate per R1 §3.3: IF × 0.4 + FT × 0.4 + EF × 0.2 — live in REPORT",
+                      "Projected Band 1-6 mapped from weighted NC rate (<6% / <10% / <15% / <20% / <25% / ≥25%)",
+                      "Internal Finishes (IF) — tier-weighted 1X Finishings / 2X Functionality / 3X Liveability across Floor, Wall, Ceiling, Door, Window, Component, M&E Fittings",
+                      "AI-assisted checkpoint wizard — take a photo, AI classifies every checkpoint for the chosen element as pass / fail / uncertain, user reviews, all fails saved as linked defects in one batch",
+                      "ASK AI on manual walk — per-checkpoint AI helper alongside PASS / FAIL; auto-fills verdict, fail photo, and reason from one shot",
+                      "Gallery + camera picker — every wizard photo input offers Camera · Photos · Files; upload existing phone/laptop images as checkpoint evidence",
+                      "Multi-photo per checkpoint — up to 10 photos per fail (main + extras) with thumbnail grid, ×-to-remove, and multi-select from gallery",
+                      "Observation batches — every wizard run stamps a shared observation_batch_id; defects from one photo cluster to one pin on drawings",
+                      "Full CONQUAS audit trail — every checkpoint walked (pass + fail + uncertain) saved as an observation record with photo, note, verdict; viewable in REPORT, grouped by batch",
+                      "Functional Tests (FT) capture — WTT, WPT, WFT counts with inline editor; FT NC rate auto-computed",
+                      "QP-declared functional test status — Pull-Off, Heat Soak (EN 14179-2 + 3-yr warranty), WTT self-test, WPT self-test",
+                      "External Finishes (EF) capture — Roof, External Wall, External Works direct-count NC rate (R1 §3.3 c)",
+                      "Per-element IF breakdown in REPORT — weighted NCs / applicable / rate % per element, colour-coded severity",
+                      "Per-project CONQUAS toggle — one-tap enable/disable in Settings → Projects; new projects default to CONQUAS on",
+                      "Reference documents picker in Requirements Advisor — PSSCOC (3 variants), CONQUAS (Private Residential + 2022 + launch circular), BCA Quality Mark Scheme, 17 BCA Good Industry Practice trade guides, HDB BTO handover checklist — grouped tick-boxes, smart defaults by project work category",
+                      "Pre-extracted reference text at build time — PWA stays compact (~500 KB of text vs ~30 MB of PDFs); upload card remains for licensed / project-specific PDFs",
+                      "Multi-edition ontology — CONQUAS Private Residential + per-trade GIP structured checkpoints, seeded via tools/seed-gip-checkpoints.js (AI-extracted, needs_review flagged)",
+                      "Disclaimer auto-adjusts — turns green and drops 'Projection only' once IF + FT + EF all captured; stays orange while any component is pending",
+                      "All outputs carry a clear disclaimer — projection only until BCA assessor sign-off; accountability rests with the accredited checker, QP, or assessor — not the app"
+                    ]],
+                    ["Evidence Integrity & ISO 19650 naming",[
+                      "Media hash (SHA-256) — every photo is hashed client-side at capture, stored immutable; detects tampering and enables duplicate-photo detection",
+                      "Source type auto-capture — photo / voice / markup / conquas_wizard / manual / batch_import stamped on every record at save time, no user input needed",
+                      "Capture timezone — IANA zone (e.g. Asia/Singapore) recorded alongside UTC timestamp; matters for multi-region teams and DLP disputes where local time anchors contractual windows",
+                      "ISO 19650-style export filenames — PDF reports (and soon CSV / photo downloads) follow {Project}-{Originator}-{Block}-{Level}-{Type}-{Role}-{RecordId}-{Suitability}-{YYYYMMDD} per §5 Annex A",
+                      "Trade → Role code mapping — Architectural → A, Structural → S, Mechanical → M, Electrical → E, Civil → C, QS → Q, Other → Z (ISO 19650 Table A.2)",
+                      "Status → Suitability code mapping — Open → S2, In Progress → S3, Done → S4, Verified → A1, Closed → A2 (ISO 19650 §5.1.8)",
+                      "Project + Company short codes — derived from project/company name when not explicitly set, so filenames work from day one with no manual setup",
+                      "CORENET-X compatibility — filenames are parse-able by BCA regulatory submission workflows; public-sector agencies get a valid handoff without custom export",
+                      "Immutable audit anchors — record ID, capture time, captured-by, media hash, source type stay as-captured (batch edit excludes them by design)"
+                    ]],
                     ["Report Overview",["Real-time status counts (5 stages) at the top of REPORT","Critical alerts banner","Severity breakdown chart","Recent entries with type badges","Live sync indicator + offline queue count","Inline AI Query bar for natural-language search"]],
                     ["Admin Analytics",["Entries today / week / month / all time","Active users — who submitted today & this week","Per-user ranking bar chart","Photos stats (total & avg per entry)","Entries by entry type breakdown","Entries by project breakdown","AI usage stats (daily limit, coverage, provider)"]],
-                    ["Reports & Exports",["Site report with section-aware tally (defects, drawings, comparisons)","Tally row lays out in a single aligned grid, stays tight on narrow phones","Conditional severity / status / assignee breakdowns","Filter by severity / status / assignee / date","CSV Occurrences + Pin Locations columns: count of every drawing pin + map pin per entry","PDF per-entry '📍 LOCATIONS · N total' line when the same defect recurs on multiple drawings or GPS points","Max-size PDF export pages — both on-site (fast) and office (lossless vector) render drawings and comparisons at A2-minimum so small source PDFs stay readable","Email content sections (defects, drawings, comparisons)","Email preview with opt-in/out per section — includes pin entries from drawings","Translated email reports (all values in user's language)","Email report via PocketBase SMTP","Contract Advisor — AI defect-to-requirement mapping across bundled reference docs (PSSCOC, CONQUAS R1, BCA GIP trade guides, HDB checklist) + user uploads","Google Sheets export (new tab per export)","EXPORT all-in-one CSV (defects + annotations + comparisons)","Dn menu: Markup CSV / PDF export","Dn menu: Compare CSV / PDF export","Dn menu: All CSV / PDF export","Dn menu: All-in-One (CSV + PDF in one tap)","Annotated drawings embedded in PDF exports (pins, notes, markup burned in)",
+                    ["Reports & Exports",["Site report with section-aware tally (defects, drawings, comparisons)","Tally row lays out in a single aligned grid, stays tight on narrow phones","Conditional severity / status / assignee breakdowns","Filter by severity / status / assignee / date","CSV Occurrences + Pin Locations columns: count of every drawing pin + map pin per entry","PDF per-entry '📍 LOCATIONS · N total' line when the same defect recurs on multiple drawings or GPS points","Max-size PDF export pages — both on-site (fast) and office (lossless vector) render drawings and comparisons at A2-minimum so small source PDFs stay readable","Email content sections (defects, drawings, comparisons)","Email preview with opt-in/out per section — includes pin entries from drawings","Translated email reports (all values in user's language)","Email report via PocketBase SMTP","Requirements Advisor — AI defect-to-requirement mapping across bundled reference docs (PSSCOC, CONQUAS R1, BCA GIP trade guides, HDB checklist) + user uploads","Google Sheets export (new tab per export)","EXPORT all-in-one CSV (defects + annotations + comparisons)","Dn menu: Markup CSV / PDF export","Dn menu: Compare CSV / PDF export","Dn menu: All CSV / PDF export","Dn menu: All-in-One (CSV + PDF in one tap)","Annotated drawings embedded in PDF exports (pins, notes, markup burned in)",
 "GPS-tag map thumbnails + consolidated pin overview embedded in PDF exports (reliable OSM tile-stitch fallback when no Google key)","Pins render in their severity colors regardless of section toggles","Live progress feedback during PDF export (Preparing → Rendering drawing N/M → Saving)","Per-drawing PDF export from the viewer"]],
                     ["Multi-Language (i18n)",["23 languages (EN, ZH, ZH-TW, MS, ID, HI, TA, TH, VI, BN, MY, JA, KO, DE, FR, ES, PT, IT, TR, SV, NO, DA, FI)","Full UI translation (617 keys — labels, buttons, placeholders, errors)","Dropdown option translation (539 terms — components, issues, levels, zones, durations, costs)","Construction industry terminology per language","Language selector with flags + native names","Instant English (inlined) + lazy-loaded language packs","Fallback chain: language → English → raw key"]],
                     ["Storage",["PocketBase (default server)","Local path (self-hosted server / machine)","Google Drive (OAuth, personal cloud)"]],
