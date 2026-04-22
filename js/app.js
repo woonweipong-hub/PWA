@@ -17724,7 +17724,52 @@ function App(){
                 {section:t("language.title")},
                 {label:t("settings.language"),desc:(languages.find(l=>l.code===lang)||{}).name||"English",icon:"globe",optional:true,onClick:()=>{setShowLangPicker(true);setShowSettingsMenu(false);}},
                 {section:t("settings.section_app")},
-                {label:t("settings.clear_cache"),desc:t("settings.clear_cache_desc"),icon:"refresh",optional:true,onClick:async()=>{if("caches"in window){const keys=await caches.keys();await Promise.all(keys.map(k=>caches.delete(k)));}if(navigator.serviceWorker){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.unregister()));}setShowSettingsMenu(false);window.location.reload(true);}},
+                {label:t("settings.clear_cache"),desc:t("settings.clear_cache_desc"),icon:"refresh",optional:true,onClick:async()=>{
+                  // Full local reset: SW caches + SW registrations + localStorage
+                  // + IndexedDB offline queue. Warns when the offline queue has
+                  // unsynced entries so the user doesn't lose them silently.
+                  try{
+                    let queued=0;
+                    if(typeof OfflineQueue!=="undefined"&&OfflineQueue&&typeof OfflineQueue.count==="function"){
+                      try{queued=await OfflineQueue.count();}catch{queued=0;}
+                    }
+                    const msg=queued>0
+                      ?t("settings.clear_cache_confirm_with_queue").replace("{n}",String(queued))
+                      :t("settings.clear_cache_confirm");
+                    if(!window.confirm(msg))return;
+                    // 1. Service-worker caches
+                    if("caches"in window){
+                      try{const keys=await caches.keys();await Promise.all(keys.map(k=>caches.delete(k)));}catch(e){console.warn("cache clear failed",e);}
+                    }
+                    // 2. Unregister service workers
+                    if(navigator.serviceWorker){
+                      try{const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.unregister()));}catch(e){console.warn("SW unregister failed",e);}
+                    }
+                    // 3. localStorage — nukes projects selection, settings, user
+                    //    uploads, ref doc selection, auth session, everything.
+                    try{localStorage.clear();}catch(e){console.warn("localStorage clear failed",e);}
+                    // 4. sessionStorage — any per-tab state
+                    try{sessionStorage.clear();}catch(e){console.warn("sessionStorage clear failed",e);}
+                    // 5. IndexedDB — offline write queue + any other DBs the
+                    //    browser has for this origin. Fallback to known name if
+                    //    indexedDB.databases() isn't available (Safari < 15).
+                    try{
+                      if(indexedDB.databases){
+                        const dbs=await indexedDB.databases();
+                        await Promise.all(dbs.filter(d=>d&&d.name).map(d=>new Promise(res=>{const r=indexedDB.deleteDatabase(d.name);r.onsuccess=r.onerror=r.onblocked=()=>res();})));
+                      } else {
+                        await new Promise(res=>{const r=indexedDB.deleteDatabase("siteshrimp_offline");r.onsuccess=r.onerror=r.onblocked=()=>res();});
+                      }
+                    }catch(e){console.warn("IndexedDB clear failed",e);}
+                    // 6. Try to sign out any PocketBase auth
+                    try{if(typeof DB!=="undefined"&&DB.auth&&typeof DB.auth.signOut==="function")await DB.auth.signOut();}catch{}
+                    setShowSettingsMenu(false);
+                    window.location.reload(true);
+                  }catch(err){
+                    console.error("Clear App Data failed",err);
+                    alert("Clear failed: "+(err?.message||err));
+                  }
+                }},
               ];
               return(
               <div className="dd-panel" onMouseEnter={()=>clearTimeout(settingsMenuTimer.current)} onMouseLeave={()=>{settingsMenuTimer.current=setTimeout(()=>setShowSettingsMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:8,background:"linear-gradient(180deg,#2e2e32 0%,#1f1f22 100%)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,overflow:"hidden",zIndex:1200,minWidth:278,boxShadow:"0 16px 48px rgba(0,0,0,0.55),0 2px 10px rgba(0,0,0,0.35)"}}>
