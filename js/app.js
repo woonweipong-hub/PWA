@@ -3007,9 +3007,15 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
       doc.text(`FT breakdown: WTT ${cs.ftRows[0].fails}/${cs.ftRows[0].applicable}  ·  WPT ${cs.ftRows[1].fails}/${cs.ftRows[1].applicable}  ·  WFT ${cs.ftRows[2].fails}/${cs.ftRows[2].applicable}`,margin,y);y+=5;
       const qp=cs.qpStatuses;
       const qpFmt=s=>s==="pass"?"Pass":s==="fail"?"Fail":s==="na"?"N/A":"Pending";
-      doc.text(`QP-declared tests: Pull-Off ${qpFmt(qp.pullOff)}  ·  Heat Soak ${qpFmt(qp.heatSoak)}  ·  WTT self-test ${qpFmt(qp.wttSelf)}  ·  WPT self-test ${qpFmt(qp.wptSelf)}`,margin,y);y+=6;
+      doc.text(`QP-declared tests: Pull-Off ${qpFmt(qp.pullOff)}  ·  Heat Soak ${qpFmt(qp.heatSoak)}  ·  WTT self-test ${qpFmt(qp.wttSelf)}  ·  WPT self-test ${qpFmt(qp.wptSelf)}`,margin,y);y+=5;
     } else {
-      doc.text(`Functional Tests (FT): not captured — REPORT shows IF only.`,margin,y);y+=6;
+      doc.text(`Functional Tests (FT): not captured.`,margin,y);y+=5;
+    }
+    if(cs.efRate!==null){
+      doc.text(`External Finishes (EF): ${cs.efRate.toFixed(1)}% — ${cs.efFails} fail(s) of ${cs.efApplicable} applicable across Roof/External Wall/External Works.`,margin,y);y+=5;
+      doc.text(`EF breakdown: Roof ${cs.efRows[0].fails}/${cs.efRows[0].applicable}  ·  External Wall ${cs.efRows[1].fails}/${cs.efRows[1].applicable}  ·  External Works ${cs.efRows[2].fails}/${cs.efRows[2].applicable}`,margin,y);y+=6;
+    } else {
+      doc.text(`External Finishes (EF): not captured.`,margin,y);y+=6;
     }
     // Per-element table
     if(cs.componentRows&&cs.componentRows.length){
@@ -3034,8 +3040,10 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     doc.text(`NC weightages: 1X = ${cs.byTier["1X"]||0}  ·  2X = ${cs.byTier["2X"]||0}  ·  3X = ${cs.byTier["3X"]||0}`,margin,y);y+=8;
     // Disclaimer
     doc.setFontSize(7);doc.setTextColor(150);
-    const ftNote=cs.ftRate!==null?"IF + FT re-normalised over 0.8 (EF pending)":"IF only (FT + EF pending)";
-    const disc="Projection only — not official CONQUAS Band. 0% = all pass, 100% = all fail; lower is better. Per BCA CONQUAS (Private Residential) R1 §3.3: Project NC rate = IF × 0.4 + FT × 0.4 + EF × 0.2. Shown here: "+ftNote+". Full project band also requires QP declaration on Pull-Off + Heat Soak + WTT/WPT self-tests. Final accountability rests with the accredited checker, QP, or assessor — not this app.";
+    const disc=(cs.isFullBand
+      ? "Full Project NC rate per BCA CONQUAS (Private Residential) R1 §3.3: Project NC rate = IF × 0.4 + FT × 0.4 + EF × 0.2. "
+      : "Projection only — not official CONQUAS Band. Per R1 §3.3: Project NC rate = IF × 0.4 + FT × 0.4 + EF × 0.2. Shown here: "+cs.projectedBasis+". ")
+      +"0% = all pass, 100% = all fail; lower is better. Project band also requires QP declaration on Pull-Off + Heat Soak + WTT/WPT self-tests. Final accountability rests with the accredited checker, QP, or assessor — not this app.";
     const discLines=doc.splitTextToSize(disc,contentW);
     for(const dl of discLines){if(y>pageH-12){doc.addPage();y=18;}doc.text(dl,margin,y);y+=3.5;}
     doc.setTextColor(0);
@@ -8754,32 +8762,22 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   // (ft_*_applicable / ft_*_fails / ft_*_status); saved via DB.projects.update.
   const[ftEditOpen,setFtEditOpen]=useState(false);
   const[ftSaving,setFtSaving]=useState(false);
-  const[ftDraft,setFtDraft]=useState(()=>({
-    ft_wtt_applicable:currentProject?.ft_wtt_applicable??"",
-    ft_wtt_fails:currentProject?.ft_wtt_fails??"",
-    ft_wpt_applicable:currentProject?.ft_wpt_applicable??"",
-    ft_wpt_fails:currentProject?.ft_wpt_fails??"",
-    ft_wft_applicable:currentProject?.ft_wft_applicable??"",
-    ft_wft_fails:currentProject?.ft_wft_fails??"",
-    ft_pull_off_status:currentProject?.ft_pull_off_status||"",
-    ft_heat_soak_status:currentProject?.ft_heat_soak_status||"",
-    ft_wtt_self_test_status:currentProject?.ft_wtt_self_test_status||"",
-    ft_wpt_self_test_status:currentProject?.ft_wpt_self_test_status||""
-  }));
-  useEffect(()=>{
-    setFtDraft({
-      ft_wtt_applicable:currentProject?.ft_wtt_applicable??"",
-      ft_wtt_fails:currentProject?.ft_wtt_fails??"",
-      ft_wpt_applicable:currentProject?.ft_wpt_applicable??"",
-      ft_wpt_fails:currentProject?.ft_wpt_fails??"",
-      ft_wft_applicable:currentProject?.ft_wft_applicable??"",
-      ft_wft_fails:currentProject?.ft_wft_fails??"",
-      ft_pull_off_status:currentProject?.ft_pull_off_status||"",
-      ft_heat_soak_status:currentProject?.ft_heat_soak_status||"",
-      ft_wtt_self_test_status:currentProject?.ft_wtt_self_test_status||"",
-      ft_wpt_self_test_status:currentProject?.ft_wpt_self_test_status||""
-    });
-  },[currentProject?.id,currentProject?.ft_wtt_applicable,currentProject?.ft_wtt_fails,currentProject?.ft_wpt_applicable,currentProject?.ft_wpt_fails,currentProject?.ft_wft_applicable,currentProject?.ft_wft_fails,currentProject?.ft_pull_off_status,currentProject?.ft_heat_soak_status,currentProject?.ft_wtt_self_test_status,currentProject?.ft_wpt_self_test_status]);
+  // Combined FT + EF editor draft. All are project-level direct counts
+  // (R1 §3.3). FT = WTT/WPT/WFT + 4 QP-declared flags. EF = Roof, External
+  // Wall, External Works.
+  const _ftEfFields=["ft_wtt_applicable","ft_wtt_fails","ft_wpt_applicable","ft_wpt_fails","ft_wft_applicable","ft_wft_fails","ft_pull_off_status","ft_heat_soak_status","ft_wtt_self_test_status","ft_wpt_self_test_status","ef_roof_applicable","ef_roof_fails","ef_wall_applicable","ef_wall_fails","ef_works_applicable","ef_works_fails"];
+  const _makeFtEfDraft=(proj)=>{
+    const out={};
+    for(const k of _ftEfFields){
+      const v=proj?.[k];
+      out[k]=k.endsWith("_status")?(v||""):(v==null?"":v);
+    }
+    return out;
+  };
+  const[ftDraft,setFtDraft]=useState(()=>_makeFtEfDraft(currentProject));
+  useEffect(()=>{setFtDraft(_makeFtEfDraft(currentProject));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[currentProject?.id,currentProject?.ft_wtt_applicable,currentProject?.ft_wtt_fails,currentProject?.ft_wpt_applicable,currentProject?.ft_wpt_fails,currentProject?.ft_wft_applicable,currentProject?.ft_wft_fails,currentProject?.ft_pull_off_status,currentProject?.ft_heat_soak_status,currentProject?.ft_wtt_self_test_status,currentProject?.ft_wpt_self_test_status,currentProject?.ef_roof_applicable,currentProject?.ef_roof_fails,currentProject?.ef_wall_applicable,currentProject?.ef_wall_fails,currentProject?.ef_works_applicable,currentProject?.ef_works_fails]);
   const saveFt=async()=>{
     if(!currentProject?.id)return;
     setFtSaving(true);
@@ -9063,6 +9061,19 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
     const ftApplicable=wttA+wptA+wftA;
     const ftFails=wttF+wptF+wftF;
     const ftRate=ftApplicable>0?(ftFails/ftApplicable*100):null;
+
+    // ── External Finishes NC rate (R1 §3.3 c) — direct count, not tier-weighted ──
+    const roofA=Number(p.ef_roof_applicable)||0,roofF=Number(p.ef_roof_fails)||0;
+    const wallA=Number(p.ef_wall_applicable)||0,wallF=Number(p.ef_wall_fails)||0;
+    const worksA=Number(p.ef_works_applicable)||0,worksF=Number(p.ef_works_fails)||0;
+    const efApplicable=roofA+wallA+worksA;
+    const efFails=roofF+wallF+worksF;
+    const efRate=efApplicable>0?(efFails/efApplicable*100):null;
+    const efRows=[
+      {label:"Roof",applicable:roofA,fails:roofF,rate:roofA>0?(roofF/roofA*100):null},
+      {label:"External Wall",applicable:wallA,fails:wallF,rate:wallA>0?(wallF/wallA*100):null},
+      {label:"External Works",applicable:worksA,fails:worksF,rate:worksA>0?(worksF/worksA*100):null}
+    ];
     const ftRows=[
       {label:"WTT (Window)",applicable:wttA,fails:wttF,rate:wttA>0?(wttF/wttA*100):null},
       {label:"WPT (Wet area)",applicable:wptA,fails:wptF,rate:wptA>0?(wptF/wptA*100):null},
@@ -9075,24 +9086,34 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
       wptSelf:p.ft_wpt_self_test_status||""
     };
 
-    // Projected Project NC rate — re-normalised over what we have
-    // (full formula is IF*0.4 + FT*0.4 + EF*0.2; EF not yet captured).
-    // If only IF present, report IF rate directly. If IF + FT, re-normalise
-    // across the 0.8 total to give a projected number until EF ships.
+    // Projected Project NC rate — re-normalised over components present.
+    // Full formula (R1 §3.3): Project NC rate = IF×0.4 + FT×0.4 + EF×0.2.
+    // Until all three are captured we re-normalise across the weights we
+    // have so the projection stays comparable.
     let projectedRate=rate,projectedBand=band,projectedBasis="IF only";
-    if(ftRate!==null){
+    let isFullBand=false;
+    if(ftRate!==null&&efRate!==null){
+      projectedRate=rate*0.4+ftRate*0.4+efRate*0.2;
+      projectedBasis="IF + FT + EF (full Project NC rate, R1 §3.3)";
+      isFullBand=true;
+    }else if(ftRate!==null){
       projectedRate=(rate*0.4+ftRate*0.4)/0.8;
       projectedBasis="IF + FT (re-normalised; EF pending)";
-      if(projectedRate<6)projectedBand=1;
-      else if(projectedRate<10)projectedBand=2;
-      else if(projectedRate<15)projectedBand=3;
-      else if(projectedRate<20)projectedBand=4;
-      else if(projectedRate<25)projectedBand=5;
-      else projectedBand=6;
+    }else if(efRate!==null){
+      projectedRate=(rate*0.4+efRate*0.2)/0.6;
+      projectedBasis="IF + EF (re-normalised; FT pending)";
     }
+    if(projectedRate<6)projectedBand=1;
+    else if(projectedRate<10)projectedBand=2;
+    else if(projectedRate<15)projectedBand=3;
+    else if(projectedRate<20)projectedBand=4;
+    else if(projectedRate<25)projectedBand=5;
+    else projectedBand=6;
 
     return{failCount,totalChecks,totalWeightedNCs,totalWeightedApplicable,rate,band,componentRows,byTier,batchCount:batches.size,
-      ftRate,ftFails,ftApplicable,ftRows,qpStatuses,projectedRate,projectedBand,projectedBasis};
+      ftRate,ftFails,ftApplicable,ftRows,qpStatuses,
+      efRate,efFails,efApplicable,efRows,
+      projectedRate,projectedBand,projectedBasis,isFullBand};
   })();
 
   const runContractAdvisor=async()=>{
@@ -9447,19 +9468,20 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
             <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",marginTop:6,lineHeight:1.4}}>
               <b>IF:</b> {conquasStats.rate.toFixed(1)}% ({conquasStats.totalWeightedNCs} weighted of {conquasStats.totalWeightedApplicable} applicable; {conquasStats.failCount} defect{conquasStats.failCount!==1?"s":""} across {conquasStats.batchCount} assessment{conquasStats.batchCount!==1?"s":""})
               {conquasStats.ftRate!==null&&<> · <b>FT:</b> {conquasStats.ftRate.toFixed(1)}% ({conquasStats.ftFails}/{conquasStats.ftApplicable})</>}
+              {conquasStats.efRate!==null&&<> · <b>EF:</b> {conquasStats.efRate.toFixed(1)}% ({conquasStats.efFails}/{conquasStats.efApplicable})</>}
             </div>
           </div>
           {/* Functional Tests — R1 §3.3 counted-NC tests (WTT/WPT/WFT) +
               QP-declared status flags (Pull-Off / Heat soak / self-tests). */}
           <div style={{marginBottom:12,background:"rgba(52,170,220,0.05)",border:"1px solid rgba(52,170,220,0.2)",borderRadius:10,padding:"10px 12px"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6,gap:8}}>
-              <div style={{fontSize:10,fontWeight:800,color:"#1d6b8f",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif"}}>FUNCTIONAL TESTS (FT)</div>
-              <button onClick={()=>setFtEditOpen(v=>!v)} style={{background:ftEditOpen?"#34aadc":"transparent",border:"1px solid rgba(52,170,220,0.4)",borderRadius:6,padding:"3px 10px",color:ftEditOpen?"#fff":"#1d6b8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,cursor:"pointer",letterSpacing:"0.04em"}}>{ftEditOpen?"CLOSE":conquasStats.ftApplicable>0?"EDIT":"+ ENTER COUNTS"}</button>
+              <div style={{fontSize:10,fontWeight:800,color:"#1d6b8f",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif"}}>FT (FUNCTIONAL TESTS) · EF (EXTERNAL FINISHES)</div>
+              <button onClick={()=>setFtEditOpen(v=>!v)} style={{background:ftEditOpen?"#34aadc":"transparent",border:"1px solid rgba(52,170,220,0.4)",borderRadius:6,padding:"3px 10px",color:ftEditOpen?"#fff":"#1d6b8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,cursor:"pointer",letterSpacing:"0.04em"}}>{ftEditOpen?"CLOSE":(conquasStats.ftApplicable>0||conquasStats.efApplicable>0)?"EDIT":"+ ENTER COUNTS"}</button>
             </div>
-            {conquasStats.ftApplicable>0?(
+            {(conquasStats.ftApplicable>0||conquasStats.efApplicable>0)?(
               <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:ftEditOpen?10:0}}>
-                {conquasStats.ftRows.map((r,i)=>(
-                  <div key={i} style={{display:"flex",alignItems:"center",gap:8,fontSize:11}}>
+                {conquasStats.ftApplicable>0&&conquasStats.ftRows.map((r,i)=>(
+                  <div key={"ft"+i} style={{display:"flex",alignItems:"center",gap:8,fontSize:11}}>
                     <span style={{flex:1,color:"#1a1a1a"}}>{r.label}</span>
                     <span style={{color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",minWidth:70,textAlign:"right"}}>{r.fails} / {r.applicable}</span>
                     <span style={{minWidth:46,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:r.rate===null?"rgba(0,0,0,0.3)":r.rate>=10?"#ff3b30":r.rate>0?"#ff9500":"#30d158"}}>
@@ -9467,27 +9489,52 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
                     </span>
                   </div>
                 ))}
-                <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap"}}>
-                  {[["pullOff","Pull-Off"],["heatSoak","Heat Soak"],["wttSelf","WTT self"],["wptSelf","WPT self"]].map(([k,label])=>{
-                    const st=conquasStats.qpStatuses[k];
-                    const colour=st==="pass"?"#30d158":st==="fail"?"#ff3b30":st==="na"?"rgba(0,0,0,0.3)":"rgba(0,0,0,0.35)";
-                    const bg=st==="pass"?"rgba(48,209,88,0.1)":st==="fail"?"rgba(255,59,48,0.1)":"rgba(0,0,0,0.04)";
-                    const glyph=st==="pass"?"✓":st==="fail"?"✗":st==="na"?"—":"?";
-                    return(
-                      <div key={k} style={{background:bg,border:`1px solid ${colour}`,borderRadius:6,padding:"3px 8px",fontSize:10,color:colour,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
-                        {glyph} {label}
+                {conquasStats.ftApplicable>0&&(
+                  <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap"}}>
+                    {[["pullOff","Pull-Off"],["heatSoak","Heat Soak"],["wttSelf","WTT self"],["wptSelf","WPT self"]].map(([k,label])=>{
+                      const st=conquasStats.qpStatuses[k];
+                      const colour=st==="pass"?"#30d158":st==="fail"?"#ff3b30":st==="na"?"rgba(0,0,0,0.3)":"rgba(0,0,0,0.35)";
+                      const bg=st==="pass"?"rgba(48,209,88,0.1)":st==="fail"?"rgba(255,59,48,0.1)":"rgba(0,0,0,0.04)";
+                      const glyph=st==="pass"?"✓":st==="fail"?"✗":st==="na"?"—":"?";
+                      return(
+                        <div key={k} style={{background:bg,border:`1px solid ${colour}`,borderRadius:6,padding:"3px 8px",fontSize:10,color:colour,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
+                          {glyph} {label}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {conquasStats.efApplicable>0&&(
+                  <>
+                    <div style={{fontSize:9,fontWeight:800,color:"rgba(0,0,0,0.45)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginTop:8,marginBottom:2}}>EXTERNAL FINISHES</div>
+                    {conquasStats.efRows.map((r,i)=>(
+                      <div key={"ef"+i} style={{display:"flex",alignItems:"center",gap:8,fontSize:11}}>
+                        <span style={{flex:1,color:"#1a1a1a"}}>{r.label}</span>
+                        <span style={{color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",minWidth:70,textAlign:"right"}}>{r.fails} / {r.applicable}</span>
+                        <span style={{minWidth:46,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:r.rate===null?"rgba(0,0,0,0.3)":r.rate>=10?"#ff3b30":r.rate>0?"#ff9500":"#30d158"}}>
+                          {r.rate===null?"—":r.rate.toFixed(1)+"%"}
+                        </span>
                       </div>
-                    );
-                  })}
-                </div>
+                    ))}
+                  </>
+                )}
               </div>
             ):!ftEditOpen&&(
-              <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",lineHeight:1.4}}>No FT data yet — enter counts to include WTT/WPT/WFT in the rate.</div>
+              <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",lineHeight:1.4}}>No FT/EF data yet — enter counts to include WTT/WPT/WFT and Roof/External Wall/External Works in the rate.</div>
             )}
             {ftEditOpen&&(
               <div style={{marginTop:8,background:"#fff",border:"1px solid rgba(52,170,220,0.25)",borderRadius:8,padding:"10px 12px"}}>
                 <div style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.55)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>COUNTED NC TESTS (R1 §3.3)</div>
                 {[["ft_wtt","WTT — Window water-tightness"],["ft_wpt","WPT — Wet area water-tightness"],["ft_wft","WFT — Water flow (common areas)"]].map(([pfx,label])=>(
+                  <div key={pfx} style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                    <span style={{flex:1,fontSize:11,color:"#1a1a1a"}}>{label}</span>
+                    <input type="number" min={0} value={ftDraft[pfx+"_fails"]} onChange={e=>setFtDraft(d=>({...d,[pfx+"_fails"]:e.target.value}))} placeholder="fails" style={{width:60,padding:"4px 6px",borderRadius:6,border:"1px solid rgba(0,0,0,0.15)",fontSize:11,textAlign:"right"}}/>
+                    <span style={{fontSize:11,color:"rgba(0,0,0,0.5)"}}>/</span>
+                    <input type="number" min={0} value={ftDraft[pfx+"_applicable"]} onChange={e=>setFtDraft(d=>({...d,[pfx+"_applicable"]:e.target.value}))} placeholder="total" style={{width:60,padding:"4px 6px",borderRadius:6,border:"1px solid rgba(0,0,0,0.15)",fontSize:11,textAlign:"right"}}/>
+                  </div>
+                ))}
+                <div style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.55)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginTop:10,marginBottom:6}}>EXTERNAL FINISHES (R1 §3.3 c)</div>
+                {[["ef_roof","Roof"],["ef_wall","External Wall"],["ef_works","External Works"]].map(([pfx,label])=>(
                   <div key={pfx} style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
                     <span style={{flex:1,fontSize:11,color:"#1a1a1a"}}>{label}</span>
                     <input type="number" min={0} value={ftDraft[pfx+"_fails"]} onChange={e=>setFtDraft(d=>({...d,[pfx+"_fails"]:e.target.value}))} placeholder="fails" style={{width:60,padding:"4px 6px",borderRadius:6,border:"1px solid rgba(0,0,0,0.15)",fontSize:11,textAlign:"right"}}/>
@@ -9548,8 +9595,8 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
             </div>
           </div>
           {/* Disclaimer — reflects which components are captured vs missing */}
-          <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",lineHeight:1.5,background:"rgba(255,149,0,0.06)",border:"1px solid rgba(255,149,0,0.18)",borderRadius:8,padding:"8px 10px"}}>
-            <b>Projection only — not official CONQUAS Band.</b> 0% = all pass, 100% = all fail; lower is better. Per BCA CONQUAS (Private Residential) R1 §3.3: Project NC rate = IF × 0.4 + FT × 0.4 + EF × 0.2. {conquasStats.ftRate!==null?"This shows IF + FT re-normalised over 0.8 (EF pending).":"This shows IF only (FT + EF pending)."} Full project band also requires QP declaration on Pull-Off + Heat Soak + WTT/WPT self-tests. Final accountability rests with the accredited checker, QP, or assessor — not this app.
+          <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",lineHeight:1.5,background:conquasStats.isFullBand?"rgba(48,209,88,0.06)":"rgba(255,149,0,0.06)",border:conquasStats.isFullBand?"1px solid rgba(48,209,88,0.18)":"1px solid rgba(255,149,0,0.18)",borderRadius:8,padding:"8px 10px"}}>
+            <b>{conquasStats.isFullBand?"Full Project NC rate":"Projection only — not official CONQUAS Band"}.</b> 0% = all pass, 100% = all fail; lower is better. Per BCA CONQUAS (Private Residential) R1 §3.3: Project NC rate = IF × 0.4 + FT × 0.4 + EF × 0.2. {conquasStats.isFullBand?"All three components captured — showing the full formula.":conquasStats.projectedBasis.includes("IF + FT + EF")?"":conquasStats.ftRate!==null&&conquasStats.efRate===null?"This shows IF + FT re-normalised over 0.8 (EF pending).":conquasStats.efRate!==null&&conquasStats.ftRate===null?"This shows IF + EF re-normalised over 0.6 (FT pending).":"This shows IF only (FT + EF pending)."} Project band is the AI app's best projection — official banding requires BCA assessor sign-off, QP declarations (Pull-Off · Heat Soak · WTT/WPT self-tests), and complete sampling per R1. Final accountability rests with the accredited checker, QP, or assessor — not this app.
           </div>
         </div>
       )}

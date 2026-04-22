@@ -470,6 +470,30 @@
       {
         "name": "ft_wpt_self_test_status",
         "type": "text"
+      },
+      {
+        "name": "ef_roof_applicable",
+        "type": "number"
+      },
+      {
+        "name": "ef_roof_fails",
+        "type": "number"
+      },
+      {
+        "name": "ef_wall_applicable",
+        "type": "number"
+      },
+      {
+        "name": "ef_wall_fails",
+        "type": "number"
+      },
+      {
+        "name": "ef_works_applicable",
+        "type": "number"
+      },
+      {
+        "name": "ef_works_fails",
+        "type": "number"
       }
     ],
     "listRule": "@request.auth.id != ''",
