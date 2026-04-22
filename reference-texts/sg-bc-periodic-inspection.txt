@@ -1,0 +1,408 @@
+Building Control (Periodic Inspection of Buildings and Building Façades)
+Regulations 2021
+
+Table of Contents
+
+Enacting Formula
+
+Part 1 PRELIMINARY
+
+1 Citation and commencement
+
+2 Definitions
+
+Part 2 INSPECTION OF BUILDINGS
+
+3 Appointment of structural engineer
+
+4 Replacement of appointed structural engineer
+
+5 Notice of appointment of structural engineer
+
+6 How structural inspection to be carried out
+
+7 Reports of structural inspection carried out
+
+Part 3 INSPECTION OF BUILDING FAÇADES
+
+8 Meaning of "façade" of building
+
+9 Requirement to be competent person
+
+10 Qualifications of façade inspector
+
+11 Accreditation of façade inspector
+
+12 Appointment of competent person
+
+Singapore Statutes Online  Published in Subsidiary Legislation Supplement  PDF created date on: 22 Apr 2026
+                                              on 18 Oct 2021
+
+      13 Replacement of appointed competent person
+      14 Notice of appointment of competent person
+      15 How façade inspection to be carried out
+      16 Vicarious visual or close-range inspection
+      17 Reports of façade inspection carried out
+Part 4 GENERAL MATTERS
+      18 Service of notices on multiple owners
+      19 Revocation and saving
+
+No. S 785
+
+                         BUILDING CONTROL ACT
+                                  (CHAPTER 29)
+
+                             BUILDING CONTROL
+                (PERIODIC INSPECTION OF BUILDINGS
+           AND BUILDING FAÇADES) REGULATIONS 2021
+
+   In exercise of the powers conferred by section 49(1) of the Building Control Act, the
+Minister for National Development makes the following Regulations:
+
+                                                 PART 1
+
+                                            PRELIMINARY
+
+Citation and commencement
+   1. These Regulations are the Building Control (Periodic Inspection of Buildings and
+
+Building Façades) Regulations 2021 and come into operation on 1 January 2022.
+
+Singapore Statutes Online  Published in Subsidiary Legislation Supplement  PDF created date on: 22 Apr 2026
+                                              on 18 Oct 2021
+
+Definitions
+
+   2.—(1) In these Regulations, unless the context otherwise requires —
+
+       “appointed competent person” means a competent person appointed by the owner
+           of a building under regulation 12, and includes a competent person appointed
+           in replacement under regulation 13;
+
+       “appointed structural engineer” means a structural engineer appointed by the
+           owner of a building under regulation 3, and includes a structural engineer
+           appointed in replacement under regulation 4;
+
+       “Commissioner” means the Commissioner of Building Control appointed under
+           section 3(1) of the Act to be responsible for the operation of Part 5 of the Act;
+
+       “façade inspection”, in relation to a building, means an inspection of the façade of
+           the building to identify —
+
+                 (a) any part of the façade that may be subject to excessive erosion,
+                        corrosion, wear, fatigue, stress or strain; or
+
+                 (b) any other situation or circumstance,
+
+            that may give rise to a probability of the occurrence or potential occurrence of
+            the collapse (wholly or partly) of the façade and death or injury to individuals,
+            or damage to other property, within or outside the building;
+
+       “façade inspection notice”, in relation to a building, means a notice given under
+           section 28(1)(b) of the Act requiring a façade inspection of the building
+           specified in the notice;
+
+       “façade-related working experience” means practical working experience in
+           respect of the fabrication, installation, repair or maintenance of one or more
+           elements of any façade of a building;
+
+       “full façade investigation” has the meaning given by regulation 15(6);
+
+       “full structural investigation” has the meaning given by regulation 6(4);
+
+       “owner”, in relation to a building, means all owners of the building if there are
+           more than one;
+
+       “structural inspection”, in relation to a building, means an inspection of the
+           building to ensure its structural stability or integrity;
+
+       “structural inspection notice” means a notice given under section 28(1)(a) of the
+           Act requiring a structural inspection of a building specified in the notice;
+
+Singapore Statutes Online  Published in Subsidiary Legislation Supplement  PDF created date on: 22 Apr 2026
+                                              on 18 Oct 2021
+
+       “working day” means any day other than a Saturday, Sunday or public holiday.
+
+   (2) Where the time specified by these Regulations for doing any act expires on a day
+other than a working day, the act is in time if done on the next working day.
+
+                           PART 2
+
+                           INSPECTION OF BUILDINGS
+
+Appointment of structural engineer
+
+   3.—(1) Where a structural inspection notice is given to an owner of a building
+specified in the notice, the owner of the building must appoint, within any of the
+following times, a structural engineer to carry out a structural inspection of the building:
+
+           (a) within 2 months after the date of the structural inspection notice;
+
+           (b) within any period of extension allowed under section 2(6) of the Act.
+
+   (2) An owner of a building who, intentionally or negligently, fails to appoint a
+structural engineer within the time delimited by or under paragraph (1) shall be guilty of
+an offence and shall be liable on conviction to a fine not exceeding $20,000.
+
+Replacement of appointed structural engineer
+
+   4.—(1) Where a structural engineer appointed under regulation 3(1) becomes
+unwilling or unable, for any reason, to carry out or continue carrying out the structural
+inspection of the building concerned, the owner of the building must, within any of the
+following times, appoint another structural engineer to carry out or continue carrying out
+the structural inspection of the building:
+
+           (a) within 2 months after the date the owner becomes aware that the
+                 firstmentioned structural engineer is unable, or does not intend, to carry out
+                 or continue carrying out the structural inspection;
+
+           (b) within any period of extension allowed under section 2(6) of the Act.
+
+   (2) An owner of a building who, intentionally or negligently, fails to appoint a
+structural engineer within the time delimited by or under paragraph (1) shall be guilty of
+an offence and shall be liable on conviction to a fine not exceeding $20,000.
+
+Notice of appointment of structural engineer
+
+   5.—(1) An owner of a building specified in a structural inspection notice given to the
+owner must, after appointing a structural engineer under regulation 3 or another
+
+Singapore Statutes Online  Published in Subsidiary Legislation Supplement  PDF created date on: 22 Apr 2026
+                                              on 18 Oct 2021
+
+structural engineer in replacement under regulation 4, give a notice, in accordance with
+paragraph (2), to the Commissioner no later than the 7th day (or the next working day)
+after the end of —
+
+           (a) 2 months after the date of the structural inspection notice; or
+
+           (b) any period of extension allowed under section 2(6) of the Act for the
+                 period mentioned in sub-paragraph (a).
+
+   (2) A notice required by paragraph (1) must —
+
+           (a) state the name of the structural engineer appointed; and
+
+           (b) contain a statement, signed by that structural engineer, confirming the
+                 appointment.
+
+   (3) An owner of a building who, intentionally or negligently, fails to give notice to
+the Commissioner within the time delimited by or under paragraph (1) shall be guilty of
+an offence and shall be liable on conviction to a fine not exceeding $10,000.
+
+How structural inspection to be carried out
+
+   6.—(1) For the purposes of section 28(6)(a) of the Act, an appointed structural
+engineer must carry out in the manner prescribed in this regulation the structural
+inspection of a building specified in a structural inspection notice.
+
+   (2) First, the appointed structural engineer must with reasonable diligence carry out a
+visual inspection of the building, which must include a visual survey, carried out
+personally, of all of the following:
+
+           (a) the condition of the building;
+
+           (b) the loading on the structure of the building;
+
+           (c) whether there is evidence of any structural works that are or were carried
+                 out without any prior approval of the plans of those works where prior
+                 approval is required by Part 2 of the Act.
+
+   (3) Next, if an appointed structural engineer, after carrying out a visual inspection of
+the building under paragraph (2) —
+
+           (a) reasonably suspects or is of the opinion that there is any defect,
+                 deformation or deterioration in the structure of the building that will or will
+                 be likely to endanger or reduce the structural stability or integrity of any
+                 part of the building; and
+
+           (b) is of the opinion that it is necessary to carry out a full structural
+
+Singapore Statutes Online  Published in Subsidiary Legislation Supplement  PDF created date on: 22 Apr 2026
+                                              on 18 Oct 2021
+
+investigation of the building in order —
+    (i) to ascertain the cause of the defect, deformation or deterioration;
+          and
+
+   (ii) to recommend appropriate measures or other building works to
+          ensure the structural stability or integrity of the building,
+
+the appointed structural engineer must, and only with the prior approval of the
+Commissioner, with reasonable diligence carry out a full structural investigation of the
+building.
+
+   (4) A full structural investigation of a building includes —
+
+          (a) taking all reasonable steps to obtain information relating to the design,
+                 construction, maintenance and history of the building;
+
+          (b) doing either of the following with a view to determining any inadequacy in
+                 the structural elements of the building:
+                     (i) checking with reasonable diligence the structural plans of the
+                           building and the calculations contained in the plans;
+
+                    (ii) if the plans cannot be obtained, reconstructing with reasonable
+                           diligence such structural plans where the Commissioner so
+                           requires;
+
+           (c) carrying out or causing to be carried out tests on the structural elements of
+                 the building without damaging any part of the structural elements of the
+                 building;
+
+           (d) carrying out or causing to be carried out tests on the materials used in the
+                 construction of the building; and
+
+           (e) carrying out or causing to be carried out load testing of such parts of the
+                 building as the appointed structural engineer considers necessary.
+
+   (5) An application by an appointed structural engineer for the Commissioner’s
+approval to carry out a full structural investigation of the building must be accompanied
+by an interim report containing a detailed description of the visual inspection of the
+building under paragraph (2).
+
+Reports of structural inspection carried out
+   7.—(1) After carrying out a visual inspection of a building under regulation 6(2), the
+
+Singapore Statutes Online  Published in Subsidiary Legislation Supplement  PDF created date on: 22 Apr 2026
+                                              on 18 Oct 2021
+
+appointed structural engineer must prepare a report on the results of the visual inspection
+and his or her assessment of the condition of the building if —
+
+           (a) he or she is of the opinion that there is no sign of any defect, deformation
+                 or deterioration in the structure of the building that will or will be likely to
+                 endanger or reduce the structural stability or integrity of any part of the
+                 building;
+
+           (b) he or she reasonably suspects or is of the opinion that —
+                     (i) there is a defect, deformation or deterioration in the structure of
+                            the building that will or will be likely to endanger or reduce the
+                            structural stability or integrity of any part of the building; but
+
+                    (ii) it is not necessary to carry out a full structural investigation of
+                            the building in order —
+
+                                (A) to ascertain the cause of the defect, deformation or
+                                       deterioration; and
+
+                                (B) to recommend appropriate measures or other building
+                                       works to ensure the structural stability or integrity of
+                                       the building; or
+
+           (c) no approval is granted by the Commissioner for a full structural
+                 investigation of the building.
+
+   (2) After carrying out a full structural investigation of a building, the appointed
+structural engineer must prepare a report of the results of the full structural investigation
+of the building and his or her assessment of the condition of the building.
+
+   (3) A report of the results of an inspection of a building required by section 28 of the
+Act must contain —
+
+           (a) a detailed description of the visual inspection and any full structural
+                 investigation of the building conducted by the appointed structural
+                 engineer;
+
+           (b) analyses of observations and of every test conducted in the course of any
+                 full structural investigation of the building; and
+
+           (c) recommendations by the appointed structural engineer as to such building
+                 works as are necessary to ensure the structural stability or integrity of any
+                 part of the building.
+
+                           PART 3
+
+Singapore Statutes Online  Published in Subsidiary Legislation Supplement  PDF created date on: 22 Apr 2026
+                                              on 18 Oct 2021
+
+                           INSPECTION OF BUILDING FAÇADES
+
+Meaning of “façade” of building
+
+   8.—(1) For the purpose of paragraph (c) of the definition of “façade” in section 26(1)
+of the Act, the following parts of a building located on or near the exterior of a building
+are each prescribed to be the façade of the building:
+
+           (a) any directional sign, signboard, skysign, animated billboard or other
+                 advertising structure installed for 36 months or shorter, and includes any
+                 frame, panel, hoarding or other supporting structure of or for the
+                 directional sign, signboard, skysign, animated billboard or other
+                 advertising structure;
+
+           (b) any of the following that is used or may be used, for 36 months or shorter,
+                 to attach to, or that supports or may support for use with, the building any
+                 externally mounted equipment:
+
+                     (i) a metal or concrete bracket, or similar structural supporting
+                            system attached to the building and to the externally mounted
+                            equipment (if any);
+
+                    (ii) a cable and other associated components of a structural
+                            supporting system mentioned in sub-paragraph (i), where the
+                            cable or components are attached to the building and to the
+                            externally mounted equipment (if any).
+
+(2) In paragraph (1)(b), “externally mounted equipment” includes the following:
+       (a) an air-conditioning unit and its condensing equipment;
+       (b) a ventilation system;
+       (c) a photovoltaic array or panel;
+       (d) a solar water heater;
+       (e) an apparatus (including a dish antenna) or a combination of apparatus for
+             the transmission or direct reception of broadcast matter or wireless
+             communication.
+
+Requirement to be competent person
+
+   9. For the purpose of the definition of “competent person” in section 26(1) of the Act,
+the requirement a qualified person must satisfy in order to be a competent person is
+attending and successfully completing, before, on or after 1 January 2022, the course
+
+Singapore Statutes Online  Published in Subsidiary Legislation Supplement  PDF created date on: 22 Apr 2026
+                                              on 18 Oct 2021
+
+called the “Certificate in Façade Inspection” conducted or developed by the Building and
+Construction Authority, solely or jointly with any other person.
+
+Qualifications of façade inspector
+
+   10.—(1) For the purpose of paragraph (b) of the definition of “façade inspector” in
+section 26(1) of the Act, the qualifications and experience an individual must have in
+order to be a façade inspector are —
+
+           (a) a certificate evidencing attending and successfully completing, before, on
+                 or after 1 January 2022, the course called the “Certificate in Façade
+                 Inspection” conducted or developed by the Building and Construction
+                 Authority, solely or jointly with any other person; and
+
+           (b) an additional qualification and experience from among those mentioned in
+                 paragraph (2).
+
+   (2) The additional qualification and experience required under paragraph (1)(b) are as
+follows:
+
+           (a) a university degree or any other professional qualification recognised by
+                 the Professional Engineers Board for registration as a professional engineer
+                 under the Professional Engineers Act in the civil or structural engineering
+                 discipline, and at least 3 continuous months of working experience (which
+                 may include industrial attachments during the course of study) in civil or
+                 structural engineering;
+
+           (b) a postgraduate master’s degree or doctoral degree in Civil Engineering or
+                 Structural Engineering from any university recognised by the Professional
+                 Engineers Board for registration as a professional engineer under the
+                 Professional Engineers Act, and at least 3 continuous months of working
+                 experience (which may include industrial attachments during the course of
+                 study) in civil or structural engineering;
+
+           (c) a Chartered Engineer registered by the Engineering Council United
+                 Kingdom in the civil engineering or structural engineering discipline, and
+                 at least 3 continuous months of working experience (which may include
+                 industrial attachments during the course of study) in civil or structural
+                 engineering;
+
+           (d) a degree from any local university or a diploma from any local polytechnic
+                 in Civil Engineering or Structural Engineering and at least 3 continuous
+                 months of working experience (which may include industrial attachments
+                 during the course of st

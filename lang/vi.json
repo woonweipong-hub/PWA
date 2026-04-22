@@ -799,6 +799,8 @@
     "set_ai_desc": "Kết nối Gemini (miễn phí), Ollama (cục bộ) hoặc OpenAI/GPT để phân tích ảnh và tìm kiếm.",
     "set_telegram": "điện tín",
     "set_telegram_desc": "Cảnh báo thời gian thực đến nhóm của bạn khi các mục được ghi nhận hoặc cập nhật.",
+    "set_email": "Cài đặt email",
+    "set_email_desc": "SMTP cho email báo cáo — đặt người nhận, tên người gửi và thông tin xác thực SMTP để tab BÁO CÁO có thể gửi báo cáo trang web qua email.",
     "set_storage": "Lưu trữ",
     "set_storage_desc": "Chọn PocketBase (mặc định), đường dẫn cục bộ hoặc Google Drive.",
     "set_language": "Ngôn ngữ",

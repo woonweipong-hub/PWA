@@ -799,6 +799,8 @@
     "set_ai_desc": "Sambungkan Gemini (percuma), Ollama (tempatan) atau OpenAI/GPT untuk analisis foto dan carian.",
     "set_telegram": "Telegram",
     "set_telegram_desc": "Amaran masa nyata ke kumpulan pasukan anda apabila item direkod atau dikemas kini.",
+    "set_email": "Persediaan E-mel",
+    "set_email_desc": "SMTP untuk e-mel laporan — tetapkan penerima, nama pengirim dan bukti kelayakan SMTP supaya tab REPORT boleh menghantar e-mel kepada laporan tapak.",
     "set_storage": "Storan",
     "set_storage_desc": "Pilih PocketBase (lalai), laluan tempatan atau Google Drive.",
     "set_language": "Bahasa",

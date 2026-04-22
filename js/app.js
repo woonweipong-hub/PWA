@@ -18313,18 +18313,20 @@ function App(){
                       [t("help.set_team"),t("help.set_team_desc")],
                       [t("help.set_ai"),t("help.set_ai_desc")],
                       [t("help.set_telegram"),t("help.set_telegram_desc")],
+                      [t("help.set_email"),t("help.set_email_desc")],
                       [t("help.set_storage"),t("help.set_storage_desc")],
                       [t("help.set_maps"),t("help.set_maps_desc")],
                       [t("help.set_language"),t("help.set_language_desc")],
                     ]],
-                    ["Agencies & frameworks supported",[
-                      ["Private developer sites","Use any defect-tracking or CONQUAS / Quality Mark flow. Requirements Advisor accepts PSSCOC as reference; users upload project-specific (FIDIC, REDAS, SIA, bespoke) terms via the + ADD PDF card."],
-                      ["BCA CONQUAS (Private Residential) R1","Effective 1 April 2026. Live weighted NC rate (IF×0.4 + FT×0.4 + EF×0.2), Band 1–6 projection, AI-assisted checkpoint wizard, observation audit trail. R1 adds Water Flow Test (WFT)."],
-                      ["BCA Quality Mark","Unit-by-unit reference bundled (22 May 2025 guide). Shares the same capture-verify-report loop as CONQUAS. Dedicated QM scope module on the roadmap."],
-                      ["HDB","BTO handover checklist bundled as reference. Same capture-verify-report loop; HDB-specific referencing slots into the Requirements Advisor picker."],
-                      ["LTA, JTC, MOE, MOHH","Public-sector sites use the same defect / inspection / report loop. Agency-specific reference documents can be uploaded per project. ISO 19650-compatible filenames on export keep submissions parseable by CORENET-X workflows."],
-                      ["Façade inspection (PFI)","BCA PFI competent-person guideline available as reference. Visual-check + photo-batch capture flow matches façade-inspection workflow (spalling, cracks, cladding, sealant, corrosion)."],
-                      ["BCA Good Industry Practice (17 trade guides)","Painting, tiling, waterproofing (int + ext), aluminium window, timber doors, timber + vinyl + engineered flooring, wardrobes, drywall, PBU, precast, design & materials (vol 1+2) — all bundled as reference; AI-extractable into structured checkpoints via tools/seed-gip-checkpoints.js."]
+                    ["Standards & frameworks",[
+                      ["Embedded with ontology — BCA CONQUAS (Private Residential) R1","Components, defect types, checkpoints, and 1X / 2X / 3X tier weightings seeded in the database. Live weighted NC rate (IF × 0.4 + FT × 0.4 + EF × 0.2), Band 1–6 projection, AI-assisted checkpoint wizard, observation audit trail. R1 (20 Apr 2026) adds Water Flow Test."],
+                      ["Bundled as reference document — BCA CONQUAS 2022 R2 V5","Non-residential manual. Reference text pre-extracted; Requirements Advisor can cite it. Ontology not yet seeded for 2022."],
+                      ["Bundled as reference document — BCA Quality Mark","22 May 2025 guide. Reference only; dedicated unit-by-unit QM wizard is on the roadmap."],
+                      ["Bundled as reference document — BCA Good Industry Practice (17 trade guides)","Painting, ceramic tiling, natural stone, agglomerated stone, waterproofing (int + ext), aluminium window, timber doors, timber / engineered / vinyl flooring, wardrobes + kitchen cabinets, drywall, PBU, precast, design & materials (vol 1 + 2). All OCR'd and text-extractable. Structured-checkpoint extraction available via tools/seed-gip-checkpoints.js when you want to run it."],
+                      ["Bundled as reference document — PSSCOC","3 variants (Construction Works 2020, Construction Works Lite 2025, Design & Build 2020). Reference text pre-extracted."],
+                      ["Export interoperability — ISO 19650","PDF export uses ISO 19650 §5 filename convention: Project-Originator-Block-Level-Type-Role-Number-Suitability-Date. Trade → role, status → suitability, stage codes mapped. Parse-able by CORENET-X submission workflows."],
+                      ["Bring your own — Requirements Advisor upload","HDB, LTA, JTC, MOE, MOHH, FIDIC, SIA, REDAS, bespoke developer contracts, internal QA/QC protocols — any PDF. Uploaded per project, text extracted in-browser, merged with the bundled references when the Advisor runs. Not embedded in the ontology; they drive AI reasoning via the Advisor only."],
+                      ["Not yet supported","Direct bidirectional integration with Procore, Autodesk Build, Trimble, BIM 360, CORENET-X portal, or any BIM tool. Exports (PDF, CSV, Google Sheets) are the current handoff path."]
                     ]],
                     ["Automation & AI-assist",[
                       ["Photo → record in one tap","AI pre-fills title, description, severity, trade, issue type, CONQUAS checkpoint, work component — from a single photo. Human confirms."],
@@ -18476,7 +18478,7 @@ function App(){
                       ),
                       // AI Section
                       React.createElement(Section,{icon:"🤖",title:"AI — YOUR OWN MODELS",color:"#5856d6"},
-                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"SiteShrimp digitalises the manual checks, records, and reports that every construction site runs — across active supervision, completion handover, and post-completion DLP / façade inspection. One AI-assisted workflow for private developers and public-sector sites (BCA, HDB, LTA, JTC, MOE, MOHH) alike. Bring any AI provider for photo analysis, auto-fill (title, severity, trade, assignee), natural-language search, PDF diff reports, and Requirements Advisor (defect-to-requirement mapping using PSSCOC, BCA CONQUAS, BCA Good Industry Practice, HDB checklists, or your own uploaded documents). You choose the model, you control the cost."),
+                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"Photo-driven defect capture with AI pre-fill. Embedded references today: BCA CONQUAS (Private Residential R1 + 2022), BCA Quality Mark, BCA Good Industry Practice (17 trade guides), PSSCOC, and ISO 19650 filename mapping on PDF export. Bring any AI provider for photo analysis, auto-fill (title, severity, trade, assignee), natural-language search, PDF diff reports, and Requirements Advisor (defect-to-requirement mapping across the bundled references or project-specific PDFs you upload — HDB, LTA, JTC, MOE, MOHH, FIDIC, SIA, REDAS, bespoke terms). You choose the model, you control the cost."),
                         React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:8}},
                           React.createElement("div",{style:{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"10px 12px"}},
                             React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"#5856d6",marginBottom:4}},"GOOGLE GEMINI (Free)"),
@@ -18633,7 +18635,7 @@ function App(){
                 <div style={{color:"rgba(255,255,255,0.78)",fontSize:12,lineHeight:1.7,fontFamily:"'Barlow',sans-serif"}}>
                   <div style={{marginBottom:16}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ffcc00",letterSpacing:"0.05em",marginBottom:6}}>PURPOSE</div>
-                    <div style={{color:"rgba(255,255,255,0.72)",lineHeight:1.6}}>SiteShrimp digitalises the manual checks, records, and reports that every construction site runs — from active-site supervision through completion handover to post-completion defects-liability and façade inspection. One photo-driven, AI-assisted workflow for private developers and public-sector sites (BCA, HDB, LTA, JTC, MOE, MOHH) alike: capture a defect in one photo, AI pre-fills severity, classification, location and follow-up, and the record lands in CONQUAS / Quality Mark-aligned format with ISO 19650-compatible naming on export. Self-driven, offered free for user-facing features, shared to help the built-environment industry move from clipboards to evidence-grade digital records.</div>
+                    <div style={{color:"rgba(255,255,255,0.72)",lineHeight:1.6}}>Photo-driven defect capture with AI pre-fill and an evidence-integrity trail. Embedded today: BCA CONQUAS (Private Residential R1 + 2022) with weighted NC rate calculator; BCA Quality Mark, BCA Good Industry Practice (17 trade guides) and PSSCOC as reference documents; ISO 19650 filename mapping on PDF export. Records carry a SHA-256 photo hash, capture timezone, source type, and a change log. The Requirements Advisor accepts user-uploaded PDFs per project so teams can bring their own standards (HDB, LTA, JTC, MOE, MOHH, FIDIC / SIA / REDAS, bespoke developer terms) when the bundled set doesn't cover a project. Self-driven, offered free for user-facing features, shared to help the built-environment industry move from clipboards to evidence-grade digital records.</div>
                   </div>
 
                   <div style={{background:"rgba(255,204,0,0.08)",border:"1px solid rgba(255,204,0,0.3)",borderRadius:12,padding:"14px 16px",marginBottom:18}}>

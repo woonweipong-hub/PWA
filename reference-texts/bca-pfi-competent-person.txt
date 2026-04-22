@@ -1,0 +1,339 @@
+Guidelines on Periodic
+  Facade Inspection
+
+                              Version 1.2
+                                Jul 2022
+
+                            Issued By:
+
+TABLE OF CONTENTS
+
+1. BACKGROUND
+2. APPLICATION OF PERIODIC FAÇADE INSPECTION REGIME
+3. QUALIFICATIONS OF COMPETENT PERSON AND FAÇADE INSPECTOR
+4. GENERAL DUTIES OF COMPETENT PERSON AND FAÇADE INSPECTOR
+
+     4.1. Competent Person
+     4.2. Façade Inspector
+5. SCOPE OF FACADE INSPECTION
+6. INSPECTION PROCEDURES
+     6.1. Preparation and Review of Drawings/Documents
+     6.2. Inspection Planning for Access and Equipment
+     6.3. Full Visual Inspection
+     6.4. Close-range Inspection
+7. FULL FAÇADE INVESTIGATION
+8. RECORDS OF FAÇADE INSPECTIONS
+9. COMMON DEFECTS ON BUILDING FAÇADE
+     9.1. General
+     9.2. Common Façade Defects
+10. ASSESSMENT AND CLASSIFICATION OF RESULTS
+11. FORMAT OF REPORT SUBMISSION
+12. REPAIR WORKS TO BUILDING FAÇADE DEFECTS
+
+                                                                                                                          1
+
+ANNEXES
+     Annex A: Examples of Building Apex
+     Annex B: Examples of 10% Close-Range Inspection Requirement
+     Annex C: Inspection Checklist of Façade Record for Elevation
+     Annex D: Standard Certification by Competent Person for Periodic Façade Inspection
+     of Buildings
+     Annex E: Checklist for Periodic Façade Inspection (PFI) Report of Existing Building
+
+                                                                                                                          2
+
+1.  BACKGROUND
+
+1.1. The Periodic Façade Inspection (PFI) regime was introduced in 2020 to enhance the
+           safety of building facades by facilitating early detection of façade deterioration and
+           allowing defects to be rectified in a timely manner so as to reduce the likelihood of
+           façade failure as our building stock ages.
+
+1.2. The guidelines serve as a reference for Competent Persons and Façade Inspectors
+           when carrying out façade inspections in Singapore.
+
+2.  APPLICATION OF PERIODIC FAÇADE INSPECTION REGIME
+
+2.1. The Periodic Façade Inspection regime applies to all buildings except:
+           a) Detached houses, semi-detached houses, terraced or linked houses which are
+                 used solely as places of residence,
+           b) Temporary buildings, and
+           c) Buildings where the highest point (whether or not a roof) is 13 metres or lower
+                 when measured from the ground1.
+
+2.2. Periodic façade inspections are to be carried out for a building that is more than 20
+           years of age2 . The subsequent inspection shall be conducted at any time during the
+           7th or later year after the year during which the last notice requiring a façade
+           inspection was given in respect of the building.
+
+3.  QUALIFICATIONS OF COMPETENT PERSON AND FAÇADE INSPECTOR
+
+3.1. The amendments to the Building Control Act that were passed by the Parliament in
+           March 2020 require façade inspections to be conducted by a Competent Person. The
+
+1 The building height shall be measured from the ground level to the highest point of a building and does not include
+  installations (e.g. equipment such as antenna) on the roof of the building. See also Annex A for other examples
+  of building apex.
+
+2 The age of a building in respect of which a Temporary Occupation Permit (TOP) or Certificate of Statutory
+  Completion (CSC) is granted in respect of the whole building is determined from the date the last TOP is granted
+  in respect of the whole building or, where no such TOP is so granted, the date the last CSC was issued for the
+  whole building.
+
+                                                                                                                          3
+
+           Competent Person may appoint Façade Inspector(s) to assist him to carry out the
+           façade inspections.
+
+3.2. The Competent Person may be either a registered Professional Engineer in the civil
+           or structural engineering discipline with the Professional Engineers Board, or a
+           Registered Architect with the Board of Architects.
+
+3.3. The Façade Inspector may be a registered Resident Engineer or registered Resident
+           Technical Officer who is accredited with the Joint Accreditation Committee
+           established by the Institution of Engineers of Singapore (IES), the Association of
+           Consulting Engineers Singapore (ACES) and BCA for the accreditation of Façade
+           Inspectors, or any other person who possesses the relevant qualifications and
+           experience recognised by BCA.
+
+3.4. All Competent Persons and Façade Inspectors are required to attend and pass a
+           course titled the “Certificate in Façade Inspection” prior to carrying out any façade
+           inspection.
+
+4.      GENERAL DUTIES OF COMPETENT PERSON AND FAÇADE
+
+        INSPECTOR
+
+4.1. Competent Person
+
+4.1.1.  The Competent Person who is appointed by the building owner shall carry out a
+        comprehensive visual inspection and close-range inspection that enable him to
+        exercise his/her professional assessment and judgement on the condition of the
+        façade being inspected. The Competent Person shall carry out the duties as
+        prescribed in the Building Control Act and Regulations.
+
+                       4
+
+4.1.2.  The Competent Person may appoint a Façade Inspector to assist him in the façade
+        inspection under his/her direction and supervision. However, the Competent Person
+        shall remain ultimately responsible for the inspection and assessment of the
+        inspection findings and overall condition of the building facade.
+
+4.1.3.  The Competent Person must take all necessary steps as prescribed in the Building
+        Control Act and Regulations when carrying out of a façade inspection. He/she shall
+        also plan for the entire inspection exercise to be carried out in a safe manner, and be
+        present at the façade inspection to ensure that the inspection is carried out in
+        accordance with the Building Control Act and Regulations.
+
+4.1.4.  As a matter of good practice, the Competent Person should, upon becoming aware
+        of any unsafe conditions in respect of a building façade, immediately report the
+        unsafe conditions to the Commissioner of Building Control and building owner.
+
+4.2. Façade Inspector
+
+4.2.1.  The Façade Inspector should familiarise himself with the available information and
+        documents relevant to the building façade prior to the commencement of the façade
+        inspection and assist the Competent Person to carry out the façade inspection in
+        accordance with the Building Control Act and Regulations.
+
+4.2.2.  In the course of carrying out his duties, the façade inspector is required to record
+        defects found during inspection and promptly inform the Competent Person and
+        building owner if he/she observes facades that are dangerous or likely to pose
+        immediate danger.
+
+4.2.3. The façade inspector should ensure that defects recorded are done so accurately
+           and with due diligence.
+
+                       5
+
+5  SCOPE OF FAÇADE INSPECTION
+
+5.1 The scope of façade inspection covers the exterior of the building, any exterior feature
+           attached to the building, and parts of a building that is located on or near the exterior
+           of a building:
+           (a) any window, with or without movable parts, such as a roof skylight, glass
+                   panel, glass brick, louvre, glazed sash, glazed door, translucent sheeting and
+                   any other building material which transmits natural light directly from outside a
+                   building into an interior of the building;
+           (b) any grille or shutter, with or without movable parts;
+           (c) any tile, cladding, curtain wall, siding, plaster, bracket or cornice;
+           (d) any gutter, rainwater down-pipe or part of the roof;
+           (e) any membrane shade structure, or any awning or device to provide shade;
+           (f) any green wall which is partially or completely covered by vegetation,
+                   including any brackets that support it, the growing medium for the vegetation
+                   (other than soil) and any integrated water delivery system;
+           (g) any screen or screen wall;
+           (h) any louvres or fins;
+           (i) any masonry veneer;
+           (j) any window hood;
+           (k) any cantilevered roof;
+           (l) any part of a concrete wall, concrete slab, concrete beam or concrete column;
+           (m) any external balustrade;
+           (n) any directional sign, signboard, skysign, animated billboard or other
+                   advertising structure installed, and includes any frame, panel, hoarding or
+                   other supporting structure of or for the directional sign, signboard, skysign,
+                   animated billboard or other advertising structure;
+           (o) any clothes drying rack;
+           (p) any suspended ceiling system —
+                   (i) fitted under or hung from a porch, porte-cochere, portico, covered
+                   concourse or walkway, or similar shelter —
+                        (A) that is located at the entrance or side of building or projects from or
+                        near an external edge of a building; and
+                        (B) that spans across a space below which is accessible to members of
+                        the public; and
+                   (ii) the underside of which is exposed to rain;
+
+                               6
+
+           (q) any of the following that is used or may be used to attach to, or that supports
+           or may support for use with, the building any externally mounted equipment:
+
+                   (i) a metal or concrete bracket, or similar structural supporting system
+                   attached to the building and to the externally mounted equipment (if any);
+                   (ii) a cable and other associated components of a structural supporting
+                   system mentioned in sub-paragraph (i), where the cable or components are
+                   attached to the building and to the externally mounted equipment (if any).
+5.2 In paragraph 5.1 (q), externally mounted equipment includes the following:
+                (a) an air-conditioning unit and its condensing equipment;
+                (b) a ventilation system;
+                (c) a photovoltaic array or panel;
+                (d) a solar water heater;
+                (e) an apparatus (including a dish antenna) or a combination of apparatus for
+
+                     the transmission or direct reception of broadcast matter or wireless
+                     communication.
+
+                                                                                                                          7
+
+6      INSPECTION PROCEDURES
+
+6.1 Preparation and Review of Drawings/Documents
+
+6.1.1  Prior to the commencement of the inspection, the Competent Person should obtain
+       and review all relevant approved plans, shop drawings, previous inspection reports,
+       repair works histories and details to have an understanding of the façade design and
+       construction of the building including subsequent additions, alterations and repairs. It
+       is also useful to find out from the building owner/ facility manager about any problems
+       observed or reported in the building façade or its components in the past. This will
+       enable the Competent Person to have a good understanding of the existing façade
+       types and detailing.
+
+6.1.2  If there is no information or document available on the building façade, the Competent
+       Person shall carry out the review based on the appropriate Standards and Codes of
+       Practices (which are applicable to Singapore) at the time of installation of the building
+       façade with reference to the date of issue of the Temporary Occupation Permit,
+       Certificate of Statutory Completion or other relevant documents.
+
+6.2 Inspection Planning for Access and Equipment
+
+6.2.1  The Competent Person must perform façade inspections in accordance with the
+       Building Control Act and Regulations. When formulating the façade inspection
+       methodology, the Competent Person should conduct an assessment of the risks
+       involved in carrying out the façade inspection. The risk assessment should not be
+       limited to the risks potentially faced by the Competent Person, Façade Inspector and
+       the inspection team, and should also consider risks posed to the general public and
+       building occupants during the façade inspection. The safe ingress and egress of the
+       building occupants shall be ensured at all times when a façade inspection is in
+       progress .The Competent Person must take measures to manage all identified risks
+       such as adopting good safety practices, proper use of safety equipment, cordoning-
+       off of at-risk areas and etc.
+
+6.2.2  After reviewing all available information, the Competent Person should formulate
+       appropriate methods for carrying out the façade inspection, including the types of
+       access platform (e.g. gondola, boom lift etc.) to be used for close-up inspection of the
+
+                                                  8
+
+       façade elements by the Competent Person and Façade Inspector. The Competent
+       Person should consider the existing maintenance access platform available and the
+       suitability of the access platform having considered the surrounding conditions of the
+       building.
+
+6.2.3  In situations where the use of a gondola is not feasible, the Competent Person may
+       consider to use other access modes or equipment for carrying out the inspection such
+       as mast climber, scissor lift, boom lift, building maintenance unit system, motorised
+       elevated work platform or other observation platform as he/she deems appropriate.
+       Notwithstanding the selected mode of access, the Competent Person is reminded to
+       ensure that all requirements pertaining to working-at-height as imposed by the
+       Ministry of Manpower (MOM) and relevant agencies must be met, and all operators
+       shall have attained the relevant certification in the operation of the relevant
+       machineries. The Competent Person must also ensure that all access platforms
+       required to be erected for facilitating the inspections comply with standards set by the
+       MOM.
+
+6.2.4  The Competent Person must plan for the façade inspection to be done with minimal
+       inconvenience to the building occupants and the general public, and work with the
+       building owner to notify the building occupants of the façade inspection in advance.
+
+6.3 Full Visual Inspection
+
+6.3.1  The full visual inspection is a visual survey carried out to observe and assess the
+       condition of the entire building façade at an appropriate distance from ground level
+       or other suitable vantage points.
+
+6.3.2  The Competent Person and Façade Inspector under the direct supervision of the
+       Competent Person shall, from ground level or other suitable vantage locations,
+       methodically observe and assess the condition of the entire facade areas horizontally
+       and vertically. Amongst others, the Competent Person and Façade Inspector should
+       look out for dilapidation and displacement of façade elements.
+
+6.3.3  Equipment such as photographic cameras and binoculars should be used to assist in
+       the façade inspection, and to record the façade condition. Good resolution photos
+       showing all elevations views, far views, and close-up views of the building facades
+
+                            9
+
+       inspected, including the façade defects observed during this stage, shall be taken
+       during the visual inspection.
+
+6.3.4  Where the Competent Person intends to adopt technologies (e.g. infra-red scanning
+       thermography, unmanned aerial vehicles/ drones, etc.) to facilitate the performance
+       of façade inspection, approval from Commissioner of Building Control is required.
+       The Competent Person shall engage a suitably qualified party to operate the
+       equipment and provide interpretation and assessment of the results obtained. The
+       Technical Reference TR 78: 2020 – Building facade inspection using Unmanned
+       Aircraft Systems (UAS) shall be referred to when unmanned aerial vehicle or drone
+       is used for the façade inspection.
+
+6.4 Close-range Inspection
+
+6.4.1 What is “close-range” inspection?
+
+6.4.1.1 A close-range inspection is a close-up visual façade inspection with tactile
+           assessment (i.e. physical contact with the façade) of the building façade, carried out
+           using probing tools (e.g. tapping rod, rubber mallet), non-destructive testing or
+           technology (i.e. borescope, scanning equipment which does not require special
+           training to operate or use), or a combination of the aforesaid probing tools and non-
+           destructive testing or technology. Where the Competent Person intends to adopt
+           technologies (e.g. robotic automated tapping device, automated scanning equipment,
+           Infrared and ultrasound scanners, etc.) to facilitate the performance of façade
+           inspection, approval from Commissioner of Building Control is required. The
+           Competent Person must perform close-range façade inspection on suitable parts of
+           each elevation of the building, being at least 10% of the surface area of each elevation
+           (i.e. each face of the building). The purpose of a close-range inspection is to conduct
+           a detailed inspection of the façade elements to observe and evaluate conditions of
+           the façade that might be concealed or cannot be observed during the full visual
+           inspection. Close-range inspection requires physical contact with the façade to
+           detect both surface and underlying defects, such as delamination, de-bonding, or
+           hollowness in plaster/ tile and displacement or dislodgement of panels, failure of
+           anchorages/ fasteners/ supports/ brackets, as well as looseness or cracking of the
+           elements on the building façade.
+
+                                         10
+
+6.4.2 How to calculate the 10% surface area of each façade elevation?
+
+6.4.2.1 In general, the entire façade area for each building elevation is calculated by
+           multiplying the height of the building elevation by the length of the building elevation.
+           The “close-range” inspection must be performed on a surface area of at least 10% of
+           the surface area of each building façade elevation. See Annex B for examples of the
+           computation of the 10% façade elevation area.
+
+6.4.2.2 On buildings with recesses within the façade elevations, the recessed areas shall
+           count towards the total surface area of a façade elevation for close-range inspection
+           for that façade elevation. The Competent Person is to assess and decide if the
+           “close-range” inspection should be performed for the recessed area.
+
+6.4.2.3 The close-range inspection shall also apply to the external façade elements at the
+           underside of sky-bridges and overhanging floors of cantilevered buildings (e.g. The
+           Interlace, Marina Bay Sands).

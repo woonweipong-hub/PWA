@@ -799,6 +799,8 @@
     "set_ai_desc": "사진 분석 및 검색을 위해 Gemini(무료), Ollama(로컬) 또는 OpenAI/GPT를 연결합니다.",
     "set_telegram": "전보",
     "set_telegram_desc": "항목이 기록되거나 업데이트될 때 팀 그룹에 실시간 알림을 보냅니다.",
+    "set_email": "이메일 설정",
+    "set_email_desc": "보고서 이메일용 SMTP — 보고서 탭에서 사이트 보고서를 이메일로 보낼 수 있도록 수신자, 보낸 사람 이름, SMTP 자격 증명을 설정합니다.",
     "set_storage": "스토리지",
     "set_storage_desc": "PocketBase(기본값), 로컬 경로 또는 Google Drive 중에서 선택합니다.",
     "set_language": "언어",

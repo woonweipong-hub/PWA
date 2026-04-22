@@ -799,6 +799,8 @@
     "set_ai_desc": "Yhdistä Gemini (ilmainen), Ollama (paikallinen) tai OpenAI/GPT valokuva-analyysiä ja hakua varten.",
     "set_telegram": "Telegram",
     "set_telegram_desc": "Reaaliaikaiset hälytykset tiimisi ryhmään, kun kohteita kirjataan tai päivitetään.",
+    "set_email": "Sähköpostin asetukset",
+    "set_email_desc": "SMTP raporttisähköpostiviesteille — aseta vastaanottajat, lähettäjän nimi ja SMTP-tunnistetiedot, jotta RAPORTTI-välilehti voi lähettää sivustoraportteja sähköpostitse.",
     "set_storage": "Tallennus",
     "set_storage_desc": "Valitse PocketBase (oletus), paikallinen polku tai Google Drive.",
     "set_language": "Kieli",

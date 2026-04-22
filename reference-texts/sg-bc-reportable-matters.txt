@@ -1,0 +1,362 @@
+Building Control (Reportable Matters) Regulations 2025
+
+Table of Contents
+Enacting Formula
+
+      1 Citation and commencement
+      2 Definitions
+      3 Meaning of "building product"
+      4 Meaning of "reportable safety incident"
+      5 Meaning of "reportable safety risk"
+      6 When reportable matter must be notified
+      7 Reporting
+      8 Accepting report
+      9 Saving
+FIRST SCHEDULE Building products
+SECOND SCHEDULE Reportable safety incidents
+
+No. S 615                  BUILDING CONTROL ACT 1989
+                                 BUILDING CONTROL
+Singapore Statutes Online
+                           Current version as at 22 Apr 2026  PDF created date on: 22 Apr 2026
+
+                      (REPORTABLE MATTERS) REGULATIONS 2025
+
+   In exercise of the powers conferred by section 49 of the Building Control Act 1989,
+the Minister for National Development makes the following Regulations:
+
+Citation and commencement
+   1. These Regulations are the Building Control (Reportable Matters) Regulations 2025
+
+and come into operation on 1 October 2025.
+
+Definitions
+   2. In these Regulations —
+       “appropriate form”, in relation to any purpose for which a specific form is required
+           to be used for the purposes of these Regulations, means the relevant form
+           that —
+                 (a) is provided by the Commissioner; and
+                 (b) is set out on the website at https://www1.bca.gov.sg;
+       “Commissioner” means the Commissioner of Building Control appointed under
+           section 3(1) of the Act to be responsible for the operation of Part 4 of the Act;
+       “report” means a report made under these Regulations of a reportable matter;
+       “reporter”, in relation to a report, means the person making the report as required
+           by section 25B(2) of the Act.
+
+Meaning of “building product”
+   3. For the purposes of the definition of “building product” in section 22G(1) of the
+
+Act, any product, material, assembly of components, software or other thing specified in
+the First Schedule is each prescribed to be a building product.
+
+Meaning of “reportable safety incident”
+   4. Each of the following is prescribed a reportable safety incident for the purposes of
+
+paragraph (a)(iii) of the definition of “reportable matter” in section 22G(1) of the Act:
+           (a) a safety incident that involves a lift as described in Part 1 of the
+                 Second Schedule;
+           (b) a safety incident that involves an escalator as described in Part 2 of the
+                 Second Schedule;
+
+Singapore Statutes Online  Current version as at 22 Apr 2026  PDF created date on: 22 Apr 2026
+
+(c) a safety incident that involves a mechanised car parking system as
+      described in Part 3 of the Second Schedule;
+
+(d) a safety incident that involves an exterior feature of a building as described
+      in Part 4 of the Second Schedule.
+
+Meaning of “reportable safety risk”
+
+   5. Each of the following is prescribed a reportable safety risk for the purposes of
+paragraph (b)(ii) of the definition of “reportable matter” in section 22G(1) of the Act in
+relation to a building product:
+
+           (a) a feature of the design or construction of the building product, or a
+                 component, accessory or other part of the building product, that —
+
+                     (i) does not conform to the Act or other building regulations; or
+
+   (ii) does not perform, or is not capable of performing, to the
+          standard it is represented to conform,
+
+such that the use of the building product in a building poses to any
+occupant of the building, or any member of the public in or in the vicinity
+of the building, risk of death or serious injury arising from the use of the
+building product in the building;
+
+                                                  Illustrations
+
+                           (a)  Overheating of uninterruptible power supply (called “UPS”)
+
+                                installed in a lift, where the temperature of the UPS exceeds
+
+                                the designed operating temperature, which may or may not be
+
+                                accompanied by burn marks.
+
+                           (b)  Premature wear and tear of an escalator handrail drive sheave
+
+                                in an escalator.
+
+(b) a feature of the design or construction of the building product or a
+      component, accessory or other part of the building product that makes that
+      building product suitable for the intended use only in particular
+      circumstances or subject to particular conditions, but the building product
+      is used in the building other than in those circumstances or conditions,
+      such that the use of the building product poses to any occupant of the
+      building, or any member of the public in or in the vicinity of the building,
+      risk of death or serious injury arising from the use of the building product
+      in the building.
+
+When reportable matter must be notified
+
+Singapore Statutes Online       Current version as at 22 Apr 2026  PDF created date on: 22 Apr 2026
+
+   6. For the purposes of section 25B(1) of the Act, a reporter must notify the
+Commissioner —
+
+           (a) within 6 hours after the reporter first becomes aware or reasonably
+                 suspects that a reportable safety incident has arisen or may have arisen
+                 involving an exterior feature of a building or a fixed installation; or
+
+           (b) within 72 hours after the reporter first becomes aware or reasonably
+                 suspects that a reportable safety risk has arisen or may have arisen
+                 involving the use of a building product.
+
+Reporting
+
+   7.—(1) A report about a reportable matter that is required by section 25B(1) of the
+Act to be notified to the Commissioner must be made either —
+
+           (a) orally in the English language and by telephone using a telephone number
+                 specified by the Commissioner for the reporting of reportable matters; or
+
+           (b) in writing, which must be —
+                     (i) in the appropriate form;
+
+                    (ii) completed in the English language and in accordance with any
+                            direction specified in the appropriate form; and
+
+                   (iii) given to the Commissioner in a manner described in
+                            paragraph (3).
+
+   (2) However, where strict compliance with an appropriate form is not possible, the
+Commissioner may allow for the necessary modifications to be made to that form, or for
+the requirements of that form to be complied with in any other manner.
+
+   (3) A report in writing about a reportable matter may be given to the Commissioner
+as follows:
+
+           (a) by sending it by email to the electronic address specified by the
+                 Commissioner for the reporting of reportable matters;
+
+           (b) by using the electronic system provided by the Commissioner for the
+                 reporting of reportable matters.
+
+   (4) Every report must include all the following information:
+
+           (a) the name of the reporter making the report;
+
+           (b) at least one of the following:
+                     (i) the reporter’s postal address;
+
+Singapore Statutes Online  Current version as at 22 Apr 2026  PDF created date on: 22 Apr 2026
+
+                     (ii) the reporter’s email address;
+
+                    (iii) the reporter’s telephone number;
+
+           (c) a description of the reportable matter as provided in paragraph (5) or (6).
+
+   (5) Where the reportable matter is a reportable safety incident, the report must
+contain the following information:
+
+           (a) the address of the building where the incident happened;
+           (b) the date and approximate time when the incident happened;
+           (c) the nature and description of the incident;
+           (d) the type of the fixed installation or exterior feature involved in the incident
+
+                 and its location in the building;
+           (e) every fatality, injury or property damaged as a result of the incident.
+
+   (6) If the reportable matter is a reportable safety risk, the report must contain the
+following information:
+
+           (a) the building product involved;
+           (b) the address of the building where the building product is used;
+           (c) the location of the building product in the building;
+           (d) the addresses of any other buildings which the reporter is aware that other
+
+                 building products similar to the building product giving rise to the safety
+                 risk may be used, and the type and name of these other building products;
+           (e) the risk associated with the building product when using in fixed
+                 installations or exterior features in Singapore.
+
+Accepting report
+   8.—(1) The Commissioner must accept a report made in accordance with
+
+regulations 6 and 7 if the Commissioner reasonably believes that the matter described in
+the report is a reportable matter.
+
+   (2) Upon receiving a report made in accordance with regulations 6 and 7, the
+Commissioner must give the reporter a receipt that sets out the date of the acceptance of
+the report.
+
+Saving
+
+Singapore Statutes Online  Current version as at 22 Apr 2026  PDF created date on: 22 Apr 2026
+
+   9. To avoid doubt, the making of a report under these Regulations does not relieve the
+reporter from any obligation to give notice of an accident or serious incident as required
+by any other written law.
+
+                           FIRST SCHEDULE                     Regulation 3
+
+                           BUILDING PRODUCTS
+
+                                                    PART 1
+
+                                                     LIFTS
+
+ 1. Speed-monitoring and speed-limiting device.
+ 2. Device to prevent the car from falling or uncontrolled movements.
+ 3. Device for locking a pair of car doors or a single car door.
+ 4. Device for locking a pair of landing doors or a single landing door.
+ 5. Interlocking device to prevent, during normal operation of a lift —
+
+             (a) the starting movement of the car, whether or not deliberately activated, unless each
+                    car door and each landing door is shut and locked; and
+
+             (b) the opening of a car door or a landing door when the car is still moving and
+                    outside a designated landing zone.
+
+ 6. Overspeed limitation device (such as an overspeed governor and links with safety gear).
+ 7. Energy-dissipating buffer.
+ 8. Energy-accumulating buffer that is —
+
+             (a) non-linear; and
+             (b) with damping of the return movement.
+ 9. E/E/PE (within the meaning given by regulation 2(1) of the Building Control (Fixed
+     Installations) Regulations 2025 (G.N. No. S 614/2025)) of a lift.
+10. Safety device fitted to a jack of a hydraulic power circuit where the safety device is used as a
+     device to prevent falls.
+11. Lift control system (including the application programming or converter of integrated driving
+     machine).
+12. Lift landing door.
+
+Singapore Statutes Online  Current version as at 22 Apr 2026  PDF created date on: 22 Apr 2026
+
+13. Lift car door.
+14. Emergency power supply for lift.
+
+                                                    PART 2
+
+                                               ESCALATORS
+ 1. Escalator control system (including the application programming or converter of integrated
+
+     driving machine).
+ 2. Braking system.
+ 3. Auxiliary brake.
+ 4. E/E/PE (within the meaning given by regulation 2(1) of the Building Control (Fixed
+
+     Installations) Regulations 2025) of an escalator.
+ 5. Main drive shaft and mechanism.
+ 6. Step, step chain and step axle.
+ 7. Handrail and handrail drive system.
+
+                                                    PART 3
+
+                              MECHANISED CAR PARKING SYSTEM
+ 1. Main electronic control panel that involves the control logic of the systems.
+ 2. Load carrier.
+ 3. Suspension element for the load carrier.
+ 4. Anti-fall device.
+ 5. Sensor that is used to detect the presence of a driver in the transfer area including a proximity
+
+     sensor, a limit switch, an entrance single beam or a light curtain.
+ 6. Safety circuit containing electronic components.
+
+                                 SECOND SCHEDULE              Regulation 4
+
+                           REPORTABLE SAFETY INCIDENTS
+                                              PART 1
+
+Singapore Statutes Online  Current version as at 22 Apr 2026  PDF created date on: 22 Apr 2026
+
+                                                     LIFTS
+
+ 1. An individual dies or is injured because of an incident associated with a lift’s operation.
+ 2. The main drive system of a lift fails due to a reason other than the failure of the main power
+
+     system of the lift.
+ 3. The suspension rope of a lift breaks.
+ 4. A lift brake fails.
+ 5. An energy-dissipating or energy-accumulating buffer fails.
+ 6. An interlocking device for any door of the hoistway of a lift or a lift car (including any landing
+
+     door, car door or emergency access door) fails.
+ 7. Fire outbreak, or smoke emitted, from any part of the lift system.
+ 8. Lift car over-travelling to or beyond highest or lowest floor.
+ 9. Lift car building up speed continuously before an abrupt stop upon impact.
+10. Lift car travelling above its normal speed or at risk of doing so.
+11. Abnormal noise from an object falling on top of a lift car or lift pit or striking against the lift
+
+     car.
+12. Abnormal entanglement of wire ropes.
+13. Lift car ascending or falling suddenly in an uncontrolled manner.
+14. Major damage or dislodgment of lift car cage, ceiling, false ceiling, car door or landing door.
+
+                                                    PART 2
+
+                                               ESCALATORS
+
+ 1. An individual dies or is injured because of an incident associated with an escalator’s operation.
+ 2. The main drive system, handrail drive system or step drive system of an escalator fails, other
+
+     than because of a failure of the escalator’s main power system.
+ 3. A brake or auxiliary brake of an escalator fails.
+ 4. Fire outbreak, or smoke emitted, from any part of the escalator system.
+ 5. Upriding escalator suddenly reversing direction.
+ 6. Escalator travelling at excessive speed.
+ 7. Tilting, flipping, or collapsed escalator step.
+ 8. Stoppage or excessive slippage of handrail.
+
+Singapore Statutes Online  Current version as at 22 Apr 2026  PDF created date on: 22 Apr 2026
+
+9. Broken balustrade glass panel.
+
+                                                  PART 3
+
+                            MECHANISED CAR PARKING SYSTEM
+
+1. An individual dies or is injured because of an incident associated with the mechanised car
+   parking system’s operation.
+
+2. A brake of the mechanised car parking system fails.
+3. A device connected to the safety circuit of the mechanised car parking system fails.
+
+                                                  PART 4
+
+                              EXTERIOR FEATURE OF BUILDING
+
+1. An individual dies or is injured because of an incident associated with the condition of the
+   exterior feature.
+
+2. Dislodgment of an exterior feature or any part of an exterior feature where any property (other
+   than the exterior feature itself) is damaged because of an incident associated with the condition
+   of the exterior feature.
+
+Made on 23 September 2025.
+
+                                                       LOH NGAI SENG
+                                                    Permanent Secretary,
+                                     Ministry of National Development,
+
+                                                                  Singapore.
+
+[202/01-007; AG/LEGIS/SL/29/2020/7]
+
+(To be presented to Parliament under section 52 of the Building Control Act 1989).
+
+Singapore Statutes Online   Current version as at 22 Apr 2026  PDF created date on: 22 Apr 2026

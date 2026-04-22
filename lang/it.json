@@ -799,6 +799,8 @@
     "set_ai_desc": "Collega Gemini (gratuito), Ollama (locale) o OpenAI/GPT per analisi foto e ricerca.",
     "set_telegram": "Telegramma",
     "set_telegram_desc": "Avvisi in tempo reale al gruppo del team quando le voci vengono registrate o aggiornate.",
+    "set_email": "Configurazione e-mail",
+    "set_email_desc": "SMTP per e-mail di report: imposta i destinatari, il nome del mittente e le credenziali SMTP in modo che la scheda RAPPORTO possa inviare tramite e-mail i report del sito.",
     "set_storage": "Archiviazione",
     "set_storage_desc": "Scegli PocketBase (predefinito), percorso locale o Google Drive.",
     "set_language": "Lingua",

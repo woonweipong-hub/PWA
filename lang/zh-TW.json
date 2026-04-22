@@ -799,6 +799,8 @@
     "set_ai_desc": "連接 Gemini（免費）、Ollama（本機）或 OpenAI/GPT，用於照片分析及搜尋。",
     "set_telegram": "電報",
     "set_telegram_desc": "當項目被記錄或更新時，向團隊群組傳送即時警示。",
+    "set_email": "電子郵件設定",
+    "set_email_desc": "用於報告電子郵件的 SMTP — 設定收件者、寄件者名稱和 SMTP 憑證，以便「報告」標籤可以透過電子郵件傳送網站報告。",
     "set_storage": "儲存",
     "set_storage_desc": "選擇 PocketBase（預設）、本機路徑或 Google Drive。",
     "set_language": "語言",

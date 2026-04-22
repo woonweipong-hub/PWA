@@ -347,6 +347,98 @@
       "defaultEditions": []
     },
     {
+      "id": "bca-pfi-competent-person",
+      "group": "conquas",
+      "label": "BCA PFI — Guidelines for Competent Person",
+      "description": "BCA Periodic Façade Inspection — Competent Person guidelines (v1.2, Jul 2022). Applies to buildings >20 yrs old, >13m high, excl. landed residential. 7-year inspection cycle.",
+      "file": "reference-texts/bca-pfi-competent-person.txt",
+      "chars": 19949,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [
+        "Facilities Management"
+      ],
+      "defaultEditions": []
+    },
+    {
+      "id": "bca-pfi-faq",
+      "group": "conquas",
+      "label": "BCA PFI — Frequently Asked Questions",
+      "description": "BCA's PFI FAQ document covering scope, applicability, timelines, and competent-person responsibilities.",
+      "file": "reference-texts/bca-pfi-faq.txt",
+      "chars": 20927,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [
+        "Facilities Management"
+      ],
+      "defaultEditions": []
+    },
+    {
+      "id": "sg-building-control-act",
+      "group": "contracts",
+      "label": "Singapore Building Control Act 1989",
+      "description": "Primary Act regulating building works in Singapore — basis for BCA's regulatory framework (PFI, PSI, structural / facade inspections).",
+      "file": "reference-texts/sg-building-control-act.txt",
+      "chars": 20000,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [],
+      "defaultEditions": []
+    },
+    {
+      "id": "sg-bc-periodic-inspection",
+      "group": "contracts",
+      "label": "Building Control (Periodic Inspection of Buildings) Regulations",
+      "description": "Singapore subsidiary legislation on periodic inspection of buildings (structural + façade).",
+      "file": "reference-texts/sg-bc-periodic-inspection.txt",
+      "chars": 20000,
+      "truncated": true,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [
+        "Facilities Management"
+      ],
+      "defaultEditions": []
+    },
+    {
+      "id": "sg-bc-reportable-matters",
+      "group": "contracts",
+      "label": "Building Control (Reportable Matters) Regulations",
+      "description": "Singapore regulations defining what constitutes a reportable matter under the Building Control Act — relevant to CP / QP statutory reporting duties.",
+      "file": "reference-texts/sg-bc-reportable-matters.txt",
+      "chars": 16433,
+      "truncated": false,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [],
+      "defaultEditions": []
+    },
+    {
+      "id": "sg-bc-exterior-features",
+      "group": "contracts",
+      "label": "Building Control (Meaning of Exterior Features) Regulations",
+      "description": "Singapore regulations defining 'exterior features' — scope boundary for PFI inspection obligations.",
+      "file": "reference-texts/sg-bc-exterior-features.txt",
+      "chars": 5518,
+      "truncated": false,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [
+        "Facilities Management"
+      ],
+      "defaultEditions": []
+    },
+    {
+      "id": "sg-bc-composition-offences",
+      "group": "contracts",
+      "label": "Building Control (Composition of Offences) Regulations",
+      "description": "Singapore regulations on composition of offences under the Building Control Act.",
+      "file": "reference-texts/sg-bc-composition-offences.txt",
+      "chars": 13102,
+      "truncated": false,
+      "textExtractionFailed": false,
+      "defaultWorkCats": [],
+      "defaultEditions": []
+    },
+    {
       "id": "uncledefect-hdb-bto-checklist",
       "group": "hdb",
       "label": "HDB BTO Handover Checklist (UncleDefect)",

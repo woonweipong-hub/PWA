@@ -1,0 +1,364 @@
+Periodic Façade Inspection (PFI) FAQs
+
+S/N Subject                                                       Questions & Answers
+
+1 (A) Periodic Façade Inspection                                   Q1 – Q5
+2 (B) Person Responsible to Carry out Periodic Façade Inspection  Q6 – Q18
+3 (C) Buildings Affected by Façade Inspection Regime              Q19 – Q20
+4 (D) Frequency of Periodic Façade Inspection                     Q21 – Q31
+5 (E) Use of Technology for Inspection                            Q32 – Q34
+6 (F) Fallen Façade Statistics and Person Responsible             Q35 – Q36
+7 (G) Others                                                      Q37 – Q41
+
+(A) PERIODIC FAÇADE INSPECTION
+
+Q1 Why did BCA decide to introduce a Periodic Façade Inspection (PFI) regime and
+         when will PFI take effect?
+
+A1 As buildings age, their façades experience wear and tear. A façade inspection regime
+         will enable early detection of tell-tale signs of deteriorating façade materials and its
+         connections, allowing the building owner to carry out repairs before it fails.
+         The periodic façade inspection regime will commence from 1st January 2022.
+
+Q2 What does the Periodic Facade Inspection (PFI) process involve?
+A2 PFI may differ slightly from building to building, and would likely involve the following:
+
+             • Visual inspection of the condition of the entire (100%) building façade elements
+                  from ground level or other available vantage points and openings, which may be
+                  done using photographic cameras whereby photographs or still images of the
+                  entire façade may be taken. Drones or similar unmanned aircraft designed for
+                  aerial survey may be used with prior approval from the Commissioner of Building
+                  Control (CBC).
+
+             • After the 100% visual inspection, the Competent Person (CP) is required to
+                  perform a 10% close-range inspection on each building face (elevation) to assess
+                  the condition of the façade using appropriate tools such as tapping rods and
+                  scanning devices that do not require any special training to operate or use;
+
+             • Recommend any remedial measures to be carried out;
+
+             • For building’s with widespread or potential systemic defects observed, the CP
+                  can recommend a full facade investigation of localised areas or the whole
+                  building for BCA’s consideration and approval. Prior approval from CBC is
+                  required before the proposed full façade investigation is performed.
+
+Q3 What does a full façade investigation under Periodic Facade Inspection (PFI)
+         entail?
+
+A3 Competent Person (CP) needs to obtain approval from the Commissioner of Building
+         Control (CBC) before proceeding with the full façade investigation works. The Full
+         investigation generally involves:
+
+             • Performing close-range inspection at additional locations;
+
+             • To ascertain the causes of extensive defects and carry out design check with
+                  calculation and structural plans with due diligence;
+
+             • On-site and/or laboratory tests to verify the façade condition, strength of the
+                  façade materials and extent of the defects, if deemed necessary;
+
+             • Exposing concealed façade elements (e.g. brackets for curtain wall system), or
+                  the removal of façade panels to assess the condition of the panels based on CP’s
+                  professional judgement;
+
+             • Recommending any repairs to be carried out in order to restore the integrity of
+                  the building’s façade;
+
+             • Where the repair involves any structural elements or building works, the structural
+                  plan approval and permit to commence works are to be obtained prior to
+                  commencing the repairs, if applicable. A Professional Engineer (PE), if the CP is
+                  not a PE, shall be engaged for this purpose.
+
+Q4 Who is a Competent Person (CP) and are they assisted by others when
+         conducting PFI?
+
+A4 A CP is either a Professional Engineer (PE) or Registered Architect (RA) that has
+         attended and successfully completed the course titled “Certificate in Façade Inspection”
+         conducted by BCAA and IESA currently. The CP could be assisted by Façade
+         Inspectors in carrying out the inspection.
+
+         Façade Inspectors can be a Resident Engineer, Resident Technical Officer or any other
+         person who possesses the relevant qualification that is specified by BCA.
+
+Q5 What if I refuse to conduct Periodic Façade Inspection (PFI) upon receiving the
+         inspection notice?
+
+A5 Upon receipt of the PFI Notice, the owner of the building must appoint a Competent
+         Person (CP) within 2 months after the date of the façade inspection notice.
+
+         The building owner who fails to appoint a CP within the above period, shall be guilty of
+         an offence and shall be liable of a conviction to a fine not exceeding $20,000.
+
+(B) PERSON RESPONSIBLE TO CARRY OUT PERIODIC FAÇADE INSPECTION
+
+Q6 Who is the person responsible for carrying out Periodic Façade Inspections
+        (PFIs)?
+
+A6 Building owners will be served with a notice to have their building’s facade inspected.
+        Upon receipt of the notice, they are required to appoint a Competent Person to carry out
+        the inspection of their building’s façade, to submit a report to BCA within the stipulated
+        timeline and follow up with the recommended repair works.
+
+Q7 What happens after my Competent Person (CP) submits the inspection report?
+
+A7 BCA will vet through the report and may seek clarification from the CP with regards to
+         the contents of the report. The CP is required to respond to clarifications and, where the
+         situation warrants, BCA may also conduct a joint site inspection of the building and
+         request for the CP to conduct a presentation to BCA.
+
+         Upon the acceptance of the report, BCA will write to the Owner to follow up with the
+         recommendations of the CP on the defects detected. You must carry out the remedial
+         works within such period as the Commissioner of Building Control may specify, to
+         prevent further deterioration of the building façade and thereafter submit the CP’s
+         certification on the completion of the remedial works, where applicable.
+
+Q8 I am a building owner. What do I need to do when I receive a Periodic Facade
+         Inspection (PFI) Notice?
+
+A8 BCA will serve Owners with a Notice of Inspection when the building is due for Periodic
+         Facade Inspection (PFI). You can play your part by:
+
+    • Appointing a Competent Person (CP) promptly.
+
+         List of CPs can be downloaded from:
+         https://www1.bca.gov.sg/regulatory-info/building-control/periodic-façade-inspection-pfi
+
+    • Providing access to the perimeter of the building to be inspected by your CP;
+
+    • Providing the necessary access system such as suspended working platform/gondola,
+         mobile elevating work platform or scaffold or a combination of these to carry out the
+         close-range facade inspection;
+
+    • Providing a set of approved plans and façade drawings;
+
+    • Providing information on the maintenance and history of the building’s facade,
+         particularly on the façade’s repair work been carried out in the past e.g. water ingress
+         etc.;
+
+    • Providing previous periodic inspection reports (if available) for reference;
+
+    • Carrying out rectification works and/or monitoring of defects highlighted by your CP
+         promptly;
+
+    • Maintaining your building façade in good condition at all times.
+
+Q9 Can my Competent Person (CP) purchase a set of my building’s building plans
+         on my behalf for the purpose of Periodic Facade Inspection (PFI)?
+
+A9 Yes, your CP can make an application on your behalf via https://go.gov.sg/n8fz6e
+
+         The CP would need to attach the Documentary Proof of Ownership of property (latest
+         property tax bill, Title Deed or Notice of Transfer) when making the application.
+
+Q10 What should I do if my Competent Person (CP) cannot find any document on my
+         building?
+
+A10 If there is no information or document available on the building façade, the CP shall
+         carry out the review based on the appropriate Standards and Codes of Practices
+         (applicable to Singapore) at the time of installation for the building façade with reference
+
+         to the date of issue of the Temporary Occupation Permit, Certificate of Statutory
+         Completion or other available relevant documents
+
+Q11 Can I engage a different Competent Person (CP) for the full façade investigation?
+
+A11 Yes, you can engage any CP who has no professional nor financial interest in the
+         building. You should notify BCA within 7 days on the change of CP and submit the
+         appointment form. When a new CP is appointed to continue with the façade inspection
+         or investigation process at any point in time, he/she shall review and take into
+         consideration the earlier findings by the former CP before continuing.
+
+Q12 If the Competent Person (CP) engaged by the management corporation (MCST)
+         of my building did not inspect my unit’s facade, can I request that he inspect my
+         unit?
+
+A12 Yes, you can request through the management corporation for the appointed CP to
+         inspect your unit’s facade, subjected to the CP’s discretion and MCST’s arrangement.
+
+Q13 I have appointed a Competent Person (CP) but he never seems to come in person
+         to inspect my building. Is this allowed?
+
+A13 Your appointed CP is expected to carry out a comprehensive visual inspection and
+         close-range inspection based on his engineering judgement and assessment. He is
+         expected to take active and personal interest in the planning and carrying out of the
+         inspection of the building. However, he may be assisted in the physical work of
+         inspection by a façade inspector(s).
+
+Q14 Can I engage any facade inspector to inspect my building facade?
+
+A14 No. You can only engage a Competent Person (CP) who has no professional nor
+         financial interest in the building. For example, a Professional Engineer (C&S) or
+         Registered Architect would be considered as having a professional or financial interest
+         if he was responsible for the design or construction of the building or any part of the
+         building works. The CP may be assisted by a façade inspector. However, the CP
+         remains ultimately responsible for the inspection and assessment of the inspection
+         findings and condition of the building facade.
+
+Q15 Can accredited laboratories undertake the close-range inspection? Can the
+         Competent Person (CP) delegate the inspection duty to the testing laboratories?
+
+A15 The CP can engage testing laboratories to assist in carrying out the close-range
+         inspections, subjected to prior approval from the Commissioner of Building Control
+         (CBC). However, both the visual and close-range façade inspections must be attended
+         by the CP personally or his façade inspector (who is directly under the CP’s control and
+         supervision).The CP remains ultimately responsible for the inspection and assessment
+         of the inspection findings and condition of the building facade.
+
+Q16 I am an individual unit owner of a building with multiple owners (but the building
+         is not subdivided and managed by a management corporation (MCST)
+         established under the Land Titles (Strata) Act). Can I appoint my own Competent
+         Person (CP) to inspect my unit’s facade? What are the required conditions for
+         such an appointment?
+
+A16 No, owners of a building (that is not subdivided and managed by a management
+         corporation (MCST) established under the Land Titles (Strata) Act) must jointly appoint
+         a CP to inspect the building’s facade within the stipulated timeframe. The appointed CP
+         must inspect the building facade and submit the inspection report to BCA.
+
+Q17 The appointed Competent Person (CP) has completed the façade inspection; how
+        does he submit the report to BCA?
+
+A17 The CP is required to submit the façade inspection report and all subsequent
+        correspondences via CORENET e-Submission System
+
+Q18 What happens if my Competent Person (CP) fails to conduct the façade inspection
+        in accordance with the requirements of the Building Control Act and Regulations?
+
+A18 The CP would be guilty of an offence and shall be liable on conviction to a fine not
+        exceeding $50,000.
+
+(C) BUILDINGS AFFECTED BY FAÇADE INSPECTION REGIME
+
+Q19 Who and which buildings will be affected by the implementation of façade
+         inspection regime?
+
+A19 Periodic Façade Inspection (PFI) regime applies to buildings aged 20 years and older
+        and over 13 metres in height. Detached, semi-detached, terraced or linked houses
+        which are used for residential purposes and temporary buildings, are excluded from the
+        regime.
+        Nevertheless, building owners should still carry out routine building façade maintenance
+        even without a PFI Notice. When façade defects or deterioration are identified, owners
+        are advised to engage a Competent Person, appropriate qualified person or specialist
+        to investigate and propose rectification measures. Building owners are encouraged to
+        carry out the recommended rectification works immediately.
+
+Q20 I received the Periodic Facade Inspection (PFI) Notice to an address where there
+        is a combination of buildings that are above 13 metres and less than 13 metres,
+        are the buildings less than 13 metres exempted?
+
+A20 Building owners will be required to conduct periodic façade inspections on all buildings
+        to which the PFI regime applies, at the address specified in a PFI Notice. The PFI regime
+        does not apply to buildings the highest point of which is 13 metres or lower when
+        measured from the ground.
+
+(D) FREQUENCY OF PERIODIC FAÇADE INSPECTION
+
+Q21 How often is my building required to have its façade inspected?
+A21 Buildings are required to undergo Periodic Façade Inspection every 7 years.
+
+Q22 I understand that there is currently a requirement for Periodic Structural
+        Inspection (PSI) of buildings. Is Periodic Façade Inspection (PFI) similar to the
+        existing PSI? Can PFI be incorporated into the current PSI regime?
+
+A22 The scope and inspection requirements of PFI is different from PSI. PSI covers only
+        structural elements such as columns, beams and flat slabs, and an assessment on
+        whether there is any overloading. Conversely, building facades are generally made up
+        of non-structural elements such as cement plasters, tiles, bricks and glass.
+
+        For PSI, since the inspection is on structural elements, it must be conducted by a
+        Structural Engineer. However, for PFI, since the inspection is of the building façade, it
+        can be conducted by a Competent Person.
+
+Q23 My building just completed Periodic Structural Inspection (PSI). Can its Periodic
+        Facade Inspection (PFI) be exempted?
+
+A23 No, the scope of PSI and PFI regimes are different. PSI involves the inspection of the
+        entire building’s structural system to ensure that the building is structurally sound for
+        continued occupation. PFI involves the inspection of the façade of a building to ensure
+        that public safety will not be compromised due to deteriorated facades that may fall from
+        height.
+
+Q24 My building is presently undergoing Repair and Redecoration works (R&R). Can I
+        defer the Periodic Facade Inspection (PFI)?
+
+A24 Most R&R works do not focus on the inspection of façade conditions and the submission
+        of inspection report by Competent Persons as required under the PFI regulations.
+        However, building owners could write in to BCA for the deferment, and we will review
+        on a case-by-case basis.
+
+Q25 If only some part of my building façade were refurbished recently, do I need to
+        carry out Periodic Facade Inspection (PFI)?
+
+A25 Yes, if only some parts of the façade were refurbished, the building is still required to
+        carry out PFI.
+
+Q26 I have the intention to carry out recladding works for my building in the near
+        future. Can the Periodic Facade Inspection (PFI) be postponed?
+
+A26 You can write to BCA with the routine maintenance work done and timeline of upcoming
+        recladding works for the building and we will review on a case-by-case basis.
+
+Q27 I have the intention to demolish my building in the near future. Can it be exempted
+        from Periodic Façade inspection (PFI)?
+
+A27 You can write to BCA to inform the date of your planned demolition for our consideration.
+        You should also inform us when the building has been demolished so that notices would
+        not be issued to the said building in future.
+
+Q28 I am in the process of selling my building. Can it be exempted from Periodic Façade
+       Inspection (PFI)?
+
+A28 The building still needs to be inspected. However, if the buyer agrees to comply with our
+       Notice of Inspection, please inform us of this agreement, and we will consider holding the
+       buyer accountable for complying with the PFI Notice.
+
+Q29 My Competent Person who has just carried out Periodic Façade Inspection (PFI) of
+       my building recommended some remedial works. I now intend to sell my building.
+       Can I be exempted from carrying out the repairs?
+
+A29 No, there is a duty imposed on building owner to whom the PFI Notice was served under
+       the Act to carry out any remedial works recommended by the CP.
+
+Q30 My building just underwent Addition &Alteration (A&A) works, can I apply for a
+       waiver or deferment to carry out PFI?
+
+A30 You may write to BCA to request for the waiver. You will need to submit the details of the
+       A&A works accompanied with drawings and description of the works carried out. The A&A
+       works carried out must be related to building façades.
+
+Q31 Can I conduct PSI and PFI concurrently?
+
+A31 If you receive the PSI and PFI notices concurrently, you can appoint the same PE (C&S)
+       who is eligible to carry out both inspections and comply with the requirements under PFI
+       and PSI regulations. Please note that PFI and PSI are different in scope of inspection and
+       therefore requires the submission of two separate reports. It is also worth noting that the
+       inspection reports will only be accepted by BCA when the PSI and PFI Notices are served
+       concurrently.
+
+(E) USE OF TECHNOLOGY FOR INSPECTION
+
+Q32 Can inspectors carry out façade inspection with the aid of technology?
+A32 The inspectors, i.e. Competent Persons (CPs) and Façade Inspectors (FIs) can adopt
+
+        technologies such as drones and infrared thermography to aid their visual inspection of
+        building façades. For deployment of drone technology for façade inspection, building
+        owners may wish to refer to the link for more information on DSPs that provide this
+        service. Engaging DSPs is a private contractual matter between the building owner and
+        the DSPs. Owners should seek the advice of the Competent Person in ensuring the
+
+        quality and adequacy of such technological inspection methodologies. For more
+        information on regulatory requirements on drone applications, please refer to
+        https://www.caas.gov.sg/public-passengers/unmanned-aircraft.
+
+        Other Technologies such as robotic automated tapping device, infrared and ultrasound
+        scanners can be adopted for close-range inspections.
+
+        However, prior approval from the Commissioner of Building Control (CBC) is required
+        to use such technology to perform façade inspections.
+
+Q33 Can infrared thermography be used for close-range inspection since from infrared
+        we can detect the underlying defects?
+
+A33 Infrared thermography is to supplement the close-range inspection and to identify the
+        underlying defect. Therefore, Competent Persons (CPs) are still required to carry out
+        the 10% close-range inspection.

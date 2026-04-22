@@ -799,6 +799,8 @@
     "set_ai_desc": "Hubungkan Gemini (gratis), Ollama (lokal), atau OpenAI/GPT untuk analisis foto dan pencarian.",
     "set_telegram": "Telegram",
     "set_telegram_desc": "Peringatan real-time ke grup tim Anda saat item dicatat atau diperbarui.",
+    "set_email": "Pengaturan Email",
+    "set_email_desc": "SMTP untuk email laporan — mengatur penerima, nama pengirim, dan kredensial SMTP sehingga tab LAPORAN dapat mengirimkan laporan situs melalui email.",
     "set_storage": "Penyimpanan",
     "set_storage_desc": "Pilih PocketBase (default), jalur lokal, atau Google Drive.",
     "set_language": "Bahasa",

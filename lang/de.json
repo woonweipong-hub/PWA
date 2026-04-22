@@ -799,6 +799,8 @@
     "set_ai_desc": "Gemini (kostenlos), Ollama (lokal) oder OpenAI/GPT für Fotoanalyse und Suche verbinden.",
     "set_telegram": "Telegramm",
     "set_telegram_desc": "Echtzeit-Benachrichtigungen an deine Team-Gruppe, wenn Posten erfasst oder aktualisiert werden.",
+    "set_email": "E-Mail-Setup",
+    "set_email_desc": "SMTP für Berichts-E-Mails – Legen Sie Empfänger, Absendernamen und SMTP-Anmeldeinformationen fest, damit die Registerkarte BERICHT Website-Berichte per E-Mail versenden kann.",
     "set_storage": "Speicher",
     "set_storage_desc": "Wähle PocketBase (Standard), lokalen Pfad oder Google Drive.",
     "set_language": "Sprache",

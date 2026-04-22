@@ -799,6 +799,8 @@
     "set_ai_desc": "Forbind Gemini (gratis), Ollama (lokal) eller OpenAI/GPT til fotoanalyse og søgning.",
     "set_telegram": "Telegram",
     "set_telegram_desc": "Realtidsadvarsler til din teamgruppe, når poster logges eller opdateres.",
+    "set_email": "E-mail opsætning",
+    "set_email_desc": "SMTP til rapport-e-mails — indstil modtagere, afsendernavn og SMTP-legitimationsoplysninger, så fanen RAPPORT kan sende webstedsrapporter via e-mail.",
     "set_storage": "Lagring",
     "set_storage_desc": "Vælg PocketBase (standard), lokal sti eller Google Drive.",
     "set_language": "Sprog",

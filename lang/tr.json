@@ -799,6 +799,8 @@
     "set_ai_desc": "Fotoğraf analizi ve arama için Gemini (ücretsiz), Ollama (yerel) veya OpenAI/GPT bağlayın.",
     "set_telegram": "Telgraf",
     "set_telegram_desc": "Öğeler kaydedildiğinde veya güncellendiğinde ekip grubunuza gerçek zamanlı uyarılar.",
+    "set_email": "E-posta Kurulumu",
+    "set_email_desc": "Rapor e-postaları için SMTP — RAPOR sekmesinin site raporlarını e-postayla gönderebilmesi için alıcıları, gönderenin adını ve SMTP kimlik bilgilerini ayarlayın.",
     "set_storage": "Depolama",
     "set_storage_desc": "PocketBase (varsayılan), yerel yol veya Google Drive seçin.",
     "set_language": "Dil",

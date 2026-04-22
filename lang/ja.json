@@ -799,6 +799,8 @@
     "set_ai_desc": "Gemini（無料）、Ollama（ローカル）、またはOpenAI/GPTを接続して写真分析と検索を利用します。",
     "set_telegram": "電報",
     "set_telegram_desc": "項目の記録や更新時にチームグループへリアルタイム通知を送信します。",
+    "set_email": "電子メールの設定",
+    "set_email_desc": "レポート電子メール用の SMTP — 受信者、送信者名、および SMTP 資格情報を設定して、[レポート] タブからサイト レポートを電子メールで送信できるようにします。",
     "set_storage": "ストレージ",
     "set_storage_desc": "PocketBase（デフォルト）、ローカルパス、またはGoogle Driveを選択します。",
     "set_language": "言語",
