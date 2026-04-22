@@ -762,8 +762,6 @@
     "setup_4": "4. Bjud in ditt team via Inställningar → Team (endast Admin).",
     "setup_5": "5. Skapa eller välj ett projekt och börja sedan logga poster.",
     "main_nav": "Huvudnavigering",
-    "nav_dashboard": "Instrumentpanel",
-    "nav_dashboard_desc": "Visa aktiva poster, statusräkningar, allvarsöversikt, varningar och senaste poster. AI Query-fält för sökning på naturligt språk.",
     "nav_log": "Logga (+)",
     "nav_log_desc": "Skapa en ny post — fel, problem, arbetsorder, observation eller uppdatering — med foton, röstinmatning och AI-assisterad ifyllning. Välj mellan 7 arbetskategorier.",
     "nav_tag": "Märka",

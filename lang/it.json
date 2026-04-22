@@ -762,8 +762,6 @@
     "setup_4": "4. Invita il team da Impostazioni → Team (solo Admin).",
     "setup_5": "5. Crea o seleziona un progetto, poi inizia a registrare voci.",
     "main_nav": "Navigazione principale",
-    "nav_dashboard": "Pannello di controllo",
-    "nav_dashboard_desc": "Mostra voci attive, conteggi di stato, riepilogo gravità, avvisi e voci recenti. Barra di query AI per ricerca in linguaggio naturale.",
     "nav_log": "Registra (+)",
     "nav_log_desc": "Crea una nuova voce — difetto, problema, ordine di lavoro, osservazione o aggiornamento — con foto, input vocale e compilazione assistita da AI. Scegli tra 7 categorie di lavoro.",
     "nav_tag": "Etichetta",

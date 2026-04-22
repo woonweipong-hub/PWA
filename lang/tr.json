@@ -762,8 +762,6 @@
     "setup_4": "4. Ayarlar → Ekip üzerinden ekibinizi davet edin (yalnızca Yönetici).",
     "setup_5": "5. Bir proje oluşturun veya seçin, ardından kayıt girmeye başlayın.",
     "main_nav": "Ana Gezinme",
-    "nav_dashboard": "Pano",
-    "nav_dashboard_desc": "Aktif öğeleri, durum sayılarını, önem derecesi özetini, uyarıları ve son kayıtları görüntüleyin. Doğal dil aramaları için AI Sorgu çubuğu.",
     "nav_log": "Kaydet (+)",
     "nav_log_desc": "Yeni bir kayıt oluşturun — kusur, sorun, iş emri, gözlem veya güncelleme — fotoğraflar, sesli giriş ve AI destekli doldurma ile. 7 iş kategorisinden seçim yapın.",
     "nav_tag": "Etiketle",

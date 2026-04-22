@@ -762,8 +762,6 @@
     "setup_4": "4. Mời nhóm của bạn qua Cài đặt → Nhóm (chỉ dành cho Quản trị viên).",
     "setup_5": "5. Tạo hoặc chọn một dự án, sau đó bắt đầu ghi nhận các mục.",
     "main_nav": "Điều Hướng Chính",
-    "nav_dashboard": "Bảng điều khiển",
-    "nav_dashboard_desc": "Xem các mục đang hoạt động, số lượng trạng thái, tóm tắt mức độ nghiêm trọng, cảnh báo và các mục gần đây. Thanh AI Query để tìm kiếm bằng ngôn ngữ tự nhiên.",
     "nav_log": "Ghi nhận (+)",
     "nav_log_desc": "Tạo mục mới — lỗi, vấn đề, lệnh làm việc, quan sát hoặc cập nhật — với ảnh, nhập giọng nói và điền hỗ trợ bởi AI. Chọn từ 7 danh mục công việc.",
     "nav_tag": "Nhãn",

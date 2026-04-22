@@ -762,8 +762,6 @@
     "setup_4": "4. Undang tim Anda melalui Pengaturan → Tim (khusus Admin).",
     "setup_5": "5. Buat atau pilih proyek, lalu mulai mencatat entri.",
     "main_nav": "Navigasi Utama",
-    "nav_dashboard": "Dasbor",
-    "nav_dashboard_desc": "Lihat item aktif, hitungan status, ringkasan tingkat keparahan, peringatan, dan entri terbaru. Bilah AI Query untuk pencarian bahasa alami.",
     "nav_log": "Catatan (+)",
     "nav_log_desc": "Buat entri baru — cacat, masalah, perintah kerja, observasi, atau pembaruan — dengan foto, input suara, dan pengisian berbantuan AI. Pilih dari 7 kategori pekerjaan.",
     "nav_tag": "Menandai",

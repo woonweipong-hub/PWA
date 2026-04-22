@@ -762,8 +762,6 @@
     "setup_4": "4. Lade dein Team über Einstellungen → Team ein (nur Admin).",
     "setup_5": "5. Erstelle oder wähle ein Projekt und beginne mit der Erfassung von Einträgen.",
     "main_nav": "Hauptnavigation",
-    "nav_dashboard": "Armaturenbrett",
-    "nav_dashboard_desc": "Aktive Posten, Statuszahlen, Schweregrad-Übersicht, Warnungen und letzte Einträge anzeigen. AI-Abfrageleiste für natürlichsprachliche Suche.",
     "nav_log": "Erfassen (+)",
     "nav_log_desc": "Neuen Eintrag erstellen — Mangel, Problem, Arbeitsauftrag, Beobachtung oder Update — mit Fotos, Spracheingabe und AI-gestütztem Ausfüllen. Auswahl aus 7 Arbeitskategorien.",
     "nav_tag": "Etikett",

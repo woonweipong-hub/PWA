@@ -762,8 +762,6 @@
     "setup_4": "4. Inviter teamet ditt via Innstillinger → Team (kun Admin).",
     "setup_5": "5. Opprett eller velg et prosjekt, og begynn deretter å logge oppføringer.",
     "main_nav": "Hovednavigasjon",
-    "nav_dashboard": "Dashbord",
-    "nav_dashboard_desc": "Se aktive elementer, statustellinger, alvorlighetsoversikt, varsler og nylige oppføringer. AI Query-linje for søk på naturlig språk.",
     "nav_log": "Logg (+)",
     "nav_log_desc": "Opprett en ny oppføring — mangel, problem, arbeidsordre, observasjon eller oppdatering — med bilder, taleinndata og AI-assistert utfylling. Velg mellom 7 arbeidskategorier.",
     "nav_tag": "Tag",

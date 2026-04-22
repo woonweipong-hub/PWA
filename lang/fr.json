@@ -762,8 +762,6 @@
     "setup_4": "4. Invite ton équipe via Paramètres → Équipe (Admin uniquement).",
     "setup_5": "5. Crée ou sélectionne un projet, puis commence à enregistrer des entrées.",
     "main_nav": "Navigation principale",
-    "nav_dashboard": "Tableau de bord",
-    "nav_dashboard_desc": "Affiche les éléments actifs, les statuts, le résumé de gravité, les alertes et les entrées récentes. Barre de requête AI pour la recherche en langage naturel.",
     "nav_log": "Saisir (+)",
     "nav_log_desc": "Créer une nouvelle entrée — défaut, problème, ordre de travail, observation ou mise à jour — avec photos, saisie vocale et remplissage assisté par AI. Au choix parmi 7 catégories de travaux.",
     "nav_tag": "Étiqueter",

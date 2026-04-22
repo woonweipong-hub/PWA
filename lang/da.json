@@ -762,8 +762,6 @@
     "setup_4": "4. Inviter dit team via Indstillinger → Team (kun Admin).",
     "setup_5": "5. Opret eller vælg et projekt, og begynd derefter at logge poster.",
     "main_nav": "Hovednavigation",
-    "nav_dashboard": "Dashboard",
-    "nav_dashboard_desc": "Se aktive poster, statusoptællinger, alvorsoversigt, advarsler og seneste poster. AI Query-bjælke til søgning på naturligt sprog.",
     "nav_log": "Log (+)",
     "nav_log_desc": "Opret en ny post — mangel, problem, arbejdsordre, observation eller opdatering — med fotos, taleindtastning og AI-assisteret udfyldning. Vælg mellem 7 arbejdskategorier.",
     "nav_tag": "Tag",

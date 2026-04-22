@@ -762,8 +762,6 @@
     "setup_4": "4. Kutsu tiimisi kohdasta Asetukset → Tiimi (vain Admin).",
     "setup_5": "5. Luo tai valitse projekti ja aloita sitten merkintöjen kirjaaminen.",
     "main_nav": "Päänavigointi",
-    "nav_dashboard": "Koontinäyttö",
-    "nav_dashboard_desc": "Näe aktiiviset kohteet, tilalaskurit, vakavuusyhteenveto, hälytykset ja viimeisimmät merkinnät. AI Query -palkki luonnollisen kielen hakuun.",
     "nav_log": "Kirjaa (+)",
     "nav_log_desc": "Luo uusi merkintä — virhe, ongelma, työmääräys, havainto tai päivitys — valokuvilla, äänisyötteellä ja AI-avusteisella täytöllä. Valitse 7 työkategoriasta.",
     "nav_tag": "Tag",

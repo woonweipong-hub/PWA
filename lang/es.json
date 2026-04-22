@@ -762,8 +762,6 @@
     "setup_4": "4. Invita a tu equipo desde Ajustes → Equipo (solo Admin).",
     "setup_5": "5. Crea o selecciona un proyecto y empieza a registrar entradas.",
     "main_nav": "Navegación principal",
-    "nav_dashboard": "Panel",
-    "nav_dashboard_desc": "Muestra elementos activos, recuentos de estado, resumen de severidad, alertas y entradas recientes. Barra de consulta AI para búsqueda en lenguaje natural.",
     "nav_log": "Registrar (+)",
     "nav_log_desc": "Crea una nueva entrada — defecto, incidencia, orden de trabajo, observación o actualización — con fotos, dictado por voz y relleno asistido por AI. Elige entre 7 categorías de trabajo.",
     "nav_tag": "Etiqueta",
