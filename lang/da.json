@@ -461,6 +461,8 @@
     "section_app": "APP",
     "clear_cache": "Ryd cache og genindlæs",
     "clear_cache_desc": "Løs indlæsningsproblemer ved at opdatere alle cachelagrede filer",
+    "clear_cache_confirm_with_queue": "Du har {n} offlinepost/poster, der venter på at blive synkroniseret. Clearing vil MISTE disse. Synkronisere først? Tryk på OK for at rydde alligevel, Annuller for at synkronisere først.",
+    "clear_cache_confirm": "Dette vil logge dig ud og slette alle lokale data på denne enhed (indstillinger, kladder, cachelagrede billeder, offline kø). Appen på serveren er upåvirket. Fortsætte?",
     "all_set": "Alt sammen sat op",
     "finish_setup": "Afslut opsætningen",
     "done_pill": "FÆRDIG",

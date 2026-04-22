@@ -461,6 +461,8 @@
     "section_app": "APP",
     "clear_cache": "Cache leeren & neu laden",
     "clear_cache_desc": "Ladeprobleme durch Aktualisierung aller zwischengespeicherten Dateien beheben",
+    "clear_cache_confirm_with_queue": "Sie haben {n} Offline-Eintrag/-Einträge, die auf die Synchronisierung warten. Beim Löschen gehen diese verloren. Zuerst synchronisieren? Tippen Sie auf „OK“, um den Vorgang trotzdem zu löschen, und auf „Abbrechen“, um zuerst zu synchronisieren.",
+    "clear_cache_confirm": "Dadurch werden Sie abgemeldet und alle lokalen Daten auf diesem Gerät gelöscht (Einstellungen, Entwürfe, zwischengespeicherte Fotos, Offline-Warteschlange). Die App auf dem Server ist davon nicht betroffen. Weitermachen?",
     "all_set": "Alles eingerichtet",
     "finish_setup": "Einrichtung abschließen",
     "done_pill": "FERTIG",

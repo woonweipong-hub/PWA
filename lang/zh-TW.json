@@ -461,6 +461,8 @@
     "section_app": "應用程式",
     "clear_cache": "清除快取並重新載入",
     "clear_cache_desc": "透過重新整理所有快取檔案來修復載入問題",
+    "clear_cache_confirm_with_queue": "您有 {n} 個離線條目等待同步。 清算會失去這些。 先同步？ 點選「確定」仍可清除，點選「取消」可先同步。",
+    "clear_cache_confirm": "這將使您登出並擦除該裝置上的所有本機資料（設定、草稿、快取的照片、離線佇列）。 伺服器上的應用程式不受影響。 繼續？",
     "all_set": "全部設定完成",
     "finish_setup": "完成設定",
     "done_pill": "完成",

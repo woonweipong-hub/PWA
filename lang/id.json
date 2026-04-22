@@ -461,6 +461,8 @@
     "section_app": "APLIKASI",
     "clear_cache": "Hapus Cache & Muat Ulang",
     "clear_cache_desc": "Perbaiki masalah pemuatan dengan menyegarkan semua file yang di-cache",
+    "clear_cache_confirm_with_queue": "Anda memiliki {n} entri offline/entri yang menunggu untuk disinkronkan. Kliring akan KEHILANGAN ini. Sinkronkan dulu? Ketuk OK untuk menghapusnya, Batal untuk menyinkronkan terlebih dahulu.",
+    "clear_cache_confirm": "Tindakan ini akan mengeluarkan Anda dan menghapus semua data lokal di perangkat ini (setelan, draf, foto dalam cache, antrean offline). Aplikasi di server tidak terpengaruh. Melanjutkan?",
     "all_set": "Semua sudah diatur",
     "finish_setup": "Selesaikan pengaturan",
     "done_pill": "SELESAI",

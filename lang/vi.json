@@ -461,6 +461,8 @@
     "section_app": "ỨNG DỤNG",
     "clear_cache": "Xóa bộ nhớ đệm và tải lại",
     "clear_cache_desc": "Khắc phục sự cố tải bằng cách làm mới tất cả các tệp đã lưu trong bộ nhớ đệm",
+    "clear_cache_confirm_with_queue": "Bạn có {n} mục/mục nhập ngoại tuyến đang chờ đồng bộ hóa. Việc xóa sẽ MẤT những thứ này. Đồng bộ hóa trước? Nhấn OK để vẫn xóa, Hủy để đồng bộ hóa trước.",
+    "clear_cache_confirm": "Thao tác này sẽ đăng xuất bạn và xóa tất cả dữ liệu cục bộ trên thiết bị này (cài đặt, bản nháp, ảnh được lưu trong bộ nhớ đệm, hàng đợi ngoại tuyến). Ứng dụng trên máy chủ không bị ảnh hưởng. Tiếp tục?",
     "all_set": "Đã cài đặt xong",
     "finish_setup": "Hoàn tất cài đặt",
     "done_pill": "XONG",

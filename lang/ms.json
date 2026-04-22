@@ -461,6 +461,8 @@
     "section_app": "APLIKASI",
     "clear_cache": "Kosongkan Cache & Muat Semula",
     "clear_cache_desc": "Selesaikan masalah pemuatan dengan menyegarkan semua fail yang dicache",
+    "clear_cache_confirm_with_queue": "Anda mempunyai {n} entri luar talian / entri menunggu untuk disegerakkan. Pembersihan akan HILANG ini. Segerakkan dahulu? Ketik OK untuk mengosongkan, Batal untuk menyegerakkan dahulu.",
+    "clear_cache_confirm": "Ini akan melog anda keluar dan memadamkan semua data setempat pada peranti ini (tetapan, draf, foto cache, baris gilir luar talian). Apl pada pelayan tidak terjejas. teruskan?",
     "all_set": "Semua telah ditetapkan",
     "finish_setup": "Selesaikan persediaan",
     "done_pill": "SELESAI",

@@ -461,6 +461,8 @@
     "section_app": "APPLICATION",
     "clear_cache": "Vider le cache et recharger",
     "clear_cache_desc": "Résoudre les problèmes de chargement en actualisant tous les fichiers mis en cache",
+    "clear_cache_confirm_with_queue": "Vous avez {n} entrées hors ligne en attente de synchronisation. La compensation les PERDRA. Synchroniser d'abord ? Appuyez sur OK pour effacer quand même, Annuler pour synchroniser d'abord.",
+    "clear_cache_confirm": "Cela vous déconnectera et effacera toutes les données locales sur cet appareil (paramètres, brouillons, photos mises en cache, file d'attente hors ligne). L'application sur le serveur n'est pas affectée. Continuer?",
     "all_set": "Tout est configuré",
     "finish_setup": "Terminer la configuration",
     "done_pill": "FAIT",

@@ -461,6 +461,8 @@
     "section_app": "应用",
     "clear_cache": "清除缓存并重新加载",
     "clear_cache_desc": "通过刷新所有缓存文件来修复加载问题",
+    "clear_cache_confirm_with_queue": "您有 {n} 个离线条目等待同步。 清算会失去这些。 先同步？ 点击“确定”仍可清除，点击“取消”可先同步。",
+    "clear_cache_confirm": "这将使您注销并擦除该设备上的所有本地数据（设置、草稿、缓存的照片、离线队列）。 服务器上的应用程序不受影响。 继续？",
     "all_set": "全部设置完成",
     "finish_setup": "完成设置",
     "done_pill": "完成",

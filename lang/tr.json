@@ -461,6 +461,8 @@
     "section_app": "UYGULAMA",
     "clear_cache": "Önbelleği Temizle ve Yeniden Yükle",
     "clear_cache_desc": "Önbelleğe alınmış tüm dosyaları yenileyerek yükleme sorunlarını düzeltin",
+    "clear_cache_confirm_with_queue": "Senkronize edilmeyi bekleyen {n} çevrimdışı girişiniz/girişiniz var. Takas bunları KAYBEDER. Önce senkronize edilsin mi? Yine de temizlemek için Tamam'a, önce senkronize etmek için İptal'e dokunun.",
+    "clear_cache_confirm": "Bu, oturumunuzu kapatacak ve bu cihazdaki tüm yerel verileri (ayarlar, taslaklar, önbelleğe alınmış fotoğraflar, çevrimdışı sıra) silecektir. Sunucudaki uygulama etkilenmez. Devam etmek?",
     "all_set": "Hepsi kuruldu",
     "finish_setup": "Kurulumu bitir",
     "done_pill": "TAMAM",

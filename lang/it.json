@@ -461,6 +461,8 @@
     "section_app": "APP",
     "clear_cache": "Svuota cache e ricarica",
     "clear_cache_desc": "Risolvi i problemi di caricamento aggiornando tutti i file memorizzati nella cache",
+    "clear_cache_confirm_with_queue": "Hai {n} voci offline/voci in attesa di sincronizzazione. La compensazione li PERDERÀ. Sincronizzare prima? Tocca OK per cancellare comunque, Annulla per sincronizzare prima.",
+    "clear_cache_confirm": "Verrai disconnesso e cancellerai tutti i dati locali su questo dispositivo (impostazioni, bozze, foto memorizzate nella cache, coda offline). L'app sul server non è interessata. Continuare?",
     "all_set": "Tutto pronto",
     "finish_setup": "Termina la configurazione",
     "done_pill": "FATTO",

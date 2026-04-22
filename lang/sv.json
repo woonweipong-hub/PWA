@@ -461,6 +461,8 @@
     "section_app": "APP",
     "clear_cache": "Rensa cache och ladda om",
     "clear_cache_desc": "Åtgärda laddningsproblem genom att uppdatera alla cachade filer",
+    "clear_cache_confirm_with_queue": "Du har {n} offlineposter/poster som väntar på att synkroniseras. Clearing kommer att FÖRLORA dessa. Synkronisera först? Tryck på OK för att rensa ändå, Avbryt för att synkronisera först.",
+    "clear_cache_confirm": "Detta kommer att logga ut och radera all lokal data på den här enheten (inställningar, utkast, cachade foton, offlinekö). Appen på servern påverkas inte. Fortsätta?",
     "all_set": "Allt inrett",
     "finish_setup": "Slutför installationen",
     "done_pill": "KLAR",

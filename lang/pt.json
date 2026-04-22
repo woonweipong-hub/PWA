@@ -461,6 +461,8 @@
     "section_app": "APLICATIVA",
     "clear_cache": "Limpar cache e recarregar",
     "clear_cache_desc": "Corrija problemas de carregamento atualizando todos os arquivos em cache",
+    "clear_cache_confirm_with_queue": "Você tem {n} entradas off-line aguardando sincronização. A compensação irá PERDÊ-los. Sincronizar primeiro? Toque em OK para limpar mesmo assim, em Cancelar para sincronizar primeiro.",
+    "clear_cache_confirm": "Isso desconectará você e limpará todos os dados locais deste dispositivo (configurações, rascunhos, fotos em cache, fila off-line). O aplicativo no servidor não é afetado. Continuar?",
     "all_set": "Tudo configurado",
     "finish_setup": "Concluir configuração",
     "done_pill": "FEITO",

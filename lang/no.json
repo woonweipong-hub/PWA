@@ -461,6 +461,8 @@
     "section_app": "APP",
     "clear_cache": "Tøm hurtigbuffer og last på nytt",
     "clear_cache_desc": "Løs innlastingsproblemer ved å oppdatere alle hurtigbufrede filer",
+    "clear_cache_confirm_with_queue": "Du har {n} frakoblede oppføringer/oppføringer som venter på å synkroniseres. Clearing vil MISTE disse. Synkronisere først? Trykk på OK for å slette likevel, Avbryt for å synkronisere først.",
+    "clear_cache_confirm": "Dette vil logge deg av og slette alle lokale data på denne enheten (innstillinger, utkast, bufrede bilder, frakoblet kø). Appen på serveren er upåvirket. Fortsette?",
     "all_set": "Alt satt opp",
     "finish_setup": "Fullfør oppsettet",
     "done_pill": "FERDIG",

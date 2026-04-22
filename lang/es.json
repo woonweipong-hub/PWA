@@ -461,6 +461,8 @@
     "section_app": "APLICACIÓN",
     "clear_cache": "Borrar caché y recargar",
     "clear_cache_desc": "Soluciona problemas de carga actualizando todos los archivos en caché",
+    "clear_cache_confirm_with_queue": "Tienes {n} entradas sin conexión en espera de sincronización. Al limpiarlos los PERDERÁS. ¿Sincronizar primero? Toque Aceptar para borrar de todos modos, Cancelar para sincronizar primero.",
+    "clear_cache_confirm": "Esto cerrará tu sesión y borrará todos los datos locales de este dispositivo (configuraciones, borradores, fotos almacenadas en caché, cola sin conexión). La aplicación en el servidor no se ve afectada. ¿Continuar?",
     "all_set": "Todo configurado",
     "finish_setup": "Finalizar la configuración",
     "done_pill": "HECHO",

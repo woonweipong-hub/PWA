@@ -461,6 +461,8 @@
     "section_app": "SOVELLUS",
     "clear_cache": "Tyhjennä välimuisti ja lataa uudelleen",
     "clear_cache_desc": "Korjaa latausongelmat päivittämällä kaikki välimuistissa olevat tiedostot",
+    "clear_cache_confirm_with_queue": "Sinulla on {n} offline-merkintää/merkintää odottamassa synkronointia. Tyhjennys MENEE nämä. Synkronoidaanko ensin? Napauta OK poistaaksesi joka tapauksessa, Peruuta synkronoidaksesi ensin.",
+    "clear_cache_confirm": "Tämä kirjaa sinut ulos ja tyhjentää kaikki tämän laitteen paikalliset tiedot (asetukset, luonnokset, välimuistissa olevat valokuvat, offline-jono). Tämä ei vaikuta palvelimella olevaan sovellukseen. Jatkaa?",
     "all_set": "Kaikki valmiina",
     "finish_setup": "Viimeistele asennus",
     "done_pill": "VALMIS",
