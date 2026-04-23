@@ -901,7 +901,13 @@ if(result.suggested_assignee&&assignees.length>0){const suggestion=result.sugges
 // start its own analyze after the stale in-flight call resolves.
 useEffect(()=>{if(!form.photos[0]||aiResult||analyzing||saving)return;// A new photo supersedes any previous AI error — clear the inline
 // pill so stale errors don't hang over the new capture.
-setAnalyzeError(null);let cancelled=false;(async()=>{const hash=await photoHash(form.photos[0]);if(cancelled||!hash)return;const cached=readAiCache(hash);if(cached){setAiResult(cached);applyAiResult(cached);return;}if(aiReady&&!cancelled)analyze();})();return()=>{cancelled=true;};// eslint-disable-next-line react-hooks/exhaustive-deps — intentional.
+setAnalyzeError(null);let cancelled=false;(async()=>{const hash=await photoHash(form.photos[0]);if(cancelled||!hash)return;const cached=readAiCache(hash);if(cached){setAiResult(cached);applyAiResult(cached);return;}if(aiReady&&!cancelled){analyze();return;}// AI unavailable (paused or no credentials on this device). In batch
+// mode the user opted into bulk capture — don't stall the queue
+// waiting for an AI result that will never arrive. Setting the
+// sentinel triggers the auto-save effect below, which routes through
+// submit()'s "photo only" path (title auto-generated as
+// "Photo entry — DD/MM/YYYY") and the batch-advance fires.
+const inBatch=batchTotal>0||batchQueue.length>0;if(inBatch&&!cancelled)setAiResult({__noAi:true});})();return()=>{cancelled=true;};// eslint-disable-next-line react-hooks/exhaustive-deps — intentional.
 },[form.photos[0],analyzing]);// Auto-save gated by the user's chosen mode. Defaults to review-then-auto
 // so the first 10 saves of a session require an explicit SAVE tap (the
 // user's "ok") and AI-filled output can be inspected first — feedback
@@ -913,7 +919,11 @@ setAnalyzeError(null);let cancelled=false;(async()=>{const hash=await photoHash(
 // ALWAYS fires regardless of mode — the user already opted into bulk
 // capture by picking multiple files, so the review-gate would defeat
 // that workflow.
-const[autoSaveMode,setAutoSaveMode]=useState(()=>local.get(AUTO_SAVE_MODE_KEY)||AUTO_SAVE_MODE_DEFAULT);const persistAutoSaveMode=m=>{setAutoSaveMode(m);local.set(AUTO_SAVE_MODE_KEY,m);};const cycleAutoSaveMode=()=>{const order=["review-first","review-then-auto","always-auto"];const next=order[(order.indexOf(autoSaveMode)+1)%order.length];persistAutoSaveMode(next);};useEffect(()=>{if(!aiResult)return;if(saving||analyzing)return;const isBatchFail=aiResult&&aiResult.__failed;if(!isBatchFail&&!form.title.trim()&&!form.description.trim())return;if(!form.photos.length)return;const inBatch=batchTotal>0||batchQueue.length>0;// Batch mode: always auto-commit (user picked many photos intentionally).
+const[autoSaveMode,setAutoSaveMode]=useState(()=>local.get(AUTO_SAVE_MODE_KEY)||AUTO_SAVE_MODE_DEFAULT);const persistAutoSaveMode=m=>{setAutoSaveMode(m);local.set(AUTO_SAVE_MODE_KEY,m);};const cycleAutoSaveMode=()=>{const order=["review-first","review-then-auto","always-auto"];const next=order[(order.indexOf(autoSaveMode)+1)%order.length];persistAutoSaveMode(next);};useEffect(()=>{if(!aiResult)return;if(saving||analyzing)return;// __failed = AI ran but produced no usable result; __noAi = AI unavailable
+// (paused or no credentials) and the restore effect short-circuited so the
+// batch queue wouldn't stall. Both bypass the title/description gate —
+// submit() auto-generates a "Photo entry — date" title from the photo.
+const isBatchFail=aiResult&&(aiResult.__failed||aiResult.__noAi);if(!isBatchFail&&!form.title.trim()&&!form.description.trim())return;if(!form.photos.length)return;const inBatch=batchTotal>0||batchQueue.length>0;// Batch mode: always auto-commit (user picked many photos intentionally).
 if(inBatch){submit({auto:true});return;}// Single capture: respect the mode.
 if(autoSaveMode==="review-first")return;if(autoSaveMode==="review-then-auto"&&count<AUTO_SAVE_REVIEW_THRESHOLD)return;submit({auto:true});// eslint-disable-next-line react-hooks/exhaustive-deps — fire once per AI
 // result becoming available; submit() uses its own latest-form closure.

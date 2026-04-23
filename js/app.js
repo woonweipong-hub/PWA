@@ -7073,7 +7073,15 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         applyAiResult(cached);
         return;
       }
-      if(aiReady&&!cancelled)analyze();
+      if(aiReady&&!cancelled){analyze();return;}
+      // AI unavailable (paused or no credentials on this device). In batch
+      // mode the user opted into bulk capture — don't stall the queue
+      // waiting for an AI result that will never arrive. Setting the
+      // sentinel triggers the auto-save effect below, which routes through
+      // submit()'s "photo only" path (title auto-generated as
+      // "Photo entry — DD/MM/YYYY") and the batch-advance fires.
+      const inBatch=batchTotal>0||batchQueue.length>0;
+      if(inBatch&&!cancelled)setAiResult({__noAi:true});
     })();
     return()=>{cancelled=true;};
   // eslint-disable-next-line react-hooks/exhaustive-deps — intentional.
@@ -7100,7 +7108,11 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   useEffect(()=>{
     if(!aiResult)return;
     if(saving||analyzing)return;
-    const isBatchFail=aiResult&&aiResult.__failed;
+    // __failed = AI ran but produced no usable result; __noAi = AI unavailable
+    // (paused or no credentials) and the restore effect short-circuited so the
+    // batch queue wouldn't stall. Both bypass the title/description gate —
+    // submit() auto-generates a "Photo entry — date" title from the photo.
+    const isBatchFail=aiResult&&(aiResult.__failed||aiResult.__noAi);
     if(!isBatchFail&&!form.title.trim()&&!form.description.trim())return;
     if(!form.photos.length)return;
     const inBatch=batchTotal>0||batchQueue.length>0;
