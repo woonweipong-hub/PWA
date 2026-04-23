@@ -6478,7 +6478,10 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // Auto-restore a cached AI result whenever the first photo in the form
   // matches a previously-analyzed photo. Lets the user switch tabs, close
   // a markup overlay, or re-take the same photo without losing the AI
-  // output and without re-spending tokens.
+  // output and without re-spending tokens. When AI is configured and the
+  // photo is new, auto-invoke analyze() so the user never has to tap
+  // ANALYZE — zero-tap capture flow. See feedback memory
+  // "AI pre-fill should be zero-tap".
   useEffect(()=>{
     if(!form.photos[0]||aiResult||analyzing)return;
     let cancelled=false;
@@ -6489,12 +6492,30 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       if(cached){
         setAiResult(cached);
         applyAiResult(cached);
+        return;
       }
+      if(aiReady&&!cancelled)analyze();
     })();
     return()=>{cancelled=true;};
   // eslint-disable-next-line react-hooks/exhaustive-deps — intentional: only
   // react to the first photo changing, not every form field mutation.
   },[form.photos[0]]);
+
+  // Auto-save once AI has pre-filled the form. When AI is configured, the
+  // user's intent after a photo is to log the defect — not to re-confirm
+  // every AI-filled value. Rectification happens later in REVIEW / ENTRIES.
+  // Skipping this tap is the main on-site throughput win; cycling through
+  // 30 photos previously required ≥60 taps (ANALYZE + SAVE each), now zero.
+  // Guard against firing without meaningful AI output so a failed analysis
+  // doesn't commit an empty record.
+  useEffect(()=>{
+    if(!aiResult)return;
+    if(saving||analyzing)return;
+    if(!form.title.trim()&&!form.description.trim())return;
+    submit();
+  // eslint-disable-next-line react-hooks/exhaustive-deps — fire once per AI
+  // result becoming available; submit() uses its own latest-form closure.
+  },[aiResult]);
 
   const analyze=async()=>{
     if(!form.photos.length||!aiReady)return;

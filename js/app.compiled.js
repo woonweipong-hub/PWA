@@ -729,10 +729,22 @@ if(result.cost_change&&result.cost_change.trim()){const needle=result.cost_chang
 if(result.suggested_assignee&&assignees.length>0){const suggestion=result.suggested_assignee.toLowerCase();const match=assignees.find(a=>a.toLowerCase().includes(suggestion))||assignees.find(a=>suggestion.includes(a.toLowerCase()));if(match)writeAi("assignee",match);}return{...u,fieldProvenance:prov};});};// Auto-restore a cached AI result whenever the first photo in the form
 // matches a previously-analyzed photo. Lets the user switch tabs, close
 // a markup overlay, or re-take the same photo without losing the AI
-// output and without re-spending tokens.
-useEffect(()=>{if(!form.photos[0]||aiResult||analyzing)return;let cancelled=false;(async()=>{const hash=await photoHash(form.photos[0]);if(cancelled||!hash)return;const cached=readAiCache(hash);if(cached){setAiResult(cached);applyAiResult(cached);}})();return()=>{cancelled=true;};// eslint-disable-next-line react-hooks/exhaustive-deps — intentional: only
+// output and without re-spending tokens. When AI is configured and the
+// photo is new, auto-invoke analyze() so the user never has to tap
+// ANALYZE — zero-tap capture flow. See feedback memory
+// "AI pre-fill should be zero-tap".
+useEffect(()=>{if(!form.photos[0]||aiResult||analyzing)return;let cancelled=false;(async()=>{const hash=await photoHash(form.photos[0]);if(cancelled||!hash)return;const cached=readAiCache(hash);if(cached){setAiResult(cached);applyAiResult(cached);return;}if(aiReady&&!cancelled)analyze();})();return()=>{cancelled=true;};// eslint-disable-next-line react-hooks/exhaustive-deps — intentional: only
 // react to the first photo changing, not every form field mutation.
-},[form.photos[0]]);const analyze=async()=>{if(!form.photos.length||!aiReady)return;setAnalyzing(true);try{const photo=form.photos[0];// 1) Cache hit — skip the API entirely (no token burn, instant apply).
+},[form.photos[0]]);// Auto-save once AI has pre-filled the form. When AI is configured, the
+// user's intent after a photo is to log the defect — not to re-confirm
+// every AI-filled value. Rectification happens later in REVIEW / ENTRIES.
+// Skipping this tap is the main on-site throughput win; cycling through
+// 30 photos previously required ≥60 taps (ANALYZE + SAVE each), now zero.
+// Guard against firing without meaningful AI output so a failed analysis
+// doesn't commit an empty record.
+useEffect(()=>{if(!aiResult)return;if(saving||analyzing)return;if(!form.title.trim()&&!form.description.trim())return;submit();// eslint-disable-next-line react-hooks/exhaustive-deps — fire once per AI
+// result becoming available; submit() uses its own latest-form closure.
+},[aiResult]);const analyze=async()=>{if(!form.photos.length||!aiReady)return;setAnalyzing(true);try{const photo=form.photos[0];// 1) Cache hit — skip the API entirely (no token burn, instant apply).
 const hash=await photoHash(photo);const cached=readAiCache(hash);if(cached){setAiResult(cached);applyAiResult(cached);setAnalyzing(false);return;}// 2) Daily-limit gate. Only counts REAL API calls — cache hits above
 // don't consume quota, which is the whole point of the cache.
 const today=new Date().toISOString().slice(0,10);const aiUsage=local.get(AI_LIMIT_KEY)||{date:"",count:0};const todayCount=aiUsage.date===today?aiUsage.count:0;if(todayCount>=AI_DAILY_LIMIT){alert(`AI analysis limit reached (${AI_DAILY_LIMIT}/day).\n\nYou can still log entries manually.`);setAnalyzing(false);return;}// 3) Real API call. Pass context from previous entry when available so
