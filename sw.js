@@ -1,4 +1,4 @@
-const CACHE = 'siteshrimp-v103';
+const CACHE = 'siteshrimp-v104';
 const ASSETS = [
   '/',
   '/index.html',
@@ -33,14 +33,31 @@ const ASSETS = [
   '/lang/sv.json',
   '/lang/no.json',
   '/lang/da.json',
-  '/lang/fi.json'
+  '/lang/fi.json',
+  '/reference-texts/manifest.json'
 ];
 
-// ── Install: pre-cache app shell ──
+// ── Install: pre-cache app shell, then warm Requirements Advisor corpus ──
+// Reference corpus (~500 KB of pre-extracted .txt) is warmed best-effort from
+// the manifest so the Advisor's reference picker works on flaky / offline site
+// connections. App shell caching is critical and its failure must not block
+// the install; reference warming is best-effort per file.
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS)).catch(() => {})
-  );
+  e.waitUntil((async () => {
+    const c = await caches.open(CACHE);
+    try { await c.addAll(ASSETS); } catch {}
+    try {
+      const resp = await fetch('/reference-texts/manifest.json');
+      if (resp.ok) {
+        const m = await resp.json();
+        const urls = (m.documents || [])
+          .map(d => d && d.file)
+          .filter(Boolean)
+          .map(f => f.startsWith('/') ? f : '/' + f);
+        await Promise.all(urls.map(u => c.add(u).catch(() => {})));
+      }
+    } catch {}
+  })());
   self.skipWaiting();
 });
 

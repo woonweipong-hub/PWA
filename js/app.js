@@ -1713,61 +1713,131 @@ function writeAiCache(hash,result){
 
 // Text-only AI query (no image) — for natural language search
 async function askAI(prompt){
-  const provider=local.get(AI_PROVIDER_KEY)||"gemini";
-  try{
-    if(provider==="gemini"){
-      const key=local.get(GEMINI_KEY);if(!key)return null;
-      const res=await geminiGenerate(key,{contents:[{parts:[{text:prompt}]}]});
-      const data=await res.json();
-      return data.candidates?.[0]?.content?.parts?.[0]?.text||null;
-    }
-    if(provider==="ollama"){
-      const cfg=local.get(OLLAMA_KEY)||{};
-      const res=await fetch(`${cfg.url}/api/generate`,{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:cfg.model||"llama3",prompt,stream:false})});
-      const data=await res.json();return data.response||null;
-    }
-    if(provider==="openai"){
-      const cfg=local.get(OPENAI_KEY)||{};
-      const res=await fetch(`${cfg.url||"https://api.openai.com"}/v1/chat/completions`,{method:"POST",
-        headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},
-        body:JSON.stringify({model:cfg.model||"gpt-4o-mini",messages:[{role:"user",content:prompt}]})});
-      const data=await res.json();return data.choices?.[0]?.message?.content||null;
-    }
-  }catch{return null;}
-  return null;
+  // Keeps returning string|null for backward compatibility with legacy
+  // callers (translations, AI search, defect-type classification). Failure
+  // reasons are captured via _setAiError / window.__lastAiError so they're
+  // visible in DevTools even when the caller treats null as "AI unavailable".
+  const r=await askAIWithUsage(prompt);
+  if(r.error)_setAiError(r.error);
+  return r.text||null;
 }
 
-// askAI variant that also returns token usage from the API response
+// askAI variant that also returns token usage from the API response.
+// Returns {text, tokens, error}. `error` is a human-readable failure reason
+// when `text` is null — previously every provider error was silently
+// swallowed and the caller threw a generic "Check AI Setup" message that
+// was misleading whenever setup was actually fine (quota, MAX_TOKENS, 429,
+// safety, CORS, etc.).
 async function askAIWithUsage(prompt){
   const provider=local.get(AI_PROVIDER_KEY)||"gemini";
   try{
     if(provider==="gemini"){
-      const key=local.get(GEMINI_KEY);if(!key)return{text:null,tokens:null};
-      const res=await geminiGenerate(key,{contents:[{parts:[{text:prompt}]}]});
+      const key=local.get(GEMINI_KEY);
+      if(!key)return{text:null,tokens:null,error:"Gemini API key missing. Open Settings → AI Setup."};
+      // thinkingBudget:0 disables reasoning on gemini-2.5-family models
+      // for plain-text prose calls. Without it, the model burns its entire
+      // output-token budget on internal thinking and returns MAX_TOKENS
+      // with an empty content block — the root cause of the "AI returned
+      // an empty response" failure on the Requirements Advisor. Older
+      // 1.5/2.0 models 400 on thinkingConfig, so we retry without it.
+      const fullConfig={temperature:0.2,maxOutputTokens:8192,thinkingConfig:{thinkingBudget:0}};
+      const minimalConfig={temperature:0.2,maxOutputTokens:8192};
+      let res=await geminiGenerate(key,{contents:[{parts:[{text:prompt}]}],generationConfig:fullConfig});
+      if(res.status===400){
+        const errText400=await res.text().catch(()=>"");
+        console.warn("[AI] Gemini 400 on full config:",errText400.slice(0,300),"— retrying with minimal config");
+        res=await geminiGenerate(key,{contents:[{parts:[{text:prompt}]}],generationConfig:minimalConfig});
+      }
+      if(!res.ok){
+        const errText=await res.text().catch(()=>"");
+        let apiMsg="";
+        try{const j=JSON.parse(errText);apiMsg=j.error?.message||"";}catch{}
+        const err=`Gemini HTTP ${res.status} — ${apiMsg||errText.slice(0,300)||"no body"}`;
+        _setAiError(err);console.error("[AI]",err);
+        return{text:null,tokens:null,error:err};
+      }
       const data=await res.json();
-      const text=data.candidates?.[0]?.content?.parts?.[0]?.text||null;
+      const cand=data.candidates?.[0]||{};
+      const parts=cand.content?.parts||[];
+      const nonThought=parts.filter(p=>p.text&&!p.thought);
+      const text=(nonThought.length?nonThought:parts.filter(p=>p.text)).map(p=>p.text).join("")||null;
       const u=data.usageMetadata||{};
-      return{text,tokens:{prompt:u.promptTokenCount||0,completion:u.candidatesTokenCount||0,total:u.totalTokenCount||0,provider:"Gemini"}};
+      const tokens={prompt:u.promptTokenCount||0,completion:u.candidatesTokenCount||0,total:u.totalTokenCount||0,provider:"Gemini"};
+      if(!text){
+        const finish=cand.finishReason||"unknown";
+        const block=data.promptFeedback?.blockReason||"";
+        let err;
+        if(finish==="MAX_TOKENS")err="Gemini hit MAX_TOKENS with empty output — the model exhausted its output budget (often on internal reasoning). Try fewer selected references or fewer defects, or switch provider.";
+        else if(finish==="SAFETY"||block)err=`Gemini blocked the response (safety filter${block?": "+block:""}). Try rephrasing or switch provider.`;
+        else if(finish==="RECITATION")err="Gemini blocked the response (possible source recitation). Try with fewer reference docs.";
+        else err=`Gemini returned no text (finishReason: ${finish}${block?", block: "+block:""}).`;
+        _setAiError(err);
+        console.error("[AI]",err,"raw:",JSON.stringify(data).slice(0,500));
+        return{text:null,tokens,error:err};
+      }
+      return{text,tokens,error:null};
     }
     if(provider==="ollama"){
       const cfg=local.get(OLLAMA_KEY)||{};
-      const res=await fetch(`${cfg.url}/api/generate`,{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:cfg.model||"llama3",prompt,stream:false})});
+      if(!cfg.url)return{text:null,tokens:null,error:"Ollama URL missing. Open Settings → AI Setup."};
+      let res;
+      try{
+        res=await fetch(`${cfg.url}/api/generate`,{method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({model:cfg.model||"llama3",prompt,stream:false})});
+      }catch(e){
+        const err=`Ollama network error — ${e?.message||"could not reach "+cfg.url}. Is the server running and CORS-allowed?`;
+        _setAiError(err);return{text:null,tokens:null,error:err};
+      }
+      if(!res.ok){
+        const errText=await res.text().catch(()=>"");
+        const err=`Ollama HTTP ${res.status} — ${errText.slice(0,300)||"no body"}`;
+        _setAiError(err);return{text:null,tokens:null,error:err};
+      }
       const data=await res.json();
-      return{text:data.response||null,tokens:{prompt:data.prompt_eval_count||0,completion:data.eval_count||0,total:(data.prompt_eval_count||0)+(data.eval_count||0),provider:"Ollama"}};
+      const text=data.response||null;
+      const tokens={prompt:data.prompt_eval_count||0,completion:data.eval_count||0,total:(data.prompt_eval_count||0)+(data.eval_count||0),provider:"Ollama"};
+      if(!text){
+        const err="Ollama returned no text. Check the model is pulled and running.";
+        _setAiError(err);return{text:null,tokens,error:err};
+      }
+      return{text,tokens,error:null};
     }
     if(provider==="openai"){
       const cfg=local.get(OPENAI_KEY)||{};
-      const res=await fetch(`${cfg.url||"https://api.openai.com"}/v1/chat/completions`,{method:"POST",
-        headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},
-        body:JSON.stringify({model:cfg.model||"gpt-4o-mini",messages:[{role:"user",content:prompt}]})});
+      if(!cfg.apiKey)return{text:null,tokens:null,error:"OpenAI API key missing. Open Settings → AI Setup."};
+      let res;
+      try{
+        res=await fetch(`${cfg.url||"https://api.openai.com"}/v1/chat/completions`,{method:"POST",
+          headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},
+          body:JSON.stringify({model:cfg.model||"gpt-4o-mini",messages:[{role:"user",content:prompt}],max_tokens:8192})});
+      }catch(e){
+        const err=`OpenAI network error — ${e?.message||"could not reach endpoint"}.`;
+        _setAiError(err);return{text:null,tokens:null,error:err};
+      }
+      if(!res.ok){
+        const errText=await res.text().catch(()=>"");
+        let apiMsg="";
+        try{const j=JSON.parse(errText);apiMsg=j.error?.message||"";}catch{}
+        const err=`OpenAI HTTP ${res.status} — ${apiMsg||errText.slice(0,300)||"no body"}`;
+        _setAiError(err);return{text:null,tokens:null,error:err};
+      }
       const data=await res.json();
+      const text=data.choices?.[0]?.message?.content||null;
       const u=data.usage||{};
-      return{text:data.choices?.[0]?.message?.content||null,tokens:{prompt:u.prompt_tokens||0,completion:u.completion_tokens||0,total:u.total_tokens||0,provider:"OpenAI"}};
+      const tokens={prompt:u.prompt_tokens||0,completion:u.completion_tokens||0,total:u.total_tokens||0,provider:"OpenAI"};
+      if(!text){
+        const finish=data.choices?.[0]?.finish_reason||"unknown";
+        const err=`OpenAI returned no text (finish_reason: ${finish})${finish==="length"?" — response was cut off at max_tokens. Reduce selected references or defects.":"."}`;
+        _setAiError(err);return{text:null,tokens,error:err};
+      }
+      return{text,tokens,error:null};
     }
-  }catch{return{text:null,tokens:null};}
-  return{text:null,tokens:null};
+    return{text:null,tokens:null,error:`Unknown AI provider: ${provider}`};
+  }catch(e){
+    const err=`AI call threw: ${e?.message||e}`;
+    _setAiError(err);console.error("[AI]",err);
+    return{text:null,tokens:null,error:err};
+  }
 }
 
 function isAiConfigured(){
@@ -1796,16 +1866,21 @@ const CONTRACT_CLAUSE_USES=[
 // ship ~30 MB of PDFs — we ship ~500 KB of text instead, load instantly, no
 // PDF.js needed. Manifest is cached after first fetch.
 let _refManifestCache=null;
-async function loadReferenceManifest(){
-  if(_refManifestCache)return _refManifestCache;
+async function loadReferenceManifest(force){
+  if(_refManifestCache&&!force)return _refManifestCache;
   try{
-    const resp=await fetch("reference-texts/manifest.json",{cache:"no-cache"});
+    // Use default cache policy so the service worker (network-first) and
+    // HTTP cache can serve offline. Previously forced no-cache — guaranteed
+    // to fail whenever the user had no connection, silently returning an
+    // empty picker.
+    const resp=await fetch("reference-texts/manifest.json");
     if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
-    _refManifestCache=await resp.json();
-    return _refManifestCache;
+    const data=await resp.json();
+    _refManifestCache=data;
+    return data;
   }catch(e){
     console.warn("reference manifest unavailable:",e.message);
-    return {documents:[],groups:{}};
+    return {documents:[],groups:{},_error:e.message||"Unable to load reference library"};
   }
 }
 
@@ -1899,12 +1974,16 @@ async function loadReferenceTexts({selectedIds,onProgress}){
   const manifest=await loadReferenceManifest();
   const byId=Object.fromEntries(manifest.documents.map(d=>[d.id,d]));
   const picked=(selectedIds||[]).map(id=>byId[id]).filter(Boolean).filter(d=>!d.textExtractionFailed);
-  const results=[];
+  const loaded=[];
+  const failed=[];
   const maxPerFile=15000;
   const maxTotal=60000;
   let totalLen=0;
   for(const doc of picked){
-    if(totalLen>=maxTotal){results.push({source:doc.label,text:"(skipped — total reference-text budget reached)"});continue;}
+    if(totalLen>=maxTotal){
+      loaded.push({source:doc.label,text:"(skipped — total reference-text budget reached)"});
+      continue;
+    }
     if(onProgress)onProgress(`Reading: ${doc.label}`);
     try{
       const resp=await fetch(doc.file,{cache:"force-cache"});
@@ -1914,14 +1993,14 @@ async function loadReferenceTexts({selectedIds,onProgress}){
       const cap=Math.min(maxPerFile,remaining);
       if(text.length>cap)text=text.slice(0,cap);
       if(text){
-        results.push({source:doc.label,text});
+        loaded.push({source:doc.label,text});
         totalLen+=text.length;
       }
     }catch(e){
-      results.push({source:doc.label,text:`(Failed to load: ${e.message||"unknown error"})`});
+      failed.push({id:doc.id,label:doc.label,error:e.message||"unknown error"});
     }
   }
-  return results;
+  return {loaded,failed};
 }
 
 function buildContractAdvisorPrompt({clauseUse,contextText,sourceMode,selectedSourceLabels,uploadSummaries,uploadExtracts,extractedTexts,defectsSummary}){
@@ -9132,6 +9211,10 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   const[contractSummary,setContractSummary]=useState("");
   const[contractError,setContractError]=useState("");
   const[contractTokens,setContractTokens]=useState(null);
+  // Per-run incident: which selected references failed to load on the most
+  // recent Advisor run. Surfaces a visible banner above the advisory output
+  // AND is embedded into contractSummary so exports (PDF, email) carry it.
+  const[contractRunIncident,setContractRunIncident]=useState(null);
   // User-uploaded requirement/contract PDFs. Persisted per-project in
   // localStorage so the user doesn't have to re-upload each session. We
   // store only the extracted text (not the raw PDF) — typically a few KB
@@ -9180,13 +9263,30 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   const REF_SELECTED_KEY=currentProject?.id?`siteshrimp_ref_selected_${currentProject.id}`:null;
   const[refManifest,setRefManifest]=useState({documents:[],groups:{}});
   const[refManifestLoaded,setRefManifestLoaded]=useState(false);
+  const[refManifestError,setRefManifestError]=useState(null);
+  const[refManifestRetrying,setRefManifestRetrying]=useState(false);
   const[selectedRefIds,setSelectedRefIds]=useState(()=>{
     try{return new Set(REF_SELECTED_KEY?JSON.parse(localStorage.getItem(REF_SELECTED_KEY)||"null")||[]:[]);}
     catch{return new Set();}
   });
   const[refPickerOpen,setRefPickerOpen]=useState(false);
   useEffect(()=>{
-    loadReferenceManifest().then(m=>{setRefManifest(m);setRefManifestLoaded(true);});
+    loadReferenceManifest().then(m=>{
+      setRefManifest(m);
+      setRefManifestLoaded(true);
+      setRefManifestError(m&&m._error?m._error:null);
+    });
+  },[]);
+  const retryRefManifest=useCallback(async()=>{
+    setRefManifestRetrying(true);
+    setRefManifestError(null);
+    try{
+      const m=await loadReferenceManifest(true);
+      setRefManifest(m);
+      setRefManifestError(m&&m._error?m._error:null);
+    }finally{
+      setRefManifestRetrying(false);
+    }
   },[]);
   // Smart defaults on first project visit: tick docs whose defaultWorkCats
   // matches project.workCategory OR whose defaultEditions matches
@@ -9480,31 +9580,57 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
     setContractError("");
     setContractSummary("");
     setContractTokens(null);
+    setContractRunIncident(null);
     setContractProgress(["⚖️ Starting Requirements Advisor..."]);
 
     try{
       // Step 1: Load pre-extracted text for selected reference docs
       setContractProgress(prev=>[...prev,"Step 1/4: Reading selected reference documents..."]);
       const selectedIds=Array.from(selectedRefIds);
-      const selectedDocs=refManifest.documents.filter(d=>selectedRefIds.has(d.id));
-      const selectedLabels=selectedDocs.map(d=>d.label);
-      const builtinTexts=selectedIds.length>0
+      const {loaded:builtinTexts,failed:builtinFailed}=selectedIds.length>0
         ?await loadReferenceTexts({
             selectedIds,
             onProgress:(msg)=>setContractProgress(prev=>[...prev,"  📄 "+msg])
           })
-        :[];
+        :{loaded:[],failed:[]};
+
+      // Surface fetch failures explicitly. Previously failures were folded
+      // into the prompt as "(Failed to load: …)" text and filtered out of
+      // the success count — the user was told "AI will use general
+      // knowledge" as if no references were picked. That silently turned a
+      // connection problem into a misleading advisory.
+      if(builtinFailed.length){
+        setContractProgress(prev=>[...prev,
+          `  ⚠ ${builtinFailed.length} of ${selectedIds.length} reference(s) failed to load — check connection`]);
+        builtinFailed.slice(0,6).forEach(f=>{
+          setContractProgress(prev=>[...prev,`     · ${f.label}: ${f.error}`]);
+        });
+        if(builtinFailed.length>6)setContractProgress(prev=>[...prev,`     · …and ${builtinFailed.length-6} more`]);
+      }
+
       // Merge user-uploaded project-specific requirements. Tagged with a
       // distinct source label so the AI knows these are the user's own
       // documents, not the public bundled references.
       const userTexts=userContracts.map(u=>({source:`USER REQUIREMENTS: ${u.name}`,text:u.text}));
       const extractedTexts=[...builtinTexts,...userTexts];
-      const successCount=extractedTexts.filter(e=>!e.text.startsWith("(Failed")&&!e.text.startsWith("(skipped")).length;
+      // Align prompt metadata with what was actually loaded — otherwise the
+      // AI is told a source is "selected" while the text block for it is
+      // missing, inviting hallucinated clause numbers.
+      const selectedLabels=builtinTexts.map(e=>e.source);
+
+      // Refuse to proceed if the user picked references, every one failed,
+      // and there are no uploads to fall back on. Running anyway would
+      // silently produce a "general knowledge" advisory.
+      if(selectedIds.length>0&&builtinTexts.length===0&&userTexts.length===0){
+        throw new Error(`Could not load any of the ${selectedIds.length} selected reference document(s). Check your connection and try again, or tap RETRY above.`);
+      }
+
       const totalChars=extractedTexts.reduce((sum,e)=>sum+e.text.length,0);
       if(userTexts.length)setContractProgress(prev=>[...prev,`  📎 Including ${userTexts.length} user-uploaded document(s)`]);
-      setContractProgress(prev=>[...prev,successCount>0
-        ?`  ✓ ${successCount} reference(s) read, ~${Math.round(totalChars/1000)}k chars`
-        :"  ⚠ No reference documents selected — AI will use general knowledge"]);
+      setContractProgress(prev=>[...prev,
+        builtinTexts.length>0||userTexts.length>0
+          ?`  ✓ ${extractedTexts.length} reference(s) loaded, ~${Math.round(totalChars/1000)}k chars`
+          :"  ⚠ No reference documents selected — AI will use general knowledge"]);
 
       // Step 2: Compile defects from report
       setContractProgress(prev=>[...prev,`Step 2/4: Compiling ${filtered.length} defect(s) from report...`]);
@@ -9523,14 +9649,39 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
         extractedTexts,defectsSummary
       });
       const result=await askAIWithUsage(prompt);
-      if(!result.text)throw new Error("AI returned an empty response. Check AI Setup.");
+      if(!result.text){
+        // Surface the real provider failure instead of the old generic
+        // "Check AI Setup" message, which was misleading whenever setup
+        // was fine (quota, MAX_TOKENS, safety-block, network, etc.).
+        throw new Error(result.error||"AI returned an empty response.");
+      }
 
-      // Step 4: Done
-      setContractSummary(result.text.trim());
+      // Step 4: Done — if some selected refs failed, prepend an incident
+      // banner INTO the advisory text itself so it travels with any export
+      // (PDF report, email body, shared copy) rather than being in-app only.
+      let finalText=result.text.trim();
+      if(builtinFailed.length){
+        const failedLabels=builtinFailed.map(f=>f.label).join("; ");
+        const analysedCount=builtinTexts.length+userTexts.length;
+        const incidentHeader=
+          `⚠ INCIDENT — PARTIAL REFERENCE LOAD\n`+
+          `${builtinFailed.length} of ${selectedIds.length} selected reference document(s) could not be loaded and were NOT included in this analysis. `+
+          `This advisory was generated from ${analysedCount} source(s) only. Cited clauses should not be assumed to cover the missing references.\n`+
+          `Not analysed: ${failedLabels}\n`+
+          `Action: re-run after reconnecting, or upload the missing documents as PDFs under YOUR REQUIREMENTS / CONTRACTS.\n\n`+
+          `─────────────────────────────────────────────\n\n`;
+        finalText=incidentHeader+finalText;
+        setContractRunIncident({
+          failed:builtinFailed,
+          selected:selectedIds.length,
+          analysed:analysedCount
+        });
+      }
+      setContractSummary(finalText);
       setContractTokens(result.tokens);
       const t=result.tokens;
       setContractProgress(prev=>[...prev,
-        `Step 4/4: ✓ Advisory complete`+(t?` — ${t.provider}: ${t.prompt.toLocaleString()} prompt + ${t.completion.toLocaleString()} completion = ${t.total.toLocaleString()} tokens`:"")]);
+        `Step 4/4: ${builtinFailed.length?"⚠ Advisory complete with INCIDENT":"✓ Advisory complete"}`+(t?` — ${t.provider}: ${t.prompt.toLocaleString()} prompt + ${t.completion.toLocaleString()} completion = ${t.total.toLocaleString()} tokens`:"")]);
     }catch(e){
       setContractError(e?.message||"Failed to generate requirements advisory.");
       setContractProgress(prev=>[...prev,"⚠ Workflow ended with an error"]);
@@ -10055,14 +10206,48 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
       </>}
 
       {showContractAdvisor&&(
-        <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,border:"2px solid rgba(88,86,214,0.2)"}}>
+        <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,border:refManifestError?"2px solid rgba(204,0,0,0.35)":"2px solid rgba(88,86,214,0.2)"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,gap:10}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a"}}>⚖️ REQUIREMENTS ADVISOR</div>
+            <div style={{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a"}}>⚖️ REQUIREMENTS ADVISOR</div>
+              {refManifestError&&!refManifestRetrying&&(
+                <span title={refManifestError} style={{background:"rgba(204,0,0,0.12)",color:"#cc0000",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,letterSpacing:"0.06em",padding:"2px 7px",borderRadius:10,border:"1px solid rgba(204,0,0,0.35)"}}>⚠ INCIDENT</span>
+              )}
+              {refManifestRetrying&&(
+                <span style={{background:"rgba(255,149,0,0.12)",color:"#b35900",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9,letterSpacing:"0.06em",padding:"2px 7px",borderRadius:10,border:"1px solid rgba(255,149,0,0.35)"}}>RETRYING…</span>
+              )}
+            </div>
             {contractBusy&&<div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"#5856d6",fontWeight:700}}><Spin size={12}/><span>RUNNING</span></div>}
           </div>
 
+          {/* Card-level incident strip — visible whether the picker is open
+              or collapsed, and whether or not the Advisor has been run yet.
+              Without this the user had no way to know the reference library
+              failed to load until they opened the picker and scrolled. */}
+          {refManifestError&&(
+            <div style={{background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"10px 12px",marginBottom:12,display:"flex",alignItems:"flex-start",gap:10}}>
+              <div style={{fontSize:18,lineHeight:1}}>⚠</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#cc0000",fontSize:12,letterSpacing:"0.03em"}}>REFERENCE LIBRARY UNAVAILABLE</div>
+                <div style={{fontSize:11,color:"#802020",lineHeight:1.45,marginTop:2}}>The bundled reference documents (PSSCOC, CONQUAS, BCA-GIP, HDB) can't be loaded — likely a connection issue. The Advisor cannot cross-reference selected resources until this is resolved. You can still upload your own requirement PDFs below, or tap RETRY.</div>
+                <div style={{fontSize:9,color:"rgba(128,32,32,0.7)",marginTop:3,wordBreak:"break-word"}}>{refManifestError}</div>
+              </div>
+              <button onClick={retryRefManifest} disabled={refManifestRetrying} style={{background:"#cc0000",border:"none",borderRadius:6,padding:"6px 12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:refManifestRetrying?"wait":"pointer",letterSpacing:"0.05em",flexShrink:0}}>{refManifestRetrying?"…":"RETRY"}</button>
+            </div>
+          )}
+
           <div style={{background:"rgba(88,86,214,0.05)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontSize:12,lineHeight:1.6,color:"#2f2e55"}}>
             {(()=>{
+              // When the reference library failed to load we can't honestly
+              // describe the sources — the selection is effectively moot.
+              // Override the blurb instead of showing a cheerful "AI reads
+              // N selected references…" that the app can't actually deliver.
+              if(refManifestError){
+                const uploadPart=userContracts.length
+                  ?<>Only your <b>{userContracts.length} uploaded document{userContracts.length>1?"s":""}</b> will be analysed.</>
+                  :<>No sources are currently available — upload your own requirement PDFs below, or tap RETRY above.</>;
+                return<><span style={{color:"#cc0000",fontWeight:700}}>Reference library offline.</span> {uploadPart}</>;
+              }
               const nSel=selectedRefIds.size;
               const parts=[];
               if(nSel===1){
@@ -10097,6 +10282,15 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
             {!refPickerOpen&&selectedRefIds.size>0&&(
               <div style={{marginTop:6,fontSize:10,color:"rgba(0,0,0,0.55)",lineHeight:1.5,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
                 {refManifest.documents.filter(d=>selectedRefIds.has(d.id)).map(d=>d.label).join(" · ")||"—"}
+              </div>
+            )}
+            {refManifestError&&(
+              <div style={{marginTop:8,background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.25)",borderRadius:8,padding:"8px 10px",display:"flex",alignItems:"center",gap:8}}>
+                <div style={{flex:1,fontSize:11,color:"#cc0000",lineHeight:1.4}}>
+                  ⚠ Reference library unavailable — connection issue. Selected resources will not be readable until this loads.
+                  <div style={{fontSize:9,color:"rgba(204,0,0,0.7)",marginTop:2}}>{refManifestError}</div>
+                </div>
+                <button onClick={retryRefManifest} disabled={refManifestRetrying} style={{background:"#cc0000",border:"none",borderRadius:6,padding:"5px 10px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,cursor:refManifestRetrying?"wait":"pointer",letterSpacing:"0.05em"}}>{refManifestRetrying?"…":"RETRY"}</button>
               </div>
             )}
             {refPickerOpen&&(
@@ -10175,11 +10369,26 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
             )}
           </div>
 
-          {!contractBusy&&!contractSummary&&(
-            <button disabled={contractBusy} onClick={runContractAdvisor} style={{width:"100%",background:"#5856d6",border:"none",borderRadius:10,padding:"14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:10}}>
-              <span>⚖️</span><span>RUN REQUIREMENTS ADVISOR</span>
-            </button>
-          )}
+          {!contractBusy&&!contractSummary&&(()=>{
+            // Block the run when the reference library is down AND there
+            // are no uploaded PDFs to fall back on — the Advisor can't do
+            // anything useful and running will just produce the "all
+            // selected failed" error. Telling the user upfront is clearer
+            // than letting them tap and wait for a failure.
+            const blocked=refManifestError&&userContracts.length===0;
+            return(
+              <>
+                <button disabled={contractBusy||blocked} onClick={runContractAdvisor} style={{width:"100%",background:blocked?"rgba(0,0,0,0.12)":"#5856d6",border:"none",borderRadius:10,padding:"14px",color:blocked?"rgba(0,0,0,0.45)":"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:blocked?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:blocked?4:10}}>
+                  <span>⚖️</span><span>RUN REQUIREMENTS ADVISOR</span>
+                </button>
+                {blocked&&(
+                  <div style={{fontSize:10,color:"#cc0000",textAlign:"center",marginBottom:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.03em"}}>
+                    Blocked — reference library offline and no uploaded PDFs
+                  </div>
+                )}
+              </>
+            );
+          })()}
 
           {contractProgress.length>0&&(
             <div style={{background:"rgba(88,86,214,0.06)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:10,padding:"10px 12px",marginBottom:10}}>
@@ -10192,6 +10401,20 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
 
           {contractSummary&&(
             <div>
+              {contractRunIncident&&(
+                <div style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.35)",borderRadius:10,padding:"10px 12px",marginBottom:10,display:"flex",alignItems:"flex-start",gap:10}}>
+                  <div style={{fontSize:18,lineHeight:1}}>⚠</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#cc0000",fontSize:12,letterSpacing:"0.03em"}}>PARTIAL ANALYSIS — INCIDENT</div>
+                    <div style={{fontSize:11,color:"#802020",lineHeight:1.45,marginTop:2}}>
+                      {contractRunIncident.failed.length} of {contractRunIncident.selected} selected reference(s) did not load. Advisory is based on {contractRunIncident.analysed} source(s). Missing references will NOT appear in cited clauses.
+                    </div>
+                    <div style={{fontSize:10,color:"rgba(128,32,32,0.8)",marginTop:4,lineHeight:1.4}}>
+                      Not analysed: {contractRunIncident.failed.map(f=>f.label).join("; ")}
+                    </div>
+                  </div>
+                </div>
+              )}
               <div style={{background:"rgba(26,26,26,0.03)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:10,padding:"12px 14px",marginBottom:10}}>
                 <div style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.5)",letterSpacing:"0.05em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:8}}>REQUIREMENTS ADVISORY</div>
                 <div style={{whiteSpace:"pre-wrap",fontSize:12,lineHeight:1.6,color:"#1a1a1a"}}>{contractSummary}</div>
@@ -10211,7 +10434,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
                 <button onClick={runContractAdvisor} disabled={contractBusy} style={{flex:1,background:"#5856d6",border:"none",borderRadius:10,padding:"11px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",opacity:contractBusy?0.7:1}}>
                   {contractBusy?<><Spin size={12}/> ANALYZING...</>:"RE-RUN"}
                 </button>
-                <button onClick={()=>{setContractSummary("");setContractError("");setContractProgress([]);setContractTokens(null);}} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"11px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CLEAR</button>
+                <button onClick={()=>{setContractSummary("");setContractError("");setContractProgress([]);setContractTokens(null);setContractRunIncident(null);}} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:10,padding:"11px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>CLEAR</button>
               </div>
             </div>
           )}
