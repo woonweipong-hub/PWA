@@ -1908,6 +1908,102 @@ const CONTRACT_CLAUSE_USES=[
   "Safety and statutory obligations"
 ];
 
+// ── Project export profiles (templates/profiles.json) ──────────────
+// Optional per-project firm / standard profile (CONQUAS, HDB BTO, etc.)
+// that flexes report presentation without touching stored data. Phase 1:
+// PDF cover title + footer note, CSV column headers, email subject
+// template. Opt-in per-project via a feature flag in Settings → Projects
+// — default behaviour is unchanged for every existing user.
+//
+// Storage: the project's `exportProfileId` is persisted on the projects
+// record when the server schema has the optional field (from pb_schema.json),
+// with a localStorage fallback per (companyId, projectId) so the feature
+// works even if the schema hasn't been imported yet. The feature flag
+// (useCustomTemplate) is localStorage-only — it's a UI preference, not
+// shared state.
+let _exportProfilesCache=null;
+async function loadExportProfiles(force){
+  if(_exportProfilesCache&&!force)return _exportProfilesCache;
+  try{
+    const resp=await fetch("templates/profiles.json");
+    if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
+    _exportProfilesCache=await resp.json();
+    return _exportProfilesCache;
+  }catch(e){
+    console.warn("export profiles unavailable:",e.message);
+    return {profiles:[],_error:e.message||"Unable to load profiles"};
+  }
+}
+// Resolve a profile id to its fully-merged definition (base + child).
+// Returns null when no profiles loaded (caller falls back to hardcoded
+// defaults). Returns `default` when id is missing or unknown.
+function resolveExportProfile(id){
+  const data=_exportProfilesCache;
+  if(!data||!Array.isArray(data.profiles)||!data.profiles.length)return null;
+  const findById=pid=>data.profiles.find(p=>p.id===pid);
+  let profile=id?findById(id):null;
+  if(!profile)profile=findById("default");
+  if(!profile)profile=data.profiles[0];
+  if(!profile)return null;
+  if(!profile.base)return profile;
+  const base=findById(profile.base);
+  if(!base)return profile;
+  const mergedExport={};
+  const surfaces=new Set([...Object.keys(base.export||{}),...Object.keys(profile.export||{})]);
+  for(const k of surfaces){
+    mergedExport[k]={...((base.export||{})[k]||{}),...((profile.export||{})[k]||{})};
+    if(k==="csv"){
+      mergedExport.csv={
+        ...mergedExport.csv,
+        columnHeaders:{
+          ...(((base.export||{}).csv||{}).columnHeaders||{}),
+          ...(((profile.export||{}).csv||{}).columnHeaders||{})
+        }
+      };
+    }
+  }
+  return{...base,...profile,export:mergedExport};
+}
+// Per-project UI preference: has the user opted into the custom-template
+// beta on this project? Stored per (companyId, projectId) in localStorage
+// only — nothing persists server-side for the toggle itself.
+const _customTplKey=(companyId,projectId)=>
+  companyId&&projectId?`siteshrimp_custom_tpl_${companyId}_${projectId}`:null;
+function isCustomTemplateEnabled(companyId,projectId){
+  const k=_customTplKey(companyId,projectId);
+  if(!k)return false;
+  try{return localStorage.getItem(k)==="1";}catch{return false;}
+}
+function setCustomTemplateEnabled(companyId,projectId,on){
+  const k=_customTplKey(companyId,projectId);
+  if(!k)return;
+  try{if(on)localStorage.setItem(k,"1");else localStorage.removeItem(k);}catch{}
+}
+// Per-(companyId,projectId) localStorage fallback for exportProfileId so
+// the feature is usable even when the strict PB schema hasn't been imported.
+// Clients always try the DB first; on write failure they fall back here.
+// On read: prefer DB value, fall back to localStorage if DB field empty.
+const _profileIdKey=(companyId,projectId)=>
+  companyId&&projectId?`siteshrimp_export_profile_${companyId}_${projectId}`:null;
+function getLocalProfileId(companyId,projectId){
+  const k=_profileIdKey(companyId,projectId);
+  if(!k)return"";
+  try{return localStorage.getItem(k)||"";}catch{return"";}
+}
+function setLocalProfileId(companyId,projectId,id){
+  const k=_profileIdKey(companyId,projectId);
+  if(!k)return;
+  try{if(id)localStorage.setItem(k,id);else localStorage.removeItem(k);}catch{}
+}
+// One-shot: given a project row + current company, figure out the active
+// profile id. Returns "" when the feature flag is off on this project.
+// This is what every export path calls.
+function getActiveProfileId(project,companyId){
+  if(!project||!companyId)return"";
+  if(!isCustomTemplateEnabled(companyId,project.id))return"";
+  return project.exportProfileId||getLocalProfileId(companyId,project.id)||"";
+}
+
 // ── Reference document manifest (pre-extracted at build time) ──────
 // The Requirements/Contract Advisor pulls from bundled reference docs
 // (contracts, CONQUAS manuals, BCA Good Industry Practice trade guides, HDB
@@ -2185,11 +2281,17 @@ function exportCSV(defects,projectName){
 }
 
 // Full report export — defects + drawing annotations + saved comparisons in one CSV
-async function exportReportAll(defects,drawings,savedComparisons,projectName,langCode){
+async function exportReportAll(defects,drawings,savedComparisons,projectName,langCode,profileId){
   // Resolve dropdown option values in the chosen export language. Falls back
   // to English (which is the storage value) when langCode is missing/unknown.
   const tx=v=>(langCode&&typeof tOptIn==="function"?tOptIn(langCode,v):v)||"";
   const esc=v=>`"${String(v==null?"":v).replace(/"/g,'""')}"`;
+  // Optional profile-driven column headers. Default stays identical when
+  // profileId is empty/unknown so non-opted-in users see zero change.
+  await loadExportProfiles();
+  const _profile=profileId?resolveExportProfile(profileId):null;
+  const _h=(_profile&&_profile.export&&_profile.export.csv&&_profile.export.csv.columnHeaders)||{};
+  const h=(k,fallback)=>_h[k]||fallback;
   // Fetch pin / map_pin rows so the occurrence count per entry reflects how
   // many physical locations the defect was captured at. Safe-fallback to
   // empty arrays if the collections are unavailable (older PB instances).
@@ -2202,7 +2304,16 @@ async function exportReportAll(defects,drawings,savedComparisons,projectName,lan
   const lines=[];
   // Section 1: Defect entries
   lines.push("# DEFECT ENTRIES");
-  const defectHeaders=["ID","Entry Type","Title","Component","Issue","Location","Severity","Status","Assignee","Trade","Logged By","Role","Date","Due Date","Duration","Cost Impact","Cost Responsible","Cost Amount","Description","Comments","Occurrences","Pin Locations"];
+  const defectHeaders=[
+    h("defect_id","ID"),h("entryType","Entry Type"),h("title","Title"),
+    h("component","Component"),h("issue","Issue"),h("location","Location"),
+    h("severity","Severity"),h("status","Status"),h("assignee","Assignee"),
+    h("trade","Trade"),h("loggedBy","Logged By"),h("loggedByRole","Role"),
+    h("createdAt","Date"),h("dueDate","Due Date"),h("duration","Duration"),
+    h("costImpact","Cost Impact"),h("costResponsible","Cost Responsible"),
+    h("costAmount","Cost Amount"),h("description","Description"),
+    h("comments","Comments"),"Occurrences","Pin Locations"
+  ];
   lines.push(defectHeaders.join(","));
   (defects||[]).forEach(d=>{
     const pins=pinsByEntry[d.id]||[];
@@ -2358,6 +2469,15 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   const incMap=opts.incMap!==false;
   const gmapsKey=opts.gmapsKey||"";
   const mapProvider=opts.mapProvider||(gmapsKey?"gmaps":"osm");
+  // Resolve the active export profile — only when opts.profileId is set
+  // AND the profiles file loaded. When unset/unknown, everything falls
+  // back to the existing hardcoded strings, so users who never touch the
+  // feature flag see zero change.
+  await loadExportProfiles();
+  const _profile=opts.profileId?resolveExportProfile(opts.profileId):null;
+  const pdfCoverTitle=(_profile&&_profile.export&&_profile.export.pdf&&_profile.export.pdf.coverTitle)||"SITE REPORT";
+  const pdfCoverSubtitle=(_profile&&_profile.export&&_profile.export.pdf&&_profile.export.pdf.coverSubtitle)||"";
+  const pdfFooterNote=(_profile&&_profile.export&&_profile.export.pdf&&_profile.export.pdf.footerNote)||"";
   // Fetch extra map_pins rows so the PDF can note occurrence count per entry
   // when the same defect was pinned at multiple map locations. Failure to
   // fetch degrades to "zero extras" rather than blocking the export.
@@ -2459,13 +2579,18 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   doc.setFontSize(10);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
   doc.text((companyName||"SITESHRIMP").toUpperCase(),margin,16);
 
-  // Report title
+  // Report title — profile-driven so CONQUAS / HDB / custom reports
+  // show the firm's cover wording. Default profile keeps "SITE REPORT".
   doc.setFontSize(24);doc.setFont(undefined,"bold");doc.setTextColor(255);
-  doc.text("SITE REPORT",margin,30);
+  doc.text(pdfCoverTitle,margin,30);
 
-  // Project + date
+  // Project + date (+ optional profile subtitle like "BCA CONQUAS R1")
   doc.setFontSize(11);doc.setFont(undefined,"normal");doc.setTextColor(200);
   doc.text(`${projectName||"Project"} — ${now.toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}`,margin,40);
+  if(pdfCoverSubtitle){
+    doc.setFontSize(9);doc.setTextColor(180);
+    doc.text(pdfCoverSubtitle,margin,46);
+  }
 
   // Entry count badge — show combined tally across every selected section.
   // Map pins = primary GPS pins on defects + extra map_pins rows; shown here
@@ -3317,6 +3442,16 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     doc.text(`Page ${i} of ${totalPages}`,pageW-margin,pageH-7,{align:"right"});
     // Left footer: company + project
     doc.text(`${companyName||"SiteShrimp"} — ${projectName||"Report"}`,margin,pageH-7);
+    // Profile-driven footer note (e.g. CONQUAS projection disclaimer)
+    // placed just above the page-number row. Wrapped; first 2 lines only
+    // to avoid crowding. Nothing drawn when the profile has no footer.
+    if(pdfFooterNote){
+      doc.setFontSize(6.5);doc.setTextColor(140);
+      const footerLines=doc.splitTextToSize(pdfFooterNote,contentW);
+      let fy=pageH-11;
+      for(const fl of footerLines.slice(0,2)){doc.text(fl,margin,fy);fy-=3;}
+      doc.setTextColor(160);doc.setFontSize(7);
+    }
     // Subtle top line on pages after cover
     if(i>1){
       doc.setDrawColor(230);doc.setLineWidth(0.3);
@@ -4567,6 +4702,48 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
     setEditionBusy(null);
   };
 
+  // ── Project Profiles — Phase 1 feature flag + picker (off by default) ──
+  // Feature flag lives in localStorage per (companyId, projectId) so turning
+  // it on for one project does NOT affect other projects or other users'
+  // devices until they also opt in. Picker writes profileId to DB first,
+  // falls back to localStorage on write-failure so the feature works even
+  // when pb_schema.json's exportProfileId field hasn't been imported yet.
+  const[availableProfiles,setAvailableProfiles]=useState([]);
+  const[profileBumper,setProfileBumper]=useState(0); // re-render trigger
+  const[profileBusy,setProfileBusy]=useState(null);
+  useEffect(()=>{
+    loadExportProfiles().then(d=>{
+      setAvailableProfiles(Array.isArray(d.profiles)?d.profiles:[]);
+    });
+  },[]);
+  const profileEnabledOn=(pid)=>isCustomTemplateEnabled(company?.companyId,pid);
+  const profileIdFor=(p)=>p.exportProfileId||getLocalProfileId(company?.companyId,p.id)||"default";
+  const toggleProfileFlag=(pid)=>{
+    const next=!isCustomTemplateEnabled(company?.companyId,pid);
+    setCustomTemplateEnabled(company?.companyId,pid,next);
+    setProfileBumper(b=>b+1);
+  };
+  const setProfileFor=async(id,profileId)=>{
+    if(profileBusy)return;
+    setProfileBusy(id);
+    // Always write the localStorage fallback first so the UI stays
+    // responsive even if the server doesn't accept the field yet.
+    setLocalProfileId(company?.companyId,id,profileId);
+    try{
+      await DB.projects.update(id,{exportProfileId:profileId||""});
+      if(currentProject?.id===id){
+        onSelect({...currentProject,id,name:currentProject.name,exportProfileId:profileId||""});
+      }
+    }catch(e){
+      // Strict-schema rejection is expected when the PB admin hasn't
+      // imported pb_schema.json yet. Localstorage already captured it;
+      // warn but don't fail the action.
+      console.warn("[ExportProfile] DB write failed, using localStorage fallback:",e?.message||e);
+    }
+    setProfileBumper(b=>b+1);
+    setProfileBusy(null);
+  };
+
   // Project sort order is persisted per-company in localStorage. No schema
   // change needed — the ordering is a UI preference, not a shared data model
   // concern. Cross-device sync is a conscious trade-off for ship speed; if
@@ -4710,6 +4887,41 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
                       <button onClick={e=>{e.stopPropagation();setEditionFor(p.id,on?"":DEFAULT_ONTOLOGY_EDITION);}} disabled={busy} style={{marginTop:5,background:bg,border:border,borderRadius:6,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,letterSpacing:"0.04em",color:fg,cursor:busy?"wait":"pointer",display:"inline-flex",alignItems:"center",gap:5}} title={on?`CONQUAS framework enabled (${ed}). Tap to disable.`:"Tap to enable the CONQUAS wizard + Quality Check card on this project."}>
                         {busy?<Spin size={10}/>:<span>{on?"⚖️ CONQUAS ✓":"+ ENABLE CONQUAS"}</span>}
                       </button>
+                    );
+                  })()}
+                  {/* Project Profile (Phase 1, feature-flagged). OFF by
+                      default per project: a firm opts in by tapping
+                      "+ CUSTOM TEMPLATE (BETA)". When ON, a picker appears
+                      with built-in profiles that flex the PDF cover, CSV
+                      headers, and email subject for this project's exports.
+                      Capture flow is unchanged regardless of the flag. */}
+                  {canManage&&availableProfiles.length>0&&(()=>{
+                    const _=profileBumper; // force re-render after flag toggle
+                    const flagOn=profileEnabledOn(p.id);
+                    const active=currentProject?.id===p.id;
+                    const busy=profileBusy===p.id;
+                    const pid=profileIdFor(p);
+                    const bg=flagOn?(active?"rgba(255,255,255,0.18)":"rgba(88,86,214,0.1)"):(active?"rgba(255,255,255,0.12)":"rgba(0,0,0,0.04)");
+                    const color=active?"#fff":(flagOn?"#5856d6":"rgba(0,0,0,0.55)");
+                    const border=flagOn?"1px solid rgba(88,86,214,0.3)":(active?"1px solid rgba(255,255,255,0.2)":"1px solid rgba(0,0,0,0.1)");
+                    if(!flagOn){
+                      return(
+                        <button onClick={e=>{e.stopPropagation();toggleProfileFlag(p.id);}} style={{marginTop:5,background:bg,border:border,borderRadius:6,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,letterSpacing:"0.04em",color,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}} title="Beta — enable a firm-specific report format (CONQUAS, HDB BTO, Simple A4, or leave on Default). Changes PDF cover / CSV headers / email subject for THIS project only. Capture form is unchanged. Toggleable per project, off on all others by default.">
+                          + CUSTOM TEMPLATE (BETA)
+                        </button>
+                      );
+                    }
+                    return(
+                      <div onClick={e=>e.stopPropagation()} style={{marginTop:5,display:"inline-flex",alignItems:"center",gap:5,background:bg,border:border,borderRadius:6,padding:"3px 6px"}}>
+                        <span style={{fontSize:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:active?"rgba(255,255,255,0.85)":"#5856d6",letterSpacing:"0.04em"}}>REPORT:</span>
+                        <select value={pid} disabled={busy} onChange={e=>setProfileFor(p.id,e.target.value)} style={{background:"transparent",border:"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,color:active?"#fff":"#5856d6",cursor:busy?"wait":"pointer",letterSpacing:"0.02em",maxWidth:170,outline:"none"}} title="Pick a template for exports from this project.">
+                          {availableProfiles.map(prof=>(
+                            <option key={prof.id} value={prof.id}>{prof.name}</option>
+                          ))}
+                        </select>
+                        {busy&&<Spin size={10}/>}
+                        <button onClick={()=>toggleProfileFlag(p.id)} style={{background:"transparent",border:"none",color:active?"rgba(255,255,255,0.5)":"rgba(88,86,214,0.5)",fontSize:12,cursor:"pointer",padding:"0 2px",lineHeight:1}} title="Turn off custom template — revert to default export format.">×</button>
+                      </div>
                     );
                   })()}
                 </div>
@@ -9904,8 +10116,26 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
       const defs=await prepareDefectsForExport(incDefects?filtered:[]);
       const html=generateEmailHTML(defs,currentProject?.name,company?.companyName,opts);
       const timestamp=new Date().toLocaleString("en-GB",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+      const dateShort=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
       const totalItems=filtered.length;
-      const subject=`${currentProject?.name||"Project"} – ${timestamp} – ${totalItems} Site Item${totalItems!==1?"s":""} Checked`;
+      // Profile-driven subject when the project has the feature flag on.
+      // Placeholders: {projectName}, {date}, {timestamp}, {count},
+      // {countNoun}. Falls back to the legacy line when no profile active.
+      await loadExportProfiles();
+      const _pid=getActiveProfileId(currentProject,company?.companyId);
+      const _prof=_pid?resolveExportProfile(_pid):null;
+      const _tpl=(_prof&&_prof.export&&_prof.export.email&&_prof.export.email.subject)||"";
+      let subject;
+      if(_tpl){
+        subject=_tpl
+          .replace(/\{projectName\}/g,currentProject?.name||"Project")
+          .replace(/\{date\}/g,dateShort)
+          .replace(/\{timestamp\}/g,timestamp)
+          .replace(/\{count\}/g,String(totalItems))
+          .replace(/\{countNoun\}/g,`Site Item${totalItems!==1?"s":""} Checked`);
+      }else{
+        subject=`${currentProject?.name||"Project"} – ${timestamp} – ${totalItems} Site Item${totalItems!==1?"s":""} Checked`;
+      }
       await DB.sendEmail(emailCfg.recipients.filter(r=>r.trim()),subject,html);
       setSendRes("success");
     }catch(e){console.error(e);setSendRes("fail");}
@@ -10271,10 +10501,10 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
                 </label>
                 )}
               </div>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang);}catch(e){alert("Export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true,langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4)});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false,langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4)});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang);await new Promise(r=>setTimeout(r,600));await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4)});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang,getActiveProfileId(currentProject,company?.companyId));}catch(e){alert("Export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true,langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId)});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false,langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId)});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang,getActiveProfileId(currentProject,company?.companyId));await new Promise(r=>setTimeout(r,600));await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId)});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
               <button onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);const result=await exportToGoogleSheets(defs,currentProject?.name,company?.companyName,exportLang);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
             </div>
           )}
