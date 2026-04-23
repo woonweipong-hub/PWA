@@ -6281,6 +6281,22 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   const[addPhotoSaving,setAddPhotoSaving]=useState(false);
   const addPhotoRef=useRef();
   const saveAndDoneRef=useRef(false);
+  // Zero-tap batch capture: when the user picks N photos at once (phone
+  // gallery / laptop drag-drop), each photo fans out into its own defect
+  // record. The first photo goes straight into the form and the rest wait
+  // in batchQueue; after each auto-save, the advance effect pops the next.
+  // batchTotal drives the visible "📸 Batch: k of N" progress pill.
+  const[batchQueue,setBatchQueue]=useState([]);
+  const[batchTotal,setBatchTotal]=useState(0);
+  // Race protection for mid-analysis photo swaps. analyze() writes the
+  // photoHash it's working on here at the start, and re-checks before
+  // applying the result — if the hash has moved (user swapped to a new
+  // photo), the stale result is discarded instead of saving the wrong
+  // fields against the new photo.
+  const analysisHashRef=useRef(null);
+  // Post-save toast with an EDIT shortcut. Makes "rectify instantly" a
+  // single tap from the capture screen instead of REVIEW → ENTRIES → find.
+  const[lastSaved,setLastSaved]=useState(null);
 
   // Build a context-enriched AI prompt from the previous entry's metadata.
   // The extra clause tells AI the floor/zone/trade so its suggestions are more
@@ -6322,18 +6338,40 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   const handlePhoto=e=>{
     const files=Array.from(e.target.files||[]);
     if(!files.length)return;
-    const remaining=MAX_PHOTOS-form.photos.length;
-    const toAdd=files.slice(0,remaining);
-    toAdd.forEach(f=>{
-      const r=new FileReader();
-      r.onload=()=>setForm(prev=>{
-        if(prev.photos.length>=MAX_PHOTOS)return prev;
-        return{...prev,photos:[...prev.photos,r.result]};
-      });
-      r.readAsDataURL(f);
-    });
-    setAiResult(null);
     if(fileRef.current)fileRef.current.value="";
+    setAiResult(null);
+    // Single-photo pick OR multi-pick without AI: attach to current form
+    // up to MAX_PHOTOS (existing behavior — user fills + saves one record).
+    if(files.length===1||!aiReady){
+      const remaining=MAX_PHOTOS-form.photos.length;
+      const toAdd=files.slice(0,remaining);
+      toAdd.forEach(f=>{
+        const r=new FileReader();
+        r.onload=()=>setForm(prev=>{
+          if(prev.photos.length>=MAX_PHOTOS)return prev;
+          return{...prev,photos:[...prev.photos,r.result]};
+        });
+        r.readAsDataURL(f);
+      });
+      return;
+    }
+    // Multi-pick with AI: fan out into N separate records. First photo
+    // enters the form immediately so the existing zero-tap auto-analyze +
+    // auto-save flow takes it, the rest queue up and get popped one at a
+    // time by the batch-advance effect.
+    Promise.all(files.map(f=>new Promise((resolve,reject)=>{
+      const r=new FileReader();
+      r.onload=()=>resolve(r.result);
+      r.onerror=()=>reject(new Error("Failed to read "+(f.name||"photo")));
+      r.readAsDataURL(f);
+    }))).then(dataUrls=>{
+      setForm(prev=>({...prev,photos:[dataUrls[0]]}));
+      setBatchQueue(dataUrls.slice(1));
+      setBatchTotal(dataUrls.length);
+    }).catch(err=>{
+      console.error("[Batch] photo read failed:",err);
+      alert("Could not read one of the selected photos: "+err.message);
+    });
   };
 
   const removePhoto=idx=>setForm(f=>({...f,photos:f.photos.filter((_,i)=>i!==idx)}));
@@ -6481,9 +6519,11 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // output and without re-spending tokens. When AI is configured and the
   // photo is new, auto-invoke analyze() so the user never has to tap
   // ANALYZE — zero-tap capture flow. See feedback memory
-  // "AI pre-fill should be zero-tap".
+  // "AI pre-fill should be zero-tap". Also re-fires when `analyzing`
+  // flips to false so a photo-swap during a previous analyze can still
+  // start its own analyze after the stale in-flight call resolves.
   useEffect(()=>{
-    if(!form.photos[0]||aiResult||analyzing)return;
+    if(!form.photos[0]||aiResult||analyzing||saving)return;
     let cancelled=false;
     (async()=>{
       const hash=await photoHash(form.photos[0]);
@@ -6497,25 +6537,58 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       if(aiReady&&!cancelled)analyze();
     })();
     return()=>{cancelled=true;};
-  // eslint-disable-next-line react-hooks/exhaustive-deps — intentional: only
-  // react to the first photo changing, not every form field mutation.
-  },[form.photos[0]]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps — intentional.
+  },[form.photos[0],analyzing]);
 
   // Auto-save once AI has pre-filled the form. When AI is configured, the
   // user's intent after a photo is to log the defect — not to re-confirm
   // every AI-filled value. Rectification happens later in REVIEW / ENTRIES.
   // Skipping this tap is the main on-site throughput win; cycling through
   // 30 photos previously required ≥60 taps (ANALYZE + SAVE each), now zero.
-  // Guard against firing without meaningful AI output so a failed analysis
-  // doesn't commit an empty record.
+  // In batch mode, a {__failed:true} sentinel also triggers save so the
+  // record still lands (submit() auto-generates a "Photo entry — date"
+  // title) and the batch queue keeps advancing.
   useEffect(()=>{
     if(!aiResult)return;
     if(saving||analyzing)return;
-    if(!form.title.trim()&&!form.description.trim())return;
-    submit();
+    const isBatchFail=aiResult&&aiResult.__failed;
+    if(!isBatchFail&&!form.title.trim()&&!form.description.trim())return;
+    if(!form.photos.length)return;
+    submit({auto:true});
   // eslint-disable-next-line react-hooks/exhaustive-deps — fire once per AI
   // result becoming available; submit() uses its own latest-form closure.
   },[aiResult]);
+
+  // Batch-advance: after each auto-save the form is cleared; if more
+  // photos are queued, pop the next one so the zero-tap flow picks it up.
+  useEffect(()=>{
+    if(form.photos.length>0)return;     // current photo still being processed
+    if(batchQueue.length===0)return;    // nothing queued
+    if(saving||analyzing)return;        // previous cycle still in flight
+    const[next,...rest]=batchQueue;
+    setBatchQueue(rest);
+    setForm(prev=>({...prev,photos:[next]}));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[form.photos.length,batchQueue.length,saving,analyzing]);
+
+  // Batch completion: when queue drains and the last photo has been saved,
+  // show a single completion toast and reset the progress pill. Avoids
+  // spamming N individual toasts during batch processing.
+  useEffect(()=>{
+    if(batchTotal>0&&batchQueue.length===0&&form.photos.length===0&&!saving&&!analyzing){
+      setLastSaved({id:null,title:`Batch complete — ${batchTotal} photo${batchTotal>1?"s":""} saved`,ts:Date.now(),savedEntry:null,batch:true});
+      setBatchTotal(0);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[batchTotal,batchQueue.length,form.photos.length,saving,analyzing]);
+
+  // Auto-clear the post-save toast after 5 s. Tapping EDIT before then
+  // jumps straight to the saved record for rectification.
+  useEffect(()=>{
+    if(!lastSaved)return;
+    const t=setTimeout(()=>setLastSaved(null),5000);
+    return()=>clearTimeout(t);
+  },[lastSaved]);
 
   const analyze=async()=>{
     if(!form.photos.length||!aiReady)return;
@@ -6524,6 +6597,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       const photo=form.photos[0];
       // 1) Cache hit — skip the API entirely (no token burn, instant apply).
       const hash=await photoHash(photo);
+      analysisHashRef.current=hash;
       const cached=readAiCache(hash);
       if(cached){
         setAiResult(cached);
@@ -6537,7 +6611,11 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       const aiUsage=local.get(AI_LIMIT_KEY)||{date:"",count:0};
       const todayCount=aiUsage.date===today?aiUsage.count:0;
       if(todayCount>=AI_DAILY_LIMIT){
-        alert(`AI analysis limit reached (${AI_DAILY_LIMIT}/day).\n\nYou can still log entries manually.`);
+        // In batch mode, surface once in the progress pill instead of N
+        // modal alerts blocking the user.
+        if(batchTotal===0){
+          alert(`AI analysis limit reached (${AI_DAILY_LIMIT}/day).\n\nYou can still log entries manually.`);
+        }
         setAnalyzing(false);
         return;
       }
@@ -6546,20 +6624,31 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       const compressed=await compressPhoto(photo,600,0.7);
       try{window.__lastAiError=null;}catch{}
       const result=await analyzePhoto(compressed||photo,buildContextPrompt(last));
+      // Race guard — discard a stale result if the user swapped photos
+      // between the start of this call and now. analysisHashRef is written
+      // by whichever analyze() started most recently; if it's moved, we
+      // are no longer the active analysis.
+      if(analysisHashRef.current!==hash){
+        setAnalyzing(false);
+        return;
+      }
       if(result&&(result.title||result.description)){
         local.set(AI_LIMIT_KEY,{date:today,count:todayCount+1});
         writeAiCache(hash,result);
         setAiResult(result);
         applyAiResult(result);
       }else{
-        // Surface the actual failure reason so the user can act on it
-        // (expired key, blocked project, CORS, offline) without needing
-        // to open DevTools. Falls back to the generic message when no
-        // specific reason was captured by the provider.
-        const detail=(typeof window!=="undefined"&&window.__lastAiError)||"";
-        alert("AI could not analyze the photo.\n\n"+(detail?detail+"\n\n":"")+"Try a clearer image, check AI settings, or log manually.");
+        // In batch mode, don't alert per-photo — let the batch keep moving
+        // and save this record with a placeholder so the user still has
+        // the photo logged. The auto-save effect picks up this sentinel.
+        if(batchTotal>0){
+          setAiResult({__failed:true});
+        }else{
+          const detail=(typeof window!=="undefined"&&window.__lastAiError)||"";
+          alert("AI could not analyze the photo.\n\n"+(detail?detail+"\n\n":"")+"Try a clearer image, check AI settings, or log manually.");
+        }
       }
-    }catch(e){alert("AI analysis error: "+e.message);}
+    }catch(e){if(batchTotal===0)alert("AI analysis error: "+e.message);}
     setAnalyzing(false);
   };
 
@@ -6583,12 +6672,14 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
     return bestScore>=0.6?bestMatch:null;
   };
 
-  const submit=async()=>{
+  const submit=async(opts={})=>{
+    const auto=!!opts.auto;
+    const inBatch=batchTotal>0||batchQueue.length>0;
     // Minimum: a description OR a photo OR a title — anything else can be filled in later via Review comments.
     const hasDesc=!!form.description.trim();
     const hasPhoto=(form.photos||[]).length>0;
     const hasTitle=!!form.title.trim();
-    if(!hasTitle&&!hasDesc&&!hasPhoto){alert("Add a description or a photo to submit.");return;}
+    if(!hasTitle&&!hasDesc&&!hasPhoto){if(!auto)alert("Add a description or a photo to submit.");return;}
 
     // Build location display from hierarchy (may be empty — location is now optional)
     const locParts=[form.locationLevel,form.locationZone,form.locationSubzone,form.locationGrid].filter(Boolean);
@@ -6605,8 +6696,11 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       }
     }
 
-    // Check for duplicates (only when we have a real title to compare)
-    if(hasTitle){
+    // Check for duplicates (only when we have a real title to compare).
+    // In auto-save / batch mode we skip the confirm prompt — halting a
+    // batch of 30 photos with a modal dialog would defeat zero-tap. The
+    // user sees both records in ENTRIES and can merge/archive later.
+    if(hasTitle&&!auto){
       const dup=findDuplicate(form.title,locationDisplay);
       if(dup&&!confirm(`⚠️ Similar entry found:\n\n"${dup.title}"\n${dup.severity} · ${dup.status} · ${dup.location}\n${dup.defect_id||""}\n\nSubmit anyway?`))return;
     }
@@ -6636,15 +6730,28 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         updatedAt:DB.serverTimestamp(),
         comments:[]
       });
+      const savedEntry=saveResult&&saveResult!=="queued"?{...saveResult,title:effectiveTitle,location:locationDisplay||form.location,severity:form.severity,trade,status:"Open",assignee:form.assignee,loggedBy:member?.name||"",loggedByRole:member?.role||"",description:form.description,component:form.component,entryType:form.entryType||"Defect"}:null;
       setLast({location:locationDisplay,assignee:form.assignee,severity:form.severity,
         locationLevel:form.locationLevel,locationZone:form.locationZone,component:form.component,
         workCategory:form.workCategory,queued:saveResult==="queued",
-        savedEntry:saveResult&&saveResult!=="queued"?{...saveResult,title:effectiveTitle,location:locationDisplay||form.location,severity:form.severity,trade,status:"Open",assignee:form.assignee,loggedBy:member?.name||"",loggedByRole:member?.role||"",description:form.description,component:form.component,entryType:form.entryType||"Defect"}:null});
+        savedEntry});
       setCount(c=>c+1);setForm(blank);setAiResult(null);setSpeakTranscript("");
       setAddPhotoData(null);setAddPhotoAiDesc("");setAddPhotoSaving(false);
-      if(saveAndDoneRef.current){saveAndDoneRef.current=false;/* stay on form, batch screen not shown — parent tab switch handles "done" */}
-      else{setShowBatch(true);}
-    }catch(e){alert("Error saving: "+e.message);}
+      // Post-save routing:
+      //  - saveAndDone (explicit LOG & DONE button) → stay on form, no batch screen
+      //  - auto-save in an active batch → stay on form, progress pill drives UI,
+      //    batch-complete toast fires once when queue drains
+      //  - auto-save single photo → stay on form, show UNDO/EDIT toast (5 s)
+      //  - manual SAVE tap (no auto) → existing batch confirmation screen
+      if(saveAndDoneRef.current){saveAndDoneRef.current=false;}
+      else if(auto){
+        if(!inBatch){
+          setLastSaved({id:savedEntry?.id||null,title:effectiveTitle,ts:Date.now(),savedEntry,batch:false});
+        }
+      }else{
+        setShowBatch(true);
+      }
+    }catch(e){if(!auto||batchTotal===0)alert("Error saving: "+e.message);}
     setSaving(false);
   };
 
@@ -6865,6 +6972,23 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         </button>
       )}
 
+      {/* Batch progress pill — visible during a multi-photo auto-flow.
+          Shows current position so the user knows AI is working through
+          the queue in the background. Sits above the capture button so
+          it's the first thing seen on LOG. */}
+      {batchTotal>0&&(
+        <div style={{marginBottom:12,padding:"10px 14px",background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.3)",borderRadius:12,display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:28,height:28,borderRadius:"50%",background:"#5856d6",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>📸</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#5856d6",letterSpacing:"0.04em"}}>BATCH — {batchTotal-batchQueue.length} OF {batchTotal}</div>
+            <div style={{fontSize:10,color:"rgba(0,0,0,0.55)",marginTop:1}}>
+              {analyzing?"AI pre-filling current photo…":saving?"Saving…":batchQueue.length>0?`${batchQueue.length} photo${batchQueue.length>1?"s":""} queued — keep walking, or rectify later in REVIEW / ENTRIES`:"Finishing up…"}
+            </div>
+          </div>
+          {(analyzing||saving)&&<Spin size={14}/>}
+        </div>
+      )}
+
       {/* ── 1. TAKE PHOTO — big prominent capture ── */}
       <div style={{marginBottom:16}}>
         <label style={lbl()}>{t("log.photos_count")} ({form.photos.length}/{MAX_PHOTOS})</label>
@@ -6998,6 +7122,26 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           </div>
         );
       })()}
+
+      {/* Post-save UNDO/EDIT toast. Fixed above the bottom nav so it's
+          visible during the brief 5 s window regardless of form scroll.
+          EDIT jumps straight to the saved record for instant rectification
+          (the "rectify instantly" half of the user's workflow brief) —
+          no EDIT button when savedEntry is null (offline queue) or for
+          the batch-complete acknowledgment toast. */}
+      {lastSaved&&(
+        <div style={{position:"fixed",left:12,right:12,bottom:84,zIndex:200,background:"#1a1a1a",color:"#fff",borderRadius:12,padding:"12px 14px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 6px 20px rgba(0,0,0,0.25)",animation:"fadeIn 0.2s ease"}}>
+          <div style={{fontSize:18,lineHeight:1}}>✓</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,letterSpacing:"0.04em"}}>{lastSaved.batch?"BATCH COMPLETE":"SAVED"}</div>
+            <div style={{fontSize:11,color:"rgba(255,255,255,0.75)",marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{lastSaved.title}</div>
+          </div>
+          {lastSaved.savedEntry&&onViewEntry&&(
+            <button onClick={()=>{const e=lastSaved.savedEntry;setLastSaved(null);onViewEntry(e);}} style={{background:"#ff6b00",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",letterSpacing:"0.05em",flexShrink:0}}>EDIT</button>
+          )}
+          <button onClick={()=>setLastSaved(null)} style={{background:"transparent",border:"none",color:"rgba(255,255,255,0.55)",fontSize:16,cursor:"pointer",padding:"2px 6px",lineHeight:1,flexShrink:0}}>×</button>
+        </div>
+      )}
 
       {/* Photo Markup Editor */}
       {markupIdx!==null&&form.photos[markupIdx]&&(
