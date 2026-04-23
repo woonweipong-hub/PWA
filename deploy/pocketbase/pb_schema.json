@@ -456,10 +456,6 @@
         "type": "text"
       },
       {
-        "name": "exportProfileId",
-        "type": "text"
-      },
-      {
         "name": "ft_wtt_applicable",
         "type": "number"
       },

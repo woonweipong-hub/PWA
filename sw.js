@@ -1,4 +1,4 @@
-const CACHE = 'siteshrimp-v105';
+const CACHE = 'siteshrimp-v104';
 const ASSETS = [
   '/',
   '/index.html',
@@ -34,8 +34,7 @@ const ASSETS = [
   '/lang/no.json',
   '/lang/da.json',
   '/lang/fi.json',
-  '/reference-texts/manifest.json',
-  '/templates/profiles.json'
+  '/reference-texts/manifest.json'
 ];
 
 // ── Install: pre-cache app shell, then warm Requirements Advisor corpus ──
