@@ -6353,6 +6353,15 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // Post-save toast with an EDIT shortcut. Makes "rectify instantly" a
   // single tap from the capture screen instead of REVIEW → ENTRIES → find.
   const[lastSaved,setLastSaved]=useState(null);
+  // Staging overlay — when the user picks a folder (phone DCIM can hold
+  // thousands of photos) or multi-selects more than a handful from the
+  // gallery, show a thumbnail grid first so they can filter by date and
+  // tick only the relevant subset. Prevents accidentally burning AI
+  // calls on 2 000 unrelated photos. Thumbs use blob URLs (cheap); the
+  // actual files are read to data URLs lazily as the batch advances.
+  const[stagingFiles,setStagingFiles]=useState([]);
+  const[stagingFilter,setStagingFilter]=useState("all");
+  const STAGING_THRESHOLD=5;
 
   // Build a context-enriched AI prompt from the previous entry's metadata.
   // The extra clause tells AI the floor/zone/trade so its suggestions are more
@@ -6424,23 +6433,75 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       });
       return;
     }
-    // Multi-pick with AI: fan out into N separate records. First photo
-    // enters the form immediately so the existing zero-tap auto-analyze +
-    // auto-save flow takes it, the rest queue up and get popped one at a
-    // time by the batch-advance effect.
-    Promise.all(files.map(f=>new Promise((resolve,reject)=>{
-      const r=new FileReader();
-      r.onload=()=>resolve(r.result);
-      r.onerror=()=>reject(new Error("Failed to read "+(f.name||"photo")));
-      r.readAsDataURL(f);
-    }))).then(dataUrls=>{
-      setForm(prev=>({...prev,photos:[dataUrls[0]]}));
-      setBatchQueue(dataUrls.slice(1));
-      setBatchTotal(dataUrls.length);
-    }).catch(err=>{
-      console.error("[Batch] photo read failed:",err);
-      alert("Could not read one of the selected photos: "+err.message);
-    });
+    // Multi-pick with AI: if the selection is small, go straight into
+    // batch (user explicitly picked these). If larger, open the staging
+    // grid so the user can filter and tick a subset — phone folder pickers
+    // can return the entire DCIM (thousands of images). Either path ends
+    // up calling commitBatch() with a File list.
+    if(files.length<=STAGING_THRESHOLD){
+      commitBatch(files);
+      return;
+    }
+    const staging=files.map((file,i)=>({
+      id:`${Date.now()}-${i}`,
+      file,
+      thumbUrl:URL.createObjectURL(file),
+      lastModified:file.lastModified||Date.now(),
+      size:file.size||0,
+      name:file.name||`photo-${i+1}`,
+      selected:true
+    }));
+    setStagingFiles(staging);
+    setStagingFilter("all");
+  };
+
+  // Start a batch run from a File[] — reads only the first photo to a
+  // data URL up-front so the zero-tap auto-analyze flow takes it; the
+  // rest stay as File objects in batchQueue and are read lazily when
+  // popped. This is the key to supporting hundreds of selected photos
+  // without spiking memory with N simultaneous data-URL allocations.
+  const commitBatch=async(files)=>{
+    if(!files||!files.length)return;
+    try{
+      const firstUrl=await new Promise((resolve,reject)=>{
+        const r=new FileReader();
+        r.onload=()=>resolve(r.result);
+        r.onerror=()=>reject(new Error("Failed to read "+(files[0].name||"photo")));
+        r.readAsDataURL(files[0]);
+      });
+      setForm(prev=>({...prev,photos:[firstUrl]}));
+      setBatchQueue(files.slice(1));
+      setBatchTotal(files.length);
+    }catch(err){
+      console.error("[Batch] first-photo read failed:",err);
+      alert("Could not read the first photo: "+err.message);
+    }
+  };
+
+  // Staging helpers — filter chip logic and bulk tick/untick.
+  const stagingCutoffs={today:86400000,week:7*86400000,month:30*86400000};
+  const visibleStaging=stagingFiles.filter(s=>{
+    if(stagingFilter==="all")return true;
+    const cutoff=stagingCutoffs[stagingFilter];
+    if(!cutoff)return true;
+    return s.lastModified>=Date.now()-cutoff;
+  });
+  const selectedStagingCount=visibleStaging.filter(s=>s.selected).length;
+  const toggleStagingOne=id=>setStagingFiles(prev=>prev.map(s=>s.id===id?{...s,selected:!s.selected}:s));
+  const setAllVisibleStaging=v=>{
+    const visibleIds=new Set(visibleStaging.map(s=>s.id));
+    setStagingFiles(prev=>prev.map(s=>visibleIds.has(s.id)?{...s,selected:v}:s));
+  };
+  const closeStaging=()=>{
+    stagingFiles.forEach(s=>{try{URL.revokeObjectURL(s.thumbUrl);}catch{}});
+    setStagingFiles([]);
+  };
+  const commitStaging=async()=>{
+    const selected=stagingFiles.filter(s=>s.selected);
+    if(!selected.length){alert("Pick at least one photo to process.");return;}
+    const files=selected.map(s=>s.file);
+    closeStaging();
+    await commitBatch(files);
   };
 
   const removePhoto=idx=>setForm(f=>({...f,photos:f.photos.filter((_,i)=>i!==idx)}));
@@ -6630,13 +6691,28 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
 
   // Batch-advance: after each auto-save the form is cleared; if more
   // photos are queued, pop the next one so the zero-tap flow picks it up.
+  // batchQueue items can be either File objects (lazy — the staging path
+  // keeps Files to avoid pre-allocating N data URLs in memory) or strings
+  // (direct data URLs, legacy path). The advance resolves both.
   useEffect(()=>{
     if(form.photos.length>0)return;     // current photo still being processed
     if(batchQueue.length===0)return;    // nothing queued
     if(saving||analyzing)return;        // previous cycle still in flight
     const[next,...rest]=batchQueue;
     setBatchQueue(rest);
-    setForm(prev=>({...prev,photos:[next]}));
+    if(typeof next==="string"){
+      setForm(prev=>({...prev,photos:[next]}));
+      return;
+    }
+    // File/Blob — read lazily
+    const r=new FileReader();
+    r.onload=()=>setForm(prev=>({...prev,photos:[r.result]}));
+    r.onerror=()=>{
+      console.warn("[Batch] failed to read queued file, skipping");
+      // Advance will re-fire because form.photos stays []; the remaining
+      // queue will pop the next one.
+    };
+    r.readAsDataURL(next);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[form.photos.length,batchQueue.length,saving,analyzing]);
 
@@ -6658,6 +6734,13 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
     const t=setTimeout(()=>setLastSaved(null),5000);
     return()=>clearTimeout(t);
   },[lastSaved]);
+
+  // Revoke staging blob URLs on unmount to avoid leaking memory if the
+  // user navigates away while the staging overlay is open.
+  useEffect(()=>()=>{
+    stagingFiles.forEach(s=>{try{URL.revokeObjectURL(s.thumbUrl);}catch{}});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
 
   const analyze=async()=>{
     if(!form.photos.length||!aiReady)return;
@@ -7199,6 +7282,69 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
             </button>
             <div style={{textAlign:"center",marginTop:8}}>
               <button onClick={()=>{saveAndDoneRef.current=true;submit();}} disabled={saving||!canSubmit} style={{background:"none",border:"none",fontSize:12,color:"rgba(0,0,0,0.4)",cursor:canSubmit&&!saving?"pointer":"not-allowed",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600}}>{t("log.save_done")}</button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Staging overlay — shown when the user folder-picked or
+          multi-picked more than STAGING_THRESHOLD images. Lets them filter
+          by date and tick a subset before committing to a batch run.
+          Prevents the "phone gallery has 2 000 photos" trap from turning
+          into an accidental 2 000-AI-call batch. */}
+      {stagingFiles.length>0&&(()=>{
+        const totalMB=(stagingFiles.reduce((s,f)=>s+(f.size||0),0)/1048576).toFixed(1);
+        const filterChip=(id,label)=>(
+          <button key={id} onClick={()=>setStagingFilter(id)} style={{padding:"6px 12px",borderRadius:18,border:`1.5px solid ${stagingFilter===id?"#5856d6":"rgba(0,0,0,0.12)"}`,background:stagingFilter===id?"#5856d6":"#fff",color:stagingFilter===id?"#fff":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",letterSpacing:"0.03em"}}>{label}</button>
+        );
+        return(
+          <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:500,display:"flex",flexDirection:"column",animation:"fadeIn 0.2s ease"}}>
+            {/* Header */}
+            <div style={{padding:"14px 16px 10px",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(0,0,0,0.08)",background:"#fff"}}>
+              <button onClick={closeStaging} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:18,padding:"6px 12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",color:"rgba(0,0,0,0.6)",letterSpacing:"0.04em"}}>← CANCEL</button>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a1a1a",letterSpacing:"0.03em"}}>SELECT PHOTOS FOR BATCH</div>
+                <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",marginTop:1}}>
+                  {stagingFiles.length} found · {selectedStagingCount} ticked · ~{totalMB} MB
+                </div>
+              </div>
+            </div>
+            {/* Filter row + bulk tick */}
+            <div style={{padding:"10px 12px",display:"flex",flexDirection:"column",gap:8,background:"#fff",borderBottom:"1px solid rgba(0,0,0,0.06)"}}>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {filterChip("all","ALL")}
+                {filterChip("today","TODAY")}
+                {filterChip("week","LAST 7 DAYS")}
+                {filterChip("month","LAST 30 DAYS")}
+              </div>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                <button onClick={()=>setAllVisibleStaging(true)} style={{background:"rgba(88,86,214,0.1)",border:"1px solid rgba(88,86,214,0.3)",borderRadius:6,padding:"4px 10px",color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,letterSpacing:"0.05em",cursor:"pointer"}}>✓ SELECT ALL</button>
+                <button onClick={()=>setAllVisibleStaging(false)} style={{background:"rgba(0,0,0,0.05)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:6,padding:"4px 10px",color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,letterSpacing:"0.05em",cursor:"pointer"}}>NONE</button>
+                <div style={{flex:1,fontSize:10,color:"rgba(0,0,0,0.5)",textAlign:"right"}}>{visibleStaging.length} visible</div>
+              </div>
+            </div>
+            {/* Thumbnail grid */}
+            <div style={{flex:1,overflowY:"auto",padding:10}}>
+              {visibleStaging.length===0?(
+                <div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.45)",fontSize:12,lineHeight:1.5}}>
+                  No photos in this date range.<br/>Pick a different filter.
+                </div>
+              ):(
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(90px, 1fr))",gap:4}}>
+                  {visibleStaging.map(s=>(
+                    <div key={s.id} onClick={()=>toggleStagingOne(s.id)} style={{position:"relative",aspectRatio:"1/1",borderRadius:8,overflow:"hidden",background:"#1a1a1a",cursor:"pointer",border:s.selected?"3px solid #5856d6":"3px solid transparent",transition:"border-color 0.15s"}}>
+                      <img src={s.thumbUrl} alt="" loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block",opacity:s.selected?1:0.55}}/>
+                      <div style={{position:"absolute",top:4,right:4,width:22,height:22,borderRadius:"50%",background:s.selected?"#5856d6":"rgba(0,0,0,0.5)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,border:"2px solid #fff"}}>{s.selected?"✓":""}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Action bar */}
+            <div style={{padding:"12px 16px",background:"#fff",borderTop:"1px solid rgba(0,0,0,0.08)",display:"flex",gap:8}}>
+              <button disabled={selectedStagingCount===0} onClick={commitStaging} style={{flex:1,height:48,background:selectedStagingCount===0?"rgba(0,0,0,0.1)":"#ff6b00",border:"none",borderRadius:12,color:selectedStagingCount===0?"rgba(0,0,0,0.3)":"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.05em",cursor:selectedStagingCount===0?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                <span style={{fontSize:16}}>⚡</span> PROCESS {selectedStagingCount} WITH AI
+              </button>
             </div>
           </div>
         );
