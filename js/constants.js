@@ -445,5 +445,16 @@ const OLLAMA_KEY = "sdt-ollama-v1";
 const OPENAI_KEY = "sdt-openai-v1";
 const GMAPS_KEY = "sdt-gmaps-v1";
 const MAP_PROVIDER_KEY = "sdt-map-provider-v1"; // "osm" | "gmaps"
+// LOG auto-save mode — user preference for how aggressive AI auto-save is
+// on the capture form. Three values:
+//   "review-first": AI pre-fills + user taps SAVE (no auto-commit ever)
+//   "review-then-auto": AI pre-fills + user taps SAVE for first 10 of a
+//                       session, then zero-tap after (DEFAULT)
+//   "always-auto":  AI pre-fills + auto-commits immediately (pre-existing
+//                   zero-tap behaviour for firms that prefer speed)
+// Session counts reset when the user leaves the LOG tab.
+const AUTO_SAVE_MODE_KEY = "sdt-auto-save-mode-v1";
+const AUTO_SAVE_MODE_DEFAULT = "review-then-auto";
+const AUTO_SAVE_REVIEW_THRESHOLD = 10;
 const MAP_DEFAULT_VIEW_KEY_PREFIX = "sdt-map-default-"; // + projectId
 const MAP_FALLBACK_CENTER = { lat: 1.3331, lng: 103.7422, zoom: 17, label: "JEM Office Building" };

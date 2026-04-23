@@ -6882,20 +6882,36 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // eslint-disable-next-line react-hooks/exhaustive-deps — intentional.
   },[form.photos[0],analyzing]);
 
-  // Auto-save once AI has pre-filled the form. When AI is configured, the
-  // user's intent after a photo is to log the defect — not to re-confirm
-  // every AI-filled value. Rectification happens later in REVIEW / ENTRIES.
-  // Skipping this tap is the main on-site throughput win; cycling through
-  // 30 photos previously required ≥60 taps (ANALYZE + SAVE each), now zero.
-  // In batch mode, a {__failed:true} sentinel also triggers save so the
-  // record still lands (submit() auto-generates a "Photo entry — date"
-  // title) and the batch queue keeps advancing.
+  // Auto-save gated by the user's chosen mode. Defaults to review-then-auto
+  // so the first 10 saves of a session require an explicit SAVE tap (the
+  // user's "ok") and AI-filled output can be inspected first — feedback
+  // that zero-tap felt abrupt on first-contact. After 10 saves in the
+  // session, zero-tap resumes automatically. Users can flip modes by
+  // tapping the session counter in the LOG header.
+  //
+  // In active batch mode (user picked many photos at once), auto-save
+  // ALWAYS fires regardless of mode — the user already opted into bulk
+  // capture by picking multiple files, so the review-gate would defeat
+  // that workflow.
+  const[autoSaveMode,setAutoSaveMode]=useState(()=>local.get(AUTO_SAVE_MODE_KEY)||AUTO_SAVE_MODE_DEFAULT);
+  const persistAutoSaveMode=(m)=>{setAutoSaveMode(m);local.set(AUTO_SAVE_MODE_KEY,m);};
+  const cycleAutoSaveMode=()=>{
+    const order=["review-first","review-then-auto","always-auto"];
+    const next=order[(order.indexOf(autoSaveMode)+1)%order.length];
+    persistAutoSaveMode(next);
+  };
   useEffect(()=>{
     if(!aiResult)return;
     if(saving||analyzing)return;
     const isBatchFail=aiResult&&aiResult.__failed;
     if(!isBatchFail&&!form.title.trim()&&!form.description.trim())return;
     if(!form.photos.length)return;
+    const inBatch=batchTotal>0||batchQueue.length>0;
+    // Batch mode: always auto-commit (user picked many photos intentionally).
+    if(inBatch){submit({auto:true});return;}
+    // Single capture: respect the mode.
+    if(autoSaveMode==="review-first")return;
+    if(autoSaveMode==="review-then-auto"&&count<AUTO_SAVE_REVIEW_THRESHOLD)return;
     submit({auto:true});
   // eslint-disable-next-line react-hooks/exhaustive-deps — fire once per AI
   // result becoming available; submit() uses its own latest-form closure.
@@ -7102,16 +7118,20 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       setCount(c=>c+1);setForm(blank);setAiResult(null);setSpeakTranscript("");
       setAddPhotoData(null);setAddPhotoAiDesc("");setAddPhotoSaving(false);
       // Post-save routing:
-      //  - saveAndDone (explicit LOG & DONE button) → stay on form, no batch screen
-      //  - auto-save in an active batch → stay on form, progress pill drives UI,
-      //    batch-complete toast fires once when queue drains
-      //  - auto-save single photo → stay on form, show UNDO/EDIT toast (5 s)
-      //  - manual SAVE tap (no auto) → existing batch confirmation screen
+      //  - saveAndDone (explicit LOG & DONE link) → stay on empty form, no
+      //    confirmation screen (parent tab switch handles "done")
+      //  - in-batch auto-save (user picked many photos) → stay on form so
+      //    batch-advance effect pops the next one; no showBatch per photo
+      //    (would be spammy across 20 photos). Batch-complete toast fires
+      //    once when the queue drains.
+      //  - every OTHER save (manual OR single-photo auto) → showBatch
+      //    confirmation screen so the user explicitly picks what to do
+      //    next (LOG ANOTHER / TAG DRAWING / EDIT DETAILS / ADD PHOTO).
+      //    This prevents the "felt abrupt, suddenly in an empty form"
+      //    experience after zero-tap auto-save.
       if(saveAndDoneRef.current){saveAndDoneRef.current=false;}
-      else if(auto){
-        if(!inBatch){
-          setLastSaved({id:savedEntry?.id||null,title:effectiveTitle,ts:Date.now(),savedEntry,batch:false});
-        }
+      else if(auto&&inBatch){
+        /* batch advance; no per-photo modal */
       }else{
         setShowBatch(true);
       }
@@ -7321,10 +7341,30 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
 
   return(
     <div style={{padding:"20px 16px 120px",animation:"fadeIn 0.25s ease"}}>
-      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4,flexWrap:"wrap"}}>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>{t("log.log_entry")}</div>
         {count>0&&<div style={{fontSize:10,fontWeight:700,color:"#30d158",background:"rgba(48,209,88,0.1)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>{count} {t("log.logged")}</div>}
         <div style={{fontSize:10,fontWeight:700,color:"#ff6b00",background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("log.quick_capture")}</div>
+        {/* Auto-save mode chip — tappable to cycle: review-first (every
+            save manual) → review-then-auto (first 10 manual, then auto) →
+            always-auto (zero-tap). Default is review-then-auto so users
+            see AI output before it commits, with speed kicking in once
+            they've built trust. Only shown when AI is configured. */}
+        {aiReady&&(()=>{
+          const m=autoSaveMode;
+          const label=m==="review-first"?"✎ REVIEW EVERY"
+            :m==="review-then-auto"?`✎ REVIEW ${Math.min(count,AUTO_SAVE_REVIEW_THRESHOLD)}/${AUTO_SAVE_REVIEW_THRESHOLD}`
+            :"⚡ AUTO-SAVE";
+          const tip=m==="review-first"?"Every save requires a SAVE tap. Tap to switch to review-first-then-auto (current default)."
+            :m==="review-then-auto"?`First ${AUTO_SAVE_REVIEW_THRESHOLD} saves of this session are manual, then AI auto-commits. Tap to switch to always-auto.`
+            :"AI auto-commits every save (zero-tap). Tap to switch back to always-review.";
+          const bg=m==="always-auto"?"rgba(88,86,214,0.1)":"rgba(0,0,0,0.05)";
+          const border=m==="always-auto"?"1px solid rgba(88,86,214,0.25)":"1px solid rgba(0,0,0,0.12)";
+          const fg=m==="always-auto"?"#5856d6":"rgba(0,0,0,0.55)";
+          return(
+            <button onClick={cycleAutoSaveMode} title={tip} style={{fontSize:10,fontWeight:700,color:fg,background:bg,border,borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",letterSpacing:"0.02em"}}>{label}</button>
+          );
+        })()}
       </div>
       <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:20}}>📁 {currentProject?.name||"—"} · {t("log.photo_speak_type")}</div>
 
