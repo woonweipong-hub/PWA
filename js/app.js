@@ -1948,14 +1948,11 @@ function resolveExportProfile(id){
   const base=findById(profile.base);
   if(!base)return profile;
   // Shallow merge at export.pdf / export.csv / export.email — child
-  // overrides individual keys within each output-surface block. Deeper
-  // merge isn't needed in Phase 1 because each surface's content is
-  // either a scalar (coverTitle) or a flat map (columnHeaders).
+  // overrides individual keys within each output-surface block.
   const mergedExport={};
   const surfaces=new Set([...Object.keys(base.export||{}),...Object.keys(profile.export||{})]);
   for(const k of surfaces){
     mergedExport[k]={...((base.export||{})[k]||{}),...((profile.export||{})[k]||{})};
-    // columnHeaders is itself a flat map — merge so child can add / override individual headers.
     if(k==="csv"){
       mergedExport.csv={
         ...mergedExport.csv,
@@ -1966,7 +1963,29 @@ function resolveExportProfile(id){
       };
     }
   }
-  return{...base,...profile,export:mergedExport};
+  // Phase 2: merge fields block per-key so child profiles only declare what
+  // differs. Each field's {label, visible, required} is shallow-merged so
+  // a child can override just `visible` without touching `label`.
+  const mergedFields={};
+  const fieldKeys=new Set([...Object.keys(base.fields||{}),...Object.keys(profile.fields||{})]);
+  for(const k of fieldKeys){
+    if(k==="_note")continue;
+    mergedFields[k]={...((base.fields||{})[k]||{}),...((profile.fields||{})[k]||{})};
+  }
+  return{...base,...profile,export:mergedExport,fields:mergedFields};
+}
+
+// Phase 2: look up a capture-form field's profile config, with sane
+// defaults when the profile doesn't declare the field. Returns
+// {label, visible, required} — label is null when the profile has no
+// override and the caller should fall back to the translated default.
+function resolveFieldConfig(profile,key){
+  const f=(profile&&profile.fields&&profile.fields[key])||{};
+  return{
+    label:typeof f.label==="string"?f.label:null,
+    visible:f.visible===false?false:true,
+    required:f.required===true?true:false
+  };
 }
 
 // ── Reference document manifest (pre-extracted at build time) ──────
@@ -6521,6 +6540,29 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // Post-save toast with an EDIT shortcut. Makes "rectify instantly" a
   // single tap from the capture screen instead of REVIEW → ENTRIES → find.
   const[lastSaved,setLastSaved]=useState(null);
+  // Phase 2 — resolve the project's export profile so field labels +
+  // visibility on the capture form match the firm's expected template.
+  // Default to null while loading so the form renders with translated
+  // defaults; swap in the profile once the file arrives.
+  const[capProfile,setCapProfile]=useState(null);
+  useEffect(()=>{
+    loadExportProfiles().then(()=>{
+      setCapProfile(resolveExportProfile(currentProject?.exportProfileId||""));
+    });
+  },[currentProject?.exportProfileId]);
+  // fc(key, defaultLabel) — single helper every field call-site uses:
+  //   fc("costImpact", t("fields.cost_change")).label   // string to display
+  //   fc("costImpact").visible                          // hide flag
+  //   fc("costImpact").required                         // required flag
+  // Falls back to the translated default when the profile has no override.
+  const fc=(key,defaultLabel)=>{
+    const cfg=resolveFieldConfig(capProfile,key);
+    return{
+      label:cfg.label!=null?cfg.label:defaultLabel,
+      visible:cfg.visible,
+      required:cfg.required
+    };
+  };
   // Staging overlay — when the user picks a folder (phone DCIM can hold
   // thousands of photos) or multi-selects more than a handful from the
   // gallery, show a thumbnail grid first so they can filter by date and
@@ -7401,42 +7443,66 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           <ComboField label={t("fields.work_category")} value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")} displayFn={workcatDisplayFn}/>
 
           {/* Entry Type */}
-          <ComboField label={<>{t("fields.entry_type")}<ProvChip prov={form.fieldProvenance?.entryType}/></>} value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder={t("fields.entry_type_placeholder")} displayFn={tOpt}/>
-          <div style={{marginTop:-10,marginBottom:12}}><button onClick={()=>setShowTypeManager(true)} style={{background:"none",border:"none",fontSize:11,color:"rgba(255,107,0,0.7)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:0}}>⚙ Manage custom types</button></div>
+          {fc("entryType").visible&&<>
+            <ComboField label={<>{fc("entryType",t("fields.entry_type")).label}<ProvChip prov={form.fieldProvenance?.entryType}/></>} value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder={t("fields.entry_type_placeholder")} displayFn={tOpt}/>
+            <div style={{marginTop:-10,marginBottom:12}}><button onClick={()=>setShowTypeManager(true)} style={{background:"none",border:"none",fontSize:11,color:"rgba(255,107,0,0.7)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:0}}>⚙ Manage custom types</button></div>
+          </>}
 
           {/* Item / Part (was Component) */}
-          <ComboField label={<>{t("fields.item_part")}<ProvChip prov={form.fieldProvenance?.component}/></>} value={form.component} onChange={v=>{set("component",v);set("issue","");}} grouped={activeComponentGroups} placeholder={t("fields.item_part_placeholder")} displayFn={tOpt}/>
+          {fc("component").visible&&(
+            <ComboField label={<>{fc("component",t("fields.item_part")).label}<ProvChip prov={form.fieldProvenance?.component}/></>} value={form.component} onChange={v=>{set("component",v);set("issue","");}} grouped={activeComponentGroups} placeholder={t("fields.item_part_placeholder")} displayFn={tOpt}/>
+          )}
 
           {/* Issue (filtered by selected component) */}
-          {form.component&&(
-            <ComboField label={<>{t("fields.issue")}<ProvChip prov={form.fieldProvenance?.issue}/></>} value={form.issue} onChange={v=>{set("issue",v);if(!form.title)set("title",form.component+" — "+v);}} options={COMPONENT_ISSUES[form.component]||COMPONENT_ISSUES["General"]} placeholder={t("fields.issue_placeholder")} displayFn={tOpt}/>
+          {fc("issue").visible&&form.component&&(
+            <ComboField label={<>{fc("issue",t("fields.issue")).label}<ProvChip prov={form.fieldProvenance?.issue}/></>} value={form.issue} onChange={v=>{set("issue",v);if(!form.title)set("title",form.component+" — "+v);}} options={COMPONENT_ISSUES[form.component]||COMPONENT_ISSUES["General"]} placeholder={t("fields.issue_placeholder")} displayFn={tOpt}/>
           )}
 
           {/* Location hierarchy */}
-          <ComboField label={<>{t("fields.level_floor")}<ProvChip prov={form.fieldProvenance?.locationLevel}/></>} value={form.locationLevel} onChange={v=>set("locationLevel",v)} options={DEFAULT_LEVELS} placeholder={t("fields.level_floor_placeholder")} displayFn={tOpt}/>
-          <ComboField label={<>{t("fields.zone")}<ProvChip prov={form.fieldProvenance?.locationZone}/></>} value={form.locationZone} onChange={v=>set("locationZone",v)} options={DEFAULT_ZONES} placeholder={t("fields.zone_placeholder")} displayFn={tOpt}/>
-          <ComboField label={<>{t("fields.room_area")}<ProvChip prov={form.fieldProvenance?.locationSubzone}/></>} value={form.locationSubzone} onChange={v=>set("locationSubzone",v)} options={DEFAULT_SUBZONES} placeholder={t("fields.room_area_placeholder")} displayFn={tOpt}/>
-          <VoiceField label={t("fields.grid_ref")} value={form.locationGrid} onChange={v=>set("locationGrid",v)} placeholder={t("fields.grid_ref_placeholder")}/>
+          {fc("locationLevel").visible&&(
+            <ComboField label={<>{fc("locationLevel",t("fields.level_floor")).label}<ProvChip prov={form.fieldProvenance?.locationLevel}/></>} value={form.locationLevel} onChange={v=>set("locationLevel",v)} options={DEFAULT_LEVELS} placeholder={t("fields.level_floor_placeholder")} displayFn={tOpt}/>
+          )}
+          {fc("locationZone").visible&&(
+            <ComboField label={<>{fc("locationZone",t("fields.zone")).label}<ProvChip prov={form.fieldProvenance?.locationZone}/></>} value={form.locationZone} onChange={v=>set("locationZone",v)} options={DEFAULT_ZONES} placeholder={t("fields.zone_placeholder")} displayFn={tOpt}/>
+          )}
+          {fc("locationSubzone").visible&&(
+            <ComboField label={<>{fc("locationSubzone",t("fields.room_area")).label}<ProvChip prov={form.fieldProvenance?.locationSubzone}/></>} value={form.locationSubzone} onChange={v=>set("locationSubzone",v)} options={DEFAULT_SUBZONES} placeholder={t("fields.room_area_placeholder")} displayFn={tOpt}/>
+          )}
+          {fc("locationGrid").visible&&(
+            <VoiceField label={fc("locationGrid",t("fields.grid_ref")).label} value={form.locationGrid} onChange={v=>set("locationGrid",v)} placeholder={t("fields.grid_ref_placeholder")}/>
+          )}
 
           {/* Assignee */}
-          <ComboField label={<>{t("fields.assign_to")}<ProvChip prov={form.fieldProvenance?.assignee}/></>} value={form.assignee} onChange={v=>set("assignee",v)} options={assignees} placeholder={t("fields.assign_to_placeholder")}/>
+          {fc("assignee").visible&&(
+            <ComboField label={<>{fc("assignee",t("fields.assign_to")).label}<ProvChip prov={form.fieldProvenance?.assignee}/></>} value={form.assignee} onChange={v=>set("assignee",v)} options={assignees} placeholder={t("fields.assign_to_placeholder")}/>
+          )}
 
-          {/* Cost & Time */}
-          <div style={{background:"rgba(0,0,0,0.02)",borderRadius:12,padding:14,marginBottom:16,border:"1px solid rgba(0,0,0,0.06)"}}>
-            <div style={{marginBottom:12}}>
-              <label style={lbl()}>{t("log.due_date")}<ProvChip prov={form.fieldProvenance?.dueDate}/></label>
-              <input type="date" value={form.dueDate} onChange={e=>set("dueDate",e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
+          {/* Cost & Time — entire block hides when every child is hidden,
+              so HDB / CONQUAS / Simple profiles with no cost tracking get
+              a cleaner form instead of an empty grey panel. */}
+          {(fc("dueDate").visible||fc("duration").visible||fc("costImpact").visible)&&(
+            <div style={{background:"rgba(0,0,0,0.02)",borderRadius:12,padding:14,marginBottom:16,border:"1px solid rgba(0,0,0,0.06)"}}>
+              {fc("dueDate").visible&&(
+                <div style={{marginBottom:12}}>
+                  <label style={lbl()}>{fc("dueDate",t("log.due_date")).label}<ProvChip prov={form.fieldProvenance?.dueDate}/></label>
+                  <input type="date" value={form.dueDate} onChange={e=>set("dueDate",e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
+                </div>
+              )}
+              {fc("duration").visible&&(
+                <ComboField label={<>{fc("duration",t("fields.time_needed")).label}<ProvChip prov={form.fieldProvenance?.duration}/></>} value={form.duration} onChange={v=>set("duration",v)} options={DURATION_OPTIONS} placeholder={t("fields.time_needed_placeholder")} displayFn={tOpt}/>
+              )}
+              {fc("costImpact").visible&&(
+                <ComboField label={<>{fc("costImpact",t("fields.cost_change")).label}<ProvChip prov={form.fieldProvenance?.costImpact}/></>} value={form.costImpact} onChange={v=>set("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder={t("fields.cost_change_placeholder")} displayFn={tOpt}/>
+              )}
+              {fc("costImpact").visible&&form.costImpact&&form.costImpact!=="No change"&&form.costImpact!=="To be confirmed by QS"&&(
+                <>
+                  {fc("costAmount").visible&&<VoiceField label={fc("costAmount",t("fields.cost_amount")).label} value={form.costAmount} onChange={v=>set("costAmount",v)} placeholder={t("fields.cost_amount_placeholder")}/>}
+                  {fc("costResponsible").visible&&<ComboField label={fc("costResponsible",t("fields.cost_responsible")).label} value={form.costResponsible} onChange={v=>set("costResponsible",v)} options={COST_RESPONSIBLE_OPTIONS} placeholder={t("fields.cost_responsible_placeholder")} displayFn={tOpt}/>}
+                  {fc("costRemarks").visible&&<VoiceField label={fc("costRemarks",t("fields.cost_remarks")).label} value={form.costRemarks} onChange={v=>set("costRemarks",v)} placeholder={t("fields.cost_remarks_placeholder")} multiline/>}
+                </>
+              )}
             </div>
-            <ComboField label={<>{t("fields.time_needed")}<ProvChip prov={form.fieldProvenance?.duration}/></>} value={form.duration} onChange={v=>set("duration",v)} options={DURATION_OPTIONS} placeholder={t("fields.time_needed_placeholder")} displayFn={tOpt}/>
-            <ComboField label={<>{t("fields.cost_change")}<ProvChip prov={form.fieldProvenance?.costImpact}/></>} value={form.costImpact} onChange={v=>set("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder={t("fields.cost_change_placeholder")} displayFn={tOpt}/>
-            {form.costImpact&&form.costImpact!=="No change"&&form.costImpact!=="To be confirmed by QS"&&(
-              <>
-                <VoiceField label={t("fields.cost_amount")} value={form.costAmount} onChange={v=>set("costAmount",v)} placeholder={t("fields.cost_amount_placeholder")}/>
-                <ComboField label={t("fields.cost_responsible")} value={form.costResponsible} onChange={v=>set("costResponsible",v)} options={COST_RESPONSIBLE_OPTIONS} placeholder={t("fields.cost_responsible_placeholder")} displayFn={tOpt}/>
-                <VoiceField label={t("fields.cost_remarks")} value={form.costRemarks} onChange={v=>set("costRemarks",v)} placeholder={t("fields.cost_remarks_placeholder")} multiline/>
-              </>
-            )}
-          </div>
+          )}
         </div>
       )}
 

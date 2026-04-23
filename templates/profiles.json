@@ -6,6 +6,9 @@
       "id": "default",
       "name": "Default — SiteShrimp general",
       "description": "SiteShrimp default profile. Full-content site report, all sections, generic headers. Good fallback when no firm-specific profile matches.",
+      "fields": {
+        "_note": "Empty overrides here mean 'use app default label from lang/en.json'. Child profiles declare only what differs. visible:true is implicit; set visible:false to hide."
+      },
       "export": {
         "pdf": {
           "coverTitle": "SITE REPORT",
@@ -47,6 +50,20 @@
       "base": "default",
       "name": "BCA CONQUAS (Private Residential) — R1 2026",
       "description": "BCA CONQUAS Private Residential R1 framework (effective 1 April 2026). NC-focused header, tier language, disclaimer footer. Use for CONQUAS quality check projects assessed by an accredited checker.",
+      "fields": {
+        "title":          { "label": "Non-conformance description" },
+        "severity":       { "label": "Tier" },
+        "component":      { "label": "Element" },
+        "issue":          { "label": "Defect type" },
+        "locationLevel":  { "label": "Block" },
+        "locationZone":   { "label": "Unit" },
+        "locationSubzone":{ "label": "Area" },
+        "locationGrid":   { "visible": false },
+        "costImpact":     { "visible": false },
+        "costAmount":     { "visible": false },
+        "costResponsible":{ "visible": false },
+        "costRemarks":    { "visible": false }
+      },
       "export": {
         "pdf": {
           "coverTitle": "CONQUAS QUALITY CHECK REPORT",
@@ -76,6 +93,17 @@
       "base": "default",
       "name": "HDB BTO Handover",
       "description": "Room-by-room handover checklist format for HDB BTO defects. Uses HDB-style terminology (Defect Item, Room, Remark) and a handover-focused cover page.",
+      "fields": {
+        "title":          { "label": "Defect Item" },
+        "severity":       { "label": "Priority" },
+        "locationSubzone":{ "label": "Room" },
+        "locationGrid":   { "visible": false },
+        "costImpact":     { "visible": false },
+        "costAmount":     { "visible": false },
+        "costResponsible":{ "visible": false },
+        "costRemarks":    { "visible": false },
+        "duration":       { "visible": false }
+      },
       "export": {
         "pdf": {
           "coverTitle": "HDB BTO HANDOVER DEFECTS",
@@ -107,6 +135,17 @@
       "base": "default",
       "name": "Simple A4 Summary",
       "description": "Minimal single-sheet defect summary. Compact headers, no footer note. Good for weekly site walks where a full report is overkill.",
+      "fields": {
+        "entryType":      { "visible": false },
+        "component":      { "visible": false },
+        "issue":          { "visible": false },
+        "locationGrid":   { "visible": false },
+        "costImpact":     { "visible": false },
+        "costAmount":     { "visible": false },
+        "costResponsible":{ "visible": false },
+        "costRemarks":    { "visible": false },
+        "duration":       { "visible": false }
+      },
       "export": {
         "pdf": {
           "coverTitle": "DEFECT SUMMARY",
