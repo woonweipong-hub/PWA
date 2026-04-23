@@ -148,9 +148,26 @@ const AI_PROMPT=getAIPrompt();// Cache the model name the user's Gemini key actu
 const GEMINI_MODEL_KEY="sdt-gemini-model-v1";const GEMINI_MODEL_FALLBACKS=["gemini-2.5-flash","gemini-2.0-flash","gemini-1.5-flash","gemini-1.5-flash-latest","gemini-pro"];// Probe the Gemini models endpoint and return the first vision-capable model
 // that works with the given key. Caches the result.
 async function pickGeminiModel(apiKey){const cached=local.get(GEMINI_MODEL_KEY);if(cached)return cached;try{const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);if(!r.ok)return GEMINI_MODEL_FALLBACKS[0];const d=await r.json();const names=(d.models||[]).map(m=>(m.name||"").replace(/^models\//,"")).filter(n=>n.includes("gemini"));// Prefer fallback order; else pick first "flash" from available list
-for(const want of GEMINI_MODEL_FALLBACKS){if(names.includes(want)){local.set(GEMINI_MODEL_KEY,want);return want;}}const firstFlash=names.find(n=>n.includes("flash"))||names[0];if(firstFlash){local.set(GEMINI_MODEL_KEY,firstFlash);return firstFlash;}}catch{}return GEMINI_MODEL_FALLBACKS[0];}// Call Gemini generateContent, auto-retrying once with a fresh model pick
-// if the request 404s (model name changed/retired).
-async function geminiGenerate(apiKey,body){let model=await pickGeminiModel(apiKey);const call=async m=>fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(apiKey)}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});let res=await call(model);if(res.status===404){local.del(GEMINI_MODEL_KEY);model=await pickGeminiModel(apiKey);res=await call(model);}return res;}// Last AI failure reason — captured by the provider-specific analyzers and
+for(const want of GEMINI_MODEL_FALLBACKS){if(names.includes(want)){local.set(GEMINI_MODEL_KEY,want);return want;}}const firstFlash=names.find(n=>n.includes("flash"))||names[0];if(firstFlash){local.set(GEMINI_MODEL_KEY,firstFlash);return firstFlash;}}catch{}return GEMINI_MODEL_FALLBACKS[0];}// Call Gemini generateContent with automatic retry for transient failures.
+// Recovers silently from the common case of an upstream hiccup — which
+// became more visible after zero-tap auto-analyze started firing one
+// request per photo instead of per manual tap.
+//
+// Retry policy:
+//   - 404 (model renamed/retired): clear cached model pick, retry once
+//     with a fresh pickGeminiModel call. No backoff needed.
+//   - 429 (rate limit), 500, 502, 503, 504 (transient server issues):
+//     up to 2 retries with 1s → 3s exponential backoff. Typical Google
+//     "high demand" 503 clears within seconds, so 2 retries covers most.
+//   - Everything else (400, 401, 403, other 4xx) bubbles up immediately
+//     — retrying a bad request / bad key only wastes quota.
+//
+// Total worst-case wall time: 404-retry (instant) + 1s + 3s = 4s added
+// on a 3-attempt 5xx chain. User sees a slightly slower AI fill instead
+// of a failure alert.
+async function geminiGenerate(apiKey,body){const TRANSIENT=new Set([429,500,502,503,504]);const backoffs=[1000,3000];let model=await pickGeminiModel(apiKey);const call=async m=>fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(apiKey)}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});let res;try{res=await call(model);}catch(e){// Network-level failure (DNS, CORS, reset). Retry once after 1s
+// before giving up; persistent network errors are still surfaced.
+console.warn("[AI] Gemini network error, retrying in 1s:",e?.message||e);await new Promise(r=>setTimeout(r,1000));res=await call(model);}if(res.status===404){local.del(GEMINI_MODEL_KEY);model=await pickGeminiModel(apiKey);res=await call(model);}for(let i=0;i<backoffs.length&&TRANSIENT.has(res.status);i++){const wait=backoffs[i];console.warn(`[AI] Gemini HTTP ${res.status} on attempt ${i+1} — retrying in ${wait}ms`);await new Promise(r=>setTimeout(r,wait));try{res=await call(model);}catch(e){console.warn("[AI] retry network error:",e?.message||e);continue;}}return res;}// Last AI failure reason — captured by the provider-specific analyzers and
 // surfaced in the user-facing "AI could not analyze" alert so the user can
 // see the actual failure without opening DevTools. Also mirrored onto
 // window.__lastAiError for console debugging.
