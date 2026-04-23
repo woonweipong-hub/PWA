@@ -901,13 +901,12 @@ if(result.suggested_assignee&&assignees.length>0){const suggestion=result.sugges
 // start its own analyze after the stale in-flight call resolves.
 useEffect(()=>{if(!form.photos[0]||aiResult||analyzing||saving)return;// A new photo supersedes any previous AI error — clear the inline
 // pill so stale errors don't hang over the new capture.
-setAnalyzeError(null);let cancelled=false;(async()=>{const hash=await photoHash(form.photos[0]);if(cancelled||!hash)return;const cached=readAiCache(hash);if(cached){setAiResult(cached);applyAiResult(cached);return;}if(aiReady&&!cancelled){analyze();return;}// AI unavailable (paused or no credentials on this device). In batch
-// mode the user opted into bulk capture — don't stall the queue
-// waiting for an AI result that will never arrive. Setting the
-// sentinel triggers the auto-save effect below, which routes through
-// submit()'s "photo only" path (title auto-generated as
-// "Photo entry — DD/MM/YYYY") and the batch-advance fires.
-const inBatch=batchTotal>0||batchQueue.length>0;if(inBatch&&!cancelled)setAiResult({__noAi:true});})();return()=>{cancelled=true;};// eslint-disable-next-line react-hooks/exhaustive-deps — intentional.
+setAnalyzeError(null);let cancelled=false;(async()=>{const hash=await photoHash(form.photos[0]);if(cancelled||!hash)return;const cached=readAiCache(hash);if(cached){setAiResult(cached);applyAiResult(cached);return;}if(aiReady&&!cancelled)analyze();// If AI is unavailable we do NOT commit a batch silently — the
+// upstream handlePhoto() routes multi-pick to "attach to current
+// form for manual entry" in that case (see aiReady check there).
+// Selected photos should be processed, THEN saved; empty saves
+// defeat the point of picking them in the first place.
+})();return()=>{cancelled=true;};// eslint-disable-next-line react-hooks/exhaustive-deps — intentional.
 },[form.photos[0],analyzing]);// Auto-save gated by the user's chosen mode. Defaults to review-then-auto
 // so the first 10 saves of a session require an explicit SAVE tap (the
 // user's "ok") and AI-filled output can be inspected first — feedback
@@ -919,11 +918,7 @@ const inBatch=batchTotal>0||batchQueue.length>0;if(inBatch&&!cancelled)setAiResu
 // ALWAYS fires regardless of mode — the user already opted into bulk
 // capture by picking multiple files, so the review-gate would defeat
 // that workflow.
-const[autoSaveMode,setAutoSaveMode]=useState(()=>local.get(AUTO_SAVE_MODE_KEY)||AUTO_SAVE_MODE_DEFAULT);const persistAutoSaveMode=m=>{setAutoSaveMode(m);local.set(AUTO_SAVE_MODE_KEY,m);};const cycleAutoSaveMode=()=>{const order=["review-first","review-then-auto","always-auto"];const next=order[(order.indexOf(autoSaveMode)+1)%order.length];persistAutoSaveMode(next);};useEffect(()=>{if(!aiResult)return;if(saving||analyzing)return;// __failed = AI ran but produced no usable result; __noAi = AI unavailable
-// (paused or no credentials) and the restore effect short-circuited so the
-// batch queue wouldn't stall. Both bypass the title/description gate —
-// submit() auto-generates a "Photo entry — date" title from the photo.
-const isBatchFail=aiResult&&(aiResult.__failed||aiResult.__noAi);if(!isBatchFail&&!form.title.trim()&&!form.description.trim())return;if(!form.photos.length)return;const inBatch=batchTotal>0||batchQueue.length>0;// Batch mode: always auto-commit (user picked many photos intentionally).
+const[autoSaveMode,setAutoSaveMode]=useState(()=>local.get(AUTO_SAVE_MODE_KEY)||AUTO_SAVE_MODE_DEFAULT);const persistAutoSaveMode=m=>{setAutoSaveMode(m);local.set(AUTO_SAVE_MODE_KEY,m);};const cycleAutoSaveMode=()=>{const order=["review-first","review-then-auto","always-auto"];const next=order[(order.indexOf(autoSaveMode)+1)%order.length];persistAutoSaveMode(next);};useEffect(()=>{if(!aiResult)return;if(saving||analyzing)return;const isBatchFail=aiResult&&aiResult.__failed;if(!isBatchFail&&!form.title.trim()&&!form.description.trim())return;if(!form.photos.length)return;const inBatch=batchTotal>0||batchQueue.length>0;// Batch mode: always auto-commit (user picked many photos intentionally).
 if(inBatch){submit({auto:true});return;}// Single capture: respect the mode.
 if(autoSaveMode==="review-first")return;if(autoSaveMode==="review-then-auto"&&count<AUTO_SAVE_REVIEW_THRESHOLD)return;submit({auto:true});// eslint-disable-next-line react-hooks/exhaustive-deps — fire once per AI
 // result becoming available; submit() uses its own latest-form closure.
@@ -966,12 +961,20 @@ if(analysisHashRef.current!==hash){setAnalyzing(false);return;}if(result&&(resul
 // sentinel. In single-photo mode, surface as an inline red pill
 // (not a modal) so the user can RETRY or edit manually without
 // being forced to dismiss a popup first.
-if(batchTotal>0){setAiResult({__failed:true});}else{const detail=typeof window!=="undefined"&&window.__lastAiError||"";setAnalyzeError(detail||"AI returned no content.");}}}catch(e){if(batchTotal===0)setAnalyzeError("AI analysis error: "+(e?.message||e));}setAnalyzing(false);};// Duplicate detection — word overlap similarity
+if(batchTotal>0){setAiResult({__failed:true});}else{const detail=typeof window!=="undefined"&&window.__lastAiError||"";setAnalyzeError(detail||"AI returned no content.");}}}catch(e){// Single-photo mode surfaces as an inline red pill. Batch mode must
+// NOT stall — if we don't set a sentinel, the auto-save effect never
+// fires and the queue hangs on photo 1 forever (silent hang — the
+// bug the user reported as "seems not working"). __failed routes
+// through the photo-only save path so each queued photo still lands
+// in the DB and the user can rectify titles later.
+if(batchTotal===0){setAnalyzeError("AI analysis error: "+(e?.message||e));}else{setAiResult({__failed:true});}}setAnalyzing(false);};// Duplicate detection — word overlap similarity
 const findDuplicate=(title,location)=>{if(!title||existingDefects.length===0)return null;const words=title.toLowerCase().split(/\s+/).filter(w=>w.length>2);if(words.length===0)return null;const openEntries=existingDefects.filter(d=>!["Verified","Closed"].includes(d.status));let bestMatch=null,bestScore=0;for(const d of openEntries){const dWords=(d.title||"").toLowerCase().split(/\s+/).filter(w=>w.length>2);if(dWords.length===0)continue;const overlap=words.filter(w=>dWords.includes(w)).length;const score=overlap/Math.max(words.length,dWords.length);// Boost score if same location
 const sameLocation=location&&d.location&&d.location.toLowerCase().includes(location.toLowerCase().split(" > ")[0]);const finalScore=sameLocation?score+0.2:score;if(finalScore>bestScore){bestScore=finalScore;bestMatch=d;}}return bestScore>=0.6?bestMatch:null;};const submit=async(opts={})=>{const auto=!!opts.auto;const inBatch=batchTotal>0||batchQueue.length>0;// Minimum: a description OR a photo OR a title — anything else can be filled in later via Review comments.
 const hasDesc=!!form.description.trim();const hasPhoto=(form.photos||[]).length>0;const hasTitle=!!form.title.trim();if(!hasTitle&&!hasDesc&&!hasPhoto){if(!auto)alert("Add a description or a photo to submit.");return;}// Build location display from hierarchy (may be empty — location is now optional)
 const locParts=[form.locationLevel,form.locationZone,form.locationSubzone,form.locationGrid].filter(Boolean);const locationDisplay=locParts.join(" > ")||form.location||"";// Auto-generate a title when user only supplied a description or photo
-let effectiveTitle=form.title.trim();if(!effectiveTitle){if(hasDesc){effectiveTitle=form.description.trim().split(/\s+/).slice(0,10).join(" ");if(form.description.trim().length>effectiveTitle.length)effectiveTitle+="…";}else if(hasPhoto){effectiveTitle=`Photo entry — ${new Date().toLocaleDateString("en-GB")}`;}}// Check for duplicates (only when we have a real title to compare).
+let effectiveTitle=form.title.trim();if(!effectiveTitle){if(hasDesc){effectiveTitle=form.description.trim().split(/\s+/).slice(0,10).join(" ");if(form.description.trim().length>effectiveTitle.length)effectiveTitle+="…";}else if(hasPhoto){// ISO 8601 date (YYYY-MM-DD) — sorts lexically, unambiguous across
+// locales, matches project convention.
+effectiveTitle=`Photo entry — ${new Date().toISOString().slice(0,10)}`;}}// Check for duplicates (only when we have a real title to compare).
 // In auto-save / batch mode we skip the confirm prompt — halting a
 // batch of 30 photos with a modal dialog would defeat zero-tap. The
 // user sees both records in ENTRIES and can merge/archive later.

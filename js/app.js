@@ -7073,15 +7073,12 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         applyAiResult(cached);
         return;
       }
-      if(aiReady&&!cancelled){analyze();return;}
-      // AI unavailable (paused or no credentials on this device). In batch
-      // mode the user opted into bulk capture — don't stall the queue
-      // waiting for an AI result that will never arrive. Setting the
-      // sentinel triggers the auto-save effect below, which routes through
-      // submit()'s "photo only" path (title auto-generated as
-      // "Photo entry — DD/MM/YYYY") and the batch-advance fires.
-      const inBatch=batchTotal>0||batchQueue.length>0;
-      if(inBatch&&!cancelled)setAiResult({__noAi:true});
+      if(aiReady&&!cancelled)analyze();
+      // If AI is unavailable we do NOT commit a batch silently — the
+      // upstream handlePhoto() routes multi-pick to "attach to current
+      // form for manual entry" in that case (see aiReady check there).
+      // Selected photos should be processed, THEN saved; empty saves
+      // defeat the point of picking them in the first place.
     })();
     return()=>{cancelled=true;};
   // eslint-disable-next-line react-hooks/exhaustive-deps — intentional.
@@ -7108,11 +7105,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   useEffect(()=>{
     if(!aiResult)return;
     if(saving||analyzing)return;
-    // __failed = AI ran but produced no usable result; __noAi = AI unavailable
-    // (paused or no credentials) and the restore effect short-circuited so the
-    // batch queue wouldn't stall. Both bypass the title/description gate —
-    // submit() auto-generates a "Photo entry — date" title from the photo.
-    const isBatchFail=aiResult&&(aiResult.__failed||aiResult.__noAi);
+    const isBatchFail=aiResult&&aiResult.__failed;
     if(!isBatchFail&&!form.title.trim()&&!form.description.trim())return;
     if(!form.photos.length)return;
     const inBatch=batchTotal>0||batchQueue.length>0;
@@ -7241,7 +7234,19 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           setAnalyzeError(detail||"AI returned no content.");
         }
       }
-    }catch(e){if(batchTotal===0)setAnalyzeError("AI analysis error: "+(e?.message||e));}
+    }catch(e){
+      // Single-photo mode surfaces as an inline red pill. Batch mode must
+      // NOT stall — if we don't set a sentinel, the auto-save effect never
+      // fires and the queue hangs on photo 1 forever (silent hang — the
+      // bug the user reported as "seems not working"). __failed routes
+      // through the photo-only save path so each queued photo still lands
+      // in the DB and the user can rectify titles later.
+      if(batchTotal===0){
+        setAnalyzeError("AI analysis error: "+(e?.message||e));
+      }else{
+        setAiResult({__failed:true});
+      }
+    }
     setAnalyzing(false);
   };
 
@@ -7285,7 +7290,9 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         effectiveTitle=form.description.trim().split(/\s+/).slice(0,10).join(" ");
         if(form.description.trim().length>effectiveTitle.length)effectiveTitle+="…";
       }else if(hasPhoto){
-        effectiveTitle=`Photo entry — ${new Date().toLocaleDateString("en-GB")}`;
+        // ISO 8601 date (YYYY-MM-DD) — sorts lexically, unambiguous across
+        // locales, matches project convention.
+        effectiveTitle=`Photo entry — ${new Date().toISOString().slice(0,10)}`;
       }
     }
 
