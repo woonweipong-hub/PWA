@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "description": "Project Profiles — Phase 1: export-surface (PDF cover, CSV headers, email subject). Labels + visibility + vocabulary packs land in Phase 2-3 on the same file. Profiles inherit from base: via shallow merge at the export.* key level so child profiles only declare what differs.",
+  "profiles": [
+    {
+      "id": "default",
+      "name": "Default — SiteShrimp general",
+      "description": "SiteShrimp default profile. Full-content site report, all sections, generic headers. Good fallback when no firm-specific profile matches.",
+      "export": {
+        "pdf": {
+          "coverTitle": "SITE REPORT",
+          "coverSubtitle": "",
+          "footerNote": ""
+        },
+        "csv": {
+          "columnHeaders": {
+            "defect_id": "ID",
+            "entryType": "Entry Type",
+            "title": "Title",
+            "component": "Component",
+            "issue": "Issue",
+            "location": "Location",
+            "severity": "Severity",
+            "status": "Status",
+            "assignee": "Assignee",
+            "trade": "Trade",
+            "loggedBy": "Logged By",
+            "loggedByRole": "Role",
+            "createdAt": "Date",
+            "dueDate": "Due Date",
+            "duration": "Duration",
+            "costImpact": "Cost Impact",
+            "costResponsible": "Cost Responsible",
+            "costAmount": "Cost Amount",
+            "description": "Description",
+            "comments": "Comments"
+          }
+        },
+        "email": {
+          "subject": "Site Report — {projectName} — {date}",
+          "bodyPrefix": ""
+        }
+      }
+    },
+    {
+      "id": "conquas-private-residential",
+      "base": "default",
+      "name": "BCA CONQUAS (Private Residential) — R1 2026",
+      "description": "BCA CONQUAS Private Residential R1 framework (effective 1 April 2026). NC-focused header, tier language, disclaimer footer. Use for CONQUAS quality check projects assessed by an accredited checker.",
+      "export": {
+        "pdf": {
+          "coverTitle": "CONQUAS QUALITY CHECK REPORT",
+          "coverSubtitle": "BCA CONQUAS (Private Residential) — R1",
+          "footerNote": "Projection only — final assessment rests with the accredited checker, QP, or assessor. Weighted Project NC rate per R1 §3.3: IF × 0.4 + FT × 0.4 + EF × 0.2."
+        },
+        "csv": {
+          "columnHeaders": {
+            "defect_id": "NC No.",
+            "title": "Non-conformance description",
+            "component": "Element",
+            "issue": "Defect type",
+            "location": "Block / Unit / Area",
+            "severity": "Tier",
+            "status": "Status",
+            "trade": "Element group"
+          }
+        },
+        "email": {
+          "subject": "CONQUAS NC Report — {projectName} — {date}",
+          "bodyPrefix": "CONQUAS Private Residential R1 — NC entries as at {date}. Final Band is subject to BCA assessor sign-off."
+        }
+      }
+    },
+    {
+      "id": "hdb-bto-handover",
+      "base": "default",
+      "name": "HDB BTO Handover",
+      "description": "Room-by-room handover checklist format for HDB BTO defects. Uses HDB-style terminology (Defect Item, Room, Remark) and a handover-focused cover page.",
+      "export": {
+        "pdf": {
+          "coverTitle": "HDB BTO HANDOVER DEFECTS",
+          "coverSubtitle": "Room-by-room handover inspection",
+          "footerNote": "Defects raised during handover inspection. Please rectify within the stipulated DLP period."
+        },
+        "csv": {
+          "columnHeaders": {
+            "defect_id": "Item No.",
+            "title": "Defect Item",
+            "component": "Component",
+            "issue": "Defect type",
+            "location": "Room",
+            "severity": "Priority",
+            "status": "Rectification status",
+            "assignee": "Rectified by",
+            "description": "Remark",
+            "dueDate": "Target rectification date"
+          }
+        },
+        "email": {
+          "subject": "HDB BTO Handover Defects — {projectName} — {date}",
+          "bodyPrefix": "Handover defects list for rectification. Please acknowledge within 7 days of receipt."
+        }
+      }
+    },
+    {
+      "id": "simple-a4",
+      "base": "default",
+      "name": "Simple A4 Summary",
+      "description": "Minimal single-sheet defect summary. Compact headers, no footer note. Good for weekly site walks where a full report is overkill.",
+      "export": {
+        "pdf": {
+          "coverTitle": "DEFECT SUMMARY",
+          "coverSubtitle": "",
+          "footerNote": ""
+        },
+        "csv": {
+          "columnHeaders": {
+            "defect_id": "#",
+            "title": "Defect",
+            "location": "Where",
+            "severity": "!",
+            "status": "Status",
+            "assignee": "Owner",
+            "dueDate": "By"
+          }
+        },
+        "email": {
+          "subject": "Defect summary — {projectName}",
+          "bodyPrefix": ""
+        }
+      }
+    }
+  ]
+}
