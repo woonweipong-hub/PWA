@@ -430,6 +430,15 @@ const GEMINI_KEY = "sdt-gemini-v1";
 const PROJECT_KEY = "sdt-proj-v1";
 const AI_LIMIT_KEY = "sdt-ai-usage";
 const AI_DAILY_LIMIT = 50;
+// Master on/off switch for ALL AI calls — user-controlled token-spend gate.
+// Stored as boolean; missing/undefined treated as ON (default) so existing
+// setups keep working. Explicit `false` pauses every AI entry point; the
+// provider credentials remain saved so the user can resume in one tap.
+const AI_ENABLED_KEY = "sdt-ai-on";
+// Gemini free-tier requests-per-day cap — informational only (shown in AI
+// Setup so users understand the underlying provider limit). Bump if Google
+// changes the published free-tier cap for gemini-*-flash.
+const GEMINI_FREE_TIER_RPD = 1500;
 // Per-photo cache of AI analysis results. Keyed by SHA-256 of photo bytes so
 // the same photo (re-taken, re-uploaded, or kept across tab switches) reuses
 // the prior result instead of burning tokens. Bump version when the prompt

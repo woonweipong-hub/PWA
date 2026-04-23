@@ -545,7 +545,18 @@
     "openai_desc": "GPT-4o、GPT-4o-mini、または互換API",
     "clause_mapping": "欠陥から条項へのマッピング",
     "contract_advisory": "契約条項アドバイザリー",
-    "disclaimer": "免責事項：このアドバイザリーは参考用としてAIにより生成されたものです。法的助言ではありません。実際の契約書に基づいて条項参照を必ず確認し、契約事項について行動する前に有資格の専門家に相談してください。"
+    "disclaimer": "免責事項：このアドバイザリーは参考用としてAIにより生成されたものです。法的助言ではありません。実際の契約書に基づいて条項参照を必ず確認し、契約事項について行動する前に有資格の専門家に相談してください。",
+    "master_label": "AI分析",
+    "master_on_help": "AIがオンになっています。 すべての AI 呼び出しを停止し、トークンを保存するにはオフに切り替えます。 キーは保存されたままになります。",
+    "master_off_help": "AIは一時停止しています。 電話はかかりません。 オンに切り替えて再開します。キーはまだ保存されています。",
+    "analyses_today": "今日の分析",
+    "tokens_today": "今日のトークン",
+    "limits_app_label": "アプリの制限",
+    "limits_gemini_label": "Gemini の無料枠",
+    "analyses_per_day": "分析/日",
+    "requests_per_day": "リクエスト/日",
+    "see_current_limits": "現在の制限を参照してください",
+    "ollama_local_note": "Ollama はローカルで実行されます。クラウド トークンは使用されません。"
   },
   "telegram": {
     "title": "TELEGRAM設定",

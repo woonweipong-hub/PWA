@@ -545,7 +545,18 @@
     "openai_desc": "GPT-4o、GPT-4o-mini或兼容API",
     "clause_mapping": "缺陷到条款映射",
     "contract_advisory": "合同条款咨询",
-    "disclaimer": "免责声明：本咨询由AI生成，仅供参考。这不是法律建议。请始终根据您的实际合同文件验证条款引用，并在处理合同事务前咨询合格专业人员。"
+    "disclaimer": "免责声明：本咨询由AI生成，仅供参考。这不是法律建议。请始终根据您的实际合同文件验证条款引用，并在处理合同事务前咨询合格专业人员。",
+    "master_label": "人工智能分析",
+    "master_on_help": "人工智能已开启。 关闭以停止所有 AI 调用并保存令牌。 您的密钥将被保存。",
+    "master_off_help": "人工智能已暂停。 不会拨打任何电话。 切换到恢复 - 您的密钥仍然保存。",
+    "analyses_today": "今天分析",
+    "tokens_today": "今日代币",
+    "limits_app_label": "应用程序限制",
+    "limits_gemini_label": "双子座免费套餐",
+    "analyses_per_day": "分析/天",
+    "requests_per_day": "请求/天",
+    "see_current_limits": "查看当前限制",
+    "ollama_local_note": "Ollama 在本地运行 - 不使用云令牌。"
   },
   "telegram": {
     "title": "TELEGRAM设置",

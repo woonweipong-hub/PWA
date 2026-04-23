@@ -1619,6 +1619,10 @@ async function analyzeWithGemini(apiKey,base64Image,prompt){
       return null;
     }
     const data=await res.json();
+    // Stash usage for the caller's bumpAiUsage() call. Gemini returns token
+    // counts on both success and soft failures (SAFETY block etc.), so we
+    // set even before the empty-text guard.
+    try{const u=data.usageMetadata||{};_lastAiTokens=u.totalTokenCount||0;}catch{_lastAiTokens=0;}
     const parts=data.candidates?.[0]?.content?.parts||[];
     const nonThought=parts.filter(p=>p.text&&!p.thought);
     const text=(nonThought.length?nonThought.pop():parts.filter(p=>p.text).pop()||{}).text||"";
@@ -1660,6 +1664,9 @@ async function analyzeWithOllama(cfg,base64Image,prompt){
       return null;
     }
     const data=await res.json();
+    // Ollama runs locally — no cloud tokens consumed. We still record the
+    // call count so users see activity, but tokens stay 0 by design.
+    _lastAiTokens=(data.prompt_eval_count||0)+(data.eval_count||0);
     const parsed=_parseAiJson(data.response||"","Ollama");
     if(!parsed)_setAiError("Ollama response could not be parsed as JSON — see console");
     return parsed;
@@ -1695,6 +1702,7 @@ async function analyzeWithOpenAI(cfg,base64Image,prompt){
       return null;
     }
     const data=await res.json();
+    try{const u=data.usage||{};_lastAiTokens=u.total_tokens||0;}catch{_lastAiTokens=0;}
     const parsed=_parseAiJson(data.choices?.[0]?.message?.content||"","OpenAI");
     if(!parsed)_setAiError("OpenAI response could not be parsed as JSON — see console");
     return parsed;
@@ -1709,6 +1717,10 @@ async function analyzeWithOpenAI(cfg,base64Image,prompt){
 // Unified dispatcher — picks the right provider based on user settings.
 // Optional `prompt` overrides the default getAIPrompt() for context-aware calls.
 async function analyzePhoto(base64Image,prompt){
+  // Master kill switch — any code path that reaches here while the user has
+  // paused AI exits silently without a network call. The calling UI already
+  // gates on isAiConfigured(); this is a last-line defense.
+  if(!isAiEnabled())return null;
   const provider=local.get(AI_PROVIDER_KEY)||"gemini";
   if(provider==="ollama"){
     const cfg=local.get(OLLAMA_KEY)||{};
@@ -1843,6 +1855,9 @@ async function askAI(prompt){
   // visible in DevTools even when the caller treats null as "AI unavailable".
   const r=await askAIWithUsage(prompt);
   if(r.error)_setAiError(r.error);
+  // Stash tokens for the caller's bumpAiUsage() — lets the existing
+  // compare/contract AI sites record real token usage, not just call count.
+  _lastAiTokens=r.tokens?.total||0;
   return r.text||null;
 }
 
@@ -1853,6 +1868,10 @@ async function askAI(prompt){
 // was misleading whenever setup was actually fine (quota, MAX_TOKENS, 429,
 // safety, CORS, etc.).
 async function askAIWithUsage(prompt){
+  // Defense-in-depth kill switch — most callers already gate on
+  // isAiConfigured() which returns false when paused, but this ensures no
+  // stray code path can burn tokens when the user has flipped AI off.
+  if(!isAiEnabled())return{text:null,tokens:null,error:"AI is paused. Enable it in Settings → AI Setup."};
   const provider=local.get(AI_PROVIDER_KEY)||"gemini";
   try{
     if(provider==="gemini"){
@@ -1964,13 +1983,46 @@ async function askAIWithUsage(prompt){
   }
 }
 
-function isAiConfigured(){
+// User-facing master kill switch for AI. Defaults to ON so existing setups
+// keep working; explicit `false` in AI_ENABLED_KEY pauses every AI call.
+function isAiEnabled(){return local.get(AI_ENABLED_KEY)!==false;}
+function isAiPaused(){return local.get(AI_ENABLED_KEY)===false;}
+// Credentials-only check — what the user has saved in Settings regardless
+// of whether the master switch is on. Kept separate from isAiConfigured so
+// the Settings checklist still shows ✓ when the user has paused (they've
+// completed setup; pause ≠ un-setup).
+function hasAiCredentials(){
   const provider=local.get(AI_PROVIDER_KEY)||"gemini";
   if(provider==="gemini")return !!local.get(GEMINI_KEY);
   if(provider==="ollama"){const c=local.get(OLLAMA_KEY);return !!(c&&c.url);}
   if(provider==="openai"){const c=local.get(OPENAI_KEY);return !!(c&&c.apiKey);}
   return false;
 }
+function isAiConfigured(){return isAiEnabled()&&hasAiCredentials();}
+// Message helper — paused and unconfigured are distinct states with
+// different corrective actions. Replaces the old hardcoded "AI is not
+// configured" copy so paused users see "enable it" instead of "set it up".
+function aiUnavailableMessage(){
+  return isAiPaused()
+    ? "AI is paused. Enable it in Settings → AI Setup."
+    : "AI is not configured. Open Settings → AI Setup first.";
+}
+// Atomically increment today's counters for the AI USAGE panel. Called on
+// every successful AI call across photo/text paths. `tokens=0` is valid
+// (Ollama is local; Gemini can omit usageMetadata on error-adjacent paths).
+function bumpAiUsage(tokens){
+  const today=new Date().toISOString().slice(0,10);
+  const prev=local.get(AI_LIMIT_KEY)||{};
+  const curr=prev.date===today?{...prev}:{date:today,count:0,tokens:0};
+  curr.count=(curr.count||0)+1;
+  curr.tokens=(curr.tokens||0)+Math.max(0,Math.floor(tokens||0));
+  local.set(AI_LIMIT_KEY,curr);
+}
+// Module-scope stash so analyzer functions can report token usage without
+// changing their return shape. Written by analyze*With* + askAIWithUsage;
+// read by call sites right after bumpAiUsage().
+let _lastAiTokens=0;
+function getLastAiTokens(){return _lastAiTokens;}
 
 const CONTRACT_CLAUSE_USES=[
   "General compliance",
@@ -5127,6 +5179,9 @@ const AI_PROVIDERS=[
 ];
 function GeminiSettings({onClose,companyId}){
   const[provider,setProvider]=useState(()=>local.get(AI_PROVIDER_KEY)||"gemini");
+  // Master on/off — token-spend kill switch. Default true so existing
+  // setups keep working; explicit false pauses every AI call.
+  const[aiOn,setAiOn]=useState(()=>local.get(AI_ENABLED_KEY)!==false);
   // Gemini state
   const[gemKey,setGemKey]=useState(()=>local.get(GEMINI_KEY)||"");
   // Ollama state
@@ -5211,6 +5266,67 @@ function GeminiSettings({onClose,companyId}){
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
       <SettingsBack onClose={onClose} title={t("ai.title")}/>
       <div style={{padding:20}}>
+
+        {/* Master on/off switch + today's usage — token-spend control.
+            Visible at the top of AI Setup on both mobile and laptop so
+            users can halt all AI calls without un-setting credentials. */}
+        {(()=>{
+          const todayStr=new Date().toISOString().slice(0,10);
+          const aiUsageRaw=local.get(AI_LIMIT_KEY)||{};
+          const aiToday=aiUsageRaw.date===todayStr?aiUsageRaw:{count:0,tokens:0};
+          const callsToday=aiToday.count||0;
+          const tokensToday=aiToday.tokens||0;
+          return (
+            <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:16}}>
+              <div style={{display:"flex",alignItems:"center",gap:12,justifyContent:"space-between"}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#1a1a1a",letterSpacing:"0.04em"}}>{t("ai.master_label")}</div>
+                  <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",marginTop:3,lineHeight:1.4}}>{aiOn?t("ai.master_on_help"):t("ai.master_off_help")}</div>
+                </div>
+                <button
+                  onClick={()=>{const next=!aiOn;setAiOn(next);local.set(AI_ENABLED_KEY,next);}}
+                  aria-label={aiOn?"Disable AI":"Enable AI"}
+                  title={aiOn?"Turn AI OFF":"Turn AI ON"}
+                  style={{
+                    width:56,height:32,borderRadius:16,
+                    background:aiOn?"#30d158":"rgba(0,0,0,0.22)",
+                    border:"none",cursor:"pointer",position:"relative",
+                    transition:"background 0.18s",flexShrink:0,padding:0
+                  }}>
+                  <div style={{
+                    position:"absolute",top:3,left:aiOn?27:3,
+                    width:26,height:26,borderRadius:"50%",background:"#fff",
+                    transition:"left 0.18s",boxShadow:"0 1px 3px rgba(0,0,0,0.25)"
+                  }}/>
+                </button>
+              </div>
+              {/* Today's usage counters */}
+              <div style={{display:"flex",gap:20,marginTop:14,paddingTop:12,borderTop:"1px solid rgba(0,0,0,0.06)"}}>
+                <div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:callsToday>=AI_DAILY_LIMIT?"#ff3b30":"#5856d6",lineHeight:1}}>
+                    {callsToday}<span style={{fontSize:12,color:"rgba(0,0,0,0.35)",fontWeight:700}}>/{AI_DAILY_LIMIT}</span>
+                  </div>
+                  <div style={{fontSize:9,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.1em",marginTop:3,fontWeight:700}}>{t("ai.analyses_today")}</div>
+                </div>
+                <div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",lineHeight:1}}>
+                    {tokensToday.toLocaleString()}
+                  </div>
+                  <div style={{fontSize:9,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.1em",marginTop:3,fontWeight:700}}>{t("ai.tokens_today")}</div>
+                </div>
+              </div>
+              {/* Usage progress against the app soft cap */}
+              <div style={{marginTop:10,background:"rgba(0,0,0,0.06)",borderRadius:4,height:6,overflow:"hidden"}}>
+                <div style={{width:`${Math.min(callsToday/AI_DAILY_LIMIT*100,100)}%`,height:"100%",background:callsToday>=AI_DAILY_LIMIT?"#ff3b30":"#5856d6",borderRadius:4,transition:"width 0.3s"}}/>
+              </div>
+              {/* Free-tier context — helps users understand underlying provider
+                  limits vs the app's own soft cap. Ollama is local-only. */}
+              <div style={{marginTop:10,fontSize:10.5,color:"rgba(0,0,0,0.5)",lineHeight:1.55}}>
+                {t("ai.limits_app_label")}: <b>{AI_DAILY_LIMIT}</b> {t("ai.analyses_per_day")} · {t("ai.limits_gemini_label")}: <b>{GEMINI_FREE_TIER_RPD.toLocaleString()}</b> {t("ai.requests_per_day")} (<a href="https://ai.google.dev/gemini-api/docs/rate-limits" target="_blank" rel="noopener noreferrer" style={{color:"#4285f4",textDecoration:"underline"}}>{t("ai.see_current_limits")}</a>). {t("ai.ollama_local_note")}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Provider selector */}
         <label style={lbl()}>AI PROVIDER</label>
@@ -6108,7 +6224,7 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
       try{
         const res=await analyzeCONQUASPhoto(dataUrl,pickedComponent?pickedComponent.name:"",[current]);
         if(res&&res.error){
-          setAskAiHint(res.error==="no_ai"?"AI is not configured. Open Settings → AI Setup.":"AI request failed. Use PASS or FAIL manually.");
+          setAskAiHint(res.error==="no_ai"?aiUnavailableMessage():"AI request failed. Use PASS or FAIL manually.");
         } else if(res&&res.verdicts){
           const v=String(res.verdicts[current.itemId]||"").toLowerCase();
           const reason=String((res.reasons||{})[current.itemId]||"").trim();
@@ -7095,7 +7211,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         return;
       }
       if(result&&(result.title||result.description)){
-        local.set(AI_LIMIT_KEY,{date:today,count:todayCount+1});
+        bumpAiUsage(getLastAiTokens());
         writeAiCache(hash,result);
         setAiResult(result);
         applyAiResult(result);
@@ -8449,7 +8565,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
   const[reanalyzing,setReanalyzing]=useState(false);
   const[reanalyzeProgress,setReanalyzeProgress]=useState({done:0,total:0,failed:0});
   const applyReanalyze=async()=>{
-    if(!aiReady){alert("AI is not configured. Open Settings → AI Setup first.");return;}
+    if(!aiReady){alert(aiUnavailableMessage());return;}
     const ids=Array.from(selectedIds);
     if(!ids.length)return;
     if(!confirm(`Re-analyze ${ids.length} entr${ids.length===1?"y":"ies"} with AI?\n\nThis will overwrite title, description, severity, trade, and component on each with fresh AI output. Location, assignee, due date, and status are preserved.\n\nEach entry uses one AI call from your daily quota.`))return;
@@ -8485,7 +8601,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
           const compressed=await compressPhoto(dataUrl,600,0.7);
           result=await analyzePhoto(compressed||dataUrl,getAIPrompt());
           if(result){
-            local.set(AI_LIMIT_KEY,{date:today,count:todayCount+1});
+            bumpAiUsage(getLastAiTokens());
             if(hash)writeAiCache(hash,result);
           }
         }
@@ -10413,7 +10529,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
 
   const runContractAdvisor=async()=>{
     if(!isAiConfigured()){
-      setContractError("AI is not configured. Open Settings → AI Setup first.");
+      setContractError(aiUnavailableMessage());
       return;
     }
     if(filtered.length===0){
@@ -10524,6 +10640,10 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
       }
       setContractSummary(finalText);
       setContractTokens(result.tokens);
+      // Contract Advisor bypasses askAI() (it needs raw tokens for the
+      // in-panel display), so bump usage explicitly here so the AI USAGE
+      // counter stays consistent with every other AI entry point.
+      bumpAiUsage(result.tokens?.total||0);
       const t=result.tokens;
       setContractProgress(prev=>[...prev,
         `Step 4/4: ${builtinFailed.length?"⚠ Advisory complete with INCIDENT":"✓ Advisory complete"}`+(t?` — ${t.provider}: ${t.prompt.toLocaleString()} prompt + ${t.completion.toLocaleString()} completion = ${t.total.toLocaleString()} tokens`:"")]);
@@ -14378,7 +14498,7 @@ Requirements:
   const runCompareAi=async()=>{
     if(!compareRes)return;
     if(compareAiLocked){setCompareAiError("AI report is locked. Unlock before regenerating.");return;}
-    if(!aiReady){setCompareAiError("AI is not configured. Set up AI provider in AI Setup first.");return;}
+    if(!aiReady){setCompareAiError(aiUnavailableMessage());return;}
     const today=new Date().toISOString().slice(0,10);
     const aiUsage=local.get(AI_LIMIT_KEY)||{date:"",count:0};
     const todayCount=aiUsage.date===today?aiUsage.count:0;
@@ -14423,7 +14543,7 @@ Return valid JSON only with this shape:
         section("Submission Notes (BCA/SCDF)",parsed.submission_notes_bca_scdf)
       ].join("\n\n");
       setCompareAiReport(report);
-      local.set(AI_LIMIT_KEY,{date:today,count:todayCount+1});
+      bumpAiUsage(getLastAiTokens());
     }catch(e){
       setCompareAiError(e.message||"AI analysis failed");
     }
@@ -18312,9 +18432,12 @@ function AdminAnalytics({defects,members,company,currentProject,projects,allDefe
   const projRanking=Object.entries(projEntries).sort((a,b)=>b[1]-a[1]);
 
   // AI usage
-  const aiUsage=local.get(AI_LIMIT_KEY)||{date:"",count:0};
-  const aiToday=aiUsage.date===todayStr?aiUsage.count:0;
+  const aiUsage=local.get(AI_LIMIT_KEY)||{};
+  const isToday=aiUsage.date===todayStr;
+  const aiToday=isToday?(aiUsage.count||0):0;
+  const aiTokensToday=isToday?(aiUsage.tokens||0):0;
   const aiProvider=local.get(AI_PROVIDER_KEY)||"gemini";
+  const aiPausedNow=local.get(AI_ENABLED_KEY)===false;
   const aiAnalyzed=defects.filter(d=>d.category||d.defect_type).length;
 
   // Entry types breakdown
@@ -18444,12 +18567,13 @@ function AdminAnalytics({defects,members,company,currentProject,projects,allDefe
       {/* AI usage */}
       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:8}}>AI USAGE</div>
       <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
-        <div style={{display:"flex",gap:16,marginBottom:10}}>
+        <div style={{display:"flex",gap:16,marginBottom:10,flexWrap:"wrap"}}>
           <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#5856d6"}}>{aiToday}</div><div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif"}}>TODAY / {AI_DAILY_LIMIT}</div></div>
+          <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#1a1a1a"}}>{aiTokensToday.toLocaleString()}</div><div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif"}}>TOKENS TODAY</div></div>
           <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#1a1a1a"}}>{aiAnalyzed}</div><div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif"}}>AI-ANALYZED</div></div>
           <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#1a1a1a"}}>{defects.length>0?Math.round(aiAnalyzed/defects.length*100):0}%</div><div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif"}}>COVERAGE</div></div>
         </div>
-        <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>Provider: <span style={{fontWeight:700,color:"#5856d6",textTransform:"uppercase"}}>{aiProvider}</span> · Daily limit: {AI_DAILY_LIMIT}</div>
+        <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>Provider: <span style={{fontWeight:700,color:"#5856d6",textTransform:"uppercase"}}>{aiProvider}</span> · Daily limit: {AI_DAILY_LIMIT} · Gemini free tier: {GEMINI_FREE_TIER_RPD.toLocaleString()} req/day{aiPausedNow?" · ":""}{aiPausedNow&&<span style={{color:"#ff9500",fontWeight:700}}>AI PAUSED</span>}</div>
         {/* Usage bar */}
         <div style={{marginTop:8,background:"rgba(0,0,0,0.06)",borderRadius:4,height:8,overflow:"hidden"}}>
           <div style={{width:`${Math.min(aiToday/AI_DAILY_LIMIT*100,100)}%`,height:"100%",background:aiToday>=AI_DAILY_LIMIT?"#ff3b30":"#5856d6",borderRadius:4}}/>
@@ -19079,7 +19203,9 @@ function App(){
   const setupChecks={
     project:(projects?.length||0)>0,
     team:isAdmin?(members?.length||0)>1:true,
-    ai:!!aiEnabled,
+    // Credentials-only — pausing AI (master switch off) doesn't un-setup it,
+    // so the checklist ✓ stays. The usage panel separately shows ON/OFF.
+    ai:hasAiCredentials(),
     telegram:!!tgEnabled,
   };
   const setupTotal=Object.keys(setupChecks).length;

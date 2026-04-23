@@ -545,7 +545,18 @@
     "openai_desc": "GPT-4o, GPT-4o-mini o API compatibile",
     "clause_mapping": "MAPPATURA DIFETTO-CLAUSOLA",
     "contract_advisory": "CONSULENZA SULLA CLAUSOLA CONTRATTUALE",
-    "disclaimer": "Dichiarazione di non responsabilità: questo avviso è generato da AI solo come riferimento. Non è una consulenza legale. Verifica sempre i riferimenti alle clausole rispetto ai documenti contrattuali effettivi e consulta professionisti qualificati prima di agire su questioni contrattuali."
+    "disclaimer": "Dichiarazione di non responsabilità: questo avviso è generato da AI solo come riferimento. Non è una consulenza legale. Verifica sempre i riferimenti alle clausole rispetto ai documenti contrattuali effettivi e consulta professionisti qualificati prima di agire su questioni contrattuali.",
+    "master_label": "ANALISI DELL'AI",
+    "master_on_help": "L'intelligenza artificiale è attiva. Disattiva per interrompere tutte le chiamate AI e salvare i token. Le tue chiavi rimangono salvate.",
+    "master_off_help": "L'IA è in pausa. Non verranno effettuate chiamate. Attiva per riprendere: le tue chiavi sono ancora salvate.",
+    "analyses_today": "ANALIZZA OGGI",
+    "tokens_today": "GETTONI OGGI",
+    "limits_app_label": "Limite dell'app",
+    "limits_gemini_label": "Livello gratuito Gemini",
+    "analyses_per_day": "analisi/giorno",
+    "requests_per_day": "richieste/giorno",
+    "see_current_limits": "vedere i limiti attuali",
+    "ollama_local_note": "Ollama viene eseguito localmente: non vengono utilizzati token cloud."
   },
   "telegram": {
     "title": "IMPOSTAZIONE TELEGRAMMA",

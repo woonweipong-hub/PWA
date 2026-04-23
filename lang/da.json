@@ -545,7 +545,18 @@
     "openai_desc": "GPT-4o, GPT-4o-mini eller kompatibel API",
     "clause_mapping": "KORTLÆGNING AF DEFEKT TIL KLAUSUL",
     "contract_advisory": "KONTRAKTKLAUSUL RÅDGIVENDE",
-    "disclaimer": "Ansvarsfraskrivelse: Denne vejledning er kun genereret af AI til reference. Det er ikke juridisk rådgivning. Kontroller altid klausulreferencer i forhold til dine faktiske kontraktdokumenter, og konsulter kvalificerede fagfolk, før du handler i kontraktforhold."
+    "disclaimer": "Ansvarsfraskrivelse: Denne vejledning er kun genereret af AI til reference. Det er ikke juridisk rådgivning. Kontroller altid klausulreferencer i forhold til dine faktiske kontraktdokumenter, og konsulter kvalificerede fagfolk, før du handler i kontraktforhold.",
+    "master_label": "AI-ANALYSE",
+    "master_on_help": "AI er tændt. Slå fra for at stoppe alle AI-opkald og gemme tokens. Dine nøgler forbliver gemt.",
+    "master_off_help": "AI er sat på pause. Der vil ikke blive foretaget opkald. Slå til for at genoptage - dine nøgler er stadig gemt.",
+    "analyses_today": "ANALYSER I DAG",
+    "tokens_today": "TOKENS I DAG",
+    "limits_app_label": "App grænse",
+    "limits_gemini_label": "Gemini gratis niveau",
+    "analyses_per_day": "analyser/dag",
+    "requests_per_day": "ønsker/dag",
+    "see_current_limits": "se aktuelle grænser",
+    "ollama_local_note": "Ollama kører lokalt - ingen sky-tokens bruges."
   },
   "telegram": {
     "title": "TELEGRAM OPSÆTNING",

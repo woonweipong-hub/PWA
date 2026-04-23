@@ -545,7 +545,18 @@
     "openai_desc": "GPT-4o, GPT-4o-mini oder kompatible API",
     "clause_mapping": "MANGEL-ZU-KLAUSEL-ZUORDNUNG",
     "contract_advisory": "VERTRAGSKLAUSEL-BERATUNG",
-    "disclaimer": "Haftungsausschluss: Diese Beratung wurde von KI nur als Referenz erstellt. Sie stellt keine Rechtsberatung dar. Überprüfen Sie Klauselverweise immer anhand Ihrer tatsächlichen Vertragsdokumente und konsultieren Sie qualifizierte Fachleute, bevor Sie in Vertragsangelegenheiten handeln."
+    "disclaimer": "Haftungsausschluss: Diese Beratung wurde von KI nur als Referenz erstellt. Sie stellt keine Rechtsberatung dar. Überprüfen Sie Klauselverweise immer anhand Ihrer tatsächlichen Vertragsdokumente und konsultieren Sie qualifizierte Fachleute, bevor Sie in Vertragsangelegenheiten handeln.",
+    "master_label": "KI-ANALYSE",
+    "master_on_help": "KI ist eingeschaltet. Schalten Sie die Option aus, um alle KI-Anrufe zu stoppen und Token zu speichern. Ihre Schlüssel bleiben gespeichert.",
+    "master_off_help": "KI ist pausiert. Es werden keine Anrufe getätigt. Zum Fortfahren einschalten – Ihre Schlüssel bleiben weiterhin gespeichert.",
+    "analyses_today": "ANALYSEN HEUTE",
+    "tokens_today": "TOKENS HEUTE",
+    "limits_app_label": "App-Limit",
+    "limits_gemini_label": "Kostenlose Gemini-Stufe",
+    "analyses_per_day": "Analysen/Tag",
+    "requests_per_day": "Anfragen/Tag",
+    "see_current_limits": "siehe aktuelle Grenzwerte",
+    "ollama_local_note": "Ollama läuft lokal – es werden keine Cloud-Tokens verwendet."
   },
   "telegram": {
     "title": "TELEGRAM-EINRICHTUNG",

@@ -545,7 +545,18 @@
     "openai_desc": "GPT-4o, GPT-4o-mini tai yhteensopiva API",
     "clause_mapping": "DEFECT-TO CLAUSE -kartoitus",
     "contract_advisory": "SOPIMUSlausekeneuvonta",
-    "disclaimer": "Vastuuvapauslauseke: AI on luonut tämän ilmoituksen vain viitteeksi. Se ei ole juridista neuvontaa. Tarkista aina lausekkeiden viittaukset todellisiin sopimusasiakirjoihin ja ota yhteyttä päteviin ammattilaisiin ennen sopimusasioihin ryhtymistä."
+    "disclaimer": "Vastuuvapauslauseke: AI on luonut tämän ilmoituksen vain viitteeksi. Se ei ole juridista neuvontaa. Tarkista aina lausekkeiden viittaukset todellisiin sopimusasiakirjoihin ja ota yhteyttä päteviin ammattilaisiin ennen sopimusasioihin ryhtymistä.",
+    "master_label": "AI-ANALYYSI",
+    "master_on_help": "AI on päällä. Kytke pois päältä lopettaaksesi kaikki tekoälypuhelut ja tallentaaksesi tunnukset. Avaimesi pysyvät tallessa.",
+    "master_off_help": "AI on keskeytetty. Puheluja ei soiteta. Ota käyttöön jatkaaksesi — avaimesi ovat edelleen tallennettuina.",
+    "analyses_today": "ANALYYSI TÄNÄÄN",
+    "tokens_today": "TOKENIJA TÄNÄÄN",
+    "limits_app_label": "Sovellusraja",
+    "limits_gemini_label": "Kaksoset ilmainen taso",
+    "analyses_per_day": "analyysit/päivä",
+    "requests_per_day": "pyynnöt/päivä",
+    "see_current_limits": "katso nykyiset rajat",
+    "ollama_local_note": "Ollama toimii paikallisesti – pilvitunnuksia ei käytetä."
   },
   "telegram": {
     "title": "TELEGRAMIN ASETUS",

@@ -545,7 +545,18 @@
     "openai_desc": "GPT-4o, GPT-4o-mini, atau API kompatibel",
     "clause_mapping": "PEMETAAN CACAT-KE-KLAUSUL",
     "contract_advisory": "SARAN KLAUSUL KONTRAK",
-    "disclaimer": "Penafian: Saran ini dihasilkan oleh AI hanya untuk referensi. Ini bukan nasihat hukum. Selalu verifikasi referensi klausul terhadap dokumen kontrak aktual Anda dan konsultasikan dengan profesional yang berkualifikasi sebelum bertindak atas masalah kontrak."
+    "disclaimer": "Penafian: Saran ini dihasilkan oleh AI hanya untuk referensi. Ini bukan nasihat hukum. Selalu verifikasi referensi klausul terhadap dokumen kontrak aktual Anda dan konsultasikan dengan profesional yang berkualifikasi sebelum bertindak atas masalah kontrak.",
+    "master_label": "ANALISIS AI",
+    "master_on_help": "AI aktif. Matikan untuk menghentikan semua panggilan AI dan menyimpan token. Kunci Anda tetap tersimpan.",
+    "master_off_help": "AI dijeda. Tidak ada panggilan yang akan dilakukan. Aktifkan untuk melanjutkan — kunci Anda masih disimpan.",
+    "analyses_today": "ANALISIS HARI INI",
+    "tokens_today": "TOKEN HARI INI",
+    "limits_app_label": "Batas aplikasi",
+    "limits_gemini_label": "Tingkat bebas Gemini",
+    "analyses_per_day": "analisis/hari",
+    "requests_per_day": "permintaan/hari",
+    "see_current_limits": "lihat batas saat ini",
+    "ollama_local_note": "Ollama berjalan secara lokal — tidak ada token cloud yang digunakan."
   },
   "telegram": {
     "title": "PENGATURAN TELEGRAM",

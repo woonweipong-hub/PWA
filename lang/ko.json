@@ -545,7 +545,18 @@
     "openai_desc": "GPT-4o, GPT-4o-mini 또는 호환 API",
     "clause_mapping": "결함-조항 매핑",
     "contract_advisory": "계약 조항 자문",
-    "disclaimer": "면책조항: 이 자문은 참고용으로만 AI가 생성한 것입니다. 법적 조언이 아닙니다. 항상 실제 계약 문서와 조항 참조를 확인하고, 계약 사안에 대해 조치하기 전에 자격 있는 전문가와 상담하세요."
+    "disclaimer": "면책조항: 이 자문은 참고용으로만 AI가 생성한 것입니다. 법적 조언이 아닙니다. 항상 실제 계약 문서와 조항 참조를 확인하고, 계약 사안에 대해 조치하기 전에 자격 있는 전문가와 상담하세요.",
+    "master_label": "AI 분석",
+    "master_on_help": "AI가 켜져 있습니다. 모든 AI 호출을 중지하고 토큰을 저장하려면 끄세요. 귀하의 키는 계속 저장되어 있습니다.",
+    "master_off_help": "AI가 일시중지되었습니다. 전화가 걸려오지 않습니다. 계속하려면 켜기로 전환하세요. 키는 계속 저장됩니다.",
+    "analyses_today": "오늘의 분석",
+    "tokens_today": "오늘의 토큰",
+    "limits_app_label": "앱 한도",
+    "limits_gemini_label": "Gemini 프리 티어",
+    "analyses_per_day": "분석/일",
+    "requests_per_day": "요청/일",
+    "see_current_limits": "현재 한도 보기",
+    "ollama_local_note": "Ollama는 로컬로 실행되며 클라우드 토큰이 사용되지 않습니다."
   },
   "telegram": {
     "title": "TELEGRAM 설정",

@@ -545,7 +545,18 @@
     "openai_desc": "GPT-4o, GPT-4o-mini ou API compatible",
     "clause_mapping": "CORRESPONDANCE DÉFAUT-CLAUSE",
     "contract_advisory": "CONSEIL CLAUSE CONTRACTUELLE",
-    "disclaimer": "Avertissement : Ce conseil est généré par l'IA à titre de référence uniquement. Il ne constitue pas un avis juridique. Vérifiez toujours les références de clauses par rapport à vos documents contractuels réels et consultez des professionnels qualifiés avant d'agir."
+    "disclaimer": "Avertissement : Ce conseil est généré par l'IA à titre de référence uniquement. Il ne constitue pas un avis juridique. Vérifiez toujours les références de clauses par rapport à vos documents contractuels réels et consultez des professionnels qualifiés avant d'agir.",
+    "master_label": "ANALYSE DE L'IA",
+    "master_on_help": "L'IA est activée. Désactivez-la pour arrêter tous les appels IA et enregistrer les jetons. Vos clés restent enregistrées.",
+    "master_off_help": "L'IA est en pause. Aucun appel ne sera effectué. Activez pour reprendre : vos clés sont toujours enregistrées.",
+    "analyses_today": "ANALYSES AUJOURD'HUI",
+    "tokens_today": "JETONS AUJOURD'HUI",
+    "limits_app_label": "Limite d'application",
+    "limits_gemini_label": "Niveau gratuit Gemini",
+    "analyses_per_day": "analyses/jour",
+    "requests_per_day": "demandes/jour",
+    "see_current_limits": "voir les limites actuelles",
+    "ollama_local_note": "Ollama s'exécute localement – ​​aucun jeton cloud n'est utilisé."
   },
   "telegram": {
     "title": "CONFIGURATION TELEGRAM",

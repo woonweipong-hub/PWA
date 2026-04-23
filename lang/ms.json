@@ -545,7 +545,18 @@
     "openai_desc": "GPT-4o, GPT-4o-mini, atau API serasi",
     "clause_mapping": "PEMETAAN KECACATAN-KE-KLAUSA",
     "contract_advisory": "NASIHAT KLAUSA KONTRAK",
-    "disclaimer": "Penafian: Nasihat ini dijana oleh AI untuk rujukan sahaja. Ia bukan nasihat undang-undang. Sentiasa sahkan rujukan klausa terhadap dokumen kontrak sebenar anda dan rujuk profesional yang berkelayakan sebelum bertindak atas hal kontrak."
+    "disclaimer": "Penafian: Nasihat ini dijana oleh AI untuk rujukan sahaja. Ia bukan nasihat undang-undang. Sentiasa sahkan rujukan klausa terhadap dokumen kontrak sebenar anda dan rujuk profesional yang berkelayakan sebelum bertindak atas hal kontrak.",
+    "master_label": "ANALISIS AI",
+    "master_on_help": "AI dihidupkan. Togol mati untuk menghentikan semua panggilan AI dan menyimpan token. Kunci anda kekal disimpan.",
+    "master_off_help": "AI dijeda. Tiada panggilan akan dibuat. Togol untuk menyambung semula — kunci anda masih disimpan.",
+    "analyses_today": "MENGANALISIS HARI INI",
+    "tokens_today": "TOKEN HARI INI",
+    "limits_app_label": "Had apl",
+    "limits_gemini_label": "Gemini peringkat bebas",
+    "analyses_per_day": "analisis/hari",
+    "requests_per_day": "permintaan/hari",
+    "see_current_limits": "lihat had semasa",
+    "ollama_local_note": "Ollama berjalan secara tempatan — tiada token awan digunakan."
   },
   "telegram": {
     "title": "PERSEDIAAN TELEGRAM",

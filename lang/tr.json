@@ -545,7 +545,18 @@
     "openai_desc": "GPT-4o, GPT-4o-mini veya uyumlu API",
     "clause_mapping": "KUSURDAN HATAYA EŞLEME",
     "contract_advisory": "SÖZLEŞME MADDESİ DANIŞMANLIĞI",
-    "disclaimer": "Yasal Uyarı: Bu danışma belgesi AI tarafından yalnızca referans amacıyla oluşturulmuştur. Yasal tavsiye değildir. Sözleşmeyle ilgili konularda harekete geçmeden önce her zaman madde referanslarını gerçek sözleşme belgelerinizle karşılaştırın ve kalifiye profesyonellere danışın."
+    "disclaimer": "Yasal Uyarı: Bu danışma belgesi AI tarafından yalnızca referans amacıyla oluşturulmuştur. Yasal tavsiye değildir. Sözleşmeyle ilgili konularda harekete geçmeden önce her zaman madde referanslarını gerçek sözleşme belgelerinizle karşılaştırın ve kalifiye profesyonellere danışın.",
+    "master_label": "Yapay Zeka Analizi",
+    "master_on_help": "AI açık. Tüm AI çağrılarını durdurmak ve jetonları kaydetmek için kapatın. Anahtarlarınız kayıtlı kalır.",
+    "master_off_help": "AI duraklatıldı. Hiçbir arama yapılmayacaktır. Devam etmek için açın; anahtarlarınız hâlâ kayıtlı.",
+    "analyses_today": "BUGÜN ANALİZLERİ",
+    "tokens_today": "BUGÜN JETONLARI",
+    "limits_app_label": "Uygulama sınırı",
+    "limits_gemini_label": "Gemini ücretsiz katmanı",
+    "analyses_per_day": "analiz/gün",
+    "requests_per_day": "istek/gün",
+    "see_current_limits": "mevcut sınırları görün",
+    "ollama_local_note": "Ollama yerel olarak çalışır; bulut belirteçleri kullanılmaz."
   },
   "telegram": {
     "title": "TELEGRAM KURULUMU",

@@ -545,7 +545,18 @@
     "openai_desc": "GPT-4o, GPT-4o-mini, hoặc API tương thích",
     "clause_mapping": "ÁNH XẠ LỖI-SANG-ĐIỀU KHOẢN",
     "contract_advisory": "TƯ VẤN ĐIỀU KHOẢN HỢP ĐỒNG",
-    "disclaimer": "Tuyên bố miễn trừ: Tư vấn này được AI tạo ra chỉ để tham khảo. Đây không phải là tư vấn pháp lý. Luôn xác minh tham chiếu điều khoản với tài liệu hợp đồng thực tế và tham vấn chuyên gia có trình độ trước khi hành động."
+    "disclaimer": "Tuyên bố miễn trừ: Tư vấn này được AI tạo ra chỉ để tham khảo. Đây không phải là tư vấn pháp lý. Luôn xác minh tham chiếu điều khoản với tài liệu hợp đồng thực tế và tham vấn chuyên gia có trình độ trước khi hành động.",
+    "master_label": "PHÂN TÍCH AI",
+    "master_on_help": "AI đang bật. Tắt để dừng tất cả cuộc gọi AI và lưu mã thông báo. Chìa khóa của bạn vẫn được lưu.",
+    "master_off_help": "AI bị tạm dừng. Sẽ không có cuộc gọi nào được thực hiện. Bật để tiếp tục - khóa của bạn vẫn được lưu.",
+    "analyses_today": "PHÂN TÍCH HÔM NAY",
+    "tokens_today": "TOKEN HÔM NAY",
+    "limits_app_label": "Giới hạn ứng dụng",
+    "limits_gemini_label": "Cấp miễn phí của Song Tử",
+    "analyses_per_day": "phân tích/ngày",
+    "requests_per_day": "yêu cầu/ngày",
+    "see_current_limits": "xem giới hạn hiện tại",
+    "ollama_local_note": "Ollama chạy cục bộ — không sử dụng mã thông báo đám mây."
   },
   "telegram": {
     "title": "CÀI ĐẶT TELEGRAM",
