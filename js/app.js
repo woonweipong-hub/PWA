@@ -1672,6 +1672,56 @@ async function analyzePhoto(base64Image,prompt){
   return analyzeWithGemini(key,base64Image,prompt);
 }
 
+// Fetch a defect photo and return it as a base64 data URL suitable for
+// analyzePhoto(). Defect records store either a local data URL (captured
+// on-device) or a remote storage URL (after PocketBase / R2 sync); this
+// normalises both so the REVIEW > ENTRIES re-analyze flow can feed AI
+// without caring about the source. Returns null on failure so the caller
+// can skip the record.
+async function fetchPhotoAsDataUrl(src){
+  if(!src)return null;
+  if(typeof src!=="string")return null;
+  if(src.startsWith("data:"))return src;
+  try{
+    const resp=await fetch(src);
+    if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
+    const blob=await resp.blob();
+    return await new Promise((resolve,reject)=>{
+      const r=new FileReader();
+      r.onload=()=>resolve(r.result);
+      r.onerror=()=>reject(new Error("Failed to read blob"));
+      r.readAsDataURL(blob);
+    });
+  }catch(e){
+    console.warn("[AI] fetchPhotoAsDataUrl failed for",src.slice(0,80),e.message);
+    return null;
+  }
+}
+
+// Build a DB patch from an AI analysis result, intended for batch
+// re-analyze of existing defect records. Conservative by design:
+//  - title / description are always refreshed when AI returned them
+//    (this is the field the user asked to update)
+//  - severity / trade / component are overwritten because those are
+//    AI-classified fields
+//  - location, assignee, dueDate, status are NOT touched — those are
+//    user-set and shouldn't be blown away by a re-analyze pass
+// Returns null if AI produced nothing usable, so the caller can report
+// a per-defect failure instead of writing an empty patch.
+function buildReanalyzePatch(result){
+  if(!result)return null;
+  if(!result.title&&!result.description)return null;
+  const patch={};
+  if(result.title&&result.title.trim())patch.title=result.title.trim();
+  if(result.description&&result.description.trim())patch.description=result.description.trim();
+  if(result.severity)patch.severity=result.severity;
+  if(result.trade)patch.trade=result.trade;
+  if(result.component)patch.component=result.component;
+  if(!Object.keys(patch).length)return null;
+  patch.updatedAt=DB.serverTimestamp();
+  return patch;
+}
+
 // SHA-256 of the raw photo bytes (not the data-URL prefix). Used to key the
 // AI-result cache so re-taking or re-uploading the same photo reuses the
 // prior AI result instead of burning tokens. Stable across sessions.
@@ -6281,6 +6331,12 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   const[addPhotoSaving,setAddPhotoSaving]=useState(false);
   const addPhotoRef=useRef();
   const saveAndDoneRef=useRef(false);
+  // Folder picker — webkitdirectory lets the user drop an entire
+  // directory on laptop (Chrome/Edge/Firefox) or pick a folder on
+  // Android. On iOS it falls back to standard multi-pick. We filter
+  // the returned FileList to images in handlePhoto since directories
+  // can contain arbitrary file types.
+  const folderRef=useRef();
   // Zero-tap batch capture: when the user picks N photos at once (phone
   // gallery / laptop drag-drop), each photo fans out into its own defect
   // record. The first photo goes straight into the form and the rest wait
@@ -6336,9 +6392,22 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   const MAX_PHOTOS=10;
 
   const handlePhoto=e=>{
-    const files=Array.from(e.target.files||[]);
-    if(!files.length)return;
+    // Filter to images — folder pickers return every file in the directory
+    // (docs, hidden files, thumbs.db, .DS_Store, etc.) and some mobile
+    // multi-pickers return video/pdf alongside photos.
+    const files=Array.from(e.target.files||[]).filter(f=>
+      (f.type&&f.type.startsWith("image/"))||/\.(jpe?g|png|webp|heic|heif)$/i.test(f.name||"")
+    );
+    // Always clear both inputs so the same file/folder can be re-picked later.
     if(fileRef.current)fileRef.current.value="";
+    if(folderRef.current)folderRef.current.value="";
+    if(!files.length){
+      // Folder had no images, or user cancelled — tell them why nothing happened.
+      if((e.target.files||[]).length>0){
+        alert("No image files found in the selection. Supported: JPG, PNG, WebP, HEIC.");
+      }
+      return;
+    }
     setAiResult(null);
     // Single-photo pick OR multi-pick without AI: attach to current form
     // up to MAX_PHOTOS (existing behavior — user fills + saves one record).
@@ -6993,10 +7062,22 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       <div style={{marginBottom:16}}>
         <label style={lbl()}>{t("log.photos_count")} ({form.photos.length}/{MAX_PHOTOS})</label>
         <input type="file" accept="image/*" capture="environment" multiple ref={fileRef} onChange={handlePhoto} style={{display:"none"}}/>
+        {/* Folder / multi-file picker for bulk import — webkitdirectory lets
+            the user pick an entire folder on laptop + Android; iOS falls
+            back to multi-file select. Each image becomes its own record
+            via the zero-tap batch flow (handlePhoto → batchQueue). */}
+        <input type="file" accept="image/*" multiple ref={folderRef} onChange={handlePhoto} style={{display:"none"}} webkitdirectory="" directory=""/>
         {form.photos.length===0?(
-          <button onClick={()=>fileRef.current.click()} style={{width:"100%",height:64,background:"#fff",border:"2px dashed rgba(0,0,0,0.18)",borderRadius:14,color:"rgba(0,0,0,0.5)",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
-            <span style={{fontSize:24}}>📷</span> {t("log.take_photo")}{aiReady?` · ${t("log.ai_auto_analyze")}`:""}
-          </button>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            <button onClick={()=>fileRef.current.click()} style={{width:"100%",height:64,background:"#fff",border:"2px dashed rgba(0,0,0,0.18)",borderRadius:14,color:"rgba(0,0,0,0.5)",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
+              <span style={{fontSize:24}}>📷</span> {t("log.take_photo")}{aiReady?` · ${t("log.ai_auto_analyze")}`:""}
+            </button>
+            {aiReady&&(
+              <button onClick={()=>folderRef.current.click()} style={{width:"100%",padding:"10px 14px",background:"rgba(88,86,214,0.06)",border:"1.5px dashed rgba(88,86,214,0.4)",borderRadius:12,color:"#5856d6",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.03em"}}>
+                <span style={{fontSize:16}}>📁</span> PICK FOLDER OR MULTIPLE PHOTOS · AI PRE-FILLS EACH
+              </button>
+            )}
+          </div>
         ):(
           <div>
             <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8,marginBottom:8}}>
@@ -7861,6 +7942,71 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
     setBulkSaving(false);
   };
 
+  // Batch re-analyze with AI — re-runs photo analysis on every selected
+  // entry and refreshes title / description / severity / trade / component.
+  // Non-AI fields (location, assignee, dueDate, status) are preserved; the
+  // user-set values shouldn't be blown away by a re-analyze pass. Fails
+  // per-entry are counted and reported; failures don't halt the batch.
+  const aiReady=isAiConfigured();
+  const[reanalyzing,setReanalyzing]=useState(false);
+  const[reanalyzeProgress,setReanalyzeProgress]=useState({done:0,total:0,failed:0});
+  const applyReanalyze=async()=>{
+    if(!aiReady){alert("AI is not configured. Open Settings → AI Setup first.");return;}
+    const ids=Array.from(selectedIds);
+    if(!ids.length)return;
+    if(!confirm(`Re-analyze ${ids.length} entr${ids.length===1?"y":"ies"} with AI?\n\nThis will overwrite title, description, severity, trade, and component on each with fresh AI output. Location, assignee, due date, and status are preserved.\n\nEach entry uses one AI call from your daily quota.`))return;
+    setReanalyzing(true);
+    setReanalyzeProgress({done:0,total:ids.length,failed:0});
+    let done=0,failed=0;
+    const today=new Date().toISOString().slice(0,10);
+    for(const id of ids){
+      const defect=defects.find(d=>d.id===id);
+      if(!defect){failed++;setReanalyzeProgress({done:done+failed,total:ids.length,failed});continue;}
+      // Daily-limit gate (shared with LOG's AI). Abort the whole batch
+      // cleanly when quota is exhausted so the user sees a single alert
+      // with the partial result.
+      const aiUsage=local.get(AI_LIMIT_KEY)||{date:"",count:0};
+      const todayCount=aiUsage.date===today?aiUsage.count:0;
+      if(todayCount>=AI_DAILY_LIMIT){
+        alert(`AI daily limit reached (${AI_DAILY_LIMIT}/day).\n\nRe-analyzed ${done} entr${done===1?"y":"ies"} before hitting the limit. Retry tomorrow or manually edit the rest.`);
+        break;
+      }
+      try{
+        // Resolve the photo to a data URL regardless of local vs remote.
+        const photoSrc=typeof defect.photo==="string"?defect.photo
+          :Array.isArray(defect.photo)&&defect.photo[0]?defect.photo[0]
+          :(Array.isArray(defect.extraPhotos)&&defect.extraPhotos[0])||null;
+        if(!photoSrc){failed++;setReanalyzeProgress({done:done+failed,total:ids.length,failed});continue;}
+        const dataUrl=await fetchPhotoAsDataUrl(photoSrc);
+        if(!dataUrl){failed++;setReanalyzeProgress({done:done+failed,total:ids.length,failed});continue;}
+        // Cache hit — free refresh (same photo, already analyzed).
+        const hash=await photoHash(dataUrl);
+        let result=hash?readAiCache(hash):null;
+        if(!result){
+          try{window.__lastAiError=null;}catch{}
+          const compressed=await compressPhoto(dataUrl,600,0.7);
+          result=await analyzePhoto(compressed||dataUrl,getAIPrompt());
+          if(result){
+            local.set(AI_LIMIT_KEY,{date:today,count:todayCount+1});
+            if(hash)writeAiCache(hash,result);
+          }
+        }
+        const patch=buildReanalyzePatch(result);
+        if(!patch){failed++;setReanalyzeProgress({done:done+failed,total:ids.length,failed});continue;}
+        await DB.defects.update(defect.id,patch);
+        if(onUpdate)onUpdate({...defect,...patch});
+        done++;
+      }catch(e){
+        console.warn("[Re-analyze] failed for",id,e.message||e);
+        failed++;
+      }
+      setReanalyzeProgress({done:done+failed,total:ids.length,failed});
+    }
+    setReanalyzing(false);
+    alert(`Re-analyze complete.\n\n✓ Updated: ${done}\n${failed?`✗ Failed: ${failed}\n`:""}\nRectify any incorrect output manually in the entry view.`);
+    exitSelect();
+  };
+
   // Load drawings + pins for this project so Review rows can show a small
   // drawing-with-pin thumbnail for entries pinned on a floor plan (parity
   // with the MapThumb shown for GPS-pinned entries).
@@ -8246,9 +8392,27 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
           </div>
 
           <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>setShowBulkPanel(false)} disabled={bulkSaving} style={{flex:1,background:"rgba(0,0,0,0.06)",border:"none",borderRadius:10,padding:"12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")}</button>
-            <button onClick={applyBulk} disabled={bulkSaving} style={{flex:2,background:"#ff6b00",border:"none",borderRadius:10,padding:"12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>{bulkSaving?<><Spin size={14}/> APPLYING…</>:`APPLY TO ${selectedIds.size}`}</button>
+            <button onClick={()=>setShowBulkPanel(false)} disabled={bulkSaving||reanalyzing} style={{flex:1,background:"rgba(0,0,0,0.06)",border:"none",borderRadius:10,padding:"12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")}</button>
+            <button onClick={applyBulk} disabled={bulkSaving||reanalyzing} style={{flex:2,background:"#ff6b00",border:"none",borderRadius:10,padding:"12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>{bulkSaving?<><Spin size={14}/> APPLYING…</>:`APPLY TO ${selectedIds.size}`}</button>
           </div>
+
+          {/* AI re-analyze — distinct from the APPLY patch above because it
+              runs a different per-entry AI call rather than writing a shared
+              patch. Lives below the manual bulk update so users don't
+              confuse the two actions. Only shown when AI is configured. */}
+          {aiReady&&source==="entries"&&(
+            <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid rgba(0,0,0,0.08)"}}>
+              <div style={{...lbl(),color:"#5856d6"}}>AI ACTIONS</div>
+              <button onClick={applyReanalyze} disabled={bulkSaving||reanalyzing} style={{width:"100%",background:reanalyzing?"rgba(88,86,214,0.18)":"rgba(88,86,214,0.1)",border:"1.5px solid rgba(88,86,214,0.4)",borderRadius:10,padding:"11px",color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:(bulkSaving||reanalyzing)?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,letterSpacing:"0.04em"}}>
+                {reanalyzing
+                  ?<><Spin size={14}/> RE-ANALYZING {reanalyzeProgress.done} / {reanalyzeProgress.total}{reanalyzeProgress.failed?` · ${reanalyzeProgress.failed} FAILED`:""}</>
+                  :<><span style={{fontSize:14}}>⚡</span> RE-ANALYZE {selectedIds.size} WITH AI</>}
+              </button>
+              <div style={{fontSize:10,color:"rgba(0,0,0,0.45)",marginTop:6,lineHeight:1.4}}>
+                Refreshes title, description, severity, trade, and component from a fresh AI analysis of each entry's photo. Location, assignee, due date, and status are preserved. Uses one AI call per entry from your daily quota.
+              </div>
+            </div>
+          )}
         </div>
       )}
 
