@@ -1511,12 +1511,11 @@ async function geminiGenerate(apiKey,body){
   const TRANSIENT=new Set([429,500,502,503,504]);
   const backoffs=[1000,3000];
   let model=await pickGeminiModel(apiKey);
+  const tried=new Set([model]);
   const call=async m=>fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(apiKey)}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
   let res;
   try{res=await call(model);}
   catch(e){
-    // Network-level failure (DNS, CORS, reset). Retry once after 1s
-    // before giving up; persistent network errors are still surfaced.
     console.warn("[AI] Gemini network error, retrying in 1s:",e?.message||e);
     await new Promise(r=>setTimeout(r,1000));
     res=await call(model);
@@ -1524,14 +1523,35 @@ async function geminiGenerate(apiKey,body){
   if(res.status===404){
     local.del(GEMINI_MODEL_KEY);
     model=await pickGeminiModel(apiKey);
+    tried.add(model);
     res=await call(model);
   }
+  // Same-model backoff retries on transient 5xx / 429.
   for(let i=0;i<backoffs.length&&TRANSIENT.has(res.status);i++){
     const wait=backoffs[i];
-    console.warn(`[AI] Gemini HTTP ${res.status} on attempt ${i+1} — retrying in ${wait}ms`);
+    console.warn(`[AI] Gemini HTTP ${res.status} on ${model} (attempt ${i+1}) — retrying in ${wait}ms`);
     await new Promise(r=>setTimeout(r,wait));
     try{res=await call(model);}
     catch(e){console.warn("[AI] retry network error:",e?.message||e);continue;}
+  }
+  // Still transient? The primary model is genuinely overloaded. Step down
+  // through the fallback chain (2.5-flash → 2.0-flash → 1.5-flash → …),
+  // trying ONE call each. This recovers the common case where the newest
+  // model is rate-capped but older models have capacity. We don't clear
+  // GEMINI_MODEL_KEY because the primary may be healthy again next session.
+  if(TRANSIENT.has(res.status)){
+    for(const fallback of GEMINI_MODEL_FALLBACKS){
+      if(tried.has(fallback))continue;
+      tried.add(fallback);
+      console.warn(`[AI] ${model} still ${res.status}; stepping to ${fallback}`);
+      try{
+        const fr=await call(fallback);
+        if(!TRANSIENT.has(fr.status)){res=fr;model=fallback;break;}
+        res=fr;
+      }catch(e){
+        console.warn("[AI] fallback model network error:",e?.message||e);
+      }
+    }
   }
   return res;
 }
@@ -1702,6 +1722,28 @@ async function analyzePhoto(base64Image,prompt){
   const key=local.get(GEMINI_KEY);
   if(!key)return null;
   return analyzeWithGemini(key,base64Image,prompt);
+}
+
+// Map a raw Gemini / OpenAI / network error into a short user-facing
+// headline. The raw text is still available via window.__lastAiError /
+// the inline pill's detail row for debugging, but on-site operators
+// need an actionable summary, not a JSON dump.
+function friendlyAiError(raw){
+  const s=String(raw||"");
+  if(!s)return"AI couldn't analyze — tap RETRY or fill in manually.";
+  if(/HTTP\s?5\d\d/i.test(s)||/UNAVAILABLE/i.test(s)||/high demand/i.test(s))
+    return"AI service is busy. Tap RETRY (usually clears within a minute).";
+  if(/HTTP\s?429/i.test(s)||/rate.?limit/i.test(s)||/quota/i.test(s))
+    return"AI rate limit reached. Wait a moment or switch provider in Settings.";
+  if(/HTTP\s?40[13]/i.test(s)||/key\b.*valid/i.test(s)||/API key/i.test(s))
+    return"AI key / permission issue. Open Settings → AI Setup.";
+  if(/network|Failed to fetch|CORS|NetworkError/i.test(s))
+    return"Can't reach the AI service. Check connection — entry will queue offline.";
+  if(/MAX_TOKENS/i.test(s))
+    return"AI cut off before finishing. Try a clearer or smaller photo.";
+  if(/SAFETY|blockReason/i.test(s))
+    return"AI safety filter blocked the response. Fill manually or rephrase.";
+  return"AI couldn't analyze — tap RETRY or fill in manually.";
 }
 
 // Fetch a defect photo and return it as a base64 data URL suitable for
@@ -6597,6 +6639,10 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // Post-save toast with an EDIT shortcut. Makes "rectify instantly" a
   // single tap from the capture screen instead of REVIEW → ENTRIES → find.
   const[lastSaved,setLastSaved]=useState(null);
+  // Inline AI error state — shown under the photo thumbnails as a small
+  // red pill with a RETRY button, replacing the blocking modal alert.
+  // Cleared automatically on a new photo / successful analyze / user tap ×.
+  const[analyzeError,setAnalyzeError]=useState(null);
   // Staging overlay — when the user picks a folder (phone DCIM can hold
   // thousands of photos) or multi-selects more than a handful from the
   // gallery, show a thumbnail grid first so they can filter by date and
@@ -6898,6 +6944,9 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // start its own analyze after the stale in-flight call resolves.
   useEffect(()=>{
     if(!form.photos[0]||aiResult||analyzing||saving)return;
+    // A new photo supersedes any previous AI error — clear the inline
+    // pill so stale errors don't hang over the new capture.
+    setAnalyzeError(null);
     let cancelled=false;
     (async()=>{
       const hash=await photoHash(form.photos[0]);
@@ -7005,6 +7054,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   const analyze=async()=>{
     if(!form.photos.length||!aiReady)return;
     setAnalyzing(true);
+    setAnalyzeError(null); // fresh attempt — clear any previous inline error
     try{
       const photo=form.photos[0];
       // 1) Cache hit — skip the API entirely (no token burn, instant apply).
@@ -7050,17 +7100,20 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         setAiResult(result);
         applyAiResult(result);
       }else{
-        // In batch mode, don't alert per-photo — let the batch keep moving
-        // and save this record with a placeholder so the user still has
-        // the photo logged. The auto-save effect picks up this sentinel.
+        // In batch mode, don't surface per-photo errors — let the batch
+        // keep moving and save this record with a placeholder so the user
+        // still has the photo logged. The auto-save effect picks up this
+        // sentinel. In single-photo mode, surface as an inline red pill
+        // (not a modal) so the user can RETRY or edit manually without
+        // being forced to dismiss a popup first.
         if(batchTotal>0){
           setAiResult({__failed:true});
         }else{
           const detail=(typeof window!=="undefined"&&window.__lastAiError)||"";
-          alert("AI could not analyze the photo.\n\n"+(detail?detail+"\n\n":"")+"Try a clearer image, check AI settings, or log manually.");
+          setAnalyzeError(detail||"AI returned no content.");
         }
       }
-    }catch(e){if(batchTotal===0)alert("AI analysis error: "+e.message);}
+    }catch(e){if(batchTotal===0)setAnalyzeError("AI analysis error: "+(e?.message||e));}
     setAnalyzing(false);
   };
 
@@ -7465,6 +7518,21 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
               </button>
             )}
             {!aiReady&&<div style={{fontSize:11,color:"rgba(0,0,0,0.35)",textAlign:"center",padding:"6px 0"}}>{t("log.setup_ai_tip")}</div>}
+            {/* Inline AI error pill — replaces the blocking modal alert
+                with a non-intrusive ribbon that lets the user retry in
+                place, see the friendly reason, and still access the raw
+                detail (for support / debug) without leaving LOG. */}
+            {analyzeError&&!analyzing&&(
+              <div style={{background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"8px 10px",marginTop:8,display:"flex",alignItems:"flex-start",gap:8}}>
+                <div style={{fontSize:16,lineHeight:1,flexShrink:0}}>⚠</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#cc0000",lineHeight:1.35}}>{friendlyAiError(analyzeError)}</div>
+                  <div title={analyzeError} style={{fontSize:10,color:"rgba(204,0,0,0.6)",marginTop:2,lineHeight:1.3,maxHeight:28,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{analyzeError}</div>
+                </div>
+                <button onClick={()=>{setAnalyzeError(null);analyze();}} style={{background:"#cc0000",border:"none",borderRadius:6,padding:"5px 10px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer",letterSpacing:"0.04em",flexShrink:0}}>⟳ RETRY</button>
+                <button onClick={()=>setAnalyzeError(null)} title="Dismiss — fill the form manually" style={{background:"transparent",border:"none",color:"rgba(204,0,0,0.5)",fontSize:16,cursor:"pointer",padding:"0 4px",lineHeight:1,flexShrink:0}}>×</button>
+              </div>
+            )}
             {aiResult&&(
               <div style={{background:"rgba(88,86,214,0.06)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:10,padding:"10px 12px",marginTop:8}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#5856d6",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif"}}>{t("log.ai_filled")}</div>
