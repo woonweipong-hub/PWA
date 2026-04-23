@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 // Auto cache-bumping for index.html
 //
-// Rewrites every ?v=... on js/lang.js and js/app.compiled.js in index.html to
-// a short git commit SHA so bundle loads are cache-busted on every deploy.
+// Rewrites every ?v=... on js/lang.js, js/app.compiled.js, and js/constants.js
+// in index.html to a short git commit SHA so bundle loads are cache-busted on
+// every deploy. constants.js is included because new constants added there are
+// referenced by the compiled app.js — without cache-busting, browsers/SW can
+// serve stale constants.js alongside fresh app.compiled.js and trip
+// ReferenceError on the new symbol (see 2026-04-23 LOG-can't-render incident).
 // Falls back to an epoch timestamp if git is unavailable (e.g. CI without git).
 
 const fs = require("fs");
@@ -34,7 +38,7 @@ function main() {
   }
   const version = getVersionTag();
   const original = fs.readFileSync(indexPath, "utf8");
-  const targets = ["js/lang.js", "js/app.compiled.js"];
+  const targets = ["js/lang.js", "js/app.compiled.js", "js/constants.js"];
   let updated = original;
   let totalMatches = 0;
   for (const target of targets) {
