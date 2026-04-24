@@ -5,6 +5,9 @@ const{useState,useEffect,useRef,useCallback,useMemo}=React;// ── Local Stora
 const local={get:k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}},del:k=>{try{localStorage.removeItem(k);}catch{}}};// ── Utilities ─────────────────────────────────────────────────────
 // Sanitize user input for safe HTML embedding (Telegram, email reports)
 function sanitize(str){return String(str||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}// ── Phase 3.9 — ISO 19650 metadata + evidence integrity ──────────
+// ISO19650-EXPORT-START — testable region; tools/test-iso19650.js extracts
+// everything between the START/END markers and evals it in isolation. Keep
+// this block free of React/DOM/document references.
 // Capture timezone (IANA) for every record. SiteShrimp stores UTC timestamps
 // but capture-timezone is a legal/contract anchor for multi-region teams.
 function captureTimezone(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||"";}catch{return"";}}// SHA-256 hash of a data URL or Blob for evidence integrity + duplicate
@@ -23,8 +26,48 @@ const ISO_STAGE_SHORT={"pre_pour":"PP","rebar":"RB","formwork":"FW","pre_cover_u
 //
 // Format: {Project}-{Originator}-{Volume}-{Level}-{Type}-{Role}-{Number}-{Suitability}-{YYYYMMDD}
 function buildIso19650Filename({project,company,block,level,type,role,number,status,date,stage}){const proj=slugCode(project&&(project.code||project.name),6);const orig=slugCode(company&&(company.code||company.name||company.companyName),4);const vol=block&&String(block).trim()||"ZZ";const lvl=level&&String(level).trim()||"ZZ";const typeCode=type||"PH";const roleCode=role||"Z";const num=(number||"0000").toString().slice(0,10);const sfx=suitabilityFromStatus(status);const stageCode=stage?ISO_STAGE_SHORT[stage]||"":"";const d=date?new Date(date):new Date();const yyyymmdd=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;const parts=[proj,orig,vol,lvl,typeCode,roleCode,num,sfx,yyyymmdd];if(stageCode)parts.splice(5,0,stageCode);// insert stage between type and role when present
-return parts.map(p=>String(p).replace(/[^A-Za-z0-9_]/g,"").toUpperCase()).join("-");}// Convenience: derive an ISO filename for a defect record.
-function isoNameForDefect(defect,company,project,{type,ext}={}){const name=buildIso19650Filename({project:project||{code:defect.projectCode,name:defect.projectName},company,block:defect.block||"",level:defect.locationLevel||"",type:type||"PH",role:roleFromTrade(defect.trade),number:(defect.id||defect.defect_id||"").slice(0,8),status:defect.status,date:defect.createdAt||defect.timestamp_utc||new Date(),stage:defect.work_stage});return ext?`${name}.${ext.replace(/^\./,"")}`:name;}function compressPhoto(dataUrl,maxPx=1800,quality=0.8){return new Promise(resolve=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height;if(w>maxPx){h=Math.round(h*maxPx/w);w=maxPx;}if(h>maxPx){w=Math.round(w*maxPx/h);h=maxPx;}const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);resolve(c.toDataURL("image/jpeg",quality));};img.onerror=()=>resolve(null);img.src=dataUrl;});}const DRAWING_NOTES_KEY="drawing_notes_v1";const DRAWING_MARKUP_KEY="drawing_markup_v1";const SAVED_COMPARISONS_KEY="saved_comparisons_v1";const DISPLAY_XLATE_KEY="display_xlate_v1";const DISPLAY_XLATE_PREF_KEY="display_xlate_pref_v1";// Display-language translation cache — survives reloads so browsing the
+return parts.map(p=>String(p).replace(/[^A-Za-z0-9_]/g,"").toUpperCase()).join("-");}// Convenience: derive an ISO 19650-aligned filename for a defect record.
+//
+// Three layers (per BEP-defensible model):
+//   1. Container ID    : Project-Originator-Volume-Level-Type-Role-Number
+//   2. Export metadata : -Suitability-Date  (UK National Annex; project must adopt)
+//   3. Photo evidence  : _Seq[_Element][_Checkpoint]_Hash8.ext  (SiteShrimp ext.)
+//
+// Optional params:
+//   seq       — 1-based photo index within the record (1..N) → "01".."NN"
+//   element   — CONQUAS element code (FL/WL/CL/DR/WD/CP/ME)
+//   checkpoint— checkpoint id, may contain hyphens (e.g. "1X-WL-02")
+//   hashShort — first 8 hex chars of media SHA-256 (full hash stays in metadata)
+//   revision  — integer; appended as "-R02" before the underscore tail when set
+function isoNameForDefect(defect,company,project,opts={}){const{type,ext,seq,element,checkpoint,hashShort,revision}=opts;let name=buildIso19650Filename({project:project||{code:defect.projectCode,name:defect.projectName},company,block:defect.block||"",level:defect.locationLevel||"",type:type||"PH",role:roleFromTrade(defect.trade),number:(defect.id||defect.defect_id||"").slice(0,8),status:defect.status,date:defect.createdAt||defect.timestamp_utc||new Date(),stage:defect.work_stage});// Revision sits at the end of the export-metadata segment (still hyphenated)
+// so the photo-evidence underscore tail remains the unambiguous split point.
+if(revision!=null&&revision!==""){const rev=String(revision).replace(/[^0-9]/g,"");if(rev)name+=`-R${rev.padStart(2,"0")}`;}// Photo evidence tail. Underscore is the agreed separator between the
+// ISO-aligned prefix and the SiteShrimp evidence payload. Element &
+// checkpoint are optional so non-CONQUAS records stay terse.
+if(seq!=null||hashShort){const parts=[];const seqNum=Math.max(1,parseInt(seq,10)||1);parts.push(String(seqNum).padStart(2,"0"));if(element){const el=String(element).replace(/[^A-Za-z0-9]/g,"").toUpperCase();if(el)parts.push(el);}if(checkpoint){// Checkpoints may contain hyphens (e.g. "1X-WL-02"). Strip anything
+// outside [A-Z0-9-] so underscore stays reserved as the segment sep.
+const cp=String(checkpoint).replace(/[^A-Za-z0-9-]/g,"").toUpperCase();if(cp)parts.push(cp);}if(hashShort){const h=String(hashShort).replace(/[^a-fA-F0-9]/g,"").toLowerCase().slice(0,8);if(h.length===8)parts.push(h);}if(parts.length){name+="_"+parts.join("_");}}return ext?`${name}.${ext.replace(/^\./,"")}`:name;}// Parse a SiteShrimp ISO 19650-aligned filename back into its layers.
+// Splits on the FIRST underscore: everything before is the agreed prefix
+// (container ID + export metadata + optional revision), everything after
+// is the SiteShrimp evidence payload (seq, optional element/checkpoint,
+// hash). Returns null when the input doesn't match the expected shape.
+//
+// Tail grammar:
+//   {seq:2digits} (_ {element:2-3 letters})? (_ {checkpoint:opaque})? _ {hash:8hex}
+//
+// Hash is anchored at the END (always last segment before extension), seq
+// at the START — the 0-2 middle segments are element/checkpoint.
+function parseIso19650Filename(input){if(!input||typeof input!=="string")return null;// Strip extension (last dot only; ISO ids never contain dots).
+const dot=input.lastIndexOf(".");const ext=dot>0?input.slice(dot+1):"";const stem=dot>0?input.slice(0,dot):input;const firstUnderscore=stem.indexOf("_");const prefix=firstUnderscore<0?stem:stem.slice(0,firstUnderscore);const tail=firstUnderscore<0?"":stem.slice(firstUnderscore+1);// Prefix: container ID (7 hyphenated fields) + optional Suitability + Date
+//         + optional -RNN revision.
+const prefixParts=prefix.split("-");if(prefixParts.length<7)return null;const[project,originator,volume,level,type,role,number,...rest]=prefixParts;let suitability="",date="",revision=null;for(const p of rest){if(/^R\d+$/.test(p))revision=parseInt(p.slice(1),10);else if(/^\d{8}$/.test(p))date=p;else if(/^[A-Z]\d$/.test(p))suitability=p;// S2/S3/S4/A1/A2 …
+}// Tail: parse from the ends inward.
+let seq=null,element="",checkpoint="",hashShort="";if(tail){const tailParts=tail.split("_");if(tailParts.length<2)return null;// need at least seq + hash
+if(!/^\d{1,3}$/.test(tailParts[0]))return null;if(!/^[a-fA-F0-9]{8}$/.test(tailParts[tailParts.length-1]))return null;seq=parseInt(tailParts[0],10);hashShort=tailParts[tailParts.length-1].toLowerCase();const middle=tailParts.slice(1,-1);if(middle.length===1){// Single middle token: element if it looks like a 2-3 letter code,
+// else treat as checkpoint (which may carry internal hyphens).
+if(/^[A-Z]{2,3}$/.test(middle[0]))element=middle[0];else checkpoint=middle[0];}else if(middle.length===2){element=middle[0];checkpoint=middle[1];}else if(middle.length>2){// Defensive: collapse any extra tokens into checkpoint to preserve data.
+element=middle[0];checkpoint=middle.slice(1).join("_");}}return{containerId:[project,originator,volume,level,type,role,number].join("-"),project,originator,volume,level,type,role,number,suitability,date,revision,seq,element,checkpoint,hashShort,ext};}// ISO19650-EXPORT-END
+function compressPhoto(dataUrl,maxPx=1800,quality=0.8){return new Promise(resolve=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height;if(w>maxPx){h=Math.round(h*maxPx/w);w=maxPx;}if(h>maxPx){w=Math.round(w*maxPx/h);h=maxPx;}const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);resolve(c.toDataURL("image/jpeg",quality));};img.onerror=()=>resolve(null);img.src=dataUrl;});}const DRAWING_NOTES_KEY="drawing_notes_v1";const DRAWING_MARKUP_KEY="drawing_markup_v1";const SAVED_COMPARISONS_KEY="saved_comparisons_v1";const DISPLAY_XLATE_KEY="display_xlate_v1";const DISPLAY_XLATE_PREF_KEY="display_xlate_pref_v1";// Display-language translation cache — survives reloads so browsing the
 // Review list in a non-English UI doesn't re-hit the AI for entries
 // already translated. Keyed by `${defectId}__${targetLang}__${updatedEpoch}`
 // so stale cache auto-invalidates when an entry is edited.
