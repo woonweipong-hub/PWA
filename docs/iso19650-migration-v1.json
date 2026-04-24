@@ -1,0 +1,142 @@
+{
+  "_meta": {
+    "migration_version": "iso19650-v1",
+    "spec_version": "iso19650-photo-meta-spec.md v1.1",
+    "created": "2026-04-24",
+    "status": "DRAFT — not yet applied",
+    "apply_via": "PocketBase Admin → Settings → Import collections (JSON paste), OR a targeted migration script under tools/",
+    "rollback": "Delete the photo_meta collection. Entries_meta is additive; no existing rows are modified.",
+    "notes": [
+      "Purely additive. Adds one new collection (photo_meta). Does not touch defects, conquas_observations, or any other existing collection.",
+      "Matches the existing schema convention of using text fields for foreign keys (see pins.drawingId, pins.entryId) rather than PB's relation type — avoids resolver overhead and keeps schema portable.",
+      "PocketBase indexes are NOT declared here. After applying this collection, execute the SQL in _post_apply_indexes below via the Admin SQL console or a migration script. PB 0.22+ supports an 'indexes' key at the collection level; if your PB version supports it, inline the SQL there and skip the post-apply step.",
+      "Rules match the authenticated-only pattern used across SiteShrimp's collections. Company/project scoping is enforced by application code, not by PB rules, consistent with existing collections like drawings / pins / map_markups."
+    ],
+    "_post_apply_indexes": [
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_photo_meta_slot ON photo_meta (defect_id, photo_index)",
+      "CREATE INDEX IF NOT EXISTS idx_photo_meta_derived ON photo_meta (derived_sha256)",
+      "CREATE INDEX IF NOT EXISTS idx_photo_meta_original ON photo_meta (original_sha256)",
+      "CREATE INDEX IF NOT EXISTS idx_photo_meta_primary ON photo_meta (defect_id, is_primary) WHERE is_primary = 1"
+    ]
+  },
+  "collections_to_add": [
+    {
+      "name": "photo_meta",
+      "type": "base",
+      "schema": [
+        {
+          "name": "defect_id",
+          "type": "text",
+          "required": true,
+          "options": {
+            "max": 30
+          }
+        },
+        {
+          "name": "photo_index",
+          "type": "number",
+          "required": true,
+          "options": {
+            "min": 0,
+            "max": 4,
+            "noDecimal": true
+          }
+        },
+        {
+          "name": "is_primary",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "original_sha256",
+          "type": "text",
+          "required": false,
+          "options": {
+            "min": 64,
+            "max": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        {
+          "name": "derived_sha256",
+          "type": "text",
+          "required": false,
+          "options": {
+            "min": 64,
+            "max": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        {
+          "name": "iso_filename",
+          "type": "text",
+          "required": false,
+          "options": {
+            "max": 255
+          }
+        },
+        {
+          "name": "revision",
+          "type": "number",
+          "required": true,
+          "options": {
+            "min": 1,
+            "noDecimal": true
+          }
+        },
+        {
+          "name": "capture_offset_minutes",
+          "type": "number",
+          "required": false,
+          "options": {
+            "min": -840,
+            "max": 840,
+            "noDecimal": true
+          }
+        },
+        {
+          "name": "quality",
+          "type": "json",
+          "required": false
+        }
+      ],
+      "listRule": "@request.auth.id != ''",
+      "viewRule": "@request.auth.id != ''",
+      "createRule": "@request.auth.id != ''",
+      "updateRule": "@request.auth.id != ''",
+      "deleteRule": "@request.auth.id != ''"
+    }
+  ],
+  "collections_to_modify": [],
+  "collections_to_delete": [],
+  "_field_semantics": {
+    "defect_id": "Foreign key to defects.id. Stored as text (not relation) to match the existing SiteShrimp schema pattern. Application code joins on this field.",
+    "photo_index": "0..4 — matches the position in defects.photo[] (PB file field, maxSelect=5). IMMUTABLE per saved slot per photo-meta-spec refinement 1.",
+    "is_primary": "Mirror of (photo_index === 0). Enforced by hook, not by constraint. See hook outline §3 for invariant.",
+    "original_sha256": "Full SHA-256 of defects.photoOriginal[photo_index] raw bytes. Lowercase hex, exactly 64 chars. Nullable: legacy rows may have no original.",
+    "derived_sha256": "Full SHA-256 of defects.photo[photo_index] raw bytes (post-compression). Effectively required for new photos; nullable until backfill completes. Lowercase hex, exactly 64 chars.",
+    "iso_filename": "Cached output of isoNameForDefect(). Regenerated on export — cache, not source of truth. Max 255 chars to stay safe on all filesystems.",
+    "revision": "Monotonic per-slot counter. Default 1. Bumped by hook when watched fields diff — see codification-standard.md §13.2 for the watched-fields list.",
+    "capture_offset_minutes": "UTC offset at moment of capture, signed minutes. Range -840..+840 covers UTC-14 to UTC+14. Nullable for legacy rows where offset cannot be reconstructed from IANA zone alone.",
+    "quality": "JSON blob: { is_undersize: bool, min_dimension: number, warnings: string[] }. Warnings include 'missing_original', 'undersize:NxM<1024', 'legacy_client', 'file_missing_in_storage'."
+  },
+  "_apply_checklist": [
+    "1. Back up pb_data/ before applying anything.",
+    "2. Apply on staging first. Do NOT apply to production until staging backfill + hooks have soaked for 24h+.",
+    "3. Via PB Admin: Settings → Import collections → paste the 'collections_to_add' array contents. Review the diff PB shows before clicking Confirm. No existing collection should be flagged as modified.",
+    "4. After PB reports success, run the SQL statements in _meta._post_apply_indexes via Admin → Logs/SQL or a migration script.",
+    "5. Verify: open Admin → photo_meta, confirm 9 fields present, confirm empty table, confirm list/view/create/update/delete rules are '@request.auth.id != \\'\\''.",
+    "6. Deploy pb_hooks (see iso19650-hook-outline.md). Hooks start in shadow mode per spec §9 rollout step 2.",
+    "7. Run backfill dry-run (tools/backfill-photo-evidence.js --dry-run).",
+    "8. Run backfill for real. Re-run once to verify idempotency (should report 'skipped: N' for every row).",
+    "9. Switch hooks to enforce mode.",
+    "10. Ship client code that populates photos_meta_pending on new saves.",
+    "11. Promote through to production in the same order."
+  ],
+  "_rollback_checklist": [
+    "If rollback is needed pre-backfill: delete the photo_meta collection via PB Admin. No other state changes to undo.",
+    "If rollback is needed post-backfill but pre-client: delete the photo_meta collection; existing defects.media_hash and defects.iso_filename were NOT modified by the backfill (mirror writes happen via hook, which was in shadow mode).",
+    "If rollback is needed post-client-ship: revert client, THEN delete photo_meta. Hooks will fail-safe (no photo_meta collection → hash-verification hook skips its photo_meta write but still validates the hash itself; mirror hook no-ops).",
+    "Never delete photo_meta while hooks are in enforce mode — the create hook would fail and block all defects saves. Toggle hooks to shadow BEFORE collection deletion."
+  ]
+}
