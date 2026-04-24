@@ -1,7 +1,7 @@
 # SiteShrimp — Codification Standard for ISO 19650 Filenames
 
-**Status:** Normative for SiteShrimp evidence-photo filenames.
-**Version:** 1.0 (2026-04-24).
+**Status:** Normative for SiteShrimp evidence-photo filenames. **§7 carries a v2.0 draft (Step 3) that is NOT YET ACTIVE** — see §7 header for the activation gate.
+**Version:** 1.1 (2026-04-24). v1.0 Type taxonomy is active (§7.1); v2.0 workflow-role taxonomy is drafted for Step 3 (§7.2) pending Step 2 soak + explicit go-ahead.
 **Authority:** This document satisfies **ISO 19650-2:2018 §5.1.7(b)** — *"each field to be assigned a value from an agreed and documented codification standard."* It is the documented codification the ISO text requires.
 **Scope:** Vocabulary and patterns for every field used inside the filename convention defined in [iso19650-photo-meta-spec.md §3](iso19650-photo-meta-spec.md). This document does not define the data model — that belongs to the photo-meta spec; this document defines only the values.
 **Adoption:** Per project, via the project information standard (ISO 19650-2 §5.1.4). A project's BEP normatively references this document; overrides happen in the BEP, not here.
@@ -216,11 +216,13 @@ Projects with CONQUAS disabled in settings skip element derivation entirely; `el
 
 ---
 
-## 7. Type codes
+## 7. Type codes (content-classification v1.0 → workflow-role v2.0)
 
-Enumerated. The Type segment tells a CDE consumer *what kind of information container* this file carries.
+The Type segment tells a CDE consumer *what kind of information container* this file carries. SiteShrimp has two vocabularies: the **active v1.0** taxonomy (§7.1) and the **drafted v2.0** taxonomy (§7.2) pending Step 3 activation. Both cannot be active simultaneously — Step 3 migration v2 flips the active vocabulary atomically.
 
-### 7.1 SiteShrimp-defined type codes
+> **Status as of 2026-04-24:** v1.0 is ACTIVE. v2.0 is DRAFT; do not emit its codes until Step 3 has been approved and migration v2 has run. See [conquas-evidence-spec.md §11](conquas-evidence-spec.md) for the activation gate.
+
+### 7.1 ACTIVE — v1.0 content-classification codes
 
 | Code | Meaning | When emitted |
 |---|---|---|
@@ -234,11 +236,7 @@ Enumerated. The Type segment tells a CDE consumer *what kind of information cont
 | `AFT` | After rectification / verification | Verification photo on Close or Verify. Status should be `Verified` or `Closed`. |
 | `MKP` | Marked-up photo | A photo with annotations baked in (freehand, arrows, text overlay). Distinct from raw evidence. |
 
-### 7.2 ISO 19650 standard type codes (not used by SiteShrimp today)
-
-ISO 19650-2 doesn't enumerate type codes; implementations pick. Common conventions in the UK National Annex include `DR` (Drawing), `M3` (3D model), `SK` (Sketch), `SP` (Specification), `SH` (Schedule), `CR` (Clash report), `PR` (Programme). SiteShrimp-defined codes above were chosen to avoid collision with these common conventions. If a project BEP mandates the UK NA codes, pre-map them in the BEP — this codification standard does not reserve them.
-
-### 7.3 Selection rule
+Selection rule (v1.0):
 
 1. If the photo was captured in the CONQUAS wizard and element is internal → `CQI`.
 2. If the photo was captured in the CONQUAS wizard and element is external → `CQE`.
@@ -247,6 +245,46 @@ ISO 19650-2 doesn't enumerate type codes; implementations pick. Common conventio
 5. If the photo is a pre-fix baseline → `BFR`.
 6. If the photo has user markup baked in → `MKP`.
 7. Else → `DEF` (defect context) or `PH` (neutral).
+
+### 7.2 DRAFT — v2.0 workflow-role codes (pending Step 3)
+
+Aligns with CONQUAS Private Residential workflow retrieval (how assessors, QPs, and contractors actually search evidence) rather than how the photo was framed. Defined authoritatively in [conquas-evidence-spec.md §3](conquas-evidence-spec.md); mirrored here for codification completeness.
+
+| Code | Meaning | Emitted when |
+|---|---|---|
+| `EVD` | General evidence (default) | Any photo not matching a specific workflow below. |
+| `IF` | CONQUAS Internal Finishes evidence | Element in {FL, WL, CL, DR, WD, CP, ME}. |
+| `EF` | CONQUAS External Finishes evidence | Element in {RF, EW, EX}. |
+| `WTT` | Water Tightness Test | FT with a `functional_test_evidence` row. |
+| `WPT` | Water Ponding Test | FT with a `functional_test_evidence` row. |
+| `WFT` | Water Flow Test | FT with a `functional_test_evidence` row. |
+| `POT` | Pull-Off Test | FT with a `functional_test_evidence` row. |
+| `HST` | Heat Soak Test (EN 14179-2) | FT with a `functional_test_evidence` row. |
+| `MD` | Major Defect | Per CONQUAS Private Residential major-defect list (water seepage, shattered glass, popped tiles, ponding, drainage chokage, functionally deficient fittings, cracked glass). |
+| `RFX` | Rectification photo | Post-finding rectification work in progress. |
+| `VER` | Verification photo | Post-rectification verification / before-after close-out. |
+
+Selection rule (v2.0): read from `defects.evidence_role` which is set explicitly by the user or derived by the client (LOG flow / CONQUAS wizard / FT capture). The filename builder does not guess.
+
+### 7.3 v1.0 → v2.0 migration mapping
+
+Applied by Step 3's migration v2 over existing `photo_meta.iso_filename` cached values. Details in [iso19650-migration-v2.json](iso19650-migration-v2.json); summary:
+
+| v1.0 | v2.0 | Note |
+|---|---|---|
+| `PH` | `EVD` | Neutral default. |
+| `CQI` | `IF` | Element carries specificity. |
+| `CQE` | `EF` | — |
+| `CQF` | `WTT` / `WPT` / `WFT` / `POT` / `HST` | Disambiguated by `defects.checkpoint_id` and FT-type fields; falls back to `EVD` with a `photo_meta.quality.warnings: ["type_migration_ambiguous"]` marker when no disambiguator exists. |
+| `CQR` | `EF` + element `RF` | Collapse Roof-specific into EF. |
+| `DEF` | `EVD` | Non-CONQUAS defects lose their discriminator; this is intentional — workflow-role cares about scheme membership, not "CONQUAS vs non-CONQUAS". |
+| `BFR` | `EVD` | Before-rectification is captured as an `analysis_run` timeline event, not a Type. |
+| `AFT` | `VER` | Verification mapping. |
+| `MKP` | `EVD` | Markup-baked-in is a rendering concern, not a workflow. |
+
+### 7.4 ISO 19650 standard type codes
+
+ISO 19650-2 doesn't enumerate type codes; implementations pick. Common conventions in the UK National Annex include `DR` (Drawing), `M3` (3D model), `SK` (Sketch), `SP` (Specification), `SH` (Schedule), `CR` (Clash report), `PR` (Programme). SiteShrimp-defined codes in both v1.0 and v2.0 were chosen to avoid collision with these common conventions. If a project BEP mandates the UK NA codes, pre-map them in the BEP — this codification standard does not reserve them.
 
 ---
 

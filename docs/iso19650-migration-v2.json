@@ -1,0 +1,160 @@
+{
+  "_meta": {
+    "migration_version": "iso19650-v2",
+    "spec_version": "conquas-evidence-spec.md v1.0",
+    "created": "2026-04-24",
+    "status": "DRAFT — non-implementing. Held pending Step 2 ship + ≥7 day production soak.",
+    "apply_gate": [
+      "Step 2 migration v1 has been applied to production.",
+      "photo_meta backfill confirmed 100% coverage.",
+      "Hooks from iso19650-hook-outline.md have been in enforce mode for ≥7 calendar days.",
+      "No hash-mismatch incidents or backfill drift reported during the soak.",
+      "Step 3 review cycle has answered the five open questions in conquas-evidence-spec.md §9.",
+      "Explicit go-ahead issued for a named subset of Step 3 work (may be partial — e.g. 'analysis_run only, hold FT/QP')."
+    ],
+    "apply_via": "PocketBase Admin → Settings → Import collections for new collections; SQL for defects field additions via Admin → Logs/SQL or a dedicated migration script.",
+    "rollback": "Delete the two new collections (analysis_run, functional_test_evidence). The new defects fields are additive text/json/number columns — SQL-drop via ALTER TABLE. Type code rollback requires replaying migration v1 codes from backup.",
+    "notes": [
+      "Additive for the collections; partially destructive for Type codes (v1 values in photo_meta.iso_filename are rewritten; a backup table photo_meta_v1_backup is created as part of step 4 below).",
+      "The migration has four phases. Phases 1-3 are independently reversible. Phase 4 (Type code rewrite) is lossy for CQF records that cannot be disambiguated — see conquas-evidence-spec.md §3 migration mapping.",
+      "Matches the text-FK convention (pins.drawingId style) for all new relations.",
+      "Per the auth-only rule convention, list/view/create/update/delete rules are all '@request.auth.id != \\'\\''. Project-scoping and role-based restrictions (e.g. 'only admins can edit locked_fields') are enforced in application code, not PB rules — consistent with Step 2."
+    ],
+    "_post_apply_indexes": [
+      "CREATE INDEX IF NOT EXISTS idx_analysis_run_defect ON analysis_run (defect_id, started_at DESC)",
+      "CREATE INDEX IF NOT EXISTS idx_analysis_run_status ON analysis_run (status)",
+      "CREATE INDEX IF NOT EXISTS idx_analysis_run_input_manifest ON analysis_run (input_manifest_sha256)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_ft_evidence_defect ON functional_test_evidence (defect_id)",
+      "CREATE INDEX IF NOT EXISTS idx_ft_evidence_qp ON functional_test_evidence (qp_declaration_status)",
+      "CREATE INDEX IF NOT EXISTS idx_defects_evidence_role ON defects (evidence_role)",
+      "CREATE INDEX IF NOT EXISTS idx_defects_major_defect ON defects (major_defect_flag) WHERE major_defect_flag = 1"
+    ]
+  },
+  "phase_1_new_collections": [
+    {
+      "name": "analysis_run",
+      "type": "base",
+      "schema": [
+        { "name": "defect_id",               "type": "text",   "required": true,  "options": { "max": 30 } },
+        { "name": "primary_photo_index",     "type": "number", "required": true,  "options": { "min": 0, "max": 4, "noDecimal": true } },
+        { "name": "input_photo_indices",     "type": "json",   "required": false },
+        { "name": "trigger_source",          "type": "text",   "required": true,  "options": { "max": 32 } },
+        { "name": "trigger_reason",          "type": "text",   "required": false, "options": { "max": 500 } },
+        { "name": "model_provider",          "type": "text",   "required": true,  "options": { "max": 32 } },
+        { "name": "model_name",              "type": "text",   "required": true,  "options": { "max": 128 } },
+        { "name": "prompt_profile_version",  "type": "text",   "required": true,  "options": { "max": 64 } },
+        { "name": "started_at",              "type": "date",   "required": true  },
+        { "name": "completed_at",            "type": "date",   "required": false },
+        { "name": "status",                  "type": "text",   "required": true,  "options": { "max": 16 } },
+        { "name": "raw_response_json",       "type": "json",   "required": false },
+        { "name": "parsed_fields_json",      "type": "json",   "required": true  },
+        { "name": "confidence_json",         "type": "json",   "required": false },
+        { "name": "field_diffs_json",        "type": "json",   "required": false },
+        { "name": "applied_mode",            "type": "text",   "required": true,  "options": { "max": 32 } },
+        { "name": "operator_id",             "type": "text",   "required": true,  "options": { "max": 30 } },
+        { "name": "input_manifest_sha256",   "type": "text",   "required": true,  "options": { "min": 64, "max": 64, "pattern": "^[0-9a-f]{64}$" } }
+      ],
+      "listRule":   "@request.auth.id != ''",
+      "viewRule":   "@request.auth.id != ''",
+      "createRule": "@request.auth.id != ''",
+      "updateRule": "",
+      "deleteRule": ""
+    },
+    {
+      "name": "functional_test_evidence",
+      "type": "base",
+      "schema": [
+        { "name": "defect_id",             "type": "text",   "required": true,  "options": { "max": 30 } },
+        { "name": "test_type",             "type": "text",   "required": true,  "options": { "max": 8 } },
+        { "name": "sample_reference",      "type": "text",   "required": false, "options": { "max": 128 } },
+        { "name": "sample_location",       "type": "text",   "required": false, "options": { "max": 256 } },
+        { "name": "test_date",             "type": "date",   "required": true  },
+        { "name": "performed_by",          "type": "text",   "required": true,  "options": { "max": 128 } },
+        { "name": "witnessed_by",          "type": "text",   "required": false, "options": { "max": 128 } },
+        { "name": "result",                "type": "text",   "required": true,  "options": { "max": 16 } },
+        { "name": "result_value_json",     "type": "json",   "required": false },
+        { "name": "supporting_document_ids","type": "json",  "required": false },
+        { "name": "qp_declaration_status", "type": "text",   "required": true,  "options": { "max": 24 } },
+        { "name": "qp_declared_by",        "type": "text",   "required": false, "options": { "max": 128 } },
+        { "name": "qp_declared_at",        "type": "date",   "required": false },
+        { "name": "qp_declaration_notes",  "type": "text",   "required": false, "options": { "max": 2000 } }
+      ],
+      "listRule":   "@request.auth.id != ''",
+      "viewRule":   "@request.auth.id != ''",
+      "createRule": "@request.auth.id != ''",
+      "updateRule": "@request.auth.id != ''",
+      "deleteRule": "@request.auth.id != ''"
+    }
+  ],
+  "phase_2_defects_field_additions": {
+    "collection": "defects",
+    "fields_to_add": [
+      { "name": "evidence_role",            "type": "text",   "required": false, "options": { "max": 4 }, "_notes": "v2.0 workflow code per codification-standard.md §7.2. Nullable for legacy rows." },
+      { "name": "locked_fields",            "type": "json",   "required": false, "_notes": "Array of field names the user has locked against AI overwrite." },
+      { "name": "major_defect_flag",        "type": "bool",   "required": false, "_notes": "Denormalised mirror of (evidence_role == 'MD'). Hook-maintained." },
+      { "name": "common_area_flag",         "type": "bool",   "required": false, "_notes": "True when locationZone is a CONQUAS common-area code. Open question — see conquas-evidence-spec.md §9." },
+      { "name": "latent_defect_flag",       "type": "bool",   "required": false, "_notes": "Set by admin or import, not normal user save. Open question — see §9." },
+      { "name": "rectification_status",     "type": "text",   "required": false, "options": { "max": 16 }, "_notes": "pending / in_progress / completed / not_required. Default 'pending' when evidence_role='MD'." },
+      { "name": "current_analysis_run_id",  "type": "text",   "required": false, "options": { "max": 30 }, "_notes": "FK to latest applied analysis_run row." },
+      { "name": "analysis_version_no",      "type": "number", "required": false, "options": { "min": 0, "noDecimal": true }, "_notes": "Denormalised count of applied analysis_run rows for this defect." }
+    ],
+    "_apply_sql_hint": [
+      "-- PocketBase allows field additions via the Admin UI; the equivalent SQL (for reference) is:",
+      "-- ALTER TABLE defects ADD COLUMN evidence_role TEXT;",
+      "-- ALTER TABLE defects ADD COLUMN locked_fields JSON;",
+      "-- ALTER TABLE defects ADD COLUMN major_defect_flag INTEGER;",
+      "-- ALTER TABLE defects ADD COLUMN common_area_flag INTEGER;",
+      "-- ALTER TABLE defects ADD COLUMN latent_defect_flag INTEGER;",
+      "-- ALTER TABLE defects ADD COLUMN rectification_status TEXT;",
+      "-- ALTER TABLE defects ADD COLUMN current_analysis_run_id TEXT;",
+      "-- ALTER TABLE defects ADD COLUMN analysis_version_no INTEGER;",
+      "-- Use the PB Admin UI for the authoritative path so PB's internal schema JSON stays in sync."
+    ]
+  },
+  "phase_3_defaults_backfill": {
+    "description": "Populate defaults for the new defects fields over existing rows. Idempotent, can be dry-run. Implemented as tools/backfill-evidence-role.js (to be written in Step 3 implementation, not now).",
+    "rules": [
+      "evidence_role: derive via conquas-evidence-spec.md §3 mapping. defects with checkpoint_id matching CONQUAS pattern get 'IF' or 'EF' per element; defects flagged as FT via existing QP toggles get the matching FT code; non-CONQUAS work categories (Interior, FM, Infra, Others) get null.",
+      "locked_fields: [] (empty array).",
+      "major_defect_flag: true when evidence_role == 'MD', else false.",
+      "common_area_flag: derived from defects.locationZone via the project information standard's common-area list. Null on projects without a defined list.",
+      "latent_defect_flag: false for all backfilled rows (operators opt in later).",
+      "rectification_status: 'pending' when evidence_role == 'MD', else null.",
+      "current_analysis_run_id: null (no runs exist yet).",
+      "analysis_version_no: 0 (no applied runs yet)."
+    ]
+  },
+  "phase_4_type_code_migration": {
+    "description": "Rewrite photo_meta.iso_filename cached values to use v2.0 workflow codes. The cached filenames are not authoritative (they're regenerated on export per iso19650-photo-meta-spec.md §3), so this phase is strictly about cache consistency. Defects' own filename build on next save uses the new vocabulary automatically once defects.evidence_role is populated (phase 3).",
+    "steps": [
+      "1. Create backup table: CREATE TABLE photo_meta_v1_backup AS SELECT id, iso_filename, updated FROM photo_meta;",
+      "2. For each photo_meta row, parse iso_filename via parseIso19650Filename, apply the v1→v2 Type remap from codification-standard.md §7.3, re-emit via isoNameForDefect (post-Step-3 build that reads defects.evidence_role), and write back.",
+      "3. For CQF → ambiguous rows, set photo_meta.quality.warnings ||= ['type_migration_ambiguous'] and emit iso_filename with 'EVD'. Produce a review CSV listing these for CONQUAS team triage.",
+      "4. Report: rows scanned / remapped / ambiguous / errors.",
+      "5. Keep photo_meta_v1_backup for 30 days post-soak; drop after confirmation from the CONQUAS team."
+    ],
+    "_rollback": "Restore photo_meta.iso_filename from photo_meta_v1_backup. Note: defects.evidence_role values from phase 3 remain — explicit rollback of that column requires a separate ALTER TABLE DROP COLUMN."
+  },
+  "_apply_checklist": [
+    "0. CONFIRM apply_gate items are all true. If any gate is not met, STOP.",
+    "1. Back up pb_data/ to off-box storage.",
+    "2. Apply phase 1 (new collections) via PB Admin Import. Verify empty tables, 9-field shape on analysis_run, 14-field shape on functional_test_evidence.",
+    "3. Run post-apply index SQL.",
+    "4. Apply phase 2 (defects field additions) via PB Admin field editor.",
+    "5. Ship the hook outline v1.1 code to pb_hooks/main.pb.js. Start in shadow mode (ISO_STEP3_ENFORCE = false).",
+    "6. Run phase 3 backfill dry-run. Spot-check 20 defects with mixed work categories. Confirm evidence_role derivation looks right.",
+    "7. Run phase 3 backfill for real.",
+    "8. Run phase 4 type-code migration dry-run. Export the 'ambiguous CQF' list to CSV for the CONQUAS team to review before real run.",
+    "9. CONQUAS team reviews ambiguous list; resolves by editing defects.evidence_role directly where possible.",
+    "10. Run phase 4 for real. Verify photo_meta_v1_backup exists.",
+    "11. Switch hooks to enforce mode after 24h shadow-mode soak.",
+    "12. Ship client code: evidence timeline panel, lock toggles, RE-ANALYZE single-entry button.",
+    "13. Promote to production in the same order.",
+    "14. Measure for 1 sprint: lock usage, re-analyze ignored-field rates, QP declaration stuck-at-pending rates."
+  ],
+  "_rollback_checklist": [
+    "Pre-phase-4: drop new collections (analysis_run, functional_test_evidence) and new defects fields. No data loss.",
+    "Post-phase-4 pre-client-ship: restore iso_filename values from photo_meta_v1_backup. Drop new collections + defects fields.",
+    "Post-client-ship: revert client code first, THEN data rollback. Otherwise client tries to render fields that no longer exist."
+  ]
+}
