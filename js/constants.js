@@ -525,5 +525,9 @@ const AUTO_SAVE_REVIEW_THRESHOLD = 10;
 // so a user with multiple companies/projects keeps their bookmarks scoped.
 const REVIEW_OVERDUE_ONLY_KEY = "sdt-review-overdue-only-v1";
 const REVIEW_PRESETS_KEY = "sdt-review-presets-v1";
+// Company logo (base64 dataURL) for PDF cover branding. Stored as
+// { [companyId]: dataURL } so a user with multiple companies sees the right
+// logo on each report. Capped at ~200KB on upload to keep PDF bundles tiny.
+const COMPANY_LOGO_KEY = "sdt-company-logo-v1";
 const MAP_DEFAULT_VIEW_KEY_PREFIX = "sdt-map-default-"; // + projectId
 const MAP_FALLBACK_CENTER = { lat: 1.3331, lng: 103.7422, zoom: 17, label: "JEM Office Building" };

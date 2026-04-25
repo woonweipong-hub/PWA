@@ -350,6 +350,10 @@
     "requires_attention": "需要立即關注",
     "overdue_count": "逾期",
     "overdue_help": "已過目標日期且尚未驗證或關閉",
+    "avg_days_close": "平均關閉天數",
+    "on_time_rate": "準時率",
+    "trend_30d": "30天趨勢",
+    "trend_total_suffix": "已記錄",
     "by_severity": "按嚴重程度",
     "recent_entries": "最近的條目",
     "no_defects": "還沒有缺陷。",
@@ -528,7 +532,12 @@
     "profile_updated": "資料已更新",
     "email_registered": "信箱已註冊。請切換到登入。",
     "role_placeholder": "例如：現場工程師、專案經理",
-    "password_keep": "保持現有密碼（留空=不變更）"
+    "password_keep": "保持現有密碼（留空=不變更）",
+    "company_logo": "公司標誌",
+    "upload_logo": "上傳標誌",
+    "replace_logo": "更換標誌",
+    "remove_logo": "消除",
+    "logo_help": "PNG、JPG、WebP 或 SVG。 最大 200 KB。 出現在您匯出的每個 PDF 報告的封面上。"
   },
   "ai": {
     "title": "AI照片分析",

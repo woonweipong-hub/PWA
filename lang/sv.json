@@ -350,6 +350,10 @@
     "requires_attention": "Kräver omedelbar uppmärksamhet",
     "overdue_count": "FÖRSENAD",
     "overdue_help": "Tidigare måldatum och ännu inte verifierat eller stängt",
+    "avg_days_close": "AVG DAGAR ATT STÄNGA",
+    "on_time_rate": "PÅ TID",
+    "trend_30d": "30-DAGARS TREND",
+    "trend_total_suffix": "loggas",
     "by_severity": "EFTER ALVARLIGHET",
     "recent_entries": "SENASTE INKOMST",
     "no_defects": "Inga defekter ännu.",
@@ -528,7 +532,12 @@
     "profile_updated": "Profil uppdaterad",
     "email_registered": "E-post redan registrerad. Byt till LOGGA IN.",
     "role_placeholder": "till exempel Platsingenjör, projektledare",
-    "password_keep": "Behåll befintlig (tom = ingen förändring)"
+    "password_keep": "Behåll befintlig (tom = ingen förändring)",
+    "company_logo": "FÖRETAGETS LOGO",
+    "upload_logo": "LADDA UPP LOGO",
+    "replace_logo": "BYT LOGO",
+    "remove_logo": "TA BORT",
+    "logo_help": "PNG, JPG, WebP eller SVG. Max 200 KB. Visas på omslaget till varje PDF-rapport som du exporterar."
   },
   "ai": {
     "title": "AI-FOTOANALYS",

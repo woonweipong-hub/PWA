@@ -350,6 +350,10 @@
     "requires_attention": "Acil müdahale gerektirir",
     "overdue_count": "GEÇMİŞ",
     "overdue_help": "Hedef tarihi geçmiş ve henüz doğrulanmamış veya kapatılmamış",
+    "avg_days_close": "AVG'NİN KAPANACAK GÜNLERİ",
+    "on_time_rate": "ZAMANINDA ÇALIŞMA ORANI",
+    "trend_30d": "30 GÜNLÜK TREND",
+    "trend_total_suffix": "oturum açıldı",
     "by_severity": "ÖNEME GÖRE",
     "recent_entries": "SON GİRİŞLER",
     "no_defects": "Henüz kusur yok.",
@@ -528,7 +532,12 @@
     "profile_updated": "Profil güncellendi",
     "email_registered": "E-posta zaten kayıtlı. LOGIN'e geçin.",
     "role_placeholder": "örneğin Saha Mühendisi, Proje Yöneticisi",
-    "password_keep": "Var olanı koru (boş = değişiklik yok)"
+    "password_keep": "Var olanı koru (boş = değişiklik yok)",
+    "company_logo": "ŞİRKET LOGOSU",
+    "upload_logo": "LOGO YÜKLE",
+    "replace_logo": "LOGOYU DEĞİŞTİR",
+    "remove_logo": "KALDIRMAK",
+    "logo_help": "PNG, JPG, WebP veya SVG. Maksimum 200 KB. Dışa aktardığınız her PDF raporunun kapağında görünür."
   },
   "ai": {
     "title": "AI FOTOĞRAF ANALİZİ",

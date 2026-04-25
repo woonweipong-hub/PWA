@@ -350,6 +350,10 @@
     "requires_attention": "Requires immediate attention",
     "overdue_count": "OVERDUE",
     "overdue_help": "Past target date and not yet verified or closed",
+    "avg_days_close": "AVG DAYS TO CLOSE",
+    "on_time_rate": "ON-TIME RATE",
+    "trend_30d": "30-DAY TREND",
+    "trend_total_suffix": "logged",
     "by_severity": "BY SEVERITY",
     "recent_entries": "RECENT ENTRIES",
     "no_defects": "No defects yet.",
@@ -528,7 +532,12 @@
     "profile_updated": "Profile updated",
     "email_registered": "Email already registered. Switch to LOGIN.",
     "role_placeholder": "e.g. Site Engineer, Project Manager",
-    "password_keep": "Keep existing (blank = no change)"
+    "password_keep": "Keep existing (blank = no change)",
+    "company_logo": "COMPANY LOGO",
+    "upload_logo": "UPLOAD LOGO",
+    "replace_logo": "REPLACE LOGO",
+    "remove_logo": "REMOVE",
+    "logo_help": "PNG, JPG, WebP or SVG. Max 200 KB. Appears on the cover of every PDF report you export."
   },
   "ai": {
     "title": "AI PHOTO ANALYSIS",

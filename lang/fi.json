@@ -350,6 +350,10 @@
     "requires_attention": "Vaatii välitöntä huomiota",
     "overdue_count": "MYÖHÄSSÄ",
     "overdue_help": "Tavoitepäivä on mennyt, eikä sitä ole vielä vahvistettu tai suljettu",
+    "avg_days_close": "AVG PÄIVÄT SULJETTUIN",
+    "on_time_rate": "AJO-OHJELMA",
+    "trend_30d": "30 PÄIVÄN TRENDI",
+    "trend_total_suffix": "kirjattu",
     "by_severity": "VAKAVUUSASteen mukaan",
     "recent_entries": "VIIMEAIKAISET merkinnät",
     "no_defects": "Ei vielä vikoja.",
@@ -528,7 +532,12 @@
     "profile_updated": "Profiili päivitetty",
     "email_registered": "Sähköposti on jo rekisteröity. Vaihda kohtaan LOGIN.",
     "role_placeholder": "esim. Työmaainsinööri, projektipäällikkö",
-    "password_keep": "Säilytä olemassa oleva (tyhjä = ei muutosta)"
+    "password_keep": "Säilytä olemassa oleva (tyhjä = ei muutosta)",
+    "company_logo": "YRITYKSEN LOGO",
+    "upload_logo": "LATAA LOGO",
+    "replace_logo": "VAIHDA LOGO",
+    "remove_logo": "POISTAA",
+    "logo_help": "PNG, JPG, WebP tai SVG. Enintään 200 kt. Näkyy jokaisen viemäsi PDF-raportin kannessa."
   },
   "ai": {
     "title": "AI VALOKUVAN ANALYYSI",

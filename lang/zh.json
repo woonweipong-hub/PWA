@@ -350,6 +350,10 @@
     "requires_attention": "需要立即关注",
     "overdue_count": "逾期",
     "overdue_help": "已过目标日期且尚未验证或关闭",
+    "avg_days_close": "平均关闭天数",
+    "on_time_rate": "准时率",
+    "trend_30d": "30天趋势",
+    "trend_total_suffix": "已记录",
     "by_severity": "按严重程度",
     "recent_entries": "最近的条目",
     "no_defects": "还没有缺陷。",
@@ -528,7 +532,12 @@
     "profile_updated": "资料已更新",
     "email_registered": "邮箱已注册。请切换到登录。",
     "role_placeholder": "例如：现场工程师、项目经理",
-    "password_keep": "保持现有密码（留空=不更改）"
+    "password_keep": "保持现有密码（留空=不更改）",
+    "company_logo": "公司标志",
+    "upload_logo": "上传标志",
+    "replace_logo": "更换标志",
+    "remove_logo": "消除",
+    "logo_help": "PNG、JPG、WebP 或 SVG。 最大 200 KB。 出现在您导出的每个 PDF 报告的封面上。"
   },
   "ai": {
     "title": "AI照片分析",

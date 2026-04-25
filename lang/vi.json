@@ -350,6 +350,10 @@
     "requires_attention": "Yêu cầu sự chú ý ngay lập tức",
     "overdue_count": "QUÁ HẠN",
     "overdue_help": "Ngày mục tiêu đã qua và chưa được xác minh hoặc đóng",
+    "avg_days_close": "AVG NGÀY ĐÓNG",
+    "on_time_rate": "TỶ LỆ ĐÚNG THỜI GIAN",
+    "trend_30d": "XU HƯỚNG 30 NGÀY",
+    "trend_total_suffix": "đã đăng nhập",
     "by_severity": "THEO MỨC ĐỘ NGHIÊM TRỌNG",
     "recent_entries": "CÁC MỤC NHẬP GẦN ĐÂY",
     "no_defects": "Chưa có khuyết điểm nào.",
@@ -528,7 +532,12 @@
     "profile_updated": "Hồ sơ đã cập nhật",
     "email_registered": "Email đã đăng ký. Chuyển sang ĐĂNG NHẬP.",
     "role_placeholder": "VD: Kỹ sư công trình, Quản lý dự án",
-    "password_keep": "Giữ hiện tại (để trống = không đổi)"
+    "password_keep": "Giữ hiện tại (để trống = không đổi)",
+    "company_logo": "LOGO CÔNG TY",
+    "upload_logo": "TẢI Logo lên",
+    "replace_logo": "THAY LOGO",
+    "remove_logo": "DI DỜI",
+    "logo_help": "PNG, JPG, WebP hoặc SVG. Tối đa 200KB. Xuất hiện trên trang bìa của mọi báo cáo PDF bạn xuất."
   },
   "ai": {
     "title": "PHÂN TÍCH ẢNH AI",

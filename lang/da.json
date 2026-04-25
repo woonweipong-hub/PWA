@@ -350,6 +350,10 @@
     "requires_attention": "Kræver øjeblikkelig opmærksomhed",
     "overdue_count": "FORSINKET",
     "overdue_help": "Tidligere måldato og endnu ikke bekræftet eller lukket",
+    "avg_days_close": "GNS. DAGE TIL LUKKET",
+    "on_time_rate": "TIDSPUNKT",
+    "trend_30d": "30-DAGES TREND",
+    "trend_total_suffix": "logget",
     "by_severity": "EFTER ALVARLIGHED",
     "recent_entries": "SENESTE OPLYSNINGER",
     "no_defects": "Ingen defekter endnu.",
@@ -528,7 +532,12 @@
     "profile_updated": "Profil opdateret",
     "email_registered": "E-mail allerede registreret. Skift til LOGIN.",
     "role_placeholder": "f.eks. Site Engineer, Projektleder",
-    "password_keep": "Behold eksisterende (tom = ingen ændring)"
+    "password_keep": "Behold eksisterende (tom = ingen ændring)",
+    "company_logo": "VIRKSOMHEDSLOGO",
+    "upload_logo": "UPLOAD LOGO",
+    "replace_logo": "UDSKIFT LOGO",
+    "remove_logo": "FJERNE",
+    "logo_help": "PNG, JPG, WebP eller SVG. Max 200 KB. Vises på forsiden af ​​hver PDF-rapport, du eksporterer."
   },
   "ai": {
     "title": "AI-FOTOANALYSE",

@@ -350,6 +350,10 @@
     "requires_attention": "Richiede attenzione immediata",
     "overdue_count": "IN RITARDO",
     "overdue_help": "Data target passata e non ancora verificata o chiusa",
+    "avg_days_close": "AVG GIORNI PER CHIUDERE",
+    "on_time_rate": "TARIFFA PUNTUALE",
+    "trend_30d": "ANDAMENTO A 30 GIORNI",
+    "trend_total_suffix": "registrato",
     "by_severity": "PER SEVERITÀ",
     "recent_entries": "INGRESSI RECENTI",
     "no_defects": "Nessun difetto ancora.",
@@ -528,7 +532,12 @@
     "profile_updated": "Profilo aggiornato",
     "email_registered": "E-mail già registrata. Passa ad ACCEDI.",
     "role_placeholder": "per esempio. Ingegnere di cantiere, Project Manager",
-    "password_keep": "Mantieni esistente (vuoto = nessuna modifica)"
+    "password_keep": "Mantieni esistente (vuoto = nessuna modifica)",
+    "company_logo": "LOGO AZIENDALE",
+    "upload_logo": "CARICA LOGO",
+    "replace_logo": "SOSTITUIRE LOGO",
+    "remove_logo": "RIMUOVERE",
+    "logo_help": "PNG, JPG, WebP o SVG. Massimo 200KB. Appare sulla copertina di ogni report PDF esportato."
   },
   "ai": {
     "title": "ANALISI FOTO AI",

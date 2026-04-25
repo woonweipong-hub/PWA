@@ -350,6 +350,10 @@
     "requires_attention": "Membutuhkan perhatian segera",
     "overdue_count": "TERLAMBAT",
     "overdue_help": "Tanggal target sudah lewat dan belum diverifikasi atau ditutup",
+    "avg_days_close": "Rata-rata HARI UNTUK TUTUP",
+    "on_time_rate": "TINGKAT TEPAT WAKTU",
+    "trend_30d": "TREN 30 HARI",
+    "trend_total_suffix": "dicatat",
     "by_severity": "OLEH KEKERASAN",
     "recent_entries": "ENTRI TERBARU",
     "no_defects": "Belum ada cacat.",
@@ -528,7 +532,12 @@
     "profile_updated": "Profil diperbarui",
     "email_registered": "Email sudah terdaftar. Ganti ke MASUK.",
     "role_placeholder": "mis. Insinyur Situs, Manajer Proyek",
-    "password_keep": "Pertahankan yang ada (kosong = tidak ada perubahan)"
+    "password_keep": "Pertahankan yang ada (kosong = tidak ada perubahan)",
+    "company_logo": "LOGO PERUSAHAAN",
+    "upload_logo": "UNGGAH LOGO",
+    "replace_logo": "GANTI LOGO",
+    "remove_logo": "MENGHAPUS",
+    "logo_help": "PNG, JPG, WebP, atau SVG. Maks 200 KB. Muncul di sampul setiap laporan PDF yang Anda ekspor."
   },
   "ai": {
     "title": "ANALISIS FOTO AI",

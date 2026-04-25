@@ -350,6 +350,10 @@
     "requires_attention": "Erfordert sofortige Aufmerksamkeit",
     "overdue_count": "ÜBERFÄLLIG",
     "overdue_help": "Das Zieldatum liegt hinter dem Ziel und ist noch nicht bestätigt oder abgeschlossen",
+    "avg_days_close": "DURCHSCHNITTLICHE TAGE BIS ZUM SCHLIESSEN",
+    "on_time_rate": "PÜNKTLICHER PREIS",
+    "trend_30d": "30-Tage-Trend",
+    "trend_total_suffix": "protokolliert",
     "by_severity": "NACH SCHWERHEIT",
     "recent_entries": "LETZTE EINTRÄGE",
     "no_defects": "Noch keine Mängel.",
@@ -528,7 +532,12 @@
     "profile_updated": "Profil aktualisiert",
     "email_registered": "E-Mail bereits registriert. Zur Anmeldung wechseln.",
     "role_placeholder": "z.B. Bauleiter, Projektmanager",
-    "password_keep": "Bestehendes beibehalten (leer = keine Änderung)"
+    "password_keep": "Bestehendes beibehalten (leer = keine Änderung)",
+    "company_logo": "FIRMENLOGO",
+    "upload_logo": "Logo hochladen",
+    "replace_logo": "LOGO ERSETZEN",
+    "remove_logo": "ENTFERNEN",
+    "logo_help": "PNG, JPG, WebP oder SVG. Maximal 200 KB. Erscheint auf dem Cover jedes PDF-Berichts, den Sie exportieren."
   },
   "ai": {
     "title": "KI-FOTOANALYSE",

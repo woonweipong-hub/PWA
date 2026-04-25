@@ -350,6 +350,10 @@
     "requires_attention": "Nécessite une attention immédiate",
     "overdue_count": "EN RETARD",
     "overdue_help": "Date cible dépassée et non encore vérifiée ou clôturée",
+    "avg_days_close": "JOURS MOYENS POUR FERMER",
+    "on_time_rate": "TARIF À TEMPS",
+    "trend_30d": "TENDANCE SUR 30 JOURS",
+    "trend_total_suffix": "connecté",
     "by_severity": "PAR GRAVITÉ",
     "recent_entries": "ENTRÉES RÉCENTES",
     "no_defects": "Aucun défaut pour l'instant.",
@@ -528,7 +532,12 @@
     "profile_updated": "Profil mis à jour",
     "email_registered": "Email déjà enregistré. Passez à la connexion.",
     "role_placeholder": "ex. Ingénieur de chantier, Chef de projet",
-    "password_keep": "Garder l'existant (vide = pas de changement)"
+    "password_keep": "Garder l'existant (vide = pas de changement)",
+    "company_logo": "LOGO DE L'ENTREPRISE",
+    "upload_logo": "TÉLÉCHARGER LE LOGO",
+    "replace_logo": "REMPLACER LE LOGO",
+    "remove_logo": "RETIRER",
+    "logo_help": "PNG, JPG, WebP ou SVG. Maximum 200 Ko. Apparaît sur la couverture de chaque rapport PDF que vous exportez."
   },
   "ai": {
     "title": "ANALYSE PHOTO IA",

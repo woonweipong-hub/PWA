@@ -2883,9 +2883,32 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   // Orange accent line
   doc.setFillColor(255,107,0);doc.rect(0,52,pageW,1.5,"F");
 
-  // Company name
+  // Company logo (optional, base64 dataURL passed via opts.companyLogo).
+  // Drawn at the top-left of the dark header band; the company-name text
+  // shifts right when the logo renders so the two don't overlap. Wrapped
+  // in try/catch because jsPDF.addImage throws on malformed dataURLs and
+  // we'd rather lose the logo than crash the entire export.
+  const _logoData=opts.companyLogo||"";
+  let _logoOffset=0;
+  if(_logoData){
+    try{
+      // Detect format from the dataURL prefix; jsPDF needs the right hint
+      // for PNG vs JPEG vs WebP. SVG isn't natively supported by addImage,
+      // so we silently skip those (the company-name text fills the slot).
+      const _fmt=/^data:image\/(png|jpe?g|webp)/i.exec(_logoData);
+      if(_fmt){
+        const _kind=_fmt[1].toUpperCase().replace("JPG","JPEG");
+        // 16mm box, fits inside the 52mm-tall dark header. Aspect is
+        // preserved by jsPDF when both width and height are set; using a
+        // square box keeps narrow + wide logos visually anchored.
+        doc.addImage(_logoData,_kind,margin,4,16,16);
+        _logoOffset=20;
+      }
+    }catch(_e){_logoOffset=0;}
+  }
+  // Company name — shifted right when a logo renders, otherwise at margin.
   doc.setFontSize(10);doc.setFont(undefined,"bold");doc.setTextColor(255,107,0);
-  doc.text((companyName||"SITESHRIMP").toUpperCase(),margin,16);
+  doc.text((companyName||"SITESHRIMP").toUpperCase(),margin+_logoOffset,16);
 
   // Report title — profile-driven so CONQUAS / HDB / custom reports
   // show the firm's cover wording. Default profile keeps "SITE REPORT".
@@ -10319,6 +10342,50 @@ function ProfilePanel({member,authUser,company,onClose,onSignOut,onCompanyUpdate
   const[showDeleteConfirm,setShowDeleteConfirm]=useState(false);const[deleting,setDeleting]=useState(false);
   const isCompanyAdmin=member?.role==="Admin";
 
+  // Company logo (base64 dataURL) for PDF cover branding. Per-company so
+  // a user with multiple companies sees the right logo on each report.
+  // Cap at 200 KB raw to keep PDF bundles tiny — anything bigger and the
+  // cover blows out for no real visual gain at A4 thumbnail scale.
+  const _logoMap=local.get(COMPANY_LOGO_KEY)||{};
+  const[companyLogo,setCompanyLogo]=useState(()=>company?.companyId?(_logoMap[company.companyId]||null):null);
+  const logoFileRef=useRef();
+  const onLogoFile=(e)=>{
+    const f=(e.target.files||[])[0];
+    if(!f)return;
+    if(!isCompanyAdmin){alert("Only a company admin can change the report logo.");if(logoFileRef.current)logoFileRef.current.value="";return;}
+    if(!/^image\/(png|jpe?g|webp|svg\+xml)$/i.test(f.type||"")){
+      alert("Logo must be PNG, JPG, WebP, or SVG.");
+      if(logoFileRef.current)logoFileRef.current.value="";
+      return;
+    }
+    if(f.size>200*1024){
+      alert("Logo too large (max 200 KB). Compress it first — try squoosh.app or tinypng.com.");
+      if(logoFileRef.current)logoFileRef.current.value="";
+      return;
+    }
+    const r=new FileReader();
+    r.onload=()=>{
+      const dataUrl=String(r.result||"");
+      setCompanyLogo(dataUrl);
+      const all=local.get(COMPANY_LOGO_KEY)||{};
+      all[company.companyId]=dataUrl;
+      local.set(COMPANY_LOGO_KEY,all);
+      setMsg({type:"ok",text:"Logo saved — will appear on the next PDF export."});
+    };
+    r.onerror=()=>setMsg({type:"err",text:"Could not read logo file."});
+    r.readAsDataURL(f);
+    if(logoFileRef.current)logoFileRef.current.value="";
+  };
+  const removeLogo=()=>{
+    if(!isCompanyAdmin)return;
+    if(!confirm("Remove the company logo from PDF reports?"))return;
+    const all=local.get(COMPANY_LOGO_KEY)||{};
+    delete all[company.companyId];
+    local.set(COMPANY_LOGO_KEY,all);
+    setCompanyLogo(null);
+    setMsg({type:"ok",text:"Logo removed."});
+  };
+
   const deleteAccount=async()=>{
     setDeleting(true);setMsg(null);
     try{
@@ -10452,6 +10519,29 @@ function ProfilePanel({member,authUser,company,onClose,onSignOut,onCompanyUpdate
           {!isCompanyAdmin&&<div style={{fontSize:10,color:"rgba(0,0,0,0.35)",marginTop:6,lineHeight:1.4}}>Only a company admin can change this. Ask your admin to update it.</div>}
         </div>
 
+        {/* Company Logo for PDF reports — admin-only. Uploaded image lives
+            in localStorage (per company) and renders on the PDF cover header
+            so exports look like a proper firm-branded inspection report. */}
+        <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:12}}>
+          <div style={{...lbl(),display:"flex",alignItems:"center",gap:8}}>{t("profile.company_logo")} {!isCompanyAdmin&&<span style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.35)",letterSpacing:"0.12em"}}>· ADMIN ONLY</span>}</div>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginTop:6}}>
+            <div style={{width:64,height:64,borderRadius:10,background:companyLogo?"#fff":"rgba(0,0,0,0.04)",border:`1px solid rgba(0,0,0,${companyLogo?0.08:0.1})`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0}}>
+              {companyLogo
+                ?<img src={companyLogo} alt="Logo" style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain"}}/>
+                :<span style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em"}}>NO LOGO</span>
+              }
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <input ref={logoFileRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={onLogoFile} style={{display:"none"}}/>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                <button onClick={()=>{if(isCompanyAdmin&&logoFileRef.current)logoFileRef.current.click();}} disabled={!isCompanyAdmin} style={{background:isCompanyAdmin?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:"8px 14px",color:isCompanyAdmin?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:isCompanyAdmin?"pointer":"not-allowed"}}>{companyLogo?t("profile.replace_logo"):t("profile.upload_logo")}</button>
+                {companyLogo&&isCompanyAdmin&&<button onClick={removeLogo} style={{background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:10,padding:"8px 12px",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{t("profile.remove_logo")}</button>}
+              </div>
+              <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",marginTop:6,lineHeight:1.4}}>{t("profile.logo_help")}</div>
+            </div>
+          </div>
+        </div>
+
         {/* Change Password */}
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:12}}>
           <div style={lbl()}>CHANGE PASSWORD</div>
@@ -10494,6 +10584,49 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   // counters stay in sync without sharing state.
   const _todayOverdue=new Date().toISOString().slice(0,10);
   const overdue=defects.filter(d=>d.dueDate&&String(d.dueDate).slice(0,10)<_todayOverdue&&!["Verified","Closed"].includes(d.status)).length;
+
+  // Lifecycle / health metrics — what every commercial defect tracker shows
+  // alongside status counts. Drives the "AVG DAYS TO CLOSE" / "ON-TIME %"
+  // chips below the status row. Calculations are pure on existing fields:
+  // createdAt for open-time anchor, updated for the close-time anchor (best
+  // proxy without a dedicated closedAt field — the close action is the most
+  // recent edit on a closed/verified record). Edge cases (no dates, future
+  // updated) clamp to zero so a clock-skewed device can't poison the average.
+  const _closedSet=defects.filter(d=>["Closed","Verified"].includes(d.status));
+  const _withLifecycleDates=_closedSet.filter(d=>(d.createdAt||d.created)&&(d.updated||d.updatedAt));
+  const avgDaysToClose=_withLifecycleDates.length
+    ?Math.round(_withLifecycleDates.reduce((sum,d)=>{
+      const c=new Date(d.createdAt||d.created).getTime();
+      const u=new Date(d.updated||d.updatedAt).getTime();
+      return sum+Math.max(0,(u-c)/86400000);
+    },0)/_withLifecycleDates.length*10)/10
+    :null;
+  const _closedWithDue=_closedSet.filter(d=>d.dueDate);
+  const _closedOnTime=_closedWithDue.filter(d=>{
+    const u=String(d.updated||d.updatedAt||"").slice(0,10);
+    return u&&u<=String(d.dueDate).slice(0,10);
+  }).length;
+  const onTimePct=_closedWithDue.length?Math.round(_closedOnTime/_closedWithDue.length*100):null;
+
+  // 30-day creation trend for the inline sparkline. Day 0 = today, Day 29
+  // = 30 days ago. Bucket on the device's local-date interpretation of
+  // createdAt so a defect logged at 23:30 lands on its capture day, not
+  // the next day in UTC. Records without a timestamp (legacy / Telegram
+  // bridge edge cases) skip silently.
+  const TREND_DAYS=30;
+  const _trendCounts=Array(TREND_DAYS).fill(0);
+  const _trendNow=Date.now();
+  defects.forEach(d=>{
+    const ts=d.createdAt||d.created;
+    if(!ts)return;
+    const t=new Date(ts).getTime();
+    if(!Number.isFinite(t))return;
+    const ageDays=Math.floor((_trendNow-t)/86400000);
+    if(ageDays>=0&&ageDays<TREND_DAYS)_trendCounts[TREND_DAYS-1-ageDays]++;
+  });
+  const _trendMax=Math.max(1,..._trendCounts);
+  const _trendTotal=_trendCounts.reduce((a,b)=>a+b,0);
+
   const StatusCard=({label,value,color})=>(
     <div style={{flex:1,minWidth:56,background:"#fff",borderRadius:12,padding:"10px 12px",borderTop:`3px solid ${color}`}}>
       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",lineHeight:1}}>{value}</div>
@@ -11150,6 +11283,49 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
         <StatusCard label={t("status.closed_short")} value={closedCount} color="#8e8e93"/>
       </div>
 
+      {/* Lifecycle metrics — only render when at least one closed/verified
+          entry exists, since both Avg Days and On-Time % require closed
+          records to compute. New projects with zero closed defects skip
+          the row entirely instead of showing meaningless "—" values. */}
+      {_closedSet.length>0&&(
+        <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+          <div style={{flex:1,minWidth:90,background:"#fff",borderRadius:12,padding:"10px 12px",borderTop:"3px solid #5856d6"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",lineHeight:1}}>{avgDaysToClose==null?"—":avgDaysToClose}<span style={{fontSize:11,color:"rgba(0,0,0,0.4)",fontWeight:700,marginLeft:3}}>d</span></div>
+            <div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginTop:3}}>{t("dashboard.avg_days_close")}</div>
+          </div>
+          {onTimePct!=null&&(
+            <div style={{flex:1,minWidth:90,background:"#fff",borderRadius:12,padding:"10px 12px",borderTop:`3px solid ${onTimePct>=80?"#30d158":onTimePct>=50?"#ff9500":"#ff3b30"}`}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",lineHeight:1}}>{onTimePct}<span style={{fontSize:14,color:"rgba(0,0,0,0.4)",fontWeight:700}}>%</span></div>
+              <div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginTop:3}}>{t("dashboard.on_time_rate")}</div>
+            </div>
+          )}
+          <div style={{flex:1,minWidth:90,background:"#fff",borderRadius:12,padding:"10px 12px",borderTop:"3px solid #ff9500"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",lineHeight:1}}>{overdue}</div>
+            <div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginTop:3}}>{t("dashboard.overdue_count")}</div>
+          </div>
+        </div>
+      )}
+
+      {/* 30-day creation trend — inline SVG sparkline. Renders only when at
+          least one entry has been created in the window so empty projects
+          stay visually clean. Bars are 4px wide with a 1px gap; today is
+          the rightmost bar so the eye reads "now" first. */}
+      {_trendTotal>0&&(
+        <div style={{background:"#fff",borderRadius:12,padding:"10px 14px",marginBottom:10}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+            <div style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("dashboard.trend_30d")}</div>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{_trendTotal} <span style={{color:"rgba(0,0,0,0.35)",fontWeight:600}}>{t("dashboard.trend_total_suffix")}</span></div>
+          </div>
+          <svg viewBox={`0 0 ${TREND_DAYS*5-1} 32`} preserveAspectRatio="none" style={{width:"100%",height:32,display:"block"}} aria-label={t("dashboard.trend_30d")}>
+            {_trendCounts.map((c,i)=>{
+              const h=Math.max(1,(c/_trendMax)*30);
+              const isToday=i===TREND_DAYS-1;
+              return <rect key={i} x={i*5} y={32-h} width={4} height={h} fill={isToday?"#ff6b00":"rgba(88,86,214,0.6)"} rx={1}/>;
+            })}
+          </svg>
+        </div>
+      )}
+
       {critical>0&&(
         <div style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.25)",borderRadius:12,padding:"10px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:10}}>
           <div style={{fontSize:18}}>⚠️</div>
@@ -11231,9 +11407,9 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
                 )}
               </div>
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang,getActiveProfileId(currentProject,company?.companyId));}catch(e){alert("Export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true,langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId)});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false,langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId)});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang,getActiveProfileId(currentProject,company?.companyId));await new Promise(r=>setTimeout(r,600));await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId)});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true,langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId),companyLogo:(local.get(COMPANY_LOGO_KEY)||{})[company?.companyId]||""});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false,langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId),companyLogo:(local.get(COMPANY_LOGO_KEY)||{})[company?.companyId]||""});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang,getActiveProfileId(currentProject,company?.companyId));await new Promise(r=>setTimeout(r,600));await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId),companyLogo:(local.get(COMPANY_LOGO_KEY)||{})[company?.companyId]||""});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
               <button onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);const result=await exportToGoogleSheets(defs,currentProject?.name,company?.companyName,exportLang);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Bundling CONQUAS photos…"});try{const result=await exportConquasZip(filtered,currentProject?.name,(msg)=>setPdfExport({active:true,label:msg}));const parts=Object.entries(result.counters).filter(([,n])=>n>0).map(([el,n])=>`${el}: ${n}`).join(" · ");alert(`✓ CONQUAS ZIP downloaded\n\n${result.processed} photo${result.processed===1?"":"s"} bundled across ${Object.keys(result.counters).length} element${Object.keys(result.counters).length===1?"":"s"}.${result.skipped?`\n${result.skipped} skipped (see console).`:""}\n\n${parts}`);}catch(e){alert("CONQUAS ZIP export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#5856d6",opacity:pdfExport.active?0.5:1}}>🏛 CONQUAS ZIP <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· 7 element folders, renamed</span></button>
             </div>
@@ -20342,7 +20518,7 @@ function App(){
 
                   <div style={{background:"rgba(255,204,0,0.08)",border:"1px solid rgba(255,204,0,0.3)",borderRadius:12,padding:"14px 16px",marginBottom:18}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#ffcc00",letterSpacing:"0.06em",marginBottom:6}}>⚠ AT YOUR OWN RISK</div>
-                    SiteShrimp is provided <b>"as is"</b>, without warranty of any kind, express or implied. Use of this app — and any content, advisory, export, message, or decision generated through it — is entirely at your own risk. No responsibility or liability is held by the author, by Anthropic / Claude Code, by any contributor who commented, was involved in, or created part of this app, or by any third-party provider (AI, maps, hosting, payments) it integrates with.
+                    SiteShrimp is provided <b>"as is"</b>, without warranty of any kind, express or implied. Use of this app — and any content, advisory, export, message, or decision generated through it — is entirely at your own risk. No responsibility or liability is held by the author, by any contributor who commented, was involved in, or created part of this app, or by any third-party provider (AI, maps, hosting, payments) it integrates with.
                   </div>
 
                   {[
@@ -20362,7 +20538,7 @@ function App(){
                   <div style={{borderTop:"1px solid rgba(255,255,255,0.1)",paddingTop:14,marginTop:22}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ff6b00",letterSpacing:"0.05em",marginBottom:8}}>AUTHORSHIP & ACKNOWLEDGEMENTS</div>
                     <div style={{color:"rgba(255,255,255,0.72)"}}>
-                      Designed and directed by <b>Mr. PONG Woon Wei</b>, developed in collaboration with <b>Claude Code (Anthropic)</b>, with comments from <b>Ar. William Lau, SIA-DTC</b>, <b>Dr. TAN Kee Wee, BCA</b>, <b>Mr. GAN Chee Meng, MCC Singapore</b>, and <b>Mr. TEE Jia Hen, GovTech</b>.
+                      Designed and directed by <b>Mr. PONG Woon Wei</b>, built through AI-assisted vibe coding as a learning exploration of what one designer + state-of-the-art AI tools can ship together. Comments and feedback from <b>Ar. William Lau, SIA-DTC</b>, <b>Dr. TAN Kee Wee, BCA</b>, <b>Mr. GAN Chee Meng, MCC Singapore</b>, and <b>Mr. TEE Jia Hen, GovTech</b>.
                     </div>
                   </div>
                 </div>

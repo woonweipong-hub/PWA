@@ -350,6 +350,10 @@
     "requires_attention": "즉각적인 주의가 필요함",
     "overdue_count": "연체",
     "overdue_help": "목표 날짜가 지났지만 아직 확인되거나 종료되지 않았습니다.",
+    "avg_days_close": "평균 마감일수",
+    "on_time_rate": "정시 운행률",
+    "trend_30d": "30일 추세",
+    "trend_total_suffix": "기록됨",
     "by_severity": "심각도별",
     "recent_entries": "최근 항목",
     "no_defects": "아직 결함은 없습니다.",
@@ -528,7 +532,12 @@
     "profile_updated": "프로필이 업데이트되었습니다",
     "email_registered": "이메일이 이미 등록되어 있습니다. 로그인으로 전환하세요.",
     "role_placeholder": "예: 현장 엔지니어, 프로젝트 매니저",
-    "password_keep": "현재 유지 (비워두면 변경 없음)"
+    "password_keep": "현재 유지 (비워두면 변경 없음)",
+    "company_logo": "회사 로고",
+    "upload_logo": "로고 업로드",
+    "replace_logo": "로고 교체",
+    "remove_logo": "제거하다",
+    "logo_help": "PNG, JPG, WebP 또는 SVG. 최대 200KB. 내보낸 모든 PDF 보고서의 표지에 나타납니다."
   },
   "ai": {
     "title": "AI 사진 분석",

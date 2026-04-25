@@ -350,6 +350,10 @@
     "requires_attention": "Memerlukan perhatian segera",
     "overdue_count": "TERLAMBAT",
     "overdue_help": "Tarikh sasaran yang lalu dan belum disahkan atau ditutup",
+    "avg_days_close": "AVG HARI UNTUK DITUTUP",
+    "on_time_rate": "KADAR TEPAT MASA",
+    "trend_30d": "TREND 30 HARI",
+    "trend_total_suffix": "dilog",
     "by_severity": "MENGIKUT KETERUKKAN",
     "recent_entries": "PENYERTAAN TERKINI",
     "no_defects": "Tiada kecacatan lagi.",
@@ -528,7 +532,12 @@
     "profile_updated": "Profil dikemas kini",
     "email_registered": "Emel sudah didaftar. Tukar ke LOG MASUK.",
     "role_placeholder": "cth. Jurutera Tapak, Pengurus Projek",
-    "password_keep": "Kekalkan sedia ada (kosong = tiada perubahan)"
+    "password_keep": "Kekalkan sedia ada (kosong = tiada perubahan)",
+    "company_logo": "LOGO SYARIKAT",
+    "upload_logo": "MUAT NAIK LOGO",
+    "replace_logo": "GANTIKAN LOGO",
+    "remove_logo": "KELUARKAN",
+    "logo_help": "PNG, JPG, WebP atau SVG. Maks 200 KB. Muncul pada kulit setiap laporan PDF yang anda eksport."
   },
   "ai": {
     "title": "ANALISIS FOTO AI",
