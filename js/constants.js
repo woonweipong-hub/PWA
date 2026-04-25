@@ -351,6 +351,61 @@ const WORK_CATEGORIES = {
 };
 const WORK_CATEGORY_KEY = "sdt-work-category-v1";
 
+// ── CONQUAS Internal-Finishes (IF) elements — canonical order ───
+// Verbatim from BCA CONQUAS (Private Residential) R1, Appendix 1.
+// These SEVEN names carry contractual weight — do NOT paraphrase
+// ("M&E" alone is wrong; must be "M&E Fittings"). Used for REVIEW
+// grouping and CONQUAS ZIP export. "Other" catches non-IF components
+// (structural, external, infra, safety) so nothing is silently dropped.
+const CONQUAS_IF_ELEMENTS = [
+  "Floor", "Wall", "Ceiling", "Door", "Window", "Component", "M&E Fittings",
+];
+const CONQUAS_ELEMENT_OTHER = "Other";
+
+// Map a raw `component` value (either a COMPONENT_GROUPS leaf OR one of
+// the 17 AI categories in main.pb.js) to a CONQUAS IF element bucket.
+// Derived-only — element is NOT stored on defects. Step 3 (evidence_role)
+// will eventually supersede this client-side mapping.
+function conquasElementOf(component) {
+  if (!component) return CONQUAS_ELEMENT_OTHER;
+  const c = String(component).trim();
+  // Five IF elements share names with COMPONENT_GROUPS + AI categories.
+  if (c === "Floor" || c === "Wall" || c === "Ceiling" || c === "Door" || c === "Window") return c;
+  // "Component" bucket — sanitary ware, shower screens, mirrors, cabinetry
+  // (CONQUAS §3.2(a) "Component" element).
+  const COMPONENT_BUCKET = new Set([
+    "Cabinet", "Wardrobe", "Countertop", "Shelf", "Vanity", "Door Frame", "Window Frame", "Timber Deck",
+    "Toilet Bowl", "Urinal", "Basin", "Bidet", "Mirror", "Toilet Accessories", "Towel Rail",
+    "Bathtub/Shower", "Basin/Sink", "Toilet/WC",
+  ]);
+  if (COMPONENT_BUCKET.has(c)) return "Component";
+  // "M&E Fittings" — plumbing/electrical/ACMV/fire/lift fittings (CONQUAS §3.2(a)).
+  const ME_BUCKET = new Set([
+    "Plumbing", "Electrical", "Aircon", // AI categories
+    "Tap/Faucet", "Water Heater", "Pipe", "Drain", "Floor Trap", "Valve",
+    "Wiring", "Socket/Outlet", "Switch", "Light Fixture", "Distribution Board", "Cable Tray", "Earth/Grounding",
+    "AC Unit", "FCU", "AHU", "Duct", "Diffuser/Grille", "Thermostat", "Condensate Pipe", "Chiller",
+    "Sprinkler", "Fire Alarm", "Extinguisher", "Hose Reel", "Smoke Detector", "Emergency Light", "Exit Sign",
+    "Lift Car", "Lift Door", "Lift Shaft", "Lift Motor", "Lift Button/Panel",
+  ]);
+  if (ME_BUCKET.has(c)) return "M&E Fittings";
+  return CONQUAS_ELEMENT_OTHER;
+}
+
+// Two-letter IF element codes per docs/codification-standard.md §7 (ACTIVE
+// v1.0 taxonomy). Used as the optional `element` segment in the ISO 19650
+// photo-evidence tail so a filename like "...PROJ-...-A-PH-Z-...-S2-20260425_
+// 01_FL_<hash>.jpg" carries the CONQUAS IF element without re-querying the
+// record. Returns "" for the "Other" bucket so the segment is dropped (rather
+// than embedded as a misleading code).
+const CONQUAS_IF_ELEMENT_CODES = {
+  "Floor": "FL", "Wall": "WL", "Ceiling": "CL", "Door": "DR",
+  "Window": "WD", "Component": "CP", "M&E Fittings": "ME",
+};
+function conquasElementCode(elementName) {
+  return CONQUAS_IF_ELEMENT_CODES[elementName] || "";
+}
+
 // ── Default Location Hierarchy ───────────────────────────────────
 const DEFAULT_LEVELS = [
   "Basement 2", "Basement 1", "Ground Floor",

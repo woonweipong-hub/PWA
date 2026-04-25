@@ -271,7 +271,10 @@
     "filters": "ตัวกรอง",
     "select": "✓ เลือก",
     "type_label": "พิมพ์",
-    "status_label": "สถานะ"
+    "status_label": "สถานะ",
+    "date_range": "ช่วงวันที่",
+    "date_from": "จาก",
+    "date_to": "ถึง"
   },
   "detail": {
     "update_status": "อัปเดตสถานะ",

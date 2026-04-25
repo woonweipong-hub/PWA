@@ -271,7 +271,10 @@
     "filters": "FILTRES",
     "select": "✓ SÉLECTIONNER",
     "type_label": "TAPER",
-    "status_label": "STATUT"
+    "status_label": "STATUT",
+    "date_range": "PLAGE DE DATES",
+    "date_from": "Depuis",
+    "date_to": "à"
   },
   "detail": {
     "update_status": "METTRE À JOUR LE STATUT",

@@ -271,7 +271,10 @@
     "filters": "FILTROS",
     "select": "✓ SELECCIONAR",
     "type_label": "TIPO",
-    "status_label": "ESTADO"
+    "status_label": "ESTADO",
+    "date_range": "RANGO DE FECHAS",
+    "date_from": "De",
+    "date_to": "a"
   },
   "detail": {
     "update_status": "ACTUALIZAR ESTADO",

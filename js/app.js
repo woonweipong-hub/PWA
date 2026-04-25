@@ -2518,6 +2518,76 @@ function exportCSV(defects,projectName){
   a.click();
 }
 
+// ── CONQUAS ZIP export ──────────────────────────────────────────
+// Packs filtered photos into a single ZIP with 7 CONQUAS IF folders
+// (Floor/Wall/Ceiling/Door/Window/Component/M&E Fittings) + Other.
+// Files renamed to {Element}_{YYYY-MM-DD}_{NNN}.jpg per CONQUAS QP
+// handover convention. Element is DERIVED from component (see
+// conquasElementOf in constants.js) — not stored. When Step 3
+// evidence_role ships, the derivation moves server-side.
+async function _ensureJSZip(){
+  if(typeof window!=="undefined"&&window.JSZip)return window.JSZip;
+  return new Promise((resolve,reject)=>{
+    const s=document.createElement("script");
+    s.src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js";
+    s.onload=()=>resolve(window.JSZip);
+    s.onerror=()=>reject(new Error("Could not load JSZip (offline?). Connect to internet and retry."));
+    document.head.appendChild(s);
+  });
+}
+async function exportConquasZip(defects,projectName,onProgress){
+  const JSZip=await _ensureJSZip();
+  const zip=new JSZip();
+  const counters={};
+  const dateStamp=new Date().toISOString().slice(0,10);
+  let processed=0,skipped=0;
+  const safePart=s=>String(s||"").replace(/[\/\\?*:|"<>]+/g,"_");
+  for(let di=0;di<defects.length;di++){
+    const d=defects[di];
+    const element=conquasElementOf(d.component)||CONQUAS_ELEMENT_OTHER;
+    const folder=safePart(element);
+    const photos=Array.isArray(d.photo)?d.photo:(d.photo?[d.photo]:[]);
+    for(const photoUrl of photos){
+      if(!photoUrl)continue;
+      try{
+        const resp=await fetch(photoUrl,{mode:"cors"});
+        if(!resp.ok){skipped++;continue;}
+        const blob=await resp.blob();
+        counters[element]=(counters[element]||0)+1;
+        const seq=String(counters[element]).padStart(3,"0");
+        const fname=`${folder}_${dateStamp}_${seq}.jpg`;
+        zip.file(`${folder}/${fname}`,blob);
+        processed++;
+        if(onProgress&&processed%3===0)onProgress(`Bundling ${processed} photo${processed===1?"":"s"}…`);
+      }catch(e){
+        console.warn("[CONQUAS ZIP] fetch failed:",photoUrl,e);
+        skipped++;
+      }
+    }
+  }
+  // Manifest CSV so the receiver sees the bucket breakdown at a glance.
+  const manifest=["CONQUAS Element,Photos"];
+  for(const el of [...CONQUAS_IF_ELEMENTS,CONQUAS_ELEMENT_OTHER]){
+    manifest.push(`"${el}",${counters[el]||0}`);
+  }
+  manifest.push(``,`Project,${safePart(projectName||"")}`,`Generated,${new Date().toISOString()}`,`Source,"${defects.length} entries; ${processed} photos bundled; ${skipped} skipped"`);
+  zip.file("_manifest.csv",manifest.join("\n"));
+  if(processed===0){
+    throw new Error(`No photos bundled (${skipped} skipped — likely CORS or missing files). Check that photos load in REVIEW first.`);
+  }
+  if(onProgress)onProgress("Generating ZIP…");
+  const zipBlob=await zip.generateAsync({type:"blob"},meta=>{
+    if(onProgress&&meta.percent>0)onProgress(`Generating ZIP ${meta.percent.toFixed(0)}%…`);
+  });
+  const safeProject=safePart(projectName||"project").replace(/\s+/g,"_");
+  const filename=`${safeProject}_CONQUAS_${dateStamp}.zip`;
+  const url=URL.createObjectURL(zipBlob);
+  const a=document.createElement("a");
+  a.href=url;a.download=filename;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+  return {processed,skipped,counters};
+}
+
 // Full report export — defects + drawing annotations + saved comparisons in one CSV
 async function exportReportAll(defects,drawings,savedComparisons,projectName,langCode,profileId){
   // Resolve dropdown option values in the chosen export language. Falls back
@@ -6858,6 +6928,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // batchTotal drives the visible "📸 Batch: k of N" progress pill.
   const[batchQueue,setBatchQueue]=useState([]);
   const[batchTotal,setBatchTotal]=useState(0);
+  const[batchFailed,setBatchFailed]=useState(0);
   // Race protection for mid-analysis photo swaps. analyze() writes the
   // photoHash it's working on here at the start, and re-checks before
   // applying the result — if the hash has moved (user swapped to a new
@@ -6919,21 +6990,27 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   const MAX_PHOTOS=10;
 
   const handlePhoto=e=>{
-    // Filter to images — folder pickers return every file in the directory
-    // (docs, hidden files, thumbs.db, .DS_Store, etc.) and some mobile
-    // multi-pickers return video/pdf alongside photos.
-    const files=Array.from(e.target.files||[]).filter(f=>
-      (f.type&&f.type.startsWith("image/"))||/\.(jpe?g|png|webp|heic|heif)$/i.test(f.name||"")
-    );
+    // Strict filter matching the PocketBase schema (JPEG/PNG/WebP only).
+    // HEIC/HEIF (iPhone default) fails upload silently — reject at the picker
+    // with a clear message instead of losing 12 saves into a black hole.
+    const all=Array.from(e.target.files||[]);
+    const isSupported=f=>/^image\/(jpeg|png|webp)$/i.test(f.type||"")||/\.(jpe?g|png|webp)$/i.test(f.name||"");
+    const isHeic=f=>/^image\/hei[cf]$/i.test(f.type||"")||/\.(heic|heif)$/i.test(f.name||"");
+    const files=all.filter(isSupported);
+    const heicCount=all.filter(isHeic).length;
     // Always clear both inputs so the same file/folder can be re-picked later.
     if(fileRef.current)fileRef.current.value="";
     if(folderRef.current)folderRef.current.value="";
     if(!files.length){
-      // Folder had no images, or user cancelled — tell them why nothing happened.
-      if((e.target.files||[]).length>0){
-        alert("No image files found in the selection. Supported: JPG, PNG, WebP, HEIC.");
+      if(heicCount>0){
+        alert(`${heicCount} HEIC/HEIF file${heicCount>1?"s":""} skipped — iPhone default format isn't supported by the backend. Fix: iPhone → Settings → Camera → Formats → Most Compatible. For existing photos, export/share as JPEG first.`);
+      }else if(all.length>0){
+        alert("No supported image files in the selection. Supported: JPG, PNG, WebP.");
       }
       return;
+    }
+    if(heicCount>0){
+      alert(`${heicCount} HEIC/HEIF file${heicCount>1?"s":""} skipped (unsupported). Processing ${files.length} JPG/PNG/WebP photo${files.length>1?"s":""}.`);
     }
     setAiResult(null);
     // Single-photo pick OR multi-pick without AI: attach to current form
@@ -6990,6 +7067,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       setForm(prev=>({...prev,photos:[firstUrl]}));
       setBatchQueue(files.slice(1));
       setBatchTotal(files.length);
+      setBatchFailed(0);
     }catch(err){
       console.error("[Batch] first-photo read failed:",err);
       alert("Could not read the first photo: "+err.message);
@@ -7263,8 +7341,11 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // spamming N individual toasts during batch processing.
   useEffect(()=>{
     if(batchTotal>0&&batchQueue.length===0&&form.photos.length===0&&!saving&&!analyzing){
-      setLastSaved({id:null,title:`Batch complete — ${batchTotal} photo${batchTotal>1?"s":""} saved`,ts:Date.now(),savedEntry:null,batch:true});
+      const saved=batchTotal-batchFailed;
+      const failNote=batchFailed>0?` · ${batchFailed} failed (check DevTools console)`:"";
+      setLastSaved({id:null,title:`Batch complete — ${saved} photo${saved===1?"":"s"} saved${failNote}`,ts:Date.now(),savedEntry:null,batch:true});
       setBatchTotal(0);
+      setBatchFailed(0);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[batchTotal,batchQueue.length,form.photos.length,saving,analyzing]);
@@ -7467,7 +7548,22 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       }else{
         setShowBatch(true);
       }
-    }catch(e){if(!auto||batchTotal===0)alert("Error saving: "+e.message);}
+    }catch(e){
+      // Always log — previously this was silent in batch mode, masking
+      // PocketBase validation errors / hook throws across N photos.
+      console.error("[Save] failed:",e);
+      if(auto&&batchTotal>0){
+        setBatchFailed(n=>n+1);
+        // Match the success-path form reset so the next queued photo
+        // doesn't inherit stale title/description from this failed one.
+        // Without a full reset the batch would either hang (if photos not
+        // cleared) or mis-attribute the previous photo's AI output.
+        setForm(blank);setAiResult(null);setSpeakTranscript("");
+        setAddPhotoData(null);setAddPhotoAiDesc("");setAddPhotoSaving(false);
+      }else{
+        alert("Error saving: "+e.message);
+      }
+    }
     setSaving(false);
   };
 
@@ -7929,13 +8025,22 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
                   No photos in this date range.<br/>Pick a different filter.
                 </div>
               ):(
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(90px, 1fr))",gap:4}}>
-                  {visibleStaging.map(s=>(
-                    <div key={s.id} onClick={()=>toggleStagingOne(s.id)} style={{position:"relative",aspectRatio:"1/1",borderRadius:8,overflow:"hidden",background:"#1a1a1a",cursor:"pointer",border:s.selected?"3px solid #5856d6":"3px solid transparent",transition:"border-color 0.15s"}}>
-                      <img src={s.thumbUrl} alt="" loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block",opacity:s.selected?1:0.55}}/>
-                      <div style={{position:"absolute",top:4,right:4,width:22,height:22,borderRadius:"50%",background:s.selected?"#5856d6":"rgba(0,0,0,0.5)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,border:"2px solid #fff"}}>{s.selected?"✓":""}</div>
-                    </div>
-                  ))}
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(96px, 1fr))",gap:6}}>
+                  {visibleStaging.map(s=>{
+                    const size=s.size||0;
+                    const sizeText=size>=1048576?`${(size/1048576).toFixed(1)} MB`:size>=1024?`${Math.round(size/1024)} KB`:`${size} B`;
+                    let dateText="";try{if(s.lastModified)dateText=new Date(s.lastModified).toISOString().slice(0,10);}catch{}
+                    return(
+                      <div key={s.id} onClick={()=>toggleStagingOne(s.id)} style={{cursor:"pointer",display:"flex",flexDirection:"column",gap:3}}>
+                        <div style={{position:"relative",aspectRatio:"1/1",borderRadius:8,overflow:"hidden",background:"#1a1a1a",border:s.selected?"3px solid #5856d6":"3px solid transparent",transition:"border-color 0.15s"}}>
+                          <img src={s.thumbUrl} alt="" loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block",opacity:s.selected?1:0.55}}/>
+                          <div style={{position:"absolute",top:4,right:4,width:22,height:22,borderRadius:"50%",background:s.selected?"#5856d6":"rgba(0,0,0,0.5)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,border:"2px solid #fff"}}>{s.selected?"✓":""}</div>
+                        </div>
+                        <div title={s.name} style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.75)",lineHeight:1.2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s.name}</div>
+                        <div style={{fontSize:9.5,color:"rgba(0,0,0,0.48)",lineHeight:1.2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{sizeText}{dateText?` · ${dateText}`:""}</div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -8581,10 +8686,15 @@ function DefectsMapView({defects,allDefects,onView,onUpdate,selectMode,selectedI
   );
 }
 
-function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onClearNl,onAiSearch,aiEnabled,member,members,onBulkUpdate,onBulkDelete,onRestore,onHardDelete,company,currentProject,onJumpToTag,onOpenInReview}){
+function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onClearNl,onAiSearch,aiEnabled,member,members,onBulkUpdate,onBulkDelete,onRestore,onHardDelete,company,currentProject,onJumpToTag,onOpenInReview,queueCount=0,syncing2=false,onSyncQueue}){
   const[showArchive,setShowArchive]=useState(false);
   const[archiveSelIds,setArchiveSelIds]=useState(()=>new Set());
   const[filter,setFilter]=useState("All");const[sevF,setSevF]=useState("All");const[typeF,setTypeF]=useState("All");
+  // Date-range filter — compares against d.createdAt / timestamp_utc / created.
+  // YYYY-MM-DD strings (native <input type="date">) lexically compare against
+  // the ISO date prefix, so no Date object math is required. R suffix avoids
+  // collision with the REPORT tab's `dateFrom`/`dateTo` state in the same tree.
+  const[dateFromR,setDateFromR]=useState("");const[dateToR,setDateToR]=useState("");
   const[search,setSearch]=useState("");const[showFilters,setShowFilters]=useState(false);
   // "entries" | "drawings" | "comparisons" — lets users triage drawing-side
   // artefacts (markup, notes, pin counts, saved comparisons) from the same
@@ -8656,6 +8766,10 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
   const[selectedIds,setSelectedIds]=useState(()=>new Set());
   const[showBulkPanel,setShowBulkPanel]=useState(false);
   const[showMapView,setShowMapView]=useState(false);
+  // CONQUAS IF grouping — client-side derived from component.
+  // Persist per-device so a QP/assessor keeps their preferred view.
+  const[groupByConquas,setGroupByConquas]=useState(()=>local.get("sdt-group-conquas-v1")===true);
+  const persistGroupByConquas=(v)=>{setGroupByConquas(v);local.set("sdt-group-conquas-v1",v);};
   const[bulkStatus,setBulkStatus]=useState("");
   const[bulkSeverity,setBulkSeverity]=useState("");
   const[bulkAssignee,setBulkAssignee]=useState("");
@@ -8794,14 +8908,23 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
     if(filter!=="All"&&d.status!==filter)return false;
     if(sevF!=="All"&&d.severity!==sevF)return false;
     if(typeF!=="All"&&d.entryType!==typeF)return false;
+    if(dateFromR||dateToR){
+      // Take the ISO date prefix from whichever timestamp the record carries.
+      // Records pushed from the offline queue use `created`; new client saves
+      // use `createdAt`; older Telegram-bridged rows use `timestamp_utc`.
+      const ts=d.createdAt||d.timestamp_utc||d.created;
+      const ds=ts?String(ts).slice(0,10):"";
+      if(dateFromR&&(!ds||ds<dateFromR))return false;
+      if(dateToR&&(!ds||ds>dateToR))return false;
+    }
     if(q){
       const hay=[d.title,d.description,d.component,d.issue,d.assignee,d.location,d.loggedBy,d.entryType,d.defect_id].filter(Boolean).join(" ").toLowerCase();
       if(!hay.includes(q))return false;
     }
     return true;
   });
-  const activeFilters=(filter!=="All"?1:0)+(sevF!=="All"?1:0)+(typeF!=="All"?1:0);
-  const clearAll=()=>{setFilter("All");setSevF("All");setTypeF("All");setSearch("");if(onClearNl)onClearNl();};
+  const activeFilters=(filter!=="All"?1:0)+(sevF!=="All"?1:0)+(typeF!=="All"?1:0)+(dateFromR?1:0)+(dateToR?1:0);
+  const clearAll=()=>{setFilter("All");setSevF("All");setTypeF("All");setSearch("");setDateFromR("");setDateToR("");if(onClearNl)onClearNl();};
   // ── Display-language translation (Phase 2) ──
   // User toggle persisted per device so the Review list stays translated
   // across sessions. Defaults ON when UI is non-English AND AI is configured
@@ -8857,16 +8980,35 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
         </div>
       </div>
 
+      {/* Offline queue badge — visible so users know when entries are
+          sitting in IndexedDB waiting for reconnect. Tap to manual-sync.
+          Matches the pattern already used in REPORT. */}
+      {queueCount>0&&(
+        <button onClick={onSyncQueue} style={{width:"100%",background:"rgba(255,149,0,0.1)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:12,padding:"10px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:10,cursor:"pointer",textAlign:"left"}}>
+          {syncing2?<Spin size={16}/>:<span style={{fontSize:18}}>📤</span>}
+          <div style={{flex:1}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff9500",fontSize:13}}>{queueCount} {t("messages.queued_offline")}</div>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.5)"}}>{syncing2?t("messages.syncing"):navigator.onLine?t("dashboard.tap_sync"):t("messages.will_sync")}</div>
+          </div>
+        </button>
+      )}
+
       {/* Source switcher — entries (defects) · drawings · comparisons.
-          Keeps Review a one-stop triage surface without duplicating Tag. */}
-      <div style={{display:"flex",gap:4,padding:3,background:"rgba(0,0,0,0.05)",borderRadius:10,marginBottom:12,width:"max-content"}}>
-        {[
-          {id:"entries",label:`📝 ENTRIES (${defects.length})`},
-          {id:"drawings",label:`📐 DRAWINGS${rvDrawings.length?` (${rvDrawings.length})`:""}`},
-          {id:"comparisons",label:`🔍 COMPARISONS${savedComparisonsList.length?` (${savedComparisonsList.length})`:""}`},
-        ].map(opt=>(
-          <button key={opt.id} onClick={()=>setSource(opt.id)} style={{padding:"6px 12px",borderRadius:7,border:"none",background:source===opt.id?"#fff":"transparent",color:source===opt.id?"#1a1a1a":"rgba(0,0,0,0.5)",boxShadow:source===opt.id?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{opt.label}</button>
-        ))}
+          Keeps Review a one-stop triage surface without duplicating Tag.
+          The CONQUAS toggle sits on the same row but only affects entries. */}
+      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12,flexWrap:"wrap"}}>
+        <div style={{display:"flex",gap:4,padding:3,background:"rgba(0,0,0,0.05)",borderRadius:10,width:"max-content"}}>
+          {[
+            {id:"entries",label:`📝 ENTRIES (${defects.length})`},
+            {id:"drawings",label:`📐 DRAWINGS${rvDrawings.length?` (${rvDrawings.length})`:""}`},
+            {id:"comparisons",label:`🔍 COMPARISONS${savedComparisonsList.length?` (${savedComparisonsList.length})`:""}`},
+          ].map(opt=>(
+            <button key={opt.id} onClick={()=>setSource(opt.id)} style={{padding:"6px 12px",borderRadius:7,border:"none",background:source===opt.id?"#fff":"transparent",color:source===opt.id?"#1a1a1a":"rgba(0,0,0,0.5)",boxShadow:source===opt.id?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{opt.label}</button>
+          ))}
+        </div>
+        {source==="entries"&&!showMapView&&(
+          <button onClick={()=>persistGroupByConquas(!groupByConquas)} title="Group entries into the 7 CONQUAS Internal-Finishes elements (Floor/Wall/Ceiling/Door/Window/Component/M&E Fittings) plus Other. Derived from each entry's component." style={{padding:"7px 12px",borderRadius:18,border:`1.5px solid ${groupByConquas?"#5856d6":"rgba(0,0,0,0.12)"}`,background:groupByConquas?"#5856d6":"#fff",color:groupByConquas?"#fff":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",letterSpacing:"0.04em"}}>🏛 {groupByConquas?"GROUPED: CONQUAS":"GROUP BY CONQUAS"}</button>
+        )}
       </div>
 
       {/* Display-language translation toggle — only shown for entries source.
@@ -9025,6 +9167,19 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
               ))}
             </div>
           </div>
+          {/* Date-range filter — placed last so the most-used quick filters
+              (status, severity) stay reachable at the top on narrow phones.
+              Inputs are HTML5 date pickers; the locale display is browser
+              native, the value is always YYYY-MM-DD. */}
+          <div style={{marginTop:12}}>
+            <div style={lbl()}>{t("review.date_range")}</div>
+            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+              <input type="date" value={dateFromR} max={dateToR||undefined} onChange={e=>setDateFromR(e.target.value)} aria-label={t("review.date_from")} style={{...inp,flex:"1 1 120px",fontSize:13,minWidth:0}}/>
+              <span style={{color:"rgba(0,0,0,0.35)",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{t("review.date_to")}</span>
+              <input type="date" value={dateToR} min={dateFromR||undefined} onChange={e=>setDateToR(e.target.value)} aria-label={t("review.date_to")} style={{...inp,flex:"1 1 120px",fontSize:13,minWidth:0}}/>
+              {(dateFromR||dateToR)&&<button onClick={()=>{setDateFromR("");setDateToR("");}} title={t("actions.clear")} aria-label={t("actions.clear")} style={{background:"rgba(255,59,48,0.08)",border:"none",borderRadius:8,padding:"6px 10px",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{t("actions.clear")}</button>}
+            </div>
+          </div>
         </div>
       )}
 
@@ -9046,7 +9201,42 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
       );})()}
       {showMapView&&<DefectsMapView defects={filtered} allDefects={defects} onView={onView} onUpdate={onUpdate} selectMode={selectMode} selectedIds={selectedIds} toggleId={toggleId} member={member} company={company} members={members}/>}
       {!showMapView&&filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>{q?t("review.no_matching")+" \""+search+"\"":t("review.no_entries")}</div>}
-      {!showMapView&&filtered.map((d,i)=>{
+      {/* CONQUAS grouping — interleaves section headers with card rows
+          in canonical IF order. When the toggle is off this is a passthrough
+          and the render below is identical to the old flat list. */}
+      {(()=>{
+        const renderRows=[];
+        if(groupByConquas){
+          const groups={};
+          for(const d of filtered){
+            const el=conquasElementOf(d.component)||CONQUAS_ELEMENT_OTHER;
+            (groups[el]=groups[el]||[]).push(d);
+          }
+          const order=[...CONQUAS_IF_ELEMENTS,CONQUAS_ELEMENT_OTHER];
+          for(const el of order){
+            const items=groups[el]||[];
+            if(!items.length)continue;
+            renderRows.push({type:"header",element:el,count:items.length,key:`hdr_${el}`});
+            for(const d of items)renderRows.push({type:"card",d,key:`card_${d.id}`});
+          }
+        }else{
+          for(const d of filtered)renderRows.push({type:"card",d,key:`card_${d.id}`});
+        }
+        // Keep the original i-based animationDelay by counting card rows.
+        let cardIndex=-1;
+        return(!showMapView&&renderRows.map(row=>{
+          if(row.type==="header"){
+            return(
+              <div key={row.key} style={{display:"flex",alignItems:"center",gap:8,margin:"14px 2px 6px",padding:"6px 10px",background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.18)",borderRadius:8}}>
+                <span style={{fontSize:13}}>🏛</span>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#3a39a6",letterSpacing:"0.06em",textTransform:"uppercase"}}>{row.element}</div>
+                <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",marginLeft:"auto"}}>{row.count}</div>
+              </div>
+            );
+          }
+          cardIndex++;
+          const d=row.d;
+          const i=cardIndex;
         const checked=selectedIds.has(d.id);
         // Apply display translation (if enabled). Originals are preserved in
         // `d`; `dv` carries the translated fields for rendering only.
@@ -9079,7 +9269,8 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
           <EntryThumb defect={d} drawingByEntryId={drawingByEntryId}/>
         </div>
         );
-      })}
+      }));
+      })()}
 
       {/* Bulk edit panel */}
       {selectMode&&showBulkPanel&&selectedIds.size>0&&(
@@ -10896,7 +11087,8 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true,langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId)});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false,langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId)});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang,getActiveProfileId(currentProject,company?.companyId));await new Promise(r=>setTimeout(r,600));await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId)});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
-              <button onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);const result=await exportToGoogleSheets(defs,currentProject?.name,company?.companyName,exportLang);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
+              <button onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);const result=await exportToGoogleSheets(defs,currentProject?.name,company?.companyName,exportLang);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Bundling CONQUAS photos…"});try{const result=await exportConquasZip(filtered,currentProject?.name,(msg)=>setPdfExport({active:true,label:msg}));const parts=Object.entries(result.counters).filter(([,n])=>n>0).map(([el,n])=>`${el}: ${n}`).join(" · ");alert(`✓ CONQUAS ZIP downloaded\n\n${result.processed} photo${result.processed===1?"":"s"} bundled across ${Object.keys(result.counters).length} element${Object.keys(result.counters).length===1?"":"s"}.${result.skipped?`\n${result.skipped} skipped (see console).`:""}\n\n${parts}`);}catch(e){alert("CONQUAS ZIP export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#5856d6",opacity:pdfExport.active?0.5:1}}>🏛 CONQUAS ZIP <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· 7 element folders, renamed</span></button>
             </div>
           )}
         </div>
@@ -18969,8 +19161,12 @@ function App(){
       // the timestamp + user as the unique anchor for now; downloads/PDF
       // captions later can rebuild the canonical name from the saved record.
       const fnameOpts={projectName:data.projectName||currentProject?.name,ts,userName:data.loggedBy||member?.name,defectId:data.defect_id};
-      if(data.photo&&data.photo.startsWith("data:"))try{gdriveUrls.push((await GDrive.uploadPhoto(data.photo,formatPhotoFilename({...fnameOpts,sequence:1}))).url);}catch{}
-      if(data.extraPhotos)for(let i=0;i<data.extraPhotos.length;i++)if(data.extraPhotos[i]?.startsWith("data:"))try{gdriveUrls.push((await GDrive.uploadPhoto(data.extraPhotos[i],formatPhotoFilename({...fnameOpts,sequence:i+2}))).url);}catch{}
+      // Mirror the ZIP export structure: each photo goes into the CONQUAS IF
+      // element subfolder derived from its component. Falls back to "Other"
+      // when component doesn't map (structural/external/infra/safety etc).
+      const conquasBucket=conquasElementOf(data.component)||CONQUAS_ELEMENT_OTHER;
+      if(data.photo&&data.photo.startsWith("data:"))try{gdriveUrls.push((await GDrive.uploadPhoto(data.photo,formatPhotoFilename({...fnameOpts,sequence:1}),conquasBucket)).url);}catch{}
+      if(data.extraPhotos)for(let i=0;i<data.extraPhotos.length;i++)if(data.extraPhotos[i]?.startsWith("data:"))try{gdriveUrls.push((await GDrive.uploadPhoto(data.extraPhotos[i],formatPhotoFilename({...fnameOpts,sequence:i+2}),conquasBucket)).url);}catch{}
       const gd={...data,companyId,storageMode:"gdrive",gdrivePhotos:JSON.stringify(gdriveUrls)};
       delete gd.photo;delete gd.extraPhotos;delete gd.photos;
       return await DB.defects.create(gd);
@@ -19049,6 +19245,34 @@ function App(){
 
     try{
       const saved=await uploadDefect(data,company.companyId);
+
+      // Cache the ISO 19650-aligned filename for the index-0 photo on the saved
+      // record. The filename builder needs `saved.id` (PocketBase generates it
+      // server-side), so this runs AFTER uploadDefect returns. CONQUAS IF
+      // element code (FL/WL/CL/DR/WD/CP/ME) is appended only when the entry's
+      // component maps cleanly into one of the seven IF buckets — non-IF
+      // entries (structural / external / infra) get a terse name with no
+      // misleading element segment. Hash-short comes from media_hash if the
+      // pre-save metadata block (above) computed it. Fire-and-forget: ISO
+      // caching is metadata-only and must never block the user's save flow.
+      if(saved&&saved.id&&!saved.iso_filename&&typeof isoNameForDefect==="function"){
+        try{
+          const _el=typeof conquasElementOf==="function"?conquasElementOf(saved.component):"";
+          const _code=typeof conquasElementCode==="function"?conquasElementCode(_el):"";
+          const _hashShort=String(saved.media_hash||"").replace(/[^a-fA-F0-9]/g,"").slice(0,8);
+          const _isoName=isoNameForDefect(saved,company,currentProject,{
+            seq:1,
+            element:_code||undefined,
+            hashShort:_hashShort||undefined,
+            ext:"jpg",
+          });
+          if(_isoName&&DB?.defects?.update){
+            DB.defects.update(saved.id,{iso_filename:_isoName}).then(()=>{
+              saved.iso_filename=_isoName;
+            }).catch(isoErr=>console.warn("iso_filename PATCH failed (non-fatal)",isoErr));
+          }
+        }catch(isoErr){console.warn("iso_filename build failed (non-fatal)",isoErr);}
+      }
 
       // Optimistically add to local list so the map LIST and REVIEW update
       // immediately, without waiting for the PocketBase subscription round-trip.
@@ -19538,7 +19762,7 @@ function App(){
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")} onStartConquas={()=>setShowConquas(true)}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} onPatchDefectLocal={updated=>setDefects(prev=>prev.map(d=>d.id===updated.id?updated:d))} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onViewEntry={setViewing}/>}
-        {tab==="defects"&&<DefectsList defects={defects} archivedDefects={archivedDefects} onView={setViewing} onUpdate={updateDefect} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onRestore={restoreDefects} onHardDelete={hardDeleteDefects} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")} onOpenInReview={(payload)=>setReviewModal(payload)}/>}
+        {tab==="defects"&&<DefectsList defects={defects} archivedDefects={archivedDefects} onView={setViewing} onUpdate={updateDefect} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onRestore={restoreDefects} onHardDelete={hardDeleteDefects} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")} onOpenInReview={(payload)=>setReviewModal(payload)} queueCount={queueCount} syncing2={syncing2} onSyncQueue={syncQueue}/>}
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} member={member} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
       </div>
 

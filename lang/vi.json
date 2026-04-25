@@ -271,7 +271,10 @@
     "filters": "LỌC",
     "select": "✓ CHỌN",
     "type_label": "KIỂU",
-    "status_label": "TRẠNG THÁI"
+    "status_label": "TRẠNG THÁI",
+    "date_range": "PHẠM VI NGÀY",
+    "date_from": "Từ",
+    "date_to": "ĐẾN"
   },
   "detail": {
     "update_status": "CẬP NHẬT TRẠNG THÁI",

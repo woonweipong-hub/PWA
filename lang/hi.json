@@ -271,7 +271,10 @@
     "filters": "फिल्टर",
     "select": "✓ चुनें",
     "type_label": "प्रकार",
-    "status_label": "स्थिति"
+    "status_label": "स्थिति",
+    "date_range": "तिथि सीमा",
+    "date_from": "से",
+    "date_to": "को"
   },
   "detail": {
     "update_status": "स्थिति अपडेट करें",

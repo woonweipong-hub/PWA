@@ -199,12 +199,27 @@ routerAdd("POST", "/api/storage/test", (e) => {
 
 // ====== AI ANALYSIS (multi-provider: Gemini, Ollama, OpenAI) ======
 
+// SiteShrimp uses BCA CONQUAS Internal Finishes (IF) vocabulary for residential
+// and interior building defects. The 7 IF elements (Floor, Wall, Ceiling, Door,
+// Window, Component, M&E Fittings) are derived client-side via conquasElementOf()
+// from the chosen `category`, so the AI does not need to emit element/checkpoint
+// fields directly — picking the right category from the list below makes the
+// CONQUAS grouping (REVIEW > Group by CONQUAS) and ZIP export route the entry
+// to the correct IF folder automatically.
+//
+// Severity vocabulary mirrors js/constants.js SEVERITY ("Critical","Major",
+// "Minor","Observation"). Do NOT introduce "High/Medium/Low" — those values
+// don't map to any color, status chip, or filter on the client.
 var AI_SERVER_PROMPT = [
-  "You are a defect inspector for construction sites and facilities management. Analyze this photo.",
+  "You are a CONQUAS-aware defect inspector for construction sites, residential building defects (HDB / private), and facilities management. Analyze this photo.",
   "Return ONLY a JSON object with: category, defect_type, severity, location, description, trade.",
   "Categories: Column, Beam, Slab, Door, Window, Wall, Floor, Ceiling, Roof,",
   "Plumbing, Electrical, Aircon, Painting, Tiling, Waterproofing, Cabinet, General.",
-  "Severity: Critical, High, Medium, Low.",
+  "Pick the category that maps to a BCA CONQUAS Internal-Finishes element when the photo shows interior finishing work:",
+  "Floor / Wall / Ceiling / Door / Window for surfaces; Cabinet for joinery and component (sanitary ware, vanity, wardrobe);",
+  "Plumbing / Electrical / Aircon for M&E fittings. Use Column / Beam / Slab / Roof for structural or external work.",
+  "For defect_type, use BCA Good Industry Practice terminology where applicable (e.g. hollowness / lippage / delamination for tiling; peeling / bubbling / brush marks for painting; bulging / cracking / dampness for waterproofing; misalignment / chipping for joinery).",
+  "Severity: Critical, Major, Minor, Observation. Map CONQUAS tiers — 3X (functional, high impact) -> Critical or Major; 2X (functional) -> Major or Minor; 1X (finishings) -> Minor or Observation.",
 ].join(" ");
 
 function analyzeWithGeminiServer(b64Photo, geminiKey, description) {

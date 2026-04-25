@@ -271,7 +271,10 @@
     "filters": "필터",
     "select": "✓ 선택",
     "type_label": "유형",
-    "status_label": "상태"
+    "status_label": "상태",
+    "date_range": "기간",
+    "date_from": "에서",
+    "date_to": "에게"
   },
   "detail": {
     "update_status": "상태 업데이트",

@@ -271,7 +271,10 @@
     "filters": "வடிகட்டிகள்",
     "select": "✓ தேர்வு",
     "type_label": "வகை",
-    "status_label": "நிலை"
+    "status_label": "நிலை",
+    "date_range": "தேதி வரம்பு",
+    "date_from": "இருந்து",
+    "date_to": "செய்ய"
   },
   "detail": {
     "update_status": "நிலையைப் புதுப்பிக்கவும்",

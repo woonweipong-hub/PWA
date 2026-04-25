@@ -271,7 +271,10 @@
     "filters": "FİLTRELER",
     "select": "✓ SEÇ",
     "type_label": "TİP",
-    "status_label": "DURUM"
+    "status_label": "DURUM",
+    "date_range": "TARİH ARALIĞI",
+    "date_from": "İtibaren",
+    "date_to": "ile"
   },
   "detail": {
     "update_status": "DURUMU GÜNCELLE",

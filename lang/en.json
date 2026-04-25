@@ -271,7 +271,10 @@
     "filters": "FILTERS",
     "select": "✓ SELECT",
     "type_label": "TYPE",
-    "status_label": "STATUS"
+    "status_label": "STATUS",
+    "date_range": "DATE RANGE",
+    "date_from": "From",
+    "date_to": "to"
   },
   "detail": {
     "update_status": "UPDATE STATUS",

@@ -271,7 +271,10 @@
     "filters": "ফিল্টার",
     "select": "✓ নির্বাচন করুন",
     "type_label": "টাইপ",
-    "status_label": "স্ট্যাটাস"
+    "status_label": "স্ট্যাটাস",
+    "date_range": "তারিখ রেঞ্জ",
+    "date_from": "থেকে",
+    "date_to": "থেকে"
   },
   "detail": {
     "update_status": "স্ট্যাটাস আপডেট করুন",

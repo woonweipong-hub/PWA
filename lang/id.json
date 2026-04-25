@@ -271,7 +271,10 @@
     "filters": "FILTER",
     "select": "✓ PILIH",
     "type_label": "JENIS",
-    "status_label": "STATUS"
+    "status_label": "STATUS",
+    "date_range": "RENTANG TANGGAL",
+    "date_from": "Dari",
+    "date_to": "ke"
   },
   "detail": {
     "update_status": "PERBARUI STATUS",

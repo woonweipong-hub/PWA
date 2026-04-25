@@ -271,7 +271,10 @@
     "filters": "FILTER",
     "select": "✓ VÄLJ",
     "type_label": "TYP",
-    "status_label": "STATUS"
+    "status_label": "STATUS",
+    "date_range": "DATUMintervall",
+    "date_from": "Från",
+    "date_to": "till"
   },
   "detail": {
     "update_status": "UPPDATERA STATUS",

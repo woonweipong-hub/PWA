@@ -271,7 +271,10 @@
     "filters": "စစ်ထုတ်မှုများ",
     "select": "✓ SELECT",
     "type_label": "အမျိုးအစား",
-    "status_label": "အဆင့်အတန်း"
+    "status_label": "အဆင့်အတန်း",
+    "date_range": "DATE RANGE",
+    "date_from": "ထံမှ",
+    "date_to": "ရန်"
   },
   "detail": {
     "update_status": "အခြေအနေကို အပ်ဒိတ်လုပ်ပါ။",

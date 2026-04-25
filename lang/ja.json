@@ -271,7 +271,10 @@
     "filters": "フィルター",
     "select": "✓ 選択",
     "type_label": "タイプ",
-    "status_label": "状態"
+    "status_label": "状態",
+    "date_range": "日付範囲",
+    "date_from": "から",
+    "date_to": "に"
   },
   "detail": {
     "update_status": "ステータス更新",

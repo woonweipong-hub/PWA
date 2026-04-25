@@ -271,7 +271,10 @@
     "filters": "SUODATTIMET",
     "select": "✓ VALITSE",
     "type_label": "TYYPPI",
-    "status_label": "STATUS"
+    "status_label": "STATUS",
+    "date_range": "DATE RANGE",
+    "date_from": "From",
+    "date_to": "to"
   },
   "detail": {
     "update_status": "PÄIVITÄ TILA",

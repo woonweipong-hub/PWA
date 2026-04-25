@@ -271,7 +271,10 @@
     "filters": "FILTRE",
     "select": "✓ VÆLG",
     "type_label": "TYPE",
-    "status_label": "STATUS"
+    "status_label": "STATUS",
+    "date_range": "DATOintervall",
+    "date_from": "Fra",
+    "date_to": "til"
   },
   "detail": {
     "update_status": "OPDATER STATUS",

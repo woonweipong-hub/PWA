@@ -271,7 +271,10 @@
     "filters": "过滤器",
     "select": "✓ 选择",
     "type_label": "类型",
-    "status_label": "地位"
+    "status_label": "地位",
+    "date_range": "日期范围",
+    "date_from": "从",
+    "date_to": "到"
   },
   "detail": {
     "update_status": "更新状态",

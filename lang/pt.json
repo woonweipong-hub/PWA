@@ -271,7 +271,10 @@
     "filters": "FILTROS",
     "select": "✓ SELECIONE",
     "type_label": "TIPO",
-    "status_label": "STATUS"
+    "status_label": "STATUS",
+    "date_range": "INTERVALO DE DATA",
+    "date_from": "De",
+    "date_to": "para"
   },
   "detail": {
     "update_status": "ATUALIZAR STATUS",

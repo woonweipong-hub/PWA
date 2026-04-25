@@ -271,7 +271,10 @@
     "filters": "PENAPIS",
     "select": "✓ PILIH",
     "type_label": "JENIS",
-    "status_label": "STATUS"
+    "status_label": "STATUS",
+    "date_range": "Julat TARIKH",
+    "date_from": "daripada",
+    "date_to": "kepada"
   },
   "detail": {
     "update_status": "KEMASKINI STATUS",
