@@ -283,7 +283,23 @@
     "save_preset_tip": "Salve a combinação de filtros atual como uma predefinição nomeada",
     "no_presets": "Ainda não há filtros salvos. Defina os filtros acima e toque em SALVAR para marcá-los.",
     "apply_preset": "Aplicar este filtro salvo",
-    "delete_preset": "Exclua este filtro salvo"
+    "delete_preset": "Exclua este filtro salvo",
+    "zip_export": "CEP",
+    "zip_export_tip": "Agrupe fotos em pastas para entrega ou arquivamento",
+    "zip_scheme_label": "FOTOS DO GRUPO POR",
+    "zip_scheme_conquas": "Elemento QUADRADO",
+    "zip_scheme_severity": "Gravidade",
+    "zip_scheme_status": "Status",
+    "zip_scheme_trade": "Troca",
+    "zip_scheme_component": "Componente",
+    "zip_scheme_area": "Área",
+    "zip_scope_filtered": "Agrupará fotos de {n} entradas filtradas.",
+    "zip_scope_selected": "Agrupará fotos de {n} entradas selecionadas.",
+    "bulk_location": "LOCALIZAÇÃO",
+    "bulk_component": "COMPONENTE",
+    "bulk_trade": "TROCA",
+    "bulk_entry_type": "TIPO DE ENTRADA",
+    "bulk_blank_keep": "Manter existente (em branco = sem alteração)"
   },
   "detail": {
     "update_status": "ATUALIZAR STATUS",
@@ -537,7 +553,10 @@
     "upload_logo": "CARREGAR LOGOTIPO",
     "replace_logo": "SUBSTITUIR LOGOTIPO",
     "remove_logo": "REMOVER",
-    "logo_help": "PNG, JPG, WebP ou SVG. Máximo de 200 KB. Aparece na capa de cada relatório PDF exportado."
+    "logo_help": "PNG, JPG, WebP ou SVG. Máximo de 200 KB. Aparece na capa de cada relatório PDF exportado.",
+    "my_signature": "MINHA ASSINATURA",
+    "signature_help": "Assine uma vez com o dedo (celular) ou mouse. Incorporado automaticamente acima da linha do Inspetor em cada PDF exportado.",
+    "signature_saved": "ASSINATURA SALVA"
   },
   "ai": {
     "title": "ANÁLISE DE FOTOS AI",

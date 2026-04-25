@@ -283,7 +283,23 @@
     "save_preset_tip": "Save the current filter combination as a named preset",
     "no_presets": "No saved filters yet. Set filters above and tap SAVE to bookmark them.",
     "apply_preset": "Apply this saved filter",
-    "delete_preset": "Delete this saved filter"
+    "delete_preset": "Delete this saved filter",
+    "zip_export": "ZIP",
+    "zip_export_tip": "Bundle photos into folders for handover or archive",
+    "zip_scheme_label": "GROUP PHOTOS BY",
+    "zip_scheme_conquas": "CONQUAS Element",
+    "zip_scheme_severity": "Severity",
+    "zip_scheme_status": "Status",
+    "zip_scheme_trade": "Trade",
+    "zip_scheme_component": "Component",
+    "zip_scheme_area": "Area",
+    "zip_scope_filtered": "Will bundle photos from {n} filtered entries.",
+    "zip_scope_selected": "Will bundle photos from {n} selected entries.",
+    "bulk_location": "LOCATION",
+    "bulk_component": "COMPONENT",
+    "bulk_trade": "TRADE",
+    "bulk_entry_type": "ENTRY TYPE",
+    "bulk_blank_keep": "Keep existing (blank = no change)"
   },
   "detail": {
     "update_status": "UPDATE STATUS",
@@ -537,7 +553,10 @@
     "upload_logo": "UPLOAD LOGO",
     "replace_logo": "REPLACE LOGO",
     "remove_logo": "REMOVE",
-    "logo_help": "PNG, JPG, WebP or SVG. Max 200 KB. Appears on the cover of every PDF report you export."
+    "logo_help": "PNG, JPG, WebP or SVG. Max 200 KB. Appears on the cover of every PDF report you export.",
+    "my_signature": "MY SIGNATURE",
+    "signature_help": "Sign once with your finger (mobile) or mouse. Auto-embedded above the Inspector line on every PDF you export.",
+    "signature_saved": "SIGNATURE SAVED"
   },
   "ai": {
     "title": "AI PHOTO ANALYSIS",

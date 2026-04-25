@@ -283,7 +283,23 @@
     "save_preset_tip": "Guarde la combinación de filtros actual como un ajuste preestablecido con nombre",
     "no_presets": "Aún no hay filtros guardados. Configure los filtros arriba y toque GUARDAR para marcarlos.",
     "apply_preset": "Aplicar este filtro guardado",
-    "delete_preset": "Eliminar este filtro guardado"
+    "delete_preset": "Eliminar este filtro guardado",
+    "zip_export": "CREMALLERA",
+    "zip_export_tip": "Agrupe fotografías en carpetas para entregarlas o archivarlas",
+    "zip_scheme_label": "FOTOS DE GRUPO POR",
+    "zip_scheme_conquas": "Elemento CUADRADO",
+    "zip_scheme_severity": "Gravedad",
+    "zip_scheme_status": "Estado",
+    "zip_scheme_trade": "Comercio",
+    "zip_scheme_component": "Componente",
+    "zip_scheme_area": "Área",
+    "zip_scope_filtered": "Agrupará fotos de {n} entradas filtradas.",
+    "zip_scope_selected": "Agrupará fotos de {n} entradas seleccionadas.",
+    "bulk_location": "UBICACIÓN",
+    "bulk_component": "COMPONENTE",
+    "bulk_trade": "COMERCIO",
+    "bulk_entry_type": "TIPO DE ENTRADA",
+    "bulk_blank_keep": "Mantener existente (en blanco = sin cambios)"
   },
   "detail": {
     "update_status": "ACTUALIZAR ESTADO",
@@ -537,7 +553,10 @@
     "upload_logo": "SUBIR LOGOTIPO",
     "replace_logo": "REEMPLAZAR EL LOGOTIPO",
     "remove_logo": "ELIMINAR",
-    "logo_help": "PNG, JPG, WebP o SVG. Máximo 200 KB. Aparece en la portada de cada informe PDF que exporta."
+    "logo_help": "PNG, JPG, WebP o SVG. Máximo 200 KB. Aparece en la portada de cada informe PDF que exporta.",
+    "my_signature": "MI FIRMA",
+    "signature_help": "Firma una vez con el dedo (móvil) o el ratón. Incrustado automáticamente encima de la línea del Inspector en cada PDF que exporte.",
+    "signature_saved": "FIRMA GUARDADA"
   },
   "ai": {
     "title": "ANÁLISIS DE FOTOS AI",

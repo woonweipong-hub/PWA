@@ -2535,42 +2535,97 @@ async function _ensureJSZip(){
     document.head.appendChild(s);
   });
 }
-async function exportConquasZip(defects,projectName,onProgress){
+// Generic photo-bundle ZIP exporter. Groups photos into folders by a
+// chosen scheme (CONQUAS IF element / severity / status / trade /
+// component / area) and renames each file to the saved iso_filename
+// when available — fall back to a {bucket}_{date}_{seq} name only
+// when no ISO 19650 name has been cached yet on that record.
+//
+// Schemes:
+//   "conquas"   → 7 IF folders (Floor / Wall / Ceiling / Door / Window
+//                 / Component / M&E Fittings) + Other (default; matches
+//                 CONQUAS QP handover convention).
+//   "severity"  → Critical / Major / Minor / Observation
+//   "status"    → Open / In Progress / Done / Verified / Closed
+//   "trade"     → COMPONENT_TRADE map (Plumbing / Electrical / etc.)
+//   "component" → component value as-is (Tile / Wall / Door / …)
+//   "area"      → location_area or first segment of location text
+//
+// Filename precedence per photo:
+//   1. Stored iso_filename (extension swapped to .jpg if needed)
+//   2. iso_filename + "-N.jpg" for extra photos (N=2,3,…)
+//   3. Fallback "{folder}_{YYYY-MM-DD}_{NNN}.jpg"
+async function exportPhotosZip(defects,projectName,scheme="conquas",onProgress){
   const JSZip=await _ensureJSZip();
   const zip=new JSZip();
   const counters={};
   const dateStamp=new Date().toISOString().slice(0,10);
   let processed=0,skipped=0;
-  const safePart=s=>String(s||"").replace(/[\/\\?*:|"<>]+/g,"_");
+  const safePart=s=>String(s||"_").replace(/[\/\\?*:|"<>]+/g,"_").trim()||"_";
+  const _bucketFor=(d)=>{
+    if(scheme==="severity")return safePart(d.severity||"Unspecified");
+    if(scheme==="status")return safePart(d.status||"Open");
+    if(scheme==="trade"){
+      const t=d.trade||(typeof COMPONENT_TRADE!=="undefined"&&COMPONENT_TRADE[d.component])||"Unspecified";
+      return safePart(t);
+    }
+    if(scheme==="component")return safePart(d.component||"Unspecified");
+    if(scheme==="area"){
+      const area=d.location_area||(d.location||"").split(">").pop()||"Unspecified";
+      return safePart(String(area).trim().slice(0,40));
+    }
+    // default: CONQUAS IF element
+    return safePart(conquasElementOf(d.component)||CONQUAS_ELEMENT_OTHER);
+  };
+  // ISO 19650 name → .jpg, with N-suffix for extra photos. Using the
+  // saved iso_filename means the ZIP carries the same evidence anchor
+  // referenced everywhere else (export CSV, contract advisor, audit log).
+  const _isoBase=(name)=>String(name||"").replace(/\.(jpe?g|png|webp)$/i,"");
   for(let di=0;di<defects.length;di++){
     const d=defects[di];
-    const element=conquasElementOf(d.component)||CONQUAS_ELEMENT_OTHER;
-    const folder=safePart(element);
+    const folder=_bucketFor(d);
     const photos=Array.isArray(d.photo)?d.photo:(d.photo?[d.photo]:[]);
-    for(const photoUrl of photos){
-      if(!photoUrl)continue;
+    const extras=Array.isArray(d.extraPhotos)?d.extraPhotos:[];
+    const all=[...photos,...extras].filter(Boolean);
+    for(let pi=0;pi<all.length;pi++){
+      const photoUrl=all[pi];
       try{
         const resp=await fetch(photoUrl,{mode:"cors"});
         if(!resp.ok){skipped++;continue;}
         const blob=await resp.blob();
-        counters[element]=(counters[element]||0)+1;
-        const seq=String(counters[element]).padStart(3,"0");
-        const fname=`${folder}_${dateStamp}_${seq}.jpg`;
+        counters[folder]=(counters[folder]||0)+1;
+        const seq=String(counters[folder]).padStart(3,"0");
+        let fname;
+        if(d.iso_filename){
+          const base=_isoBase(d.iso_filename);
+          fname=pi===0?`${base}.jpg`:`${base}-${pi+1}.jpg`;
+        }else{
+          fname=`${folder}_${dateStamp}_${seq}.jpg`;
+        }
         zip.file(`${folder}/${fname}`,blob);
         processed++;
         if(onProgress&&processed%3===0)onProgress(`Bundling ${processed} photo${processed===1?"":"s"}…`);
       }catch(e){
-        console.warn("[CONQUAS ZIP] fetch failed:",photoUrl,e);
+        console.warn("[Photo ZIP] fetch failed:",photoUrl,e);
         skipped++;
       }
     }
   }
-  // Manifest CSV so the receiver sees the bucket breakdown at a glance.
-  const manifest=["CONQUAS Element,Photos"];
-  for(const el of [...CONQUAS_IF_ELEMENTS,CONQUAS_ELEMENT_OTHER]){
-    manifest.push(`"${el}",${counters[el]||0}`);
+  const schemeLabel={
+    conquas:"CONQUAS Element",severity:"Severity",status:"Status",
+    trade:"Trade",component:"Component",area:"Area",
+  }[scheme]||"Bucket";
+  const manifest=[`${schemeLabel},Photos`];
+  // Stable order for CONQUAS so the manifest is reviewer-friendly; other
+  // schemes just sort alphabetically by bucket name.
+  if(scheme==="conquas"){
+    for(const el of [...CONQUAS_IF_ELEMENTS,CONQUAS_ELEMENT_OTHER]){
+      manifest.push(`"${el}",${counters[el]||0}`);
+    }
+  }else{
+    Object.keys(counters).sort().forEach(k=>manifest.push(`"${k}",${counters[k]}`));
   }
-  manifest.push(``,`Project,${safePart(projectName||"")}`,`Generated,${new Date().toISOString()}`,`Source,"${defects.length} entries; ${processed} photos bundled; ${skipped} skipped"`);
+  manifest.push(``,`Project,${safePart(projectName||"")}`,`Scheme,${scheme}`,`Generated,${new Date().toISOString()}`,`Source,"${defects.length} entries; ${processed} photos bundled; ${skipped} skipped"`);
   zip.file("_manifest.csv",manifest.join("\n"));
   if(processed===0){
     throw new Error(`No photos bundled (${skipped} skipped — likely CORS or missing files). Check that photos load in REVIEW first.`);
@@ -2580,12 +2635,19 @@ async function exportConquasZip(defects,projectName,onProgress){
     if(onProgress&&meta.percent>0)onProgress(`Generating ZIP ${meta.percent.toFixed(0)}%…`);
   });
   const safeProject=safePart(projectName||"project").replace(/\s+/g,"_");
-  const filename=`${safeProject}_CONQUAS_${dateStamp}.zip`;
+  const tag=scheme==="conquas"?"CONQUAS":scheme.toUpperCase();
+  const filename=`${safeProject}_${tag}_${dateStamp}.zip`;
   const url=URL.createObjectURL(zipBlob);
   const a=document.createElement("a");
   a.href=url;a.download=filename;a.click();
   setTimeout(()=>URL.revokeObjectURL(url),5000);
-  return {processed,skipped,counters};
+  return {processed,skipped,counters,scheme};
+}
+// Back-compat alias — existing call sites in REPORT use the CONQUAS-named
+// helper; keep that symbol working so the new generic exporter is purely
+// additive (no risk of breaking the existing 🏛 CONQUAS ZIP button).
+async function exportConquasZip(defects,projectName,onProgress){
+  return exportPhotosZip(defects,projectName,"conquas",onProgress);
 }
 
 // Full report export — defects + drawing annotations + saved comparisons in one CSV
@@ -3086,6 +3148,21 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     const labels=["Inspector / Logged By","Contractor / Trade","Client / Consultant"];
     let sx=margin;
     for(let i=0;i<3;i++){
+      // Embed the user's saved signature image above the inspector line
+      // (i===0). Other roles (contractor, client) stay blank for paper or
+      // future per-role signing. Wrapped in try/catch — addImage on a
+      // malformed dataURL just falls back to a blank line.
+      if(i===0&&opts.inspectorSignature){
+        try{
+          const _sigFmt=/^data:image\/(png|jpe?g)/i.exec(opts.inspectorSignature);
+          if(_sigFmt){
+            const _sigKind=_sigFmt[1].toUpperCase().replace("JPG","JPEG");
+            // Image sits above the line: from y-1 to y+10 (11mm tall).
+            // Width sigW-4 to leave 2mm margin on each side.
+            doc.addImage(opts.inspectorSignature,_sigKind,sx+2,y-1,sigW-4,10);
+          }
+        }catch(_e){}
+      }
       // Underline for the actual signature
       doc.setDrawColor(80,80,80);doc.setLineWidth(0.3);
       doc.line(sx,y+10,sx+sigW,y+10);
@@ -4362,6 +4439,81 @@ const darkInp={background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,25
 
 function Spin({size=14}){
   return <div style={{width:size,height:size,border:"2px solid currentColor",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.8s linear infinite",display:"inline-block"}}/>;
+}
+
+// Tiny vanilla-canvas signature pad. Draws strokes with mouse OR touch,
+// emits a base64 PNG dataURL on each pen-up so the parent can persist
+// after every stroke. No external lib so the bundle stays lean. Coords
+// are scaled from CSS pixels to canvas pixels to avoid the device-pixel-
+// ratio blur that bites naive implementations on retina phones.
+function SignaturePad({initialDataUrl,onChange,height=120}){
+  const ref=useRef();
+  const drawing=useRef(false);
+  const lastPt=useRef(null);
+  // Restore previous signature on mount/change so the user sees what's
+  // saved and can append rather than start from a blank box.
+  useEffect(()=>{
+    if(!ref.current)return;
+    const ctx=ref.current.getContext("2d");
+    ctx.clearRect(0,0,ref.current.width,ref.current.height);
+    if(!initialDataUrl)return;
+    const img=new Image();
+    img.onload=()=>ctx.drawImage(img,0,0,ref.current.width,ref.current.height);
+    img.src=initialDataUrl;
+  },[initialDataUrl]);
+  const _xy=(e)=>{
+    const r=ref.current.getBoundingClientRect();
+    const isTouch=e.touches&&e.touches.length;
+    const cx=isTouch?e.touches[0].clientX:e.clientX;
+    const cy=isTouch?e.touches[0].clientY:e.clientY;
+    return{
+      x:(cx-r.left)*ref.current.width/r.width,
+      y:(cy-r.top)*ref.current.height/r.height,
+    };
+  };
+  const start=(e)=>{
+    e.preventDefault();
+    drawing.current=true;
+    lastPt.current=_xy(e);
+  };
+  const move=(e)=>{
+    if(!drawing.current)return;
+    e.preventDefault();
+    const ctx=ref.current.getContext("2d");
+    ctx.strokeStyle="#1a1a1a";ctx.lineWidth=2.2;ctx.lineCap="round";ctx.lineJoin="round";
+    const p=_xy(e);
+    ctx.beginPath();
+    ctx.moveTo(lastPt.current.x,lastPt.current.y);
+    ctx.lineTo(p.x,p.y);
+    ctx.stroke();
+    lastPt.current=p;
+  };
+  const end=(e)=>{
+    if(!drawing.current)return;
+    if(e&&e.preventDefault)e.preventDefault();
+    drawing.current=false;
+    if(typeof onChange==="function")onChange(ref.current.toDataURL("image/png"));
+  };
+  const clear=()=>{
+    const ctx=ref.current.getContext("2d");
+    ctx.clearRect(0,0,ref.current.width,ref.current.height);
+    if(typeof onChange==="function")onChange("");
+  };
+  return(
+    <div>
+      <canvas
+        ref={ref}
+        width={600}
+        height={height*2}
+        style={{width:"100%",height,border:"1px dashed rgba(0,0,0,0.2)",borderRadius:8,background:"#fff",display:"block",touchAction:"none",cursor:"crosshair"}}
+        onMouseDown={start} onMouseMove={move} onMouseUp={end} onMouseLeave={end}
+        onTouchStart={start} onTouchMove={move} onTouchEnd={end} onTouchCancel={end}
+      />
+      <div style={{display:"flex",justifyContent:"flex-end",marginTop:6}}>
+        <button onClick={clear} style={{background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:8,padding:"5px 12px",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{t("actions.clear")}</button>
+      </div>
+    </div>
+  );
 }
 
 function VoiceField({label,value,onChange,placeholder,multiline}){
@@ -7058,6 +7210,43 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   const assignees=members.length>0?members.map(m=>m.name):["Site Manager","Engineer","Contractor","QC Inspector","Safety Officer"];
   const MAX_PHOTOS=10;
 
+  // GPS auto-tag — fires once per capture session when the form has a
+  // photo but no lat/lng yet. Non-blocking: AI auto-analyze and the save
+  // flow run in parallel; a slow / denied geolocation never holds the
+  // user up. Failure is silent (info-level log, no alert). Per-form-state
+  // re-check inside setForm so a value the user typed mid-resolution
+  // isn't overwritten — geolocation always loses to user input.
+  const _gpsTriedRef=useRef(false);
+  useEffect(()=>{
+    if(!form.photos.length)return;
+    if(form.lat||form.lng)return;
+    if(_gpsTriedRef.current)return;
+    if(typeof navigator==="undefined"||!navigator.geolocation)return;
+    _gpsTriedRef.current=true;
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        const lat=pos.coords.latitude,lng=pos.coords.longitude;
+        if(!Number.isFinite(lat)||!Number.isFinite(lng))return;
+        setForm(prev=>(prev.lat||prev.lng)?prev:{
+          ...prev,lat,lng,
+          mapZoom:18,
+          fieldProvenance:{
+            ...(prev.fieldProvenance||{}),
+            lat:{source:"auto",verified_at:new Date().toISOString(),accuracy:Math.round(pos.coords.accuracy||0)},
+            lng:{source:"auto",verified_at:new Date().toISOString(),accuracy:Math.round(pos.coords.accuracy||0)},
+          },
+        });
+        console.log("[GPS] auto-tagged",lat.toFixed(5),lng.toFixed(5),"+/-",Math.round(pos.coords.accuracy||0),"m");
+      },
+      err=>console.log("[GPS] auto-tag skipped:",err?.message||err),
+      {enableHighAccuracy:true,timeout:8000,maximumAge:60000}
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[form.photos.length]);
+  // Reset the GPS-tried gate when the form is cleared (post-save) so the
+  // next capture re-fires geolocation instead of being silently skipped.
+  useEffect(()=>{if(!form.photos.length&&!form.title&&!form.description)_gpsTriedRef.current=false;},[form.photos.length,form.title,form.description]);
+
   const handlePhoto=e=>{
     // Strict filter matching the PocketBase schema (JPEG/PNG/WebP only).
     // HEIC/HEIF (iPhone default) fails upload silently — reject at the picker
@@ -7575,6 +7764,13 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         if(c)compressed.push(c);
       }
       const trade=COMPONENT_TRADE[form.component]||"";
+      // Promote auto-captured GPS to top-level lat/lng/mapZoom so the
+      // PocketBase record carries them. Without this the auto-tag effect
+      // would set them on local form state and the save would drop them.
+      // Numbers only — strings would fail PocketBase number-type rules.
+      const _lat=Number.isFinite(parseFloat(form.lat))?parseFloat(form.lat):null;
+      const _lng=Number.isFinite(parseFloat(form.lng))?parseFloat(form.lng):null;
+      const _zoom=Number.isFinite(parseFloat(form.mapZoom))?parseFloat(form.mapZoom):(_lat&&_lng?18:null);
       const saveResult=await onSave({
         ...form,
         title:effectiveTitle,
@@ -7586,6 +7782,9 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         projectName:currentProject?.name||"",
         entryType:form.entryType||"Defect",
         trade,
+        ...(_lat!=null?{lat:_lat}:{}),
+        ...(_lng!=null?{lng:_lng}:{}),
+        ...(_zoom!=null?{mapZoom:_zoom}:{}),
         status:"Open",loggedBy:member?.name||"",
         loggedByRole:member?.role||"",
         createdAt:DB.serverTimestamp(),
@@ -8855,7 +9054,23 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
   const[selectMode,setSelectMode]=useState(false);
   const[selectedIds,setSelectedIds]=useState(()=>new Set());
   const[showBulkPanel,setShowBulkPanel]=useState(false);
+  // ZIP-export scheme picker. Opened from the REVIEW header alongside the
+  // view toggle so users can bundle photos into folders without going to
+  // REPORT. State holds the in-progress label so the button can show
+  // realtime "Bundling 12 photos…" feedback.
+  const[zipMenuOpen,setZipMenuOpen]=useState(false);
+  const[zipBusy,setZipBusy]=useState({active:false,label:""});
   const[showMapView,setShowMapView]=useState(false);
+  // Photo-gallery grid view — shows entries with photos as a thumbnail grid.
+  // Mutually exclusive with MAP view; LIST is the default. Persists in
+  // localStorage so a user who prefers visual triage doesn't have to flip
+  // to GRID every time they open REVIEW.
+  const[showGridView,setShowGridView]=useState(()=>!!local.get(REVIEW_GRID_VIEW_KEY));
+  useEffect(()=>{local.set(REVIEW_GRID_VIEW_KEY,showGridView);},[showGridView]);
+  const _setView=(mode)=>{
+    setShowMapView(mode==="map");
+    setShowGridView(mode==="grid");
+  };
   // CONQUAS IF grouping — client-side derived from component.
   // Persist per-device so a QP/assessor keeps their preferred view.
   const[groupByConquas,setGroupByConquas]=useState(()=>local.get("sdt-group-conquas-v1")===true);
@@ -8866,8 +9081,15 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
   const[bulkDuration,setBulkDuration]=useState("");
   const[bulkDueDate,setBulkDueDate]=useState("");
   const[bulkComment,setBulkComment]=useState("");
+  // Extended batch-edit fields. Free-text inputs (location, component,
+  // trade) are only applied when non-empty so blanks don't wipe existing
+  // values across N selected entries. entryType is a chip choice.
+  const[bulkLocation,setBulkLocation]=useState("");
+  const[bulkComponent,setBulkComponent]=useState("");
+  const[bulkTrade,setBulkTrade]=useState("");
+  const[bulkEntryType,setBulkEntryType]=useState("");
   const[bulkSaving,setBulkSaving]=useState(false);
-  const exitSelect=()=>{setSelectMode(false);setSelectedIds(new Set());setShowBulkPanel(false);setBulkStatus("");setBulkSeverity("");setBulkAssignee("");setBulkDuration("");setBulkDueDate("");setBulkComment("");};
+  const exitSelect=()=>{setSelectMode(false);setSelectedIds(new Set());setShowBulkPanel(false);setBulkStatus("");setBulkSeverity("");setBulkAssignee("");setBulkDuration("");setBulkDueDate("");setBulkComment("");setBulkLocation("");setBulkComponent("");setBulkTrade("");setBulkEntryType("");};
   // Selection IDs carry defect/drawing/comparison IDs depending on `source`.
   // Clear when the user switches sub-tab so stale IDs don't leak into the
   // wrong delete handler (e.g. treating a drawing ID as a defect ID).
@@ -8880,6 +9102,10 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
     if(bulkAssignee.trim())patch.assignee=bulkAssignee.trim();
     if(bulkDuration)patch.duration=bulkDuration;
     if(bulkDueDate)patch.dueDate=bulkDueDate;
+    if(bulkLocation.trim())patch.location=bulkLocation.trim();
+    if(bulkComponent.trim())patch.component=bulkComponent.trim();
+    if(bulkTrade.trim())patch.trade=bulkTrade.trim();
+    if(bulkEntryType)patch.entryType=bulkEntryType;
     const appendComment=bulkComment.trim();
     if(!Object.keys(patch).length&&!appendComment){alert("Pick at least one field to update, or write a shared comment.");return;}
     setBulkSaving(true);
@@ -9053,6 +9279,33 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
     if(!confirm(`Delete preset "${name}"?`))return;
     setSavedPresets(prev=>prev.filter(p=>p.name!==name));
   };
+  // Run the multi-scheme photo ZIP export against the currently-filtered
+  // entries (or the selected subset if SELECT mode is active). Closes
+  // the menu, sets the busy spinner, then surfaces a result alert with
+  // bucket counts. Exception messages bubble through to the user so
+  // CORS / missing-file failures are actionable, not silent.
+  const runZipExport=async(scheme)=>{
+    setZipMenuOpen(false);
+    const target=selectMode&&selectedIds.size>0
+      ?filtered.filter(d=>selectedIds.has(d.id))
+      :filtered;
+    if(!target.length){alert("No entries to bundle. Adjust filters or select rows first.");return;}
+    setZipBusy({active:true,label:"Bundling photos…"});
+    try{
+      const result=await exportPhotosZip(
+        target,currentProject?.name,scheme,
+        (msg)=>setZipBusy({active:true,label:msg})
+      );
+      const parts=Object.entries(result.counters)
+        .filter(([,n])=>n>0)
+        .map(([k,n])=>`${k}: ${n}`).join(" · ");
+      alert(`✓ ZIP downloaded\n\nScheme: ${scheme}\n${result.processed} photo${result.processed===1?"":"s"} bundled.${result.skipped?`\n${result.skipped} skipped (see console).`:""}\n\n${parts}`);
+    }catch(e){
+      alert("ZIP export failed: "+(e?.message||e));
+    }finally{
+      setZipBusy({active:false,label:""});
+    }
+  };
   // ── Display-language translation (Phase 2) ──
   // User toggle persisted per device so the Review list stays translated
   // across sessions. Defaults ON when UI is non-English AND AI is configured
@@ -9089,6 +9342,37 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
           {(activeFilters>0||q)&&!selectMode&&<button onClick={clearAll} style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:20,padding:"4px 10px",color:"#ff3b30",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.clear")} ({activeFilters+(q?1:0)})</button>}
+          {/* ZIP button — opens the scheme picker. Renders only when at
+              least one entry has a photo, otherwise the bundle would be
+              empty. Disabled while busy so a slow network request can't
+              be re-fired. Source must be "entries" because the multi-
+              scheme bundle only makes sense for defect entries (drawings
+              and comparisons have their own export paths). */}
+          {source==="entries"&&filtered.some(d=>d.photo||(d.extraPhotos&&d.extraPhotos.length))&&!selectMode&&(
+            <div style={{position:"relative"}}>
+              <button onClick={()=>setZipMenuOpen(v=>!v)} disabled={zipBusy.active} title={t("review.zip_export_tip")} style={{background:zipBusy.active?"rgba(88,86,214,0.15)":"rgba(88,86,214,0.1)",border:"1px solid rgba(88,86,214,0.3)",borderRadius:20,padding:"4px 10px",color:"#5856d6",fontSize:10,fontWeight:800,cursor:zipBusy.active?"wait":"pointer",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em",display:"inline-flex",alignItems:"center",gap:5}}>
+                {zipBusy.active?<><Spin size={9}/>{(zipBusy.label||"…").slice(0,18)}</>:<>📦 {t("review.zip_export")}</>}
+              </button>
+              {zipMenuOpen&&!zipBusy.active&&(
+                <div style={{position:"absolute",top:"100%",right:0,marginTop:6,background:"#fff",borderRadius:12,boxShadow:"0 6px 20px rgba(0,0,0,0.18)",border:"1px solid rgba(0,0,0,0.06)",zIndex:30,minWidth:230,overflow:"hidden"}}>
+                  <div style={{padding:"10px 14px 6px",fontSize:9,fontWeight:800,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",borderBottom:"1px solid rgba(0,0,0,0.05)"}}>{t("review.zip_scheme_label")}</div>
+                  {[
+                    ["conquas","🏛 ",t("review.zip_scheme_conquas")],
+                    ["severity","⚠️ ",t("review.zip_scheme_severity")],
+                    ["status","◐ ",t("review.zip_scheme_status")],
+                    ["trade","🔧 ",t("review.zip_scheme_trade")],
+                    ["component","🧱 ",t("review.zip_scheme_component")],
+                    ["area","📍 ",t("review.zip_scheme_area")],
+                  ].map(([id,icon,label])=>(
+                    <button key={id} onClick={()=>runZipExport(id)} style={{width:"100%",padding:"11px 14px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.04)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#1a1a1a",display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:14}}>{icon}</span>{label}
+                    </button>
+                  ))}
+                  <div style={{padding:"8px 14px",fontSize:10,color:"rgba(0,0,0,0.4)",lineHeight:1.4,background:"#fafafa"}}>{selectMode&&selectedIds.size>0?t("review.zip_scope_selected").replace("{n}",selectedIds.size):t("review.zip_scope_filtered").replace("{n}",filtered.length)}</div>
+                </div>
+              )}
+            </div>
+          )}
           {canBulk&&archivedDefects.length>0&&!selectMode&&(
             <button onClick={()=>setShowArchive(true)} title="View archived entries — auto-delete after 7 days; restore or permanent-delete available" style={{background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:20,padding:"4px 10px",color:"rgba(0,0,0,0.55)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>🗃 ARCHIVE ({archivedDefects.length})</button>
           )}
@@ -9347,15 +9631,66 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
         </div>
       )}
 
-      {/* View toggle: LIST | MAP (only show MAP if any entries have GPS coords) */}
-      {(()=>{const pinnable=filtered.filter(d=>parseDefectCoords(d));if(pinnable.length===0)return null;return(
-        <div style={{display:"flex",gap:4,padding:3,background:"rgba(0,0,0,0.05)",borderRadius:10,marginBottom:12,width:"max-content"}}>
-          <button onClick={()=>setShowMapView(false)} style={{padding:"6px 14px",borderRadius:7,border:"none",background:!showMapView?"#fff":"transparent",color:!showMapView?"#1a1a1a":"rgba(0,0,0,0.5)",boxShadow:!showMapView?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>📋 LIST</button>
-          <button onClick={()=>setShowMapView(true)} style={{padding:"6px 14px",borderRadius:7,border:"none",background:showMapView?"#fff":"transparent",color:showMapView?"#1a1a1a":"rgba(0,0,0,0.5)",boxShadow:showMapView?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>MAP ({pinnable.length})</button>
-        </div>
-      );})()}
+      {/* View toggle: LIST | GRID | MAP. GRID is always available; MAP
+          appears only when at least one entry has GPS coords. Gallery-style
+          GRID gives QA reviewers a fast visual scan across photos for
+          duplicate / wrong-trade / mis-categorised captures. */}
+      {(()=>{
+        const pinnable=filtered.filter(d=>parseDefectCoords(d));
+        const photoCount=filtered.filter(d=>d.photo||(d.extraPhotos&&d.extraPhotos.length)).length;
+        const _Btn=({active,onClick,children,inFlex})=>(
+          <button onClick={onClick} style={{padding:"6px 14px",borderRadius:7,border:"none",background:active?"#fff":"transparent",color:active?"#1a1a1a":"rgba(0,0,0,0.5)",boxShadow:active?"0 1px 3px rgba(0,0,0,0.08)":"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:inFlex?"inline-flex":"inline-block",alignItems:"center",gap:6}}>{children}</button>
+        );
+        return(
+          <div style={{display:"flex",gap:4,padding:3,background:"rgba(0,0,0,0.05)",borderRadius:10,marginBottom:12,width:"max-content"}}>
+            <_Btn active={!showMapView&&!showGridView} onClick={()=>_setView("list")}>📋 LIST</_Btn>
+            <_Btn active={showGridView} onClick={()=>_setView("grid")} inFlex={true}>🖼 GRID ({photoCount})</_Btn>
+            {pinnable.length>0&&<_Btn active={showMapView} onClick={()=>_setView("map")} inFlex={true}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>MAP ({pinnable.length})</_Btn>}
+          </div>
+        );
+      })()}
       {showMapView&&<DefectsMapView defects={filtered} allDefects={defects} onView={onView} onUpdate={onUpdate} selectMode={selectMode} selectedIds={selectedIds} toggleId={toggleId} member={member} company={company} members={members}/>}
-      {!showMapView&&filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>{q?t("review.no_matching")+" \""+search+"\"":t("review.no_entries")}</div>}
+      {/* GRID view — photo gallery for visual triage. Each thumbnail is a
+          tap target that opens the entry detail. Severity is the border
+          colour so the eye can spot Critical / Major at a glance.
+          Entries without photos render a small placeholder card with the
+          title, so they're not silently hidden. */}
+      {showGridView&&(
+        filtered.length===0
+          ?<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>{q?t("review.no_matching")+" \""+search+"\"":t("review.no_entries")}</div>
+          :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(106px,1fr))",gap:8,marginBottom:16}}>
+            {filtered.map(d=>{
+              const _photo=Array.isArray(d.photo)?d.photo[0]:d.photo;
+              const _extra=Array.isArray(d.extraPhotos)?d.extraPhotos[0]:null;
+              const _src=_photo||_extra||"";
+              const _color=SEV_COLOR[d.severity]||"#8e8e93";
+              const _isOver=_isOverdue(d);
+              const _checked=selectMode&&selectedIds.has(d.id);
+              const _showOrig=showOriginalIds.has(d.id);
+              const _dv=applyDisplayXlate(d,displayMap,_showOrig);
+              return(
+                <div key={d.id} onClick={()=>selectMode?toggleId(d.id):onView(_dv)} style={{aspectRatio:"1",borderRadius:10,overflow:"hidden",border:`2px solid ${_checked?"#ff6b00":_color}`,background:_src?"#1a1a1a":"#fff",position:"relative",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.08)"}}>
+                  {_src
+                    ?<img src={_src} alt="" loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+                    :<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",padding:6,textAlign:"center"}}>{(_dv.title||"NO PHOTO").slice(0,40)}</div>
+                  }
+                  {/* Severity dot + overdue badge sit top-right; status chip
+                      sits bottom-left over the gradient. Title overlay only
+                      renders when there's a photo (otherwise it's the body). */}
+                  {_isOver&&<span style={{position:"absolute",top:4,right:4,background:"#ff3b30",color:"#fff",fontSize:9,fontWeight:800,padding:"1px 5px",borderRadius:8,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em",boxShadow:"0 1px 2px rgba(0,0,0,0.3)"}}>⏰</span>}
+                  {_src&&(
+                    <div style={{position:"absolute",bottom:0,left:0,right:0,background:"linear-gradient(transparent,rgba(0,0,0,0.78))",padding:"22px 6px 5px",color:"#fff"}}>
+                      <div style={{fontSize:10,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",lineHeight:1.15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{_dv.title||"—"}</div>
+                      <div style={{fontSize:9,opacity:0.75,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.defect_id||""} · {d.status||""}</div>
+                    </div>
+                  )}
+                  {_checked&&<div style={{position:"absolute",top:4,left:4,width:18,height:18,borderRadius:5,background:"#ff6b00",color:"#fff",fontSize:11,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 1px 2px rgba(0,0,0,0.3)"}}>✓</div>}
+                </div>
+              );
+            })}
+          </div>
+      )}
+      {!showMapView&&!showGridView&&filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>{q?t("review.no_matching")+" \""+search+"\"":t("review.no_entries")}</div>}
       {/* CONQUAS grouping — interleaves section headers with card rows
           in canonical IF order. When the toggle is off this is a passthrough
           and the render below is identical to the old flat list. */}
@@ -9379,7 +9714,9 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
         }
         // Keep the original i-based animationDelay by counting card rows.
         let cardIndex=-1;
-        return(!showMapView&&renderRows.map(row=>{
+        // Hide the LIST renderer when MAP or GRID view is active so the
+        // chosen view owns the screen entirely instead of rendering both.
+        return(!showMapView&&!showGridView&&renderRows.map(row=>{
           if(row.type==="header"){
             return(
               <div key={row.key} style={{display:"flex",alignItems:"center",gap:8,margin:"14px 2px 6px",padding:"6px 10px",background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.18)",borderRadius:8}}>
@@ -9479,6 +9816,35 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
           <div style={{marginBottom:10}}>
             <div style={lbl()}>TARGET DATE</div>
             <input type="date" value={bulkDueDate} onChange={e=>setBulkDueDate(e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
+          </div>
+
+          {/* Extended bulk fields — Location, Component, Trade, Entry Type.
+              Free-text inputs use the same "blank = keep" semantics as
+              Assignee. Entry Type is a chip row mirroring the LOG picker
+              so taxonomy stays consistent. */}
+          <div style={{marginBottom:10}}>
+            <div style={lbl()}>{t("review.bulk_location")}</div>
+            <input value={bulkLocation} onChange={e=>setBulkLocation(e.target.value)} placeholder={t("review.bulk_blank_keep")} style={{...inp,width:"100%",flex:"unset"}}/>
+          </div>
+
+          <div style={{marginBottom:10}}>
+            <div style={lbl()}>{t("review.bulk_component")}</div>
+            <input value={bulkComponent} onChange={e=>setBulkComponent(e.target.value)} placeholder={t("review.bulk_blank_keep")} style={{...inp,width:"100%",flex:"unset"}}/>
+          </div>
+
+          <div style={{marginBottom:10}}>
+            <div style={lbl()}>{t("review.bulk_trade")}</div>
+            <input value={bulkTrade} onChange={e=>setBulkTrade(e.target.value)} placeholder={t("review.bulk_blank_keep")} style={{...inp,width:"100%",flex:"unset"}}/>
+          </div>
+
+          <div style={{marginBottom:10}}>
+            <div style={lbl()}>{t("review.bulk_entry_type")}</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              <button onClick={()=>setBulkEntryType("")} style={{padding:"6px 10px",borderRadius:18,border:`1.5px solid ${bulkEntryType===""?"rgba(0,0,0,0.3)":"rgba(0,0,0,0.12)"}`,background:bulkEntryType===""?"rgba(0,0,0,0.08)":"#fff",color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>— KEEP</button>
+              {(typeof getAllEntryTypes==="function"?getAllEntryTypes():["Defect","Observation","Update","Instruction"]).map(et=>(
+                <button key={et} onClick={()=>setBulkEntryType(et)} style={{padding:"6px 10px",borderRadius:18,border:`1.5px solid ${bulkEntryType===et?(typeof typeColor==="function"?typeColor(et):"#ff6b00"):"rgba(0,0,0,0.12)"}`,background:bulkEntryType===et?(typeof typeBg==="function"?typeBg(et):"rgba(255,107,0,0.08)"):"#fff",color:bulkEntryType===et?(typeof typeColor==="function"?typeColor(et):"#ff6b00"):"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{tOpt(et).toUpperCase()}</button>
+              ))}
+            </div>
           </div>
 
           <div style={{marginBottom:14}}>
@@ -10348,6 +10714,19 @@ function ProfilePanel({member,authUser,company,onClose,onSignOut,onCompanyUpdate
   // cover blows out for no real visual gain at A4 thumbnail scale.
   const _logoMap=local.get(COMPANY_LOGO_KEY)||{};
   const[companyLogo,setCompanyLogo]=useState(()=>company?.companyId?(_logoMap[company.companyId]||null):null);
+  // Personal signature (base64 PNG dataURL) for the SIGN-OFF block on PDF
+  // exports. Per-user so a shared device with multiple logins keeps each
+  // user's signature private. Auto-embedded above the inspector line on
+  // every PDF the user exports — no per-export prompt.
+  const _sigMap=local.get(MY_SIGNATURE_KEY)||{};
+  const[mySignature,setMySignature]=useState(()=>authUser?.id?(_sigMap[authUser.id]||""):"");
+  const _persistSignature=(dataUrl)=>{
+    setMySignature(dataUrl);
+    if(!authUser?.id)return;
+    const all=local.get(MY_SIGNATURE_KEY)||{};
+    if(dataUrl)all[authUser.id]=dataUrl;else delete all[authUser.id];
+    local.set(MY_SIGNATURE_KEY,all);
+  };
   const logoFileRef=useRef();
   const onLogoFile=(e)=>{
     const f=(e.target.files||[])[0];
@@ -10542,6 +10921,17 @@ function ProfilePanel({member,authUser,company,onClose,onSignOut,onCompanyUpdate
           </div>
         </div>
 
+        {/* Personal signature for PDF SIGN-OFF block. Drawn once with finger
+            (mobile) or mouse (laptop), persists to localStorage, then
+            auto-embedded above the Inspector / Logged By line on every PDF
+            the user exports. No retyping per export. */}
+        <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:12}}>
+          <div style={lbl()}>{t("profile.my_signature")}</div>
+          <div style={{fontSize:10,color:"rgba(0,0,0,0.45)",marginBottom:8,lineHeight:1.4}}>{t("profile.signature_help")}</div>
+          <SignaturePad initialDataUrl={mySignature} onChange={_persistSignature} height={110}/>
+          {mySignature&&<div style={{fontSize:10,color:"#30d158",marginTop:6,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em"}}>✓ {t("profile.signature_saved")}</div>}
+        </div>
+
         {/* Change Password */}
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:12}}>
           <div style={lbl()}>CHANGE PASSWORD</div>
@@ -10584,6 +10974,18 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   // counters stay in sync without sharing state.
   const _todayOverdue=new Date().toISOString().slice(0,10);
   const overdue=defects.filter(d=>d.dueDate&&String(d.dueDate).slice(0,10)<_todayOverdue&&!["Verified","Closed"].includes(d.status)).length;
+
+  // Resolve current user's saved signature for embedding in the PDF
+  // SIGN-OFF block. Read straight from pb_auth so we don't have to thread
+  // authUser through every Report -> exportReportPdf call site.
+  const _resolveMySignature=()=>{
+    try{
+      const auth=JSON.parse(localStorage.getItem("pb_auth")||"{}");
+      const uid=auth?.user?.id;
+      if(!uid)return"";
+      return(local.get(MY_SIGNATURE_KEY)||{})[uid]||"";
+    }catch{return"";}
+  };
 
   // Lifecycle / health metrics — what every commercial defect tracker shows
   // alongside status counts. Drives the "AVG DAYS TO CLOSE" / "ON-TIME %"
@@ -11407,9 +11809,9 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
                 )}
               </div>
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang,getActiveProfileId(currentProject,company?.companyId));}catch(e){alert("Export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true,langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId),companyLogo:(local.get(COMPANY_LOGO_KEY)||{})[company?.companyId]||""});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false,langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId),companyLogo:(local.get(COMPANY_LOGO_KEY)||{})[company?.companyId]||""});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang,getActiveProfileId(currentProject,company?.companyId));await new Promise(r=>setTimeout(r,600));await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId),companyLogo:(local.get(COMPANY_LOGO_KEY)||{})[company?.companyId]||""});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true,langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId),companyLogo:(local.get(COMPANY_LOGO_KEY)||{})[company?.companyId]||"",inspectorSignature:_resolveMySignature()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false,langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId),companyLogo:(local.get(COMPANY_LOGO_KEY)||{})[company?.companyId]||"",inspectorSignature:_resolveMySignature()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang,getActiveProfileId(currentProject,company?.companyId));await new Promise(r=>setTimeout(r,600));await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId),companyLogo:(local.get(COMPANY_LOGO_KEY)||{})[company?.companyId]||"",inspectorSignature:_resolveMySignature()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
               <button onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);const result=await exportToGoogleSheets(defs,currentProject?.name,company?.companyName,exportLang);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Bundling CONQUAS photos…"});try{const result=await exportConquasZip(filtered,currentProject?.name,(msg)=>setPdfExport({active:true,label:msg}));const parts=Object.entries(result.counters).filter(([,n])=>n>0).map(([el,n])=>`${el}: ${n}`).join(" · ");alert(`✓ CONQUAS ZIP downloaded\n\n${result.processed} photo${result.processed===1?"":"s"} bundled across ${Object.keys(result.counters).length} element${Object.keys(result.counters).length===1?"":"s"}.${result.skipped?`\n${result.skipped} skipped (see console).`:""}\n\n${parts}`);}catch(e){alert("CONQUAS ZIP export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#5856d6",opacity:pdfExport.active?0.5:1}}>🏛 CONQUAS ZIP <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· 7 element folders, renamed</span></button>
             </div>

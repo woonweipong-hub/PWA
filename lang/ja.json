@@ -283,7 +283,23 @@
     "save_preset_tip": "現在のフィルターの組み合わせを名前付きプリセットとして保存します",
     "no_presets": "フィルターはまだ保存されていません。 上でフィルターを設定し、「保存」をタップしてブックマークします。",
     "apply_preset": "この保存されたフィルターを適用します",
-    "delete_preset": "この保存されたフィルターを削除します"
+    "delete_preset": "この保存されたフィルターを削除します",
+    "zip_export": "ジップ",
+    "zip_export_tip": "引き渡しまたはアーカイブのために写真をフォルダーにバンドルする",
+    "zip_scheme_label": "集合写真撮影者",
+    "zip_scheme_conquas": "正方形要素",
+    "zip_scheme_severity": "重大度",
+    "zip_scheme_status": "状態",
+    "zip_scheme_trade": "貿易",
+    "zip_scheme_component": "成分",
+    "zip_scheme_area": "エリア",
+    "zip_scope_filtered": "{n} 個のフィルタリングされたエントリからの写真をバンドルします。",
+    "zip_scope_selected": "{n} 個の選択したエントリから写真をバンドルします。",
+    "bulk_location": "位置",
+    "bulk_component": "成分",
+    "bulk_trade": "貿易",
+    "bulk_entry_type": "エントリータイプ",
+    "bulk_blank_keep": "既存の状態を維持します (空白 = 変更なし)"
   },
   "detail": {
     "update_status": "ステータス更新",
@@ -352,7 +368,7 @@
     "overdue_help": "目標日を過ぎており、まだ検証されていない、または完了していません",
     "avg_days_close": "閉店までの平均日数",
     "on_time_rate": "オンタイム率",
-    "trend_30d": "30-DAY TREND",
+    "trend_30d": "30日間のトレンド",
     "trend_total_suffix": "記録された",
     "by_severity": "重大度別",
     "recent_entries": "最近のエントリー",
@@ -537,7 +553,10 @@
     "upload_logo": "ロゴをアップロードする",
     "replace_logo": "ロゴを置き換える",
     "remove_logo": "取り除く",
-    "logo_help": "PNG、JPG、WebP、または SVG。 最大200KB。 エクスポートするすべての PDF レポートの表紙に表示されます。"
+    "logo_help": "PNG、JPG、WebP、または SVG。 最大200KB。 エクスポートするすべての PDF レポートの表紙に表示されます。",
+    "my_signature": "私の署名",
+    "signature_help": "指 (モバイル) またはマウスで 1 回署名します。 エクスポートするすべての PDF のインスペクターの行の上に自動的に埋め込まれます。",
+    "signature_saved": "署名が保存されました"
   },
   "ai": {
     "title": "AI写真分析",

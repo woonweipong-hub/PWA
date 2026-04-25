@@ -283,7 +283,23 @@
     "save_preset_tip": "Salva la combinazione di filtri corrente come preimpostazione con nome",
     "no_presets": "Nessun filtro ancora salvato. Imposta i filtri sopra e tocca SALVA per aggiungerli ai segnalibri.",
     "apply_preset": "Applica questo filtro salvato",
-    "delete_preset": "Elimina questo filtro salvato"
+    "delete_preset": "Elimina questo filtro salvato",
+    "zip_export": "CAP",
+    "zip_export_tip": "Raggruppa le foto in cartelle per la consegna o l'archiviazione",
+    "zip_scheme_label": "FOTO DI GRUPPO DI",
+    "zip_scheme_conquas": "Elemento QUADRATO",
+    "zip_scheme_severity": "Gravità",
+    "zip_scheme_status": "Stato",
+    "zip_scheme_trade": "Commercio",
+    "zip_scheme_component": "Componente",
+    "zip_scheme_area": "Zona",
+    "zip_scope_filtered": "Raggrupperà le foto da {n} voci filtrate.",
+    "zip_scope_selected": "Raggrupperà le foto da {n} voci selezionate.",
+    "bulk_location": "POSIZIONE",
+    "bulk_component": "COMPONENTE",
+    "bulk_trade": "COMMERCIO",
+    "bulk_entry_type": "TIPO DI INGRESSO",
+    "bulk_blank_keep": "Mantieni esistente (vuoto = nessuna modifica)"
   },
   "detail": {
     "update_status": "AGGIORNA STATO",
@@ -537,7 +553,10 @@
     "upload_logo": "CARICA LOGO",
     "replace_logo": "SOSTITUIRE LOGO",
     "remove_logo": "RIMUOVERE",
-    "logo_help": "PNG, JPG, WebP o SVG. Massimo 200KB. Appare sulla copertina di ogni report PDF esportato."
+    "logo_help": "PNG, JPG, WebP o SVG. Massimo 200KB. Appare sulla copertina di ogni report PDF esportato.",
+    "my_signature": "LA MIA FIRMA",
+    "signature_help": "Firma una volta con il dito (mobile) o con il mouse. Incorporato automaticamente sopra la riga di controllo su ogni PDF esportato.",
+    "signature_saved": "FIRMA SALVATA"
   },
   "ai": {
     "title": "ANALISI FOTO AI",

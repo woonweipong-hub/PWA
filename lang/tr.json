@@ -283,7 +283,23 @@
     "save_preset_tip": "Geçerli filtre kombinasyonunu adlandırılmış bir ön ayar olarak kaydedin",
     "no_presets": "Henüz kayıtlı filtre yok. Yukarıda filtreleri ayarlayın ve bunları favorilerinize eklemek için KAYDET'e dokunun.",
     "apply_preset": "Bu kayıtlı filtreyi uygula",
-    "delete_preset": "Bu kayıtlı filtreyi sil"
+    "delete_preset": "Bu kayıtlı filtreyi sil",
+    "zip_export": "Posta Kodu",
+    "zip_export_tip": "Fotoğrafları teslim etmek veya arşivlemek için klasörler halinde paketleyin",
+    "zip_scheme_label": "FOTOĞRAFLARI GRUPLA",
+    "zip_scheme_conquas": "KARE Elemanı",
+    "zip_scheme_severity": "Şiddet",
+    "zip_scheme_status": "Durum",
+    "zip_scheme_trade": "Ticaret",
+    "zip_scheme_component": "Bileşen",
+    "zip_scheme_area": "Alan",
+    "zip_scope_filtered": "{n} filtrelenmiş girişteki fotoğrafları paketleyecek.",
+    "zip_scope_selected": "Seçilen {n} girişteki fotoğraflar paketlenecek.",
+    "bulk_location": "KONUM",
+    "bulk_component": "BİLEŞEN",
+    "bulk_trade": "TİCARET",
+    "bulk_entry_type": "GİRİŞ TÜRÜ",
+    "bulk_blank_keep": "Var olanı koru (boş = değişiklik yok)"
   },
   "detail": {
     "update_status": "DURUMU GÜNCELLE",
@@ -537,7 +553,10 @@
     "upload_logo": "LOGO YÜKLE",
     "replace_logo": "LOGOYU DEĞİŞTİR",
     "remove_logo": "KALDIRMAK",
-    "logo_help": "PNG, JPG, WebP veya SVG. Maksimum 200 KB. Dışa aktardığınız her PDF raporunun kapağında görünür."
+    "logo_help": "PNG, JPG, WebP veya SVG. Maksimum 200 KB. Dışa aktardığınız her PDF raporunun kapağında görünür.",
+    "my_signature": "İMZAM",
+    "signature_help": "Parmağınızla (mobil) veya farenizle bir kez imzalayın. Dışa aktardığınız her PDF'de Denetleyici çizgisinin üstüne otomatik olarak gömülür.",
+    "signature_saved": "İMZA KAYDEDİLMİŞTİR"
   },
   "ai": {
     "title": "AI FOTOĞRAF ANALİZİ",

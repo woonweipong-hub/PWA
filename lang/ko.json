@@ -283,7 +283,23 @@
     "save_preset_tip": "현재 필터 조합을 명명된 사전 설정으로 저장",
     "no_presets": "아직 저장된 필터가 없습니다. 위에서 필터를 설정하고 저장을 눌러 북마크에 추가하세요.",
     "apply_preset": "저장된 필터 적용",
-    "delete_preset": "저장된 필터 삭제"
+    "delete_preset": "저장된 필터 삭제",
+    "zip_export": "지퍼",
+    "zip_export_tip": "핸드오버 또는 보관을 위해 사진을 폴더로 묶습니다.",
+    "zip_scheme_label": "단체 사진:",
+    "zip_scheme_conquas": "정사각형 요소",
+    "zip_scheme_severity": "심각성",
+    "zip_scheme_status": "상태",
+    "zip_scheme_trade": "거래",
+    "zip_scheme_component": "요소",
+    "zip_scheme_area": "영역",
+    "zip_scope_filtered": "필터링된 항목 {n}개의 사진을 묶음으로 묶습니다.",
+    "zip_scope_selected": "선택한 {n}개 항목의 사진을 묶음으로 묶습니다.",
+    "bulk_location": "위치",
+    "bulk_component": "요소",
+    "bulk_trade": "거래",
+    "bulk_entry_type": "참가 유형",
+    "bulk_blank_keep": "기존 유지(공백 = 변경 없음)"
   },
   "detail": {
     "update_status": "상태 업데이트",
@@ -537,7 +553,10 @@
     "upload_logo": "로고 업로드",
     "replace_logo": "로고 교체",
     "remove_logo": "제거하다",
-    "logo_help": "PNG, JPG, WebP 또는 SVG. 최대 200KB. 내보낸 모든 PDF 보고서의 표지에 나타납니다."
+    "logo_help": "PNG, JPG, WebP 또는 SVG. 최대 200KB. 내보낸 모든 PDF 보고서의 표지에 나타납니다.",
+    "my_signature": "내 서명",
+    "signature_help": "손가락(모바일)이나 마우스로 한 번만 서명하세요. 내보내는 모든 PDF의 검사기 줄 위에 자동으로 포함됩니다.",
+    "signature_saved": "서명이 저장되었습니다"
   },
   "ai": {
     "title": "AI 사진 분석",

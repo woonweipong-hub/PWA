@@ -283,7 +283,23 @@
     "save_preset_tip": "Simpan gabungan penapis semasa sebagai pratetap bernama",
     "no_presets": "Tiada penapis disimpan lagi. Tetapkan penapis di atas dan ketik SIMPAN untuk menanda halamannya.",
     "apply_preset": "Gunakan penapis yang disimpan ini",
-    "delete_preset": "Padamkan penapis yang disimpan ini"
+    "delete_preset": "Padamkan penapis yang disimpan ini",
+    "zip_export": "ZIP",
+    "zip_export_tip": "Himpunkan foto ke dalam folder untuk penyerahan atau arkib",
+    "zip_scheme_label": "GAMBAR KUMPULAN OLEH",
+    "zip_scheme_conquas": "Elemen KUASA DUA",
+    "zip_scheme_severity": "Keterukan",
+    "zip_scheme_status": "Status",
+    "zip_scheme_trade": "Berdagang",
+    "zip_scheme_component": "Komponen",
+    "zip_scheme_area": "Kawasan",
+    "zip_scope_filtered": "Akan menghimpunkan foto daripada {n} entri yang ditapis.",
+    "zip_scope_selected": "Akan menggabungkan foto daripada {n} entri yang dipilih.",
+    "bulk_location": "LOKASI",
+    "bulk_component": "KOMPONEN",
+    "bulk_trade": "PERDAGANGAN",
+    "bulk_entry_type": "JENIS PENYERTAAN",
+    "bulk_blank_keep": "Kekalkan sedia ada (kosong = tiada perubahan)"
   },
   "detail": {
     "update_status": "KEMASKINI STATUS",
@@ -537,7 +553,10 @@
     "upload_logo": "MUAT NAIK LOGO",
     "replace_logo": "GANTIKAN LOGO",
     "remove_logo": "KELUARKAN",
-    "logo_help": "PNG, JPG, WebP atau SVG. Maks 200 KB. Muncul pada kulit setiap laporan PDF yang anda eksport."
+    "logo_help": "PNG, JPG, WebP atau SVG. Maks 200 KB. Muncul pada kulit setiap laporan PDF yang anda eksport.",
+    "my_signature": "TANDATANGAN SAYA",
+    "signature_help": "Tandatangani sekali dengan jari anda (mudah alih) atau tetikus. Autobenam di atas baris Inspektor pada setiap PDF yang anda eksport.",
+    "signature_saved": "TANDATANGAN DISIMPAN"
   },
   "ai": {
     "title": "ANALISIS FOTO AI",

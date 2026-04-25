@@ -283,7 +283,23 @@
     "save_preset_tip": "Spara den aktuella filterkombinationen som en namngiven förinställning",
     "no_presets": "Inga sparade filter ännu. Ställ in filter ovan och tryck på SPARA för att bokmärka dem.",
     "apply_preset": "Använd detta sparade filter",
-    "delete_preset": "Ta bort detta sparade filter"
+    "delete_preset": "Ta bort detta sparade filter",
+    "zip_export": "BLIXTLÅS",
+    "zip_export_tip": "Bunta bilder i mappar för överlämnande eller arkiv",
+    "zip_scheme_label": "GRUPPFOTORNA AV",
+    "zip_scheme_conquas": "KVADRAT Element",
+    "zip_scheme_severity": "Stränghet",
+    "zip_scheme_status": "Status",
+    "zip_scheme_trade": "Handel",
+    "zip_scheme_component": "Komponent",
+    "zip_scheme_area": "Område",
+    "zip_scope_filtered": "Samlar foton från {n} filtrerade poster.",
+    "zip_scope_selected": "Samlar foton från {n} valda poster.",
+    "bulk_location": "PLATS",
+    "bulk_component": "KOMPONENT",
+    "bulk_trade": "HANDEL",
+    "bulk_entry_type": "INKOMSTTYP",
+    "bulk_blank_keep": "Behåll befintlig (tom = ingen förändring)"
   },
   "detail": {
     "update_status": "UPPDATERA STATUS",
@@ -537,7 +553,10 @@
     "upload_logo": "LADDA UPP LOGO",
     "replace_logo": "BYT LOGO",
     "remove_logo": "TA BORT",
-    "logo_help": "PNG, JPG, WebP eller SVG. Max 200 KB. Visas på omslaget till varje PDF-rapport som du exporterar."
+    "logo_help": "PNG, JPG, WebP eller SVG. Max 200 KB. Visas på omslaget till varje PDF-rapport som du exporterar.",
+    "my_signature": "MIN SIGNATUR",
+    "signature_help": "Signera en gång med fingret (mobilen) eller musen. Automatiskt inbäddad ovanför Inspector-raden på varje PDF-fil du exporterar.",
+    "signature_saved": "SIGNATUREN SPARAD"
   },
   "ai": {
     "title": "AI-FOTOANALYS",

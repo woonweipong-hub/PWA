@@ -283,7 +283,23 @@
     "save_preset_tip": "Lưu tổ hợp bộ lọc hiện tại làm giá trị đặt trước được đặt tên",
     "no_presets": "Chưa có bộ lọc nào được lưu. Đặt các bộ lọc ở trên và nhấn LƯU để đánh dấu chúng.",
     "apply_preset": "Áp dụng bộ lọc đã lưu này",
-    "delete_preset": "Xóa bộ lọc đã lưu này"
+    "delete_preset": "Xóa bộ lọc đã lưu này",
+    "zip_export": "Mã ZIP",
+    "zip_export_tip": "Gói ảnh vào các thư mục để bàn giao hoặc lưu trữ",
+    "zip_scheme_label": "NHÓM ẢNH THEO",
+    "zip_scheme_conquas": "Phần tử VUÔNG",
+    "zip_scheme_severity": "Mức độ nghiêm trọng",
+    "zip_scheme_status": "Trạng thái",
+    "zip_scheme_trade": "Buôn bán",
+    "zip_scheme_component": "Thành phần",
+    "zip_scheme_area": "Khu vực",
+    "zip_scope_filtered": "Sẽ gộp ảnh từ {n} mục đã lọc.",
+    "zip_scope_selected": "Sẽ gộp ảnh từ {n} mục đã chọn.",
+    "bulk_location": "VỊ TRÍ",
+    "bulk_component": "THÀNH PHẦN",
+    "bulk_trade": "BUÔN BÁN",
+    "bulk_entry_type": "LOẠI ĐĂNG NHẬP",
+    "bulk_blank_keep": "Giữ nguyên (để trống = không thay đổi)"
   },
   "detail": {
     "update_status": "CẬP NHẬT TRẠNG THÁI",
@@ -537,7 +553,10 @@
     "upload_logo": "TẢI Logo lên",
     "replace_logo": "THAY LOGO",
     "remove_logo": "DI DỜI",
-    "logo_help": "PNG, JPG, WebP hoặc SVG. Tối đa 200KB. Xuất hiện trên trang bìa của mọi báo cáo PDF bạn xuất."
+    "logo_help": "PNG, JPG, WebP hoặc SVG. Tối đa 200KB. Xuất hiện trên trang bìa của mọi báo cáo PDF bạn xuất.",
+    "my_signature": "CHỮ KÝ CỦA TÔI",
+    "signature_help": "Ký một lần bằng ngón tay (di động) hoặc chuột. Tự động nhúng phía trên dòng Thanh tra trên mỗi tệp PDF bạn xuất.",
+    "signature_saved": "ĐÃ LƯU CHỮ KÝ"
   },
   "ai": {
     "title": "PHÂN TÍCH ẢNH AI",

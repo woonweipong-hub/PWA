@@ -283,7 +283,23 @@
     "save_preset_tip": "Simpan kombinasi filter saat ini sebagai preset bernama",
     "no_presets": "Belum ada filter tersimpan. Atur filter di atas dan ketuk SIMPAN untuk menandainya.",
     "apply_preset": "Terapkan filter tersimpan ini",
-    "delete_preset": "Hapus filter tersimpan ini"
+    "delete_preset": "Hapus filter tersimpan ini",
+    "zip_export": "RITSLETING",
+    "zip_export_tip": "Gabungkan foto ke dalam folder untuk serah terima atau arsip",
+    "zip_scheme_label": "FOTO KELOMPOK OLEH",
+    "zip_scheme_conquas": "Elemen KOTAK",
+    "zip_scheme_severity": "Kerasnya",
+    "zip_scheme_status": "Status",
+    "zip_scheme_trade": "Berdagang",
+    "zip_scheme_component": "Komponen",
+    "zip_scheme_area": "Daerah",
+    "zip_scope_filtered": "Akan menggabungkan foto dari {n} entri yang difilter.",
+    "zip_scope_selected": "Akan menggabungkan foto dari {n} entri yang dipilih.",
+    "bulk_location": "LOKASI",
+    "bulk_component": "KOMPONEN",
+    "bulk_trade": "BERDAGANG",
+    "bulk_entry_type": "JENIS MASUK",
+    "bulk_blank_keep": "Tetap ada (kosong = tidak ada perubahan)"
   },
   "detail": {
     "update_status": "PERBARUI STATUS",
@@ -537,7 +553,10 @@
     "upload_logo": "UNGGAH LOGO",
     "replace_logo": "GANTI LOGO",
     "remove_logo": "MENGHAPUS",
-    "logo_help": "PNG, JPG, WebP, atau SVG. Maks 200 KB. Muncul di sampul setiap laporan PDF yang Anda ekspor."
+    "logo_help": "PNG, JPG, WebP, atau SVG. Maks 200 KB. Muncul di sampul setiap laporan PDF yang Anda ekspor.",
+    "my_signature": "TANDA TANGAN SAYA",
+    "signature_help": "Masuk sekali dengan jari Anda (ponsel) atau mouse. Disematkan secara otomatis di atas baris Inspektur pada setiap PDF yang Anda ekspor.",
+    "signature_saved": "TANDA TANGAN DISIMPAN"
   },
   "ai": {
     "title": "ANALISIS FOTO AI",

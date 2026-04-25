@@ -283,7 +283,23 @@
     "save_preset_tip": "將目前過濾器組合儲存為命名預設",
     "no_presets": "尚未儲存過濾器。 在上面設定過濾器，然後點擊「儲存」將其新增為書籤。",
     "apply_preset": "套用此儲存的過濾器",
-    "delete_preset": "刪除此已儲存的過濾器"
+    "delete_preset": "刪除此已儲存的過濾器",
+    "zip_export": "拉鍊",
+    "zip_export_tip": "將照片捆綁到資料夾中以供移交或存檔",
+    "zip_scheme_label": "團體照片由",
+    "zip_scheme_conquas": "方形元素",
+    "zip_scheme_severity": "嚴重性",
+    "zip_scheme_status": "地位",
+    "zip_scheme_trade": "貿易",
+    "zip_scheme_component": "成分",
+    "zip_scheme_area": "區域",
+    "zip_scope_filtered": "將捆綁來自 {n} 個過濾條目的照片。",
+    "zip_scope_selected": "將捆綁來自 {n} 個所選條目的照片。",
+    "bulk_location": "地點",
+    "bulk_component": "成分",
+    "bulk_trade": "貿易",
+    "bulk_entry_type": "參賽作品類型",
+    "bulk_blank_keep": "保持現有（空白=無變化）"
   },
   "detail": {
     "update_status": "更新狀態",
@@ -537,7 +553,10 @@
     "upload_logo": "上傳標誌",
     "replace_logo": "更換標誌",
     "remove_logo": "消除",
-    "logo_help": "PNG、JPG、WebP 或 SVG。 最大 200 KB。 出現在您匯出的每個 PDF 報告的封面上。"
+    "logo_help": "PNG、JPG、WebP 或 SVG。 最大 200 KB。 出現在您匯出的每個 PDF 報告的封面上。",
+    "my_signature": "我的簽名",
+    "signature_help": "用手指（手機）或滑鼠簽名一次。 自動嵌入到您匯出的每個 PDF 的檢查器行上方。",
+    "signature_saved": "簽名已儲存"
   },
   "ai": {
     "title": "AI照片分析",

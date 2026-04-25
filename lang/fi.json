@@ -283,7 +283,23 @@
     "save_preset_tip": "Tallenna nykyinen suodatinyhdistelmä nimettynä esiasetuksena",
     "no_presets": "Ei vielä tallennettuja suodattimia. Aseta suodattimet yllä ja napauta TALLENNA lisätäksesi ne kirjanmerkkeihin.",
     "apply_preset": "Käytä tätä tallennettua suodatinta",
-    "delete_preset": "Poista tämä tallennettu suodatin"
+    "delete_preset": "Poista tämä tallennettu suodatin",
+    "zip_export": "POSTINUMERO",
+    "zip_export_tip": "Niputa valokuvat kansioihin luovuttamista tai arkistoimista varten",
+    "zip_scheme_label": "RYHMÄKUVAT:",
+    "zip_scheme_conquas": "NELIÖ Elementti",
+    "zip_scheme_severity": "Vakavuus",
+    "zip_scheme_status": "Status",
+    "zip_scheme_trade": "Kauppa",
+    "zip_scheme_component": "Komponentti",
+    "zip_scheme_area": "Alue",
+    "zip_scope_filtered": "Niputtaa kuvia {n} suodatetuista kohteista.",
+    "zip_scope_selected": "Niputtaa valokuvat {n} valitusta kohteesta.",
+    "bulk_location": "SIJAINTI",
+    "bulk_component": "KOMPONENTTI",
+    "bulk_trade": "KAUPPA",
+    "bulk_entry_type": "SISÄÄNTÖTYYPPI",
+    "bulk_blank_keep": "Säilytä olemassa oleva (tyhjä = ei muutosta)"
   },
   "detail": {
     "update_status": "PÄIVITÄ TILA",
@@ -537,7 +553,10 @@
     "upload_logo": "LATAA LOGO",
     "replace_logo": "VAIHDA LOGO",
     "remove_logo": "POISTAA",
-    "logo_help": "PNG, JPG, WebP tai SVG. Enintään 200 kt. Näkyy jokaisen viemäsi PDF-raportin kannessa."
+    "logo_help": "PNG, JPG, WebP tai SVG. Enintään 200 kt. Näkyy jokaisen viemäsi PDF-raportin kannessa.",
+    "my_signature": "MINUN ALLEKIRJOITUKSENI",
+    "signature_help": "Allekirjoita kerran sormella (matkapuhelimella) tai hiirellä. Upotetaan automaattisesti Inspector-rivin yläpuolelle jokaisessa vietävässä PDF-tiedostossa.",
+    "signature_saved": "ALLEKIRJOITUS TALLENNETTU"
   },
   "ai": {
     "title": "AI VALOKUVAN ANALYYSI",

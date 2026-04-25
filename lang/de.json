@@ -283,7 +283,23 @@
     "save_preset_tip": "Speichern Sie die aktuelle Filterkombination als benannte Voreinstellung",
     "no_presets": "Noch keine gespeicherten Filter. Legen Sie oben die Filter fest und tippen Sie auf SPEICHERN, um sie mit einem Lesezeichen zu versehen.",
     "apply_preset": "Wenden Sie diesen gespeicherten Filter an",
-    "delete_preset": "Löschen Sie diesen gespeicherten Filter"
+    "delete_preset": "Löschen Sie diesen gespeicherten Filter",
+    "zip_export": "REISSVERSCHLUSS",
+    "zip_export_tip": "Bündeln Sie Fotos zur Übergabe oder Archivierung in Ordnern",
+    "zip_scheme_label": "GRUPPENFOTOS VON",
+    "zip_scheme_conquas": "QUADRATISCHES Element",
+    "zip_scheme_severity": "Schwere",
+    "zip_scheme_status": "Status",
+    "zip_scheme_trade": "Handel",
+    "zip_scheme_component": "Komponente",
+    "zip_scheme_area": "Bereich",
+    "zip_scope_filtered": "Bündelt Fotos aus {n} gefilterten Einträgen.",
+    "zip_scope_selected": "Bündelt Fotos aus {n} ausgewählten Einträgen.",
+    "bulk_location": "STANDORT",
+    "bulk_component": "KOMPONENTE",
+    "bulk_trade": "HANDEL",
+    "bulk_entry_type": "EINTRAGSTYP",
+    "bulk_blank_keep": "Vorhanden bleiben (leer = keine Änderung)"
   },
   "detail": {
     "update_status": "STATUS AKTUALISIEREN",
@@ -537,7 +553,10 @@
     "upload_logo": "Logo hochladen",
     "replace_logo": "LOGO ERSETZEN",
     "remove_logo": "ENTFERNEN",
-    "logo_help": "PNG, JPG, WebP oder SVG. Maximal 200 KB. Erscheint auf dem Cover jedes PDF-Berichts, den Sie exportieren."
+    "logo_help": "PNG, JPG, WebP oder SVG. Maximal 200 KB. Erscheint auf dem Cover jedes PDF-Berichts, den Sie exportieren.",
+    "my_signature": "MEINE UNTERSCHRIFT",
+    "signature_help": "Unterschreiben Sie einmalig mit dem Finger (Handy) oder der Maus. Wird in jeder PDF-Datei, die Sie exportieren, automatisch oberhalb der Inspektorzeile eingebettet.",
+    "signature_saved": "UNTERSCHRIFT GESPEICHERT"
   },
   "ai": {
     "title": "KI-FOTOANALYSE",

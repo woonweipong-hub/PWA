@@ -283,7 +283,23 @@
     "save_preset_tip": "Gem den aktuelle filterkombination som en navngivet forudindstilling",
     "no_presets": "Ingen gemte filtre endnu. Indstil filtre ovenfor, og tryk på GEM for at bogmærke dem.",
     "apply_preset": "Anvend dette gemte filter",
-    "delete_preset": "Slet dette gemte filter"
+    "delete_preset": "Slet dette gemte filter",
+    "zip_export": "ZIP",
+    "zip_export_tip": "Bring billeder i mapper til overdragelse eller arkiv",
+    "zip_scheme_label": "GRUPPEFOTO AF",
+    "zip_scheme_conquas": "KVADRET Element",
+    "zip_scheme_severity": "Sværhedsgrad",
+    "zip_scheme_status": "Status",
+    "zip_scheme_trade": "Handle",
+    "zip_scheme_component": "Komponent",
+    "zip_scheme_area": "Areal",
+    "zip_scope_filtered": "Vil samle billeder fra {n} filtrerede poster.",
+    "zip_scope_selected": "Vil samle billeder fra {n} valgte poster.",
+    "bulk_location": "BELIGGENHED",
+    "bulk_component": "KOMPONENT",
+    "bulk_trade": "HANDLE",
+    "bulk_entry_type": "INDGANGSTYPE",
+    "bulk_blank_keep": "Behold eksisterende (tom = ingen ændring)"
   },
   "detail": {
     "update_status": "OPDATER STATUS",
@@ -537,7 +553,10 @@
     "upload_logo": "UPLOAD LOGO",
     "replace_logo": "UDSKIFT LOGO",
     "remove_logo": "FJERNE",
-    "logo_help": "PNG, JPG, WebP eller SVG. Max 200 KB. Vises på forsiden af ​​hver PDF-rapport, du eksporterer."
+    "logo_help": "PNG, JPG, WebP eller SVG. Max 200 KB. Vises på forsiden af ​​hver PDF-rapport, du eksporterer.",
+    "my_signature": "MIN SIGNATUR",
+    "signature_help": "Signer én gang med din finger (mobil) eller mus. Automatisk indlejret over Inspector-linjen på hver PDF, du eksporterer.",
+    "signature_saved": "UNDERSKRIFTEN GEMMT"
   },
   "ai": {
     "title": "AI-FOTOANALYSE",
