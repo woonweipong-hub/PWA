@@ -442,6 +442,10 @@ const GDrive = (() => {
   let _folderId = '';
   let _clientId = '';
   let _tokenExpiry = 0;
+  // CONQUAS IF subfolder cache — { "Wall": "folderId", ... }. Populated
+  // lazily by _ensureSubfolder; reset on disconnect() so a re-auth with a
+  // different account re-resolves IDs.
+  let _subfolderIds = {};
 
   function init(clientId) {
     _clientId = clientId;
@@ -507,6 +511,7 @@ const GDrive = (() => {
     _accessToken = '';
     _tokenExpiry = 0;
     _folderId = '';
+    _subfolderIds = {};
     localStorage.removeItem(GDRIVE_KEY);
   }
 
@@ -540,10 +545,47 @@ const GDrive = (() => {
     return _folderId;
   }
 
-  // Upload a photo (base64 data URL) to Google Drive, returns {fileId, webViewLink}
-  async function uploadPhoto(dataUrl, fileName) {
+  // Find or create a CONQUAS element subfolder (Floor / Wall / Ceiling /
+  // Door / Window / Component / M&E Fittings / Other) inside the main
+  // SiteShrimp Photos folder. Cached per session. Safe to call repeatedly.
+  async function _ensureSubfolder(name) {
+    if (!name) return null;
+    if (_subfolderIds[name]) return _subfolderIds[name];
+    const parentId = await _ensureFolder();
+    const safeName = String(name).replace(/[\/\\?*:|"<>]+/g, '_');
+    const q = encodeURIComponent(
+      `name='${safeName.replace(/'/g, "\\'")}' and '${parentId}' in parents ` +
+      `and mimeType='application/vnd.google-apps.folder' and trashed=false`
+    );
+    const result = await _apiGet(`/files?q=${q}&fields=files(id,name)&spaces=drive`);
+    if (result.files && result.files.length > 0) {
+      _subfolderIds[name] = result.files[0].id;
+      return _subfolderIds[name];
+    }
+    const resp = await fetch('https://www.googleapis.com/drive/v3/files', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + _accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: safeName,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: [parentId],
+      }),
+    });
+    if (!resp.ok) throw new Error('Failed to create GDrive subfolder: ' + safeName);
+    const folder = await resp.json();
+    _subfolderIds[name] = folder.id;
+    return folder.id;
+  }
+
+  // Upload a photo (base64 data URL) to Google Drive, returns {fileId, url}.
+  // `subfolder` is optional — when provided (e.g., "Wall"), the photo lands
+  // in that CONQUAS-element subfolder instead of the main folder, mirroring
+  // the REPORT > EXPORT > CONQUAS ZIP structure directly into the user's Drive.
+  async function uploadPhoto(dataUrl, fileName, subfolder) {
     if (!isConnected()) throw new Error('Not connected to Google Drive');
-    const folderId = await _ensureFolder();
+    const folderId = subfolder
+      ? await _ensureSubfolder(subfolder)
+      : await _ensureFolder();
 
     // Convert data URL to blob
     const parts = dataUrl.split(',');
