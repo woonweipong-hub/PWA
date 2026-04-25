@@ -274,7 +274,16 @@
     "status_label": "STATUS",
     "date_range": "RENTANG TANGGAL",
     "date_from": "Dari",
-    "date_to": "ke"
+    "date_to": "ke",
+    "overdue": "TERLAMBAT",
+    "overdue_label": "TERLAMBAT",
+    "overdue_only": "HANYA TERLAMBAT",
+    "presets_label": "FILTER TERSIMPAN",
+    "save_preset": "MENYIMPAN",
+    "save_preset_tip": "Simpan kombinasi filter saat ini sebagai preset bernama",
+    "no_presets": "Belum ada filter tersimpan. Atur filter di atas dan ketuk SIMPAN untuk menandainya.",
+    "apply_preset": "Terapkan filter tersimpan ini",
+    "delete_preset": "Hapus filter tersimpan ini"
   },
   "detail": {
     "update_status": "PERBARUI STATUS",
@@ -339,6 +348,8 @@
     "live": "HIDUP",
     "critical_unresolved": "KRITIS BELUM TERSELESAIKAN",
     "requires_attention": "Membutuhkan perhatian segera",
+    "overdue_count": "TERLAMBAT",
+    "overdue_help": "Tanggal target sudah lewat dan belum diverifikasi atau ditutup",
     "by_severity": "OLEH KEKERASAN",
     "recent_entries": "ENTRI TERBARU",
     "no_defects": "Belum ada cacat.",

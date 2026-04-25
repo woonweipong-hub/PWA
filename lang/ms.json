@@ -274,7 +274,16 @@
     "status_label": "STATUS",
     "date_range": "Julat TARIKH",
     "date_from": "daripada",
-    "date_to": "kepada"
+    "date_to": "kepada",
+    "overdue": "TERLAMBAT",
+    "overdue_label": "TERLAMBAT",
+    "overdue_only": "TERLAMPAU SAHAJA",
+    "presets_label": "PENAPIS YANG DISIMPAN",
+    "save_preset": "JIMAT",
+    "save_preset_tip": "Simpan gabungan penapis semasa sebagai pratetap bernama",
+    "no_presets": "Tiada penapis disimpan lagi. Tetapkan penapis di atas dan ketik SIMPAN untuk menanda halamannya.",
+    "apply_preset": "Gunakan penapis yang disimpan ini",
+    "delete_preset": "Padamkan penapis yang disimpan ini"
   },
   "detail": {
     "update_status": "KEMASKINI STATUS",
@@ -339,6 +348,8 @@
     "live": "LIVE",
     "critical_unresolved": "KRITIKAL TIDAK DISELESAIKAN",
     "requires_attention": "Memerlukan perhatian segera",
+    "overdue_count": "TERLAMBAT",
+    "overdue_help": "Tarikh sasaran yang lalu dan belum disahkan atau ditutup",
     "by_severity": "MENGIKUT KETERUKKAN",
     "recent_entries": "PENYERTAAN TERKINI",
     "no_defects": "Tiada kecacatan lagi.",

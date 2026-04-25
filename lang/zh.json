@@ -274,7 +274,16 @@
     "status_label": "地位",
     "date_range": "日期范围",
     "date_from": "从",
-    "date_to": "到"
+    "date_to": "到",
+    "overdue": "逾期",
+    "overdue_label": "逾期",
+    "overdue_only": "仅逾期",
+    "presets_label": "已保存的过滤器",
+    "save_preset": "节省",
+    "save_preset_tip": "将当前过滤器组合保存为命名预设",
+    "no_presets": "尚未保存过滤器。 在上面设置过滤器，然后点击“保存”将其添加为书签。",
+    "apply_preset": "应用此保存的过滤器",
+    "delete_preset": "删除此已保存的过滤器"
   },
   "detail": {
     "update_status": "更新状态",
@@ -339,6 +348,8 @@
     "live": "居住",
     "critical_unresolved": "尚未解决的关键问题",
     "requires_attention": "需要立即关注",
+    "overdue_count": "逾期",
+    "overdue_help": "已过目标日期且尚未验证或关闭",
     "by_severity": "按严重程度",
     "recent_entries": "最近的条目",
     "no_defects": "还没有缺陷。",

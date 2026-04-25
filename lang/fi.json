@@ -274,7 +274,16 @@
     "status_label": "STATUS",
     "date_range": "DATE RANGE",
     "date_from": "From",
-    "date_to": "to"
+    "date_to": "to",
+    "overdue": "MYÖHÄSSÄ",
+    "overdue_label": "MYÖHÄSSÄ",
+    "overdue_only": "VAIN MÄÄRÄSSÄ",
+    "presets_label": "TALLENNETUT SUODATTIMET",
+    "save_preset": "TALLENTAA",
+    "save_preset_tip": "Tallenna nykyinen suodatinyhdistelmä nimettynä esiasetuksena",
+    "no_presets": "Ei vielä tallennettuja suodattimia. Aseta suodattimet yllä ja napauta TALLENNA lisätäksesi ne kirjanmerkkeihin.",
+    "apply_preset": "Käytä tätä tallennettua suodatinta",
+    "delete_preset": "Poista tämä tallennettu suodatin"
   },
   "detail": {
     "update_status": "PÄIVITÄ TILA",
@@ -339,6 +348,8 @@
     "live": "ELÄÄ",
     "critical_unresolved": "KRIITTINEN RATKAISEMINEN",
     "requires_attention": "Vaatii välitöntä huomiota",
+    "overdue_count": "MYÖHÄSSÄ",
+    "overdue_help": "Tavoitepäivä on mennyt, eikä sitä ole vielä vahvistettu tai suljettu",
     "by_severity": "VAKAVUUSASteen mukaan",
     "recent_entries": "VIIMEAIKAISET merkinnät",
     "no_defects": "Ei vielä vikoja.",

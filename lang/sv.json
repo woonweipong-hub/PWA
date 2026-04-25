@@ -274,7 +274,16 @@
     "status_label": "STATUS",
     "date_range": "DATUMintervall",
     "date_from": "Från",
-    "date_to": "till"
+    "date_to": "till",
+    "overdue": "FÖRSENAD",
+    "overdue_label": "FÖRSENAD",
+    "overdue_only": "ENDAST FÖRSENAD",
+    "presets_label": "SPARADE FILTER",
+    "save_preset": "SPARA",
+    "save_preset_tip": "Spara den aktuella filterkombinationen som en namngiven förinställning",
+    "no_presets": "Inga sparade filter ännu. Ställ in filter ovan och tryck på SPARA för att bokmärka dem.",
+    "apply_preset": "Använd detta sparade filter",
+    "delete_preset": "Ta bort detta sparade filter"
   },
   "detail": {
     "update_status": "UPPDATERA STATUS",
@@ -339,6 +348,8 @@
     "live": "BO",
     "critical_unresolved": "KRITISK OLÖST",
     "requires_attention": "Kräver omedelbar uppmärksamhet",
+    "overdue_count": "FÖRSENAD",
+    "overdue_help": "Tidigare måldatum och ännu inte verifierat eller stängt",
     "by_severity": "EFTER ALVARLIGHET",
     "recent_entries": "SENASTE INKOMST",
     "no_defects": "Inga defekter ännu.",

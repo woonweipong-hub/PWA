@@ -3047,6 +3047,52 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   y+=4;
 
   // ═══════════════════════════════════════════════════════════════════
+  // SIGN-OFF / HANDOVER BLOCK — three signature lines at the foot of the
+  // executive summary. This is what makes the export a handover document
+  // rather than just an inspection log: contractor + consultant + client
+  // initials anchor the report against the snapshot of defects shown above.
+  // Block is conditional on having at least one entry — empty reports skip
+  // it so blank exports aren't padded with empty signature lines.
+  // ═══════════════════════════════════════════════════════════════════
+  if(total>0){
+    // Reserve enough vertical room for the whole block; if it doesn't fit
+    // on the current page, push to a new one so signatures don't split.
+    if(y+34>pageH-15){doc.addPage();y=18;}
+    heading("SIGN-OFF",[80,80,80]);
+    const sigW=(contentW-12)/3; // 3 boxes, two 6mm gutters
+    const labels=["Inspector / Logged By","Contractor / Trade","Client / Consultant"];
+    let sx=margin;
+    for(let i=0;i<3;i++){
+      // Underline for the actual signature
+      doc.setDrawColor(80,80,80);doc.setLineWidth(0.3);
+      doc.line(sx,y+10,sx+sigW,y+10);
+      // Role caption
+      doc.setFontSize(7);doc.setFont(undefined,"bold");doc.setTextColor(110);
+      doc.text(labels[i].toUpperCase(),sx,y+14);
+      // Name + date sub-fields under each signature line — printed as
+      // labelled blanks so on-paper handover stays unambiguous about who
+      // signed and when.
+      doc.setFontSize(6);doc.setFont(undefined,"normal");doc.setTextColor(140);
+      doc.text("NAME:",sx,y+19);
+      doc.line(sx+8,y+19,sx+sigW-22,y+19);
+      doc.text("DATE:",sx+sigW-20,y+19);
+      doc.line(sx+sigW-12,y+19,sx+sigW,y+19);
+      sx+=sigW+6;
+    }
+    doc.setTextColor(0);
+    y+=24;
+    // One-line statement so the signature carries explicit meaning, not
+    // just a name on a line. Greys out so it doesn't compete with the
+    // executive summary visually.
+    doc.setFontSize(7);doc.setFont(undefined,"italic");doc.setTextColor(110);
+    const statement=`I confirm the ${total} entr${total===1?"y":"ies"} listed above accurately reflect the site condition observed on ${now.toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}.`;
+    const sLines=doc.splitTextToSize(statement,contentW);
+    doc.text(sLines,margin,y);
+    doc.setTextColor(0);doc.setFont(undefined,"normal");
+    y+=sLines.length*3+4;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   // DEFECT SUMMARY TABLE — quick reference
   // ═══════════════════════════════════════════════════════════════════
   if(defects&&defects.length>0){
@@ -8696,6 +8742,27 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
   // collision with the REPORT tab's `dateFrom`/`dateTo` state in the same tree.
   const[dateFromR,setDateFromR]=useState("");const[dateToR,setDateToR]=useState("");
   const[search,setSearch]=useState("");const[showFilters,setShowFilters]=useState(false);
+  // Overdue-only quick filter — uses the existing dueDate field. Past due
+  // and not Verified/Closed = overdue. localStorage-backed so the toggle
+  // persists across reloads (a foreman tracking overdue work expects it
+  // to stay on).
+  const[overdueOnly,setOverdueOnly]=useState(()=>!!local.get(REVIEW_OVERDUE_ONLY_KEY));
+  useEffect(()=>{local.set(REVIEW_OVERDUE_ONLY_KEY,overdueOnly);},[overdueOnly]);
+  // Saved filter presets — store {name, filter, sevF, typeF, dateFromR,
+  // dateToR, overdueOnly} arrays in localStorage per (companyId, projectId).
+  // Power users tracking "My Open Critical" / "Overdue this week" / etc.
+  // can save and restore complex filter combos with one tap.
+  const presetScope=`${company?.companyId||"_"}::${currentProject?.id||"_"}`;
+  const[savedPresets,setSavedPresets]=useState(()=>{
+    const all=local.get(REVIEW_PRESETS_KEY)||{};
+    return Array.isArray(all[presetScope])?all[presetScope]:[];
+  });
+  useEffect(()=>{
+    const all=local.get(REVIEW_PRESETS_KEY)||{};
+    const next={...all,[presetScope]:savedPresets};
+    local.set(REVIEW_PRESETS_KEY,next);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[savedPresets]);
   // "entries" | "drawings" | "comparisons" — lets users triage drawing-side
   // artefacts (markup, notes, pin counts, saved comparisons) from the same
   // screen they already use for defect entries, instead of hopping to Tag.
@@ -8904,10 +8971,16 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
   const usedTypes=[...new Set(defects.map(d=>d.entryType).filter(Boolean))];
   const typeFilterOptions=allTypes.filter(t=>usedTypes.includes(t));
   const q=search.trim().toLowerCase();
+  // Overdue check anchored on TODAY (00:00 local) so a same-day dueDate is
+  // not flagged overdue. dueDate is stored as YYYY-MM-DD; lex-compare avoids
+  // timezone drift and Date-parsing surprises across browsers.
+  const _todayISO=new Date().toISOString().slice(0,10);
+  const _isOverdue=d=>!!(d.dueDate&&String(d.dueDate).slice(0,10)<_todayISO&&!["Verified","Closed"].includes(d.status));
   const filtered=defects.filter(d=>{
     if(filter!=="All"&&d.status!==filter)return false;
     if(sevF!=="All"&&d.severity!==sevF)return false;
     if(typeF!=="All"&&d.entryType!==typeF)return false;
+    if(overdueOnly&&!_isOverdue(d))return false;
     if(dateFromR||dateToR){
       // Take the ISO date prefix from whichever timestamp the record carries.
       // Records pushed from the offline queue use `created`; new client saves
@@ -8923,8 +8996,40 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
     }
     return true;
   });
-  const activeFilters=(filter!=="All"?1:0)+(sevF!=="All"?1:0)+(typeF!=="All"?1:0)+(dateFromR?1:0)+(dateToR?1:0);
-  const clearAll=()=>{setFilter("All");setSevF("All");setTypeF("All");setSearch("");setDateFromR("");setDateToR("");if(onClearNl)onClearNl();};
+  const activeFilters=(filter!=="All"?1:0)+(sevF!=="All"?1:0)+(typeF!=="All"?1:0)+(dateFromR?1:0)+(dateToR?1:0)+(overdueOnly?1:0);
+  const clearAll=()=>{setFilter("All");setSevF("All");setTypeF("All");setSearch("");setDateFromR("");setDateToR("");setOverdueOnly(false);if(onClearNl)onClearNl();};
+  // Overdue tally for header pill — counts ALL eligible entries, not just
+  // the currently-filtered subset, so the badge is the same regardless of
+  // which other filters are toggled. Lets the user see total work past due
+  // before they even open the panel.
+  const overdueCount=defects.filter(_isOverdue).length;
+  // Apply a saved preset by replacing every filter slot with the preset's
+  // values. Missing fields fall back to a safe default ("All", empty string).
+  const applyPreset=(p)=>{
+    if(!p)return;
+    setFilter(p.filter||"All");
+    setSevF(p.sevF||"All");
+    setTypeF(p.typeF||"All");
+    setDateFromR(p.dateFromR||"");
+    setDateToR(p.dateToR||"");
+    setOverdueOnly(!!p.overdueOnly);
+  };
+  // Snapshot the current filter slots into a named preset. Names are
+  // sanitised to keep the popover layout stable; duplicate names are
+  // disallowed so the picker stays unambiguous.
+  const savePreset=()=>{
+    const raw=prompt("Name this filter preset (e.g. \"Overdue Critical\", \"My Open\"):","");
+    if(raw===null)return;
+    const name=String(raw).trim().slice(0,40);
+    if(!name)return;
+    if(savedPresets.some(p=>p.name===name)){alert("A preset with that name already exists. Choose a different name or delete the old one first.");return;}
+    const snapshot={name,filter,sevF,typeF,dateFromR,dateToR,overdueOnly};
+    setSavedPresets(prev=>[...prev,snapshot]);
+  };
+  const deletePreset=(name)=>{
+    if(!confirm(`Delete preset "${name}"?`))return;
+    setSavedPresets(prev=>prev.filter(p=>p.name!==name));
+  };
   // ── Display-language translation (Phase 2) ──
   // User toggle persisted per device so the Review list stays translated
   // across sessions. Defaults ON when UI is non-English AND AI is configured
@@ -9167,6 +9272,33 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
               ))}
             </div>
           </div>
+          {/* Overdue quick toggle — past dueDate, not closed/verified.
+              Single chip; on by default after first tap so foremen can flip
+              the list straight to actionable items. Count is the global
+              tally, not the post-filter count, so the badge stays stable. */}
+          <div style={{marginTop:12}}>
+            <div style={lbl()}>{t("review.overdue_label")}</div>
+            <button onClick={()=>setOverdueOnly(v=>!v)} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${overdueOnly?"#ff3b30":"rgba(0,0,0,0.12)"}`,background:overdueOnly?"#ff3b30":"#fff",color:overdueOnly?"#fff":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",letterSpacing:"0.04em"}}>⏰ {t("review.overdue_only")} ({overdueCount})</button>
+          </div>
+          {/* Saved filter presets — name a filter combo and restore it with
+              one tap. Lives inside the filter panel so it's discoverable next
+              to the toggles it captures. localStorage-only, scoped per
+              project so presets don't bleed across teams. */}
+          <div style={{marginTop:12}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:6}}>
+              <div style={lbl()}>{t("review.presets_label")}</div>
+              <button onClick={savePreset} title={t("review.save_preset_tip")} style={{background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:14,padding:"3px 9px",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer",letterSpacing:"0.04em"}}>+ {t("review.save_preset")}</button>
+            </div>
+            {savedPresets.length===0
+              ?<div style={{fontSize:10,color:"rgba(0,0,0,0.35)",fontStyle:"italic",lineHeight:1.4}}>{t("review.no_presets")}</div>
+              :<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{savedPresets.map(p=>(
+                <span key={p.name} style={{display:"inline-flex",alignItems:"center",gap:4,background:"#fff",border:"1.5px solid rgba(0,0,0,0.12)",borderRadius:18,padding:"3px 4px 3px 10px"}}>
+                  <button onClick={()=>applyPreset(p)} title={t("review.apply_preset")} style={{background:"none",border:"none",color:"rgba(0,0,0,0.7)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",padding:0}}>{p.name}</button>
+                  <button onClick={()=>deletePreset(p.name)} title={t("review.delete_preset")} aria-label={t("review.delete_preset")} style={{background:"transparent",border:"none",color:"rgba(255,59,48,0.55)",fontSize:13,cursor:"pointer",padding:"0 4px",lineHeight:1}}>×</button>
+                </span>
+              ))}</div>
+            }
+          </div>
           {/* Date-range filter — placed last so the most-used quick filters
               (status, severity) stay reachable at the top on narrow phones.
               Inputs are HTML5 date pickers; the locale display is browser
@@ -9256,6 +9388,10 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
             <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:4}}>
               {d.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(d.entryType),background:typeBg(d.entryType),padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(d.entryType)} {tOpt(d.entryType).toUpperCase()}</span>}
               <SevChip s={d.severity}/>
+              {/* OVERDUE pill — only when dueDate is past AND not closed/verified.
+                  Sits next to severity so it reads at a glance without taking a
+                  full row. Tap-target inherits the card's onView. */}
+              {_isOverdue(d)&&<span title={`Due ${d.dueDate}`} style={{fontSize:10,fontWeight:800,color:"#fff",background:"#ff3b30",padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>⏰ {t("review.overdue")}</span>}
               <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>📍 <Highlight text={dv.location} query={q}/></span>
             </div>
             {q&&dv.description&&dv.description.toLowerCase().includes(q)&&(
@@ -10353,6 +10489,11 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   const verified=defects.filter(d=>d.status==="Verified").length;
   const closedCount=defects.filter(d=>d.status==="Closed").length;
   const critical=defects.filter(d=>d.severity==="Critical"&&!["Verified","Closed"].includes(d.status)).length;
+  // Overdue tally — past dueDate, not Verified/Closed. Lex-compare on the
+  // YYYY-MM-DD prefix matches REVIEW's _isOverdue helper so the two
+  // counters stay in sync without sharing state.
+  const _todayOverdue=new Date().toISOString().slice(0,10);
+  const overdue=defects.filter(d=>d.dueDate&&String(d.dueDate).slice(0,10)<_todayOverdue&&!["Verified","Closed"].includes(d.status)).length;
   const StatusCard=({label,value,color})=>(
     <div style={{flex:1,minWidth:56,background:"#fff",borderRadius:12,padding:"10px 12px",borderTop:`3px solid ${color}`}}>
       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",lineHeight:1}}>{value}</div>
@@ -11013,6 +11154,12 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
         <div style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.25)",borderRadius:12,padding:"10px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:10}}>
           <div style={{fontSize:18}}>⚠️</div>
           <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff3b30",fontSize:13}}>{critical} {t("dashboard.critical_unresolved")}</div><div style={{fontSize:11,color:"rgba(0,0,0,0.5)"}}>{t("dashboard.requires_attention")}</div></div>
+        </div>
+      )}
+      {overdue>0&&(
+        <div style={{background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.3)",borderRadius:12,padding:"10px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:10}}>
+          <div style={{fontSize:18}}>⏰</div>
+          <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#ff6b00",fontSize:13}}>{overdue} {t("dashboard.overdue_count")}</div><div style={{fontSize:11,color:"rgba(0,0,0,0.5)"}}>{t("dashboard.overdue_help")}</div></div>
         </div>
       )}
 

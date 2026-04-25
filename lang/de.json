@@ -274,7 +274,16 @@
     "status_label": "STATUS",
     "date_range": "DATUMSBEREICH",
     "date_from": "Aus",
-    "date_to": "Zu"
+    "date_to": "Zu",
+    "overdue": "ÜBERFÄLLIG",
+    "overdue_label": "ÜBERFÄLLIG",
+    "overdue_only": "NUR ÜBERFÄLLIG",
+    "presets_label": "GESPEICHERTE FILTER",
+    "save_preset": "SPEICHERN",
+    "save_preset_tip": "Speichern Sie die aktuelle Filterkombination als benannte Voreinstellung",
+    "no_presets": "Noch keine gespeicherten Filter. Legen Sie oben die Filter fest und tippen Sie auf SPEICHERN, um sie mit einem Lesezeichen zu versehen.",
+    "apply_preset": "Wenden Sie diesen gespeicherten Filter an",
+    "delete_preset": "Löschen Sie diesen gespeicherten Filter"
   },
   "detail": {
     "update_status": "STATUS AKTUALISIEREN",
@@ -339,6 +348,8 @@
     "live": "LIVIN",
     "critical_unresolved": "KRITISCH UNGELÖST",
     "requires_attention": "Erfordert sofortige Aufmerksamkeit",
+    "overdue_count": "ÜBERFÄLLIG",
+    "overdue_help": "Das Zieldatum liegt hinter dem Ziel und ist noch nicht bestätigt oder abgeschlossen",
     "by_severity": "NACH SCHWERHEIT",
     "recent_entries": "LETZTE EINTRÄGE",
     "no_defects": "Noch keine Mängel.",

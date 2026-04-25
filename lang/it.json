@@ -274,7 +274,16 @@
     "status_label": "STATO",
     "date_range": "INTERVALLO DI DATE",
     "date_from": "Da",
-    "date_to": "A"
+    "date_to": "A",
+    "overdue": "IN RITARDO",
+    "overdue_label": "IN RITARDO",
+    "overdue_only": "SOLO IN RITARDO",
+    "presets_label": "FILTRI SALVATI",
+    "save_preset": "SALVA",
+    "save_preset_tip": "Salva la combinazione di filtri corrente come preimpostazione con nome",
+    "no_presets": "Nessun filtro ancora salvato. Imposta i filtri sopra e tocca SALVA per aggiungerli ai segnalibri.",
+    "apply_preset": "Applica questo filtro salvato",
+    "delete_preset": "Elimina questo filtro salvato"
   },
   "detail": {
     "update_status": "AGGIORNA STATO",
@@ -339,6 +348,8 @@
     "live": "VIVERE",
     "critical_unresolved": "CRITICA IRRISOLTA",
     "requires_attention": "Richiede attenzione immediata",
+    "overdue_count": "IN RITARDO",
+    "overdue_help": "Data target passata e non ancora verificata o chiusa",
     "by_severity": "PER SEVERITÀ",
     "recent_entries": "INGRESSI RECENTI",
     "no_defects": "Nessun difetto ancora.",

@@ -274,7 +274,16 @@
     "status_label": "상태",
     "date_range": "기간",
     "date_from": "에서",
-    "date_to": "에게"
+    "date_to": "에게",
+    "overdue": "연체",
+    "overdue_label": "연체",
+    "overdue_only": "연체된 경우에만",
+    "presets_label": "저장된 필터",
+    "save_preset": "구하다",
+    "save_preset_tip": "현재 필터 조합을 명명된 사전 설정으로 저장",
+    "no_presets": "아직 저장된 필터가 없습니다. 위에서 필터를 설정하고 저장을 눌러 북마크에 추가하세요.",
+    "apply_preset": "저장된 필터 적용",
+    "delete_preset": "저장된 필터 삭제"
   },
   "detail": {
     "update_status": "상태 업데이트",
@@ -339,6 +348,8 @@
     "live": "살다",
     "critical_unresolved": "심각한 미해결됨",
     "requires_attention": "즉각적인 주의가 필요함",
+    "overdue_count": "연체",
+    "overdue_help": "목표 날짜가 지났지만 아직 확인되거나 종료되지 않았습니다.",
     "by_severity": "심각도별",
     "recent_entries": "최근 항목",
     "no_defects": "아직 결함은 없습니다.",

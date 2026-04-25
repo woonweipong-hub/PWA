@@ -274,7 +274,16 @@
     "status_label": "DURUM",
     "date_range": "TARİH ARALIĞI",
     "date_from": "İtibaren",
-    "date_to": "ile"
+    "date_to": "ile",
+    "overdue": "GEÇMİŞ",
+    "overdue_label": "GEÇMİŞ",
+    "overdue_only": "SADECE VADE GEÇMİŞİ",
+    "presets_label": "KAYITLI FİLTRELER",
+    "save_preset": "KAYDETMEK",
+    "save_preset_tip": "Geçerli filtre kombinasyonunu adlandırılmış bir ön ayar olarak kaydedin",
+    "no_presets": "Henüz kayıtlı filtre yok. Yukarıda filtreleri ayarlayın ve bunları favorilerinize eklemek için KAYDET'e dokunun.",
+    "apply_preset": "Bu kayıtlı filtreyi uygula",
+    "delete_preset": "Bu kayıtlı filtreyi sil"
   },
   "detail": {
     "update_status": "DURUMU GÜNCELLE",
@@ -339,6 +348,8 @@
     "live": "CANLI",
     "critical_unresolved": "KRİTİK ÇÖZÜLMEMİŞ",
     "requires_attention": "Acil müdahale gerektirir",
+    "overdue_count": "GEÇMİŞ",
+    "overdue_help": "Hedef tarihi geçmiş ve henüz doğrulanmamış veya kapatılmamış",
     "by_severity": "ÖNEME GÖRE",
     "recent_entries": "SON GİRİŞLER",
     "no_defects": "Henüz kusur yok.",

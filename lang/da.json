@@ -274,7 +274,16 @@
     "status_label": "STATUS",
     "date_range": "DATOintervall",
     "date_from": "Fra",
-    "date_to": "til"
+    "date_to": "til",
+    "overdue": "FORSINKET",
+    "overdue_label": "FORSINKET",
+    "overdue_only": "KUN FORSIDEN",
+    "presets_label": "GEMTE FILTRE",
+    "save_preset": "SPARE",
+    "save_preset_tip": "Gem den aktuelle filterkombination som en navngivet forudindstilling",
+    "no_presets": "Ingen gemte filtre endnu. Indstil filtre ovenfor, og tryk på GEM for at bogmærke dem.",
+    "apply_preset": "Anvend dette gemte filter",
+    "delete_preset": "Slet dette gemte filter"
   },
   "detail": {
     "update_status": "OPDATER STATUS",
@@ -339,6 +348,8 @@
     "live": "LEVENDE",
     "critical_unresolved": "KRITISK ULØST",
     "requires_attention": "Kræver øjeblikkelig opmærksomhed",
+    "overdue_count": "FORSINKET",
+    "overdue_help": "Tidligere måldato og endnu ikke bekræftet eller lukket",
     "by_severity": "EFTER ALVARLIGHED",
     "recent_entries": "SENESTE OPLYSNINGER",
     "no_defects": "Ingen defekter endnu.",

@@ -520,5 +520,10 @@ const MAP_PROVIDER_KEY = "sdt-map-provider-v1"; // "osm" | "gmaps"
 const AUTO_SAVE_MODE_KEY = "sdt-auto-save-mode-v1";
 const AUTO_SAVE_MODE_DEFAULT = "review-then-auto";
 const AUTO_SAVE_REVIEW_THRESHOLD = 10;
+// REVIEW — overdue-only quick filter persistence + saved filter presets.
+// Presets are stored as { [companyId::projectId]: [{name, filter, sevF, ...}] }
+// so a user with multiple companies/projects keeps their bookmarks scoped.
+const REVIEW_OVERDUE_ONLY_KEY = "sdt-review-overdue-only-v1";
+const REVIEW_PRESETS_KEY = "sdt-review-presets-v1";
 const MAP_DEFAULT_VIEW_KEY_PREFIX = "sdt-map-default-"; // + projectId
 const MAP_FALLBACK_CENTER = { lat: 1.3331, lng: 103.7422, zoom: 17, label: "JEM Office Building" };

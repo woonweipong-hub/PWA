@@ -274,7 +274,16 @@
     "status_label": "TRẠNG THÁI",
     "date_range": "PHẠM VI NGÀY",
     "date_from": "Từ",
-    "date_to": "ĐẾN"
+    "date_to": "ĐẾN",
+    "overdue": "QUÁ HẠN",
+    "overdue_label": "QUÁ HẠN",
+    "overdue_only": "CHỈ QUÁ HẠN",
+    "presets_label": "BỘ LỌC ĐÃ LƯU",
+    "save_preset": "CỨU",
+    "save_preset_tip": "Lưu tổ hợp bộ lọc hiện tại làm giá trị đặt trước được đặt tên",
+    "no_presets": "Chưa có bộ lọc nào được lưu. Đặt các bộ lọc ở trên và nhấn LƯU để đánh dấu chúng.",
+    "apply_preset": "Áp dụng bộ lọc đã lưu này",
+    "delete_preset": "Xóa bộ lọc đã lưu này"
   },
   "detail": {
     "update_status": "CẬP NHẬT TRẠNG THÁI",
@@ -339,6 +348,8 @@
     "live": "SỐNG",
     "critical_unresolved": "TIÊU CHUẨN CHƯA GIẢI QUYẾT",
     "requires_attention": "Yêu cầu sự chú ý ngay lập tức",
+    "overdue_count": "QUÁ HẠN",
+    "overdue_help": "Ngày mục tiêu đã qua và chưa được xác minh hoặc đóng",
     "by_severity": "THEO MỨC ĐỘ NGHIÊM TRỌNG",
     "recent_entries": "CÁC MỤC NHẬP GẦN ĐÂY",
     "no_defects": "Chưa có khuyết điểm nào.",

@@ -75,10 +75,10 @@ const DB = (() => {
         if (_netFailStreak >= SERVER_DOWN_THRESHOLD) _emitServerStatus(true);
       }
       if (err.name === 'AbortError') {
-        throw new Error('Server not responding (timeout). Make sure your PocketBase VM is running, then reload.');
+        throw new Error('SiteShrimp server not responding (timeout). Check your connection and reload. AI calls are unrelated and may still work.');
       }
       if (err.name === 'TypeError' || err.message === 'Failed to fetch') {
-        throw new Error('Cannot reach server. Start your PocketBase VM, check the URL, then reload.');
+        throw new Error('Cannot reach SiteShrimp server. Check your connection or server URL in Settings, then reload. AI calls are unrelated and may still work.');
       }
       throw err;
     }

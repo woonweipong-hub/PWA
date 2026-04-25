@@ -274,7 +274,16 @@
     "status_label": "STATUS",
     "date_range": "DATOintervall",
     "date_from": "Fra",
-    "date_to": "til"
+    "date_to": "til",
+    "overdue": "FORSINKET",
+    "overdue_label": "FORSINKET",
+    "overdue_only": "KUN FORSIDEN",
+    "presets_label": "LAGREDE FILTRE",
+    "save_preset": "SPARE",
+    "save_preset_tip": "Lagre gjeldende filterkombinasjon som en navngitt forhåndsinnstilling",
+    "no_presets": "Ingen lagrede filtre ennå. Angi filtre ovenfor og trykk på LAGRE for å bokmerke dem.",
+    "apply_preset": "Bruk dette lagrede filteret",
+    "delete_preset": "Slett dette lagrede filteret"
   },
   "detail": {
     "update_status": "OPPDATER STATUS",
@@ -339,6 +348,8 @@
     "live": "BO",
     "critical_unresolved": "KRITISK ULØST",
     "requires_attention": "Krever umiddelbar oppmerksomhet",
+    "overdue_count": "FORSINKET",
+    "overdue_help": "Tidligere måldato og ennå ikke bekreftet eller stengt",
     "by_severity": "ETTER ALVARLIGHET",
     "recent_entries": "SISTE INNLEGG",
     "no_defects": "Ingen defekter ennå.",

@@ -274,7 +274,16 @@
     "status_label": "STATUT",
     "date_range": "PLAGE DE DATES",
     "date_from": "Depuis",
-    "date_to": "à"
+    "date_to": "à",
+    "overdue": "EN RETARD",
+    "overdue_label": "EN RETARD",
+    "overdue_only": "EN RETARD SEULEMENT",
+    "presets_label": "FILTRES SAUVEGARDÉS",
+    "save_preset": "SAUVEGARDER",
+    "save_preset_tip": "Enregistrez la combinaison de filtres actuelle en tant que préréglage nommé",
+    "no_presets": "Aucun filtre enregistré pour l'instant. Définissez les filtres ci-dessus et appuyez sur ENREGISTRER pour les ajouter à vos favoris.",
+    "apply_preset": "Appliquer ce filtre enregistré",
+    "delete_preset": "Supprimer ce filtre enregistré"
   },
   "detail": {
     "update_status": "METTRE À JOUR LE STATUT",
@@ -339,6 +348,8 @@
     "live": "EN DIRECT",
     "critical_unresolved": "CRITIQUE NON RÉSOLU",
     "requires_attention": "Nécessite une attention immédiate",
+    "overdue_count": "EN RETARD",
+    "overdue_help": "Date cible dépassée et non encore vérifiée ou clôturée",
     "by_severity": "PAR GRAVITÉ",
     "recent_entries": "ENTRÉES RÉCENTES",
     "no_defects": "Aucun défaut pour l'instant.",

@@ -274,7 +274,16 @@
     "status_label": "状態",
     "date_range": "日付範囲",
     "date_from": "から",
-    "date_to": "に"
+    "date_to": "に",
+    "overdue": "期限を過ぎました",
+    "overdue_label": "期限を過ぎました",
+    "overdue_only": "延滞のみ",
+    "presets_label": "保存されたフィルター",
+    "save_preset": "保存",
+    "save_preset_tip": "現在のフィルターの組み合わせを名前付きプリセットとして保存します",
+    "no_presets": "フィルターはまだ保存されていません。 上でフィルターを設定し、「保存」をタップしてブックマークします。",
+    "apply_preset": "この保存されたフィルターを適用します",
+    "delete_preset": "この保存されたフィルターを削除します"
   },
   "detail": {
     "update_status": "ステータス更新",
@@ -339,6 +348,8 @@
     "live": "ライブ",
     "critical_unresolved": "重大な未解決",
     "requires_attention": "直ちに対応が必要です",
+    "overdue_count": "期限を過ぎました",
+    "overdue_help": "目標日を過ぎており、まだ検証されていない、または完了していません",
     "by_severity": "重大度別",
     "recent_entries": "最近のエントリー",
     "no_defects": "まだ欠陥はありません。",

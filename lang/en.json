@@ -274,7 +274,16 @@
     "status_label": "STATUS",
     "date_range": "DATE RANGE",
     "date_from": "From",
-    "date_to": "to"
+    "date_to": "to",
+    "overdue": "OVERDUE",
+    "overdue_label": "OVERDUE",
+    "overdue_only": "OVERDUE ONLY",
+    "presets_label": "SAVED FILTERS",
+    "save_preset": "SAVE",
+    "save_preset_tip": "Save the current filter combination as a named preset",
+    "no_presets": "No saved filters yet. Set filters above and tap SAVE to bookmark them.",
+    "apply_preset": "Apply this saved filter",
+    "delete_preset": "Delete this saved filter"
   },
   "detail": {
     "update_status": "UPDATE STATUS",
@@ -339,6 +348,8 @@
     "live": "LIVE",
     "critical_unresolved": "CRITICAL UNRESOLVED",
     "requires_attention": "Requires immediate attention",
+    "overdue_count": "OVERDUE",
+    "overdue_help": "Past target date and not yet verified or closed",
     "by_severity": "BY SEVERITY",
     "recent_entries": "RECENT ENTRIES",
     "no_defects": "No defects yet.",

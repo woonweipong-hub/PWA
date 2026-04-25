@@ -274,7 +274,16 @@
     "status_label": "地位",
     "date_range": "日期範圍",
     "date_from": "從",
-    "date_to": "到"
+    "date_to": "到",
+    "overdue": "逾期",
+    "overdue_label": "逾期",
+    "overdue_only": "僅逾期",
+    "presets_label": "已儲存的過濾器",
+    "save_preset": "節省",
+    "save_preset_tip": "將目前過濾器組合儲存為命名預設",
+    "no_presets": "尚未儲存過濾器。 在上面設定過濾器，然後點擊「儲存」將其新增為書籤。",
+    "apply_preset": "套用此儲存的過濾器",
+    "delete_preset": "刪除此已儲存的過濾器"
   },
   "detail": {
     "update_status": "更新狀態",
@@ -339,6 +348,8 @@
     "live": "居住",
     "critical_unresolved": "尚未解決的關鍵問題",
     "requires_attention": "需要立即關注",
+    "overdue_count": "逾期",
+    "overdue_help": "已過目標日期且尚未驗證或關閉",
     "by_severity": "按嚴重程度",
     "recent_entries": "最近的條目",
     "no_defects": "還沒有缺陷。",

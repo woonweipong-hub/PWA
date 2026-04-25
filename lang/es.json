@@ -274,7 +274,16 @@
     "status_label": "ESTADO",
     "date_range": "RANGO DE FECHAS",
     "date_from": "De",
-    "date_to": "a"
+    "date_to": "a",
+    "overdue": "ATRASADA",
+    "overdue_label": "ATRASADA",
+    "overdue_only": "SOLO VENCIDO",
+    "presets_label": "FILTROS GUARDADOS",
+    "save_preset": "AHORRAR",
+    "save_preset_tip": "Guarde la combinación de filtros actual como un ajuste preestablecido con nombre",
+    "no_presets": "Aún no hay filtros guardados. Configure los filtros arriba y toque GUARDAR para marcarlos.",
+    "apply_preset": "Aplicar este filtro guardado",
+    "delete_preset": "Eliminar este filtro guardado"
   },
   "detail": {
     "update_status": "ACTUALIZAR ESTADO",
@@ -339,6 +348,8 @@
     "live": "VIVA",
     "critical_unresolved": "CRÍTICO SIN RESOLVER",
     "requires_attention": "Requiere atención inmediata",
+    "overdue_count": "ATRASADA",
+    "overdue_help": "Fecha objetivo pasada y aún no verificada o cerrada",
     "by_severity": "POR SEVERIDAD",
     "recent_entries": "ENTRADAS RECIENTES",
     "no_defects": "Aún no hay defectos.",
