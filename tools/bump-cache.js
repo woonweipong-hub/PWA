@@ -36,8 +36,9 @@ function getVersionTag() {
 }
 
 // Stamp commit + ISO timestamp into js/build-info.js so the running app can
-// surface its own provenance in Settings → AI Setup. Read at runtime via the
-// global `BUILD_INFO`. Safe to ship to clients (no secrets).
+// surface its own provenance in Settings → Diagnostics and bake it into the
+// production-readiness evidence export. Read by the runtime via the global
+// `BUILD_INFO`; safe to ship to clients (no secrets).
 function writeBuildInfo(version) {
   const builtAt = new Date().toISOString();
   let fullSha = "";
@@ -66,8 +67,8 @@ function main() {
     process.exit(1);
   }
   const version = getVersionTag();
-  // Always write build-info.js so the in-app version indicator stays
-  // current even when the cache version itself didn't change.
+  // Always write build-info.js so the diagnostics panel never goes stale
+  // even when the index.html cache version is already current.
   writeBuildInfo(version);
   const original = fs.readFileSync(indexPath, "utf8");
   const targets = ["js/lang.js", "js/app.compiled.js", "js/constants.js", "js/db.js", "js/build-info.js"];

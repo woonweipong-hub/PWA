@@ -548,5 +548,50 @@ const MY_SIGNATURE_KEY = "sdt-my-signature-v1";
 // Capped at INBOX_MAX events per user to bound localStorage growth.
 const INBOX_KEY = "sdt-inbox-v1";
 const INBOX_MAX = 50;
+// Production-readiness diagnostics — see Settings → Help → Diagnostics.
+// ERROR_LOG_KEY is a localStorage ring buffer of client-side errors caught
+// by global window.onerror + window.onunhandledrejection handlers; capped at
+// ERROR_LOG_MAX entries to bound storage. HEALTH_CHECK_KEY caches the most
+// recent self-test result so users can show "last check: OK at <time>"
+// without re-running. Both are user-exportable as JSON evidence packs for
+// release-readiness reviews.
+const ERROR_LOG_KEY = "sdt-error-log-v1";
+const ERROR_LOG_MAX = 100;
+const HEALTH_CHECK_KEY = "sdt-health-check-v1";
+// Manual QA checklist — admin marks each key flow as tested per build.
+// Persisted as { [buildCommit]: { [flowId]: {status, by, role, device, at} } }
+// so a new build resets the checklist (forces fresh verification).
+const QA_CHECKLIST_KEY = "sdt-qa-checklist-v1";
+// Locally-tracked bug-resolved overlay. PocketBase `activity` rows of type
+// "feedback" with feedbackType "bug" are the source; this localStorage map
+// tracks which IDs an admin has marked resolved (with optional resolution
+// note) so the bug tracker can show 0 open without losing the original
+// record. Shape: { [activityId]: { resolvedAt, resolvedBy, note } }.
+const BUG_RESOLVED_KEY = "sdt-bug-resolved-v1";
+// Standard QA flow inventory — the manual checklist surfaced in the
+// Diagnostics tab. Each entry has a stable id (used as the persistence
+// key) and a translation key for the human-readable label. Adding new
+// items here invalidates older checklists naturally — items not yet
+// tested in the new build show as untested.
+const QA_FLOWS = [
+  { id: "log_capture",      labelKey: "qa.flow_log_capture" },
+  { id: "log_gps_autotag",  labelKey: "qa.flow_log_gps" },
+  { id: "log_ai_prefill",   labelKey: "qa.flow_log_ai" },
+  { id: "tag_pin_place",    labelKey: "qa.flow_tag_pin" },
+  { id: "tag_pdf_compare",  labelKey: "qa.flow_tag_compare" },
+  { id: "review_filters",   labelKey: "qa.flow_review_filters" },
+  { id: "review_grid",      labelKey: "qa.flow_review_grid" },
+  { id: "review_map",       labelKey: "qa.flow_review_map" },
+  { id: "review_bulk_edit", labelKey: "qa.flow_review_bulk" },
+  { id: "report_pdf",       labelKey: "qa.flow_report_pdf" },
+  { id: "report_csv",       labelKey: "qa.flow_report_csv" },
+  { id: "report_email",     labelKey: "qa.flow_report_email" },
+  { id: "report_signature", labelKey: "qa.flow_report_signature" },
+  { id: "offline_capture",  labelKey: "qa.flow_offline_capture" },
+  { id: "offline_replay",   labelKey: "qa.flow_offline_replay" },
+  { id: "auth_signin",      labelKey: "qa.flow_auth" },
+  { id: "inbox_routing",    labelKey: "qa.flow_inbox" },
+  { id: "mention_tag",      labelKey: "qa.flow_mention" },
+];
 const MAP_DEFAULT_VIEW_KEY_PREFIX = "sdt-map-default-"; // + projectId
 const MAP_FALLBACK_CENTER = { lat: 1.3331, lng: 103.7422, zoom: 17, label: "JEM Office Building" };
