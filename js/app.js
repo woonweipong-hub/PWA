@@ -2400,7 +2400,7 @@ function getActiveProfileId(project,companyId){
 
 // ── Reference document manifest (pre-extracted at build time) ──────
 // The Requirements/Contract Advisor pulls from bundled reference docs
-// (contracts, CONQUAS manuals, BCA Good Industry Practice trade guides, HDB
+// (contracts, CONQUAS manuals, Good Industry Practice trade guides, HDB
 // checklists) plus user uploads. Bundled docs are pre-extracted to
 // reference-texts/*.txt by tools/extract-reference-pdfs.js so the PWA doesn't
 // ship ~30 MB of PDFs — we ship ~500 KB of text instead, load instantly, no
@@ -3162,7 +3162,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   doc.setFontSize(24);doc.setFont(undefined,"bold");doc.setTextColor(255);
   doc.text(pdfCoverTitle,margin,30);
 
-  // Project + date (+ optional profile subtitle like "BCA CONQUAS R1")
+  // Project + date (+ optional profile subtitle like "CONQUAS R1")
   doc.setFontSize(11);doc.setFont(undefined,"normal");doc.setTextColor(200);
   doc.text(`${projectName||"Project"} — ${now.toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}`,margin,40);
   if(pdfCoverSubtitle){
@@ -4002,7 +4002,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     heading("QUALITY CHECK — CONQUAS (PROJECTED)",purple);
     doc.setFontSize(9);doc.setFont(undefined,"normal");doc.setTextColor(0);
     doc.text(`Projected NC rate: ${cs.projectedRate.toFixed(1)}%  (${cs.projectedBasis})`,margin,y);y+=5;
-    doc.text(`Projected Band: ${cs.projectedBand}  (BCA CONQUAS Private Residential R1 §3.3)`,margin,y);y+=5;
+    doc.text(`Projected Band: ${cs.projectedBand}  (CONQUAS Private Residential R1 §3.3)`,margin,y);y+=5;
     doc.text(`Internal Finishes (IF): ${cs.rate.toFixed(1)}% — ${cs.totalWeightedNCs} weighted NC(s) of ${cs.totalWeightedApplicable} applicable; ${cs.failCount} defect(s) across ${cs.batchCount} assessment(s); ${cs.totalChecks} checkpoint(s) assessed.`,margin,y);y+=5;
     if(cs.ftRate!==null){
       doc.text(`Functional Tests (FT): ${cs.ftRate.toFixed(1)}% — ${cs.ftFails} fail(s) of ${cs.ftApplicable} applicable across WTT/WPT/WFT.`,margin,y);y+=5;
@@ -4043,7 +4043,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     // Disclaimer
     doc.setFontSize(7);doc.setTextColor(150);
     const disc=(cs.isFullBand
-      ? "Full Project NC rate per BCA CONQUAS (Private Residential) R1 §3.3: Project NC rate = IF × 0.4 + FT × 0.4 + EF × 0.2. "
+      ? "Full Project NC rate per CONQUAS (Private Residential) R1 §3.3: Project NC rate = IF × 0.4 + FT × 0.4 + EF × 0.2. "
       : "Projection only — not official CONQUAS Band. Per R1 §3.3: Project NC rate = IF × 0.4 + FT × 0.4 + EF × 0.2. Shown here: "+cs.projectedBasis+". ")
       +"0% = all pass, 100% = all fail; lower is better. Project band also requires QP declaration on Pull-Off + Heat Soak + WTT/WPT self-tests. Final accountability rests with the accredited checker, QP, or assessor — not this app.";
     const discLines=doc.splitTextToSize(disc,contentW);
@@ -6596,7 +6596,7 @@ async function analyzeCONQUASPhoto(photoDataUrl,elementName,checkpoints){
     return `${cp.itemId} (${tier}): ${desc}`;
   }).join("\n");
   const prompt=[
-    "BCA CONQUAS (Private Residential) 2025 inspection AI.",
+    "CONQUAS (Private Residential) 2025 inspection AI.",
     "",
     `Element: ${elementName}`,
     "",
@@ -6612,7 +6612,7 @@ async function analyzeCONQUASPhoto(photoDataUrl,elementName,checkpoints){
     "- Return reasons ONLY for f and u verdicts, max 15 words each",
     "- Be CONSERVATIVE: if in doubt, return u",
     "- Do NOT invent defects not visible in photo",
-    "- Respect BCA tier thresholds (3X cracks: >0.5mm AND >100mm)",
+    "- Respect CONQUAS tier thresholds (3X cracks: >0.5mm AND >100mm)",
     "- Hollowness / tap-tests / measurements cannot be judged from photo alone → u",
     "",
     "Checkpoints:",
@@ -6637,7 +6637,7 @@ async function analyzeCONQUASPhoto(photoDataUrl,elementName,checkpoints){
 }
 
 // ── CONQUAS Check Wizard (Phase 3.1 + 3.2a AI mode) ──────────────
-// Guided pass/fail walkthrough for BCA CONQUAS (Private Residential) 2025.
+// Guided pass/fail walkthrough for CONQUAS (Private Residential) 2025.
 // Opt-in per project: only shown when currentProject.ontology_edition is set
 // and the server has the ontology_* collections seeded (Phase 2).
 //
@@ -6714,7 +6714,7 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
   const failCount=results.filter(r=>r.status==="fail").length;
   const passCount=results.filter(r=>r.status==="pass").length;
   const tierSev={"1X":"Minor","2X":"Major","3X":"Critical"};
-  // BCA CONQUAS R1 §3.2(a): 1X/2X/3X are "NC weightages". The banding table
+  // CONQUAS R1 §3.2(a): 1X/2X/3X are "NC weightages". The banding table
   // column header (§3.3) explicitly labels the rate "Project weighted NC
   // rate" — so each non-compliance contributes its tier number to both the
   // numerator and (via batch_weighted_applicable) the denominator.
@@ -6866,7 +6866,7 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
     if(!results.length){onClose();return;}
     setSaving(true);
     // One UUID per wizard run groups all observations + fail-defects into an
-    // "observation batch" so REPORT can compute the BCA-weighted NC rate
+    // "observation batch" so REPORT can compute the weighted NC rate
     // (R1 §3.3) and the drawing viewer can cluster pins one-per-batch.
     const batchId=(typeof crypto!=="undefined"&&crypto.randomUUID)
       ? crypto.randomUUID()
@@ -11551,7 +11551,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   };
   const removeUserContract=(idx)=>setUserContracts(prev=>prev.filter((_,i)=>i!==idx));
 
-  // Bundled reference-doc manifest (contracts + CONQUAS + BCA-GIP + HDB) and
+  // Bundled reference-doc manifest (contracts + CONQUAS + GIP + HDB) and
   // per-project selection. The user toggles which bundled docs the Advisor
   // should feed the AI. Selection persists per project so an assessor running
   // CONQUAS Private Residential on a highrise keeps the same ticks each time.
@@ -12464,7 +12464,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
           </div>
           {/* Disclaimer — reflects which components are captured vs missing */}
           <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",lineHeight:1.5,background:conquasStats.isFullBand?"rgba(48,209,88,0.06)":"rgba(255,149,0,0.06)",border:conquasStats.isFullBand?"1px solid rgba(48,209,88,0.18)":"1px solid rgba(255,149,0,0.18)",borderRadius:8,padding:"8px 10px"}}>
-            <b>{conquasStats.isFullBand?"Full Project NC rate":"Projection only — not official CONQUAS Band"}.</b> 0% = all pass, 100% = all fail; lower is better. Per BCA CONQUAS (Private Residential) R1 §3.3: Project NC rate = IF × 0.4 + FT × 0.4 + EF × 0.2. {conquasStats.isFullBand?"All three components captured — showing the full formula.":conquasStats.projectedBasis.includes("IF + FT + EF")?"":conquasStats.ftRate!==null&&conquasStats.efRate===null?"This shows IF + FT re-normalised over 0.8 (EF pending).":conquasStats.efRate!==null&&conquasStats.ftRate===null?"This shows IF + EF re-normalised over 0.6 (FT pending).":"This shows IF only (FT + EF pending)."} Project band is the AI app's best projection — official banding requires BCA assessor sign-off, QP declarations (Pull-Off · Heat Soak · WTT/WPT self-tests), and complete sampling per R1. Final accountability rests with the accredited checker, QP, or assessor — not this app.
+            <b>{conquasStats.isFullBand?"Full Project NC rate":"Projection only — not official CONQUAS Band"}.</b> 0% = all pass, 100% = all fail; lower is better. Per CONQUAS (Private Residential) R1 §3.3: Project NC rate = IF × 0.4 + FT × 0.4 + EF × 0.2. {conquasStats.isFullBand?"All three components captured — showing the full formula.":conquasStats.projectedBasis.includes("IF + FT + EF")?"":conquasStats.ftRate!==null&&conquasStats.efRate===null?"This shows IF + FT re-normalised over 0.8 (EF pending).":conquasStats.efRate!==null&&conquasStats.ftRate===null?"This shows IF + EF re-normalised over 0.6 (FT pending).":"This shows IF only (FT + EF pending)."} Project band is the AI app's best projection — official banding requires accredited assessor sign-off, QP declarations (Pull-Off · Heat Soak · WTT/WPT self-tests), and complete sampling per R1. Final accountability rests with the accredited checker, QP, or assessor — not this app.
           </div>
         </div>
       )}
@@ -12596,7 +12596,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
               <div style={{fontSize:18,lineHeight:1}}>⚠</div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#cc0000",fontSize:12,letterSpacing:"0.03em"}}>REFERENCE LIBRARY UNAVAILABLE</div>
-                <div style={{fontSize:11,color:"#802020",lineHeight:1.45,marginTop:2}}>The bundled reference documents (PSSCOC, CONQUAS, BCA-GIP, HDB) can't be loaded — likely a connection issue. The Advisor cannot cross-reference selected resources until this is resolved. You can still upload your own requirement PDFs below, or tap RETRY.</div>
+                <div style={{fontSize:11,color:"#802020",lineHeight:1.45,marginTop:2}}>The bundled reference documents (PSSCOC, CONQUAS, GIP, HDB) can't be loaded — likely a connection issue. The Advisor cannot cross-reference selected resources until this is resolved. You can still upload your own requirement PDFs below, or tap RETRY.</div>
                 <div style={{fontSize:9,color:"rgba(128,32,32,0.7)",marginTop:3,wordBreak:"break-word"}}>{refManifestError}</div>
               </div>
               <button onClick={retryRefManifest} disabled={refManifestRetrying} style={{background:"#cc0000",border:"none",borderRadius:6,padding:"6px 12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:refManifestRetrying?"wait":"pointer",letterSpacing:"0.05em",flexShrink:0}}>{refManifestRetrying?"…":"RETRY"}</button>
@@ -12633,7 +12633,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
             <span style={{color:"#5856d6",fontWeight:700}}>Applicable clauses</span> · <span style={{color:"#5856d6",fontWeight:700}}>Responsible parties</span> · <span style={{color:"#5856d6",fontWeight:700}}>Impact & considerations</span> · <span style={{color:"#5856d6",fontWeight:700}}>Actionable follow-ups</span>
           </div>
 
-          {/* Bundled reference documents picker — contracts, CONQUAS, BCA-GIP
+          {/* Bundled reference documents picker — contracts, CONQUAS, GIP
               trade guides, HDB checklists. All publicly available; included as
               reference samples with disclaimer (final accountability rests with
               the assessor/QP/accreditor, not the app or its author). The list
@@ -12731,7 +12731,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
               </div>
             ):(
               <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",lineHeight:1.5,marginTop:4}}>
-                The bundled reference documents above (PSSCOC, CONQUAS, BCA-GIP, HDB) are publicly available — included as reference samples. For licensed contracts (FIDIC, JCT, AIA, NEC, REDAS, SIA, etc.) or project-specific PDFs (employer's requirements, scope-of-work, tender addenda), upload your own copy here. Text is extracted in your browser and stored locally for this project only — no upload to our servers.
+                The bundled reference documents above (PSSCOC, CONQUAS, GIP, HDB) are publicly available — included as reference samples. For licensed contracts (FIDIC, JCT, AIA, NEC, REDAS, SIA, etc.) or project-specific PDFs (employer's requirements, scope-of-work, tender addenda), upload your own copy here. Text is extracted in your browser and stored locally for this project only — no upload to our servers.
               </div>
             )}
           </div>
@@ -15944,7 +15944,7 @@ Return valid JSON only with this shape:
         section("Key Impacts",parsed.key_impacts),
         section("Risks",parsed.risks),
         section("Recommended Actions",parsed.recommended_actions),
-        section("Submission Notes (BCA/SCDF)",parsed.submission_notes_bca_scdf)
+        section("Submission Notes (Regulatory)",parsed.submission_notes_bca_scdf)
       ].join("\n\n");
       setCompareAiReport(report);
       bumpAiUsage(getLastAiTokens());
@@ -21148,10 +21148,10 @@ function App(){
                       [t("help.set_language"),t("help.set_language_desc")],
                     ]],
                     ["Standards & frameworks",[
-                      ["Embedded with ontology — BCA CONQUAS (Private Residential) R1","Components, defect types, checkpoints, and 1X / 2X / 3X tier weightings seeded in the database. Live weighted NC rate (IF × 0.4 + FT × 0.4 + EF × 0.2), Band 1–6 projection, AI-assisted checkpoint wizard, observation audit trail. R1 (20 Apr 2026) adds Water Flow Test."],
-                      ["Bundled as reference document — BCA CONQUAS 2022 R2 V5","Non-residential manual. Reference text pre-extracted; Requirements Advisor can cite it. Ontology not yet seeded for 2022."],
-                      ["Bundled as reference document — BCA Quality Mark","22 May 2025 guide. Reference only; dedicated unit-by-unit QM wizard is on the roadmap."],
-                      ["Bundled as reference document — BCA Good Industry Practice (17 trade guides)","Painting, ceramic tiling, natural stone, agglomerated stone, waterproofing (int + ext), aluminium window, timber doors, timber / engineered / vinyl flooring, wardrobes + kitchen cabinets, drywall, PBU, precast, design & materials (vol 1 + 2). All OCR'd and text-extractable. Structured-checkpoint extraction available via tools/seed-gip-checkpoints.js when you want to run it."],
+                      ["Embedded with ontology — CONQUAS (Private Residential) R1","Components, defect types, checkpoints, and 1X / 2X / 3X tier weightings seeded in the database. Live weighted NC rate (IF × 0.4 + FT × 0.4 + EF × 0.2), Band 1–6 projection, AI-assisted checkpoint wizard, observation audit trail. R1 (20 Apr 2026) adds Water Flow Test."],
+                      ["Bundled as reference document — CONQUAS 2022 R2 V5","Non-residential manual. Reference text pre-extracted; Requirements Advisor can cite it. Ontology not yet seeded for 2022."],
+                      ["Bundled as reference document — Quality Mark","22 May 2025 guide. Reference only; dedicated unit-by-unit QM wizard is on the roadmap."],
+                      ["Bundled as reference document — Good Industry Practice (17 trade guides)","Painting, ceramic tiling, natural stone, agglomerated stone, waterproofing (int + ext), aluminium window, timber doors, timber / engineered / vinyl flooring, wardrobes + kitchen cabinets, drywall, PBU, precast, design & materials (vol 1 + 2). All OCR'd and text-extractable. Structured-checkpoint extraction available via tools/seed-gip-checkpoints.js when you want to run it."],
                       ["Bundled as reference document — PSSCOC","3 variants (Construction Works 2020, Construction Works Lite 2025, Design & Build 2020). Reference text pre-extracted."],
                       ["Export interoperability — ISO 19650","PDF export uses ISO 19650 §5 filename convention: Project-Originator-Block-Level-Type-Role-Number-Suitability-Date. Trade → role, status → suitability, stage codes mapped. Parse-able by CORENET-X submission workflows."],
                       ["Bring your own — Requirements Advisor upload","HDB, LTA, JTC, MOE, MOHH, FIDIC, SIA, REDAS, bespoke developer contracts, internal QA/QC protocols — any PDF. Uploaded per project, text extracted in-browser, merged with the bundled references when the Advisor runs. Not embedded in the ontology; they drive AI reasoning via the Advisor only."],
@@ -21313,7 +21313,7 @@ function App(){
                       ),
                       // AI Section
                       React.createElement(Section,{icon:"🤖",title:"AI — YOUR OWN MODELS",color:"#5856d6"},
-                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"Photo-driven defect capture with AI pre-fill. Embedded references today: BCA CONQUAS (Private Residential R1 + 2022), BCA Quality Mark, BCA Good Industry Practice (17 trade guides), PSSCOC, and ISO 19650 filename mapping on PDF export. Bring any AI provider for photo analysis, auto-fill (title, severity, trade, assignee), natural-language search, PDF diff reports, and Requirements Advisor (defect-to-requirement mapping across the bundled references or project-specific PDFs you upload — HDB, LTA, JTC, MOE, MOHH, FIDIC, SIA, REDAS, bespoke terms). You choose the model, you control the cost."),
+                        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.7,marginBottom:12}},"Photo-driven defect capture with AI pre-fill. Embedded references today: CONQUAS (Private Residential R1 + 2022), Quality Mark, Good Industry Practice (17 trade guides), PSSCOC, and ISO 19650 filename mapping on PDF export. Bring any AI provider for photo analysis, auto-fill (title, severity, trade, assignee), natural-language search, PDF diff reports, and Requirements Advisor (defect-to-requirement mapping across the bundled references or project-specific PDFs you upload — HDB, LTA, JTC, MOE, MOHH, FIDIC, SIA, REDAS, bespoke terms). You choose the model, you control the cost."),
                         React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:8}},
                           React.createElement("div",{style:{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"10px 12px"}},
                             React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"#5856d6",marginBottom:4}},"GOOGLE GEMINI (Free)"),
@@ -21403,8 +21403,8 @@ function App(){
                     ["Tag on Map",["Action-driven sub-modes in TAG: 🖼 Tag on Drawing · 🗺 Tag on Map · ⇄ Compare Changes","OpenStreetMap as the free default — no API key, no billing, works out of the box","Google Maps as an optional upgrade (satellite + Places search)","Per-project default map view (save current centre/zoom as project home)","Address search: Nominatim on OSM, Places Autocomplete on Google","Tap-to-drop GPS pin → Quick Log creates a defect with lat/lng/zoom","Multi-location pins: same defect can be pinned at many GPS locations (map_pins collection)","📍 PIN AGAIN button on the marker preview card — next tap drops another location for the same entry","Long-press empty map to drop a pending pin (bypasses the ADD PIN mode toggle, works on both OSM and Google Maps)","Severity-coloured markers for every map-pinned entry","LIST panel: every pinned entry with tap-to-recenter","Drop-pin toggle — pan freely without accidental pins","Entry detail: static map thumbnail + Open in Google Maps deep link","PDF export: per-entry map thumbnails + ALL PINS ON MAP consolidated page (tile-stitched from OSM — no API key needed, works offline-of-staticmap-services)",
 "Consolidated pin overview auto-fits bounds and draws severity-coloured numbered markers (same style as the on-screen LIVE map)","Map markup toolkit: Zone, Radius, Path, Arrow, Dimension (auto-labelled distance), Stamp, Label, Freehand, Photo overlay","All markup types persisted to the map_markups collection per project","Move any markup by dragging the coloured centroid handle (or native drag on Google Maps)","Freehand on Google Maps via transparent canvas overlay","Photo overlay on map — one-click placement with auto bounds; draggable on both providers"]],
                     ["Tag & Compare",["Upload floor plans (JPG, PNG, WEBP, TIF, PDF)","PDF rendering via PDF.js with page navigation","Zoom, pan & pinch-to-zoom (mobile) — works in markup mode too","Center-anchored zoom buttons keep your focal point in place","Zoom / page-nav controls float inside the canvas and never block toolbars","Ring-style defect pins with severity initial","Critical pin pulse animation","Multi-location pins: same defect can be pinned on many drawings and many pages (pins collection is N:1 with entries)","Pin tooltip with 📍 DUPLICATE (re-pin the same entry at next tap) + 🗑 DELETE","Long-press an existing pin → enters re-pin mode for that entry","Long-press empty drawing area → opens LINK TO ENTRY picker at that spot (no need to toggle ADD PIN first)","Sticky ADD PIN mode — stays on after each placement so you can rapid-drop pins","Search box in the LINK TO ENTRY picker + 📍N badge showing how many times each entry is already pinned","Soft-archive deleted drawings (DELETE moves to a 7-day Archive section, 🗑 FOREVER for immediate hard-delete)","▸ SHOW ARCHIVED DRAWINGS toggle inside DRAWINGS tab with RESTORE + FOREVER buttons and 'Xd left' badge","Quick-pin: create entry directly from drawing","Defect heatmap overlay (severity-weighted)","Drawing-level markup (freehand, arrows, circles, text)","Drawing notes — pinned text with author + timestamp","Markup color picker + undo / clear","Select arrow icon for select/move tool (matches Figma/Photoshop conventions)","Tap-to-scale ( − / + ) buttons for selected photo markup","Larger photo resize handle with visible corner indicator","Pin count & severity badges on cards","PDF thumbnail preview in list","Diff dropdown: Single (PDFs) and Batch (Folders) in one menu","Single PDF diff with visual overlay of changes","Compare markup — draw on top of the diff (freehand, arrow, circle, text)","Compare markup: select and drag to reposition any stroke","Compare markup: 4 text size presets (S/M/L/XL)","Compare markup: 9-way text alignment via 3x3 grid menu","Compare markup: color picker retargets selected stroke","Compare markup: delete individual strokes without clearing all","Compare markup: overlay site photos onto the diff (capture or pick from device)","Compare markup: drag photos to reposition, +/− to resize, markup on top","AI diff report with lock / approve audit trail","Saved comparisons with overlay thumbnails (markup composited in)","Batch PDFs Comparison (folder vs folder)","Batch completeness check (missing / extra files)","Batch content comparison (per-file diff with detail)","Batch export (CSV + PDF with per-file changes)","Editable set labels (Tender, As-Built, M&E, etc.)"]],
-                    ["CONQUAS Quality Check (BCA-aligned)",[
-                      "BCA CONQUAS (Private Residential) R1 alignment — effective 1 April 2026, reflects the 20 April 2026 revision adding Water Flow Test (WFT)",
+                    ["CONQUAS Quality Check",[
+                      "CONQUAS (Private Residential) R1 alignment — effective 1 April 2026, reflects the 20 April 2026 revision adding Water Flow Test (WFT)",
                       "Weighted Project NC rate per R1 §3.3: IF × 0.4 + FT × 0.4 + EF × 0.2 — live in REPORT",
                       "Projected Band 1-6 mapped from weighted NC rate (<6% / <10% / <15% / <20% / <25% / ≥25%)",
                       "Internal Finishes (IF) — tier-weighted 1X Finishings / 2X Functionality / 3X Liveability across Floor, Wall, Ceiling, Door, Window, Component, M&E Fittings",
@@ -21419,11 +21419,11 @@ function App(){
                       "External Finishes (EF) capture — Roof, External Wall, External Works direct-count NC rate (R1 §3.3 c)",
                       "Per-element IF breakdown in REPORT — weighted NCs / applicable / rate % per element, colour-coded severity",
                       "Per-project CONQUAS toggle — one-tap enable/disable in Settings → Projects; new projects default to CONQUAS on",
-                      "Reference documents picker in Requirements Advisor — PSSCOC (3 variants), CONQUAS (Private Residential + 2022 + launch circular), BCA Quality Mark Scheme, 17 BCA Good Industry Practice trade guides, HDB BTO handover checklist — grouped tick-boxes, smart defaults by project work category",
+                      "Reference documents picker in Requirements Advisor — PSSCOC (3 variants), CONQUAS (Private Residential + 2022 + launch circular), Quality Mark Scheme, 17 Good Industry Practice trade guides, HDB BTO handover checklist — grouped tick-boxes, smart defaults by project work category",
                       "Pre-extracted reference text at build time — PWA stays compact (~500 KB of text vs ~30 MB of PDFs); upload card remains for licensed / project-specific PDFs",
                       "Multi-edition ontology — CONQUAS Private Residential + per-trade GIP structured checkpoints, seeded via tools/seed-gip-checkpoints.js (AI-extracted, needs_review flagged)",
                       "Disclaimer auto-adjusts — turns green and drops 'Projection only' once IF + FT + EF all captured; stays orange while any component is pending",
-                      "All outputs carry a clear disclaimer — projection only until BCA assessor sign-off; accountability rests with the accredited checker, QP, or assessor — not the app"
+                      "All outputs carry a clear disclaimer — projection only until accredited assessor sign-off; accountability rests with the accredited checker, QP, or assessor — not the app"
                     ]],
                     ["Evidence Integrity & ISO 19650 naming",[
                       "Media hash (SHA-256) — every photo is hashed client-side at capture, stored immutable; detects tampering and enables duplicate-photo detection",
@@ -21433,12 +21433,12 @@ function App(){
                       "Trade → Role code mapping — Architectural → A, Structural → S, Mechanical → M, Electrical → E, Civil → C, QS → Q, Other → Z (ISO 19650 Table A.2)",
                       "Status → Suitability code mapping — Open → S2, In Progress → S3, Done → S4, Verified → A1, Closed → A2 (ISO 19650 §5.1.8)",
                       "Project + Company short codes — derived from project/company name when not explicitly set, so filenames work from day one with no manual setup",
-                      "CORENET-X compatibility — filenames are parse-able by BCA regulatory submission workflows; public-sector agencies get a valid handoff without custom export",
+                      "CORENET-X compatibility — filenames are parse-able by regulatory submission workflows; public-sector agencies get a valid handoff without custom export",
                       "Immutable audit anchors — record ID, capture time, captured-by, media hash, source type stay as-captured (batch edit excludes them by design)"
                     ]],
                     ["Report Overview",["Real-time status counts (5 stages) at the top of REPORT","Critical alerts banner","Severity breakdown chart","Recent entries with type badges","Live sync indicator + offline queue count","Inline AI Query bar for natural-language search"]],
                     ["Admin Analytics",["Entries today / week / month / all time","Active users — who submitted today & this week","Per-user ranking bar chart","Photos stats (total & avg per entry)","Entries by entry type breakdown","Entries by project breakdown","AI usage stats (daily limit, coverage, provider)"]],
-                    ["Reports & Exports",["Site report with section-aware tally (defects, drawings, comparisons)","Tally row lays out in a single aligned grid, stays tight on narrow phones","Conditional severity / status / assignee breakdowns","Filter by severity / status / assignee / date","CSV Occurrences + Pin Locations columns: count of every drawing pin + map pin per entry","PDF per-entry '📍 LOCATIONS · N total' line when the same defect recurs on multiple drawings or GPS points","Max-size PDF export pages — both on-site (fast) and office (lossless vector) render drawings and comparisons at A2-minimum so small source PDFs stay readable","Email content sections (defects, drawings, comparisons)","Email preview with opt-in/out per section — includes pin entries from drawings","Translated email reports (all values in user's language)","Email report via PocketBase SMTP","Requirements Advisor — AI defect-to-requirement mapping across bundled reference docs (PSSCOC, CONQUAS R1, BCA GIP trade guides, HDB checklist) + user uploads","Advisor reference corpus pre-cached by the service worker during install — picker works offline / on flaky site connections after the first online load","Advisor INCIDENT banner + RETRY when the reference library can't load; no silent fallback to 'general knowledge'","Advisor PARTIAL ANALYSIS banner when some references fail mid-run — missing documents named explicitly above the advisory output","Partial-load INCIDENT notice embedded into contractSummary so the warning travels with the exported PDF and email","Advisor RUN button blocked when reference library is offline AND no user-uploaded PDFs — prevents a silent 'general knowledge' advisory","Advisor AI errors surfaced verbatim (HTTP status, quota / rate-limit, MAX_TOKENS, safety-block, CORS) instead of generic 'Check AI Setup'","Advisor Gemini thinking-budget fix — sets thinkingBudget:0 + maxOutputTokens to prevent 2.5-flash MAX_TOKENS-empty-output burn","Advisor source labels aligned with actually-loaded text — prevents hallucinated clause numbers from references whose text failed to load","Google Sheets export (new tab per export)","EXPORT all-in-one CSV (defects + annotations + comparisons)","Dn menu: Markup CSV / PDF export","Dn menu: Compare CSV / PDF export","Dn menu: All CSV / PDF export","Dn menu: All-in-One (CSV + PDF in one tap)","Annotated drawings embedded in PDF exports (pins, notes, markup burned in)",
+                    ["Reports & Exports",["Site report with section-aware tally (defects, drawings, comparisons)","Tally row lays out in a single aligned grid, stays tight on narrow phones","Conditional severity / status / assignee breakdowns","Filter by severity / status / assignee / date","CSV Occurrences + Pin Locations columns: count of every drawing pin + map pin per entry","PDF per-entry '📍 LOCATIONS · N total' line when the same defect recurs on multiple drawings or GPS points","Max-size PDF export pages — both on-site (fast) and office (lossless vector) render drawings and comparisons at A2-minimum so small source PDFs stay readable","Email content sections (defects, drawings, comparisons)","Email preview with opt-in/out per section — includes pin entries from drawings","Translated email reports (all values in user's language)","Email report via PocketBase SMTP","Requirements Advisor — AI defect-to-requirement mapping across bundled reference docs (PSSCOC, CONQUAS R1, GIP trade guides, HDB checklist) + user uploads","Advisor reference corpus pre-cached by the service worker during install — picker works offline / on flaky site connections after the first online load","Advisor INCIDENT banner + RETRY when the reference library can't load; no silent fallback to 'general knowledge'","Advisor PARTIAL ANALYSIS banner when some references fail mid-run — missing documents named explicitly above the advisory output","Partial-load INCIDENT notice embedded into contractSummary so the warning travels with the exported PDF and email","Advisor RUN button blocked when reference library is offline AND no user-uploaded PDFs — prevents a silent 'general knowledge' advisory","Advisor AI errors surfaced verbatim (HTTP status, quota / rate-limit, MAX_TOKENS, safety-block, CORS) instead of generic 'Check AI Setup'","Advisor Gemini thinking-budget fix — sets thinkingBudget:0 + maxOutputTokens to prevent 2.5-flash MAX_TOKENS-empty-output burn","Advisor source labels aligned with actually-loaded text — prevents hallucinated clause numbers from references whose text failed to load","Google Sheets export (new tab per export)","EXPORT all-in-one CSV (defects + annotations + comparisons)","Dn menu: Markup CSV / PDF export","Dn menu: Compare CSV / PDF export","Dn menu: All CSV / PDF export","Dn menu: All-in-One (CSV + PDF in one tap)","Annotated drawings embedded in PDF exports (pins, notes, markup burned in)",
 "GPS-tag map thumbnails + consolidated pin overview embedded in PDF exports (reliable OSM tile-stitch fallback when no Google key)","Pins render in their severity colors regardless of section toggles","Live progress feedback during PDF export (Preparing → Rendering drawing N/M → Saving)","Per-drawing PDF export from the viewer"]],
                     ["Multi-Language (i18n)",["23 languages (EN, ZH, ZH-TW, MS, ID, HI, TA, TH, VI, BN, MY, JA, KO, DE, FR, ES, PT, IT, TR, SV, NO, DA, FI)","Full UI translation (617 keys — labels, buttons, placeholders, errors)","Dropdown option translation (539 terms — components, issues, levels, zones, durations, costs)","Construction industry terminology per language","Language selector with flags + native names","Instant English (inlined) + lazy-loaded language packs","Fallback chain: language → English → raw key"]],
                     ["Storage",["PocketBase (default server)","Local path (self-hosted server / machine)","Google Drive (OAuth, personal cloud)"]],
@@ -21470,20 +21470,20 @@ function App(){
               {helpTab==="disclaimer"&&(
                 <div style={{color:"rgba(255,255,255,0.78)",fontSize:12,lineHeight:1.7,fontFamily:"'Barlow',sans-serif"}}>
                   <div style={{marginBottom:16}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ffcc00",letterSpacing:"0.05em",marginBottom:6}}>THE PROBLEM</div>
-                    <div style={{color:"rgba(255,255,255,0.72)",lineHeight:1.6}}>Construction inspection, QA, and Defect Liability Period work still runs on phone cameras, paper notebooks, WhatsApp groups, and emails to subcontractors. When a defect is disputed twelve months later, "I sent you the photo" rarely holds up. Foreign-worker crews struggle with English forms, site networks drop on basement walks, contract terminology shifts across editions, and defect records scatter across half a dozen tools that do not talk to each other.</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ffcc00",letterSpacing:"0.05em",marginBottom:6}}>{t("help.purpose_problem_title").toUpperCase()}</div>
+                    <div style={{color:"rgba(255,255,255,0.72)",lineHeight:1.6}}>{t("help.purpose_problem_body")}</div>
                   </div>
                   <div style={{marginBottom:16}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ffcc00",letterSpacing:"0.05em",marginBottom:6}}>WHAT SITESHRIMP DOES</div>
-                    <div style={{color:"rgba(255,255,255,0.72)",lineHeight:1.6}}>A phone-first defect logger with a flexible workflow — the inspector chooses how aggressive the capture is (review-first, review-then-auto-save after the first ten of a session, or fully zero-tap), free-text or dropdown for any field, custom entry types, standalone capture or a guided wizard for structured walkthroughs. Snap a photo on site and the AI fills in title, description, severity, trade, component, and location; one save commits the record with a SHA-256 photo hash, GPS, timestamp, and ISO 19650 filename — an audit trail without manual upkeep. It works offline (queue replays on reconnect), one-handed in gloves, in 23 languages. Drawings are part of the same record: pin defects on PDFs, mark up photos, or compare two revisions and let the AI summarise what changed. Standards compliance is built on a generic ontology and audit layer; bundled industry-standard reference samples ship as worked examples, and the same schema extends to other jurisdictions, contract families, or in-house QA programmes by swapping the seed data. The Requirements Advisor cross-checks defects against bundled references or contracts uploaded per project. Reports come straight from the data — PDF with sign-off block, CSV, email translated into 23 languages, Google Sheets, and a ZIP photo pack named to ISO 19650 — chat-channel alerts on status changes, soft delete with a 7-day recoverable archive.</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ffcc00",letterSpacing:"0.05em",marginBottom:6}}>{t("help.purpose_what_title").toUpperCase()}</div>
+                    <div style={{color:"rgba(255,255,255,0.72)",lineHeight:1.6}}>{t("help.purpose_what_body")}</div>
                   </div>
                   <div style={{marginBottom:16}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ffcc00",letterSpacing:"0.05em",marginBottom:6}}>WHAT IS DIFFERENT</div>
-                    <div style={{color:"rgba(255,255,255,0.72)",lineHeight:1.6}}>AI runs at the moment of capture, not as a back-office report layer — photo → AI-filled record in one step. Prompts can be tuned to verbatim regulatory or contractual wording so the output maps directly to the categories teams actually report against. Inspectors pick the AI provider — cloud or local — with a master toggle to pause it at any time, a daily call counter, and a re-analyze function that refreshes existing entries when prompts improve. The Requirements Advisor takes the next step by cross-checking the entire defect list against bundled references or contracts the project uploads itself, surfacing compliance gaps in plain language.</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ffcc00",letterSpacing:"0.05em",marginBottom:6}}>{t("help.purpose_different_title").toUpperCase()}</div>
+                    <div style={{color:"rgba(255,255,255,0.72)",lineHeight:1.6}}>{t("help.purpose_different_body")}</div>
                   </div>
                   <div style={{marginBottom:16}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ffcc00",letterSpacing:"0.05em",marginBottom:6}}>ORIGIN</div>
-                    <div style={{color:"rgba(255,255,255,0.72)",lineHeight:1.6}}>SiteShrimp is built by a non-engineer working with AI as a daily thinking partner — a personal learning project that also has to stand up on a real construction site. It is both a daring test of what AI-assisted development can produce when the bar is a court-defensible defect record (not a demo), and a glimpse of what becomes possible when ordinary professionals stop waiting for a tech team and build the tools their own work needs.</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ffcc00",letterSpacing:"0.05em",marginBottom:6}}>{t("help.purpose_origin_title").toUpperCase()}</div>
+                    <div style={{color:"rgba(255,255,255,0.72)",lineHeight:1.6}}>{t("help.purpose_origin_body")}</div>
                   </div>
 
                   <div style={{background:"rgba(255,204,0,0.08)",border:"1px solid rgba(255,204,0,0.3)",borderRadius:12,padding:"14px 16px",marginBottom:18}}>
