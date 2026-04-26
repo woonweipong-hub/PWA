@@ -1584,13 +1584,29 @@ const AI_PROMPT=getAIPrompt();
 const GEMINI_MODEL_KEY="sdt-gemini-model-v1";
 const GEMINI_MODEL_FALLBACKS=["gemini-2.5-flash","gemini-2.0-flash","gemini-1.5-flash","gemini-1.5-flash-latest","gemini-pro"];
 
+// Bounded fetch — wraps a fetch in an AbortController so a hung request
+// surfaces as a friendly timeout error instead of leaving the LOG screen
+// stuck on "ANALYZING…" forever (the bug surfaced 2026-04-26 when Gemini
+// hung mid-upload from a mobile cellular network — the photo-analyze fetch
+// has no native timeout, so the spinner spun indefinitely). Default 30s
+// matches the operator-patience ceiling on a phone-first capture flow.
+function fetchWithTimeout(input, init={}, ms=30000){
+  if(typeof AbortController==="undefined")return fetch(input,init);
+  const ctrl=new AbortController();
+  const tid=setTimeout(()=>{try{ctrl.abort();}catch{}},ms);
+  const opts={...init,signal:init.signal||ctrl.signal};
+  return fetch(input,opts).finally(()=>clearTimeout(tid));
+}
+
 // Probe the Gemini models endpoint and return the first vision-capable model
 // that works with the given key. Caches the result.
 async function pickGeminiModel(apiKey){
   const cached=local.get(GEMINI_MODEL_KEY);
   if(cached)return cached;
   try{
-    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
+    // Models-list probe runs once per session — bounded so a Gemini outage
+    // can't lock the rest of the AI chain behind a hung HTTPS request.
+    const r=await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`,{},15000);
     if(!r.ok)return GEMINI_MODEL_FALLBACKS[0];
     const d=await r.json();
     const names=(d.models||[]).map(m=>(m.name||"").replace(/^models\//,"")).filter(n=>n.includes("gemini"));
@@ -1624,7 +1640,11 @@ async function geminiGenerate(apiKey,body){
   const backoffs=[1000,3000];
   let model=await pickGeminiModel(apiKey);
   const tried=new Set([model]);
-  const call=async m=>fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(apiKey)}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  // 30s per-attempt ceiling. Without this, a hung HTTPS request never
+  // resolves and the "ANALYZING…" pill spins forever — the 2026-04-26
+  // mobile-photo-upload incident. Abort surfaces as an AbortError caught
+  // by the outer try/catch and treated as a transient network failure.
+  const call=async m=>fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(apiKey)}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)},30000);
   let res;
   try{res=await call(model);}
   catch(e){
@@ -1764,10 +1784,10 @@ async function analyzeWithOllama(cfg,base64Image,prompt){
     const b64=base64Image.split(",")[1];
     const url=(cfg.url||"http://localhost:11434").replace(/\/+$/,"");
     const model=cfg.model||"llava";
-    const res=await fetch(url+"/api/generate",{
+    const res=await fetchWithTimeout(url+"/api/generate",{
       method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({model,prompt:prompt||getAIPrompt(),images:[b64],stream:false,format:"json"})
-    });
+    },30000);
     if(!res.ok){
       const errText=await res.text().catch(()=>"");
       const msg=`Ollama HTTP ${res.status} — ${errText.slice(0,200)||"no body"}`;
@@ -1798,14 +1818,14 @@ async function analyzeWithOpenAI(cfg,base64Image,prompt){
     // max_tokens bumped from 300 → 1000 so the enlarged JSON response
     // (more fields per the current prompt) can finish cleanly. response_format
     // enforces valid JSON output on models that support it.
-    const res=await fetch(url+"/v1/chat/completions",{
+    const res=await fetchWithTimeout(url+"/v1/chat/completions",{
       method:"POST",
       headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},
       body:JSON.stringify({model,max_tokens:1000,response_format:{type:"json_object"},messages:[{role:"user",content:[
         {type:"image_url",image_url:{url:"data:image/jpeg;base64,"+b64,detail:"low"}},
         {type:"text",text:prompt||getAIPrompt()}
       ]}]})
-    });
+    },30000);
     if(!res.ok){
       const errText=await res.text().catch(()=>"");
       const msg=`OpenAI HTTP ${res.status} — ${errText.slice(0,200)||"no body"}`;
@@ -2037,10 +2057,13 @@ async function askAIWithUsage(prompt){
       if(!cfg.url)return{text:null,tokens:null,error:"Ollama URL missing. Open Settings → AI Setup."};
       let res;
       try{
-        res=await fetch(`${cfg.url}/api/generate`,{method:"POST",headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({model:cfg.model||"llama3",prompt,stream:false})});
+        res=await fetchWithTimeout(`${cfg.url}/api/generate`,{method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({model:cfg.model||"llama3",prompt,stream:false})},60000);
       }catch(e){
-        const err=`Ollama network error — ${e?.message||"could not reach "+cfg.url}. Is the server running and CORS-allowed?`;
+        const isAbort=e?.name==="AbortError";
+        const err=isAbort
+          ?`Ollama timed out after 60s — model may be loading or the server is overwhelmed.`
+          :`Ollama network error — ${e?.message||"could not reach "+cfg.url}. Is the server running and CORS-allowed?`;
         _setAiError(err);return{text:null,tokens:null,error:err};
       }
       if(!res.ok){
@@ -2062,11 +2085,14 @@ async function askAIWithUsage(prompt){
       if(!cfg.apiKey)return{text:null,tokens:null,error:"OpenAI API key missing. Open Settings → AI Setup."};
       let res;
       try{
-        res=await fetch(`${cfg.url||"https://api.openai.com"}/v1/chat/completions`,{method:"POST",
+        res=await fetchWithTimeout(`${cfg.url||"https://api.openai.com"}/v1/chat/completions`,{method:"POST",
           headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},
-          body:JSON.stringify({model:cfg.model||"gpt-4o-mini",messages:[{role:"user",content:prompt}],max_tokens:8192})});
+          body:JSON.stringify({model:cfg.model||"gpt-4o-mini",messages:[{role:"user",content:prompt}],max_tokens:8192})},45000);
       }catch(e){
-        const err=`OpenAI network error — ${e?.message||"could not reach endpoint"}.`;
+        const isAbort=e?.name==="AbortError";
+        const err=isAbort
+          ?`OpenAI timed out after 45s — service may be slow. Retry shortly or switch provider in Settings.`
+          :`OpenAI network error — ${e?.message||"could not reach endpoint"}.`;
         _setAiError(err);return{text:null,tokens:null,error:err};
       }
       if(!res.ok){
