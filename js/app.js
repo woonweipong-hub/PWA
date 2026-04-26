@@ -1648,6 +1648,14 @@ async function geminiGenerate(apiKey,body){
   let res;
   try{res=await call(model);}
   catch(e){
+    // AbortError = our 30s timeout fired. Don't retry — the request
+    // already burned the user's full patience budget; doubling it to
+    // 61s makes the spinner feel infinite. Surface immediately so
+    // friendlyAiError can show a maintenance-style message.
+    if(e?.name==="AbortError"){
+      console.warn("[AI] Gemini timed out after 30s — surfacing instead of retry");
+      throw e;
+    }
     console.warn("[AI] Gemini network error, retrying in 1s:",e?.message||e);
     await new Promise(r=>setTimeout(r,1000));
     res=await call(model);
@@ -1875,6 +1883,11 @@ async function analyzePhoto(base64Image,prompt){
 function friendlyAiError(raw){
   const s=String(raw||"");
   if(!s)return"AI couldn't analyze — tap RETRY or fill in manually.";
+  // Timeout / AbortError — most common during transient AI provider hangs.
+  // Surfaces as the "we're working on it" maintenance-style message so the
+  // user doesn't blame their own setup.
+  if(/abort|timed?\s?out|timeout|aborted a request/i.test(s))
+    return"AI service is slow or temporarily unavailable. We're working on it — please try again, or fill the form manually (your photo is saved).";
   if(/HTTP\s?5\d\d/i.test(s)||/UNAVAILABLE/i.test(s)||/high demand/i.test(s))
     return"AI service is busy. Tap RETRY (usually clears within a minute).";
   if(/HTTP\s?429/i.test(s)||/rate.?limit/i.test(s)||/quota/i.test(s))
@@ -5681,7 +5694,7 @@ function GeminiSettings({onClose,companyId}){
         // model versions the key has access to. Reset the cached model pick
         // so the next real call re-probes against this freshly-validated key.
         const key=gemKey.trim();
-        const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`);
+        const r=await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`,{},15000);
         if(r.ok){
           const d=await r.json();
           const flashModels=(d.models||[]).map(m=>(m.name||"").replace(/^models\//,"")).filter(n=>n.includes("flash"));
@@ -7182,6 +7195,21 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   },[form.workCategory]);
 
   const[saving,setSaving]=useState(false);const[analyzing,setAnalyzing]=useState(false);const[aiResult,setAiResult]=useState(null);
+  // Live elapsed counter on the ANALYZING button — without it, a slow AI
+  // call looks frozen and users assume the app is stuck. With it, the
+  // button reads "ANALYZING 12s…" so the user can see time is passing
+  // (and decides for themselves when to give up). Resets per analysis.
+  const analyzeStartRef=useRef(0);
+  const[analyzeElapsed,setAnalyzeElapsed]=useState(0);
+  useEffect(()=>{
+    if(!analyzing){setAnalyzeElapsed(0);return;}
+    analyzeStartRef.current=Date.now();
+    setAnalyzeElapsed(0);
+    const tid=setInterval(()=>{
+      setAnalyzeElapsed(Math.floor((Date.now()-analyzeStartRef.current)/1000));
+    },1000);
+    return()=>clearInterval(tid);
+  },[analyzing]);
   const[count,setCount]=useState(0);const[last,setLast]=useState(null);const[showBatch,setShowBatch]=useState(false);
   const[showMoreDetails,setShowMoreDetails]=useState(false);
   // Option B: add extra photo to the just-saved entry without creating a new one
@@ -8180,7 +8208,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
             </div>
             {aiReady&&(
               <button onClick={analyze} disabled={analyzing} style={{width:"100%",background:"rgba(88,86,214,0.08)",border:"1.5px solid rgba(88,86,214,0.3)",borderRadius:10,padding:"11px",color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-                {analyzing?<><Spin size={14}/><span>{t("log.analyzing")}</span></>:<><span>🤖</span><span>{t("log.analyze_with_ai")}</span></>}
+                {analyzing?<><Spin size={14}/><span>{t("log.analyzing")}{analyzeElapsed>2?` (${analyzeElapsed}s)`:""}</span></>:<><span>🤖</span><span>{t("log.analyze_with_ai")}</span></>}
               </button>
             )}
             {!aiReady&&<div style={{fontSize:11,color:"rgba(0,0,0,0.35)",textAlign:"center",padding:"6px 0"}}>{t("log.setup_ai_tip")}</div>}
@@ -15048,10 +15076,10 @@ Requirements:
       // models. If user didn't pick, default to llava since it's most
       // commonly pulled.
       const model=cfg.model||"llava";
-      const res=await fetch(ollamaUrl+"/api/generate",{
+      const res=await fetchWithTimeout(ollamaUrl+"/api/generate",{
         method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({model,prompt,images:[b64],stream:false,options:{temperature:0.2,num_predict:4096}}),
-      });
+      },90000);
       if(!res.ok)throw new Error(`Ollama error ${res.status}: ${await res.text().catch(()=>"")}`);
       const data=await res.json();
       text=(data.response||"").trim();
@@ -15061,14 +15089,14 @@ Requirements:
       if(!cfg.apiKey)throw new Error("OpenAI key missing — configure AI in Settings → AI Setup.");
       const openaiUrl=(cfg.url||"https://api.openai.com").replace(/\/+$/,"");
       const model=cfg.model||"gpt-4o-mini";
-      const res=await fetch(openaiUrl+"/v1/chat/completions",{
+      const res=await fetchWithTimeout(openaiUrl+"/v1/chat/completions",{
         method:"POST",
         headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},
         body:JSON.stringify({model,max_tokens:8192,messages:[{role:"user",content:[
           {type:"image_url",image_url:{url:"data:image/jpeg;base64,"+b64,detail:"high"}},
           {type:"text",text:prompt},
         ]}]}),
-      });
+      },60000);
       const data=await res.json();
       if(data?.error)throw new Error(`OpenAI error: ${data.error.message||JSON.stringify(data.error)}`);
       text=(data.choices?.[0]?.message?.content||"").trim();
