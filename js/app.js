@@ -1757,11 +1757,27 @@ function _parseAiJson(raw,providerLabel){
   return null;
 }
 
+// Detect mime type from a data: URL prefix. Mobile cameras (esp. iOS and
+// some Androids) sometimes pass HEIC/HEIF or PNG through untouched —
+// hardcoding "image/jpeg" caused Gemini and OpenAI to either reject the
+// upload opaquely or silently fail, surfacing as "AI not working" with no
+// actionable error. Defaults to image/jpeg only when the data URL has no
+// recognisable prefix.
+function _mimeFromDataUrl(dataUrl){
+  if(!dataUrl||typeof dataUrl!=="string")return"image/jpeg";
+  const m=dataUrl.match(/^data:([^;]+);/i);
+  if(!m)return"image/jpeg";
+  const t=m[1].toLowerCase();
+  if(/^image\/(jpe?g|png|webp|heic|heif)$/.test(t))return t.replace(/jpg/,"jpeg");
+  return"image/jpeg";
+}
+
 async function analyzeWithGemini(apiKey,base64Image,prompt){
   try{
     const b64=base64Image.split(",")[1];
+    const mimeType=_mimeFromDataUrl(base64Image);
     const promptParts=[
-      {inline_data:{mime_type:"image/jpeg",data:b64}},
+      {inline_data:{mime_type:mimeType,data:b64}},
       {text:prompt||getAIPrompt()}
     ];
     // Full config favours 2.5-family models: thinkingBudget:0 prevents the
@@ -1852,6 +1868,7 @@ async function analyzeWithOllama(cfg,base64Image,prompt){
 async function analyzeWithOpenAI(cfg,base64Image,prompt){
   try{
     const b64=base64Image.split(",")[1];
+    const mimeType=_mimeFromDataUrl(base64Image);
     const url=(cfg.url||"https://api.openai.com").replace(/\/+$/,"");
     const model=cfg.model||"gpt-4o-mini";
     // max_tokens bumped from 300 → 1000 so the enlarged JSON response
@@ -1861,7 +1878,7 @@ async function analyzeWithOpenAI(cfg,base64Image,prompt){
       method:"POST",
       headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},
       body:JSON.stringify({model,max_tokens:1000,response_format:{type:"json_object"},messages:[{role:"user",content:[
-        {type:"image_url",image_url:{url:"data:image/jpeg;base64,"+b64,detail:"low"}},
+        {type:"image_url",image_url:{url:"data:"+mimeType+";base64,"+b64,detail:"low"}},
         {type:"text",text:prompt||getAIPrompt()}
       ]}]})
     },30000);
@@ -8290,14 +8307,41 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
                 place, see the friendly reason, and still access the raw
                 detail (for support / debug) without leaving LOG. */}
             {analyzeError&&!analyzing&&(
-              <div style={{background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"8px 10px",marginTop:8,display:"flex",alignItems:"flex-start",gap:8}}>
-                <div style={{fontSize:16,lineHeight:1,flexShrink:0}}>⚠</div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:12,fontWeight:700,color:"#cc0000",lineHeight:1.35}}>{friendlyAiError(analyzeError)}</div>
-                  <div title={analyzeError} style={{fontSize:10,color:"rgba(204,0,0,0.6)",marginTop:2,lineHeight:1.3,maxHeight:28,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{analyzeError}</div>
+              <div style={{background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"8px 10px",marginTop:8}}>
+                <div style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:6}}>
+                  <div style={{fontSize:16,lineHeight:1,flexShrink:0,marginTop:1}}>⚠</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12,fontWeight:700,color:"#cc0000",lineHeight:1.35}}>{friendlyAiError(analyzeError)}</div>
+                  </div>
+                  <button onClick={()=>{setAnalyzeError(null);analyze();}} style={{background:"#cc0000",border:"none",borderRadius:6,padding:"5px 10px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer",letterSpacing:"0.04em",flexShrink:0}}>⟳ RETRY</button>
+                  <button onClick={()=>setAnalyzeError(null)} title="Dismiss — fill the form manually" style={{background:"transparent",border:"none",color:"rgba(204,0,0,0.5)",fontSize:16,cursor:"pointer",padding:"0 4px",lineHeight:1,flexShrink:0}}>×</button>
                 </div>
-                <button onClick={()=>{setAnalyzeError(null);analyze();}} style={{background:"#cc0000",border:"none",borderRadius:6,padding:"5px 10px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer",letterSpacing:"0.04em",flexShrink:0}}>⟳ RETRY</button>
-                <button onClick={()=>setAnalyzeError(null)} title="Dismiss — fill the form manually" style={{background:"transparent",border:"none",color:"rgba(204,0,0,0.5)",fontSize:16,cursor:"pointer",padding:"0 4px",lineHeight:1,flexShrink:0}}>×</button>
+                <div style={{fontSize:11,color:"rgba(204,0,0,0.75)",lineHeight:1.4,padding:"6px 8px",background:"rgba(255,255,255,0.4)",borderRadius:6,wordBreak:"break-word",fontFamily:"monospace",maxHeight:120,overflowY:"auto"}}>{analyzeError}</div>
+                <button onClick={()=>{
+                  try{
+                    const provider=local.get(AI_PROVIDER_KEY)||"gemini";
+                    const photo=form.photos?.[0]||"";
+                    const photoMime=(photo.match(/^data:([^;]+)/)||[])[1]||"unknown";
+                    const photoSizeKb=Math.round(((photo||"").length*0.75)/1024);
+                    const diag={
+                      build:(typeof BUILD_INFO!=="undefined"?BUILD_INFO?.commit:"unknown"),
+                      builtAt:(typeof BUILD_INFO!=="undefined"?BUILD_INFO?.builtAt:""),
+                      provider,
+                      online:!!navigator.onLine,
+                      ua:(navigator.userAgent||"").slice(0,200),
+                      photoMime,photoSizeKb,
+                      error:String(analyzeError||"").slice(0,1000),
+                      at:new Date().toISOString()
+                    };
+                    const text="SiteShrimp AI diagnostic\n"+JSON.stringify(diag,null,2);
+                    if(navigator.clipboard?.writeText){
+                      navigator.clipboard.writeText(text).then(()=>alert("Diagnostic copied to clipboard. Paste it to support."));
+                    }else{
+                      const ta=document.createElement("textarea");ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();
+                      alert("Diagnostic copied to clipboard. Paste it to support.");
+                    }
+                  }catch(e){alert("Could not copy: "+e.message+"\n\nManual copy:\n"+(analyzeError||""));}
+                }} style={{marginTop:6,background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:5,padding:"4px 10px",color:"rgba(0,0,0,0.65)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,cursor:"pointer",letterSpacing:"0.06em"}}>📋 COPY DIAGNOSTIC</button>
               </div>
             )}
             {aiResult&&(
@@ -15162,11 +15206,12 @@ Requirements:
       if(!cfg.apiKey)throw new Error("OpenAI key missing — configure AI in Settings → AI Setup.");
       const openaiUrl=(cfg.url||"https://api.openai.com").replace(/\/+$/,"");
       const model=cfg.model||"gpt-4o-mini";
+      const compareMime=_mimeFromDataUrl(base64Image);
       const res=await fetchWithTimeout(openaiUrl+"/v1/chat/completions",{
         method:"POST",
         headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},
         body:JSON.stringify({model,max_tokens:8192,messages:[{role:"user",content:[
-          {type:"image_url",image_url:{url:"data:image/jpeg;base64,"+b64,detail:"high"}},
+          {type:"image_url",image_url:{url:"data:"+compareMime+";base64,"+b64,detail:"high"}},
           {type:"text",text:prompt},
         ]}]}),
       },60000);
@@ -15177,9 +15222,10 @@ Requirements:
     }else{
       // Gemini (default)
       if(!key)throw new Error("Gemini key missing — configure AI in Settings → AI Setup.");
+      const compareGeminiMime=_mimeFromDataUrl(base64Image);
       const res=await geminiGenerate(key,{
         contents:[{parts:[
-          {inline_data:{mime_type:"image/jpeg",data:b64}},
+          {inline_data:{mime_type:compareGeminiMime,data:b64}},
           {text:prompt},
         ]}],
         generationConfig:{temperature:0.2,maxOutputTokens:8192},
