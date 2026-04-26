@@ -237,17 +237,34 @@ function parseIso19650Filename(input){
 
 function compressPhoto(dataUrl,maxPx=1800,quality=0.8){
   return new Promise(resolve=>{
+    let done=false;
+    let tid=null;
+    const finish=v=>{if(done)return;done=true;if(tid)clearTimeout(tid);resolve(v);};
+    // 12s ceiling — on mobile, decoding a large or corrupt camera image
+    // can hang the <img> element silently (neither onload nor onerror
+    // fires for some HEIC/EXIF combinations or oversized captures).
+    // Without this guard the LOG analyze() spinner runs forever because
+    // compressPhoto sits in front of the AI 90s race. Surfaces the
+    // 2026-04-27 mobile-AI-still-spinning incident.
+    tid=setTimeout(()=>{
+      try{img.src="";}catch{}
+      console.warn("[compressPhoto] decode timeout — falling back to original");
+      finish(null);
+    },12000);
     const img=new Image();
     img.onload=()=>{
-      let w=img.width,h=img.height;
-      if(w>maxPx){h=Math.round(h*maxPx/w);w=maxPx;}
-      if(h>maxPx){w=Math.round(w*maxPx/h);h=maxPx;}
-      const c=document.createElement("canvas");
-      c.width=w;c.height=h;
-      c.getContext("2d").drawImage(img,0,0,w,h);
-      resolve(c.toDataURL("image/jpeg",quality));
+      try{
+        let w=img.width,h=img.height;
+        if(!w||!h){finish(null);return;}
+        if(w>maxPx){h=Math.round(h*maxPx/w);w=maxPx;}
+        if(h>maxPx){w=Math.round(w*maxPx/h);h=maxPx;}
+        const c=document.createElement("canvas");
+        c.width=w;c.height=h;
+        c.getContext("2d").drawImage(img,0,0,w,h);
+        finish(c.toDataURL("image/jpeg",quality));
+      }catch(e){console.warn("[compressPhoto] draw failed:",e?.message||e);finish(null);}
     };
-    img.onerror=()=>resolve(null);
+    img.onerror=()=>finish(null);
     img.src=dataUrl;
   });
 }
