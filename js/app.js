@@ -1638,50 +1638,76 @@ async function pickGeminiModel(apiKey){
 async function geminiGenerate(apiKey,body){
   const TRANSIENT=new Set([429,500,502,503,504]);
   const backoffs=[1000,3000];
+  // Hard wall-clock ceiling for the entire chain. Every internal attempt
+  // also has its own 30s fetchWithTimeout, but without a top-level cap a
+  // run of transient 503s + AbortErrors could chain 8+ × 30s = >4 minutes
+  // of "spinning" while the user thinks the app is dead. With this cap,
+  // the chain bails out at 60s no matter how many fallbacks remain. The
+  // 2026-04-26 mobile incident was this exact failure mode on cellular.
+  const HARD_DEADLINE_MS=60000;
+  const startedAt=Date.now();
+  const deadlineExceeded=()=>Date.now()-startedAt>HARD_DEADLINE_MS;
+  // Sticky abort flag — once any single attempt aborts, every subsequent
+  // retry / fallback short-circuits. Mobile cellular often produces
+  // back-to-back aborts because the underlying connection is broken;
+  // retrying just burns the user's patience without changing the outcome.
+  let sawAbort=false;
   let model=await pickGeminiModel(apiKey);
   const tried=new Set([model]);
-  // 30s per-attempt ceiling. Without this, a hung HTTPS request never
-  // resolves and the "ANALYZING…" pill spins forever — the 2026-04-26
-  // mobile-photo-upload incident. Abort surfaces as an AbortError caught
-  // by the outer try/catch and treated as a transient network failure.
   const call=async m=>fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(apiKey)}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)},30000);
   let res;
   try{res=await call(model);}
   catch(e){
-    // AbortError = our 30s timeout fired. Don't retry — the request
-    // already burned the user's full patience budget; doubling it to
-    // 61s makes the spinner feel infinite. Surface immediately so
-    // friendlyAiError can show a maintenance-style message.
     if(e?.name==="AbortError"){
       console.warn("[AI] Gemini timed out after 30s — surfacing instead of retry");
       throw e;
     }
     console.warn("[AI] Gemini network error, retrying in 1s:",e?.message||e);
+    if(deadlineExceeded())throw new Error("Gemini chain exceeded 60s deadline");
     await new Promise(r=>setTimeout(r,1000));
-    res=await call(model);
+    try{res=await call(model);}
+    catch(e2){
+      if(e2?.name==="AbortError"){console.warn("[AI] Gemini retry also timed out");throw e2;}
+      throw e2;
+    }
   }
   if(res.status===404){
     local.del(GEMINI_MODEL_KEY);
+    if(deadlineExceeded())return res;
     model=await pickGeminiModel(apiKey);
     tried.add(model);
-    res=await call(model);
+    try{res=await call(model);}
+    catch(e){
+      if(e?.name==="AbortError"){console.warn("[AI] Gemini 404-retry timed out");throw e;}
+      throw e;
+    }
   }
   // Same-model backoff retries on transient 5xx / 429.
   for(let i=0;i<backoffs.length&&TRANSIENT.has(res.status);i++){
+    if(sawAbort||deadlineExceeded()){console.warn("[AI] bailing out of backoff retries (abort or deadline)");break;}
     const wait=backoffs[i];
     console.warn(`[AI] Gemini HTTP ${res.status} on ${model} (attempt ${i+1}) — retrying in ${wait}ms`);
     await new Promise(r=>setTimeout(r,wait));
     try{res=await call(model);}
-    catch(e){console.warn("[AI] retry network error:",e?.message||e);continue;}
+    catch(e){
+      if(e?.name==="AbortError"){
+        // Critical: don't keep looping after a timeout — earlier code
+        // logged and continued, which let aborts cascade silently. Now
+        // we set the sticky flag and exit so the outer caller surfaces
+        // the friendly maintenance message in seconds, not minutes.
+        sawAbort=true;
+        console.warn("[AI] backoff retry timed out — bailing out of retry loop");
+        throw e;
+      }
+      console.warn("[AI] retry network error:",e?.message||e);
+      continue;
+    }
   }
-  // Still transient? The primary model is genuinely overloaded. Step down
-  // through the fallback chain (2.5-flash → 2.0-flash → 1.5-flash → …),
-  // trying ONE call each. This recovers the common case where the newest
-  // model is rate-capped but older models have capacity. We don't clear
-  // GEMINI_MODEL_KEY because the primary may be healthy again next session.
-  if(TRANSIENT.has(res.status)){
+  // Model fallback chain — same sticky-abort + deadline guards.
+  if(TRANSIENT.has(res.status)&&!sawAbort){
     for(const fallback of GEMINI_MODEL_FALLBACKS){
       if(tried.has(fallback))continue;
+      if(sawAbort||deadlineExceeded()){console.warn("[AI] bailing out of fallback chain (abort or deadline)");break;}
       tried.add(fallback);
       console.warn(`[AI] ${model} still ${res.status}; stepping to ${fallback}`);
       try{
@@ -1689,6 +1715,11 @@ async function geminiGenerate(apiKey,body){
         if(!TRANSIENT.has(fr.status)){res=fr;model=fallback;break;}
         res=fr;
       }catch(e){
+        if(e?.name==="AbortError"){
+          sawAbort=true;
+          console.warn("[AI] fallback model timed out — bailing out");
+          throw e;
+        }
         console.warn("[AI] fallback model network error:",e?.message||e);
       }
     }
@@ -7763,7 +7794,18 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       // AI can make sharper guesses for sequential same-area logging.
       const compressed=await compressPhoto(photo,600,0.7);
       try{window.__lastAiError=null;}catch{}
-      const result=await analyzePhoto(compressed||photo,buildContextPrompt(last));
+      // Top-level safety net: regardless of what happens inside the AI
+      // chain (provider hangs, retry-loop bugs, transient cascades, etc.),
+      // the spinner can never stick more than 90 seconds. The inner code
+      // already has a 60s deadline + 30s per-attempt timeouts; this race
+      // is the belt-and-suspenders that guarantees the user is never
+      // stranded staring at a frozen ANALYZING button. Mobile cellular
+      // is the failure mode that surfaced on 2026-04-26.
+      const ANALYZE_HARD_CEILING_MS=90000;
+      const result=await Promise.race([
+        analyzePhoto(compressed||photo,buildContextPrompt(last)),
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error("AI analyze timed out after 90s — service may be unavailable. Please try again or fill manually.")),ANALYZE_HARD_CEILING_MS))
+      ]);
       // Race guard — discard a stale result if the user swapped photos
       // between the start of this call and now. analysisHashRef is written
       // by whichever analyze() started most recently; if it's moved, we
