@@ -5907,6 +5907,29 @@ function GeminiSettings({onClose,companyId}){
           <button onClick={test} disabled={!canTest||testing} style={{flex:1,background:"rgba(0,0,0,0.06)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:10,padding:13,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>{testing?"TESTING...":"TEST"}</button>
           <button onClick={save} disabled={!canTest} style={{flex:2,background:canTest?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:10,padding:13,color:canTest?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{saved?"✓ SAVED":"SAVE"}</button>
         </div>
+        {/* Build provenance — surfaces the running bundle commit so a user
+            comparing notes ("did the fix reach me?") can verify in one tap.
+            Long-press to force-clear the service worker cache and reload —
+            an emergency escape hatch for stuck installs. */}
+        {typeof BUILD_INFO!=="undefined"&&BUILD_INFO?.commit&&(
+          <div style={{marginTop:14,padding:"10px 12px",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.06)",borderRadius:10,fontSize:11,color:"rgba(0,0,0,0.55)",fontFamily:"monospace",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+            <span>Build: <strong>{BUILD_INFO.commit}</strong>{BUILD_INFO.builtAt?` · ${new Date(BUILD_INFO.builtAt).toLocaleString()}`:""}</span>
+            <button onClick={async()=>{
+              if(!confirm("Force-refresh the app?\n\nClears the service-worker cache and reloads. Use this if a fix isn't appearing on this device."))return;
+              try{
+                if(navigator.serviceWorker){
+                  const regs=await navigator.serviceWorker.getRegistrations();
+                  await Promise.all(regs.map(r=>r.unregister()));
+                }
+                if(typeof caches!=="undefined"){
+                  const keys=await caches.keys();
+                  await Promise.all(keys.map(k=>caches.delete(k)));
+                }
+              }catch(e){console.warn("Force refresh cache clear failed:",e);}
+              location.reload(true);
+            }} style={{background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.3)",borderRadius:6,padding:"4px 10px",color:"#ff6b00",fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",letterSpacing:"0.06em",flexShrink:0}}>FORCE REFRESH</button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -8207,9 +8230,17 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
               )}
             </div>
             {aiReady&&(
-              <button onClick={analyze} disabled={analyzing} style={{width:"100%",background:"rgba(88,86,214,0.08)",border:"1.5px solid rgba(88,86,214,0.3)",borderRadius:10,padding:"11px",color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-                {analyzing?<><Spin size={14}/><span>{t("log.analyzing")}{analyzeElapsed>2?` (${analyzeElapsed}s)`:""}</span></>:<><span>🤖</span><span>{t("log.analyze_with_ai")}</span></>}
-              </button>
+              <div style={{display:"flex",gap:8,width:"100%"}}>
+                <button onClick={analyze} disabled={analyzing} style={{flex:1,background:"rgba(88,86,214,0.08)",border:"1.5px solid rgba(88,86,214,0.3)",borderRadius:10,padding:"11px",color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                  {analyzing?<><Spin size={14}/><span>{t("log.analyzing")}{analyzeElapsed>2?` (${analyzeElapsed}s)`:""}</span></>:<><span>🤖</span><span>{t("log.analyze_with_ai")}</span></>}
+                </button>
+                {/* Escape hatch — when AI is taking too long the user can
+                    bail out, the spinner stops, and the form unblocks for
+                    manual entry. The photo is preserved either way. */}
+                {analyzing&&analyzeElapsed>=5&&(
+                  <button onClick={()=>{setAnalyzing(false);setAnalyzeError(t("log.skip_ai_done"));}} title={t("log.skip_ai")} style={{background:"rgba(255,107,0,0.1)",border:"1.5px solid rgba(255,107,0,0.4)",borderRadius:10,padding:"11px 14px",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",letterSpacing:"0.04em",flexShrink:0}}>{t("log.skip_ai")}</button>
+                )}
+              </div>
             )}
             {!aiReady&&<div style={{fontSize:11,color:"rgba(0,0,0,0.35)",textAlign:"center",padding:"6px 0"}}>{t("log.setup_ai_tip")}</div>}
             {/* Inline AI error pill — replaces the blocking modal alert

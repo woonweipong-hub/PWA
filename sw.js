@@ -1,4 +1,9 @@
-const CACHE = 'siteshrimp-v105';
+// Bumped 2026-04-26 to force old TWA / browser caches (which were still
+// serving pre-fetchWithTimeout bundles, leaving "ANALYZING…" stuck on
+// mobile) to purge on next app open. The activate handler below deletes
+// every cache whose name doesn't equal CACHE — so a single bump here
+// guarantees a clean state.
+const CACHE = 'siteshrimp-v106';
 const ASSETS = [
   '/',
   '/index.html',
@@ -83,10 +88,16 @@ self.addEventListener('fetch', e => {
 
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
-
+    // Always fetch index.html from network with cache:'no-store' so a
+    // user with a cached old shell can never end up with stale ?v= refs
+    // pointing at a buggy bundle. Falls back to cache only if network
+    // genuinely fails (offline mode). The bundle URLs (?v=<commit>) stay
+    // network-first-then-cache as before — they're already URL-versioned
+    // so a successful network fetch always returns the right code.
+    const isShell = url.pathname === '/' || url.pathname === '/index.html';
     // Network-first: try fresh, fall back to cache
     try {
-      const res = await fetch(e.request);
+      const res = await fetch(e.request, isShell ? { cache: 'no-store' } : undefined);
       if (res.ok) {
         cache.put(e.request, res.clone()).catch(() => {});
       }
