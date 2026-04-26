@@ -2581,13 +2581,35 @@ async function _ensureJSZip(){
 //   1. Stored iso_filename (extension swapped to .jpg if needed)
 //   2. iso_filename + "-N.jpg" for extra photos (N=2,3,…)
 //   3. Fallback "{folder}_{YYYY-MM-DD}_{NNN}.jpg"
-async function exportPhotosZip(defects,projectName,scheme="conquas",onProgress){
+async function exportPhotosZip(defects,projectName,scheme="conquas",onProgress,opts={}){
   const JSZip=await _ensureJSZip();
   const zip=new JSZip();
   const counters={};
   const dateStamp=new Date().toISOString().slice(0,10);
-  let processed=0,skipped=0;
+  let processed=0,skipped=0,isoComputed=0,isoFailed=0;
   const safePart=s=>String(s||"_").replace(/[\/\\?*:|"<>]+/g,"_").trim()||"_";
+  // Build an ISO 19650-aligned name on the fly for any defect whose
+  // cached iso_filename is missing (older entries that pre-date the
+  // iso_filename feature, or new entries whose async PATCH hasn't yet
+  // landed). Caller can pass {company, project} via opts so the prefix
+  // segments (project code / originator) resolve correctly; without
+  // them isoNameForDefect still produces a name from defect-only fields.
+  const _company=opts.company||null;
+  const _project=opts.project||(projectName?{name:projectName}:null);
+  const _computeIsoName=(d,pi)=>{
+    if(typeof isoNameForDefect!=="function")return"";
+    try{
+      const _el=typeof conquasElementOf==="function"?conquasElementOf(d.component):"";
+      const _code=typeof conquasElementCode==="function"?conquasElementCode(_el):"";
+      const _hashShort=String(d.media_hash||"").replace(/[^a-fA-F0-9]/g,"").slice(0,8);
+      return isoNameForDefect(d,_company,_project,{
+        seq:pi+1,
+        element:_code||undefined,
+        hashShort:_hashShort||undefined,
+        ext:"jpg",
+      })||"";
+    }catch(e){console.warn("[Photo ZIP] iso compute failed for defect",d?.id,e?.message||e);return"";}
+  };
   const _bucketFor=(d)=>{
     if(scheme==="severity")return safePart(d.severity||"Unspecified");
     if(scheme==="status")return safePart(d.status||"Open");
@@ -2626,7 +2648,14 @@ async function exportPhotosZip(defects,projectName,scheme="conquas",onProgress){
           const base=_isoBase(d.iso_filename);
           fname=pi===0?`${base}.jpg`:`${base}-${pi+1}.jpg`;
         }else{
-          fname=`${folder}_${dateStamp}_${seq}.jpg`;
+          // No cached iso_filename — compute one now so the ZIP is
+          // ISO 19650-named regardless of when the defect was created.
+          // Falls back to the simple {bucket}_{date}_{seq} format only if
+          // iso compute genuinely fails (no project / no company / etc.),
+          // so reviewers always get something readable.
+          const isoName=_computeIsoName(d,pi);
+          if(isoName){fname=isoName;isoComputed++;}
+          else{fname=`${folder}_${dateStamp}_${seq}.jpg`;isoFailed++;}
         }
         zip.file(`${folder}/${fname}`,blob);
         processed++;
@@ -2651,7 +2680,7 @@ async function exportPhotosZip(defects,projectName,scheme="conquas",onProgress){
   }else{
     Object.keys(counters).sort().forEach(k=>manifest.push(`"${k}",${counters[k]}`));
   }
-  manifest.push(``,`Project,${safePart(projectName||"")}`,`Scheme,${scheme}`,`Generated,${new Date().toISOString()}`,`Source,"${defects.length} entries; ${processed} photos bundled; ${skipped} skipped"`);
+  manifest.push(``,`Project,${safePart(projectName||"")}`,`Scheme,${scheme}`,`Generated,${new Date().toISOString()}`,`Source,"${defects.length} entries; ${processed} photos bundled; ${skipped} skipped"`,`Naming,"ISO 19650 cached + ${isoComputed} computed on-the-fly + ${isoFailed} fallback"`);
   zip.file("_manifest.csv",manifest.join("\n"));
   if(processed===0){
     throw new Error(`No photos bundled (${skipped} skipped — likely CORS or missing files). Check that photos load in REVIEW first.`);
@@ -2667,13 +2696,13 @@ async function exportPhotosZip(defects,projectName,scheme="conquas",onProgress){
   const a=document.createElement("a");
   a.href=url;a.download=filename;a.click();
   setTimeout(()=>URL.revokeObjectURL(url),5000);
-  return {processed,skipped,counters,scheme};
+  return {processed,skipped,counters,scheme,isoComputed,isoFailed};
 }
 // Back-compat alias — existing call sites in REPORT use the CONQUAS-named
 // helper; keep that symbol working so the new generic exporter is purely
 // additive (no risk of breaking the existing 🏛 CONQUAS ZIP button).
-async function exportConquasZip(defects,projectName,onProgress){
-  return exportPhotosZip(defects,projectName,"conquas",onProgress);
+async function exportConquasZip(defects,projectName,onProgress,opts={}){
+  return exportPhotosZip(defects,projectName,"conquas",onProgress,opts);
 }
 
 // Full report export — defects + drawing annotations + saved comparisons in one CSV
@@ -9320,7 +9349,8 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
     try{
       const result=await exportPhotosZip(
         target,currentProject?.name,scheme,
-        (msg)=>setZipBusy({active:true,label:msg})
+        (msg)=>setZipBusy({active:true,label:msg}),
+        {company,project:currentProject}
       );
       const parts=Object.entries(result.counters)
         .filter(([,n])=>n>0)
@@ -11839,7 +11869,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false,langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId),companyLogo:(local.get(COMPANY_LOGO_KEY)||{})[company?.companyId]||"",inspectorSignature:_resolveMySignature()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang,getActiveProfileId(currentProject,company?.companyId));await new Promise(r=>setTimeout(r,600));await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId),companyLogo:(local.get(COMPANY_LOGO_KEY)||{})[company?.companyId]||"",inspectorSignature:_resolveMySignature()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
               <button onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);const result=await exportToGoogleSheets(defs,currentProject?.name,company?.companyName,exportLang);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Bundling CONQUAS photos…"});try{const result=await exportConquasZip(filtered,currentProject?.name,(msg)=>setPdfExport({active:true,label:msg}));const parts=Object.entries(result.counters).filter(([,n])=>n>0).map(([el,n])=>`${el}: ${n}`).join(" · ");alert(`✓ CONQUAS ZIP downloaded\n\n${result.processed} photo${result.processed===1?"":"s"} bundled across ${Object.keys(result.counters).length} element${Object.keys(result.counters).length===1?"":"s"}.${result.skipped?`\n${result.skipped} skipped (see console).`:""}\n\n${parts}`);}catch(e){alert("CONQUAS ZIP export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#5856d6",opacity:pdfExport.active?0.5:1}}>🏛 CONQUAS ZIP <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· 7 element folders, renamed</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Bundling CONQUAS photos…"});try{const result=await exportConquasZip(filtered,currentProject?.name,(msg)=>setPdfExport({active:true,label:msg}),{company,project:currentProject});const parts=Object.entries(result.counters).filter(([,n])=>n>0).map(([el,n])=>`${el}: ${n}`).join(" · ");alert(`✓ CONQUAS ZIP downloaded\n\n${result.processed} photo${result.processed===1?"":"s"} bundled across ${Object.keys(result.counters).length} element${Object.keys(result.counters).length===1?"":"s"}.${result.skipped?`\n${result.skipped} skipped (see console).`:""}\n\n${parts}`);}catch(e){alert("CONQUAS ZIP export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#5856d6",opacity:pdfExport.active?0.5:1}}>🏛 CONQUAS ZIP <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· 7 element folders, renamed</span></button>
             </div>
           )}
         </div>
