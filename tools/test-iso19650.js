@@ -183,6 +183,78 @@ group("5. Revision suffix lands before underscore tail",function(){
 });
 
 // ───────────────────────────────────────────────────────────────────────
+group("7. Issue segment — defect-type slug embedded in tail",function(){
+  // Issue from defect record (auto-pulled, no opts override).
+  const defect={
+    id:"a1b2c3d4",block:"B1",locationLevel:"L02",
+    trade:"Architectural",status:"Open",createdAt:FIXED_DATE,
+    issue:"Hollowness"
+  };
+  const fn=isoNameForDefect(defect,COMPANY,PROJECT,{
+    seq:1,element:"WL",hashShort:"a1b2c3d4",ext:"jpg"
+  });
+  eq("element + issue + hash",fn,
+    "PROJA-ACME-B1-L02-PH-A-A1B2C3D4-S2-20260424_01_WL_HOLLOWNESS_a1b2c3d4.jpg");
+  const p=parseIso19650Filename(fn);
+  truthy("parses",p);
+  eq("element parsed",p.element,"WL");
+  eq("issue parsed",p.issue,"HOLLOWNESS");
+  eq("checkpoint (none)",p.checkpoint,"");
+  eq("hash",p.hashShort,"a1b2c3d4");
+});
+
+// ───────────────────────────────────────────────────────────────────────
+group("8. Issue + CONQUAS checkpoint coexist in tail",function(){
+  const defect={
+    id:"f00dface",block:"B1",locationLevel:"L02",
+    trade:"Architectural",status:"In Progress",createdAt:FIXED_DATE,
+    issue:"Lippage"
+  };
+  const fn=isoNameForDefect(defect,COMPANY,PROJECT,{
+    seq:2,element:"FL",checkpoint:"1X-FL-03",hashShort:"deadbeef",ext:"jpg"
+  });
+  eq("element + issue + checkpoint",fn,
+    "PROJA-ACME-B1-L02-PH-A-F00DFACE-S3-20260424_02_FL_LIPPAGE_1X-FL-03_deadbeef.jpg");
+  const p=parseIso19650Filename(fn);
+  eq("element parsed",p.element,"FL");
+  eq("issue parsed",p.issue,"LIPPAGE");
+  eq("checkpoint preserved with hyphens",p.checkpoint,"1X-FL-03");
+});
+
+// ───────────────────────────────────────────────────────────────────────
+group("9. Short / noisy issue is dropped, not embedded",function(){
+  // 3-char input would collide with element slot — must be omitted, not
+  // embedded as a misleading element code.
+  const defect={
+    id:"abcd1234",block:"B1",locationLevel:"L02",
+    trade:"Architectural",status:"Open",createdAt:FIXED_DATE,
+    issue:"NA"   // too short → no segment
+  };
+  const fn=isoNameForDefect(defect,COMPANY,PROJECT,{
+    seq:1,element:"WL",hashShort:"a1b2c3d4",ext:"jpg"
+  });
+  eq("no spurious issue segment",fn,
+    "PROJA-ACME-B1-L02-PH-A-ABCD1234-S2-20260424_01_WL_a1b2c3d4.jpg");
+  const p=parseIso19650Filename(fn);
+  eq("issue empty",p.issue,"");
+});
+
+// ───────────────────────────────────────────────────────────────────────
+group("10. Issue opts override beats defect.issue",function(){
+  const defect={
+    id:"abcd1234",block:"B1",locationLevel:"L02",
+    trade:"Architectural",status:"Open",createdAt:FIXED_DATE,
+    issue:"Hollowness"   // would normally win
+  };
+  const fn=isoNameForDefect(defect,COMPANY,PROJECT,{
+    seq:1,element:"WL",issue:"Crack",hashShort:"a1b2c3d4",ext:"jpg"
+  });
+  // opts.issue wins over defect.issue
+  const p=parseIso19650Filename(fn);
+  eq("opts.issue wins",p.issue,"CRACK");
+});
+
+// ───────────────────────────────────────────────────────────────────────
 group("6. Round-trip — strict-ISO container ID stays identical",function(){
   const defect={
     id:"deadbeef",block:"T03",locationLevel:"L05",

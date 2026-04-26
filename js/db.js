@@ -344,6 +344,15 @@ const DB = (() => {
       // Handle photos: convert base64 to file uploads (supports multiple)
       const cleanData = { ...data, companyId };
       const extraPhotos = cleanData.extraPhotos || [];
+      // Optional caller-supplied ISO 19650 filenames, one per photo in
+      // [main, ...extras] order. When present, the photo blob is uploaded
+      // under that name so the file in PocketBase storage carries the ISO
+      // anchor — matching the cached iso_filename and ZIP-export name.
+      // Falls back to photo_1.jpg / photo_N.jpg when not provided so the
+      // legacy callers (offline-queue replay of older queued items, etc.)
+      // keep working unchanged.
+      const photoNames = Array.isArray(cleanData.photoNames) ? cleanData.photoNames : [];
+      delete cleanData.photoNames;
       delete cleanData.extraPhotos;
       delete cleanData.photos; // Remove the array form, we use photo + extraPhotos
 
@@ -372,11 +381,11 @@ const DB = (() => {
         }
         // Append all photos under the same 'photo' field (PocketBase supports multiple)
         if (hasMainPhoto) {
-          fd.append('photo', b64toBlob(photoField), 'photo_1.jpg');
+          fd.append('photo', b64toBlob(photoField), photoNames[0] || 'photo_1.jpg');
         }
         for (let i = 0; i < extraPhotos.length; i++) {
           if (extraPhotos[i] && extraPhotos[i].startsWith('data:')) {
-            fd.append('photo', b64toBlob(extraPhotos[i]), `photo_${i + 2}.jpg`);
+            fd.append('photo', b64toBlob(extraPhotos[i]), photoNames[i + 1] || `photo_${i + 2}.jpg`);
           }
         }
         return api(`/api/collections/defects/records`, { method: 'POST', body: fd });

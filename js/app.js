@@ -122,8 +122,31 @@ function buildIso19650Filename({project,company,block,level,type,role,number,sta
 //   checkpoint— checkpoint id, may contain hyphens (e.g. "1X-WL-02")
 //   hashShort — first 8 hex chars of media SHA-256 (full hash stays in metadata)
 //   revision  — integer; appended as "-R02" before the underscore tail when set
+// Slug a free-form defect-type string into a tail-safe segment. Output is
+// uppercase ASCII alphanumeric only, capped at 16 chars. Hyphens, spaces,
+// punctuation, and diacritics are stripped so the segment can't collide
+// with the checkpoint slot (which intentionally preserves hyphens) or the
+// element slot (which is 2-3 uppercase letters). Returns "" on no input.
+function isoIssueSlug(s){
+  if(!s)return"";
+  const clean=String(s).normalize("NFKD").replace(/[^\x00-\x7F]/g,"").replace(/[^a-zA-Z0-9]/g,"").toUpperCase();
+  // Length bands: <2 chars looks like noise; 2-3 chars would collide with
+  // the element slot's shape. Force at least 4 chars to keep the parser
+  // unambiguous; if the input slugs to fewer, drop it rather than emit a
+  // segment that would be mis-classified as an element code on parse.
+  if(clean.length<4)return"";
+  return clean.slice(0,16);
+}
+
 function isoNameForDefect(defect,company,project,opts={}){
-  const{type,ext,seq,element,checkpoint,hashShort,revision}=opts;
+  const{type,ext,seq,element,checkpoint,hashShort,revision,num,issue}=opts;
+  // `num` opts override lets the caller supply NUM explicitly. Needed at
+  // upload time when `defect.id` doesn't exist yet (PocketBase generates
+  // it server-side) — callers pass media_hash.slice(0,8) so the upload
+  // filename, cached iso_filename, and ZIP-export filename all match.
+  const numSegment=num!=null&&num!==""
+    ?String(num).slice(0,10)
+    :(defect.id||defect.defect_id||"").slice(0,8);
   let name=buildIso19650Filename({
     project:project||{code:defect.projectCode,name:defect.projectName},
     company,
@@ -131,7 +154,7 @@ function isoNameForDefect(defect,company,project,opts={}){
     level:defect.locationLevel||"",
     type:type||"PH",
     role:roleFromTrade(defect.trade),
-    number:(defect.id||defect.defect_id||"").slice(0,8),
+    number:numSegment,
     status:defect.status,
     date:defect.createdAt||defect.timestamp_utc||new Date(),
     stage:defect.work_stage
@@ -153,6 +176,13 @@ function isoNameForDefect(defect,company,project,opts={}){
       const el=String(element).replace(/[^A-Za-z0-9]/g,"").toUpperCase();
       if(el)parts.push(el);
     }
+    // Defect-type / issue segment — slot order is element → issue → checkpoint
+    // so the filename reads "what kind of defect" alongside "which CONQUAS
+    // bucket". Slug enforces 4-16 ASCII alphanumeric uppercase to keep the
+    // parser unambiguous (element is 2-3 letters; checkpoint may carry
+    // hyphens; issue sits in the middle range).
+    const issueSlug=isoIssueSlug(issue||defect.issue);
+    if(issueSlug)parts.push(issueSlug);
     if(checkpoint){
       // Checkpoints may contain hyphens (e.g. "1X-WL-02"). Strip anything
       // outside [A-Z0-9-] so underscore stays reserved as the segment sep.
@@ -201,8 +231,15 @@ function parseIso19650Filename(input){
     else if(/^\d{8}$/.test(p))date=p;
     else if(/^[A-Z]\d$/.test(p))suitability=p; // S2/S3/S4/A1/A2 …
   }
-  // Tail: parse from the ends inward.
-  let seq=null,element="",checkpoint="",hashShort="";
+  // Tail: parse from the ends inward. Token shapes:
+  //   element    — 2-3 uppercase ASCII letters (FL/WL/CL/...)
+  //   issue      — 4-16 uppercase ASCII alphanumeric, no hyphens (HOLLOWNESS,
+  //                CRACK, LIPPAGE, ...). 4-char floor avoids collision with
+  //                the element slot.
+  //   checkpoint — anything that contains a hyphen or starts with a digit
+  //                (e.g. "1X-WL-02"). Free-form CONQUAS checkpoint id.
+  //   hash       — 8 lowercase hex (always last segment before extension).
+  let seq=null,element="",issueSlug="",checkpoint="",hashShort="";
   if(tail){
     const tailParts=tail.split("_");
     if(tailParts.length<2)return null;     // need at least seq + hash
@@ -211,25 +248,24 @@ function parseIso19650Filename(input){
     seq=parseInt(tailParts[0],10);
     hashShort=tailParts[tailParts.length-1].toLowerCase();
     const middle=tailParts.slice(1,-1);
-    if(middle.length===1){
-      // Single middle token: element if it looks like a 2-3 letter code,
-      // else treat as checkpoint (which may carry internal hyphens).
-      if(/^[A-Z]{2,3}$/.test(middle[0]))element=middle[0];
-      else checkpoint=middle[0];
-    }else if(middle.length===2){
-      element=middle[0];
-      checkpoint=middle[1];
-    }else if(middle.length>2){
-      // Defensive: collapse any extra tokens into checkpoint to preserve data.
-      element=middle[0];
-      checkpoint=middle.slice(1).join("_");
+    // Shape-classify each middle token. First match wins per slot; surplus
+    // tokens are appended to checkpoint so no data is silently dropped.
+    const isElement=t=>/^[A-Z]{2,3}$/.test(t);
+    const isCheckpoint=t=>/-/.test(t)||/^\d/.test(t);
+    const isIssue=t=>/^[A-Z][A-Z0-9]{3,15}$/.test(t);
+    for(const tok of middle){
+      if(!element&&isElement(tok))element=tok;
+      else if(!checkpoint&&isCheckpoint(tok))checkpoint=tok;
+      else if(!issueSlug&&isIssue(tok))issueSlug=tok;
+      else if(!checkpoint)checkpoint=tok;
+      else checkpoint+="_"+tok;
     }
   }
   return{
     containerId:[project,originator,volume,level,type,role,number].join("-"),
     project,originator,volume,level,type,role,number,
     suitability,date,revision,
-    seq,element,checkpoint,hashShort,
+    seq,element,issue:issueSlug,checkpoint,hashShort,
     ext
   };
 }
@@ -1641,7 +1677,7 @@ function getAIPrompt(){
   // different language preferences. Only freeform fields (title, description,
   // location_area) are localized. Categoricals are translated at render via tOpt().
   const langClause=lang==="en"?"":` Write "title", "description", and "location_area" in ${langName}. Keep all other field values in English exactly as specified.`;
-  return 'Analyze this construction site photo. Respond in valid JSON only, no markdown fences:\n{"title":"max 5 word defect title","severity":"one of: Critical Major Minor Observation","description":"2 sentence technical description of what is wrong and where","trade":"responsible trade: Plumbing Electrical Waterproofing Painting Tiling Structural Carpentry Aircon Civil Landscaping General","component":"specific affected element — use exact match if possible e.g. Tile Floor Ceiling Wall Paint Pipe Drain Slab Column Scaffold Railing Door Window AC Unit Wiring Socket Sprinkler","issue":"most applicable defect type for that component e.g. Crack Leak Peeling Loose Stain Blocked Chipped Sagging Exposed rebar Misaligned Missing Damaged","entry_type":"one of: Defect Observation Instruction — Defect for quality/workmanship, Observation for non-urgent notes, Instruction for directives","location_area":"short visible-area description from photo context e.g. bathroom ceiling external wall corridor floor lift lobby site perimeter","room_area":"specific room or area visible in photo. Prefer exact match from: Kitchen Bathroom Master Bedroom Bedroom 2 Bedroom 3 Living Room Dining Room Balcony Toilet Store Room Corridor Staircase Lobby Car Park Yard Entrance Hallway Utility Room Laundry Pantry Meeting Room Office Reception. Otherwise return a short descriptive phrase matching what the photo shows (e.g. residential courtyard, rooftop terrace, basement carpark ramp, exterior facade, stair core).","level_floor":"best-guess floor level from photo context (windows, stairs, skylines, vegetation, vehicles). Prefer exact match from: Basement 2, Basement 1, Ground Floor, 1st Floor, 2nd Floor, 3rd Floor, 4th Floor, 5th Floor, 6th Floor, 7th Floor, 8th Floor, 9th Floor, 10th Floor, Roof, Attic, External, Common Area. Otherwise return a descriptive phrase (e.g. upper floor, podium level, ground level exterior). Leave empty only if photo shows no vertical cue at all.","zone":"best-guess zone/block/area type from photo context. Prefer exact match from: Zone A, Zone B, Zone C, Zone D, North Wing, South Wing, East Wing, West Wing, Block A, Block B, Block C, Tower 1, Tower 2, Tower 3. Otherwise return a descriptive spatial phrase (e.g. residential courtyard, commercial lobby, service corridor, main atrium, loading bay). Leave empty only if photo shows no spatial context at all.","time_needed":"rough repair scope — one of: Same day, 1 day, 2 days, 3 days, 1 week, 2 weeks, 1 month, 2 months, 3 months, TBD","cost_change":"cost impact — default to \\"No change\\" for workmanship/minor defects; use \\"To be confirmed by QS\\" when rework scope is unclear; \\"Variation Order (VO)\\" only when the issue indicates a design/scope variation requiring contractual variation","safety_risk":1,"suggested_assignee":"trade role e.g. Plumber Electrician Painter Tiler Contractor"}\nReplace safety_risk 1 with integer 1–5 where 5 is life-threatening hazard.'+langClause;
+  return 'Analyze this construction site photo. Respond in valid JSON only, no markdown fences:\n{"title":"max 5 word defect title","severity":"one of: Critical Major Minor Observation","description":"2 sentence technical description of what is wrong and where","trade":"responsible trade: Plumbing Electrical Waterproofing Painting Tiling Structural Carpentry Aircon Civil Landscaping General","component":"PICK EXACTLY ONE from this canonical list — Wall, Floor, Ceiling, Door, Window, Cabinet, Plumbing, Electrical, Aircon, Painting, Tiling, Waterproofing, Column, Beam, Slab, Roof, General. CONQUAS Internal-Finishes mapping is automatic from this field, so accuracy here drives correct categorisation: pick Floor/Wall/Ceiling/Door/Window for visible interior surfaces; Cabinet for joinery / sanitary ware / vanity / wardrobe (CONQUAS Component bucket); Plumbing/Electrical/Aircon for M&E fittings. Use Column/Beam/Slab/Roof only for structural or external work. General is a last resort","issue":"most applicable defect type for that component — use BCA Good Industry Practice terminology where applicable e.g. hollowness lippage delamination for tiling; peeling bubbling brush marks for painting; bulging cracking dampness for waterproofing; misalignment chipping for joinery; otherwise Crack Leak Peeling Loose Stain Blocked Chipped Sagging Exposed-rebar Missing Damaged","entry_type":"one of: Defect Observation Instruction — Defect for quality/workmanship, Observation for non-urgent notes, Instruction for directives","location_area":"short visible-area description from photo context e.g. bathroom ceiling external wall corridor floor lift lobby site perimeter","room_area":"specific room or area visible in photo. Prefer exact match from: Kitchen Bathroom Master Bedroom Bedroom 2 Bedroom 3 Living Room Dining Room Balcony Toilet Store Room Corridor Staircase Lobby Car Park Yard Entrance Hallway Utility Room Laundry Pantry Meeting Room Office Reception. Otherwise return a short descriptive phrase matching what the photo shows (e.g. residential courtyard, rooftop terrace, basement carpark ramp, exterior facade, stair core).","level_floor":"best-guess floor level from photo context (windows, stairs, skylines, vegetation, vehicles). Prefer exact match from: Basement 2, Basement 1, Ground Floor, 1st Floor, 2nd Floor, 3rd Floor, 4th Floor, 5th Floor, 6th Floor, 7th Floor, 8th Floor, 9th Floor, 10th Floor, Roof, Attic, External, Common Area. Otherwise return a descriptive phrase (e.g. upper floor, podium level, ground level exterior). Leave empty only if photo shows no vertical cue at all.","zone":"best-guess zone/block/area type from photo context. Prefer exact match from: Zone A, Zone B, Zone C, Zone D, North Wing, South Wing, East Wing, West Wing, Block A, Block B, Block C, Tower 1, Tower 2, Tower 3. Otherwise return a descriptive spatial phrase (e.g. residential courtyard, commercial lobby, service corridor, main atrium, loading bay). Leave empty only if photo shows no spatial context at all.","time_needed":"rough repair scope — one of: Same day, 1 day, 2 days, 3 days, 1 week, 2 weeks, 1 month, 2 months, 3 months, TBD","cost_change":"cost impact — default to \\"No change\\" for workmanship/minor defects; use \\"To be confirmed by QS\\" when rework scope is unclear; \\"Variation Order (VO)\\" only when the issue indicates a design/scope variation requiring contractual variation","safety_risk":1,"suggested_assignee":"trade role e.g. Plumber Electrician Painter Tiler Contractor"}\nReplace safety_risk 1 with integer 1–5 where 5 is life-threatening hazard.'+langClause;
 }
 // Backward-compatible export — callers that don't need language awareness
 // still see English. New callers should call getAIPrompt() per request to
@@ -7380,6 +7416,14 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // photo), the stale result is discarded instead of saving the wrong
   // fields against the new photo.
   const analysisHashRef=useRef(null);
+  // Photo hash that the auto-analyze effect last fired for. Prevents a failed
+  // analyze() from immediately triggering another analyze() the moment
+  // `analyzing` flips back to false: without this, the effect's dependency
+  // on `analyzing` creates an infinite retry loop where the user sees the
+  // Gemini model fallback chain rotate through several models with no path
+  // to manual entry (the error pill is wiped on every re-fire). Manual
+  // RETRY/ANALYZE buttons call analyze() directly and bypass this guard.
+  const lastAutoAttemptHashRef=useRef(null);
   // Post-save toast with an EDIT shortcut. Makes "rectify instantly" a
   // single tap from the capture screen instead of REVIEW → ENTRIES → find.
   const[lastSaved,setLastSaved]=useState(null);
@@ -7732,9 +7776,6 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // start its own analyze after the stale in-flight call resolves.
   useEffect(()=>{
     if(!form.photos[0]||aiResult||analyzing||saving)return;
-    // A new photo supersedes any previous AI error — clear the inline
-    // pill so stale errors don't hang over the new capture.
-    setAnalyzeError(null);
     let cancelled=false;
     (async()=>{
       const hash=await photoHash(form.photos[0]);
@@ -7745,6 +7786,15 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         applyAiResult(cached);
         return;
       }
+      // Auto-fire only once per distinct photo. If the previous attempt
+      // for THIS photo failed, leave the error pill visible so the user
+      // can RETRY or fill manually — re-firing here would just rotate
+      // through the same model-fallback chain again with no real result.
+      if(lastAutoAttemptHashRef.current===hash)return;
+      lastAutoAttemptHashRef.current=hash;
+      // New photo (or first attempt) — clear any stale error pill before
+      // the spinner starts.
+      setAnalyzeError(null);
       if(aiReady&&!cancelled)analyze();
       // If AI is unavailable we do NOT commit a batch silently — the
       // upstream handlePhoto() routes multi-pick to "attach to current
@@ -10550,6 +10600,38 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
       const locParts=[editFields.locationLevel,editFields.locationZone,editFields.locationSubzone,editFields.locationGrid].filter(Boolean);
       const location=locParts.length?locParts.join(" > "):(editFields.location||"");
       const patch={...editFields,location,trade:COMPONENT_TRADE[editFields.component]||editFields.trade||""};
+      // Re-stamp iso_filename when the user corrects `component` in REVIEW.
+      // The CONQUAS IF element segment in the ISO tail is derived from
+      // `component` via conquasElementOf(); without this refresh, a
+      // mis-classified entry that the user fixes in REVIEW would still
+      // export into the old (wrong) CONQUAS folder. Block / level / status
+      // also feed the prefix segments — refresh on any of those too. We
+      // pass null for project so isoNameForDefect falls back to the
+      // record's cached projectCode/projectName (DefectDetail does not
+      // hold a live currentProject reference).
+      const _prevDefect=latestRef.current||{};
+      const _isoFieldsChanged=(
+        patch.component!==_prevDefect.component
+        ||patch.locationLevel!==_prevDefect.locationLevel
+        ||patch.block!==_prevDefect.block
+        ||patch.status!==_prevDefect.status
+      );
+      if(_isoFieldsChanged&&typeof isoNameForDefect==="function"&&_prevDefect.media_hash){
+        try{
+          const _merged={..._prevDefect,...patch};
+          const _hashShort=String(_merged.media_hash||"").replace(/[^a-fA-F0-9]/g,"").slice(0,8);
+          const _el=typeof conquasElementOf==="function"?conquasElementOf(_merged.component):"";
+          const _code=typeof conquasElementCode==="function"?conquasElementCode(_el):"";
+          const _newIso=isoNameForDefect(_merged,company,null,{
+            seq:1,
+            num:_hashShort?_hashShort.toUpperCase():undefined,
+            element:_code||undefined,
+            hashShort:_hashShort||undefined,
+            ext:"jpg",
+          });
+          if(_newIso&&_newIso!==_prevDefect.iso_filename)patch.iso_filename=_newIso;
+        }catch(isoErr){console.warn("iso_filename refresh on edit failed (non-fatal)",isoErr);}
+      }
       // Auto-events for any tracked field changes (status/severity/assignee/dueDate)
       const events=diffDefectEvents(latestRef.current,patch,member?.name||"",member?.role||"");
       if(events.length)patch.comments=[...(latestRef.current.comments||[]),...events];
@@ -20444,29 +20526,72 @@ function App(){
       }
     }catch(metaErr){console.warn("auto-capture metadata failed",metaErr);}
 
+    // Pre-compute ISO 19650-aligned upload filenames for each photo. NUM
+    // segment uses the first 8 hex of media_hash so the name is fully
+    // deterministic at upload time (saved.id is PB-generated and not yet
+    // available). Same string is reused for the post-save iso_filename
+    // cache below, so the storage filename, the metadata anchor, and the
+    // ZIP-export filename all match. Falls back silently if media_hash or
+    // isoNameForDefect aren't available — the upload then uses the legacy
+    // photo_1.jpg / photo_N.jpg names without breaking save.
+    let _photoNames=[];
+    let _isoBaseName="";
     try{
-      const saved=await uploadDefect(data,company.companyId);
-
-      // Cache the ISO 19650-aligned filename for the index-0 photo on the saved
-      // record. The filename builder needs `saved.id` (PocketBase generates it
-      // server-side), so this runs AFTER uploadDefect returns. CONQUAS IF
-      // element code (FL/WL/CL/DR/WD/CP/ME) is appended only when the entry's
-      // component maps cleanly into one of the seven IF buckets — non-IF
-      // entries (structural / external / infra) get a terse name with no
-      // misleading element segment. Hash-short comes from media_hash if the
-      // pre-save metadata block (above) computed it. Fire-and-forget: ISO
-      // caching is metadata-only and must never block the user's save flow.
-      if(saved&&saved.id&&!saved.iso_filename&&typeof isoNameForDefect==="function"){
-        try{
-          const _el=typeof conquasElementOf==="function"?conquasElementOf(saved.component):"";
-          const _code=typeof conquasElementCode==="function"?conquasElementCode(_el):"";
-          const _hashShort=String(saved.media_hash||"").replace(/[^a-fA-F0-9]/g,"").slice(0,8);
-          const _isoName=isoNameForDefect(saved,company,currentProject,{
-            seq:1,
+      if(typeof isoNameForDefect==="function"&&data.photo){
+        const _el=typeof conquasElementOf==="function"?conquasElementOf(data.component):"";
+        const _code=typeof conquasElementCode==="function"?conquasElementCode(_el):"";
+        const _hashShort=String(data.media_hash||"").replace(/[^a-fA-F0-9]/g,"").slice(0,8);
+        if(_hashShort){
+          const _numUpper=_hashShort.toUpperCase();
+          const _mkName=(seq)=>isoNameForDefect(data,company,currentProject,{
+            seq,
+            num:_numUpper,
             element:_code||undefined,
-            hashShort:_hashShort||undefined,
+            hashShort:_hashShort,
             ext:"jpg",
           });
+          const _main=_mkName(1);
+          if(_main){
+            _photoNames=[_main];
+            _isoBaseName=_main;
+            const _extras=Array.isArray(data.extraPhotos)?data.extraPhotos:[];
+            for(let i=0;i<_extras.length;i++){
+              const _n=_mkName(i+2);
+              _photoNames.push(_n||`photo_${i+2}.jpg`);
+            }
+          }
+        }
+      }
+    }catch(nameErr){console.warn("iso photo-name pre-compute failed (non-fatal)",nameErr);}
+
+    try{
+      const _payload=_photoNames.length?{...data,photoNames:_photoNames}:data;
+      const saved=await uploadDefect(_payload,company.companyId);
+
+      // Cache the ISO 19650 filename on the saved record. When we pre-named
+      // the upload (above), reuse that exact string so storage filename and
+      // metadata anchor stay in lockstep. Otherwise (no media_hash, or
+      // isoNameForDefect unavailable at capture time) fall back to the
+      // legacy post-save build using saved.id. CONQUAS IF element code
+      // (FL/WL/CL/DR/WD/CP/ME) is appended only when the entry's component
+      // maps cleanly into one of the seven IF buckets — non-IF entries
+      // (structural / external / infra) get a terse name with no misleading
+      // element segment. Fire-and-forget: ISO caching is metadata-only and
+      // must never block the user's save flow.
+      if(saved&&saved.id&&!saved.iso_filename&&typeof isoNameForDefect==="function"){
+        try{
+          let _isoName=_isoBaseName;
+          if(!_isoName){
+            const _el=typeof conquasElementOf==="function"?conquasElementOf(saved.component):"";
+            const _code=typeof conquasElementCode==="function"?conquasElementCode(_el):"";
+            const _hashShort=String(saved.media_hash||"").replace(/[^a-fA-F0-9]/g,"").slice(0,8);
+            _isoName=isoNameForDefect(saved,company,currentProject,{
+              seq:1,
+              element:_code||undefined,
+              hashShort:_hashShort||undefined,
+              ext:"jpg",
+            });
+          }
           if(_isoName&&DB?.defects?.update){
             DB.defects.update(saved.id,{iso_filename:_isoName}).then(()=>{
               saved.iso_filename=_isoName;
@@ -20497,7 +20622,13 @@ function App(){
       // ── Offline or network error: queue for later ──
       if(!navigator.onLine||err.message?.includes("Failed to fetch")||err.message?.includes("not responding")||err.message?.includes("Cannot reach")){
         try{
-          await OfflineQueue.add({data,companyId:company.companyId,projectId:currentProject.id,projectName:currentProject.name});
+          // Stash the pre-computed ISO photo names alongside the queued
+          // data so the replay path uploads with the same anchor names —
+          // otherwise an offline-then-online capture would land in storage
+          // as photo_1.jpg while an online capture lands as the ISO name,
+          // creating a hidden two-tier naming behavior.
+          const _queueData=_photoNames.length?{...data,photoNames:_photoNames}:data;
+          await OfflineQueue.add({data:_queueData,companyId:company.companyId,projectId:currentProject.id,projectName:currentProject.name});
           const c=await OfflineQueue.count();
           setQueueCount(c);
           // Don't throw — entry is queued, show success to user
@@ -20547,6 +20678,35 @@ function App(){
             ?[...baseComments,{text:appendComment,by:commentBy,role:commentRole,at:Date.now()}]
             :baseComments;
           payload={...baseFields,comments:finalComments};
+        }
+        // Re-stamp iso_filename per-record when an iso-bearing field was
+        // patched. The CONQUAS IF element segment in the ISO tail derives
+        // from `component`; without this refresh, a bulk component fix in
+        // REVIEW would leave the cached iso_filename pointing at the old
+        // CONQUAS folder and the next ZIP export would mis-route.
+        const _isoFieldsChanged=current&&(
+          (patch?.component!=null&&patch.component!==current.component)
+          ||(patch?.locationLevel!=null&&patch.locationLevel!==current.locationLevel)
+          ||(patch?.block!=null&&patch.block!==current.block)
+          ||(patch?.status!=null&&patch.status!==current.status)
+        );
+        if(_isoFieldsChanged&&typeof isoNameForDefect==="function"&&current.media_hash){
+          try{
+            const _merged={...current,...payload};
+            const _hashShort=String(_merged.media_hash||"").replace(/[^a-fA-F0-9]/g,"").slice(0,8);
+            const _el=typeof conquasElementOf==="function"?conquasElementOf(_merged.component):"";
+            const _code=typeof conquasElementCode==="function"?conquasElementCode(_el):"";
+            const _newIso=isoNameForDefect(_merged,company,currentProject,{
+              seq:1,
+              num:_hashShort?_hashShort.toUpperCase():undefined,
+              element:_code||undefined,
+              hashShort:_hashShort||undefined,
+              ext:"jpg",
+            });
+            if(_newIso&&_newIso!==current.iso_filename){
+              payload={...payload,iso_filename:_newIso};
+            }
+          }catch(isoErr){console.warn("iso_filename bulk refresh failed (non-fatal)",id,isoErr);}
         }
         await DB.defects.update(id,payload);
         updatedMap[id]=payload;
