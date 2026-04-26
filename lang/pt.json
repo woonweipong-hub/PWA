@@ -307,6 +307,27 @@
     "timeline": "CRONOLOGIA",
     "assigned": "Atribuído"
   },
+  "timeline": {
+    "events_suffix": "eventos",
+    "event_status": "Status",
+    "event_severity": "Gravidade",
+    "event_assignee": "Cessionária",
+    "event_due_date": "Duas datas",
+    "unknown_user": "Desconhecida"
+  },
+  "inbox": {
+    "title": "CAIXA DE ENTRADA",
+    "unread_count": "{n} NÃO LIDO",
+    "all_read": "TODOS PEGADOS",
+    "empty": "Nenhuma notificação ainda. Você será alertado quando entradas forem atribuídas a você, quando o status mudar em suas entradas ou quando a gravidade aumentar para Crítica.",
+    "label_status": "Status",
+    "label_severity": "Gravidade",
+    "label_assigned": "Atribuído a você",
+    "label_due": "Duas datas",
+    "label_mention": "Mencionou você",
+    "mark_all_read": "MARCAR TUDO LIDO",
+    "clear": "CLARA"
+  },
   "report": {
     "title": "Relatório",
     "site_report": "RELATÓRIO DO LOCAL",

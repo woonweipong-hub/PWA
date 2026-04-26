@@ -539,5 +539,14 @@ const COMPANY_LOGO_KEY = "sdt-company-logo-v1";
 // once via canvas in Profile, auto-embedded above the inspector line in
 // every PDF export thereafter.
 const MY_SIGNATURE_KEY = "sdt-my-signature-v1";
+// In-app notification inbox — per-user event log derived client-side from
+// defect timeline events (assignee changes, status changes, severity
+// escalations, due-date changes). Computed by diffing the defects
+// subscription tick against a per-user last-scan timestamp; events that
+// target the current user (assignee/loggedBy match) are pushed in.
+// Shape: { [authUserId]: { events: [...], lastScanAt: epochMs } }.
+// Capped at INBOX_MAX events per user to bound localStorage growth.
+const INBOX_KEY = "sdt-inbox-v1";
+const INBOX_MAX = 50;
 const MAP_DEFAULT_VIEW_KEY_PREFIX = "sdt-map-default-"; // + projectId
 const MAP_FALLBACK_CENTER = { lat: 1.3331, lng: 103.7422, zoom: 17, label: "JEM Office Building" };

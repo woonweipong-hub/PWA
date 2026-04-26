@@ -307,6 +307,27 @@
     "timeline": "CRONOLOGIA",
     "assigned": "Assegnato"
   },
+  "timeline": {
+    "events_suffix": "eventi",
+    "event_status": "Stato",
+    "event_severity": "Gravità",
+    "event_assignee": "Assegnataria",
+    "event_due_date": "Due Date",
+    "unknown_user": "Sconosciuta"
+  },
+  "inbox": {
+    "title": "POSTA IN ARRIVO",
+    "unread_count": "{n} NON LETTO",
+    "all_read": "TUTTI PRESENTI",
+    "empty": "Nessuna notifica ancora. Verrai avvisato quando ti verranno assegnate delle voci, quando lo stato delle tue voci cambia o quando la gravità diventa Critica.",
+    "label_status": "Stato",
+    "label_severity": "Gravità",
+    "label_assigned": "Assegnato a te",
+    "label_due": "Due Date",
+    "label_mention": "Ti ho menzionato",
+    "mark_all_read": "SEGNA TUTTO LETTO",
+    "clear": "CHIARA"
+  },
   "report": {
     "title": "Rapporto",
     "site_report": "RELAZIONE SUL SITO",

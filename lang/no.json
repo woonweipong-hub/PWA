@@ -307,6 +307,27 @@
     "timeline": "TIDSLINJE",
     "assigned": "Tildelt"
   },
+  "timeline": {
+    "events_suffix": "hendelser",
+    "event_status": "Status",
+    "event_severity": "Alvorlighetsgrad",
+    "event_assignee": "Oppdragstaker",
+    "event_due_date": "To datoer",
+    "unknown_user": "Ukjent"
+  },
+  "inbox": {
+    "title": "INNBOKS",
+    "unread_count": "{n} ULEST",
+    "all_read": "ALLE FÅTT OPP",
+    "empty": "Ingen varsler ennå. Du vil bli varslet når oppføringer blir tildelt deg, når statusendringer på oppføringene dine, eller når alvorlighetsgraden eskalerer til Kritisk.",
+    "label_status": "Status",
+    "label_severity": "Alvorlighetsgrad",
+    "label_assigned": "Tildelt deg",
+    "label_due": "To datoer",
+    "label_mention": "Nevnte deg",
+    "mark_all_read": "MERK ALLE LES",
+    "clear": "KLAR"
+  },
   "report": {
     "title": "Rapportere",
     "site_report": "NETTSTEDSRAPPORT",

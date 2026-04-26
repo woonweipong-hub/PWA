@@ -307,6 +307,27 @@
     "timeline": "CRONOLOGÍA",
     "assigned": "Asignado"
   },
+  "timeline": {
+    "events_suffix": "eventos",
+    "event_status": "Estado",
+    "event_severity": "Gravedad",
+    "event_assignee": "Cesionaria",
+    "event_due_date": "dos citas",
+    "unknown_user": "Desconocida"
+  },
+  "inbox": {
+    "title": "BANDEJA DE ENTRADA",
+    "unread_count": "{n} NO LEÍDO",
+    "all_read": "TODOS ATRAPADOS",
+    "empty": "Aún no hay notificaciones. Recibirá una alerta cuando se le asignen entradas, cuando cambie el estado de sus entradas o cuando la gravedad aumente a Crítico.",
+    "label_status": "Estado",
+    "label_severity": "Gravedad",
+    "label_assigned": "Asignado a ti",
+    "label_due": "dos citas",
+    "label_mention": "Te mencioné",
+    "mark_all_read": "MARCAR TODO LEIDO",
+    "clear": "CLARA"
+  },
   "report": {
     "title": "Informe",
     "site_report": "INFORME DE OBRA",

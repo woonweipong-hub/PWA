@@ -307,6 +307,27 @@
     "timeline": "타임라인",
     "assigned": "담당자"
   },
+  "timeline": {
+    "events_suffix": "이벤트",
+    "event_status": "상태",
+    "event_severity": "심각성",
+    "event_assignee": "양수인",
+    "event_due_date": "두 개의 날짜",
+    "unknown_user": "알려지지 않은"
+  },
+  "inbox": {
+    "title": "받은 편지함",
+    "unread_count": "{n} 읽지 않음",
+    "all_read": "모두 잡았다",
+    "empty": "아직 알림이 없습니다. 항목이 할당될 때, 항목의 상태가 변경될 때 또는 심각도가 심각으로 올라갈 때 알림을 받게 됩니다.",
+    "label_status": "상태",
+    "label_severity": "심각성",
+    "label_assigned": "당신에게 할당됨",
+    "label_due": "두 개의 날짜",
+    "label_mention": "당신을 언급함",
+    "mark_all_read": "모두 읽은 것으로 표시",
+    "clear": "분명한"
+  },
   "report": {
     "title": "보고서",
     "site_report": "현장 보고서",

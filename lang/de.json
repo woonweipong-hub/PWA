@@ -307,6 +307,27 @@
     "timeline": "ZEITVERLAUF",
     "assigned": "Zugewiesen"
   },
+  "timeline": {
+    "events_suffix": "Ereignisse",
+    "event_status": "Status",
+    "event_severity": "Schwere",
+    "event_assignee": "Abtretungsempfängerin",
+    "event_due_date": "Zwei Termine",
+    "unknown_user": "Unbekannt"
+  },
+  "inbox": {
+    "title": "Posteingang",
+    "unread_count": "{n} UNLESEN",
+    "all_read": "Alles aufgeholt",
+    "empty": "Noch keine Benachrichtigungen. Sie werden benachrichtigt, wenn Ihnen Einträge zugewiesen werden, wenn sich der Status Ihrer Einträge ändert oder wenn der Schweregrad auf „Kritisch“ eskaliert.",
+    "label_status": "Status",
+    "label_severity": "Schwere",
+    "label_assigned": "Ihnen zugewiesen",
+    "label_due": "Zwei Termine",
+    "label_mention": "Habe Dich erwähnt",
+    "mark_all_read": "Alles als gelesen markieren",
+    "clear": "KLAR"
+  },
   "report": {
     "title": "Bericht",
     "site_report": "BAUBERICHT",

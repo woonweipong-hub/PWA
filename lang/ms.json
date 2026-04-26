@@ -307,6 +307,27 @@
     "timeline": "GARIS MASA",
     "assigned": "Ditugaskan"
   },
+  "timeline": {
+    "events_suffix": "peristiwa",
+    "event_status": "Status",
+    "event_severity": "Keterukan",
+    "event_assignee": "penerima tugasan",
+    "event_due_date": "Dua Kurma",
+    "unknown_user": "Tidak diketahui"
+  },
+  "inbox": {
+    "title": "PETI MASUK",
+    "unread_count": "{n} BELUM DIBACA",
+    "all_read": "SEMUA TERPERCAYA",
+    "empty": "Tiada pemberitahuan lagi. Anda akan dimaklumkan apabila entri diberikan kepada anda, apabila status berubah pada entri anda atau apabila keterukan meningkat kepada Kritikal.",
+    "label_status": "Status",
+    "label_severity": "Keterukan",
+    "label_assigned": "Ditugaskan kepada anda",
+    "label_due": "Dua Kurma",
+    "label_mention": "Sebut awak",
+    "mark_all_read": "TANDAKAN SEMUA BACA",
+    "clear": "JELAS"
+  },
   "report": {
     "title": "Laporan",
     "site_report": "LAPORAN TAPAK",

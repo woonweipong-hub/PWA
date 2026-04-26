@@ -307,6 +307,27 @@
     "timeline": "CHRONOLOGIE",
     "assigned": "Assigné"
   },
+  "timeline": {
+    "events_suffix": "événements",
+    "event_status": "Statut",
+    "event_severity": "Gravité",
+    "event_assignee": "Cessionnaire",
+    "event_due_date": "Deux rendez-vous",
+    "unknown_user": "Inconnue"
+  },
+  "inbox": {
+    "title": "BOÎTE DE RÉCEPTION",
+    "unread_count": "{n} NON LU",
+    "all_read": "TOUS ATTAQUES",
+    "empty": "Aucune notification pour l'instant. Vous serez alerté lorsque des entrées vous seront attribuées, lorsque le statut de vos entrées changera ou lorsque la gravité passera à Critique.",
+    "label_status": "Statut",
+    "label_severity": "Gravité",
+    "label_assigned": "Attribué à vous",
+    "label_due": "Deux rendez-vous",
+    "label_mention": "Je vous ai mentionné",
+    "mark_all_read": "MARQUER TOUT LU",
+    "clear": "CLAIRE"
+  },
   "report": {
     "title": "Rapport",
     "site_report": "RAPPORT DE CHANTIER",

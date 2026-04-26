@@ -269,6 +269,58 @@ function compressPhoto(dataUrl,maxPx=1800,quality=0.8){
   });
 }
 
+// Activity-log helper — diffs a `patch` against the existing defect for the
+// audit-tracked fields and returns event records that get appended to the
+// `comments` JSON array. Events use `kind:"event"` so the existing comment
+// timeline can render them with a distinct compact style; old text comments
+// have no `kind` field and stay untouched. Schema-free by design — reuses
+// the existing `comments` column so no migration is needed.
+const TRACKED_EVENT_FIELDS = ["status","severity","assignee","dueDate"];
+function diffDefectEvents(before, patch, by, role){
+  if(!patch||typeof patch!=="object")return [];
+  const events=[];
+  const at=Date.now();
+  TRACKED_EVENT_FIELDS.forEach(f=>{
+    if(!(f in patch))return;
+    const a=(before?.[f]==null?"":String(before[f])).trim();
+    const b=(patch[f]==null?"":String(patch[f])).trim();
+    if(a===b)return;
+    events.push({kind:"event",type:f,from:a,to:b,by:by||"",role:role||"",at});
+  });
+  return events;
+}
+// @mention helpers — parse `@token` from a comment, then resolve each token
+// to a project member. Tokens are `@` followed by word chars (no spaces);
+// resolved by case-insensitive prefix match on the FIRST word of each
+// member's name. So `@john` matches "John Doe" and "John Smith" both — the
+// first match wins. Members without a name are skipped.
+const MENTION_RE = /@([A-Za-z][\w-]*)/g;
+function parseMentions(text, members){
+  if(!text)return [];
+  const out=new Map();
+  const list=Array.isArray(members)?members:[];
+  for(const m of text.matchAll(MENTION_RE)){
+    const tok=m[1].toLowerCase();
+    const hit=list.find(mem=>{
+      const first=String(mem?.name||"").trim().split(/\s+/)[0]||"";
+      return first.toLowerCase().startsWith(tok)&&first.length>=tok.length;
+    });
+    if(hit&&hit.name&&!out.has(hit.name))out.set(hit.name,{name:hit.name,id:hit.id||hit.userId||""});
+  }
+  return Array.from(out.values());
+}
+function commentMentionsMe(text, myName){
+  if(!text||!myName)return false;
+  const me=String(myName).trim().split(/\s+/)[0]||"";
+  if(!me)return false;
+  const meLow=me.toLowerCase();
+  for(const m of String(text).matchAll(MENTION_RE)){
+    const tok=m[1].toLowerCase();
+    if(meLow.startsWith(tok)&&me.length>=tok.length)return true;
+  }
+  return false;
+}
+
 const DRAWING_NOTES_KEY="drawing_notes_v1";
 const DRAWING_MARKUP_KEY="drawing_markup_v1";
 const SAVED_COMPARISONS_KEY="saved_comparisons_v1";
@@ -2612,7 +2664,7 @@ function exportCSV(defects,projectName){
     esc(d.costResponsible),
     d.costAmount||"",
     esc(d.description),
-    esc((d.comments||[]).map(c=>`${c.by}: ${c.text}`).join(" | "))
+    esc((d.comments||[]).filter(c=>c.text).map(c=>`${c.by}: ${c.text}`).join(" | "))
   ].join(","));
   const bom="\uFEFF";
   const csv=bom+[headers.join(","),...rows].join("\n");
@@ -2841,7 +2893,7 @@ async function exportReportAll(defects,drawings,savedComparisons,projectName,lan
       d.dueDate||"",esc(tx(d.duration)),
       esc(tx(d.costImpact)),esc(tx(d.costResponsible)),d.costAmount||"",
       esc(d.description),
-      esc((d.comments||[]).map(c=>`${c.by}: ${c.text}`).join(" | ")),
+      esc((d.comments||[]).filter(c=>c.text).map(c=>`${c.by}: ${c.text}`).join(" | ")),
       occurrences,
       esc(locParts.join(" | "))
     ].join(","));
@@ -4296,7 +4348,7 @@ async function exportToGoogleSheets(defects,projectName,companyName,langCode){
     d.costAmount||"",
     tx(d.costResponsible)||"",
     d.description||"",
-    (d.comments||[]).map(c=>`${c.author||""}: ${c.text||""}`).join(" | ")
+    (d.comments||[]).filter(c=>c.text).map(c=>`${c.author||c.by||""}: ${c.text||""}`).join(" | ")
   ]);
 
   // Summary rows
@@ -4427,7 +4479,8 @@ function generateEmailHTML(defects,projectName,companyName,opts={}){
     const entryTypeBadge=d.entryType?`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;color:${typeColor(d.entryType)};background:${typeBg(d.entryType)};margin-right:6px">${typeIcon(d.entryType)} ${tx(d.entryType)}</span>`:"";
     const sevBadge=`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;color:${SEV_COLOR[d.severity]};background:${SEV_BG[d.severity]}">${SEV_I18N[d.severity]?t(SEV_I18N[d.severity]):d.severity}</span>`;
     const statusBadge=`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;color:${STATUS_COLOR[d.status]||"#8e8e93"};background:rgba(0,0,0,0.06)">${STATUS_I18N[d.status]?t(STATUS_I18N[d.status]):d.status}</span>`;
-    const comments=(d.comments||[]).map(c=>`<div style="padding:6px 10px;background:#f5f5f5;border-radius:6px;font-size:12px;margin:4px 0"><b style="color:#ff6b00">${sanitize(c.by)}:</b> ${sanitize(c.text)}</div>`).join("");
+    const textComments=(d.comments||[]).filter(c=>c.text);
+    const comments=textComments.map(c=>`<div style="padding:6px 10px;background:#f5f5f5;border-radius:6px;font-size:12px;margin:4px 0"><b style="color:#ff6b00">${sanitize(c.by)}:</b> ${sanitize(c.text)}</div>`).join("");
     const photoNote=d.photo?`<div style="font-size:11px;color:#888;font-style:italic;margin-top:6px;padding:6px 8px;background:#f5f5f5;border-radius:6px">📷 ${Array.isArray(d.photo)?d.photo.length:1} photo(s) — view in SiteShrimp app</div>`:"";
 
     return `<div style="margin-bottom:14px;padding:14px;border:1px solid #e5e5e5;border-radius:10px;border-left:5px solid ${SEV_COLOR[d.severity]}">
@@ -4447,7 +4500,7 @@ function generateEmailHTML(defects,projectName,companyName,opts={}){
       </tbody></table>
       ${d.description?`<div style="font-size:13px;color:#444;padding:8px;background:#f9f9f9;border-radius:6px;margin-bottom:6px">${sanitize(d.description)}</div>`:""}
       ${photoNote}
-      ${comments?`<div style="margin-top:8px"><div style="font-size:10px;font-weight:bold;color:#999;margin-bottom:4px">COMMENTS (${(d.comments||[]).length})</div>${comments}</div>`:""}
+      ${comments?`<div style="margin-top:8px"><div style="font-size:10px;font-weight:bold;color:#999;margin-bottom:4px">COMMENTS (${textComments.length})</div>${comments}</div>`:""}
     </div>`;
   }).join("");
 
@@ -10497,11 +10550,31 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
       const locParts=[editFields.locationLevel,editFields.locationZone,editFields.locationSubzone,editFields.locationGrid].filter(Boolean);
       const location=locParts.length?locParts.join(" > "):(editFields.location||"");
       const patch={...editFields,location,trade:COMPONENT_TRADE[editFields.component]||editFields.trade||""};
+      // Auto-events for any tracked field changes (status/severity/assignee/dueDate)
+      const events=diffDefectEvents(latestRef.current,patch,member?.name||"",member?.role||"");
+      if(events.length)patch.comments=[...(latestRef.current.comments||[]),...events];
+      // Snapshot pre-save assignee so we can detect a real change after the
+      // optimistic `latestRef.current=updated` below.
+      const prevAssignee=(latestRef.current.assignee||"").trim();
+      const newAssignee=(patch.assignee||"").trim();
+      const prevSeverity=(latestRef.current.severity||"").trim();
+      const newSeverity=(patch.severity||"").trim();
       await DB.defects.update(defect.id,patch);
       const updated={...latestRef.current,...patch};
       latestRef.current=updated;
       onUpdate(updated);
       setEditing(false);
+      // Telegram alerts for high-signal changes — assignee handoff and
+      // severity escalation (Major/Minor → Critical). Status changes already
+      // fire elsewhere; due-date changes are too noisy for chat.
+      if(tgCfg?.token&&tgCfg?.chatId){
+        if(newAssignee&&newAssignee!==prevAssignee){
+          sendTelegram(tgCfg.token,tgCfg.chatId,`👤 <b>Assigned</b>\n<b>${sanitize(defect.title)}</b>\n→ <b>${sanitize(newAssignee)}</b>${prevAssignee?` (was ${sanitize(prevAssignee)})`:""}\nBy: ${sanitize(member?.name||"")}`).catch(()=>{});
+        }
+        if(newSeverity&&newSeverity!==prevSeverity&&newSeverity==="Critical"){
+          sendTelegram(tgCfg.token,tgCfg.chatId,`⚡ <b>Severity Escalated</b>\n<b>${sanitize(defect.title)}</b>\n${sanitize(prevSeverity||"—")} → <b>CRITICAL</b>\nBy: ${sanitize(member?.name||"")}`).catch(()=>{});
+        }
+      }
     }catch(e){alert("Save failed: "+e.message);}
     setEditSaving(false);
   };
@@ -10542,9 +10615,14 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
       }
     }
     setPendingVerifyStatus(null);
+    const oldStatus=latestRef.current.status||defect.status||"";
     setStatus(s);
     try{
       const updateData={status:s};
+      // Auto-event for the status change — sits in the same `comments`
+      // array as text comments, but rendered as a compact event row.
+      const events=diffDefectEvents({status:oldStatus},{status:s},member?.name||"",member?.role||"");
+      let runningComments=[...(latestRef.current.comments||[]),...events];
       if(s==="Closed"||s==="Verified"){
         updateData[s==="Closed"?"closedAt":"verifiedAt"]=new Date().toISOString();
         if(s==="Verified")updateData.verifiedBy=member?.name||"";
@@ -10552,10 +10630,10 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
         if(verifyPhoto){
           const compressed=await compressPhoto(verifyPhoto,1200,0.8);
           const vComment={text:`✅ ${s} — verification photo attached`,by:member?.name||"",role:member?.role||"",at:Date.now(),photo:compressed||verifyPhoto};
-          const newComments=[...(latestRef.current.comments||[]),vComment];
-          updateData.comments=newComments;
+          runningComments=[...runningComments,vComment];
         }
       }
+      if(runningComments.length!==(latestRef.current.comments||[]).length)updateData.comments=runningComments;
       await DB.defects.update(defect.id,updateData);
       latestRef.current={...latestRef.current,...updateData};
       onUpdate({...latestRef.current});
@@ -10572,13 +10650,19 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
     setSaving(true);
     let photo=null;
     if(commentPhoto){photo=await compressPhoto(commentPhoto,1200,0.8)||commentPhoto;}
-    const newComment={text:comment,by:member?.name||"",role:member?.role||"",at:Date.now(),photo};
+    // Resolve @mentions to project members so the inbox watcher can route
+    // notifications and the Telegram message can name them explicitly.
+    const mentions=parseMentions(comment,members);
+    const newComment={text:comment,by:member?.name||"",role:member?.role||"",at:Date.now(),photo,mentions:mentions.map(m=>m.name)};
     const newComments=[...(latestRef.current.comments||[]),newComment];
     try{
       await DB.defects.update(defect.id,{comments:newComments});
       latestRef.current={...latestRef.current,comments:newComments};
       onUpdate({...latestRef.current});
-      if(tgCfg?.token&&tgCfg?.chatId)sendTelegram(tgCfg.token,tgCfg.chatId,`💬 <b>Comment — ${sanitize(defect.title)}</b>\n${sanitize(member?.name)}: ${sanitize(comment)}${photo?" [📷 photo]":""}`).catch(()=>{});
+      if(tgCfg?.token&&tgCfg?.chatId){
+        const mentionLine=mentions.length?`\n👥 ${mentions.map(m=>"@"+sanitize(m.name.split(/\s+/)[0])).join(" ")}`:"";
+        sendTelegram(tgCfg.token,tgCfg.chatId,`💬 <b>Comment — ${sanitize(defect.title)}</b>\n${sanitize(member?.name)}: ${sanitize(comment)}${photo?" [📷 photo]":""}${mentionLine}`).catch(()=>{});
+      }
       setComment("");setCommentPhoto(null);
     }catch(e){alert("Failed to add comment: "+e.message);}
     setSaving(false);
@@ -10802,8 +10886,38 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
         )}
 
         <div>
-          <div style={lbl()}>{t("detail.timeline")} ({(latestRef.current.comments||[]).length})</div>
+          {(()=>{
+            const all=latestRef.current.comments||[];
+            const cmts=all.filter(c=>c.kind!=="event").length;
+            const evs=all.filter(c=>c.kind==="event").length;
+            return <div style={lbl()}>{t("detail.timeline")} ({cmts}{evs?` · ${evs} ${t("timeline.events_suffix")}`:""})</div>;
+          })()}
           {(latestRef.current.comments||[]).map((c,i)=>{
+            // Auto-event row (status/severity/assignee/dueDate change)
+            if(c.kind==="event"){
+              const ICON={status:"🔄",severity:"⚡",assignee:"👤",dueDate:"📅"};
+              const FIELD_LABEL={status:t("timeline.event_status"),severity:t("timeline.event_severity"),assignee:t("timeline.event_assignee"),dueDate:t("timeline.event_due_date")};
+              const evColor="#5856d6";
+              const isLast=i===(latestRef.current.comments||[]).length-1;
+              return(
+                <div key={i} style={{display:"flex",gap:10,marginBottom:0,position:"relative"}}>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0,width:20}}>
+                    <div style={{width:6,height:6,borderRadius:"50%",background:evColor,border:"2px solid #f0ede8",zIndex:1,flexShrink:0,marginTop:6}}/>
+                    {!isLast&&<div style={{width:2,flex:1,background:"rgba(0,0,0,0.08)"}}/>}
+                  </div>
+                  <div style={{flex:1,padding:"6px 10px",marginBottom:6,fontSize:11,color:"rgba(0,0,0,0.55)",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",lineHeight:1.4}}>
+                    <span style={{fontSize:12}}>{ICON[c.type]||"✏️"}</span>
+                    <span style={{fontWeight:700,color:evColor,fontFamily:"'Barlow Condensed',sans-serif"}}>{FIELD_LABEL[c.type]||c.type}</span>
+                    <span style={{color:"rgba(0,0,0,0.35)"}}>{c.from||"—"}</span>
+                    <span style={{color:"rgba(0,0,0,0.35)"}}>→</span>
+                    <span style={{fontWeight:700,color:"#333"}}>{c.to||"—"}</span>
+                    <span style={{color:"rgba(0,0,0,0.35)"}}>·</span>
+                    <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"rgba(0,0,0,0.5)"}}>{c.by||t("timeline.unknown_user")}</span>
+                    <span style={{color:"rgba(0,0,0,0.3)",fontSize:10,marginLeft:"auto"}}>{new Date(c.at).toLocaleDateString()}{" "}{new Date(c.at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</span>
+                  </div>
+                </div>
+              );
+            }
             const isVerify=c.text?.startsWith("✅");
             const isStatus=c.text?.startsWith("✅")||c.text?.startsWith("🔄");
             const timelineColor=isVerify?"#34c759":isStatus?"#5856d6":"#ff6b00";
@@ -10847,7 +10961,29 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
                     </div>
                   ):(
                     <div style={{display:"flex",alignItems:"flex-start",gap:6}}>
-                      {c.text&&<div style={{fontSize:13,color:"#333",flex:1}}>{c.text}{c.editedAt&&<span style={{fontSize:9,color:"rgba(0,0,0,0.25)",marginLeft:6}}>(edited)</span>}</div>}
+                      {c.text&&<div style={{fontSize:13,color:"#333",flex:1}}>{(()=>{
+                        // Render with @mentions highlighted. Tokens that don't
+                        // resolve to a project member render as plain text.
+                        const parts=[];
+                        let lastIdx=0;
+                        const matches=[...String(c.text).matchAll(MENTION_RE)];
+                        matches.forEach((m,mi)=>{
+                          if(m.index>lastIdx)parts.push(c.text.slice(lastIdx,m.index));
+                          const tok=m[1].toLowerCase();
+                          const hit=members.find(mem=>{
+                            const first=String(mem?.name||"").trim().split(/\s+/)[0]||"";
+                            return first.toLowerCase().startsWith(tok)&&first.length>=tok.length;
+                          });
+                          if(hit){
+                            parts.push(<span key={`mn${mi}`} style={{background:"rgba(255,107,0,0.15)",color:"#ff6b00",fontWeight:700,padding:"1px 4px",borderRadius:4}}>@{hit.name.split(/\s+/)[0]}</span>);
+                          }else{
+                            parts.push(m[0]);
+                          }
+                          lastIdx=m.index+m[0].length;
+                        });
+                        if(lastIdx<c.text.length)parts.push(c.text.slice(lastIdx));
+                        return parts;
+                      })()}{c.editedAt&&<span style={{fontSize:9,color:"rgba(0,0,0,0.25)",marginLeft:6}}>(edited)</span>}</div>}
                       {canUpdate&&c.by===(member?.name||"")&&c.text&&!isStatus&&<button onClick={()=>{setEditingCommentIdx(i);setEditingCommentText(c.text);}} title="Edit comment" style={{background:"none",border:"none",cursor:"pointer",fontSize:11,color:"rgba(0,0,0,0.25)",padding:2,flexShrink:0}}>✏️</button>}
                     </div>
                   )}
@@ -19947,6 +20083,12 @@ function App(){
     return()=>document.removeEventListener("pointerdown",onAway,true);
   },[showSettingsMenu]);
   const[showAvatarMenu,setShowAvatarMenu]=useState(false);const avatarMenuTimer=useRef(null);
+  // In-app notification inbox — see INBOX_KEY in constants.js. State is
+  // hydrated per authUser; lastScanAtRef is the high-water mark used to
+  // dedupe events across re-renders / SSE refreshes.
+  const[inboxEvents,setInboxEvents]=useState([]);
+  const[showInbox,setShowInbox]=useState(false);
+  const inboxLastScanRef=useRef(0);
   const[showAiSearch,setShowAiSearch]=useState(false);
   const[showConquas,setShowConquas]=useState(false);
   const[nlFilters,setNlFilters]=useState(null);
@@ -20076,6 +20218,120 @@ function App(){
       setSyncing(false);
     });
   },[company?.companyId,currentProject?.id]);
+
+  // ── In-app inbox: hydrate per authUser, then watch defects for new
+  // events and push the ones targeting me. Self-authored events are
+  // skipped (a manager assigning a defect to John gets a Telegram, not
+  // an inbox item; John gets the inbox item).
+  useEffect(()=>{
+    if(!authUser?.id){setInboxEvents([]);inboxLastScanRef.current=0;return;}
+    const all=local.get(INBOX_KEY)||{};
+    const mine=all[authUser.id];
+    if(mine){
+      setInboxEvents(Array.isArray(mine.events)?mine.events:[]);
+      inboxLastScanRef.current=mine.lastScanAt||Date.now();
+    }else{
+      // First-time roll-out: seed lastScanAt to NOW so historical events
+      // don't flood the inbox on first load. Persist immediately.
+      const now=Date.now();
+      inboxLastScanRef.current=now;
+      setInboxEvents([]);
+      try{local.set(INBOX_KEY,{...all,[authUser.id]:{events:[],lastScanAt:now}});}catch{}
+    }
+  },[authUser?.id]);
+  useEffect(()=>{
+    if(!authUser?.id||!member?.name)return;
+    const me=String(member.name).trim();
+    if(!me)return;
+    const since=inboxLastScanRef.current;
+    const fresh=[];
+    let maxAt=since;
+    defects.forEach(d=>{
+      (d.comments||[]).forEach(c=>{
+        if(!c.at||c.at<=since)return;
+        if(c.at>maxAt)maxAt=c.at;
+        if((c.by||"").trim()===me)return;
+        // Auto-event branch (status/severity/assignee/dueDate)
+        if(c.kind==="event"){
+          const assignee=(d.assignee||"").trim();
+          const loggedBy=(d.loggedBy||"").trim();
+          const iAmInvolved=assignee===me||loggedBy===me;
+          let relevant=false;
+          if(c.type==="assignee"&&(c.to||"").trim()===me)relevant=true;
+          else if(c.type==="status"&&iAmInvolved)relevant=true;
+          else if(c.type==="severity"&&iAmInvolved&&c.to==="Critical")relevant=true;
+          else if(c.type==="dueDate"&&iAmInvolved)relevant=true;
+          if(!relevant)return;
+          fresh.push({
+            id:(typeof crypto!=="undefined"&&crypto.randomUUID)?crypto.randomUUID():`${c.at}-${Math.random().toString(36).slice(2,8)}`,
+            type:c.type,defectId:d.id,defectTitle:d.title||"Untitled",
+            from:c.from||"",to:c.to||"",by:c.by||"",at:c.at,read:false
+          });
+          return;
+        }
+        // Text comment branch — push if I was @mentioned. Use the
+        // resolved-mentions list when present (newer comments) and fall
+        // back to live parsing for older comments that pre-date mention
+        // resolution at write time.
+        if(!c.text)return;
+        const mentioned=Array.isArray(c.mentions)
+          ?c.mentions.includes(member.name)
+          :commentMentionsMe(c.text,member.name);
+        if(!mentioned)return;
+        fresh.push({
+          id:(typeof crypto!=="undefined"&&crypto.randomUUID)?crypto.randomUUID():`${c.at}-${Math.random().toString(36).slice(2,8)}`,
+          type:"mention",defectId:d.id,defectTitle:d.title||"Untitled",
+          from:"",to:String(c.text).slice(0,140),by:c.by||"",at:c.at,read:false
+        });
+      });
+    });
+    if(fresh.length||maxAt>since){
+      inboxLastScanRef.current=maxAt;
+      setInboxEvents(prev=>{
+        const merged=fresh.length?[...fresh,...prev].slice(0,INBOX_MAX):prev;
+        try{
+          const all=local.get(INBOX_KEY)||{};
+          all[authUser.id]={events:merged,lastScanAt:maxAt};
+          local.set(INBOX_KEY,all);
+        }catch{}
+        return merged;
+      });
+    }
+  },[defects,authUser?.id,member?.name]);
+  const inboxUnread=inboxEvents.filter(e=>!e.read).length;
+  const markInboxRead=()=>{
+    setInboxEvents(prev=>{
+      const updated=prev.map(e=>({...e,read:true}));
+      try{
+        const all=local.get(INBOX_KEY)||{};
+        if(authUser?.id&&all[authUser.id])all[authUser.id]={...all[authUser.id],events:updated};
+        local.set(INBOX_KEY,all);
+      }catch{}
+      return updated;
+    });
+  };
+  const clearInbox=()=>{
+    setInboxEvents([]);
+    try{
+      const all=local.get(INBOX_KEY)||{};
+      if(authUser?.id&&all[authUser.id])all[authUser.id]={...all[authUser.id],events:[]};
+      local.set(INBOX_KEY,all);
+    }catch{}
+  };
+  const openInboxItem=(ev)=>{
+    setInboxEvents(prev=>{
+      const updated=prev.map(e=>e.id===ev.id?{...e,read:true}:e);
+      try{
+        const all=local.get(INBOX_KEY)||{};
+        if(authUser?.id&&all[authUser.id])all[authUser.id]={...all[authUser.id],events:updated};
+        local.set(INBOX_KEY,all);
+      }catch{}
+      return updated;
+    });
+    const d=defects.find(x=>x.id===ev.defectId);
+    if(d){setViewing(d);setTab("defects");}
+    setShowInbox(false);
+  };
 
   const handleAuth=(user,name,inv)=>{setAuthUser(user);if(inv)setInviteCode(inv);};
 
@@ -20275,13 +20531,22 @@ function App(){
     const updatedMap={};
     for(const id of ids){
       try{
+        const current=defects.find(d=>d.id===id);
+        // Auto-events per defect for any tracked field that actually changed
+        // on this entry. Diff against `current` so a no-op patch (e.g. bulk
+        // sets severity to Major but this entry was already Major) doesn't
+        // pollute the timeline with empty change records.
+        const events=diffDefectEvents(current,patch||{},commentBy,commentRole);
         let payload=baseFields;
-        // Per-record payload when appending a shared comment, since each
-        // defect has its own comments history that must be preserved.
-        if(appendComment){
-          const current=defects.find(d=>d.id===id);
-          const newComments=[...(current?.comments||[]),{text:appendComment,by:commentBy,role:commentRole,at:Date.now()}];
-          payload={...baseFields,comments:newComments};
+        // Per-record payload when appending a shared comment OR when events
+        // were generated for this defect — each defect has its own comments
+        // history that must be preserved.
+        if(appendComment||events.length){
+          const baseComments=[...(current?.comments||[]),...events];
+          const finalComments=appendComment
+            ?[...baseComments,{text:appendComment,by:commentBy,role:commentRole,at:Date.now()}]
+            :baseComments;
+          payload={...baseFields,comments:finalComments};
         }
         await DB.defects.update(id,payload);
         updatedMap[id]=payload;
@@ -20301,6 +20566,18 @@ function App(){
       const tg=local.get(TG_KEY);
       if(tg?.token&&tg?.chatId){
         sendTelegram(tg.token,tg.chatId,`💬 <b>Bulk Comment</b>\n${ok} entr${ok>1?"ies":"y"} · ${sanitize(commentBy)}: ${sanitize(appendComment)}`).catch(()=>{});
+      }
+    }
+    if(patch?.assignee&&ok>0){
+      const tg=local.get(TG_KEY);
+      if(tg?.token&&tg?.chatId){
+        sendTelegram(tg.token,tg.chatId,`👤 <b>Bulk Assignment</b>\n${ok} entr${ok>1?"ies":"y"} → <b>${sanitize(patch.assignee)}</b>\nBy: ${sanitize(commentBy)}`).catch(()=>{});
+      }
+    }
+    if(patch?.severity==="Critical"&&ok>0){
+      const tg=local.get(TG_KEY);
+      if(tg?.token&&tg?.chatId){
+        sendTelegram(tg.token,tg.chatId,`⚡ <b>Bulk Severity Escalation</b>\n${ok} entr${ok>1?"ies":"y"} → <b>CRITICAL</b>\nBy: ${sanitize(commentBy)}`).catch(()=>{});
       }
     }
     return{ok,failed};
@@ -20628,6 +20905,64 @@ function App(){
               </div>
               );
             })()}
+          </div>
+          {/* Inbox bell — in-app notifications for events targeting me
+              (assigned to me, status change on my entries, severity
+              escalations on my entries, due-date changes on my entries). */}
+          <div style={{position:"relative"}}>
+            <button onClick={()=>setShowInbox(v=>!v)} title={t("inbox.title")} style={{position:"relative",width:34,height:34,borderRadius:9,background:showInbox?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showInbox?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:showInbox?"#ff6b00":"rgba(255,255,255,0.75)",flexShrink:0}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+              {inboxUnread>0&&<span style={{position:"absolute",top:-3,right:-3,background:"#ff3b30",color:"#fff",borderRadius:10,minWidth:16,height:16,fontSize:9,fontWeight:800,padding:"0 4px",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",border:"1.5px solid #1a1a1a"}}>{inboxUnread>99?"99+":inboxUnread}</span>}
+            </button>
+            {showInbox&&(
+              <div className="dd-panel" style={{position:"absolute",top:"100%",right:0,marginTop:8,background:"linear-gradient(180deg,#2e2e32 0%,#1f1f22 100%)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,overflow:"hidden",zIndex:1200,minWidth:320,maxWidth:380,maxHeight:"70vh",display:"flex",flexDirection:"column",boxShadow:"0 16px 48px rgba(0,0,0,0.55),0 2px 10px rgba(0,0,0,0.35)"}}>
+                <div style={{padding:"13px 16px 12px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",background:"linear-gradient(180deg,rgba(255,107,0,0.06),rgba(255,107,0,0))"}}>
+                  <div>
+                    <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.14em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("inbox.title")}</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff",marginTop:2,lineHeight:1}}>{inboxUnread>0?t("inbox.unread_count").replace("{n}",inboxUnread):t("inbox.all_read")}</div>
+                  </div>
+                  <button onClick={()=>setShowInbox(false)} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:6,padding:"4px 8px",color:"rgba(255,255,255,0.7)",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>×</button>
+                </div>
+                <div style={{flex:1,overflowY:"auto",padding:"4px 0"}}>
+                  {inboxEvents.length===0?(
+                    <div style={{padding:"32px 20px",textAlign:"center",color:"rgba(255,255,255,0.4)",fontSize:12}}>{t("inbox.empty")}</div>
+                  ):inboxEvents.map(ev=>{
+                    const ICON={status:"🔄",severity:"⚡",assignee:"👤",dueDate:"📅",mention:"💬"};
+                    const LABEL={
+                      status:t("inbox.label_status"),
+                      severity:t("inbox.label_severity"),
+                      assignee:t("inbox.label_assigned"),
+                      dueDate:t("inbox.label_due"),
+                      mention:t("inbox.label_mention")
+                    };
+                    const isMention=ev.type==="mention";
+                    return(
+                      <button key={ev.id} onClick={()=>openInboxItem(ev)} style={{width:"100%",background:ev.read?"transparent":"rgba(255,107,0,0.08)",border:"none",borderBottom:"1px solid rgba(255,255,255,0.04)",padding:"10px 14px",cursor:"pointer",textAlign:"left",display:"flex",gap:10,alignItems:"flex-start"}}>
+                        <span style={{fontSize:16,flexShrink:0,marginTop:1}}>{ICON[ev.type]||"✏️"}</span>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:12,color:"#fff",fontWeight:ev.read?500:700,lineHeight:1.35,marginBottom:2,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                            <span style={{fontFamily:"'Barlow Condensed',sans-serif",color:"#ff8a3d",fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.04em"}}>{LABEL[ev.type]||ev.type}</span>
+                            {!isMention&&ev.from&&<span style={{color:"rgba(255,255,255,0.4)"}}>{ev.from}</span>}
+                            {!isMention&&ev.from&&<span style={{color:"rgba(255,255,255,0.4)"}}>→</span>}
+                            {!isMention&&<span style={{color:"#fff"}}>{ev.to||"—"}</span>}
+                          </div>
+                          {isMention&&<div style={{fontSize:11,color:"rgba(255,255,255,0.65)",lineHeight:1.4,marginBottom:3,fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>"{ev.to}"</div>}
+                          <div style={{fontSize:12,color:"rgba(255,255,255,0.85)",lineHeight:1.35,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.defectTitle}</div>
+                          <div style={{fontSize:10,color:"rgba(255,255,255,0.4)",marginTop:3,fontFamily:"'Barlow Condensed',sans-serif"}}>{ev.by||t("timeline.unknown_user")} · {new Date(ev.at).toLocaleDateString()} {new Date(ev.at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</div>
+                        </div>
+                        {!ev.read&&<span style={{width:7,height:7,borderRadius:"50%",background:"#ff6b00",flexShrink:0,marginTop:5}}/>}
+                      </button>
+                    );
+                  })}
+                </div>
+                {inboxEvents.length>0&&(
+                  <div style={{display:"flex",borderTop:"1px solid rgba(255,255,255,0.06)",background:"rgba(0,0,0,0.2)"}}>
+                    <button onClick={markInboxRead} disabled={inboxUnread===0} style={{flex:1,background:"none",border:"none",padding:"10px",color:inboxUnread===0?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.7)",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:inboxUnread===0?"default":"pointer",letterSpacing:"0.06em"}}>{t("inbox.mark_all_read")}</button>
+                    <button onClick={clearInbox} style={{flex:1,background:"none",border:"none",borderLeft:"1px solid rgba(255,255,255,0.06)",padding:"10px",color:"rgba(255,143,143,0.85)",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",letterSpacing:"0.06em"}}>{t("inbox.clear")}</button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           {/* Help button */}
           <button onClick={()=>setShowHelp(true)} title={t("avatar_menu.help")} style={{width:34,height:34,borderRadius:9,background:showHelp?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showHelp?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:showHelp?"#ff6b00":"rgba(255,255,255,0.75)",flexShrink:0}}>

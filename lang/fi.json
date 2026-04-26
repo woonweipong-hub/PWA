@@ -307,6 +307,27 @@
     "timeline": "AIKAJANA",
     "assigned": "Vastuuhenkilö"
   },
+  "timeline": {
+    "events_suffix": "tapahtumia",
+    "event_status": "Status",
+    "event_severity": "Vakavuus",
+    "event_assignee": "Valtuutettu",
+    "event_due_date": "Kaksi päivämäärää",
+    "unknown_user": "Tuntematon"
+  },
+  "inbox": {
+    "title": "LÄHTEET",
+    "unread_count": "{n} LUKEMAMATON",
+    "all_read": "KAIKKI TAPAHTUI",
+    "empty": "Ei vielä ilmoituksia. Saat ilmoituksen, kun sinulle on määritetty merkintöjä, kun merkintöjesi tila muuttuu tai kun vakavuus kasvaa kriittiseksi.",
+    "label_status": "Status",
+    "label_severity": "Vakavuus",
+    "label_assigned": "Sinulle määrätty",
+    "label_due": "Kaksi päivämäärää",
+    "label_mention": "Mainitsi sinut",
+    "mark_all_read": "MERKITSE KAIKKI LUETUKSEEN",
+    "clear": "TYHJENNÄ"
+  },
   "report": {
     "title": "Raportoi",
     "site_report": "SIVURAPORTTI",

@@ -160,7 +160,7 @@
     "project_name_placeholder": "e.g. Site Checks, Safety Audit...",
     "custom_name_placeholder": "Custom name (leave blank to keep original)",
     "followup_placeholder": "Add follow-up notes, comments, or instructions...",
-    "comment_placeholder": "Add a comment...",
+    "comment_placeholder": "Add a comment... use @name to tag a teammate",
     "note_placeholder": "Type note or annotation...",
     "search_list": "Search list..."
   },
@@ -306,6 +306,27 @@
     "description": "DESCRIPTION",
     "timeline": "TIMELINE",
     "assigned": "Assigned"
+  },
+  "timeline": {
+    "events_suffix": "events",
+    "event_status": "Status",
+    "event_severity": "Severity",
+    "event_assignee": "Assignee",
+    "event_due_date": "Due Date",
+    "unknown_user": "Unknown"
+  },
+  "inbox": {
+    "title": "INBOX",
+    "unread_count": "{n} UNREAD",
+    "all_read": "ALL CAUGHT UP",
+    "empty": "No notifications yet. You'll be alerted when entries are assigned to you, when status changes on your entries, or when severity escalates to Critical.",
+    "label_status": "Status",
+    "label_severity": "Severity",
+    "label_assigned": "Assigned to you",
+    "label_due": "Due Date",
+    "label_mention": "Mentioned you",
+    "mark_all_read": "MARK ALL READ",
+    "clear": "CLEAR"
   },
   "report": {
     "title": "Report",

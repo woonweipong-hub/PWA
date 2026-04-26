@@ -307,6 +307,27 @@
     "timeline": "TIDSLINJE",
     "assigned": "Tildelt"
   },
+  "timeline": {
+    "events_suffix": "begivenheder",
+    "event_status": "Status",
+    "event_severity": "Sværhedsgrad",
+    "event_assignee": "Opdragsgiver",
+    "event_due_date": "To datoer",
+    "unknown_user": "Ukendt"
+  },
+  "inbox": {
+    "title": "INBOX",
+    "unread_count": "{n} ULÆST",
+    "all_read": "ALLE FÅET OP",
+    "empty": "Ingen meddelelser endnu. Du vil blive advaret, når poster er tildelt dig, når status ændres på dine poster, eller når alvoren eskalerer til Kritisk.",
+    "label_status": "Status",
+    "label_severity": "Sværhedsgrad",
+    "label_assigned": "Tildelt dig",
+    "label_due": "To datoer",
+    "label_mention": "Nævnte dig",
+    "mark_all_read": "MÆRK ALLE LÆST",
+    "clear": "KLAR"
+  },
   "report": {
     "title": "Rapport",
     "site_report": "SITE RAPPORT",

@@ -307,6 +307,27 @@
     "timeline": "タイムライン",
     "assigned": "担当者"
   },
+  "timeline": {
+    "events_suffix": "イベント",
+    "event_status": "状態",
+    "event_severity": "重大度",
+    "event_assignee": "譲受人",
+    "event_due_date": "2 つの日付",
+    "unknown_user": "未知"
+  },
+  "inbox": {
+    "title": "受信箱",
+    "unread_count": "{n} 個が未読",
+    "all_read": "すべてが捕まった",
+    "empty": "まだ通知はありません。 エントリが割り当てられたとき、エントリのステータスが変化したとき、または重大度が重大にエスカレートしたときに、アラートが表示されます。",
+    "label_status": "状態",
+    "label_severity": "重大度",
+    "label_assigned": "あなたに割り当てられました",
+    "label_due": "2 つの日付",
+    "label_mention": "あなたについて言及しました",
+    "mark_all_read": "すべて既読としてマーク",
+    "clear": "クリア"
+  },
   "report": {
     "title": "レポート",
     "site_report": "現場レポート",

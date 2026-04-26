@@ -307,6 +307,27 @@
     "timeline": "時間軸",
     "assigned": "負責人"
   },
+  "timeline": {
+    "events_suffix": "事件",
+    "event_status": "地位",
+    "event_severity": "嚴重性",
+    "event_assignee": "受讓人",
+    "event_due_date": "兩個日期",
+    "unknown_user": "未知"
+  },
+  "inbox": {
+    "title": "收件匣",
+    "unread_count": "{n} 未讀",
+    "all_read": "都被追上來了",
+    "empty": "還沒有通知。 當條目被指派給您、條目的狀態變更或嚴重性升級為「嚴重」時，您將會收到警報。",
+    "label_status": "地位",
+    "label_severity": "嚴重性",
+    "label_assigned": "分配給您",
+    "label_due": "兩個日期",
+    "label_mention": "提到過你",
+    "mark_all_read": "標記全部已讀",
+    "clear": "清除"
+  },
   "report": {
     "title": "報告",
     "site_report": "現場報告",

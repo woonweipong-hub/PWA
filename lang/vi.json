@@ -307,6 +307,27 @@
     "timeline": "DÒNG THỜI GIAN",
     "assigned": "Phụ trách"
   },
+  "timeline": {
+    "events_suffix": "sự kiện",
+    "event_status": "Trạng thái",
+    "event_severity": "Mức độ nghiêm trọng",
+    "event_assignee": "Người được chuyển nhượng",
+    "event_due_date": "Hai ngày",
+    "unknown_user": "Không xác định"
+  },
+  "inbox": {
+    "title": "HỘP THƯ ĐẾN",
+    "unread_count": "{n} CHƯA ĐỌC",
+    "all_read": "TẤT CẢ BẮT BUỘC",
+    "empty": "Chưa có thông báo nào. Bạn sẽ được cảnh báo khi các mục được chỉ định cho bạn, khi trạng thái của các mục nhập thay đổi hoặc khi mức độ nghiêm trọng tăng lên tới mức Quan trọng.",
+    "label_status": "Trạng thái",
+    "label_severity": "Mức độ nghiêm trọng",
+    "label_assigned": "Đã giao cho bạn",
+    "label_due": "Hai ngày",
+    "label_mention": "Đã đề cập đến bạn",
+    "mark_all_read": "ĐÁNH DẤU TẤT CẢ ĐÃ ĐỌC",
+    "clear": "THÔNG THOÁNG"
+  },
   "report": {
     "title": "Báo cáo",
     "site_report": "BÁO CÁO CÔNG TRÌNH",

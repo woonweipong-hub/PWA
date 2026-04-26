@@ -307,6 +307,27 @@
     "timeline": "TIDSLINJE",
     "assigned": "Tilldelad"
   },
+  "timeline": {
+    "events_suffix": "händelser",
+    "event_status": "Status",
+    "event_severity": "Stränghet",
+    "event_assignee": "Uppdragstagare",
+    "event_due_date": "Två datum",
+    "unknown_user": "Okänd"
+  },
+  "inbox": {
+    "title": "INBOX",
+    "unread_count": "{n} OLÄST",
+    "all_read": "ALLA HADE UPP",
+    "empty": "Inga aviseringar än. Du kommer att bli varnad när poster tilldelas dig, när status ändras på dina poster eller när svårighetsgraden eskalerar till Kritisk.",
+    "label_status": "Status",
+    "label_severity": "Stränghet",
+    "label_assigned": "Tilldelad till dig",
+    "label_due": "Två datum",
+    "label_mention": "Nämnde dig",
+    "mark_all_read": "MARKERA ALLA LÄSTA",
+    "clear": "RENSA"
+  },
   "report": {
     "title": "Rapportera",
     "site_report": "RAPPORT OM SIDA",

@@ -307,6 +307,27 @@
     "timeline": "KRONOLOGI",
     "assigned": "Ditugaskan"
   },
+  "timeline": {
+    "events_suffix": "acara",
+    "event_status": "Status",
+    "event_severity": "Kerasnya",
+    "event_assignee": "Penerima tugas",
+    "event_due_date": "Dua Tanggal",
+    "unknown_user": "Tidak dikenal"
+  },
+  "inbox": {
+    "title": "KOTAK MASUK",
+    "unread_count": "{n} BELUM DIBACA",
+    "all_read": "SEMUA TERTANGKAP",
+    "empty": "Belum ada pemberitahuan. Anda akan diberi tahu ketika entri diberikan kepada Anda, ketika status entri Anda berubah, atau ketika tingkat keparahan meningkat menjadi Kritis.",
+    "label_status": "Status",
+    "label_severity": "Kerasnya",
+    "label_assigned": "Ditugaskan kepada Anda",
+    "label_due": "Dua Tanggal",
+    "label_mention": "Menyebutkanmu",
+    "mark_all_read": "TANDAI SEMUA BACA",
+    "clear": "JERNIH"
+  },
   "report": {
     "title": "Laporan",
     "site_report": "LAPORAN SITUS",

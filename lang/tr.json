@@ -307,6 +307,27 @@
     "timeline": "ZAMAN ÇİZELGESİ",
     "assigned": "Atanan"
   },
+  "timeline": {
+    "events_suffix": "olaylar",
+    "event_status": "Durum",
+    "event_severity": "Şiddet",
+    "event_assignee": "Vekil",
+    "event_due_date": "İki Tarih",
+    "unknown_user": "Bilinmiyor"
+  },
+  "inbox": {
+    "title": "GELEN KUTUSU",
+    "unread_count": "{n} OKUNMAMIŞ",
+    "all_read": "HEPSİ YAKALANDI",
+    "empty": "Henüz bildirim yok. Girişler size atandığında, girişlerinizin durumu değiştiğinde veya önem derecesi Kritik'e yükseldiğinde uyarı alacaksınız.",
+    "label_status": "Durum",
+    "label_severity": "Şiddet",
+    "label_assigned": "Size atandı",
+    "label_due": "İki Tarih",
+    "label_mention": "Senden bahsettim",
+    "mark_all_read": "HEPSİNİ OKUDU İŞARETLEYİN",
+    "clear": "TEMİZLEMEK"
+  },
   "report": {
     "title": "Rapor",
     "site_report": "SİTE RAPORU",
