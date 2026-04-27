@@ -2044,6 +2044,14 @@ function friendlyAiError(raw){
     return"AI service is slow or temporarily unavailable. We're working on it — please try again, or fill the form manually (your photo is saved).";
   if(/HTTP\s?5\d\d/i.test(s)||/UNAVAILABLE/i.test(s)||/high demand/i.test(s))
     return"AI service is busy. Tap RETRY (usually clears within a minute).";
+  // Billing / credits-depleted — user-actionable but distinct from a rate
+  // limit because waiting won't help. Gemini paid tier returns "prepayment
+  // credits are depleted"; OpenAI returns "insufficient_quota" + "billing
+  // details"; OpenRouter returns "credits exhausted". Caught BEFORE the
+  // generic 429 branch so the user gets a fix-the-billing prompt instead
+  // of a useless "wait a moment" hint.
+  if(/prepayment|credit.{0,20}deplet|deplet.{0,20}credit|insufficient.?quota|billing|payment.{0,20}required|exceeded.{0,20}quota/i.test(s))
+    return"AI provider billing / credits exhausted. Switch provider in Settings (Groq is free, no card), or top up the provider's billing.";
   if(/HTTP\s?429/i.test(s)||/rate.?limit/i.test(s)||/quota/i.test(s))
     return"AI rate limit reached. Wait a moment or switch provider in Settings.";
   if(/HTTP\s?40[13]/i.test(s)||/key\b.*valid/i.test(s)||/API key/i.test(s))
