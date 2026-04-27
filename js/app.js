@@ -1684,10 +1684,15 @@ function getAIPrompt(){
 // pick up the user's currently-selected language.
 const AI_PROMPT=getAIPrompt();
 
-// Cache the model name the user's Gemini key actually has access to, so we
-// don't hardcode against a model that may be renamed/retired by Google.
-const GEMINI_MODEL_KEY="sdt-gemini-model-v1";
-const GEMINI_MODEL_FALLBACKS=["gemini-2.5-flash","gemini-2.0-flash","gemini-1.5-flash","gemini-1.5-flash-latest","gemini-pro"];
+// Single hardcoded primary model — same as laptop. Earlier we probed the
+// models-list endpoint and cached the result per device, but that diverged
+// across devices (mobile cached gemini-1.5-flash; Google retired 1.5 →
+// permanent 404 on phone while laptop kept working). Hardcoding 2.5-flash
+// guarantees mobile and laptop always hit the same model. The fallback
+// chain in geminiGenerate still steps through the alternates if 2.5 itself
+// goes down.
+const GEMINI_MODEL_KEY="sdt-gemini-model-v2"; // legacy localStorage key — still cleared on key-test for users upgrading from v1
+const GEMINI_MODEL_FALLBACKS=["gemini-2.5-flash","gemini-2.5-flash-lite","gemini-2.0-flash","gemini-2.0-flash-lite"];
 
 // Bounded fetch — wraps a fetch in an AbortController so a hung request
 // surfaces as a friendly timeout error instead of leaving the LOG screen
@@ -1703,23 +1708,10 @@ function fetchWithTimeout(input, init={}, ms=30000){
   return fetch(input,opts).finally(()=>clearTimeout(tid));
 }
 
-// Probe the Gemini models endpoint and return the first vision-capable model
-// that works with the given key. Caches the result.
-async function pickGeminiModel(apiKey){
-  const cached=local.get(GEMINI_MODEL_KEY);
-  if(cached)return cached;
-  try{
-    // Models-list probe runs once per session — bounded so a Gemini outage
-    // can't lock the rest of the AI chain behind a hung HTTPS request.
-    const r=await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`,{},15000);
-    if(!r.ok)return GEMINI_MODEL_FALLBACKS[0];
-    const d=await r.json();
-    const names=(d.models||[]).map(m=>(m.name||"").replace(/^models\//,"")).filter(n=>n.includes("gemini"));
-    // Prefer fallback order; else pick first "flash" from available list
-    for(const want of GEMINI_MODEL_FALLBACKS){if(names.includes(want)){local.set(GEMINI_MODEL_KEY,want);return want;}}
-    const firstFlash=names.find(n=>n.includes("flash"))||names[0];
-    if(firstFlash){local.set(GEMINI_MODEL_KEY,firstFlash);return firstFlash;}
-  }catch{}
+// Always returns the primary model. Kept as an async function so callers
+// stay unchanged. No probe, no per-device cache → mobile and laptop never
+// diverge.
+async function pickGeminiModel(_apiKey){
   return GEMINI_MODEL_FALLBACKS[0];
 }
 
@@ -1777,14 +1769,23 @@ async function geminiGenerate(apiKey,body){
     }
   }
   if(res.status===404){
+    // Primary model retired by Google — step through the fallback chain
+    // immediately. Also clear the legacy v1/v2 cache key in case an older
+    // build wrote one and a future build re-introduces probing.
     local.del(GEMINI_MODEL_KEY);
-    if(deadlineExceeded())return res;
-    model=await pickGeminiModel(apiKey);
-    tried.add(model);
-    try{res=await call(model);}
-    catch(e){
-      if(e?.name==="AbortError"){console.warn("[AI] Gemini 404-retry timed out");throw e;}
-      throw e;
+    for(const fallback of GEMINI_MODEL_FALLBACKS){
+      if(tried.has(fallback))continue;
+      if(deadlineExceeded())return res;
+      tried.add(fallback);
+      console.warn(`[AI] ${model} returned 404; stepping to ${fallback}`);
+      try{
+        const fr=await call(fallback);
+        if(fr.status!==404){res=fr;model=fallback;break;}
+        res=fr;
+      }catch(e){
+        if(e?.name==="AbortError"){console.warn("[AI] Gemini 404-fallback timed out");throw e;}
+        throw e;
+      }
     }
   }
   // Same-model backoff retries on transient 5xx / 429.
@@ -15474,7 +15475,7 @@ Requirements:
         throw new Error(`Gemini API error (${code}): ${msg}`);
       }
       const cand=data?.candidates?.[0];
-      if(!cand)throw new Error("Gemini returned no candidates. Try a vision model like gemini-1.5-flash (Settings → AI Setup).");
+      if(!cand)throw new Error("Gemini returned no candidates. Try a vision model like gemini-2.5-flash (Settings → AI Setup).");
       if(cand.finishReason==="SAFETY")throw new Error("Gemini blocked the response (safety filters).");
       if(cand.finishReason==="MAX_TOKENS")throw new Error("Gemini response was cut off at maxTokens — try a smaller image.");
       const parts=cand.content?.parts||[];
