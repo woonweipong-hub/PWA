@@ -6020,15 +6020,27 @@ function GeminiSettings({onClose,companyId}){
         {/* OpenAI / GPT config */}
         {provider==="openai"&&(
           <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#1a1a1a",marginBottom:12}}>OPENAI / GPT SETUP</div>
-            {[["1","Go to platform.openai.com → API Keys → Create new key"],["2","Copy the API key and paste below"],["3","Choose a vision-capable model (gpt-4o, gpt-4o-mini)"],["4","Or use any OpenAI-compatible API (e.g., local LM Studio, Together AI)"]].map(([n,t])=>(
-              <div key={n} style={{display:"flex",gap:10,marginBottom:8,alignItems:"flex-start"}}>
-                <div style={{width:22,height:22,borderRadius:"50%",background:"#10a37f",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff"}}>{n}</div>
-                <div style={{fontSize:12,color:"#444",lineHeight:1.5,paddingTop:2}}>{t}</div>
-              </div>
-            ))}
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#1a1a1a",marginBottom:12}}>OPENAI-COMPATIBLE SETUP</div>
+
+            {/* Quick presets — one tap fills URL + a known-good vision model
+                AND opens that provider's API-key page in a new tab. Removes
+                the friction of "I don't know what URL to type." */}
+            <div style={{fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.55)",marginBottom:6,letterSpacing:"0.05em"}}>QUICK PRESET — TAP TO FILL + GET KEY</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+              {[
+                {label:"OpenAI (paid)",url:"https://api.openai.com",model:"gpt-4o-mini",keys:"https://platform.openai.com/api-keys"},
+                {label:"Groq (free)",url:"https://api.groq.com/openai",model:"llama-3.2-90b-vision-preview",keys:"https://console.groq.com/keys"},
+                {label:"OpenRouter",url:"https://openrouter.ai/api",model:"meta-llama/llama-3.2-11b-vision-instruct:free",keys:"https://openrouter.ai/keys"},
+              ].map(p=>(
+                <button key={p.label} onClick={()=>{setOaiUrl(p.url);setOaiModel(p.model);try{window.open(p.keys,"_blank","noopener");}catch{}}} style={{padding:"8px 12px",borderRadius:8,border:"1.5px solid rgba(16,163,127,0.4)",background:"#fff",color:"#10a37f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",letterSpacing:"0.03em"}}>{p.label.toUpperCase()} →</button>
+              ))}
+            </div>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",marginBottom:14,lineHeight:1.4}}>Tap a preset to auto-fill the URL + model below and open the provider's key page in a new tab. Then create a key, copy it, paste below, tap TEST.</div>
+
             <label style={lbl()}>API BASE URL</label>
-            <input value={oaiUrl} onChange={e=>setOaiUrl(e.target.value)} placeholder="https://api.openai.com" style={{...inp,width:"100%",flex:"unset",marginBottom:14,fontFamily:"monospace",fontSize:13}}/>
+            <input value={oaiUrl} onChange={e=>setOaiUrl(e.target.value)} placeholder="https://api.openai.com" style={{...inp,width:"100%",flex:"unset",marginBottom:4,fontFamily:"monospace",fontSize:13}}/>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.45)",marginBottom:14,lineHeight:1.4}}>This is the API endpoint — not a webpage. Visiting it in a browser shows a small "Welcome" message; that's normal. Leave the default unless you used a non-OpenAI preset above.</div>
+
             <label style={lbl()}>API KEY</label>
             <input value={oaiKey} onChange={e=>setOaiKey(e.target.value)} placeholder="sk-..." type="password" style={{...inp,width:"100%",flex:"unset",marginBottom:14}}/>
             <label style={lbl()}>MODEL</label>
@@ -6039,7 +6051,7 @@ function GeminiSettings({onClose,companyId}){
             </div>
             <input value={oaiModel} onChange={e=>setOaiModel(e.target.value)} placeholder="gpt-4o-mini" style={{...inp,width:"100%",flex:"unset",fontFamily:"monospace",fontSize:13}}/>
             <div style={{fontSize:11,color:"rgba(0,0,0,0.35)",marginTop:6}}>
-              Works with OpenAI, Azure OpenAI, LM Studio, Together AI, or any OpenAI-compatible endpoint.
+              Works with OpenAI, Groq, OpenRouter, Azure OpenAI, LM Studio, Together AI, or any OpenAI-compatible endpoint.
             </div>
           </div>
         )}
