@@ -6037,7 +6037,7 @@ function GeminiSettings({onClose,companyId}){
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
               {[
                 {label:"OpenAI (paid)",url:"https://api.openai.com",model:"gpt-4o-mini",keys:"https://platform.openai.com/api-keys"},
-                {label:"Groq (free)",url:"https://api.groq.com/openai",model:"llama-3.2-90b-vision-preview",keys:"https://console.groq.com/keys"},
+                {label:"Groq (free)",url:"https://api.groq.com/openai",model:"meta-llama/llama-4-scout-17b-16e-instruct",keys:"https://console.groq.com/keys"},
                 {label:"OpenRouter",url:"https://openrouter.ai/api",model:"meta-llama/llama-3.2-11b-vision-instruct:free",keys:"https://openrouter.ai/keys"},
               ].map(p=>(
                 <button key={p.label} onClick={()=>{setOaiUrl(p.url);setOaiModel(p.model);try{window.open(p.keys,"_blank","noopener");}catch{}}} style={{padding:"8px 12px",borderRadius:8,border:"1.5px solid rgba(16,163,127,0.4)",background:"#fff",color:"#10a37f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",letterSpacing:"0.03em"}}>{p.label.toUpperCase()} →</button>
