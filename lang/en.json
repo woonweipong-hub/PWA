@@ -677,7 +677,7 @@
     "gemini_desc": "Free cloud AI — 1,500 analyses/day",
     "ollama": "Ollama (Local)",
     "ollama_desc": "Run AI locally — Llava, Qwen, Llama Vision",
-    "openai": "OpenAI / GPT / Groq",
+    "openai": "OpenAI / GPT",
     "openai_desc": "GPT-4o, GPT-4o-mini, or compatible API",
     "clause_mapping": "DEFECT-TO-CLAUSE MAPPING",
     "contract_advisory": "CONTRACT CLAUSE ADVISORY",

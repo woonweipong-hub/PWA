@@ -2024,6 +2024,18 @@ async function analyzePhoto(base64Image,prompt){
     const cfg=local.get(OPENAI_KEY)||{};
     return analyzeWithOpenAI(cfg,base64Image,prompt);
   }
+  if(provider==="groq"){
+    // Groq exposes an OpenAI-compatible chat-completions endpoint, so we
+    // reuse analyzeWithOpenAI with a fixed base URL and the Llama-4 Vision
+    // default. Saved cfg only carries apiKey + optional model override.
+    const cfg=local.get(GROQ_KEY)||{};
+    if(!cfg.apiKey)return null;
+    return analyzeWithOpenAI({
+      url:"https://api.groq.com/openai",
+      apiKey:cfg.apiKey,
+      model:cfg.model||"meta-llama/llama-4-scout-17b-16e-instruct"
+    },base64Image,prompt);
+  }
   // Default: Gemini
   const key=local.get(GEMINI_KEY);
   if(!key)return null;
@@ -2288,6 +2300,42 @@ async function askAIWithUsage(prompt){
       }
       return{text,tokens,error:null};
     }
+    if(provider==="groq"){
+      // Groq exposes the OpenAI chat-completions schema verbatim. Inlined
+      // (rather than refactored to share with the OpenAI branch) to keep
+      // diffs minimal and the OpenAI path's error wording intact.
+      const cfg=local.get(GROQ_KEY)||{};
+      if(!cfg.apiKey)return{text:null,tokens:null,error:"Groq API key missing. Open Settings → AI Setup."};
+      let res;
+      try{
+        res=await fetchWithTimeout(`https://api.groq.com/openai/v1/chat/completions`,{method:"POST",
+          headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},
+          body:JSON.stringify({model:cfg.model||"meta-llama/llama-4-scout-17b-16e-instruct",messages:[{role:"user",content:prompt}],max_tokens:8192})},45000);
+      }catch(e){
+        const isAbort=e?.name==="AbortError";
+        const err=isAbort
+          ?`Groq timed out after 45s — service may be slow. Retry shortly or switch provider in Settings.`
+          :`Groq network error — ${e?.message||"could not reach endpoint"}.`;
+        _setAiError(err);return{text:null,tokens:null,error:err};
+      }
+      if(!res.ok){
+        const errText=await res.text().catch(()=>"");
+        let apiMsg="";
+        try{const j=JSON.parse(errText);apiMsg=j.error?.message||"";}catch{}
+        const err=`Groq HTTP ${res.status} — ${apiMsg||errText.slice(0,300)||"no body"}`;
+        _setAiError(err);return{text:null,tokens:null,error:err};
+      }
+      const data=await res.json();
+      const text=data.choices?.[0]?.message?.content||null;
+      const u=data.usage||{};
+      const tokens={prompt:u.prompt_tokens||0,completion:u.completion_tokens||0,total:u.total_tokens||0,provider:"Groq"};
+      if(!text){
+        const finish=data.choices?.[0]?.finish_reason||"unknown";
+        const err=`Groq returned no text (finish_reason: ${finish})${finish==="length"?" — response was cut off at max_tokens.":"."}`;
+        _setAiError(err);return{text:null,tokens,error:err};
+      }
+      return{text,tokens,error:null};
+    }
     return{text:null,tokens:null,error:`Unknown AI provider: ${provider}`};
   }catch(e){
     const err=`AI call threw: ${e?.message||e}`;
@@ -2309,6 +2357,7 @@ function hasAiCredentials(){
   if(provider==="gemini")return !!local.get(GEMINI_KEY);
   if(provider==="ollama"){const c=local.get(OLLAMA_KEY);return !!(c&&c.url);}
   if(provider==="openai"){const c=local.get(OPENAI_KEY);return !!(c&&c.apiKey);}
+  if(provider==="groq"){const c=local.get(GROQ_KEY);return !!(c&&c.apiKey);}
   return false;
 }
 function isAiConfigured(){return isAiEnabled()&&hasAiCredentials();}
@@ -5805,11 +5854,17 @@ function TelegramSettings({onClose,companyId}){
   );
 }
 
-// ── AI Settings (multi-provider: Gemini, Ollama, OpenAI/GPT) ─────
+// ── AI Settings (multi-provider: Groq, Gemini, Ollama, OpenAI/GPT) ─────
+// Groq is listed first because its free tier needs no credit card and the
+// Llama-4 Vision model is the fastest cloud option for site-defect photo
+// analysis. Existing users default to "gemini" via AI_PROVIDER_KEY — only
+// new installs land on the Groq tile by default since it's the lowest-
+// friction path to working AI on a phone.
 const AI_PROVIDERS=[
+  {id:"groq",label:"Groq",icon:"⚡",desc:"Free cloud AI — Llama-4 Vision · ~165 photos/day · no card",color:"#f55036"},
   {id:"gemini",label:"Google Gemini",icon:"✦",desc:"Free cloud AI — 1,500 analyses/day",color:"#4285f4"},
   {id:"ollama",label:"Ollama (Local)",icon:"🦙",desc:"Run AI locally — Llava, Qwen, Llama Vision",color:"#30d158"},
-  {id:"openai",label:"OpenAI / GPT / Groq",icon:"◈",desc:"GPT-4o, GPT-4o-mini, or compatible API",color:"#10a37f"},
+  {id:"openai",label:"OpenAI / GPT",icon:"◈",desc:"GPT-4o, GPT-4o-mini, or compatible API",color:"#10a37f"},
 ];
 function GeminiSettings({onClose,companyId}){
   const[provider,setProvider]=useState(()=>local.get(AI_PROVIDER_KEY)||"gemini");
@@ -5828,6 +5883,11 @@ function GeminiSettings({onClose,companyId}){
   const[oaiUrl,setOaiUrl]=useState(openaiCfg.url||"https://api.openai.com");
   const[oaiKey,setOaiKey]=useState(openaiCfg.apiKey||"");
   const[oaiModel,setOaiModel]=useState(openaiCfg.model||"gpt-4o-mini");
+  // Groq state — separate from OpenAI so users can have both configured
+  // and switch between them without overwriting either set of credentials.
+  const groqCfg=local.get(GROQ_KEY)||{apiKey:"",model:"meta-llama/llama-4-scout-17b-16e-instruct"};
+  const[groqKey,setGroqKey]=useState(groqCfg.apiKey||"");
+  const[groqModel,setGroqModel]=useState(groqCfg.model||"meta-llama/llama-4-scout-17b-16e-instruct");
   // Shared state
   const[saved,setSaved]=useState(false);const[testing,setTesting]=useState(false);const[testRes,setTestRes]=useState(null);
 
@@ -5846,6 +5906,7 @@ function GeminiSettings({onClose,companyId}){
     if(provider==="gemini")local.set(GEMINI_KEY,gemKey.trim());
     if(provider==="ollama")local.set(OLLAMA_KEY,{url:ollamaUrl.trim(),model:ollamaModel.trim()});
     if(provider==="openai")local.set(OPENAI_KEY,{url:oaiUrl.trim(),apiKey:oaiKey.trim(),model:oaiModel.trim()});
+    if(provider==="groq")local.set(GROQ_KEY,{apiKey:groqKey.trim(),model:(groqModel||"meta-llama/llama-4-scout-17b-16e-instruct").trim()});
     setSaved(true);setTimeout(()=>setSaved(false),2000);
   };
 
@@ -5889,12 +5950,25 @@ function GeminiSettings({onClose,companyId}){
           let reason="";try{const d=await res.json();reason=d?.error?.message||"";}catch{}
           setTestRes({ok:false,detail:reason||`HTTP ${res.status}`});
         }
+      }else if(provider==="groq"){
+        // Hit Groq's /v1/models with the user's key. Returns the list of
+        // models the key can access; a 401 means the key is bad.
+        const res=await fetchWithTimeout("https://api.groq.com/openai/v1/models",{headers:{"Authorization":"Bearer "+groqKey.trim()}},15000);
+        if(res.ok){
+          const d=await res.json().catch(()=>({}));
+          const models=(d.data||[]).map(m=>m.id);
+          const hasModel=models.includes(groqModel.trim());
+          setTestRes({ok:true,detail:hasModel?`Key valid · ${models.length} models available · selected model is live`:`Key valid · ${models.length} models available · selected model not in list (will fall back at call time)`});
+        }else{
+          let reason="";try{const d=await res.json();reason=d?.error?.message||"";}catch{}
+          setTestRes({ok:false,detail:reason||`HTTP ${res.status}`});
+        }
       }
     }catch(e){setTestRes({ok:false,detail:e.message||"Network error"});}
     setTesting(false);
   };
 
-  const canTest=provider==="gemini"?!!gemKey:provider==="ollama"?!!ollamaUrl:!!(oaiKey&&oaiUrl);
+  const canTest=provider==="gemini"?!!gemKey:provider==="ollama"?!!ollamaUrl:provider==="groq"?!!groqKey:!!(oaiKey&&oaiUrl);
 
   return(
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
@@ -5977,6 +6051,39 @@ function GeminiSettings({onClose,companyId}){
           ))}
         </div>
 
+        {/* Groq config — first because the tile is first. Free tier, no
+            card, OpenAI-compatible at the API level (we hit Groq's
+            chat-completions endpoint with the same base64-image envelope
+            as the OpenAI path). Token-budget guidance is baked into the
+            green info box so users see the realistic photo-per-day cap
+            (~165 photos at SiteShrimp's compression) before picking. */}
+        {provider==="groq"&&(
+          <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#1a1a1a",marginBottom:12}}>GROQ SETUP</div>
+            {[["1",<>Go to <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" style={{color:"#f55036",fontWeight:700,textDecoration:"underline"}}>console.groq.com/keys</a> and sign in (Google login is one tap)</>],["2","Click Create API Key → name it (e.g. SiteShrimp) → Copy"],["3","Paste the key below → Test → Save"]].map(([n,t])=>(
+              <div key={n} style={{display:"flex",gap:10,marginBottom:8,alignItems:"flex-start"}}>
+                <div style={{width:22,height:22,borderRadius:"50%",background:"#f55036",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff"}}>{n}</div>
+                <div style={{fontSize:12,color:"#444",lineHeight:1.5,paddingTop:2}}>{t}</div>
+              </div>
+            ))}
+            <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:8,padding:"10px 12px",marginTop:8,marginBottom:14}}>
+              <div style={{fontSize:12,color:"#1a7a35",fontWeight:700,marginBottom:4}}>Free — No credit card · No payment ever</div>
+              <div style={{fontSize:11,color:"#1a7a35",lineHeight:1.45,fontWeight:500}}>
+                Llama-4 Scout free-tier limits: <b>30 req/min</b> · <b>1,000 req/day</b> · <b>30k tokens/min</b> · <b>500k tokens/day</b>.
+              </div>
+            </div>
+            <div style={{background:"rgba(245,80,54,0.06)",border:"1px solid rgba(245,80,54,0.18)",borderRadius:8,padding:"10px 12px",marginBottom:14,fontSize:11,color:"rgba(0,0,0,0.7)",lineHeight:1.5}}>
+              <div style={{fontWeight:700,color:"#b03a25",marginBottom:4}}>~165 photos / day on free tier</div>
+              SiteShrimp compresses each photo to ~600 px / ~120 KB JPEG before sending. Cost per photo ≈ 1,500 image tokens + 1,500 prompt tokens + ~300 response tokens ≈ <b>3k tokens/photo</b>. The 500k token-per-day budget covers ~165 photos. RPM is the burst ceiling at <b>30/min</b>; in practice you'll hit the daily token cap long before the per-minute one. When the daily cap fires you'll see a 429 — switch to Gemini for the rest of the day in one tap.
+            </div>
+            <label style={lbl()}>GROQ API KEY</label>
+            <input value={groqKey} onChange={e=>setGroqKey(e.target.value)} placeholder="gsk_..." type="password" style={{...inp,width:"100%",flex:"unset",marginBottom:14}}/>
+            <label style={lbl()}>VISION MODEL</label>
+            <input value={groqModel} onChange={e=>setGroqModel(e.target.value)} placeholder="meta-llama/llama-4-scout-17b-16e-instruct" style={{...inp,width:"100%",flex:"unset",fontFamily:"monospace",fontSize:13}}/>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginTop:6}}>Default is Llama-4 Scout — Groq's only currently-supported vision model. Override only if Groq rotates to a newer one (check <a href="https://console.groq.com/docs/vision" target="_blank" rel="noopener noreferrer" style={{color:"#f55036",textDecoration:"underline"}}>console.groq.com/docs/vision</a>).</div>
+          </div>
+        )}
+
         {/* Gemini config */}
         {provider==="gemini"&&(
           <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
@@ -6037,7 +6144,6 @@ function GeminiSettings({onClose,companyId}){
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
               {[
                 {label:"OpenAI (paid)",url:"https://api.openai.com",model:"gpt-4o-mini",keys:"https://platform.openai.com/api-keys"},
-                {label:"Groq (free)",url:"https://api.groq.com/openai",model:"meta-llama/llama-4-scout-17b-16e-instruct",keys:"https://console.groq.com/keys"},
                 {label:"OpenRouter",url:"https://openrouter.ai/api",model:"meta-llama/llama-3.2-11b-vision-instruct:free",keys:"https://openrouter.ai/keys"},
               ].map(p=>(
                 <button key={p.label} onClick={()=>{setOaiUrl(p.url);setOaiModel(p.model);try{window.open(p.keys,"_blank","noopener");}catch{}}} style={{padding:"8px 12px",borderRadius:8,border:"1.5px solid rgba(16,163,127,0.4)",background:"#fff",color:"#10a37f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",letterSpacing:"0.03em"}}>{p.label.toUpperCase()} →</button>
@@ -6075,6 +6181,7 @@ function GeminiSettings({onClose,companyId}){
               {!ok&&provider==="gemini"&&<div style={{fontSize:11,fontWeight:500,marginTop:6,opacity:0.75}}>Verify the key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" style={{color:"#cc0000",textDecoration:"underline"}}>aistudio.google.com/apikey</a> — or check that Generative Language API is enabled in Google Cloud.</div>}
               {!ok&&provider==="ollama"&&<div style={{fontSize:11,fontWeight:500,marginTop:6,opacity:0.75}}>Is Ollama running and the model pulled (<code>ollama pull llava</code>)? If the app is served over HTTPS (e.g. siteshrimp.org), browsers block HTTPS→HTTP requests to <code>localhost</code>. Run the app locally, or allow the origin at <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code> and add your Ollama URL.</div>}
               {!ok&&provider==="openai"&&<div style={{fontSize:11,fontWeight:500,marginTop:6,opacity:0.75}}>Verify the key at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" style={{color:"#cc0000",textDecoration:"underline"}}>platform.openai.com/api-keys</a> — and confirm the base URL and model (e.g. <code>gpt-4o-mini</code>) match what your key has access to.</div>}
+              {!ok&&provider==="groq"&&<div style={{fontSize:11,fontWeight:500,marginTop:6,opacity:0.75}}>Verify the key at <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" style={{color:"#cc0000",textDecoration:"underline"}}>console.groq.com/keys</a> — and check the model is current at <a href="https://console.groq.com/docs/vision" target="_blank" rel="noopener noreferrer" style={{color:"#cc0000",textDecoration:"underline"}}>console.groq.com/docs/vision</a> (vision lineup rotates).</div>}
             </div>
           );
         })()}

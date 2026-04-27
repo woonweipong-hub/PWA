@@ -513,6 +513,11 @@ const GDRIVE_KEY = "sdt-gdrive-v1";
 const AI_PROVIDER_KEY = "sdt-ai-provider-v1";
 const OLLAMA_KEY = "sdt-ollama-v1";
 const OPENAI_KEY = "sdt-openai-v1";
+// Groq lives separately from OPENAI_KEY even though Groq exposes an
+// OpenAI-compatible API. Splitting the storage lets a user configure both
+// providers and switch between them in one tap, instead of overwriting
+// the OpenAI cfg every time they want to try Groq.
+const GROQ_KEY = "sdt-groq-v1";
 const GMAPS_KEY = "sdt-gmaps-v1";
 const MAP_PROVIDER_KEY = "sdt-map-provider-v1"; // "osm" | "gmaps"
 // LOG auto-save mode — user preference for how aggressive AI auto-save is
