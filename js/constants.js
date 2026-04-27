@@ -484,7 +484,13 @@ const EMAIL_KEY = "sdt-email-v1";
 const GEMINI_KEY = "sdt-gemini-v1";
 const PROJECT_KEY = "sdt-proj-v1";
 const AI_LIMIT_KEY = "sdt-ai-usage";
-const AI_DAILY_LIMIT = 50;
+// Per-device safety brake on AI calls. Matches the Gemini free-tier
+// published cap (1,500/day for gemini-*-flash) and the "1,500 photo
+// analyses per day" copy shown in AI Setup, so users on the free tier
+// never hit this gate before they hit Google's. Paid OpenAI / local
+// Ollama users are bounded by the same number — the master AI on/off
+// switch (AI_ENABLED_KEY) remains the kill switch for cost control.
+const AI_DAILY_LIMIT = 1500;
 // Master on/off switch for ALL AI calls — user-controlled token-spend gate.
 // Stored as boolean; missing/undefined treated as ON (default) so existing
 // setups keep working. Explicit `false` pauses every AI entry point; the
