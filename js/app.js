@@ -5809,7 +5809,7 @@ function TelegramSettings({onClose,companyId}){
 const AI_PROVIDERS=[
   {id:"gemini",label:"Google Gemini",icon:"✦",desc:"Free cloud AI — 1,500 analyses/day",color:"#4285f4"},
   {id:"ollama",label:"Ollama (Local)",icon:"🦙",desc:"Run AI locally — Llava, Qwen, Llama Vision",color:"#30d158"},
-  {id:"openai",label:"OpenAI / GPT",icon:"◈",desc:"GPT-4o, GPT-4o-mini, or compatible API",color:"#10a37f"},
+  {id:"openai",label:"OpenAI / GPT / Groq",icon:"◈",desc:"GPT-4o, GPT-4o-mini, or compatible API",color:"#10a37f"},
 ];
 function GeminiSettings({onClose,companyId}){
   const[provider,setProvider]=useState(()=>local.get(AI_PROVIDER_KEY)||"gemini");
