@@ -21401,6 +21401,16 @@ function App(){
                       [t("help.nav_review"),t("help.nav_review_desc")],
                       [t("help.nav_report"),t("help.nav_report_desc")],
                     ]],
+                    ["Workflows (on-site / off-site)",[
+                      ["Quick capture (on-site, single defect)","LOG → take photo → AI fills title, severity, trade, component → save. Zero-tap auto-save kicks in after your first 10 saves."],
+                      ["Batch walk (on-site, many defects)","LOG → pick folder or many photos → AI pre-fills the queue in the background → keep walking. Each photo becomes its own entry, ISO 19650-named and CONQUAS-bucketed automatically."],
+                      ["CONQUAS audit (on-site, by element)","TAG → CONQUAS wizard → pick element (Floor / Wall / Ceiling / Door / Window / Component / M&E Fittings) → 1 photo → AI verdicts every checkpoint. Fails save as linked defects in one batch."],
+                      ["Off-site triage (manager, post-walk)","REVIEW > ENTRIES → filter / search → batch-select → set status / assignee / severity / due date in one tap. Batch RE-ANALYZE WITH AI refreshes title / severity / trade across many entries."],
+                      ["Overdue follow-up (DLP / weekly chase)","REVIEW > ENTRIES → filter by Open + past due date → bulk comment + reassign. Telegram notifies the contractor automatically."],
+                      ["Verify & close (after rectification)","Open the entry → before/after photo slider → mark Verified, then Closed (Admin only). Audit trail and ISO 19650 filename stay anchored to the original capture."],
+                      ["Export & handoff (end of week / project sign-off)","REPORT → CSV / PDF / CONQUAS Photo ZIP / Email / Sheets. ZIP groups photos into 7 CONQUAS IF folders with ISO 19650 filenames + _manifest.csv — reviewer-ready for QP handover."],
+                      ["Offline on-site","Captures keep working with no signal — entries queue in IndexedDB and auto-sync when you're back online. Watch the queue badge in the header."],
+                    ]],
                     [t("log.logging_entry"),[
                       ["",t("help.log_1")],
                       ["",t("help.log_2")],
