@@ -1053,17 +1053,35 @@ const[addPhotoData,setAddPhotoData]=useState(null);const[addPhotoAnalyzing,setAd
 // Android. On iOS it falls back to standard multi-pick. We filter
 // the returned FileList to images in handlePhoto since directories
 // can contain arbitrary file types.
-const folderRef=useRef();// CONQUAS-batch entry point handshake. When the user taps
+const folderRef=useRef();// CONQUAS-batch source-type marker. Persists across the entire batch
+// (multiple saves) so every entry in the batch is stamped
+// source_type="conquas_wizard". Cleared when the batch completes
+// (see the batch-complete effect below).
+//
+// Why a dedicated state instead of pre-tagging entryType="CONQUAS Check":
+// (a) entryType="CONQUAS Check" is reserved for the per-element wizard's
+//     structured audits (records carrying nc_tier, observation_batch_id,
+//     batch_weighted_applicable, component_id, checkpoint_id). The
+//     CONQUAS NC-rate report at line ~12010 filters on those structured
+//     fields, so batch entries pretending to be CONQUAS Check entries
+//     would show up incomplete and break the calculation.
+// (b) form gets reset to `blank` after every auto-save (line ~8246), so
+//     a one-shot setForm(entryType:"CONQUAS Check") would only tag the
+//     first photo of an N-photo batch — the rest would auto-stamp as
+//     source_type="photo".
+// The clean fix: keep entryType="Defect", inject source_type explicitly
+// at save time, persist the marker for the whole batch lifetime.
+const[batchSourceType,setBatchSourceType]=useState(null);// CONQUAS-batch entry point handshake. When the user taps
 // [BATCH PROCESS FOLDER] inside the CONQUAS wizard, the wizard
 // closes, the tab flips to LOG, and `pendingBatchTrigger` becomes
-// true. We pre-tag the form's entryType so source_type stamps as
-// "conquas_wizard" on save, then programmatically click the folder
-// picker so the user lands directly on the OS folder/multi-pick
-// dialog. onBatchHandled clears the flag so a second click re-opens
-// it cleanly. No setTimeout — refs are committed before effects run,
-// and a synchronous click preserves the user-activation token from
-// the wizard's button tap (some browsers gate file pickers on it).
-useEffect(()=>{if(!pendingBatchTrigger)return;setForm(prev=>({...prev,entryType:"CONQUAS Check"}));try{folderRef.current&&folderRef.current.click();}catch(err){console.warn("CONQUAS batch trigger click failed",err);}if(typeof onBatchHandled==="function")onBatchHandled();},[pendingBatchTrigger,onBatchHandled]);// Zero-tap batch capture: when the user picks N photos at once (phone
+// true. We arm the source-type marker, then programmatically click
+// the folder picker so the user lands directly on the OS folder/
+// multi-pick dialog. onBatchHandled clears the flag so a second
+// click re-opens it cleanly. No setTimeout — refs are committed
+// before effects run, and a synchronous click preserves the
+// user-activation token from the wizard's button tap (some browsers
+// gate file pickers on it).
+useEffect(()=>{if(!pendingBatchTrigger)return;setBatchSourceType("conquas_wizard");try{folderRef.current&&folderRef.current.click();}catch(err){console.warn("CONQUAS batch trigger click failed",err);}if(typeof onBatchHandled==="function")onBatchHandled();},[pendingBatchTrigger,onBatchHandled]);// Zero-tap batch capture: when the user picks N photos at once (phone
 // gallery / laptop drag-drop), each photo fans out into its own defect
 // record. The first photo goes straight into the form and the rest wait
 // in batchQueue; after each auto-save, the advance effect pops the next.
@@ -1199,7 +1217,8 @@ const r=new FileReader();r.onload=()=>setForm(prev=>({...prev,photos:[r.result]}
 },[form.photos.length,batchQueue.length,saving,analyzing]);// Batch completion: when queue drains and the last photo has been saved,
 // show a single completion toast and reset the progress pill. Avoids
 // spamming N individual toasts during batch processing.
-useEffect(()=>{if(batchTotal>0&&batchQueue.length===0&&form.photos.length===0&&!saving&&!analyzing){const saved=batchTotal-batchFailed;const failNote=batchFailed>0?` · ${batchFailed} failed (check DevTools console)`:"";setLastSaved({id:null,title:`Batch complete — ${saved} photo${saved===1?"":"s"} saved${failNote}`,ts:Date.now(),savedEntry:null,batch:true});setBatchTotal(0);setBatchFailed(0);}// eslint-disable-next-line react-hooks/exhaustive-deps
+useEffect(()=>{if(batchTotal>0&&batchQueue.length===0&&form.photos.length===0&&!saving&&!analyzing){const saved=batchTotal-batchFailed;const failNote=batchFailed>0?` · ${batchFailed} failed (check DevTools console)`:"";setLastSaved({id:null,title:`Batch complete — ${saved} photo${saved===1?"":"s"} saved${failNote}`,ts:Date.now(),savedEntry:null,batch:true});setBatchTotal(0);setBatchFailed(0);setBatchSourceType(null);// CONQUAS-batch marker resets per batch
+}// eslint-disable-next-line react-hooks/exhaustive-deps
 },[batchTotal,batchQueue.length,form.photos.length,saving,analyzing]);// Auto-clear the post-save toast after 5 s. Tapping EDIT before then
 // jumps straight to the saved record for rectification.
 useEffect(()=>{if(!lastSaved)return;const t=setTimeout(()=>setLastSaved(null),5000);return()=>clearTimeout(t);},[lastSaved]);// Revoke staging blob URLs on unmount to avoid leaking memory if the
@@ -1251,7 +1270,11 @@ if(hasTitle&&!auto){const dup=findDuplicate(form.title,locationDisplay);if(dup&&
 // PocketBase record carries them. Without this the auto-tag effect
 // would set them on local form state and the save would drop them.
 // Numbers only — strings would fail PocketBase number-type rules.
-const _lat=Number.isFinite(parseFloat(form.lat))?parseFloat(form.lat):null;const _lng=Number.isFinite(parseFloat(form.lng))?parseFloat(form.lng):null;const _zoom=Number.isFinite(parseFloat(form.mapZoom))?parseFloat(form.mapZoom):_lat&&_lng?18:null;const saveResult=await onSave({...form,title:effectiveTitle,location:locationDisplay||form.location,locationDisplay,photo:compressed[0]||null,extraPhotos:compressed.slice(1),projectId:currentProject?.id||"default",projectName:currentProject?.name||"",entryType:form.entryType||"Defect",trade,...(_lat!=null?{lat:_lat}:{}),...(_lng!=null?{lng:_lng}:{}),...(_zoom!=null?{mapZoom:_zoom}:{}),status:"Open",loggedBy:member?.name||"",loggedByRole:member?.role||"",createdAt:DB.serverTimestamp(),updatedAt:DB.serverTimestamp(),comments:[]});const savedEntry=saveResult&&saveResult!=="queued"?{...saveResult,title:effectiveTitle,location:locationDisplay||form.location,severity:form.severity,trade,status:"Open",assignee:form.assignee,loggedBy:member?.name||"",loggedByRole:member?.role||"",description:form.description,component:form.component,entryType:form.entryType||"Defect"}:null;setLast({location:locationDisplay,assignee:form.assignee,severity:form.severity,locationLevel:form.locationLevel,locationZone:form.locationZone,component:form.component,workCategory:form.workCategory,queued:saveResult==="queued",savedEntry});setCount(c=>c+1);setForm(blank);setAiResult(null);setSpeakTranscript("");setAddPhotoData(null);setAddPhotoAiDesc("");setAddPhotoSaving(false);// Post-save routing:
+const _lat=Number.isFinite(parseFloat(form.lat))?parseFloat(form.lat):null;const _lng=Number.isFinite(parseFloat(form.lng))?parseFloat(form.lng):null;const _zoom=Number.isFinite(parseFloat(form.mapZoom))?parseFloat(form.mapZoom):_lat&&_lng?18:null;const saveResult=await onSave({...form,title:effectiveTitle,location:locationDisplay||form.location,locationDisplay,photo:compressed[0]||null,extraPhotos:compressed.slice(1),projectId:currentProject?.id||"default",projectName:currentProject?.name||"",entryType:form.entryType||"Defect",trade,...(_lat!=null?{lat:_lat}:{}),...(_lng!=null?{lng:_lng}:{}),...(_zoom!=null?{mapZoom:_zoom}:{}),// CONQUAS-batch flow: stamp source_type explicitly so addDefect's
+// auto-stamp at line ~20685 leaves it alone. entryType stays
+// "Defect" so REPORT's NC-rate filter (which requires structured
+// CONQUAS audit fields) does not try to count these entries.
+...(batchSourceType?{source_type:batchSourceType}:{}),status:"Open",loggedBy:member?.name||"",loggedByRole:member?.role||"",createdAt:DB.serverTimestamp(),updatedAt:DB.serverTimestamp(),comments:[]});const savedEntry=saveResult&&saveResult!=="queued"?{...saveResult,title:effectiveTitle,location:locationDisplay||form.location,severity:form.severity,trade,status:"Open",assignee:form.assignee,loggedBy:member?.name||"",loggedByRole:member?.role||"",description:form.description,component:form.component,entryType:form.entryType||"Defect"}:null;setLast({location:locationDisplay,assignee:form.assignee,severity:form.severity,locationLevel:form.locationLevel,locationZone:form.locationZone,component:form.component,workCategory:form.workCategory,queued:saveResult==="queued",savedEntry});setCount(c=>c+1);setForm(blank);setAiResult(null);setSpeakTranscript("");setAddPhotoData(null);setAddPhotoAiDesc("");setAddPhotoSaving(false);// Post-save routing:
 //  - saveAndDone (explicit LOG & DONE link) → stay on empty form, no
 //    confirmation screen (parent tab switch handles "done")
 //  - in-batch auto-save (user picked many photos) → stay on form so

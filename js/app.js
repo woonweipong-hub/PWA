@@ -7548,19 +7548,39 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // the returned FileList to images in handlePhoto since directories
   // can contain arbitrary file types.
   const folderRef=useRef();
+  // CONQUAS-batch source-type marker. Persists across the entire batch
+  // (multiple saves) so every entry in the batch is stamped
+  // source_type="conquas_wizard". Cleared when the batch completes
+  // (see the batch-complete effect below).
+  //
+  // Why a dedicated state instead of pre-tagging entryType="CONQUAS Check":
+  // (a) entryType="CONQUAS Check" is reserved for the per-element wizard's
+  //     structured audits (records carrying nc_tier, observation_batch_id,
+  //     batch_weighted_applicable, component_id, checkpoint_id). The
+  //     CONQUAS NC-rate report at line ~12010 filters on those structured
+  //     fields, so batch entries pretending to be CONQUAS Check entries
+  //     would show up incomplete and break the calculation.
+  // (b) form gets reset to `blank` after every auto-save (line ~8246), so
+  //     a one-shot setForm(entryType:"CONQUAS Check") would only tag the
+  //     first photo of an N-photo batch — the rest would auto-stamp as
+  //     source_type="photo".
+  // The clean fix: keep entryType="Defect", inject source_type explicitly
+  // at save time, persist the marker for the whole batch lifetime.
+  const[batchSourceType,setBatchSourceType]=useState(null);
+
   // CONQUAS-batch entry point handshake. When the user taps
   // [BATCH PROCESS FOLDER] inside the CONQUAS wizard, the wizard
   // closes, the tab flips to LOG, and `pendingBatchTrigger` becomes
-  // true. We pre-tag the form's entryType so source_type stamps as
-  // "conquas_wizard" on save, then programmatically click the folder
-  // picker so the user lands directly on the OS folder/multi-pick
-  // dialog. onBatchHandled clears the flag so a second click re-opens
-  // it cleanly. No setTimeout — refs are committed before effects run,
-  // and a synchronous click preserves the user-activation token from
-  // the wizard's button tap (some browsers gate file pickers on it).
+  // true. We arm the source-type marker, then programmatically click
+  // the folder picker so the user lands directly on the OS folder/
+  // multi-pick dialog. onBatchHandled clears the flag so a second
+  // click re-opens it cleanly. No setTimeout — refs are committed
+  // before effects run, and a synchronous click preserves the
+  // user-activation token from the wizard's button tap (some browsers
+  // gate file pickers on it).
   useEffect(()=>{
     if(!pendingBatchTrigger)return;
-    setForm(prev=>({...prev,entryType:"CONQUAS Check"}));
+    setBatchSourceType("conquas_wizard");
     try{folderRef.current&&folderRef.current.click();}catch(err){console.warn("CONQUAS batch trigger click failed",err);}
     if(typeof onBatchHandled==="function")onBatchHandled();
   },[pendingBatchTrigger,onBatchHandled]);
@@ -8040,6 +8060,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       setLastSaved({id:null,title:`Batch complete — ${saved} photo${saved===1?"":"s"} saved${failNote}`,ts:Date.now(),savedEntry:null,batch:true});
       setBatchTotal(0);
       setBatchFailed(0);
+      setBatchSourceType(null); // CONQUAS-batch marker resets per batch
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[batchTotal,batchQueue.length,form.photos.length,saving,analyzing]);
@@ -8232,6 +8253,11 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         ...(_lat!=null?{lat:_lat}:{}),
         ...(_lng!=null?{lng:_lng}:{}),
         ...(_zoom!=null?{mapZoom:_zoom}:{}),
+        // CONQUAS-batch flow: stamp source_type explicitly so addDefect's
+        // auto-stamp at line ~20685 leaves it alone. entryType stays
+        // "Defect" so REPORT's NC-rate filter (which requires structured
+        // CONQUAS audit fields) does not try to count these entries.
+        ...(batchSourceType?{source_type:batchSourceType}:{}),
         status:"Open",loggedBy:member?.name||"",
         loggedByRole:member?.role||"",
         createdAt:DB.serverTimestamp(),
