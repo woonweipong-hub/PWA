@@ -11723,6 +11723,20 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   const[conquasObs,setConquasObs]=useState([]);
   const[conquasObsOpen,setConquasObsOpen]=useState(false);
   const[conquasObsLoading,setConquasObsLoading]=useState(false);
+  // Auto-expand the audit trail the first time observations show up for the
+  // current project. Avoids the user having to discover the toggle to see
+  // their pass / fail / uncertain breakdown. Subsequent toggles by the user
+  // are respected (we only auto-open once per project switch).
+  const conquasObsAutoOpenedRef=useRef(false);
+  useEffect(()=>{
+    if(conquasObs.length>0&&!conquasObsAutoOpenedRef.current){
+      setConquasObsOpen(true);
+      conquasObsAutoOpenedRef.current=true;
+    }
+  },[conquasObs.length]);
+  // Reset auto-open guard when project changes so the next project also
+  // auto-opens once.
+  useEffect(()=>{conquasObsAutoOpenedRef.current=false;},[currentProject?.id]);
   useEffect(()=>{
     let cancelled=false;
     (async()=>{
@@ -12744,14 +12758,27 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
       {/* Phase 3.8B — full CONQUAS audit trail. Shows every checkpoint the
           inspector walked (pass + fail + uncertain) with photo evidence,
           grouped by observation_batch_id so each wizard run is a clear unit. */}
-      {conquasObs.length>0&&(
+      {conquasObs.length>0&&(()=>{
+        // Header summary: total + pass / fail / uncertain breakdown so the
+        // user sees the audit picture at a glance without expanding.
+        const totalChecks=conquasObs.length;
+        const totalPass=conquasObs.filter(o=>o.verdict==="pass").length;
+        const totalFail=conquasObs.filter(o=>o.verdict==="fail").length;
+        const totalUncertain=conquasObs.filter(o=>o.verdict==="uncertain").length;
+        const chip=(label,count,color)=>(
+          <span style={{fontSize:10,fontWeight:700,color,background:color+"14",border:"1px solid "+color+"33",borderRadius:6,padding:"3px 7px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>{count} {label}</span>
+        );
+        return(
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,border:"1px solid rgba(88,86,214,0.2)"}}>
-          <button onClick={()=>setConquasObsOpen(v=>!v)} style={{width:"100%",background:"transparent",border:"none",padding:0,cursor:"pointer",display:"flex",alignItems:"center",gap:8,textAlign:"left"}}>
-            <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#1a1a1a",letterSpacing:"0.03em"}}>
+          <button onClick={()=>setConquasObsOpen(v=>!v)} style={{width:"100%",background:"transparent",border:"none",padding:0,cursor:"pointer",display:"flex",alignItems:"center",gap:8,textAlign:"left",flexWrap:"wrap"}}>
+            <div style={{flex:"1 1 auto",minWidth:0,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#1a1a1a",letterSpacing:"0.03em"}}>
               📋 CONQUAS AUDIT TRAIL
             </div>
-            <div style={{fontSize:10,fontWeight:700,color:"#5856d6",background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:6,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>
-              {conquasObs.length} CHECK{conquasObs.length!==1?"S":""}
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+              {chip("CHECK"+(totalChecks!==1?"S":""),totalChecks,"#5856d6")}
+              {totalPass>0&&chip("PASS",totalPass,"#34a853")}
+              {totalFail>0&&chip("FAIL",totalFail,"#ff3b30")}
+              {totalUncertain>0&&chip("UNCERTAIN",totalUncertain,"#ff9500")}
             </div>
             <span style={{fontSize:11,color:"#5856d6",fontWeight:700}}>{conquasObsOpen?"▲":"▼"}</span>
           </button>
@@ -12813,7 +12840,8 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
           })()}
           {conquasObsLoading&&<div style={{marginTop:8,fontSize:10,color:"rgba(0,0,0,0.5)"}}>Loading…</div>}
         </div>
-      )}
+        );
+      })()}
       <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14}}>
         <div style={lbl()}>{t("report.by_severity")}</div>
         {bySev.map(({s,count})=>(
