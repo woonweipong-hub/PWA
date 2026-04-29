@@ -13,6 +13,46 @@
 //
 // When BCA releases R2/R3, bump `version`, replace strings verbatim from the
 // new manual, mirror the change into pb_hooks/main.pb.js, and reseed.
+//
+// ── ISO 19650 filename invariants ─────────────────────────────────────
+// Every photo SiteShrimp captures gets a deterministic filename derived
+// from the defect record. The filename is a self-describing compliance
+// evidence object — the database remains the source of truth, the
+// filename is a recomputable representation.
+//
+//   Layer 1  Container ID (ISO 19650 §5):
+//     {Project}-{Originator}-{Volume}-{Level}-{Type}-{Role}-{Number}
+//   Layer 2  Export metadata (UK National Annex):
+//     -{Suitability}-{YYYYMMDD}[-R{rev:02}]
+//   Layer 3  Photo evidence tail (SiteShrimp extension):
+//     _{seq:02}[_{element}][_{issue}][_{checkpoint}][_{hash:8hex}].{ext}
+//
+// Separator rule: hyphens (-) join Layers 1 and 2; a single underscore
+// (_) marks the start of Layer 3. The first underscore is the
+// unambiguous parser split point.
+//
+// Allowed characters per segment: A-Z, 0-9. Hyphens and underscores
+// are reserved as separators. All free-form input (project name,
+// company name, defect issue) is slugged before composition.
+//
+// Length budget: target ≤ 128 characters total to stay safely under
+// Windows MAX_PATH (260 chars) once cloud-storage prefixes are added.
+// Fixed caps per segment: project ≤ 6, originator ≤ 4, issue ≤ 16,
+// checkpoint ≤ ~16, hash = 8 (always). Slugger truncates rather than
+// rejects to keep capture frictionless.
+//
+// CONQUAS element codes (Layer 3, _element_ slot) are produced by
+// conquasElementOf() in js/constants.js; the rule set is versioned via
+// CONQUAS_MAPPING_VERSION. Any element code (FL/WL/CL/DR/WD/CP/ME) in
+// a production filename was produced by a known mapping version, so
+// audit tooling can trace "WL was assigned by v1 rules" reliably.
+//
+// Reserved (not yet implemented): a 3-letter view-type slot
+// (OVR / CLS / MSR / CTX) may be inserted between {seq} and {element}
+// when the LOG capture flow gains a view-type toggle. Filename parser
+// disambiguation will need fixed-position handling at that time —
+// the slot is reserved in design, not in code.
+// ──────────────────────────────────────────────────────────────────────
 
 var CONQUAS_PR_2025 = {
   version: "BCA-CONQUAS-PR-R1",

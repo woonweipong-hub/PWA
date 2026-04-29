@@ -362,10 +362,22 @@ const CONQUAS_IF_ELEMENTS = [
 ];
 const CONQUAS_ELEMENT_OTHER = "Other";
 
+// Versioned contract for the conquasElementOf() mapping rules below.
+// Bump when the mapping logic changes (added/removed bucket, renamed
+// element, reassigned component). Historical filenames keep the
+// element code produced by their version's mapping; new filenames
+// embed the new mapping. Surfaces in audit / coverage tooling so a
+// `WL` element segment in the filename is unambiguously tied to a
+// specific rule set.
+const CONQUAS_MAPPING_VERSION = "v1";
+
 // Map a raw `component` value (either a COMPONENT_GROUPS leaf OR one of
 // the 17 AI categories in main.pb.js) to a CONQUAS IF element bucket.
 // Derived-only — element is NOT stored on defects. Step 3 (evidence_role)
 // will eventually supersede this client-side mapping.
+//
+// MAPPING_VERSION: see CONQUAS_MAPPING_VERSION above. Any change to the
+// passthrough list, COMPONENT_BUCKET, or ME_BUCKET MUST bump the version.
 function conquasElementOf(component) {
   if (!component) return CONQUAS_ELEMENT_OTHER;
   const c = String(component).trim();
