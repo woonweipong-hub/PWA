@@ -212,7 +212,7 @@ routerAdd("POST", "/api/storage/test", (e) => {
 // don't map to any color, status chip, or filter on the client.
 var AI_SERVER_PROMPT = [
   "You are a CONQUAS-aware defect inspector for construction sites, residential building defects (HDB / private), and facilities management. Analyze this photo.",
-  "Return ONLY a JSON object with: category, defect_type, severity, location, description, trade.",
+  "Return ONLY a JSON object with these eight fields: category, defect_type, severity, trade, location, description, conquas_tier, checkpoint_match. The first four are mandatory; the last four may be null when not applicable.",
   "Categories: Column, Beam, Slab, Door, Window, Wall, Floor, Ceiling, Roof,",
   "Plumbing, Electrical, Aircon, Painting, Tiling, Waterproofing, Cabinet, General.",
   "Pick the category that maps to a BCA CONQUAS Internal-Finishes element when the photo shows interior finishing work:",
@@ -220,7 +220,40 @@ var AI_SERVER_PROMPT = [
   "Plumbing / Electrical / Aircon for M&E fittings. Use Column / Beam / Slab / Roof for structural or external work.",
   "For defect_type, use BCA Good Industry Practice terminology where applicable (e.g. hollowness / lippage / delamination for tiling; peeling / bubbling / brush marks for painting; bulging / cracking / dampness for waterproofing; misalignment / chipping for joinery).",
   "Severity: Critical, Major, Minor, Observation. Map CONQUAS tiers — 3X (functional, high impact) -> Critical or Major; 2X (functional) -> Major or Minor; 1X (finishings) -> Minor or Observation.",
+  "Optionally include conquas_tier (\"1X\", \"2X\" or \"3X\") and checkpoint_match (verbatim CONQUAS checkpoint label closest to the defect, e.g. \"Hollowness (for tiled wall as long as it is hollow)\") when the photo shows residential interior finishing work covered by the BCA CONQUAS Private Residential 2025 manual. Use null for both when not applicable (structural, external, or non-residential work).",
 ].join(" ");
+
+// Engine-agnostic JSON schema bound to AI providers via responseSchema (Gemini)
+// or response_format json_schema (OpenAI / Groq / Mistral / OpenRouter). The
+// last two fields (conquas_tier, checkpoint_match) are additive and currently
+// log-only — no PocketBase column for them yet, by design.
+//
+// All eight properties are listed in `required` because OpenAI strict mode
+// (response_format json_schema with strict: true) refuses any object schema
+// where a property is not required. Optional fields use type: ["string","null"]
+// so the model is allowed to emit explicit null when it has no value.
+var AI_OUTPUT_SCHEMA = {
+  type: "object",
+  required: [
+    "category", "defect_type", "severity", "trade",
+    "location", "description", "conquas_tier", "checkpoint_match"
+  ],
+  properties: {
+    category:    { type: "string", enum: [
+      "Column","Beam","Slab","Door","Window","Wall","Floor","Ceiling",
+      "Roof","Plumbing","Electrical","Aircon","Painting","Tiling",
+      "Waterproofing","Cabinet","General"
+    ]},
+    defect_type: { type: "string" },
+    severity:    { type: "string", enum: ["Critical","Major","Minor","Observation"] },
+    trade:       { type: "string" },
+    location:    { type: ["string","null"] },
+    description: { type: ["string","null"] },
+    conquas_tier:     { type: ["string","null"], enum: ["1X","2X","3X",null] },
+    checkpoint_match: { type: ["string","null"] }
+  },
+  additionalProperties: false
+};
 
 function analyzeWithGeminiServer(b64Photo, geminiKey, description) {
   var prompt = AI_SERVER_PROMPT + " User context: " + (description || "");
@@ -234,6 +267,10 @@ function analyzeWithGeminiServer(b64Photo, geminiKey, description) {
         { text: prompt },
         { inline_data: { mime_type: "image/jpeg", data: b64Photo } }
       ]}],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: AI_OUTPUT_SCHEMA
+      }
     }),
     timeout: 60,
   });
@@ -276,6 +313,10 @@ function analyzeWithOpenAIServer(b64Photo, oaiUrl, oaiKey, oaiModel, description
     body: JSON.stringify({
       model: oaiModel || "gpt-4o-mini",
       max_tokens: 500,
+      response_format: {
+        type: "json_schema",
+        json_schema: { name: "defect_analysis", strict: true, schema: AI_OUTPUT_SCHEMA }
+      },
       messages: [{ role: "user", content: [
         { type: "image_url", image_url: { url: "data:image/jpeg;base64," + b64Photo, detail: "low" } },
         { type: "text", text: prompt }
@@ -297,7 +338,23 @@ function parseAiResponse(text) {
     json = json.split("\n").slice(1).join("\n").replace(/```\s*$/, "").trim();
   }
   json = json.replace(/```json|```/g, "").trim();
-  return JSON.parse(json);
+  var obj;
+  try { obj = JSON.parse(json); } catch (e) { return null; }
+  if (!obj || typeof obj !== "object") return null;
+
+  // Shape validation against AI_OUTPUT_SCHEMA. Required core fields must be
+  // present and non-empty strings; severity must be one of the four values.
+  // Optional fields (location, description, conquas_tier, checkpoint_match)
+  // are accepted as null/string.
+  var SEV = ["Critical","Major","Minor","Observation"];
+  var TIER = ["1X","2X","3X"];
+  var CATS = AI_OUTPUT_SCHEMA.properties.category.enum;
+  if (typeof obj.category !== "string" || CATS.indexOf(obj.category) < 0) return null;
+  if (typeof obj.defect_type !== "string" || !obj.defect_type) return null;
+  if (typeof obj.severity !== "string" || SEV.indexOf(obj.severity) < 0) return null;
+  if (typeof obj.trade !== "string" || !obj.trade) return null;
+  if (obj.conquas_tier != null && TIER.indexOf(obj.conquas_tier) < 0) return null;
+  return obj;
 }
 
 onRecordAfterCreateSuccess((e) => {
@@ -356,6 +413,16 @@ onRecordAfterCreateSuccess((e) => {
         if (fields.description && !record.get("description")) record.set("description", fields.description);
         if (fields.trade && !record.get("trade")) record.set("trade", fields.trade);
         $app.save(record);
+        // CONQUAS observability — log-only until pb_schema gains these fields.
+        // Lets us watch how often each provider fills them in real test runs
+        // before committing to a PocketBase migration.
+        if (fields.conquas_tier || fields.checkpoint_match) {
+          console.log("AI conquas:", record.id,
+            "tier=" + (fields.conquas_tier || "null"),
+            "checkpoint=" + (fields.checkpoint_match || "null"));
+        }
+      } else {
+        console.log("AI parse failed: malformed or missing required fields");
       }
     }
   } catch (err) {
