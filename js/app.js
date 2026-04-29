@@ -6817,7 +6817,7 @@ async function analyzeCONQUASPhoto(photoDataUrl,elementName,checkpoints){
 //
 // Both modes save into the same `defects` table with identical schema, so
 // Phase 4 REPORT integration doesn't need to distinguish.
-function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
+function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStartBatch}){
   const[loading,setLoading]=useState(true);
   const[error,setError]=useState(null);
   const[components,setComponents]=useState([]);
@@ -7185,6 +7185,23 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
               </button>
             ))}
           </div>
+          {/* Batch path — when the user already has a folder of photos, skip
+              the per-element walk and route straight to LOG batch mode with
+              entryType pre-tagged as "CONQUAS Check". AI fans each photo
+              into its own defect record, conquasElementOf() derives the IF
+              bucket per record, isoNameForDefect() stamps the ISO 19650
+              filename, and ZIP export groups into the matching IF folder.
+              No new element-by-element wizardry; reuses the tested LOG
+              batch flow with a CONQUAS source-type tag. */}
+          {typeof onStartBatch==="function"&&(
+            <div style={{marginTop:24,paddingTop:20,borderTop:"1px solid rgba(0,0,0,0.08)"}}>
+              <button onClick={onStartBatch} style={{width:"100%",padding:"14px 16px",background:"rgba(88,86,214,0.08)",border:"1.5px solid rgba(88,86,214,0.3)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                <span style={{fontSize:16}}>📁</span>
+                <span>{t("conquas.batch_process_folder")}</span>
+              </button>
+              <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",lineHeight:1.45,marginTop:8,padding:"0 4px"}}>{t("conquas.batch_process_folder_hint")}</div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -7483,7 +7500,7 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose}){
 }
 
 // ── Log Entry (with AI + Batch + Multi-photo) ────────────────────
-function LogDefect({member,company,currentProject,members,onSave,existingDefects=[],onViewEntry,onTagDrawing,onStartConquas}){
+function LogDefect({member,company,currentProject,members,onSave,existingDefects=[],onViewEntry,onTagDrawing,onStartConquas,pendingBatchTrigger,onBatchHandled}){
   const savedWorkCat=local.get(WORK_CATEGORY_KEY)||"Building Defects (Landed)";
   const blank={title:"",location:"",severity:"Major",description:"",assignee:member?.name||"",photos:[],
     component:"",issue:"",locationLevel:"",locationZone:"",locationSubzone:"",locationGrid:"",
@@ -7531,6 +7548,22 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // the returned FileList to images in handlePhoto since directories
   // can contain arbitrary file types.
   const folderRef=useRef();
+  // CONQUAS-batch entry point handshake. When the user taps
+  // [BATCH PROCESS FOLDER] inside the CONQUAS wizard, the wizard
+  // closes, the tab flips to LOG, and `pendingBatchTrigger` becomes
+  // true. We pre-tag the form's entryType so source_type stamps as
+  // "conquas_wizard" on save, then programmatically click the folder
+  // picker so the user lands directly on the OS folder/multi-pick
+  // dialog. onBatchHandled clears the flag so a second click re-opens
+  // it cleanly. No setTimeout — refs are committed before effects run,
+  // and a synchronous click preserves the user-activation token from
+  // the wizard's button tap (some browsers gate file pickers on it).
+  useEffect(()=>{
+    if(!pendingBatchTrigger)return;
+    setForm(prev=>({...prev,entryType:"CONQUAS Check"}));
+    try{folderRef.current&&folderRef.current.click();}catch(err){console.warn("CONQUAS batch trigger click failed",err);}
+    if(typeof onBatchHandled==="function")onBatchHandled();
+  },[pendingBatchTrigger,onBatchHandled]);
   // Zero-tap batch capture: when the user picks N photos at once (phone
   // gallery / laptop drag-drop), each photo fans out into its own defect
   // record. The first photo goes straight into the form and the rest wait
@@ -20302,6 +20335,11 @@ function App(){
   const inboxLastScanRef=useRef(0);
   const[showAiSearch,setShowAiSearch]=useState(false);
   const[showConquas,setShowConquas]=useState(false);
+  // CONQUAS-batch handshake — true for one render cycle after the user taps
+  // [BATCH PROCESS FOLDER] in the wizard. LogDefect's effect picks it up,
+  // pre-tags entryType, programmatically clicks the folder picker, then
+  // calls back to clear it.
+  const[pendingConquasBatch,setPendingConquasBatch]=useState(false);
   const[nlFilters,setNlFilters]=useState(null);
   const[queueCount,setQueueCount]=useState(0);
   const[syncing2,setSyncing2]=useState(false);
@@ -21328,7 +21366,7 @@ function App(){
 
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:"calc(100px + env(safe-area-inset-bottom,0px))"}}>
-        {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")} onStartConquas={()=>setShowConquas(true)}/>}
+        {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")} onStartConquas={()=>setShowConquas(true)} pendingBatchTrigger={pendingConquasBatch} onBatchHandled={()=>setPendingConquasBatch(false)}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} onPatchDefectLocal={updated=>setDefects(prev=>prev.map(d=>d.id===updated.id?updated:d))} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onViewEntry={setViewing}/>}
         {tab==="defects"&&<DefectsList defects={defects} archivedDefects={archivedDefects} onView={setViewing} onUpdate={updateDefect} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onRestore={restoreDefects} onHardDelete={hardDeleteDefects} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")} onOpenInReview={(payload)=>setReviewModal(payload)} queueCount={queueCount} syncing2={syncing2} onSyncQueue={syncQueue}/>}
@@ -21353,7 +21391,7 @@ function App(){
       {reviewModal?.type==="drawing"&&<DrawingViewer drawing={reviewModal.drawing} onClose={()=>setReviewModal(null)} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect}/>}
       {reviewModal?.type==="comparison"&&<DrawingsPanel onClose={()=>setReviewModal(null)} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} initialCompare={reviewModal.comparison}/>}
       {showAiSearch&&<AiSearch defects={defects} onClose={()=>setShowAiSearch(false)} onApplyFilters={f=>{setNlFilters(f);setTab("defects");}}/>}
-      {showConquas&&<ConquasCheckWizard currentProject={currentProject} company={company} member={member} onSave={addDefect} onClose={()=>setShowConquas(false)}/>}
+      {showConquas&&<ConquasCheckWizard currentProject={currentProject} company={company} member={member} onSave={addDefect} onClose={()=>setShowConquas(false)} onStartBatch={()=>{setShowConquas(false);setTab("log");setPendingConquasBatch(true);}}/>}
       {viewing&&<DefectDetail defect={viewing} onClose={()=>setViewing(null)} onUpdate={updateDefect} onDelete={(id)=>setDefects(prev=>prev.filter(d=>d.id!==id))} member={member} company={company} members={members} allDefects={defects}/>}
       {showHelp&&(
         <div style={{position:"fixed",inset:0,zIndex:500,background:"#1a1a1a",overflowY:"auto"}}>
@@ -21365,6 +21403,7 @@ function App(){
                     The hosting branch (helpTab==="hosting") still renders below
                     when reached via Settings; just no nav button here. */}
                 <button onClick={()=>setHelpTab("help")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="help"?"2px solid #ff6b00":"2px solid transparent",color:helpTab==="help"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{t("help.title").toUpperCase()}</button>
+                <button onClick={()=>setHelpTab("about")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="about"?"2px solid #5856d6":"2px solid transparent",color:helpTab==="about"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{t("about.title").toUpperCase()}</button>
                 <button onClick={()=>setHelpTab("features")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="features"?"2px solid #ff6b00":"2px solid transparent",color:helpTab==="features"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{t("help.features")}</button>
                 <button onClick={()=>setHelpTab("disclaimer")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="disclaimer"?"2px solid #ffcc00":"2px solid transparent",color:helpTab==="disclaimer"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>DISCLAIMER</button>
               </div>
@@ -21375,19 +21414,6 @@ function App(){
               {helpTab==="help"&&(
                 <div>
                   {[
-                    [t("help.problem"),[
-                      ["",t("help.problem_desc")],
-                    ]],
-                    [t("help.what_it_does"),[
-                      ["",t("help.what_it_does_desc")],
-                    ]],
-                    [t("help.who_its_for"),[
-                      [t("help.audience_developers"),t("help.audience_developers_desc")],
-                      [t("help.audience_fm"),t("help.audience_fm_desc")],
-                      [t("help.audience_renovation"),t("help.audience_renovation_desc")],
-                      [t("help.audience_consultants"),t("help.audience_consultants_desc")],
-                      [t("help.audience_smes"),t("help.audience_smes_desc")],
-                    ]],
                     [t("help.first_time_setup"),[
                       ["",t("help.setup_1")],
                       ["",t("help.setup_2")],
@@ -21523,6 +21549,24 @@ function App(){
                           <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.6}}>{desc}</div>
                         </div>
                       ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── ABOUT TAB ── */}
+              {helpTab==="about"&&(
+                <div style={{color:"rgba(255,255,255,0.78)",fontSize:12,lineHeight:1.7,fontFamily:"'Barlow',sans-serif"}}>
+                  {[
+                    ["about.problem_title","about.problem_body"],
+                    ["about.what_title","about.what_body"],
+                    ["about.requirements_title","about.requirements_body"],
+                    ["about.different_title","about.different_body"],
+                    ["about.audience_title","about.audience_body"],
+                  ].map(([titleKey,bodyKey])=>(
+                    <div key={titleKey} style={{marginBottom:20}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#5856d6",letterSpacing:"0.05em",marginBottom:8}}>{t(titleKey).toUpperCase()}</div>
+                      <div style={{color:"rgba(255,255,255,0.72)",lineHeight:1.65,whiteSpace:"pre-line"}}>{t(bodyKey)}</div>
                     </div>
                   ))}
                 </div>
@@ -21777,18 +21821,6 @@ function App(){
               {/* ── DISCLAIMER TAB ── */}
               {helpTab==="disclaimer"&&(
                 <div style={{color:"rgba(255,255,255,0.78)",fontSize:12,lineHeight:1.7,fontFamily:"'Barlow',sans-serif"}}>
-                  <div style={{marginBottom:16}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ffcc00",letterSpacing:"0.05em",marginBottom:6}}>{t("help.purpose_problem_title").toUpperCase()}</div>
-                    <div style={{color:"rgba(255,255,255,0.72)",lineHeight:1.6}}>{t("help.purpose_problem_body")}</div>
-                  </div>
-                  <div style={{marginBottom:16}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ffcc00",letterSpacing:"0.05em",marginBottom:6}}>{t("help.purpose_what_title").toUpperCase()}</div>
-                    <div style={{color:"rgba(255,255,255,0.72)",lineHeight:1.6}}>{t("help.purpose_what_body")}</div>
-                  </div>
-                  <div style={{marginBottom:16}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ffcc00",letterSpacing:"0.05em",marginBottom:6}}>{t("help.purpose_different_title").toUpperCase()}</div>
-                    <div style={{color:"rgba(255,255,255,0.72)",lineHeight:1.6}}>{t("help.purpose_different_body")}</div>
-                  </div>
                   <div style={{marginBottom:16}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ffcc00",letterSpacing:"0.05em",marginBottom:6}}>{t("help.purpose_origin_title").toUpperCase()}</div>
                     <div style={{color:"rgba(255,255,255,0.72)",lineHeight:1.6}}>{t("help.purpose_origin_body")}</div>
