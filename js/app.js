@@ -8257,7 +8257,10 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         // auto-stamp at line ~20685 leaves it alone. entryType stays
         // "Defect" so REPORT's NC-rate filter (which requires structured
         // CONQUAS audit fields) does not try to count these entries.
-        ...(batchSourceType?{source_type:batchSourceType}:{}),
+        // Gated on inBatch so a cancelled CONQUAS picker (where the
+        // marker is armed but no batch starts) cannot taint a later
+        // single-photo save.
+        ...(batchSourceType&&inBatch?{source_type:batchSourceType}:{}),
         status:"Open",loggedBy:member?.name||"",
         loggedByRole:member?.role||"",
         createdAt:DB.serverTimestamp(),
