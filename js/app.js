@@ -6221,8 +6221,27 @@ function GeminiSettings({onClose,companyId}){
                 <div style={{fontSize:12,color:"#444",lineHeight:1.5,paddingTop:2}}>{t}</div>
               </div>
             ))}
-            <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:8,padding:"10px 12px",marginTop:8,marginBottom:14}}>
+            <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:8,padding:"10px 12px",marginTop:8,marginBottom:8}}>
               <div style={{fontSize:12,color:"#1a7a35",fontWeight:600}}>Free and private — runs entirely on your machine · No data sent to cloud</div>
+            </div>
+            {/* Expectation note — local models lag cloud quality by a real
+                margin, and they don't 'learn' from your usage (frozen
+                weights). Spell that out so users don't expect Groq-level
+                answers from llava:7B and don't think more usage will close
+                the gap. Larger Ollama models DO close the gap meaningfully. */}
+            <div style={{background:"rgba(255,149,0,0.07)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:8,padding:"10px 12px",marginBottom:14}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#cc7000",letterSpacing:"0.04em",marginBottom:6}}>ℹ EXPECT LOWER QUALITY THAN GROQ / GEMINI — HERE'S WHY</div>
+              <div style={{fontSize:11.5,color:"#5a3a00",lineHeight:1.55}}>
+                <b>Quality scales with model size.</b> Cloud providers run very large vision models (Groq's Llama-4 Scout = 108B parameters, Gemini Flash ≈ 70B). The default <code>llava:latest</code> is 7B parameters — fast, free, private, but noticeably weaker: shorter descriptions, occasional empty / placeholder titles, less precise component mapping.<br/><br/>
+                <b>Local models do not learn from your usage.</b> They're <i>frozen pre-trained weights</i> — using them more does not improve them, and there is no feedback loop. Photo-hash caching gives you <i>consistent</i> output (same photo → same answer), not improving output. Quality is fixed at install time by the model you pulled.<br/><br/>
+                <b>Two ways to close the gap to cloud quality:</b><br/>
+                &nbsp;&nbsp;1. <b>Pull a larger Ollama vision model.</b> The 11B tier closes most of the gap to GPT-4o-mini:<br/>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<code>ollama pull llama3.2-vision</code> (≈ 8 GB · much better)<br/>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<code>ollama pull qwen2.5vl:7b</code> (≈ 6 GB · strong on text-in-image)<br/>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<code>ollama pull llama3.2-vision:90b</code> (≈ 55 GB · approaches Groq, slow on consumer GPUs)<br/>
+                &nbsp;&nbsp;2. <b>Switch to Groq for cloud-quality, free.</b> ~165 photos/day, no card needed. Pick the GROQ tile above. Loses the privacy guarantee.<br/><br/>
+                <b>What about fine-tuning on your own defects?</b> Possible, but not what Ollama does out of the box. Fine-tuning needs ~hundreds of labeled examples and a separate training pass (LoRA / QLoRA), then loading the resulting weights into Ollama. We don't expose that workflow yet — the higher-leverage move is pulling a bigger model.
+              </div>
             </div>
             <label style={lbl()}>OLLAMA SERVER URL</label>
             <input value={ollamaUrl} onChange={e=>setOllamaUrl(e.target.value)} placeholder="http://localhost:11434" style={{...inp,width:"100%",flex:"unset",marginBottom:14,fontFamily:"monospace",fontSize:13}}/>
@@ -7825,6 +7844,13 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // (or jump out to EDIT a just-saved entry) without the queue rolling on
   // top of them. Reset on batch complete and on a fresh batch start.
   const[batchPaused,setBatchPaused]=useState(false);
+  // Visible-during-batch thumbnail strip — shows ALL photos in the run,
+  // not just the in-flight one. Each item: {id, name, blobUrl, status}
+  // where status is 'queued' | 'processing' | 'saved' | 'failed'. Blob
+  // URLs are cheap (just object refs) until the <img> renders them, so
+  // populating up-front for 30-50-photo batches is fine; URLs are
+  // revoked on batch complete or fresh commit to avoid memory bleed.
+  const[batchThumbs,setBatchThumbs]=useState([]);
   // Race protection for mid-analysis photo swaps. analyze() writes the
   // photoHash it's working on here at the start, and re-checks before
   // applying the result — if the hash has moved (user swapped to a new
@@ -8029,6 +8055,17 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       setBatchFailed(0);
       setBatchCurrentName(files[0]?.name||"");
       setBatchPaused(false);
+      // Cleanup any leftover blob URLs from a previous batch, then
+      // populate the visible thumbnail strip for this run.
+      setBatchThumbs(prev=>{
+        prev.forEach(t=>{try{URL.revokeObjectURL(t.blobUrl);}catch{}});
+        return files.map((f,i)=>({
+          id:`bt-${Date.now()}-${i}`,
+          name:f.name||`photo-${i+1}`,
+          blobUrl:URL.createObjectURL(f),
+          status:i===0?"processing":"queued",
+        }));
+      });
     }catch(err){
       console.error("[Batch] first-photo read failed:",err);
       alert("Could not read the first photo: "+err.message);
@@ -8523,6 +8560,15 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       return;
     }
     setBatchCurrentName(next?.name||"");
+    // Promote the next 'queued' thumb to 'processing'. Previous in-flight
+    // thumb's status was set on save success/failure in submit().
+    setBatchThumbs(prev=>{
+      const idx=prev.findIndex(t=>t.status==="queued");
+      if(idx===-1)return prev;
+      const out=[...prev];
+      out[idx]={...out[idx],status:"processing"};
+      return out;
+    });
     // File/Blob — read lazily
     const r=new FileReader();
     r.onload=()=>setForm(prev=>({...prev,photos:[r.result]}));
@@ -8547,6 +8593,12 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       setBatchFailed(0);
       setBatchCurrentName("");
       setBatchPaused(false);
+      // Free the blob URLs we allocated up-front in commitBatch — they
+      // would otherwise leak until the page is closed.
+      setBatchThumbs(prev=>{
+        prev.forEach(t=>{try{URL.revokeObjectURL(t.blobUrl);}catch{}});
+        return [];
+      });
       setBatchSourceType(null); // CONQUAS-batch marker resets per batch
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -8763,6 +8815,10 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         locationLevel:form.locationLevel,locationZone:form.locationZone,component:form.component,
         workCategory:form.workCategory,queued:saveResult==="queued",
         savedEntry});
+      // Flip the in-flight thumb to 'saved' so the strip shows progress.
+      if(auto&&inBatch){
+        setBatchThumbs(prev=>prev.map(t=>t.status==="processing"?{...t,status:"saved"}:t));
+      }
       setCount(c=>c+1);setForm(blank);setAiResult(null);setSpeakTranscript("");
       setAddPhotoData(null);setAddPhotoAiDesc("");setAddPhotoSaving(false);
       // Post-save routing:
@@ -8795,6 +8851,9 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       console.error("[Save] failed:",e);
       if(auto&&batchTotal>0){
         setBatchFailed(n=>n+1);
+        // Mark the in-flight thumb as failed so the user sees a red X on
+        // it in the strip (rather than it silently slipping past).
+        setBatchThumbs(prev=>prev.map(t=>t.status==="processing"?{...t,status:"failed"}:t));
         // Match the success-path form reset so the next queued photo
         // doesn't inherit stale title/description from this failed one.
         // Without a full reset the batch would either hang (if photos not
@@ -9079,6 +9138,37 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           }} style={{flexShrink:0,background:batchPaused?"#ff9500":"rgba(88,86,214,0.12)",border:`1px solid ${batchPaused?"#ff9500":"rgba(88,86,214,0.3)"}`,borderRadius:8,padding:"5px 10px",color:batchPaused?"#fff":"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10.5,letterSpacing:"0.05em",cursor:"pointer"}}>{batchPaused?"▶ RESUME":"⏸ PAUSE"}</button>
         </div>
       )}
+
+      {/* Batch thumbnail strip — visible during a batch run so the user can
+          see ALL photos in the queue (not just the in-flight one). Each
+          thumb shows status: ⟳ processing, ✓ saved, ✗ failed, ☐ queued.
+          Blob URLs are revoked on batch complete. */}
+      {batchTotal>0&&batchThumbs.length>0&&(()=>{
+        const STATUS={
+          queued:    {bg:"rgba(0,0,0,0.06)",fg:"rgba(0,0,0,0.5)",icon:"☐",opacity:0.55},
+          processing:{bg:"rgba(88,86,214,0.18)",fg:"#5856d6",icon:"⟳",opacity:1},
+          saved:     {bg:"rgba(48,209,88,0.18)",fg:"#1a7a35",icon:"✓",opacity:1},
+          failed:    {bg:"rgba(255,59,48,0.15)",fg:"#cc0000",icon:"✗",opacity:1},
+        };
+        return(
+          <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:8,marginBottom:12,scrollbarWidth:"thin"}}>
+            {batchThumbs.map(t=>{
+              const s=STATUS[t.status]||STATUS.queued;
+              return(
+                <div key={t.id} title={`${t.name} · ${t.status}`} style={{flexShrink:0,width:60,display:"flex",flexDirection:"column",alignItems:"center"}}>
+                  <div style={{position:"relative",width:60,height:60,borderRadius:8,overflow:"hidden",background:"#1a1a1a",border:t.status==="processing"?"2px solid #5856d6":"2px solid transparent"}}>
+                    <img src={t.blobUrl} alt={t.name} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block",opacity:s.opacity}}/>
+                    <div style={{position:"absolute",top:2,right:2,background:s.bg,color:s.fg,borderRadius:6,padding:"1px 5px",fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.03em",border:"1px solid rgba(0,0,0,0.08)"}}>
+                      {t.status==="processing"?<Spin size={10}/>:s.icon}
+                    </div>
+                  </div>
+                  <div style={{fontSize:9,color:"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,marginTop:3,maxWidth:60,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{t.name}</div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {/* ── 1. TAKE PHOTO — big prominent capture ── */}
       <div style={{marginBottom:16}}>
