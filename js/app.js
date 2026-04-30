@@ -4721,6 +4721,36 @@ function Spin({size=14}){
   return <div style={{width:size,height:size,border:"2px solid currentColor",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.8s linear infinite",display:"inline-block"}}/>;
 }
 
+// One-tap clipboard copy with brief "✓ COPIED" feedback. Falls back to
+// document.execCommand for browsers without navigator.clipboard (older
+// iOS, http:// pages where the secure-context Clipboard API is gated).
+// dark=true switches to light-on-dark colours for use over <pre>-style
+// terminal blocks; default is dark-on-light for inline guide text.
+function CopyBtn({text,label="📋 COPY",dark=false}){
+  const[copied,setCopied]=useState(false);
+  const onClick=async(e)=>{
+    e?.stopPropagation?.();
+    try{
+      if(navigator.clipboard&&window.isSecureContext){
+        await navigator.clipboard.writeText(text);
+      }else{
+        const ta=document.createElement("textarea");
+        ta.value=text;ta.style.position="fixed";ta.style.left="-9999px";
+        document.body.appendChild(ta);ta.select();
+        try{document.execCommand("copy");}finally{document.body.removeChild(ta);}
+      }
+      setCopied(true);
+      setTimeout(()=>setCopied(false),1500);
+    }catch(err){console.warn("copy failed",err);}
+  };
+  const baseBg=dark?"rgba(255,255,255,0.1)":"rgba(0,0,0,0.06)";
+  const baseFg=dark?"#a4f0c0":"#1a7a35";
+  const okBg=dark?"rgba(48,209,88,0.25)":"rgba(48,209,88,0.15)";
+  return(
+    <button type="button" onClick={onClick} style={{position:"absolute",top:6,right:6,padding:"3px 8px",borderRadius:6,border:"none",background:copied?okBg:baseBg,color:copied?"#30d158":baseFg,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:9.5,letterSpacing:"0.05em",cursor:"pointer",zIndex:1}}>{copied?"✓ COPIED":label}</button>
+  );
+}
+
 // Tiny vanilla-canvas signature pad. Draws strokes with mouse OR touch,
 // emits a base64 PNG dataURL on each pen-up so the parent can persist
 // after every stroke. No external lib so the bundle stays lean. Coords
@@ -5934,14 +5964,46 @@ function GeminiSettings({onClose,companyId}){
           setTestRes({ok:false,detail:reason});
         }
       }else if(provider==="ollama"){
+        // Diagnostic-aware test — instead of bubbling "Failed to fetch" up
+        // generically, classify the failure mode (mixed content vs CORS
+        // vs connection vs no models) and tell the user which path-step
+        // to revisit. Most user reports map to one of four buckets.
         const url=ollamaUrl.trim().replace(/\/+$/,"");
-        const res=await fetch(url+"/api/tags");
-        if(res.ok){
-          const d=await res.json();
-          const models=(d.models||[]).map(m=>m.name);
-          setOllamaModels(models);
-          setTestRes(models.length>0?{ok:true,detail:`${models.length} model${models.length>1?"s":""} available`}:{ok:false,detail:"No models installed — run `ollama pull llava`"});
-        }else{setTestRes({ok:false,detail:`HTTP ${res.status} from ${url}`});}
+        const myOrigin=typeof window!=="undefined"?window.location.origin:"";
+        const onHttps=typeof window!=="undefined"&&window.location?.protocol==="https:";
+        const isLocalhostUrl=/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:|\/|$)/i.test(url);
+        try{
+          const res=await fetchWithTimeout(url+"/api/tags",{},15000);
+          if(res.ok){
+            const d=await res.json();
+            const models=(d.models||[]).map(m=>m.name);
+            setOllamaModels(models);
+            if(models.length===0){
+              setTestRes({ok:false,detail:"Connected to Ollama, but no models pulled. Run `ollama pull llava` in a terminal, then test again."});
+            }else{
+              const want=ollamaModel.trim();
+              const exact=models.includes(want);
+              const looseMatch=!exact&&models.some(m=>m.split(":")[0]===want.split(":")[0]);
+              const note=exact?"selected model present":(looseMatch?`'${want}' close match — pick the exact tag below`:`'${want}' not in list — pick one below or run \`ollama pull ${want}\``);
+              setTestRes({ok:true,detail:`Connected · ${models.length} model${models.length>1?"s":""} available · ${note}`});
+            }
+          }else{
+            setTestRes({ok:false,detail:`HTTP ${res.status} from ${url} — Ollama responded but with an error. Confirm Ollama version is 0.1.x or newer and the /api/tags endpoint exists.`});
+          }
+        }catch(err){
+          const errStr=String(err?.message||err);
+          let detail="";
+          if(/abort|timeout/i.test(errStr)){
+            detail=`No response from ${url} within 15 s. Run \`curl ${url}/api/tags\` in a terminal — that bypasses the browser. If curl works, the problem is browser-only (mixed content / CORS).`;
+          }else if(onHttps&&isLocalhostUrl){
+            detail=`Browser blocked HTTPS → HTTP localhost. Switch to Path A (tunnel) — Tailscale Funnel sets a permanent HTTPS URL for your Ollama. Open the FULL STEP-BY-STEP GUIDE below for the exact commands.`;
+          }else if(onHttps&&!isLocalhostUrl){
+            detail=`Tunnel URL reached, but browser rejected the response. Most likely cause: OLLAMA_ORIGINS does not include ${myOrigin}. Stop Ollama and re-start with: $env:OLLAMA_ORIGINS="${myOrigin}"; ollama serve (Windows) or OLLAMA_ORIGINS="${myOrigin}" ollama serve (macOS/Linux). Then test again.`;
+          }else{
+            detail=`Could not reach ${url}. Is Ollama running? Try \`curl ${url}/api/tags\` in a terminal — that bypasses the browser entirely. If curl fails too, run \`ollama serve\` and confirm the URL/port match.`;
+          }
+          setTestRes({ok:false,detail});
+        }
       }else if(provider==="openai"){
         const url=oaiUrl.trim().replace(/\/+$/,"");
         const res=await fetch(url+"/v1/models",{headers:{"Authorization":"Bearer "+oaiKey.trim()}});
@@ -6178,7 +6240,7 @@ function GeminiSettings({onClose,companyId}){
                 <details> element handles open/close with no JS state. */}
             {(()=>{
               const codeI={display:"inline-block",padding:"1px 6px",background:"rgba(0,0,0,0.06)",borderRadius:4,fontFamily:"'Courier New',monospace",fontSize:11.5,color:"#1a1a1a"};
-              const blockCode=(s)=>(<div style={{background:"#1a1a1a",borderRadius:8,padding:"10px 12px",margin:"8px 0",fontFamily:"'Courier New',monospace",fontSize:11.5,color:"#a4f0c0",whiteSpace:"pre-wrap",wordBreak:"break-word",lineHeight:1.5}}>{s}</div>);
+              const blockCode=(s)=>(<div style={{position:"relative",background:"#1a1a1a",borderRadius:8,padding:"10px 32px 10px 12px",margin:"8px 0",fontFamily:"'Courier New',monospace",fontSize:11.5,color:"#a4f0c0",whiteSpace:"pre-wrap",wordBreak:"break-word",lineHeight:1.5}}><CopyBtn text={s} dark={true}/>{s}</div>);
               const sectionHd=(emoji,text,color="#1a7a35")=>(<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color,letterSpacing:"0.05em",marginTop:14,marginBottom:6}}>{emoji} {text.toUpperCase()}</div>);
               return(
               <details style={{background:"rgba(48,209,88,0.04)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:10,padding:"10px 14px"}}>
