@@ -10143,6 +10143,37 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
         </div>
       )}
 
+      {/* Category mix — informational chip strip showing the work-category
+          distribution of the currently filtered set. Hidden when no entries
+          carry workCategory. Reuses workcatDisplayFn for translated labels.
+          Sits above the view toggle so the toggle stays purely about HOW
+          entries render (LIST/GRID/MAP), not WHAT category they are. */}
+      {filtered.length>0&&(()=>{
+        const counts={};
+        for(const d of filtered){
+          const k=d.workCategory||"";
+          if(!k)continue;
+          counts[k]=(counts[k]||0)+1;
+        }
+        const entries=Object.entries(counts);
+        if(entries.length===0)return null;
+        return(
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8,alignItems:"center"}}>
+            {entries.map(([cat,n])=>{
+              const meta=WORK_CATEGORIES[cat];
+              const icon=meta?.icon||"\u{1F4CB}";
+              const label=workcatDisplayFn(cat);
+              return(
+                <span key={cat} title={`${label} (${n})`} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 9px",background:"rgba(0,0,0,0.045)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,color:"rgba(0,0,0,0.65)",letterSpacing:"0.02em"}}>
+                  <span style={{fontSize:12}}>{icon}</span>
+                  <span>{label}</span>
+                  <span style={{color:"rgba(0,0,0,0.4)",fontSize:10,fontWeight:600}}>· {n}</span>
+                </span>
+              );
+            })}
+          </div>
+        );
+      })()}
       {/* View toggle: LIST | GRID | MAP. GRID is always available; MAP
           appears only when at least one entry has GPS coords. Gallery-style
           GRID gives QA reviewers a fast visual scan across photos for
@@ -21191,6 +21222,64 @@ function App(){
           </div>
         </button>
           <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"nowrap",justifyContent:"flex-end",flexShrink:0}}>
+          {/* Inbox bell — in-app notifications for events targeting me
+              (assigned to me, status change on my entries, severity
+              escalations on my entries, due-date changes on my entries). */}
+          <div style={{position:"relative"}}>
+            <button onClick={()=>setShowInbox(v=>!v)} title={t("inbox.title")} style={{position:"relative",width:34,height:34,borderRadius:9,background:showInbox?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showInbox?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:showInbox?"#ff6b00":"rgba(255,255,255,0.75)",flexShrink:0}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+              {inboxUnread>0&&<span style={{position:"absolute",top:-3,right:-3,background:"#ff3b30",color:"#fff",borderRadius:10,minWidth:16,height:16,fontSize:9,fontWeight:800,padding:"0 4px",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",border:"1.5px solid #1a1a1a"}}>{inboxUnread>99?"99+":inboxUnread}</span>}
+            </button>
+            {showInbox&&(
+              <div className="dd-panel" style={{position:"absolute",top:"100%",right:0,marginTop:8,background:"linear-gradient(180deg,#2e2e32 0%,#1f1f22 100%)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,overflow:"hidden",zIndex:1200,minWidth:256,maxWidth:304,maxHeight:"70vh",display:"flex",flexDirection:"column",boxShadow:"0 16px 48px rgba(0,0,0,0.55),0 2px 10px rgba(0,0,0,0.35)"}}>
+                <div style={{padding:"13px 16px 12px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",background:"linear-gradient(180deg,rgba(255,107,0,0.06),rgba(255,107,0,0))"}}>
+                  <div>
+                    <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.14em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("inbox.title")}</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff",marginTop:2,lineHeight:1}}>{inboxUnread>0?t("inbox.unread_count").replace("{n}",inboxUnread):t("inbox.all_read")}</div>
+                  </div>
+                  <button onClick={()=>setShowInbox(false)} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:6,padding:"4px 8px",color:"rgba(255,255,255,0.7)",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>×</button>
+                </div>
+                <div style={{flex:1,overflowY:"auto",padding:"4px 0"}}>
+                  {inboxEvents.length===0?(
+                    <div style={{padding:"32px 20px",textAlign:"center",color:"rgba(255,255,255,0.4)",fontSize:12}}>{t("inbox.empty")}</div>
+                  ):inboxEvents.map(ev=>{
+                    const ICON={status:"🔄",severity:"⚡",assignee:"👤",dueDate:"📅",mention:"💬"};
+                    const LABEL={
+                      status:t("inbox.label_status"),
+                      severity:t("inbox.label_severity"),
+                      assignee:t("inbox.label_assigned"),
+                      dueDate:t("inbox.label_due"),
+                      mention:t("inbox.label_mention")
+                    };
+                    const isMention=ev.type==="mention";
+                    return(
+                      <button key={ev.id} onClick={()=>openInboxItem(ev)} style={{width:"100%",background:ev.read?"transparent":"rgba(255,107,0,0.08)",border:"none",borderBottom:"1px solid rgba(255,255,255,0.04)",padding:"10px 14px",cursor:"pointer",textAlign:"left",display:"flex",gap:10,alignItems:"flex-start"}}>
+                        <span style={{fontSize:16,flexShrink:0,marginTop:1}}>{ICON[ev.type]||"✏️"}</span>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:12,color:"#fff",fontWeight:ev.read?500:700,lineHeight:1.35,marginBottom:2,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                            <span style={{fontFamily:"'Barlow Condensed',sans-serif",color:"#ff8a3d",fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.04em"}}>{LABEL[ev.type]||ev.type}</span>
+                            {!isMention&&ev.from&&<span style={{color:"rgba(255,255,255,0.4)"}}>{ev.from}</span>}
+                            {!isMention&&ev.from&&<span style={{color:"rgba(255,255,255,0.4)"}}>→</span>}
+                            {!isMention&&<span style={{color:"#fff"}}>{ev.to||"—"}</span>}
+                          </div>
+                          {isMention&&<div style={{fontSize:11,color:"rgba(255,255,255,0.65)",lineHeight:1.4,marginBottom:3,fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>"{ev.to}"</div>}
+                          <div style={{fontSize:12,color:"rgba(255,255,255,0.85)",lineHeight:1.35,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.defectTitle}</div>
+                          <div style={{fontSize:10,color:"rgba(255,255,255,0.4)",marginTop:3,fontFamily:"'Barlow Condensed',sans-serif"}}>{ev.by||t("timeline.unknown_user")} · {new Date(ev.at).toLocaleDateString()} {new Date(ev.at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</div>
+                        </div>
+                        {!ev.read&&<span style={{width:7,height:7,borderRadius:"50%",background:"#ff6b00",flexShrink:0,marginTop:5}}/>}
+                      </button>
+                    );
+                  })}
+                </div>
+                {inboxEvents.length>0&&(
+                  <div style={{display:"flex",borderTop:"1px solid rgba(255,255,255,0.06)",background:"rgba(0,0,0,0.2)"}}>
+                    <button onClick={markInboxRead} disabled={inboxUnread===0} style={{flex:1,background:"none",border:"none",padding:"10px",color:inboxUnread===0?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.7)",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:inboxUnread===0?"default":"pointer",letterSpacing:"0.06em"}}>{t("inbox.mark_all_read")}</button>
+                    <button onClick={clearInbox} style={{flex:1,background:"none",border:"none",borderLeft:"1px solid rgba(255,255,255,0.06)",padding:"10px",color:"rgba(255,143,143,0.85)",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",letterSpacing:"0.06em"}}>{t("inbox.clear")}</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           {/* Settings dropdown — all one-time setup in one place */}
           <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(settingsMenuTimer.current);setShowSettingsMenu(true);}} onMouseLeave={()=>{settingsMenuTimer.current=setTimeout(()=>setShowSettingsMenu(false),250);}}>
             <button onClick={()=>setShowSettingsMenu(v=>!v)} title="Settings" style={{position:"relative",width:34,height:34,borderRadius:9,background:showSettingsMenu?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showSettingsMenu?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:17,color:showSettingsMenu?"#ff6b00":"rgba(255,255,255,0.75)",flexShrink:0}}>⚙
@@ -21289,64 +21378,6 @@ function App(){
               </div>
               );
             })()}
-          </div>
-          {/* Inbox bell — in-app notifications for events targeting me
-              (assigned to me, status change on my entries, severity
-              escalations on my entries, due-date changes on my entries). */}
-          <div style={{position:"relative"}}>
-            <button onClick={()=>setShowInbox(v=>!v)} title={t("inbox.title")} style={{position:"relative",width:34,height:34,borderRadius:9,background:showInbox?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showInbox?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:showInbox?"#ff6b00":"rgba(255,255,255,0.75)",flexShrink:0}}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-              {inboxUnread>0&&<span style={{position:"absolute",top:-3,right:-3,background:"#ff3b30",color:"#fff",borderRadius:10,minWidth:16,height:16,fontSize:9,fontWeight:800,padding:"0 4px",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",border:"1.5px solid #1a1a1a"}}>{inboxUnread>99?"99+":inboxUnread}</span>}
-            </button>
-            {showInbox&&(
-              <div className="dd-panel" style={{position:"absolute",top:"100%",right:0,marginTop:8,background:"linear-gradient(180deg,#2e2e32 0%,#1f1f22 100%)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,overflow:"hidden",zIndex:1200,minWidth:320,maxWidth:380,maxHeight:"70vh",display:"flex",flexDirection:"column",boxShadow:"0 16px 48px rgba(0,0,0,0.55),0 2px 10px rgba(0,0,0,0.35)"}}>
-                <div style={{padding:"13px 16px 12px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",background:"linear-gradient(180deg,rgba(255,107,0,0.06),rgba(255,107,0,0))"}}>
-                  <div>
-                    <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.14em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("inbox.title")}</div>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff",marginTop:2,lineHeight:1}}>{inboxUnread>0?t("inbox.unread_count").replace("{n}",inboxUnread):t("inbox.all_read")}</div>
-                  </div>
-                  <button onClick={()=>setShowInbox(false)} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:6,padding:"4px 8px",color:"rgba(255,255,255,0.7)",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>×</button>
-                </div>
-                <div style={{flex:1,overflowY:"auto",padding:"4px 0"}}>
-                  {inboxEvents.length===0?(
-                    <div style={{padding:"32px 20px",textAlign:"center",color:"rgba(255,255,255,0.4)",fontSize:12}}>{t("inbox.empty")}</div>
-                  ):inboxEvents.map(ev=>{
-                    const ICON={status:"🔄",severity:"⚡",assignee:"👤",dueDate:"📅",mention:"💬"};
-                    const LABEL={
-                      status:t("inbox.label_status"),
-                      severity:t("inbox.label_severity"),
-                      assignee:t("inbox.label_assigned"),
-                      dueDate:t("inbox.label_due"),
-                      mention:t("inbox.label_mention")
-                    };
-                    const isMention=ev.type==="mention";
-                    return(
-                      <button key={ev.id} onClick={()=>openInboxItem(ev)} style={{width:"100%",background:ev.read?"transparent":"rgba(255,107,0,0.08)",border:"none",borderBottom:"1px solid rgba(255,255,255,0.04)",padding:"10px 14px",cursor:"pointer",textAlign:"left",display:"flex",gap:10,alignItems:"flex-start"}}>
-                        <span style={{fontSize:16,flexShrink:0,marginTop:1}}>{ICON[ev.type]||"✏️"}</span>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:12,color:"#fff",fontWeight:ev.read?500:700,lineHeight:1.35,marginBottom:2,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                            <span style={{fontFamily:"'Barlow Condensed',sans-serif",color:"#ff8a3d",fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.04em"}}>{LABEL[ev.type]||ev.type}</span>
-                            {!isMention&&ev.from&&<span style={{color:"rgba(255,255,255,0.4)"}}>{ev.from}</span>}
-                            {!isMention&&ev.from&&<span style={{color:"rgba(255,255,255,0.4)"}}>→</span>}
-                            {!isMention&&<span style={{color:"#fff"}}>{ev.to||"—"}</span>}
-                          </div>
-                          {isMention&&<div style={{fontSize:11,color:"rgba(255,255,255,0.65)",lineHeight:1.4,marginBottom:3,fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>"{ev.to}"</div>}
-                          <div style={{fontSize:12,color:"rgba(255,255,255,0.85)",lineHeight:1.35,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.defectTitle}</div>
-                          <div style={{fontSize:10,color:"rgba(255,255,255,0.4)",marginTop:3,fontFamily:"'Barlow Condensed',sans-serif"}}>{ev.by||t("timeline.unknown_user")} · {new Date(ev.at).toLocaleDateString()} {new Date(ev.at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</div>
-                        </div>
-                        {!ev.read&&<span style={{width:7,height:7,borderRadius:"50%",background:"#ff6b00",flexShrink:0,marginTop:5}}/>}
-                      </button>
-                    );
-                  })}
-                </div>
-                {inboxEvents.length>0&&(
-                  <div style={{display:"flex",borderTop:"1px solid rgba(255,255,255,0.06)",background:"rgba(0,0,0,0.2)"}}>
-                    <button onClick={markInboxRead} disabled={inboxUnread===0} style={{flex:1,background:"none",border:"none",padding:"10px",color:inboxUnread===0?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.7)",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:inboxUnread===0?"default":"pointer",letterSpacing:"0.06em"}}>{t("inbox.mark_all_read")}</button>
-                    <button onClick={clearInbox} style={{flex:1,background:"none",border:"none",borderLeft:"1px solid rgba(255,255,255,0.06)",padding:"10px",color:"rgba(255,143,143,0.85)",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",letterSpacing:"0.06em"}}>{t("inbox.clear")}</button>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
           {/* Help button */}
           <button onClick={()=>setShowHelp(true)} title={t("avatar_menu.help")} style={{width:34,height:34,borderRadius:9,background:showHelp?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showHelp?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:showHelp?"#ff6b00":"rgba(255,255,255,0.75)",flexShrink:0}}>

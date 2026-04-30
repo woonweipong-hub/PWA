@@ -1,9 +1,9 @@
-// Bumped 2026-04-26 to force old TWA / browser caches (which were still
-// serving pre-fetchWithTimeout bundles, leaving "ANALYZING…" stuck on
-// mobile) to purge on next app open. The activate handler below deletes
-// every cache whose name doesn't equal CACHE — so a single bump here
-// guarantees a clean state.
-const CACHE = 'siteshrimp-v106';
+// Bumped 2026-04-30 to purge stale shell caches so laptop/TWA clients
+// pick up the topbar inbox↔settings swap + slimmer inbox panel + REVIEW
+// category-mix chips without manual hard-refresh. The activate handler
+// below deletes every cache whose name doesn't equal CACHE — a single
+// bump here guarantees a clean state.
+const CACHE = 'siteshrimp-v107';
 const ASSETS = [
   '/',
   '/index.html',
