@@ -6126,30 +6126,32 @@ function GeminiSettings({onClose,companyId}){
                 </div>
 
                 <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.3)",borderRadius:8,padding:"10px 12px",marginBottom:8}}>
-                  <div style={{fontSize:11.5,fontWeight:800,color:"#1a7a35",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>OPTION A — RUN SITESHRIMP LOCALLY (RECOMMENDED, NO BROWSER TWEAKS)</div>
+                  <div style={{fontSize:11.5,fontWeight:800,color:"#1a7a35",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>OPTION A — TUNNEL OLLAMA OVER HTTPS (RECOMMENDED · NO SOURCE DOWNLOAD)</div>
                   <div style={{fontSize:11,color:"#1a4525",lineHeight:1.55}}>
-                    Serve SiteShrimp from your own machine over HTTP, then both sides are localhost and the browser doesn't interfere.<br/>
-                    1. Clone or download the repo to a folder.<br/>
-                    2. In that folder, run <code>python -m http.server 8000</code> (or <code>npx serve .</code>).<br/>
-                    3. Open <code>http://localhost:8000</code>. Sign in. Configure Ollama here. Done.
+                    Wrap your local Ollama in a public HTTPS URL so the browser is happy. Pick whichever fits.<br/>
+                    <b>• ngrok (30 s, free signup):</b> install <a href="https://ngrok.com/download" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>ngrok</a> → run <code>ngrok http 11434</code> → copy the <code>https://....ngrok-free.app</code> URL it prints. URL changes each restart.<br/>
+                    <b>• Cloudflare Tunnel (persistent URL, free):</b> install <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>cloudflared</a> → run <code>cloudflared tunnel --url http://localhost:11434</code> → copy the <code>https://....trycloudflare.com</code> URL.<br/>
+                    <b>• Tailscale Funnel (permanent URL, free):</b> install <a href="https://tailscale.com/download" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>Tailscale</a> → sign in → run <code>tailscale funnel 11434</code> → copy the <code>.ts.net</code> URL.<br/>
+                    Then in <b>all three</b> cases: stop Ollama, re-start with origin allowed (<code>$env:OLLAMA_ORIGINS="{myOrigin}"; ollama serve</code> on Windows · <code>OLLAMA_ORIGINS="{myOrigin}" ollama serve</code> on macOS/Linux), paste the tunnel URL into OLLAMA SERVER URL below, tap TEST.
                   </div>
                 </div>
 
                 <div style={{background:"rgba(255,255,255,0.6)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"10px 12px",marginBottom:8}}>
                   <div style={{fontSize:11.5,fontWeight:800,color:"#1a1a1a",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>OPTION B — STAY ON {myOrigin.toUpperCase()}, UNBLOCK CHROME + OLLAMA</div>
                   <div style={{fontSize:11,color:"#333",lineHeight:1.55}}>
+                    No tunnel install, but two browser tweaks. Both must be set.<br/>
                     Step 1 (browser): visit <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code>, add <code>{myOrigin}</code>, set to <b>Enabled</b>, restart Chrome.<br/>
                     Step 2 (Ollama): stop Ollama, then re-start with the origin allowed:<br/>
                     &nbsp;&nbsp;• Windows PowerShell: <code>$env:OLLAMA_ORIGINS="{myOrigin}"; ollama serve</code><br/>
                     &nbsp;&nbsp;• macOS / Linux: <code>OLLAMA_ORIGINS="{myOrigin}" ollama serve</code><br/>
-                    Both must be in place — fixing only one keeps the error.
+                    Fixing only one keeps the error.
                   </div>
                 </div>
 
                 <div style={{background:"rgba(255,255,255,0.6)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"10px 12px"}}>
-                  <div style={{fontSize:11.5,fontWeight:800,color:"#1a1a1a",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>OPTION C — TUNNEL OLLAMA OVER HTTPS</div>
+                  <div style={{fontSize:11.5,fontWeight:800,color:"#1a1a1a",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>OPTION C — RUN SITESHRIMP LOCALLY (ADVANCED · USES SOURCE)</div>
                   <div style={{fontSize:11,color:"#333",lineHeight:1.55}}>
-                    Install <a href="https://ngrok.com/download" target="_blank" rel="noopener noreferrer" style={{color:"#5856d6"}}>ngrok</a>, run <code>ngrok http 11434</code>, paste the resulting <code>https://...ngrok-free.app</code> URL into the OLLAMA SERVER URL field below. Still set <code>OLLAMA_ORIGINS={myOrigin}</code> when starting Ollama, but no Chrome flag needed.
+                    Serve SiteShrimp's built bundle from your own machine over HTTP, then both sides are localhost and the browser stays out of it. Pull the repo (closed-source — for personal evaluation only), run <code>python -m http.server 8000</code> in the folder, open <code>http://localhost:8000</code>. No tunnel, no Chrome flag, but you maintain a local copy.
                   </div>
                 </div>
               </div>
@@ -6206,26 +6208,41 @@ function GeminiSettings({onClose,companyId}){
                   <div style={{color:"#666",fontSize:11.5}}>Wait for "success" before continuing. Roughly 4 GB download. Other vision models that work: <span style={codeI}>qwen2.5-vl</span>, <span style={codeI}>llama3.2-vision</span>, <span style={codeI}>minicpm-v</span>, <span style={codeI}>bakllava</span>.</div>
 
                   {sectionHd("3","Pick the path that fits your setup","#cc7000")}
-                  <div style={{color:"#444",marginBottom:6}}>There are two ways to use SiteShrimp with Ollama. Pick whichever matches your situation.</div>
+                  <div style={{color:"#444",marginBottom:6}}>Three ways to connect this site to your local Ollama. Pick whichever fits.</div>
 
                   <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.3)",borderRadius:8,padding:"10px 12px",marginTop:8}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12.5,color:"#1a7a35",letterSpacing:"0.04em",marginBottom:5}}>PATH A — RUN SITESHRIMP LOCALLY (RECOMMENDED · NO BROWSER TWEAKS)</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12.5,color:"#1a7a35",letterSpacing:"0.04em",marginBottom:5}}>PATH A — TUNNEL OLLAMA OVER HTTPS (RECOMMENDED · NO SOURCE DOWNLOAD)</div>
                     <div style={{color:"#333"}}>
-                      Both SiteShrimp and Ollama live on your laptop, so the browser stays out of it. Cleanest path.
-                      <ol style={{paddingLeft:18,marginTop:6,marginBottom:0}}>
-                        <li>Download SiteShrimp from <a href="https://github.com/woonweipong-hub/SiteShrimp" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>github.com/woonweipong-hub/SiteShrimp</a> (Code → Download ZIP, then unzip).</li>
-                        <li>Open a terminal in the unzipped folder.</li>
-                        <li>Run <i>one</i> of these:{blockCode("python -m http.server 8000\n# or, if you have Node:\nnpx serve .")}</li>
-                        <li>Open <span style={codeI}>http://localhost:8000</span> in your browser.</li>
-                        <li>Sign in. Open <b>⚙ Settings → AI Setup → Ollama (Local)</b>. Leave URL as <span style={codeI}>http://localhost:11434</span>, model as <span style={codeI}>llava</span>. Tap <b>TEST</b> → <b>SAVE</b>.</li>
+                      Wrap your local Ollama in a public HTTPS URL so the browser is happy. Pick whichever tunnel suits.
+                      <div style={{marginTop:8,fontWeight:700,color:"#1a1a1a"}}>A1 — ngrok (easiest, free, ~30 seconds, URL changes per restart):</div>
+                      <ol style={{paddingLeft:18,marginTop:4,marginBottom:0}}>
+                        <li>Install <a href="https://ngrok.com/download" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>ngrok</a>, sign up free, paste their authtoken once.</li>
+                        <li>Run:{blockCode("ngrok http 11434")}</li>
+                        <li>Copy the printed URL (e.g. <span style={codeI}>https://abc123-def.ngrok-free.app</span>).</li>
                       </ol>
+                      <div style={{marginTop:8,fontWeight:700,color:"#1a1a1a"}}>A2 — Cloudflare Tunnel (free, persistent URL):</div>
+                      <ol style={{paddingLeft:18,marginTop:4,marginBottom:0}}>
+                        <li>Install <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>cloudflared</a>.</li>
+                        <li>Run:{blockCode("cloudflared tunnel --url http://localhost:11434")}</li>
+                        <li>Copy the printed <span style={codeI}>https://....trycloudflare.com</span> URL.</li>
+                      </ol>
+                      <div style={{marginTop:8,fontWeight:700,color:"#1a1a1a"}}>A3 — Tailscale Funnel (free for ~3 devices, permanent URL):</div>
+                      <ol style={{paddingLeft:18,marginTop:4,marginBottom:0}}>
+                        <li>Install <a href="https://tailscale.com/download" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>Tailscale</a>, sign in.</li>
+                        <li>Run:{blockCode("tailscale funnel 11434")}</li>
+                        <li>Copy the printed <span style={codeI}>.ts.net</span> URL.</li>
+                      </ol>
+                      <div style={{marginTop:10,fontWeight:700,color:"#1a1a1a"}}>For all three: still set OLLAMA_ORIGINS:</div>
+                      <div style={{color:"#666",fontSize:11,marginTop:2}}>Stop Ollama, then re-start with origin allowed:</div>
+                      {blockCode(`# Windows PowerShell\n$env:OLLAMA_ORIGINS = "${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}"\nollama serve\n\n# macOS / Linux\nOLLAMA_ORIGINS="${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}" ollama serve`)}
+                      <div>Paste the tunnel URL into <b>OLLAMA SERVER URL</b> above (replacing <span style={codeI}>http://localhost:11434</span>). Tap <b>TEST</b> → <b>SAVE</b>. No Chrome flag needed.</div>
                     </div>
                   </div>
 
                   <div style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"10px 12px",marginTop:8}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12.5,color:"#1a1a1a",letterSpacing:"0.04em",marginBottom:5}}>PATH B — STAY ON {(typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org").toUpperCase()}</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12.5,color:"#1a1a1a",letterSpacing:"0.04em",marginBottom:5}}>PATH B — STAY ON {(typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org").toUpperCase()} WITH BROWSER TWEAKS</div>
                     <div style={{color:"#333"}}>
-                      Browsers block secure (HTTPS) websites from talking to insecure (HTTP) localhost. To use this site with local Ollama, override <b>both</b> the browser <b>and</b> Ollama. <b>Both must be set</b> — fixing only one keeps the error.
+                      No tunnel install, but two browser/server tweaks. <b>Both must be set</b> — fixing only one keeps the error.
                       <div style={{marginTop:8,fontWeight:700,color:"#1a1a1a"}}>Override 1 — your browser (Chrome / Edge):</div>
                       <ol style={{paddingLeft:18,marginTop:4,marginBottom:0}}>
                         <li>Visit <span style={codeI}>chrome://flags/#unsafely-treat-insecure-origin-as-secure</span></li>
@@ -6237,20 +6254,34 @@ function GeminiSettings({onClose,companyId}){
                       <div>By default Ollama only accepts requests from <span style={codeI}>localhost</span>. Tell it your origin is allowed:</div>
                       <div style={{color:"#666",fontSize:11,marginTop:4}}>Stop the running Ollama (right-click the system tray / menu bar icon → Quit, or <span style={codeI}>Ctrl+C</span> in its terminal). Then re-start it like this:</div>
                       {blockCode(`# Windows PowerShell\n$env:OLLAMA_ORIGINS = "${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}"\nollama serve\n\n# macOS / Linux\nOLLAMA_ORIGINS="${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}" ollama serve`)}
-                      <div style={{color:"#666",fontSize:11}}>Leave that terminal window open. Then enter the URL + model above and tap TEST.</div>
+                      <div style={{color:"#666",fontSize:11}}>Leave that terminal window open. Then enter <span style={codeI}>http://localhost:11434</span> as URL above and tap TEST.</div>
+                    </div>
+                  </div>
+
+                  <div style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"10px 12px",marginTop:8}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12.5,color:"#1a1a1a",letterSpacing:"0.04em",marginBottom:5}}>PATH C — RUN SITESHRIMP LOCALLY (ADVANCED · USES SOURCE)</div>
+                    <div style={{color:"#333"}}>
+                      Serve SiteShrimp's bundle from your own machine over HTTP. Both sides become localhost so the browser stays out of it. Source is closed for distribution; this path is for users who want a fully-local copy and accept that responsibility.
+                      <ol style={{paddingLeft:18,marginTop:6,marginBottom:0}}>
+                        <li>Obtain the SiteShrimp bundle (closed-source — request access if you don't already have a copy).</li>
+                        <li>Open a terminal in the bundle folder.</li>
+                        <li>Run:{blockCode("python -m http.server 8000\n# or, if you have Node:\nnpx serve .")}</li>
+                        <li>Open <span style={codeI}>http://localhost:8000</span> → sign in → AI Setup → Ollama → URL <span style={codeI}>http://localhost:11434</span> → TEST → SAVE.</li>
+                      </ol>
                     </div>
                   </div>
 
                   {sectionHd("4","Use it")}
                   <div>Take or upload a photo in <b>LOG</b>. SiteShrimp pre-fills title, description, severity, and component using your local Ollama. The token counter at the top stays at <b>0</b> because nothing leaves your machine.</div>
 
-                  {sectionHd("✗","When it doesn't work — three things to check, in order","#cc5500")}
+                  {sectionHd("✗","When it doesn't work — four things to check, in order","#cc5500")}
                   <ol style={{paddingLeft:18,margin:0,color:"#333"}}>
                     <li><b>Is Ollama actually running?</b> Open a terminal and run <span style={codeI}>ollama list</span>. You should see at least one vision model. If the command fails, Ollama isn't installed or isn't on your PATH.</li>
-                    <li style={{marginTop:6}}><b>Is the model name right?</b> The model in SiteShrimp's setup must match what <span style={codeI}>ollama list</span> shows, exactly. <span style={codeI}>llava</span> — not <span style={codeI}>Llava</span> or <span style={codeI}>llava:latest</span>.</li>
-                    <li style={{marginTop:6}}><b>If on Path B, are both overrides set?</b> Setting only the Chrome flag, or only <span style={codeI}>OLLAMA_ORIGINS</span>, keeps the error. Both have to be in place.</li>
+                    <li style={{marginTop:6}}><b>Is OLLAMA_ORIGINS set for your origin?</b> Run <span style={codeI}>{`curl -H "Origin: ${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}" -i http://localhost:11434/api/tags`}</span>. Look for <span style={codeI}>Access-Control-Allow-Origin</span> matching your origin in the response headers. If missing, the env var didn't take effect — re-start Ollama in a fresh terminal.</li>
+                    <li style={{marginTop:6}}><b>If on Path A (tunnel), is the tunnel URL still alive?</b> Free ngrok URLs change per restart. Cloudflare/Tailscale persist. Re-copy the URL into the OLLAMA SERVER URL field if you restarted the tunnel.</li>
+                    <li style={{marginTop:6}}><b>If on Path B, are both overrides set?</b> Setting only the Chrome flag, or only <span style={codeI}>OLLAMA_ORIGINS</span>, keeps the error. Both have to be in place, with Chrome restarted after the flag change.</li>
                   </ol>
-                  <div style={{marginTop:8,color:"#666",fontSize:11.5}}>Still stuck? Switch to Path A. It removes both browser and CORS issues entirely.</div>
+                  <div style={{marginTop:8,color:"#666",fontSize:11.5}}>Still stuck? Path A (ngrok) is the fastest fallback — 30 seconds, no browser tweaks.</div>
 
                   {sectionHd("?","Why is this so complicated?","#5856d6")}
                   <div style={{color:"#555",fontSize:11.5}}>Modern browsers refuse to send requests from a secure (HTTPS) page to an insecure (HTTP) one — even if the destination is your own machine. This is a security feature you can't turn off globally; you can only allow specific origins via the Chrome flag. Ollama adds a second layer (CORS) so it doesn't accidentally accept requests from any random website that knows your IP. The combination protects you, but it makes "free local AI on a public web app" require explicit consent in two places.</div>
