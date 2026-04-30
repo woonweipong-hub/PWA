@@ -5540,6 +5540,29 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
     }catch(e){alert("Could not update framework: "+(e?.message||e));}
     setEditionBusy(null);
   };
+  // Custom Quality Checklist — free-text, one checkpoint per line. Stored
+  // as project.quality_checklist. Same optimistic-override pattern as
+  // editionOf so the inline textarea reflects the latest save without
+  // needing a project list refetch.
+  const[checklistOverrides,setChecklistOverrides]=useState({});
+  const[checklistBusy,setChecklistBusy]=useState(null);
+  const[checklistEditing,setChecklistEditing]=useState(null); // projectId being edited
+  const[checklistDraft,setChecklistDraft]=useState("");
+  const checklistOf=(p)=>{
+    if(Object.prototype.hasOwnProperty.call(checklistOverrides,p.id))return checklistOverrides[p.id];
+    return p.quality_checklist||"";
+  };
+  const saveChecklistFor=async(id,text)=>{
+    if(checklistBusy)return;
+    setChecklistBusy(id);
+    try{
+      await DB.projects.update(id,{quality_checklist:text||""});
+      setChecklistOverrides(prev=>({...prev,[id]:text||""}));
+      if(currentProject?.id===id)onSelect({...currentProject,id,name:currentProject.name,quality_checklist:text||""});
+    }catch(e){alert("Could not save checklist: "+(e?.message||e));}
+    setChecklistBusy(null);
+    setChecklistEditing(null);
+  };
 
   // ── Project Profiles — Phase 1 feature flag + picker (off by default) ──
   // Feature flag lives in localStorage per (companyId, projectId) so turning
@@ -5726,6 +5749,40 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
                       <button onClick={e=>{e.stopPropagation();setEditionFor(p.id,on?"":DEFAULT_ONTOLOGY_EDITION);}} disabled={busy} style={{marginTop:5,background:bg,border:border,borderRadius:6,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,letterSpacing:"0.04em",color:fg,cursor:busy?"wait":"pointer",display:"inline-flex",alignItems:"center",gap:5}} title={on?`CONQUAS framework enabled (${ed}). Tap to disable.`:"Tap to enable the CONQUAS wizard + Quality Check card on this project."}>
                         {busy?<Spin size={10}/>:<span>{on?"⚖️ CONQUAS ✓":"+ ENABLE CONQUAS"}</span>}
                       </button>
+                    );
+                  })()}
+                  {/* Custom Quality Checklist — alternative to CONQUAS for
+                      projects that need their own pass/fail walk (HDB QM,
+                      internal SOPs, etc.). Free-text, one checkpoint per
+                      line. When non-empty, a 'START QUALITY CHECK' button
+                      appears on LOG. */}
+                  {canManage&&(()=>{
+                    const txt=checklistOf(p);
+                    const has=!!(txt||"").trim();
+                    const editing=checklistEditing===p.id;
+                    const active=currentProject?.id===p.id;
+                    const busy=checklistBusy===p.id;
+                    const bg=has?(active?"rgba(255,255,255,0.2)":"rgba(48,209,88,0.12)"):(active?"rgba(255,255,255,0.15)":"rgba(0,0,0,0.05)");
+                    const fg=has?(active?"#fff":"#1a7a35"):(active?"rgba(255,255,255,0.85)":"rgba(0,0,0,0.5)");
+                    const border=has?(active?"1px solid rgba(255,255,255,0.35)":"1px solid rgba(48,209,88,0.3)"):(active?"1px solid rgba(255,255,255,0.25)":"1px solid rgba(0,0,0,0.1)");
+                    const lineCount=has?(txt.split(/\n/).filter(l=>l.trim()).length):0;
+                    return(
+                      <span onClick={e=>e.stopPropagation()} style={{display:"inline-block",marginTop:5,marginLeft:6}}>
+                        <button onClick={()=>{setChecklistEditing(editing?null:p.id);setChecklistDraft(txt);}} style={{background:bg,border,borderRadius:6,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,letterSpacing:"0.04em",color:fg,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}} title={has?`${lineCount} checkpoint${lineCount===1?"":"s"}. Tap to view / edit.`:"Tap to define a custom pass/fail checklist for this project."}>
+                          {has?`📋 CHECKLIST · ${lineCount}`:"+ CHECKLIST"}
+                        </button>
+                        {editing&&(
+                          <div style={{marginTop:8,padding:10,background:active?"rgba(0,0,0,0.15)":"rgba(0,0,0,0.04)",borderRadius:8}}>
+                            <div style={{fontSize:10,color:active?"rgba(255,255,255,0.7)":"rgba(0,0,0,0.55)",marginBottom:6,lineHeight:1.4}}>One checkpoint per line. Lines starting with <b>#</b> become section headers. Empty lines are ignored.</div>
+                            <textarea value={checklistDraft} onChange={e=>setChecklistDraft(e.target.value)} placeholder={"# Floor\nLevelness within tolerance\nNo cracks visible\n\n# Wall\nPlumb within 5mm\nSmooth finish"} rows={6} style={{width:"100%",padding:"8px 10px",border:"1px solid rgba(0,0,0,0.15)",borderRadius:8,fontFamily:"'Courier New',monospace",fontSize:11.5,resize:"vertical",lineHeight:1.5,background:"#fff"}}/>
+                            <div style={{display:"flex",gap:6,marginTop:6}}>
+                              <button onClick={()=>saveChecklistFor(p.id,checklistDraft)} disabled={busy} style={{flex:1,background:"#30d158",border:"none",borderRadius:6,padding:"6px 10px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,letterSpacing:"0.04em",cursor:busy?"wait":"pointer"}}>{busy?"SAVING…":"SAVE CHECKLIST"}</button>
+                              <button onClick={()=>setChecklistEditing(null)} style={{background:"rgba(0,0,0,0.08)",border:"none",borderRadius:6,padding:"6px 10px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>CANCEL</button>
+                              {has&&<button onClick={()=>{if(confirm("Clear this project's checklist?"))saveChecklistFor(p.id,"");}} disabled={busy} style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:6,padding:"6px 10px",color:"#cc0000",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:busy?"wait":"pointer"}}>CLEAR</button>}
+                            </div>
+                          </div>
+                        )}
+                      </span>
                     );
                   })()}
                   {/* Project Profile (Phase 1, feature-flagged). OFF by
@@ -7043,6 +7100,157 @@ async function analyzeCONQUASPhoto(photoDataUrl,elementName,checkpoints){
   }
 }
 
+// ── Custom Quality Check Wizard ────────────────────────────────
+// Lightweight pass/fail walkthrough for non-CONQUAS projects. Runs off
+// project.quality_checklist (free-text, one checkpoint per line; lines
+// starting with '#' become section headers). On save, each checkpoint
+// becomes its own entry — Pass entryType for ✓, Defect for ✗ (with the
+// optional photo + comment carried over). Section header text is
+// passed through to entries via the location/sub-section field so the
+// REPORT can group them.
+function QualityCheckWizard({onClose,onSave,currentProject,member}){
+  const text=(currentProject?.quality_checklist||"").trim();
+  // Parse into items. Each line that's not a comment / blank is one
+  // checkpoint. Lines starting with '#' set the current section.
+  const items=useMemo(()=>{
+    const out=[];
+    let section="";
+    for(const raw of text.split(/\n/)){
+      const line=raw.trim();
+      if(!line)continue;
+      if(line.startsWith("#")){section=line.replace(/^#+\s*/,"").trim();continue;}
+      out.push({id:`qc-${out.length}`,section,text:line,verdict:"",photo:"",comment:""});
+    }
+    return out;
+  },[text]);
+  const[state,setState]=useState(items);
+  const[saving,setSaving]=useState(false);
+  const[saveIdx,setSaveIdx]=useState(0);
+  const fileRef=useRef();
+  const[photoTargetId,setPhotoTargetId]=useState("");
+  // Re-parse if the project's checklist changes mid-session.
+  useEffect(()=>{setState(items);},[items]);
+  const setOne=(id,patch)=>setState(prev=>prev.map(it=>it.id===id?{...it,...patch}:it));
+  const onPick=e=>{
+    const f=e.target.files?.[0];
+    e.target.value="";
+    if(!f||!photoTargetId)return;
+    const r=new FileReader();
+    r.onload=()=>setOne(photoTargetId,{photo:r.result});
+    r.readAsDataURL(f);
+  };
+  const passCount=state.filter(s=>s.verdict==="pass").length;
+  const failCount=state.filter(s=>s.verdict==="fail").length;
+  const skipCount=state.filter(s=>!s.verdict).length;
+  const saveAll=async()=>{
+    if(saving)return;
+    setSaving(true);
+    let saved=0,failed=0;
+    for(let i=0;i<state.length;i++){
+      const it=state[i];
+      if(!it.verdict)continue; // skip un-marked items
+      setSaveIdx(i+1);
+      try{
+        const photos=it.photo?[it.photo]:[];
+        const compressed=[];
+        for(const p of photos){const c=await compressPhoto(p);if(c)compressed.push(c);}
+        const isPass=it.verdict==="pass";
+        const title=isPass?`PASS — ${it.text}`.slice(0,80):`${it.text}`.slice(0,80);
+        const desc=it.comment?(isPass?`Pass — ${it.comment}`:it.comment):(isPass?"Verified pass.":"");
+        const locationDisplay=it.section||"";
+        await onSave({
+          title,description:desc,
+          severity:isPass?"Observation":"Major",
+          photos,photo:compressed[0]||null,extraPhotos:compressed.slice(1),
+          assignee:member?.name||"",
+          location:locationDisplay,locationDisplay,
+          locationLevel:"",locationZone:"",locationSubzone:locationDisplay,locationGrid:"",
+          workCategory:"",
+          projectId:currentProject?.id||"default",
+          projectName:currentProject?.name||"",
+          entryType:isPass?"Pass":"Defect",
+          trade:"",
+          status:"Open",
+          loggedBy:member?.name||"",
+          loggedByRole:member?.role||"",
+          createdAt:DB.serverTimestamp(),
+          updatedAt:DB.serverTimestamp(),
+          source_type:"quality_check",
+          comments:[],
+          fieldProvenance:{},
+        });
+        saved++;
+      }catch(err){console.error("[QualityCheck] save failed",it.text,err);failed++;}
+    }
+    setSaving(false);
+    setSaveIdx(0);
+    alert(`Quality check saved — ${saved} entr${saved===1?"y":"ies"}${failed>0?` · ${failed} failed`:""}.`);
+    onClose();
+  };
+  if(!items.length){
+    return(
+      <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:500,padding:20,overflowY:"auto"}}>
+        <SettingsBack onClose={onClose} title="Quality Check"/>
+        <div style={{maxWidth:430,margin:"40px auto",padding:20,background:"#fff",borderRadius:14,textAlign:"center"}}>
+          <div style={{fontSize:14,color:"rgba(0,0,0,0.6)",lineHeight:1.5}}>This project has no checklist defined. Open Settings → Projects → tap your project → <b>+ CHECKLIST</b> to add one (one checkpoint per line).</div>
+        </div>
+      </div>
+    );
+  }
+  return(
+    <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:500,display:"flex",flexDirection:"column"}}>
+      <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onPick} style={{display:"none"}}/>
+      {/* Header */}
+      <div style={{padding:"14px 16px 10px",background:"#fff",borderBottom:"1px solid rgba(0,0,0,0.08)",display:"flex",alignItems:"center",gap:10}}>
+        <button onClick={onClose} disabled={saving} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:18,padding:"6px 12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:saving?"not-allowed":"pointer",color:"rgba(0,0,0,0.6)",letterSpacing:"0.04em",opacity:saving?0.4:1}}>← BACK</button>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a1a1a",letterSpacing:"0.03em"}}>QUALITY CHECK · {items.length} CHECKPOINT{items.length===1?"":"S"}</div>
+          <div style={{fontSize:10,color:"rgba(0,0,0,0.55)",marginTop:1}}>
+            ✓ {passCount} pass · ✗ {failCount} fail · — {skipCount} unmarked
+          </div>
+        </div>
+      </div>
+      {/* Checklist */}
+      <div style={{flex:1,overflowY:"auto",padding:"10px 12px"}}>
+        {(()=>{
+          const groups={};
+          for(const it of state){const k=it.section||"";(groups[k]=groups[k]||[]).push(it);}
+          const order=Object.keys(groups);
+          return order.map(sec=>(
+            <div key={sec||"_default"} style={{marginBottom:14}}>
+              {sec&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#5856d6",letterSpacing:"0.06em",marginBottom:6,paddingLeft:4}}>{sec.toUpperCase()}</div>}
+              {groups[sec].map(it=>{
+                const v=it.verdict;
+                return(
+                  <div key={it.id} style={{background:"#fff",border:`1px solid ${v==="pass"?"rgba(48,209,88,0.4)":v==="fail"?"rgba(255,59,48,0.4)":"rgba(0,0,0,0.08)"}`,borderRadius:10,padding:10,marginBottom:8,display:"flex",gap:10,alignItems:"flex-start"}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:13,color:"#1a1a1a",fontWeight:600,lineHeight:1.4,marginBottom:6}}>{it.text}</div>
+                      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                        <button onClick={()=>setOne(it.id,{verdict:v==="pass"?"":"pass"})} disabled={saving} style={{padding:"5px 12px",borderRadius:14,border:`1.5px solid ${v==="pass"?"#30d158":"rgba(0,0,0,0.12)"}`,background:v==="pass"?"rgba(48,209,88,0.1)":"#fff",color:v==="pass"?"#1a7a35":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:saving?"not-allowed":"pointer",letterSpacing:"0.04em"}}>✓ PASS</button>
+                        <button onClick={()=>setOne(it.id,{verdict:v==="fail"?"":"fail"})} disabled={saving} style={{padding:"5px 12px",borderRadius:14,border:`1.5px solid ${v==="fail"?"#ff3b30":"rgba(0,0,0,0.12)"}`,background:v==="fail"?"rgba(255,59,48,0.08)":"#fff",color:v==="fail"?"#cc0000":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:saving?"not-allowed":"pointer",letterSpacing:"0.04em"}}>✗ FAIL</button>
+                        <button onClick={()=>{setPhotoTargetId(it.id);fileRef.current?.click();}} disabled={saving} style={{padding:"5px 10px",borderRadius:14,border:`1.5px solid ${it.photo?"#5856d6":"rgba(0,0,0,0.12)"}`,background:it.photo?"rgba(88,86,214,0.08)":"#fff",color:it.photo?"#5856d6":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:saving?"not-allowed":"pointer",letterSpacing:"0.04em"}}>📷 {it.photo?"PHOTO ✓":"ADD PHOTO"}</button>
+                        {it.photo&&<button onClick={()=>setOne(it.id,{photo:""})} disabled={saving} style={{padding:"5px 8px",borderRadius:14,border:"1px solid rgba(255,59,48,0.25)",background:"rgba(255,59,48,0.05)",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,cursor:"pointer"}}>✕</button>}
+                      </div>
+                      {(v==="fail"||(v==="pass"&&it.comment))&&<input type="text" value={it.comment} onChange={e=>setOne(it.id,{comment:e.target.value})} placeholder={v==="fail"?"What's wrong? (optional)":"Note (optional)"} disabled={saving} style={{marginTop:6,width:"100%",padding:"6px 9px",border:"1px solid rgba(0,0,0,0.12)",borderRadius:6,fontSize:12}}/>}
+                    </div>
+                    {it.photo&&<img src={it.photo} alt="" style={{width:60,height:60,borderRadius:8,objectFit:"cover",flexShrink:0}}/>}
+                  </div>
+                );
+              })}
+            </div>
+          ));
+        })()}
+      </div>
+      {/* Action bar */}
+      <div style={{padding:"12px 16px",background:"#fff",borderTop:"1px solid rgba(0,0,0,0.08)",display:"flex",gap:8}}>
+        <button onClick={saveAll} disabled={saving||(passCount+failCount)===0} style={{flex:1,height:48,background:saving||(passCount+failCount)===0?"rgba(0,0,0,0.1)":"#ff6b00",border:"none",borderRadius:12,color:saving||(passCount+failCount)===0?"rgba(0,0,0,0.3)":"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.05em",cursor:saving?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          {saving?<><Spin size={16}/> SAVING {saveIdx} OF {passCount+failCount}…</>:<><span style={{fontSize:16}}>💾</span> SAVE {passCount+failCount} ENTR{(passCount+failCount)===1?"Y":"IES"}</>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── CONQUAS Check Wizard (Phase 3.1 + 3.2a AI mode) ──────────────
 // Guided pass/fail walkthrough for CONQUAS (Private Residential) 2025.
 // Opt-in per project: only shown when currentProject.ontology_edition is set
@@ -7742,7 +7950,7 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
 }
 
 // ── Log Entry (with AI + Batch + Multi-photo) ────────────────────
-function LogDefect({member,company,currentProject,members,onSave,existingDefects=[],onViewEntry,onTagDrawing,onStartConquas,onOpenProjects,pendingBatchTrigger,onBatchHandled}){
+function LogDefect({member,company,currentProject,members,onSave,existingDefects=[],onViewEntry,onTagDrawing,onStartConquas,onStartQualityCheck,onOpenProjects,pendingBatchTrigger,onBatchHandled}){
   const savedWorkCat=local.get(WORK_CATEGORY_KEY)||"Building Defects (Landed)";
   const blank={title:"",location:"",severity:"Major",description:"",assignee:member?.name||"",photos:[],
     component:"",issue:"",locationLevel:"",locationZone:"",locationSubzone:"",locationGrid:"",
@@ -9157,6 +9365,18 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           <span style={{fontSize:14,flexShrink:0,opacity:0.5}}>›</span>
         </button>
       )}
+      {/* Custom Quality Check entry — visible when the project has a
+          custom checklist defined (project.quality_checklist non-empty).
+          Independent of CONQUAS — both can co-exist on the same project. */}
+      {currentProject?.quality_checklist&&onStartQualityCheck&&(()=>{
+        const lines=String(currentProject.quality_checklist).split(/\n/).filter(l=>l.trim()&&!l.trim().startsWith("#")).length;
+        return(
+          <button onClick={onStartQualityCheck} style={{width:"100%",padding:"12px 14px",marginBottom:16,background:"rgba(48,209,88,0.08)",border:"1.5px solid rgba(48,209,88,0.3)",borderRadius:12,color:"#1a7a35",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            <span style={{fontSize:16}}>🔍</span>
+            <span>START QUALITY CHECK · {lines} CHECKPOINT{lines===1?"":"S"}</span>
+          </button>
+        );
+      })()}
 
       {/* Batch progress pill — visible during a multi-photo auto-flow.
           Shows current position so the user knows AI is working through
@@ -21166,6 +21386,7 @@ function App(){
   const inboxLastScanRef=useRef(0);
   const[showAiSearch,setShowAiSearch]=useState(false);
   const[showConquas,setShowConquas]=useState(false);
+  const[showQualityCheck,setShowQualityCheck]=useState(false);
   // CONQUAS-batch handshake — true for one render cycle after the user taps
   // [BATCH PROCESS FOLDER] in the wizard. LogDefect's effect picks it up,
   // pre-tags entryType, programmatically clicks the folder picker, then
@@ -22197,7 +22418,7 @@ function App(){
 
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:"calc(100px + env(safe-area-inset-bottom,0px))"}}>
-        {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")} onStartConquas={()=>setShowConquas(true)} onOpenProjects={()=>setShowProjects(true)} pendingBatchTrigger={pendingConquasBatch} onBatchHandled={()=>setPendingConquasBatch(false)}/>}
+        {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")} onStartConquas={()=>setShowConquas(true)} onStartQualityCheck={()=>setShowQualityCheck(true)} onOpenProjects={()=>setShowProjects(true)} pendingBatchTrigger={pendingConquasBatch} onBatchHandled={()=>setPendingConquasBatch(false)}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} onPatchDefectLocal={updated=>setDefects(prev=>prev.map(d=>d.id===updated.id?updated:d))} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onViewEntry={setViewing}/>}
         {tab==="defects"&&<DefectsList defects={defects} archivedDefects={archivedDefects} onView={setViewing} onUpdate={updateDefect} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onRestore={restoreDefects} onHardDelete={hardDeleteDefects} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")} onOpenInReview={(payload)=>setReviewModal(payload)} queueCount={queueCount} syncing2={syncing2} onSyncQueue={syncQueue}/>}
@@ -22223,6 +22444,7 @@ function App(){
       {reviewModal?.type==="comparison"&&<DrawingsPanel onClose={()=>setReviewModal(null)} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} initialCompare={reviewModal.comparison}/>}
       {showAiSearch&&<AiSearch defects={defects} onClose={()=>setShowAiSearch(false)} onApplyFilters={f=>{setNlFilters(f);setTab("defects");}}/>}
       {showConquas&&<ConquasCheckWizard currentProject={currentProject} company={company} member={member} onSave={addDefect} onClose={()=>setShowConquas(false)} onStartBatch={()=>{setShowConquas(false);setTab("log");setPendingConquasBatch(true);}}/>}
+      {showQualityCheck&&<QualityCheckWizard currentProject={currentProject} member={member} onSave={addDefect} onClose={()=>setShowQualityCheck(false)}/>}
       {viewing&&<DefectDetail defect={viewing} onClose={()=>setViewing(null)} onUpdate={updateDefect} onDelete={(id)=>setDefects(prev=>prev.filter(d=>d.id!==id))} member={member} company={company} members={members} allDefects={defects}/>}
       {showHelp&&(
         <div style={{position:"fixed",inset:0,zIndex:500,background:"#1a1a1a",overflowY:"auto"}}>
