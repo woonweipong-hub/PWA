@@ -889,6 +889,7 @@
   "help": {
     "title": "Bantuan",
     "features": "FITUR",
+    "disclaimer": "PENAFIAN",
     "help_features": "Bantuan, Fungsi & Penafian",
     "guides_tips": "Panduan dan tips",
     "practical_tips": "Tips Praktis",

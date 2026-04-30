@@ -889,6 +889,7 @@
   "help": {
     "title": "Hjælp",
     "features": "FUNKTIONER",
+    "disclaimer": "ANSVARSFRASKRIVELSE",
     "help_features": "Hjælp, funktioner og ansvarsfraskrivelse",
     "guides_tips": "Vejledninger og tips",
     "practical_tips": "Praktiske tips",

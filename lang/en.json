@@ -885,8 +885,9 @@
   },
   "help": {
     "title": "Help",
-    "features": "FUNCTIONS",
-    "help_features": "Help, Functions & Disclaimer",
+    "features": "FEATURES",
+    "disclaimer": "DISCLAIMER",
+    "help_features": "Help, Features & Disclaimer",
     "guides_tips": "Guides and tips",
     "practical_tips": "Practical Tips",
     "open_guide": "Open this guide.",

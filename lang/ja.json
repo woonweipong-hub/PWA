@@ -889,6 +889,7 @@
   "help": {
     "title": "ヘルプ",
     "features": "機能",
+    "disclaimer": "免責事項",
     "help_features": "ヘルプ、機能、免責事項",
     "guides_tips": "ガイドとヒント",
     "practical_tips": "実践的なヒント",

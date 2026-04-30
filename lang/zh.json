@@ -889,6 +889,7 @@
   "help": {
     "title": "帮助",
     "features": "功能",
+    "disclaimer": "免责声明",
     "help_features": "帮助、功能和免责声明",
     "guides_tips": "指南和提示",
     "practical_tips": "实用提示",

@@ -889,6 +889,7 @@
   "help": {
     "title": "Ohje",
     "features": "OMINAISUUDET",
+    "disclaimer": "VASTUUVAPAUSLAUSEKE",
     "help_features": "Ohjeet, toiminnot ja vastuuvapauslauseke",
     "guides_tips": "Ohjeita ja vinkkejä",
     "practical_tips": "Käytännön vinkkejä",

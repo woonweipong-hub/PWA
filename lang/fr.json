@@ -889,6 +889,7 @@
   "help": {
     "title": "Aide",
     "features": "FONCTIONNALITÉS",
+    "disclaimer": "CLAUSE DE NON-RESPONSABILITÉ",
     "help_features": "Aide, fonctions et clause de non-responsabilité",
     "guides_tips": "Guides et astuces",
     "practical_tips": "Astuces pratiques",

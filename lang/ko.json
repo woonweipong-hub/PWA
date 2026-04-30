@@ -889,6 +889,7 @@
   "help": {
     "title": "도움말",
     "features": "기능",
+    "disclaimer": "부인 성명",
     "help_features": "도움말, 기능 및 면책조항",
     "guides_tips": "가이드 및 팁",
     "practical_tips": "실용적인 팁",

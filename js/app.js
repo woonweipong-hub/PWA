@@ -21486,14 +21486,14 @@ function App(){
           <div style={{maxWidth:430,margin:"0 auto",padding:"0 0 40px"}}>
             <div style={{background:"#1a1a1a",padding:"16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:1}}>
               <button onClick={()=>setShowHelp(false)} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.back")}</button>
-              <div style={{display:"flex",gap:0,flex:1}}>
+              <div style={{display:"flex",gap:4,flex:1}}>
                 {/* HOSTING tab removed — now lives in ⚙ Settings → Hosting.
                     The hosting branch (helpTab==="hosting") still renders below
                     when reached via Settings; just no nav button here. */}
                 <button onClick={()=>setHelpTab("about")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="about"?"2px solid #5856d6":"2px solid transparent",color:helpTab==="about"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{t("about.title").toUpperCase()}</button>
                 <button onClick={()=>setHelpTab("help")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="help"?"2px solid #ff6b00":"2px solid transparent",color:helpTab==="help"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{t("help.title").toUpperCase()}</button>
                 <button onClick={()=>setHelpTab("features")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="features"?"2px solid #ff6b00":"2px solid transparent",color:helpTab==="features"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{t("help.features")}</button>
-                <button onClick={()=>setHelpTab("disclaimer")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="disclaimer"?"2px solid #ffcc00":"2px solid transparent",color:helpTab==="disclaimer"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>DISCLAIMER</button>
+                <button onClick={()=>setHelpTab("disclaimer")} style={{flex:1,padding:"8px 0",background:"none",border:"none",borderBottom:helpTab==="disclaimer"?"2px solid #ffcc00":"2px solid transparent",color:helpTab==="disclaimer"?"#fff":"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{t("help.disclaimer")}</button>
               </div>
             </div>
             <div style={{padding:"20px 16px"}}>
