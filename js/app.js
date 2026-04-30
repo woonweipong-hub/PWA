@@ -6251,7 +6251,12 @@ function GeminiSettings({onClose,companyId}){
                     <b>• Tailscale Funnel</b> <i>(best · permanent URL, free for ~3 devices):</i> install <a href="https://tailscale.com/download" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>Tailscale</a> → sign in → run <code>tailscale funnel 11434</code> → copy the <code>.ts.net</code> URL.<br/>
                     <b>• Cloudflare Tunnel</b> <i>(free; permanent if you bind a domain):</i> install <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>cloudflared</a> → quick mode <code>cloudflared tunnel --url http://localhost:11434</code> → URL is per-session. For permanent: configure a named tunnel + Cloudflare-managed subdomain.<br/>
                     <b>• ngrok</b> <i>(quickest first-time test only · URL changes every restart):</i> install <a href="https://ngrok.com/download" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>ngrok</a>, free signup → <code>ngrok http 11434</code>. You'll have to re-paste the URL into SiteShrimp each time.<br/>
-                    For <b>any</b> of these: stop Ollama, re-start with origin allowed (<code>$env:OLLAMA_ORIGINS="{myOrigin}"; ollama serve</code> on Windows · <code>OLLAMA_ORIGINS="{myOrigin}" ollama serve</code> on macOS/Linux), paste the tunnel URL into OLLAMA SERVER URL below, tap TEST.
+                    For <b>any</b> of these: stop Ollama, re-start with origin allowed. Windows tray app needs the persistent-env recipe (see Option B below); on macOS / Linux the inline form works:
+                    <div style={{position:"relative",background:"#1a1a1a",borderRadius:6,padding:"8px 32px 8px 10px",margin:"6px 0",fontFamily:"'Courier New',monospace",fontSize:11,color:"#a4f0c0",whiteSpace:"pre-wrap",wordBreak:"break-word",lineHeight:1.5}}>
+                      <CopyBtn text={`OLLAMA_ORIGINS="${myOrigin}" ollama serve`} dark={true}/>
+                      {`OLLAMA_ORIGINS="${myOrigin}" ollama serve`}
+                    </div>
+                    Then paste the tunnel URL into OLLAMA SERVER URL below and tap TEST.
                   </div>
                 </div>
 
@@ -6260,13 +6265,24 @@ function GeminiSettings({onClose,companyId}){
                   <div style={{fontSize:11,color:"#333",lineHeight:1.55}}>
                     No tunnel install, but two tweaks. Both must be set.<br/>
                     <b>Step 1 (browser):</b> visit <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code>, add <code>{myOrigin}</code>, set to <b>Enabled</b>, restart Chrome.<br/>
-                    <b>Step 2 (Ollama):</b> tell Ollama to allow your origin. <i>How depends on how Ollama runs:</i><br/>
-                    &nbsp;&nbsp;<b>Windows tray app (most common):</b> set <i>persistently</i> in PowerShell, kill the tray app, re-launch from Start Menu so it inherits the new env:<br/>
-                    &nbsp;&nbsp;&nbsp;&nbsp;<code>{`[Environment]::SetEnvironmentVariable("OLLAMA_ORIGINS","${myOrigin}","User")`}</code><br/>
-                    &nbsp;&nbsp;&nbsp;&nbsp;<code>{'taskkill /F /IM "ollama app.exe" /T'}</code><br/>
-                    &nbsp;&nbsp;&nbsp;&nbsp;Then: Win key → type "Ollama" → click to relaunch.<br/>
-                    &nbsp;&nbsp;<b>macOS / Linux (manual <code>ollama serve</code>):</b> <code>{`OLLAMA_ORIGINS="${myOrigin}" ollama serve`}</code><br/>
-                    <b>Verify:</b> <code>{`curl -H "Origin: ${myOrigin}" -i http://localhost:11434/api/tags`}</code> — response headers should include <code>{`Access-Control-Allow-Origin: ${myOrigin}`}</code>.
+                    <b>Step 2 (Ollama):</b> tell Ollama to allow your origin.<br/>
+                    <b>Windows tray app (most common):</b> set persistently in PowerShell, kill the tray app, re-launch from Start Menu so it inherits the new env:
+                    <div style={{position:"relative",background:"#1a1a1a",borderRadius:6,padding:"8px 32px 8px 10px",margin:"6px 0",fontFamily:"'Courier New',monospace",fontSize:11,color:"#a4f0c0",whiteSpace:"pre-wrap",wordBreak:"break-word",lineHeight:1.5}}>
+                      <CopyBtn text={`[Environment]::SetEnvironmentVariable("OLLAMA_ORIGINS","${myOrigin}","User")\ntaskkill /F /IM "ollama app.exe" /T`} dark={true}/>
+                      {`[Environment]::SetEnvironmentVariable("OLLAMA_ORIGINS","${myOrigin}","User")\ntaskkill /F /IM "ollama app.exe" /T`}
+                    </div>
+                    Then: Win key → type "Ollama" → click to relaunch.<br/>
+                    <b>macOS / Linux (manual <code>ollama serve</code>):</b>
+                    <div style={{position:"relative",background:"#1a1a1a",borderRadius:6,padding:"8px 32px 8px 10px",margin:"6px 0",fontFamily:"'Courier New',monospace",fontSize:11,color:"#a4f0c0",whiteSpace:"pre-wrap",wordBreak:"break-word",lineHeight:1.5}}>
+                      <CopyBtn text={`OLLAMA_ORIGINS="${myOrigin}" ollama serve`} dark={true}/>
+                      {`OLLAMA_ORIGINS="${myOrigin}" ollama serve`}
+                    </div>
+                    <b>Verify:</b>
+                    <div style={{position:"relative",background:"#1a1a1a",borderRadius:6,padding:"8px 32px 8px 10px",margin:"6px 0",fontFamily:"'Courier New',monospace",fontSize:11,color:"#a4f0c0",whiteSpace:"pre-wrap",wordBreak:"break-word",lineHeight:1.5}}>
+                      <CopyBtn text={`curl -H "Origin: ${myOrigin}" -i http://localhost:11434/api/tags`} dark={true}/>
+                      {`curl -H "Origin: ${myOrigin}" -i http://localhost:11434/api/tags`}
+                    </div>
+                    Response headers should include <code>{`Access-Control-Allow-Origin: ${myOrigin}`}</code>.
                   </div>
                 </div>
 

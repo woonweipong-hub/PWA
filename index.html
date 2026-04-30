@@ -45,6 +45,12 @@ div:hover>.pin-tip,div:active>.pin-tip{display:block!important;}
 .dd-label{flex:1;font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:13.5px;color:#fff;letter-spacing:0.01em;}
 .dd-sub{font-size:10px;color:rgba(255,255,255,0.35);margin-top:1px;font-weight:400;letter-spacing:0;}
 .dd-pill{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:9px;letter-spacing:0.08em;padding:3px 8px;border-radius:999px;flex-shrink:0;}
+/* Inline <code> tags carry long shell snippets / URLs / env-var commands.
+   Without word-break the AI Setup amber panel and Help guide overflow
+   their containers on phone-width viewports. Allow break-anywhere
+   wrapping so commands stay inside the panel even when the line is
+   one un-broken token. */
+code{word-break:break-word;overflow-wrap:anywhere;}
 </style>
 </head>
 <body>
@@ -89,12 +95,12 @@ window.addEventListener('beforeinstallprompt', e => {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js" defer></script>
 <script src="https://unpkg.com/@googlemaps/markerclusterer@2.5.3/dist/index.min.js" defer></script>
 <!-- PocketBase data layer -->
-<script src="js/db.js?v=237a02b"></script>
+<script src="js/db.js?v=b366fb4"></script>
 <!-- Shared constants (entry types, statuses, components, locations) -->
-<script src="js/constants.js?v=237a02b"></script>
+<script src="js/constants.js?v=b366fb4"></script>
 <!-- i18n — lightweight translation helper (must load before app.js) -->
-<script src="js/lang.js?v=237a02b"></script>
+<script src="js/lang.js?v=b366fb4"></script>
 <!-- App logic — pre-compiled, no Babel needed -->
-<script src="js/app.compiled.js?v=237a02b"></script>
+<script src="js/app.compiled.js?v=b366fb4"></script>
 </body>
 </html>
