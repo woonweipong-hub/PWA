@@ -21231,7 +21231,7 @@ function App(){
               {inboxUnread>0&&<span style={{position:"absolute",top:-3,right:-3,background:"#ff3b30",color:"#fff",borderRadius:10,minWidth:16,height:16,fontSize:9,fontWeight:800,padding:"0 4px",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",border:"1.5px solid #1a1a1a"}}>{inboxUnread>99?"99+":inboxUnread}</span>}
             </button>
             {showInbox&&(
-              <div className="dd-panel" style={{position:"absolute",top:"100%",right:0,marginTop:8,background:"linear-gradient(180deg,#2e2e32 0%,#1f1f22 100%)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,overflow:"hidden",zIndex:1200,minWidth:256,maxWidth:304,maxHeight:"70vh",display:"flex",flexDirection:"column",boxShadow:"0 16px 48px rgba(0,0,0,0.55),0 2px 10px rgba(0,0,0,0.35)"}}>
+              <div className="dd-panel" style={{position:"absolute",top:"100%",right:-120,marginTop:8,background:"linear-gradient(180deg,#2e2e32 0%,#1f1f22 100%)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,overflow:"hidden",zIndex:1200,minWidth:256,maxWidth:304,maxHeight:"70vh",display:"flex",flexDirection:"column",boxShadow:"0 16px 48px rgba(0,0,0,0.55),0 2px 10px rgba(0,0,0,0.35)"}}>
                 <div style={{padding:"13px 16px 12px",borderBottom:"1px solid rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between",background:"linear-gradient(180deg,rgba(255,107,0,0.06),rgba(255,107,0,0))"}}>
                   <div>
                     <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.14em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("inbox.title")}</div>
@@ -21354,7 +21354,7 @@ function App(){
                 }},
               ];
               return(
-              <div className="dd-panel" onMouseEnter={()=>clearTimeout(settingsMenuTimer.current)} onMouseLeave={()=>{settingsMenuTimer.current=setTimeout(()=>setShowSettingsMenu(false),250);}} style={{position:"absolute",top:"100%",right:0,marginTop:8,background:"linear-gradient(180deg,#2e2e32 0%,#1f1f22 100%)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,overflow:"hidden",zIndex:1200,minWidth:278,boxShadow:"0 16px 48px rgba(0,0,0,0.55),0 2px 10px rgba(0,0,0,0.35)"}}>
+              <div className="dd-panel" onMouseEnter={()=>clearTimeout(settingsMenuTimer.current)} onMouseLeave={()=>{settingsMenuTimer.current=setTimeout(()=>setShowSettingsMenu(false),250);}} style={{position:"absolute",top:"100%",right:-80,marginTop:8,background:"linear-gradient(180deg,#2e2e32 0%,#1f1f22 100%)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,overflow:"hidden",zIndex:1200,minWidth:278,boxShadow:"0 16px 48px rgba(0,0,0,0.55),0 2px 10px rgba(0,0,0,0.35)"}}>
                 {/* Header */}
                 <div style={{padding:"13px 16px 12px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"linear-gradient(180deg,rgba(255,107,0,0.06),rgba(255,107,0,0))"}}>
                   <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.14em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("settings.title")}</div>
