@@ -7633,6 +7633,20 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   const[stagingFilter,setStagingFilter]=useState("all");
   const STAGING_THRESHOLD=5;
 
+  // Review-before-save mode — opt-in pre-save grid so the user can fix
+  // AI-fills (title / "what happened" / severity) per photo before any
+  // record lands in the DB. Differs from the default zero-tap batch flow
+  // which saves immediately and leaves rectification to REVIEW > ENTRIES.
+  // Persisted in localStorage so the user's preference survives reloads.
+  const REVIEW_MODE_KEY="sdt-review-before-save-v1";
+  const[reviewMode,setReviewMode]=useState(()=>!!local.get(REVIEW_MODE_KEY));
+  const persistReviewMode=(v)=>{setReviewMode(v);local.set(REVIEW_MODE_KEY,v);};
+  // Each item: {id, name, dataUrl, title, description, severity, aiStatus, aiError}
+  // aiStatus: "pending" | "analyzing" | "done" | "failed"
+  const[reviewItems,setReviewItems]=useState([]);
+  const[reviewSaving,setReviewSaving]=useState(false);
+  const[reviewSaveIdx,setReviewSaveIdx]=useState(0);
+
   // Build a context-enriched AI prompt from the previous entry's metadata.
   // The extra clause tells AI the floor/zone/trade so its suggestions are more
   // targeted when logging several defects on the same run.
@@ -7752,7 +7766,11 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
     // can return the entire DCIM (thousands of images). Either path ends
     // up calling commitBatch() with a File list.
     if(files.length<=STAGING_THRESHOLD){
-      commitBatch(files);
+      if(reviewMode){
+        commitBatchReview(files);
+      }else{
+        commitBatch(files);
+      }
       return;
     }
     const staging=files.map((file,i)=>({
@@ -7817,7 +7835,202 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
     if(!selected.length){alert("Pick at least one photo to process.");return;}
     const files=selected.map(s=>s.file);
     closeStaging();
-    await commitBatch(files);
+    if(reviewMode&&aiReady){
+      await commitBatchReview(files);
+    }else{
+      await commitBatch(files);
+    }
+  };
+
+  // ── Review-before-save flow ───────────────────────────────────────
+  // Reads N files into data URLs up-front (memory: ~N × original size,
+  // capped at REVIEW_MAX) so each one is editable as a card. AI runs
+  // sequentially in background — keeps token use predictable and lets
+  // the user edit cards while later cards are still analysing.
+  const REVIEW_MAX=30;
+  const commitBatchReview=async(files)=>{
+    if(!files||!files.length)return;
+    const capped=files.slice(0,REVIEW_MAX);
+    if(files.length>REVIEW_MAX){
+      alert(`Review mode capped at ${REVIEW_MAX} photos (you picked ${files.length}). Process the first ${REVIEW_MAX} now; pick the rest after saving.`);
+    }
+    try{
+      const items=await Promise.all(capped.map((f,i)=>new Promise((resolve)=>{
+        const r=new FileReader();
+        r.onload=()=>resolve({
+          id:`rv-${Date.now()}-${i}`,
+          name:f.name||`photo-${i+1}`,
+          dataUrl:r.result,
+          title:"",description:"",severity:"Major",
+          component:"",issue:"",
+          aiStatus:"pending",aiError:""
+        });
+        r.onerror=()=>resolve(null);
+        r.readAsDataURL(f);
+      })));
+      const valid=items.filter(Boolean);
+      if(!valid.length){alert("No photos could be read. Try again or pick different files.");return;}
+      setReviewItems(valid);
+      // Kick off AI loop. Don't await — UI shows cards immediately.
+      runReviewAi(valid).catch(err=>console.warn("[Review] AI loop error:",err));
+    }catch(err){
+      console.error("[Review] commit failed:",err);
+      alert("Could not start review: "+err.message);
+    }
+  };
+
+  // Sequential AI loop — keeps API hits manageable and matches the
+  // pattern used elsewhere (CONQUAS wizard, single-photo analyze).
+  // Updates reviewItems in-place via state; the card UI reads aiStatus
+  // for the per-card spinner / chip.
+  const runReviewAi=async(items)=>{
+    for(let i=0;i<items.length;i++){
+      const itemId=items[i].id;
+      setReviewItems(prev=>prev.map(it=>it.id===itemId?{...it,aiStatus:"analyzing",aiError:""}:it));
+      try{
+        const photo=items[i].dataUrl;
+        const hash=await photoHash(photo);
+        let result=readAiCache(hash);
+        if(!result){
+          // Daily-limit gate — soft, so review mode degrades gracefully
+          // when over quota: items just stay as user-blank cards.
+          const today=new Date().toISOString().slice(0,10);
+          const aiUsage=local.get(AI_LIMIT_KEY)||{date:"",count:0};
+          const todayCount=aiUsage.date===today?aiUsage.count:0;
+          if(todayCount>=AI_DAILY_LIMIT){
+            setReviewItems(prev=>prev.map(it=>it.id===itemId?{...it,aiStatus:"failed",aiError:"AI daily limit reached"}:it));
+            continue;
+          }
+          const compressed=await compressPhoto(photo,600,0.7);
+          result=await analyzePhoto(compressed||photo,buildContextPrompt(last));
+          if(result&&(result.title||result.description)){
+            bumpAiUsage(getLastAiTokens());
+            writeAiCache(hash,result);
+          }
+        }
+        if(!result||(!result.title&&!result.description)){
+          setReviewItems(prev=>prev.map(it=>it.id===itemId?{...it,aiStatus:"failed",aiError:"AI returned nothing usable"}:it));
+          continue;
+        }
+        // Map AI result onto our 5 simplified review fields. Component +
+        // issue are filled-but-not-edited on the card; user can fix them
+        // later in REVIEW > ENTRIES if AI's mapping was wrong.
+        let resolvedComponent="";
+        if(result.component){
+          const needle=result.component.trim().toLowerCase();
+          resolvedComponent=DEFAULT_COMPONENTS.find(c=>c.toLowerCase()===needle)
+            ||DEFAULT_COMPONENTS.find(c=>c.toLowerCase().includes(needle))
+            ||DEFAULT_COMPONENTS.find(c=>needle.includes(c.toLowerCase()))
+            ||"";
+        }
+        let resolvedIssue="";
+        if(resolvedComponent&&result.issue){
+          const issues=COMPONENT_ISSUES[resolvedComponent]||[];
+          const needle=result.issue.trim().toLowerCase();
+          resolvedIssue=issues.find(i=>i.toLowerCase()===needle)
+            ||issues.find(i=>i.toLowerCase().includes(needle))
+            ||issues.find(i=>needle.includes(i.toLowerCase()))
+            ||result.issue.trim();
+        }
+        let sev=SEVERITY.includes(result.severity)?result.severity:"Major";
+        if(result.safety_risk&&result.safety_risk>=4)sev="Critical";
+        setReviewItems(prev=>prev.map(it=>it.id===itemId?{
+          ...it,
+          aiStatus:"done",
+          title:it.title||result.title||"",
+          description:it.description||result.description||"",
+          severity:it.severity==="Major"?sev:it.severity,
+          component:resolvedComponent,
+          issue:resolvedIssue,
+        }:it));
+      }catch(err){
+        console.warn("[Review] AI failed for",items[i].name,err);
+        setReviewItems(prev=>prev.map(it=>it.id===itemId?{...it,aiStatus:"failed",aiError:err.message||String(err)}:it));
+      }
+    }
+  };
+
+  const updateReviewItem=(id,patch)=>{
+    setReviewItems(prev=>prev.map(it=>it.id===id?{...it,...patch}:it));
+  };
+  const removeReviewItem=(id)=>{
+    setReviewItems(prev=>prev.filter(it=>it.id!==id));
+  };
+  const cancelReview=()=>{
+    setReviewItems([]);
+    setReviewSaving(false);
+    setReviewSaveIdx(0);
+  };
+
+  // Save one review item directly via onSave — mirrors the essential
+  // parts of submit() but reads from the item, not form state. Avoids
+  // form-context juggling during SAVE ALL.
+  const saveOneReviewItem=async(item)=>{
+    const photos=[item.dataUrl];
+    const compressed=[];
+    for(const p of photos){
+      const c=await compressPhoto(p);
+      if(c)compressed.push(c);
+    }
+    const trade=COMPONENT_TRADE[item.component]||"";
+    let effectiveTitle=(item.title||"").trim();
+    if(!effectiveTitle){
+      if(item.description.trim()){
+        effectiveTitle=item.description.trim().split(/\s+/).slice(0,10).join(" ");
+      }else{
+        effectiveTitle=`Photo entry — ${new Date().toISOString().slice(0,10)}`;
+      }
+    }
+    return onSave({
+      title:effectiveTitle,
+      description:item.description||"",
+      severity:item.severity||"Major",
+      component:item.component||"",
+      issue:item.issue||"",
+      photos,
+      photo:compressed[0]||null,
+      extraPhotos:compressed.slice(1),
+      assignee:member?.name||"",
+      location:"",locationDisplay:"",
+      locationLevel:"",locationZone:"",locationSubzone:"",locationGrid:"",
+      workCategory:form.workCategory||savedWorkCat||"",
+      projectId:currentProject?.id||"default",
+      projectName:currentProject?.name||"",
+      entryType:"Defect",
+      trade,
+      status:"Open",
+      loggedBy:member?.name||"",
+      loggedByRole:member?.role||"",
+      createdAt:DB.serverTimestamp(),
+      updatedAt:DB.serverTimestamp(),
+      comments:[],
+      fieldProvenance:{},
+    });
+  };
+
+  const saveAllReview=async()=>{
+    if(reviewSaving||!reviewItems.length)return;
+    setReviewSaving(true);
+    let saved=0,failed=0;
+    for(let i=0;i<reviewItems.length;i++){
+      setReviewSaveIdx(i+1);
+      try{
+        await saveOneReviewItem(reviewItems[i]);
+        saved++;
+      }catch(err){
+        console.error("[Review] save failed for",reviewItems[i].name,err);
+        failed++;
+      }
+    }
+    setReviewSaving(false);
+    setReviewItems([]);
+    setReviewSaveIdx(0);
+    setLastSaved({
+      id:null,
+      title:`Review batch saved — ${saved} entr${saved===1?"y":"ies"}${failed>0?` · ${failed} failed`:""}`,
+      ts:Date.now(),savedEntry:null,batch:true
+    });
+    setCount(c=>c+saved);
   };
 
   const removePhoto=idx=>setForm(f=>({...f,photos:f.photos.filter((_,i)=>i!==idx)}));
@@ -8626,9 +8839,20 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
               <span style={{fontSize:24}}>📷</span> {t("log.take_photo")}{aiReady?` · ${t("log.ai_auto_analyze")}`:""}
             </button>
             {aiReady&&(
+              <>
               <button onClick={()=>folderRef.current.click()} style={{width:"100%",padding:"10px 14px",background:"rgba(88,86,214,0.06)",border:"1.5px dashed rgba(88,86,214,0.4)",borderRadius:12,color:"#5856d6",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.03em"}}>
                 <span style={{fontSize:16}}>📁</span> PICK FOLDER OR MULTIPLE PHOTOS · AI PRE-FILLS EACH
               </button>
+              {/* Review-before-save toggle — opt-in, off by default so the
+                  zero-tap batch behaviour stays the unsurprising default.
+                  When on, multi-pick opens an editable card list instead
+                  of auto-saving each photo. */}
+              <label title="When on, multi-pick opens an editable Review screen instead of auto-saving each photo." style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",background:reviewMode?"rgba(255,107,0,0.08)":"transparent",border:`1px solid ${reviewMode?"rgba(255,107,0,0.3)":"rgba(0,0,0,0.1)"}`,borderRadius:10,cursor:"pointer"}}>
+                <input type="checkbox" checked={reviewMode} onChange={e=>persistReviewMode(e.target.checked)} style={{width:16,height:16,accentColor:"#ff6b00",cursor:"pointer"}}/>
+                <span style={{fontSize:11,fontWeight:700,color:reviewMode?"#ff6b00":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>REVIEW BEFORE SAVE</span>
+                <span style={{fontSize:10,color:"rgba(0,0,0,0.4)",marginLeft:"auto"}}>edit each photo before commit</span>
+              </label>
+              </>
             )}
           </div>
         ):(
@@ -8872,12 +9096,80 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
             {/* Action bar */}
             <div style={{padding:"12px 16px",background:"#fff",borderTop:"1px solid rgba(0,0,0,0.08)",display:"flex",gap:8}}>
               <button disabled={selectedStagingCount===0} onClick={commitStaging} style={{flex:1,height:48,background:selectedStagingCount===0?"rgba(0,0,0,0.1)":"#ff6b00",border:"none",borderRadius:12,color:selectedStagingCount===0?"rgba(0,0,0,0.3)":"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.05em",cursor:selectedStagingCount===0?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-                <span style={{fontSize:16}}>⚡</span> PROCESS {selectedStagingCount} WITH AI
+                <span style={{fontSize:16}}>⚡</span> {reviewMode?`REVIEW ${selectedStagingCount} BEFORE SAVE`:`PROCESS ${selectedStagingCount} WITH AI`}
               </button>
             </div>
           </div>
         );
       })()}
+
+      {/* Review-before-save overlay — opens when user multi-picks with
+          REVIEW BEFORE SAVE toggled on. Each photo becomes an editable
+          card; AI fills title / description / severity / component /
+          issue in background. SAVE ALL commits all cards as records. */}
+      {reviewItems.length>0&&(
+        <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:500,display:"flex",flexDirection:"column",animation:"fadeIn 0.2s ease"}}>
+          {/* Header */}
+          <div style={{padding:"14px 16px 10px",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(0,0,0,0.08)",background:"#fff"}}>
+            <button onClick={cancelReview} disabled={reviewSaving} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:18,padding:"6px 12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:reviewSaving?"not-allowed":"pointer",color:"rgba(0,0,0,0.6)",letterSpacing:"0.04em",opacity:reviewSaving?0.4:1}}>← CANCEL</button>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a1a1a",letterSpacing:"0.03em"}}>REVIEW {reviewItems.length} {reviewItems.length===1?"PHOTO":"PHOTOS"} BEFORE SAVE</div>
+              <div style={{fontSize:10,color:"rgba(0,0,0,0.55)",marginTop:1}}>
+                {(()=>{
+                  const pending=reviewItems.filter(it=>it.aiStatus==="pending"||it.aiStatus==="analyzing").length;
+                  const failed=reviewItems.filter(it=>it.aiStatus==="failed").length;
+                  if(reviewSaving)return `Saving ${reviewSaveIdx} of ${reviewItems.length}…`;
+                  if(pending>0)return `AI working on ${pending} photo${pending===1?"":"s"} — edit any card now or wait`;
+                  if(failed>0)return `${failed} AI failure${failed===1?"":"s"} — edit those cards manually`;
+                  return "AI complete — edit any card, then SAVE ALL";
+                })()}
+              </div>
+            </div>
+          </div>
+          {/* Cards list */}
+          <div style={{flex:1,overflowY:"auto",padding:"10px 12px",display:"flex",flexDirection:"column",gap:10}}>
+            {reviewItems.map((it,i)=>{
+              const statusBadge=it.aiStatus==="analyzing"
+                ?{bg:"rgba(88,86,214,0.12)",fg:"#5856d6",label:"AI…"}
+                :it.aiStatus==="done"
+                ?{bg:"rgba(48,209,88,0.12)",fg:"#30a050",label:"AI DONE"}
+                :it.aiStatus==="failed"
+                ?{bg:"rgba(255,59,48,0.1)",fg:"#ff3b30",label:"AI FAIL"}
+                :{bg:"rgba(0,0,0,0.06)",fg:"rgba(0,0,0,0.5)",label:"PENDING"};
+              return(
+                <div key={it.id} style={{background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:12,padding:10,display:"flex",gap:10,opacity:reviewSaving&&i<reviewSaveIdx?0.5:1}}>
+                  <div style={{flexShrink:0,width:90}}>
+                    <img src={it.dataUrl} alt={it.name} style={{width:90,height:90,borderRadius:8,objectFit:"cover",display:"block",background:"#1a1a1a"}}/>
+                    <div title={it.name} style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.7)",marginTop:4,lineHeight:1.2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontFamily:"'Barlow Condensed',sans-serif"}}>📄 {it.name}</div>
+                    <div style={{display:"inline-flex",alignItems:"center",gap:4,marginTop:3,padding:"2px 6px",borderRadius:8,background:statusBadge.bg,color:statusBadge.fg,fontSize:9,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>
+                      {it.aiStatus==="analyzing"&&<Spin size={9}/>}
+                      <span>{statusBadge.label}</span>
+                    </div>
+                    {!reviewSaving&&<button onClick={()=>removeReviewItem(it.id)} style={{marginTop:6,width:"100%",background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.25)",borderRadius:6,padding:"3px 6px",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:9.5,cursor:"pointer",letterSpacing:"0.04em"}}>REMOVE</button>}
+                  </div>
+                  <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:6}}>
+                    <input type="text" value={it.title} onChange={e=>updateReviewItem(it.id,{title:e.target.value})} placeholder="Title (AI fills automatically)" disabled={reviewSaving} style={{width:"100%",padding:"7px 9px",border:"1px solid rgba(0,0,0,0.12)",borderRadius:8,fontSize:13,fontFamily:"'Barlow',sans-serif",fontWeight:600}}/>
+                    <textarea value={it.description} onChange={e=>updateReviewItem(it.id,{description:e.target.value})} placeholder="What happened (AI fills automatically)" disabled={reviewSaving} rows={2} style={{width:"100%",padding:"7px 9px",border:"1px solid rgba(0,0,0,0.12)",borderRadius:8,fontSize:12.5,fontFamily:"'Barlow',sans-serif",lineHeight:1.35,resize:"vertical"}}/>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                      {SEVERITY.map(s=>(
+                        <button key={s} onClick={()=>updateReviewItem(it.id,{severity:s})} disabled={reviewSaving} style={{padding:"4px 10px",borderRadius:14,border:`1.5px solid ${it.severity===s?SEV_COLOR[s]:"rgba(0,0,0,0.12)"}`,background:it.severity===s?SEV_BG[s]:"#fff",color:it.severity===s?SEV_COLOR[s]:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10.5,cursor:reviewSaving?"not-allowed":"pointer",letterSpacing:"0.03em"}}>{(SEV_I18N[s]?t(SEV_I18N[s]):s).toUpperCase()}</button>
+                      ))}
+                    </div>
+                    {it.aiError&&<div style={{fontSize:10,color:"#ff3b30",fontStyle:"italic"}}>{it.aiError}</div>}
+                    {(it.component||it.issue)&&<div style={{fontSize:10,color:"rgba(0,0,0,0.55)"}}>{it.component}{it.issue?` · ${it.issue}`:""}</div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* Action bar */}
+          <div style={{padding:"12px 16px",background:"#fff",borderTop:"1px solid rgba(0,0,0,0.08)",display:"flex",gap:8}}>
+            <button onClick={saveAllReview} disabled={reviewSaving||reviewItems.length===0} style={{flex:1,height:48,background:reviewSaving||reviewItems.length===0?"rgba(0,0,0,0.1)":"#ff6b00",border:"none",borderRadius:12,color:reviewSaving||reviewItems.length===0?"rgba(0,0,0,0.3)":"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.05em",cursor:reviewSaving?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+              {reviewSaving?<><Spin size={16}/> SAVING {reviewSaveIdx} OF {reviewItems.length}…</>:<><span style={{fontSize:16}}>💾</span> SAVE ALL {reviewItems.length}</>}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Post-save UNDO/EDIT toast. Fixed above the bottom nav so it's
           visible during the brief 5 s window regardless of form scroll.
