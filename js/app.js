@@ -7592,6 +7592,11 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   const[batchQueue,setBatchQueue]=useState([]);
   const[batchTotal,setBatchTotal]=useState(0);
   const[batchFailed,setBatchFailed]=useState(0);
+  // Filename of the photo currently in the form during batch. The data URL
+  // alone has no name, so we track it alongside so the progress pill can
+  // surface "Now: IMG_2391.jpg" — useful when reviewing in REVIEW later
+  // and figuring out which of 30 photos a given saved entry came from.
+  const[batchCurrentName,setBatchCurrentName]=useState("");
   // Race protection for mid-analysis photo swaps. analyze() writes the
   // photoHash it's working on here at the start, and re-checks before
   // applying the result — if the hash has moved (user swapped to a new
@@ -7776,6 +7781,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       setBatchQueue(files.slice(1));
       setBatchTotal(files.length);
       setBatchFailed(0);
+      setBatchCurrentName(files[0]?.name||"");
     }catch(err){
       console.error("[Batch] first-photo read failed:",err);
       alert("Could not read the first photo: "+err.message);
@@ -8036,8 +8042,10 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
     setBatchQueue(rest);
     if(typeof next==="string"){
       setForm(prev=>({...prev,photos:[next]}));
+      setBatchCurrentName("");
       return;
     }
+    setBatchCurrentName(next?.name||"");
     // File/Blob — read lazily
     const r=new FileReader();
     r.onload=()=>setForm(prev=>({...prev,photos:[r.result]}));
@@ -8060,6 +8068,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       setLastSaved({id:null,title:`Batch complete — ${saved} photo${saved===1?"":"s"} saved${failNote}`,ts:Date.now(),savedEntry:null,batch:true});
       setBatchTotal(0);
       setBatchFailed(0);
+      setBatchCurrentName("");
       setBatchSourceType(null); // CONQUAS-batch marker resets per batch
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -8557,6 +8566,9 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           <div style={{width:28,height:28,borderRadius:"50%",background:"#5856d6",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>📸</div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#5856d6",letterSpacing:"0.04em"}}>BATCH — {batchTotal-batchQueue.length} OF {batchTotal}</div>
+            {batchCurrentName&&(
+              <div title={batchCurrentName} style={{fontSize:10.5,color:"rgba(0,0,0,0.75)",fontWeight:700,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.02em"}}>📄 {batchCurrentName}</div>
+            )}
             <div style={{fontSize:10,color:"rgba(0,0,0,0.55)",marginTop:1}}>
               {analyzing?"AI pre-filling current photo…":saving?"Saving…":batchQueue.length>0?`${batchQueue.length} photo${batchQueue.length>1?"s":""} queued — keep walking, or rectify later in REVIEW / ENTRIES`:"Finishing up…"}
             </div>
