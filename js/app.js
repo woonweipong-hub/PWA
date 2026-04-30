@@ -6126,7 +6126,7 @@ function GeminiSettings({onClose,companyId}){
                 </div>
 
                 <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.3)",borderRadius:8,padding:"10px 12px",marginBottom:8}}>
-                  <div style={{fontSize:11.5,fontWeight:800,color:"#1a7a35",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>OPTION A — TUNNEL OLLAMA OVER HTTPS (RECOMMENDED · NO SOURCE DOWNLOAD)</div>
+                  <div style={{fontSize:11.5,fontWeight:800,color:"#1a7a35",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>OPTION A — TUNNEL OLLAMA OVER HTTPS (RECOMMENDED)</div>
                   <div style={{fontSize:11,color:"#1a4525",lineHeight:1.55}}>
                     Wrap your local Ollama in a public HTTPS URL so the browser is happy. Pick whichever fits.<br/>
                     <b>• ngrok (30 s, free signup):</b> install <a href="https://ngrok.com/download" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>ngrok</a> → run <code>ngrok http 11434</code> → copy the <code>https://....ngrok-free.app</code> URL it prints. URL changes each restart.<br/>
@@ -6148,12 +6148,6 @@ function GeminiSettings({onClose,companyId}){
                   </div>
                 </div>
 
-                <div style={{background:"rgba(255,255,255,0.6)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"10px 12px"}}>
-                  <div style={{fontSize:11.5,fontWeight:800,color:"#1a1a1a",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>OPTION C — RUN SITESHRIMP LOCALLY (ADVANCED · USES SOURCE)</div>
-                  <div style={{fontSize:11,color:"#333",lineHeight:1.55}}>
-                    Serve SiteShrimp's built bundle from your own machine over HTTP, then both sides are localhost and the browser stays out of it. Pull the repo (closed-source — for personal evaluation only), run <code>python -m http.server 8000</code> in the folder, open <code>http://localhost:8000</code>. No tunnel, no Chrome flag, but you maintain a local copy.
-                  </div>
-                </div>
               </div>
             )}
             {[["1","Install Ollama from ollama.com"],["2","Pull a vision model: ollama pull llava (or qwen2.5-vl, llama3.2-vision, minicpm-v)"],["3","Ollama runs at http://localhost:11434 by default"],["4","Enter your Ollama URL below → Test → Save"]].map(([n,t])=>(
@@ -6208,10 +6202,10 @@ function GeminiSettings({onClose,companyId}){
                   <div style={{color:"#666",fontSize:11.5}}>Wait for "success" before continuing. Roughly 4 GB download. Other vision models that work: <span style={codeI}>qwen2.5-vl</span>, <span style={codeI}>llama3.2-vision</span>, <span style={codeI}>minicpm-v</span>, <span style={codeI}>bakllava</span>.</div>
 
                   {sectionHd("3","Pick the path that fits your setup","#cc7000")}
-                  <div style={{color:"#444",marginBottom:6}}>Three ways to connect this site to your local Ollama. Pick whichever fits.</div>
+                  <div style={{color:"#444",marginBottom:6}}>Two ways to connect this site to your local Ollama. Pick whichever fits.</div>
 
                   <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.3)",borderRadius:8,padding:"10px 12px",marginTop:8}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12.5,color:"#1a7a35",letterSpacing:"0.04em",marginBottom:5}}>PATH A — TUNNEL OLLAMA OVER HTTPS (RECOMMENDED · NO SOURCE DOWNLOAD)</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12.5,color:"#1a7a35",letterSpacing:"0.04em",marginBottom:5}}>PATH A — TUNNEL OLLAMA OVER HTTPS (RECOMMENDED)</div>
                     <div style={{color:"#333"}}>
                       Wrap your local Ollama in a public HTTPS URL so the browser is happy. Pick whichever tunnel suits.
                       <div style={{marginTop:8,fontWeight:700,color:"#1a1a1a"}}>A1 — ngrok (easiest, free, ~30 seconds, URL changes per restart):</div>
@@ -6258,18 +6252,6 @@ function GeminiSettings({onClose,companyId}){
                     </div>
                   </div>
 
-                  <div style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"10px 12px",marginTop:8}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12.5,color:"#1a1a1a",letterSpacing:"0.04em",marginBottom:5}}>PATH C — RUN SITESHRIMP LOCALLY (ADVANCED · USES SOURCE)</div>
-                    <div style={{color:"#333"}}>
-                      Serve SiteShrimp's bundle from your own machine over HTTP. Both sides become localhost so the browser stays out of it. Source is closed for distribution; this path is for users who want a fully-local copy and accept that responsibility.
-                      <ol style={{paddingLeft:18,marginTop:6,marginBottom:0}}>
-                        <li>Obtain the SiteShrimp bundle (closed-source — request access if you don't already have a copy).</li>
-                        <li>Open a terminal in the bundle folder.</li>
-                        <li>Run:{blockCode("python -m http.server 8000\n# or, if you have Node:\nnpx serve .")}</li>
-                        <li>Open <span style={codeI}>http://localhost:8000</span> → sign in → AI Setup → Ollama → URL <span style={codeI}>http://localhost:11434</span> → TEST → SAVE.</li>
-                      </ol>
-                    </div>
-                  </div>
 
                   {sectionHd("4","Use it")}
                   <div>Take or upload a photo in <b>LOG</b>. SiteShrimp pre-fills title, description, severity, and component using your local Ollama. The token counter at the top stays at <b>0</b> because nothing leaves your machine.</div>
