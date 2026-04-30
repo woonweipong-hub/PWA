@@ -2866,6 +2866,14 @@ async function exportPhotosZip(defects,projectName,scheme="conquas",onProgress,o
   // saved iso_filename means the ZIP carries the same evidence anchor
   // referenced everywhere else (export CSV, contract advisor, audit log).
   const _isoBase=(name)=>String(name||"").replace(/\.(jpe?g|png|webp)$/i,"");
+  // Per-photo metadata rows for the _entries.csv that ships inside the
+  // ZIP. Reviewers can pair every bundled photo with the originating
+  // defect's title, description, severity, etc. without having to
+  // re-export from REVIEW. Header row matches the in-app CSV export.
+  const _csvEsc=(v)=>`"${String(v==null?"":v).replace(/"/g,'""')}"`;
+  const entryRows=[
+    ["Filename","CONQUAS Element","Folder","Entry ID","Entry Type","Title","Description","Severity","Status","Component","Issue","Location","Assignee","Trade","Logged By","Role","Date","Due Date","Source Filename","ISO 19650 Filename"].join(",")
+  ];
   for(let di=0;di<defects.length;di++){
     const d=defects[di];
     const folder=_bucketFor(d);
@@ -2896,6 +2904,32 @@ async function exportPhotosZip(defects,projectName,scheme="conquas",onProgress,o
         }
         zip.file(`${folder}/${fname}`,blob);
         processed++;
+        // Capture metadata row for _entries.csv at end. Uses isoDate for
+        // sortable dates and matches the CSV export's column order so
+        // the ZIP's manifest is consistent with the in-app CSV.
+        const _conquasEl=typeof conquasElementOf==="function"?conquasElementOf(d.component)||"":"";
+        entryRows.push([
+          _csvEsc(`${folder}/${fname}`),
+          _csvEsc(_conquasEl),
+          _csvEsc(folder),
+          _csvEsc(d.defect_id||d.id||""),
+          _csvEsc(d.entryType||"Defect"),
+          _csvEsc(d.title||""),
+          _csvEsc(d.description||""),
+          _csvEsc(d.severity||""),
+          _csvEsc(d.status||""),
+          _csvEsc(d.component||""),
+          _csvEsc(d.issue||""),
+          _csvEsc(d.location||""),
+          _csvEsc(d.assignee||""),
+          _csvEsc(d.trade||""),
+          _csvEsc(d.loggedBy||""),
+          _csvEsc(d.loggedByRole||""),
+          _csvEsc((d.createdAt||d.created)?new Date(d.createdAt||d.created).toISOString().slice(0,10):""),
+          _csvEsc(d.dueDate||""),
+          _csvEsc(d.original_filename||""),
+          _csvEsc(d.iso_filename||"")
+        ].join(","));
         if(onProgress&&processed%3===0)onProgress(`Bundling ${processed} photo${processed===1?"":"s"}…`);
       }catch(e){
         console.warn("[Photo ZIP] fetch failed:",photoUrl,e);
@@ -2918,7 +2952,12 @@ async function exportPhotosZip(defects,projectName,scheme="conquas",onProgress,o
     Object.keys(counters).sort().forEach(k=>manifest.push(`"${k}",${counters[k]}`));
   }
   manifest.push(``,`Project,${safePart(projectName||"")}`,`Scheme,${scheme}`,`Generated,${new Date().toISOString()}`,`Source,"${defects.length} entries; ${processed} photos bundled; ${skipped} skipped"`,`Naming,"ISO 19650 cached + ${isoComputed} computed on-the-fly + ${isoFailed} fallback"`);
-  zip.file("_manifest.csv",manifest.join("\n"));
+  zip.file("_manifest.csv","﻿"+manifest.join("\n"));
+  // Per-photo entries manifest — full metadata for every bundled photo
+  // (title / description / severity / status / location / assignee /
+  // dates / both filenames). Lets reviewers cross-reference without
+  // re-exporting from REVIEW. UTF-8 BOM for Excel compatibility.
+  zip.file("_entries.csv","﻿"+entryRows.join("\n"));
   if(processed===0){
     throw new Error(`No photos bundled (${skipped} skipped — likely CORS or missing files). Check that photos load in REVIEW first.`);
   }
@@ -3660,6 +3699,25 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
       field("Logged By",`${d.loggedBy||"—"}${d.loggedByRole?" ("+d.loggedByRole+")":""}`,col2,y,fw);y+=9;
       field("Date",fmtDate(d.createdAt||d.created),col1,y,fw);
       field("Due Date",d.dueDate?fmtDate(d.dueDate):"—",col2,y,fw);y+=9;
+      // CONQUAS auto-mapping + filenames row. Reviewers can confirm at a
+      // glance which IF element bucket the entry landed in (Floor/Wall/
+      // Ceiling/Door/Window/Component/M&E Fittings) and pair the photo
+      // with the source phone-camera filename + the ISO 19650 storage
+      // name. Hidden if neither field is set so legacy pre-feature
+      // entries don't render an empty row.
+      const _conquasEl=typeof conquasElementOf==="function"?conquasElementOf(d.component)||"":"";
+      if(_conquasEl||d.original_filename||d.iso_filename){
+        if(_conquasEl){
+          field("CONQUAS Element",_conquasEl,col1,y,fw);
+        }
+        if(d.original_filename){
+          field("Source Filename",d.original_filename,col2,y,fw);
+        }
+        y+=9;
+        if(d.iso_filename){
+          field("ISO 19650 Filename",d.iso_filename,col1,y,contentW-4);y+=9;
+        }
+      }
       // Cost row (if present)
       if(d.costImpact||d.costAmount||d.costResponsible){
         field("Cost Impact",d.costImpact,col1,y,fw);
