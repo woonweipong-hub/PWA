@@ -375,6 +375,16 @@ function displayXlateKey(defectId,targetLang,defect){
 }
 const BCA_SCDF_REVISION_COLORS={added:"#ff00ff",removed:"#ddcc00",existing:"#00cccc"};
 const fileTimestamp=()=>{const d=new Date();return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}_${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}${String(d.getSeconds()).padStart(2,"0")}`;};
+// ISO 8601 short date (YYYY-MM-DD) — sortable, locale-agnostic. Use for
+// filenames, CSV cells, anywhere a sortable date string is needed. Keep
+// long-form display dates ("30 April 2026") for human-readable PDF/UI
+// labels — the rule only applies to filename + machine-sortable contexts.
+// Per the project's ISO naming standard memory: avoid en-GB DD/MM/YYYY.
+const isoDate=(d)=>{
+  const dt=d?new Date(d):new Date();
+  if(isNaN(dt.getTime()))return "";
+  return dt.toISOString().slice(0,10);
+};
 // Sanitize a string for use in filenames: ASCII-safe, dash-separated, capped.
 const _sanitizeForFilename=(s,maxLen=24)=>{
   if(!s)return "";
@@ -2751,7 +2761,7 @@ function exportCSV(defects,projectName){
     esc(d.trade),
     esc(d.loggedBy),
     d.loggedByRole||"",
-    (d.createdAt||d.created)?new Date(d.createdAt||d.created).toLocaleDateString("en-GB"):"",
+    (d.createdAt||d.created)?isoDate(d.createdAt||d.created):"",
     d.dueDate||"",
     d.duration||"",
     esc(d.costImpact),
@@ -2764,7 +2774,7 @@ function exportCSV(defects,projectName){
   const csv=bom+[headers.join(","),...rows].join("\n");
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
-  a.download=`SiteShrimp_${(projectName||"Export").replace(/\s/g,"_")}_${new Date().toLocaleDateString("en-GB").replace(/\//g,"-")}.csv`;
+  a.download=`SiteShrimp_${(projectName||"Export").replace(/\s/g,"_")}_${isoDate()}.csv`;
   a.click();
 }
 
@@ -2983,7 +2993,7 @@ async function exportReportAll(defects,drawings,savedComparisons,projectName,lan
       d.severity||"",d.status||"",
       esc(d.assignee),esc(tx(d.trade)),esc(d.loggedBy),
       d.loggedByRole||"",
-      (d.createdAt||d.created)?new Date(d.createdAt||d.created).toLocaleDateString("en-GB"):"",
+      (d.createdAt||d.created)?isoDate(d.createdAt||d.created):"",
       d.dueDate||"",esc(tx(d.duration)),
       esc(tx(d.costImpact)),esc(tx(d.costResponsible)),d.costAmount||"",
       esc(d.description),
@@ -3008,7 +3018,7 @@ async function exportReportAll(defects,drawings,savedComparisons,projectName,lan
         lines.push([
           esc(dr.name),esc(dr.file),notes.length,markups.length,
           i+1,esc(n.text||n.note||""),esc(n.by||n.author||""),
-          n.at?new Date(n.at).toLocaleDateString("en-GB"):""
+          n.at?isoDate(n.at):""
         ].join(","));
       });
     }
@@ -3021,14 +3031,14 @@ async function exportReportAll(defects,drawings,savedComparisons,projectName,lan
     lines.push([
       esc(sc.baseName),esc(sc.targetName),
       sc.totalAdded||0,sc.totalRemoved||0,
-      sc.savedAt?new Date(sc.savedAt).toLocaleDateString("en-GB"):"",
+      sc.savedAt?isoDate(sc.savedAt):"",
       sc.aiReport?"Yes":"No"
     ].join(","));
   });
   const csv="\uFEFF"+lines.join("\n");
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
-  a.download=`SiteShrimp_Report_${(projectName||"Export").replace(/\s/g,"_")}_${new Date().toLocaleDateString("en-GB").replace(/\//g,"-")}.csv`;
+  a.download=`SiteShrimp_Report_${(projectName||"Export").replace(/\s/g,"_")}_${isoDate()}.csv`;
   document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
 }
@@ -4206,7 +4216,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
         status:"Info",date:now
       })
     : null;
-  const baseName=iso||`SiteShrimp_Report_${(projectName||"Export").replace(/\s/g,"_")}_${now.toLocaleDateString("en-GB").replace(/\//g,"-")}`;
+  const baseName=iso||`SiteShrimp_Report_${(projectName||"Export").replace(/\s/g,"_")}_${isoDate(now)}`;
   const fileName=baseName+".pdf";
   const csvName=baseName+"_measurements.csv";
   // Trigger the companion CSV right after the PDF so the user ends up with
@@ -4422,8 +4432,10 @@ async function exportToGoogleSheets(defects,projectName,companyName,langCode){
   const token=_gsheetToken;
   const headers={"Authorization":"Bearer "+token,"Content-Type":"application/json"};
 
-  // Prepare data rows
-  const fmtDate=d=>d?new Date(d).toLocaleDateString("en-GB"):"";
+  // Prepare data rows — ISO 8601 date in cells so they sort correctly
+  // when imported into Sheets / Excel (en-GB DD/MM/YYYY would be parsed
+  // as text or wrong locale on most installations).
+  const fmtDate=d=>d?isoDate(d):"";
   const headerRow=["ID","Type","Title","Location","Severity","Status","Assignee","Trade","Logged By","Date","Due Date","Duration","Cost Impact","Cost Amount","Cost Responsible","Description","Comments"];
   const dataRows=defects.map(d=>[
     d.defect_id||d.id||"",
@@ -4469,7 +4481,7 @@ async function exportToGoogleSheets(defects,projectName,companyName,langCode){
 
   // Create or update spreadsheet
   let spreadsheetId=cfg.spreadsheetId;
-  const sheetTitle=`${projectName||"Report"} — ${new Date().toLocaleDateString("en-GB")}`;
+  const sheetTitle=`${projectName||"Report"} — ${isoDate()}`;
 
   if(!spreadsheetId){
     // Create new spreadsheet
@@ -18304,7 +18316,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     // built-in) render as CMYK bleed. We copyPages from the jsPDF output AND
     // from each source, so every page in the final file originates from a
     // clean content-stream copy — no embed-as-XObject and no shared state.
-    const fileBase=`SiteShrimp_Compare_${(currentProject?.name||"Export").replace(/\s/g,"_")}_${stamp.toLocaleDateString("en-GB").replace(/\//g,"-")}`;
+    const fileBase=`SiteShrimp_Compare_${(currentProject?.name||"Export").replace(/\s/g,"_")}_${isoDate(stamp)}`;
     const fileName=fileBase+".pdf";
     const jsPdfPageCount=doc.getNumberOfPages();
     if(!nativeInserts.length){doc.save(fileName);return;}
