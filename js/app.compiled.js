@@ -1265,8 +1265,15 @@ setAnalyzeError(null);if(aiReady&&!cancelled)analyze();// If AI is unavailable w
 // capture by picking multiple files, so the review-gate would defeat
 // that workflow.
 const[autoSaveMode,setAutoSaveMode]=useState(()=>local.get(AUTO_SAVE_MODE_KEY)||AUTO_SAVE_MODE_DEFAULT);const persistAutoSaveMode=m=>{setAutoSaveMode(m);local.set(AUTO_SAVE_MODE_KEY,m);};const cycleAutoSaveMode=()=>{const order=["review-first","review-then-auto","always-auto"];const next=order[(order.indexOf(autoSaveMode)+1)%order.length];persistAutoSaveMode(next);};useEffect(()=>{if(!aiResult)return;if(saving||analyzing)return;if(batchPaused)return;// user paused mid-batch to edit current photo
-const isBatchFail=aiResult&&aiResult.__failed;if(!isBatchFail&&!form.title.trim()&&!form.description.trim())return;if(!form.photos.length)return;const inBatch=batchTotal>0||batchQueue.length>0;// Batch mode: always auto-commit (user picked many photos intentionally).
-if(inBatch){submit({auto:true});return;}// Single capture: respect the mode.
+if(!form.photos.length)return;const isBatchFail=aiResult&&aiResult.__failed;const inBatch=batchTotal>0||batchQueue.length>0;// In batch mode, always auto-commit — even if title and description
+// are empty (AI may have returned only prompt-echo strings that the
+// applyAiResult filter stripped out). submit() auto-generates a
+// date-stamp title from the photo, so the photo still lands in the
+// DB and the queue advances. Without this, the queue silently hangs
+// on the first echo-only photo (user-reported as '12 uploaded but
+// only 1 detected').
+if(inBatch){submit({auto:true});return;}// Single-photo mode: wait for user input if AI gave us nothing.
+if(!isBatchFail&&!form.title.trim()&&!form.description.trim())return;// Single capture: respect the mode.
 if(autoSaveMode==="review-first")return;if(autoSaveMode==="review-then-auto"&&count<AUTO_SAVE_REVIEW_THRESHOLD)return;submit({auto:true});// eslint-disable-next-line react-hooks/exhaustive-deps — fire once per AI
 // result becoming available; submit() uses its own latest-form closure.
 },[aiResult]);// Batch-advance: after each auto-save the form is cleared; if more
@@ -1302,9 +1309,16 @@ useEffect(()=>()=>{stagingFiles.forEach(s=>{try{URL.revokeObjectURL(s.thumbUrl);
 try{const photo=form.photos[0];// 1) Cache hit — skip the API entirely (no token burn, instant apply).
 const hash=await photoHash(photo);analysisHashRef.current=hash;const cached=readAiCache(hash);if(cached){setAiResult(cached);applyAiResult(cached);setAnalyzing(false);return;}// 2) Daily-limit gate. Only counts REAL API calls — cache hits above
 // don't consume quota, which is the whole point of the cache.
-const today=new Date().toISOString().slice(0,10);const aiUsage=local.get(AI_LIMIT_KEY)||{date:"",count:0};const todayCount=aiUsage.date===today?aiUsage.count:0;if(todayCount>=AI_DAILY_LIMIT){// In batch mode, surface once in the progress pill instead of N
-// modal alerts blocking the user.
-if(batchTotal===0){alert(`AI analysis limit reached (${AI_DAILY_LIMIT}/day).\n\nYou can still log entries manually.`);}setAnalyzing(false);return;}// 3) Real API call. Pass context from previous entry when available so
+// Ollama runs entirely locally with no per-day cost, so the limit
+// doesn't apply there — bypass the gate when provider is Ollama
+// (otherwise a heavy day on cloud providers retroactively throttles
+// the user's free local AI, which makes no sense).
+const _provider=local.get(AI_PROVIDER_KEY)||"gemini";const today=new Date().toISOString().slice(0,10);const aiUsage=local.get(AI_LIMIT_KEY)||{date:"",count:0};const todayCount=aiUsage.date===today?aiUsage.count:0;if(_provider!=="ollama"&&todayCount>=AI_DAILY_LIMIT){// In batch mode, surface once in the progress pill instead of N
+// modal alerts blocking the user. Also set the __failed sentinel
+// so the auto-save effect still fires and the queue advances —
+// without this, batch stalls silently on the first photo where
+// the limit hits and remaining photos never get saved.
+if(batchTotal===0){alert(`AI analysis limit reached (${AI_DAILY_LIMIT}/day).\n\nYou can still log entries manually.`);}else{setAiResult({__failed:true,__limit:true});}setAnalyzing(false);return;}// 3) Real API call. Pass context from previous entry when available so
 // AI can make sharper guesses for sequential same-area logging.
 const compressed=await compressPhoto(photo,600,0.7);try{window.__lastAiError=null;}catch{}// Top-level safety net: regardless of what happens inside the AI
 // chain (provider hangs, retry-loop bugs, transient cascades, etc.),
@@ -1317,7 +1331,10 @@ const ANALYZE_HARD_CEILING_MS=90000;const result=await Promise.race([analyzePhot
 // between the start of this call and now. analysisHashRef is written
 // by whichever analyze() started most recently; if it's moved, we
 // are no longer the active analysis.
-if(analysisHashRef.current!==hash){setAnalyzing(false);return;}if(result&&(result.title||result.description)){bumpAiUsage(getLastAiTokens());writeAiCache(hash,result);setAiResult(result);applyAiResult(result);}else{// In batch mode, don't surface per-photo errors — let the batch
+if(analysisHashRef.current!==hash){setAnalyzing(false);return;}if(result&&(result.title||result.description)){// Skip the daily-limit counter for local Ollama — it's free, no
+// per-day cost. Counting it here would let an Ollama-only user
+// hit AI_DAILY_LIMIT and get throttled needlessly.
+if(_provider!=="ollama")bumpAiUsage(getLastAiTokens());writeAiCache(hash,result);setAiResult(result);applyAiResult(result);}else{// In batch mode, don't surface per-photo errors — let the batch
 // keep moving and save this record with a placeholder so the user
 // still has the photo logged. The auto-save effect picks up this
 // sentinel. In single-photo mode, surface as an inline red pill

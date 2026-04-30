@@ -8530,12 +8530,19 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
     if(!aiResult)return;
     if(saving||analyzing)return;
     if(batchPaused)return;  // user paused mid-batch to edit current photo
-    const isBatchFail=aiResult&&aiResult.__failed;
-    if(!isBatchFail&&!form.title.trim()&&!form.description.trim())return;
     if(!form.photos.length)return;
+    const isBatchFail=aiResult&&aiResult.__failed;
     const inBatch=batchTotal>0||batchQueue.length>0;
-    // Batch mode: always auto-commit (user picked many photos intentionally).
+    // In batch mode, always auto-commit — even if title and description
+    // are empty (AI may have returned only prompt-echo strings that the
+    // applyAiResult filter stripped out). submit() auto-generates a
+    // date-stamp title from the photo, so the photo still lands in the
+    // DB and the queue advances. Without this, the queue silently hangs
+    // on the first echo-only photo (user-reported as '12 uploaded but
+    // only 1 detected').
     if(inBatch){submit({auto:true});return;}
+    // Single-photo mode: wait for user input if AI gave us nothing.
+    if(!isBatchFail&&!form.title.trim()&&!form.description.trim())return;
     // Single capture: respect the mode.
     if(autoSaveMode==="review-first")return;
     if(autoSaveMode==="review-then-auto"&&count<AUTO_SAVE_REVIEW_THRESHOLD)return;
@@ -8643,14 +8650,24 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       }
       // 2) Daily-limit gate. Only counts REAL API calls — cache hits above
       // don't consume quota, which is the whole point of the cache.
+      // Ollama runs entirely locally with no per-day cost, so the limit
+      // doesn't apply there — bypass the gate when provider is Ollama
+      // (otherwise a heavy day on cloud providers retroactively throttles
+      // the user's free local AI, which makes no sense).
+      const _provider=local.get(AI_PROVIDER_KEY)||"gemini";
       const today=new Date().toISOString().slice(0,10);
       const aiUsage=local.get(AI_LIMIT_KEY)||{date:"",count:0};
       const todayCount=aiUsage.date===today?aiUsage.count:0;
-      if(todayCount>=AI_DAILY_LIMIT){
+      if(_provider!=="ollama"&&todayCount>=AI_DAILY_LIMIT){
         // In batch mode, surface once in the progress pill instead of N
-        // modal alerts blocking the user.
+        // modal alerts blocking the user. Also set the __failed sentinel
+        // so the auto-save effect still fires and the queue advances —
+        // without this, batch stalls silently on the first photo where
+        // the limit hits and remaining photos never get saved.
         if(batchTotal===0){
           alert(`AI analysis limit reached (${AI_DAILY_LIMIT}/day).\n\nYou can still log entries manually.`);
+        }else{
+          setAiResult({__failed:true,__limit:true});
         }
         setAnalyzing(false);
         return;
@@ -8680,7 +8697,10 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         return;
       }
       if(result&&(result.title||result.description)){
-        bumpAiUsage(getLastAiTokens());
+        // Skip the daily-limit counter for local Ollama — it's free, no
+        // per-day cost. Counting it here would let an Ollama-only user
+        // hit AI_DAILY_LIMIT and get throttled needlessly.
+        if(_provider!=="ollama")bumpAiUsage(getLastAiTokens());
         writeAiCache(hash,result);
         setAiResult(result);
         applyAiResult(result);
