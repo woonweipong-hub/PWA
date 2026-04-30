@@ -1677,7 +1677,7 @@ function getAIPrompt(){
   // different language preferences. Only freeform fields (title, description,
   // location_area) are localized. Categoricals are translated at render via tOpt().
   const langClause=lang==="en"?"":` Write "title", "description", and "location_area" in ${langName}. Keep all other field values in English exactly as specified.`;
-  return 'Analyze this construction site photo. Respond in valid JSON only, no markdown fences:\n{"title":"max 5 word defect title","severity":"one of: Critical Major Minor Observation","description":"2 sentence technical description of what is wrong and where","trade":"responsible trade: Plumbing Electrical Waterproofing Painting Tiling Structural Carpentry Aircon Civil Landscaping General","component":"PICK EXACTLY ONE from this canonical list — Wall, Floor, Ceiling, Door, Window, Cabinet, Plumbing, Electrical, Aircon, Painting, Tiling, Waterproofing, Column, Beam, Slab, Roof, General. CONQUAS Internal-Finishes mapping is automatic from this field, so accuracy here drives correct categorisation: pick Floor/Wall/Ceiling/Door/Window for visible interior surfaces; Cabinet for joinery / sanitary ware / vanity / wardrobe (CONQUAS Component bucket); Plumbing/Electrical/Aircon for M&E fittings. Use Column/Beam/Slab/Roof only for structural or external work. General is a last resort","issue":"most applicable defect type for that component — use BCA Good Industry Practice terminology where applicable e.g. hollowness lippage delamination for tiling; peeling bubbling brush marks for painting; bulging cracking dampness for waterproofing; misalignment chipping for joinery; otherwise Crack Leak Peeling Loose Stain Blocked Chipped Sagging Exposed-rebar Missing Damaged","entry_type":"one of: Defect Observation Instruction — Defect for quality/workmanship, Observation for non-urgent notes, Instruction for directives","location_area":"short visible-area description from photo context e.g. bathroom ceiling external wall corridor floor lift lobby site perimeter","room_area":"specific room or area visible in photo. Prefer exact match from: Kitchen Bathroom Master Bedroom Bedroom 2 Bedroom 3 Living Room Dining Room Balcony Toilet Store Room Corridor Staircase Lobby Car Park Yard Entrance Hallway Utility Room Laundry Pantry Meeting Room Office Reception. Otherwise return a short descriptive phrase matching what the photo shows (e.g. residential courtyard, rooftop terrace, basement carpark ramp, exterior facade, stair core).","level_floor":"best-guess floor level from photo context (windows, stairs, skylines, vegetation, vehicles). Prefer exact match from: Basement 2, Basement 1, Ground Floor, 1st Floor, 2nd Floor, 3rd Floor, 4th Floor, 5th Floor, 6th Floor, 7th Floor, 8th Floor, 9th Floor, 10th Floor, Roof, Attic, External, Common Area. Otherwise return a descriptive phrase (e.g. upper floor, podium level, ground level exterior). Leave empty only if photo shows no vertical cue at all.","zone":"best-guess zone/block/area type from photo context. Prefer exact match from: Zone A, Zone B, Zone C, Zone D, North Wing, South Wing, East Wing, West Wing, Block A, Block B, Block C, Tower 1, Tower 2, Tower 3. Otherwise return a descriptive spatial phrase (e.g. residential courtyard, commercial lobby, service corridor, main atrium, loading bay). Leave empty only if photo shows no spatial context at all.","time_needed":"rough repair scope — one of: Same day, 1 day, 2 days, 3 days, 1 week, 2 weeks, 1 month, 2 months, 3 months, TBD","cost_change":"cost impact — default to \\"No change\\" for workmanship/minor defects; use \\"To be confirmed by QS\\" when rework scope is unclear; \\"Variation Order (VO)\\" only when the issue indicates a design/scope variation requiring contractual variation","safety_risk":1,"suggested_assignee":"trade role e.g. Plumber Electrician Painter Tiler Contractor"}\nReplace safety_risk 1 with integer 1–5 where 5 is life-threatening hazard.'+langClause;
+  return 'Analyze this construction site photo. Respond in valid JSON only, no markdown fences:\n{"title":"max 5 word defect title","severity":"one of: Critical Major Minor Observation","description":"2 sentence technical description of what is wrong and where","trade":"responsible trade: Plumbing Electrical Waterproofing Painting Tiling Structural Carpentry Aircon Civil Landscaping General","component":"PICK EXACTLY ONE from this canonical list — Wall, Floor, Ceiling, Door, Window, Cabinet, Plumbing, Electrical, Aircon, Painting, Tiling, Waterproofing, Column, Beam, Slab, Roof, General. CONQUAS Internal-Finishes mapping is automatic from this field, so accuracy here drives correct categorisation: pick Floor/Wall/Ceiling/Door/Window for visible interior surfaces; Cabinet for joinery / sanitary ware / vanity / wardrobe (CONQUAS Component bucket); Plumbing/Electrical/Aircon for M&E fittings. Use Column/Beam/Slab/Roof only for structural or external work. General is a last resort","issue":"most applicable defect type for that component — use BCA Good Industry Practice terminology where applicable e.g. hollowness lippage delamination for tiling; peeling bubbling brush marks for painting; bulging cracking dampness for waterproofing; misalignment chipping for joinery; otherwise Crack Leak Peeling Loose Stain Blocked Chipped Sagging Exposed-rebar Missing Damaged","entry_type":"one of: Defect Observation Instruction Pass — Defect for quality/workmanship issues, Observation for non-urgent notes, Instruction for directives, Pass when the work in the photo meets standard with NO visible defect (use this for batch QA where many photos will pass — fill title/description with what was checked, e.g. \\\"Wall finish — no defect\\\", and set severity to Observation)","location_area":"short visible-area description from photo context e.g. bathroom ceiling external wall corridor floor lift lobby site perimeter","room_area":"specific room or area visible in photo. Prefer exact match from: Kitchen Bathroom Master Bedroom Bedroom 2 Bedroom 3 Living Room Dining Room Balcony Toilet Store Room Corridor Staircase Lobby Car Park Yard Entrance Hallway Utility Room Laundry Pantry Meeting Room Office Reception. Otherwise return a short descriptive phrase matching what the photo shows (e.g. residential courtyard, rooftop terrace, basement carpark ramp, exterior facade, stair core).","level_floor":"best-guess floor level from photo context (windows, stairs, skylines, vegetation, vehicles). Prefer exact match from: Basement 2, Basement 1, Ground Floor, 1st Floor, 2nd Floor, 3rd Floor, 4th Floor, 5th Floor, 6th Floor, 7th Floor, 8th Floor, 9th Floor, 10th Floor, Roof, Attic, External, Common Area. Otherwise return a descriptive phrase (e.g. upper floor, podium level, ground level exterior). Leave empty only if photo shows no vertical cue at all.","zone":"best-guess zone/block/area type from photo context. Prefer exact match from: Zone A, Zone B, Zone C, Zone D, North Wing, South Wing, East Wing, West Wing, Block A, Block B, Block C, Tower 1, Tower 2, Tower 3. Otherwise return a descriptive spatial phrase (e.g. residential courtyard, commercial lobby, service corridor, main atrium, loading bay). Leave empty only if photo shows no spatial context at all.","time_needed":"rough repair scope — one of: Same day, 1 day, 2 days, 3 days, 1 week, 2 weeks, 1 month, 2 months, 3 months, TBD","cost_change":"cost impact — default to \\"No change\\" for workmanship/minor defects; use \\"To be confirmed by QS\\" when rework scope is unclear; \\"Variation Order (VO)\\" only when the issue indicates a design/scope variation requiring contractual variation","safety_risk":1,"suggested_assignee":"trade role e.g. Plumber Electrician Painter Tiler Contractor"}\nReplace safety_risk 1 with integer 1–5 where 5 is life-threatening hazard.'+langClause;
 }
 // Backward-compatible export — callers that don't need language awareness
 // still see English. New callers should call getAIPrompt() per request to
@@ -8122,7 +8122,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           name:f.name||`photo-${i+1}`,
           dataUrl:r.result,
           title:"",description:"",severity:"Major",
-          component:"",issue:"",
+          component:"",issue:"",entryType:"Defect",
           aiStatus:"pending",aiError:""
         });
         r.onerror=()=>resolve(null);
@@ -8194,6 +8194,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         }
         let sev=SEVERITY.includes(result.severity)?result.severity:"Major";
         if(result.safety_risk&&result.safety_risk>=4)sev="Critical";
+        const validEntry=["Defect","Observation","Instruction","Pass"].find(e=>e.toLowerCase()===String(result.entry_type||"").toLowerCase());
         setReviewItems(prev=>prev.map(it=>it.id===itemId?{
           ...it,
           aiStatus:"done",
@@ -8202,6 +8203,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           severity:it.severity==="Major"?sev:it.severity,
           component:resolvedComponent,
           issue:resolvedIssue,
+          entryType:validEntry||it.entryType||"Defect",
         }:it));
       }catch(err){
         console.warn("[Review] AI failed for",items[i].name,err);
@@ -8256,7 +8258,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       workCategory:form.workCategory||savedWorkCat||"",
       projectId:currentProject?.id||"default",
       projectName:currentProject?.name||"",
-      entryType:"Defect",
+      entryType:item.entryType||"Defect",
       trade,
       status:"Open",
       loggedBy:member?.name||"",
@@ -8382,7 +8384,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         if(result.issue)writeAi("issue",result.issue.trim());
       }
       if(result.entry_type){
-        const valid=["Defect","Observation","Instruction"].find(t=>t.toLowerCase()===result.entry_type.toLowerCase());
+        const valid=["Defect","Observation","Instruction","Pass"].find(t=>t.toLowerCase()===result.entry_type.toLowerCase());
         if(valid)writeAi("entryType",valid);
       }
       // Room / Area — empty-only so batch carry-overs are preserved

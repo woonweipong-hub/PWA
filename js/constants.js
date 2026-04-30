@@ -2,9 +2,9 @@
 // Entry types, statuses, severities, roles, components, location presets
 
 // ── Entry Types ──────────────────────────────────────────────────
-const ENTRY_TYPES = ["Observation", "Defect", "Update", "Instruction"];
-const ENTRY_TYPE_ICON = { Observation: "\u{1F441}", Defect: "\u26A0\uFE0F", Update: "\u{1F504}", Instruction: "\u{1F4CB}" };
-const ENTRY_TYPE_COLOR = { Observation: "#34aadc", Defect: "#ff3b30", Update: "#ff9500", Instruction: "#5856d6" };
+const ENTRY_TYPES = ["Observation", "Defect", "Update", "Instruction", "Pass"];
+const ENTRY_TYPE_ICON = { Observation: "\u{1F441}", Defect: "\u26A0\uFE0F", Update: "\u{1F504}", Instruction: "\u{1F4CB}", Pass: "\u2705" };
+const ENTRY_TYPE_COLOR = { Observation: "#34aadc", Defect: "#ff3b30", Update: "#ff9500", Instruction: "#5856d6", Pass: "#30d158" };
 const ENTRY_TYPE_BG = { Observation: "rgba(52,170,220,0.12)", Defect: "rgba(255,59,48,0.12)", Update: "rgba(255,149,0,0.12)", Instruction: "rgba(88,86,214,0.12)" };
 
 // Palette for custom entry types (cycles through these)

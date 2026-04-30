@@ -1634,6 +1634,7 @@
     "Observation": "Pemerhatian",
     "Defect": "Kecacatan",
     "Update": "Kemaskini",
-    "Instruction": "Arahan"
+    "Instruction": "Arahan",
+    "Pass": "lulus"
   }
 }

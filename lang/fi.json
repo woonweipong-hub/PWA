@@ -1634,6 +1634,7 @@
     "Observation": "Havainto",
     "Defect": "Vika",
     "Update": "Päivitys",
-    "Instruction": "Ohje"
+    "Instruction": "Ohje",
+    "Pass": "Syöttö"
   }
 }

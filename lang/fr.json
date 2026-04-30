@@ -1634,6 +1634,7 @@
     "Observation": "Observation",
     "Defect": "Défaut",
     "Update": "Mise à jour",
-    "Instruction": "Instruction"
+    "Instruction": "Instruction",
+    "Pass": "Passer"
   }
 }

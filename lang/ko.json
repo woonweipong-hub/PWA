@@ -1634,6 +1634,7 @@
     "Observation": "관찰",
     "Defect": "결함",
     "Update": "업데이트",
-    "Instruction": "지시"
+    "Instruction": "지시",
+    "Pass": "통과하다"
   }
 }

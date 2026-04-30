@@ -1634,6 +1634,7 @@
     "Observation": "Pengamatan",
     "Defect": "Cacat",
     "Update": "Pembaruan",
-    "Instruction": "Instruksi"
+    "Instruction": "Instruksi",
+    "Pass": "Lulus"
   }
 }

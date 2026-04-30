@@ -1634,6 +1634,7 @@
     "Observation": "Iagttagelse",
     "Defect": "Defekt",
     "Update": "Opdatering",
-    "Instruction": "Instruks"
+    "Instruction": "Instruks",
+    "Pass": "Passere"
   }
 }

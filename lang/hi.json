@@ -1634,6 +1634,7 @@
     "Observation": "अवलोकन",
     "Defect": "दोष",
     "Update": "अपडेट",
-    "Instruction": "निर्देश"
+    "Instruction": "निर्देश",
+    "Pass": "उत्तीर्ण"
   }
 }

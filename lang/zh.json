@@ -1634,6 +1634,7 @@
     "Observation": "观察",
     "Defect": "缺陷",
     "Update": "更新",
-    "Instruction": "指令"
+    "Instruction": "指令",
+    "Pass": "经过"
   }
 }

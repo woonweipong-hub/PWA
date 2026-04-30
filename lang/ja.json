@@ -1634,6 +1634,7 @@
     "Observation": "所見",
     "Defect": "不具合",
     "Update": "更新",
-    "Instruction": "指示"
+    "Instruction": "指示",
+    "Pass": "合格"
   }
 }

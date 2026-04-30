@@ -1634,6 +1634,7 @@
     "Observation": "Gözlem",
     "Defect": "Kusur",
     "Update": "Güncelleme",
-    "Instruction": "Talimat"
+    "Instruction": "Talimat",
+    "Pass": "Geçmek"
   }
 }

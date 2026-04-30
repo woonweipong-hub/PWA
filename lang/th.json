@@ -1634,6 +1634,7 @@
     "Observation": "ข้อสังเกต",
     "Defect": "ข้อบกพร่อง",
     "Update": "อัปเดต",
-    "Instruction": "คำสั่ง"
+    "Instruction": "คำสั่ง",
+    "Pass": "ผ่าน"
   }
 }

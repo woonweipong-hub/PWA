@@ -1639,6 +1639,7 @@
     "Observation": "Observation",
     "Defect": "Defect",
     "Update": "Update",
-    "Instruction": "Instruction"
+    "Instruction": "Instruction",
+    "Pass": "Pass"
   }
 }

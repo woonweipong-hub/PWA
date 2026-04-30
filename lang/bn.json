@@ -889,7 +889,7 @@
   "help": {
     "title": "সাহায্য",
     "features": "বৈশিষ্ট্য",
-    "disclaimer": "DISCLAIMER",
+    "disclaimer": "দাবিত্যাগ",
     "help_features": "সাহায্য, ফাংশন এবং দাবিত্যাগ",
     "guides_tips": "গাইড ও টিপস",
     "practical_tips": "ব্যবহারিক টিপস",
@@ -1634,6 +1634,7 @@
     "Observation": "পর্যবেক্ষণ",
     "Defect": "ত্রুটি",
     "Update": "আপডেট",
-    "Instruction": "নির্দেশ"
+    "Instruction": "নির্দেশ",
+    "Pass": "পাস"
   }
 }
