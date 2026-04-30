@@ -2747,7 +2747,7 @@ function typeBg(t){
 
 function exportCSV(defects,projectName){
   const esc=v=>`"${String(v||"").replace(/"/g,'""')}"`;
-  const headers=["ID","Entry Type","Title","Component","Issue","Location","Severity","Status","Assignee","Trade","Logged By","Role","Date","Due Date","Duration","Cost Impact","Cost Responsible","Cost Amount","Description","Comments"];
+  const headers=["ID","Entry Type","Title","Component","Issue","Location","Severity","Status","Assignee","Trade","Logged By","Role","Date","Due Date","Duration","Cost Impact","Cost Responsible","Cost Amount","Description","Comments","Source Filename"];
   const rows=defects.map(d=>[
     d.defect_id||d.id||"",
     d.entryType||"Defect",
@@ -2768,7 +2768,8 @@ function exportCSV(defects,projectName){
     esc(d.costResponsible),
     d.costAmount||"",
     esc(d.description),
-    esc((d.comments||[]).filter(c=>c.text).map(c=>`${c.by}: ${c.text}`).join(" | "))
+    esc((d.comments||[]).filter(c=>c.text).map(c=>`${c.by}: ${c.text}`).join(" | ")),
+    esc(d.original_filename)
   ].join(","));
   const bom="\uFEFF";
   const csv=bom+[headers.join(","),...rows].join("\n");
@@ -2971,7 +2972,7 @@ async function exportReportAll(defects,drawings,savedComparisons,projectName,lan
     h("createdAt","Date"),h("dueDate","Due Date"),h("duration","Duration"),
     h("costImpact","Cost Impact"),h("costResponsible","Cost Responsible"),
     h("costAmount","Cost Amount"),h("description","Description"),
-    h("comments","Comments"),"Occurrences","Pin Locations"
+    h("comments","Comments"),"Occurrences","Pin Locations","Source Filename"
   ];
   lines.push(defectHeaders.join(","));
   (defects||[]).forEach(d=>{
@@ -2999,7 +3000,8 @@ async function exportReportAll(defects,drawings,savedComparisons,projectName,lan
       esc(d.description),
       esc((d.comments||[]).filter(c=>c.text).map(c=>`${c.by}: ${c.text}`).join(" | ")),
       occurrences,
-      esc(locParts.join(" | "))
+      esc(locParts.join(" | ")),
+      esc(d.original_filename)
     ].join(","));
   });
   // Section 2: Drawing annotations (notes + markup counts)
@@ -4436,7 +4438,7 @@ async function exportToGoogleSheets(defects,projectName,companyName,langCode){
   // when imported into Sheets / Excel (en-GB DD/MM/YYYY would be parsed
   // as text or wrong locale on most installations).
   const fmtDate=d=>d?isoDate(d):"";
-  const headerRow=["ID","Type","Title","Location","Severity","Status","Assignee","Trade","Logged By","Date","Due Date","Duration","Cost Impact","Cost Amount","Cost Responsible","Description","Comments"];
+  const headerRow=["ID","Type","Title","Location","Severity","Status","Assignee","Trade","Logged By","Date","Due Date","Duration","Cost Impact","Cost Amount","Cost Responsible","Description","Comments","Source Filename"];
   const dataRows=defects.map(d=>[
     d.defect_id||d.id||"",
     d.entryType||"Defect",
@@ -4454,7 +4456,8 @@ async function exportToGoogleSheets(defects,projectName,companyName,langCode){
     d.costAmount||"",
     tx(d.costResponsible)||"",
     d.description||"",
-    (d.comments||[]).filter(c=>c.text).map(c=>`${c.author||c.by||""}: ${c.text||""}`).join(" | ")
+    (d.comments||[]).filter(c=>c.text).map(c=>`${c.author||c.by||""}: ${c.text||""}`).join(" | "),
+    d.original_filename||""
   ]);
 
   // Summary rows
@@ -10773,7 +10776,10 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
       if(dateToR&&(!ds||ds>dateToR))return false;
     }
     if(q){
-      const hay=[d.title,d.description,d.component,d.issue,d.assignee,d.location,d.loggedBy,d.entryType,d.defect_id].filter(Boolean).join(" ").toLowerCase();
+      // Includes original_filename so users can search by source phone-
+      // gallery name (e.g. 'IMG_2391') to find entries from a specific
+      // photo even when the AI-generated title doesn't mention it.
+      const hay=[d.title,d.description,d.component,d.issue,d.assignee,d.location,d.loggedBy,d.entryType,d.defect_id,d.original_filename].filter(Boolean).join(" ").toLowerCase();
       if(!hay.includes(q))return false;
     }
     return true;
