@@ -8509,6 +8509,9 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       projectName:currentProject?.name||"",
       entryType:item.entryType||"Defect",
       trade,
+      // Same source-traceability stamp as the regular batch path —
+      // each review item has the original File.name attached.
+      ...(item.name?{original_filename:item.name}:{}),
       status:"Open",
       loggedBy:member?.name||"",
       loggedByRole:member?.role||"",
@@ -9106,6 +9109,11 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         // marker is armed but no batch starts) cannot taint a later
         // single-photo save.
         ...(batchSourceType&&inBatch?{source_type:batchSourceType}:{}),
+        // Original phone-camera / file-picker name when known. Lets the
+        // user trace a saved entry back to the source image in their
+        // gallery / DCIM folder. Only set during batch (the only path
+        // where we still have the File.name reliably).
+        ...(inBatch&&batchCurrentName?{original_filename:batchCurrentName}:{}),
         status:"Open",loggedBy:member?.name||"",
         loggedByRole:member?.role||"",
         createdAt:DB.serverTimestamp(),
@@ -11314,6 +11322,11 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
             {q&&dv.description&&dv.description.toLowerCase().includes(q)&&(
               <div style={{fontSize:11,color:"rgba(0,0,0,0.45)",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}><Highlight text={dv.description.slice(0,100)} query={q}/></div>
             )}
+            {/* Original phone-camera / file-picker filename (only set on
+                batch + review-mode saves; older entries don't have it).
+                Useful when a foreman cross-references back to the source
+                photo in their DCIM folder. */}
+            {d.original_filename&&<div title={d.original_filename} style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Courier New',monospace",marginBottom:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📄 <Highlight text={d.original_filename} query={q}/></div>}
             <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",display:"flex",justifyContent:"space-between"}}>
               <span>→ <Highlight text={d.assignee} query={q}/></span>
               <span>{d.created?new Date(d.created).toLocaleDateString():"Just now"}</span>
