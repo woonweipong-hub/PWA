@@ -1964,7 +1964,7 @@ async function analyzeWithOllama(cfg,base64Image,prompt){
     if(!parsed)_setAiError("Ollama response could not be parsed as JSON — see console");
     return parsed;
   }catch(err){
-    const msg=`Ollama request failed — ${err.message||err} (is Ollama running? HTTPS page can't reach http://localhost)`;
+    const msg=`Ollama request failed — ${err.message||err} (is Ollama running? HTTPS page can't reach http://localhost — also set OLLAMA_ORIGINS to your origin)`;
     console.error("[AI]",msg);
     _setAiError(msg);
     return null;
@@ -6180,7 +6180,11 @@ function GeminiSettings({onClose,companyId}){
               <div>{ok?"✓ AI connected! Photos will be auto-analyzed.":"✗ Connection failed."}</div>
               {detail&&<div style={{fontSize:11,fontWeight:500,marginTop:4,opacity:0.85,wordBreak:"break-word"}}>{detail}</div>}
               {!ok&&provider==="gemini"&&<div style={{fontSize:11,fontWeight:500,marginTop:6,opacity:0.75}}>Verify the key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" style={{color:"#cc0000",textDecoration:"underline"}}>aistudio.google.com/apikey</a> — or check that Generative Language API is enabled in Google Cloud.</div>}
-              {!ok&&provider==="ollama"&&<div style={{fontSize:11,fontWeight:500,marginTop:6,opacity:0.75}}>Is Ollama running and the model pulled (<code>ollama pull llava</code>)? If the app is served over HTTPS (e.g. siteshrimp.org), browsers block HTTPS→HTTP requests to <code>localhost</code>. Run the app locally, or allow the origin at <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code> and add your Ollama URL.</div>}
+              {!ok&&provider==="ollama"&&<div style={{fontSize:11,fontWeight:500,marginTop:6,opacity:0.75,lineHeight:1.5}}>
+                <div><b>1. Is Ollama running and the model pulled?</b> Check with <code>ollama list</code>. If empty, run <code>ollama pull llava</code>.</div>
+                <div style={{marginTop:4}}><b>2. HTTPS → HTTP localhost is blocked.</b> If the app is served over HTTPS (e.g. siteshrimp.org), browsers refuse the request. Either run the app locally, or allow the origin at <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code> (paste your origin, restart Chrome).</div>
+                <div style={{marginTop:4}}><b>3. CORS — Ollama also has to allow your origin.</b> Even after #2, Ollama rejects non-localhost callers by default. Before <code>ollama serve</code>, set <code>OLLAMA_ORIGINS=https://siteshrimp.org</code> (or <code>*</code> for any origin during testing). Windows PowerShell: <code>$env:OLLAMA_ORIGINS="https://siteshrimp.org"</code>.</div>
+              </div>}
               {!ok&&provider==="openai"&&<div style={{fontSize:11,fontWeight:500,marginTop:6,opacity:0.75}}>Verify the key at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" style={{color:"#cc0000",textDecoration:"underline"}}>platform.openai.com/api-keys</a> — and confirm the base URL and model (e.g. <code>gpt-4o-mini</code>) match what your key has access to.</div>}
               {!ok&&provider==="groq"&&<div style={{fontSize:11,fontWeight:500,marginTop:6,opacity:0.75}}>Verify the key at <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" style={{color:"#cc0000",textDecoration:"underline"}}>console.groq.com/keys</a> — and check the model is current at <a href="https://console.groq.com/docs/vision" target="_blank" rel="noopener noreferrer" style={{color:"#cc0000",textDecoration:"underline"}}>console.groq.com/docs/vision</a> (vision lineup rotates).</div>}
             </div>
