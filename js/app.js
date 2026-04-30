@@ -6128,11 +6128,11 @@ function GeminiSettings({onClose,companyId}){
                 <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.3)",borderRadius:8,padding:"10px 12px",marginBottom:8}}>
                   <div style={{fontSize:11.5,fontWeight:800,color:"#1a7a35",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>OPTION A — TUNNEL OLLAMA OVER HTTPS (RECOMMENDED)</div>
                   <div style={{fontSize:11,color:"#1a4525",lineHeight:1.55}}>
-                    Wrap your local Ollama in a public HTTPS URL so the browser is happy. Pick whichever fits.<br/>
-                    <b>• ngrok (30 s, free signup):</b> install <a href="https://ngrok.com/download" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>ngrok</a> → run <code>ngrok http 11434</code> → copy the <code>https://....ngrok-free.app</code> URL it prints. URL changes each restart.<br/>
-                    <b>• Cloudflare Tunnel (persistent URL, free):</b> install <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>cloudflared</a> → run <code>cloudflared tunnel --url http://localhost:11434</code> → copy the <code>https://....trycloudflare.com</code> URL.<br/>
-                    <b>• Tailscale Funnel (permanent URL, free):</b> install <a href="https://tailscale.com/download" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>Tailscale</a> → sign in → run <code>tailscale funnel 11434</code> → copy the <code>.ts.net</code> URL.<br/>
-                    Then in <b>all three</b> cases: stop Ollama, re-start with origin allowed (<code>$env:OLLAMA_ORIGINS="{myOrigin}"; ollama serve</code> on Windows · <code>OLLAMA_ORIGINS="{myOrigin}" ollama serve</code> on macOS/Linux), paste the tunnel URL into OLLAMA SERVER URL below, tap TEST.
+                    Wrap your local Ollama in a public HTTPS URL so the browser stops blocking it. Persistent-URL options first — set once, paste into SiteShrimp once, never touch again.<br/>
+                    <b>• Tailscale Funnel</b> <i>(best · permanent URL, free for ~3 devices):</i> install <a href="https://tailscale.com/download" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>Tailscale</a> → sign in → run <code>tailscale funnel 11434</code> → copy the <code>.ts.net</code> URL.<br/>
+                    <b>• Cloudflare Tunnel</b> <i>(free; permanent if you bind a domain):</i> install <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>cloudflared</a> → quick mode <code>cloudflared tunnel --url http://localhost:11434</code> → URL is per-session. For permanent: configure a named tunnel + Cloudflare-managed subdomain.<br/>
+                    <b>• ngrok</b> <i>(quickest first-time test only · URL changes every restart):</i> install <a href="https://ngrok.com/download" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>ngrok</a>, free signup → <code>ngrok http 11434</code>. You'll have to re-paste the URL into SiteShrimp each time.<br/>
+                    For <b>any</b> of these: stop Ollama, re-start with origin allowed (<code>$env:OLLAMA_ORIGINS="{myOrigin}"; ollama serve</code> on Windows · <code>OLLAMA_ORIGINS="{myOrigin}" ollama serve</code> on macOS/Linux), paste the tunnel URL into OLLAMA SERVER URL below, tap TEST.
                   </div>
                 </div>
 
@@ -6207,26 +6207,26 @@ function GeminiSettings({onClose,companyId}){
                   <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.3)",borderRadius:8,padding:"10px 12px",marginTop:8}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12.5,color:"#1a7a35",letterSpacing:"0.04em",marginBottom:5}}>PATH A — TUNNEL OLLAMA OVER HTTPS (RECOMMENDED)</div>
                     <div style={{color:"#333"}}>
-                      Wrap your local Ollama in a public HTTPS URL so the browser is happy. Pick whichever tunnel suits.
-                      <div style={{marginTop:8,fontWeight:700,color:"#1a1a1a"}}>A1 — ngrok (easiest, free, ~30 seconds, URL changes per restart):</div>
-                      <ol style={{paddingLeft:18,marginTop:4,marginBottom:0}}>
-                        <li>Install <a href="https://ngrok.com/download" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>ngrok</a>, sign up free, paste their authtoken once.</li>
-                        <li>Run:{blockCode("ngrok http 11434")}</li>
-                        <li>Copy the printed URL (e.g. <span style={codeI}>https://abc123-def.ngrok-free.app</span>).</li>
-                      </ol>
-                      <div style={{marginTop:8,fontWeight:700,color:"#1a1a1a"}}>A2 — Cloudflare Tunnel (free, persistent URL):</div>
-                      <ol style={{paddingLeft:18,marginTop:4,marginBottom:0}}>
-                        <li>Install <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>cloudflared</a>.</li>
-                        <li>Run:{blockCode("cloudflared tunnel --url http://localhost:11434")}</li>
-                        <li>Copy the printed <span style={codeI}>https://....trycloudflare.com</span> URL.</li>
-                      </ol>
-                      <div style={{marginTop:8,fontWeight:700,color:"#1a1a1a"}}>A3 — Tailscale Funnel (free for ~3 devices, permanent URL):</div>
+                      Wrap your local Ollama in a public HTTPS URL so the browser stops blocking it. Persistent-URL options listed first — set once, paste into SiteShrimp once, never touch again.
+                      <div style={{marginTop:8,fontWeight:700,color:"#1a7a35"}}>A1 — Tailscale Funnel (best · permanent URL, free for ~3 devices):</div>
                       <ol style={{paddingLeft:18,marginTop:4,marginBottom:0}}>
                         <li>Install <a href="https://tailscale.com/download" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>Tailscale</a>, sign in.</li>
                         <li>Run:{blockCode("tailscale funnel 11434")}</li>
-                        <li>Copy the printed <span style={codeI}>.ts.net</span> URL.</li>
+                        <li>Copy the printed <span style={codeI}>.ts.net</span> URL — yours, permanently. Save once into SiteShrimp.</li>
                       </ol>
-                      <div style={{marginTop:10,fontWeight:700,color:"#1a1a1a"}}>For all three: still set OLLAMA_ORIGINS:</div>
+                      <div style={{marginTop:8,fontWeight:700,color:"#1a1a1a"}}>A2 — Cloudflare Tunnel (free; permanent if you bind a domain):</div>
+                      <ol style={{paddingLeft:18,marginTop:4,marginBottom:0}}>
+                        <li>Install <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>cloudflared</a>.</li>
+                        <li>Quick mode (URL changes per session):{blockCode("cloudflared tunnel --url http://localhost:11434")}</li>
+                        <li>For a permanent URL, configure a named tunnel pointed at a Cloudflare-managed subdomain — Cloudflare's docs walk through this in ~5 minutes.</li>
+                      </ol>
+                      <div style={{marginTop:8,fontWeight:700,color:"#cc7000"}}>A3 — ngrok (quickest first-time test only · URL changes per restart):</div>
+                      <ol style={{paddingLeft:18,marginTop:4,marginBottom:0}}>
+                        <li>Install <a href="https://ngrok.com/download" target="_blank" rel="noopener noreferrer" style={{color:"#cc7000"}}>ngrok</a>, sign up free, paste their authtoken once.</li>
+                        <li>Run:{blockCode("ngrok http 11434")}</li>
+                        <li>Copy the printed URL (e.g. <span style={codeI}>https://abc123-def.ngrok-free.app</span>) — but you'll have to re-paste it into SiteShrimp every time you restart ngrok. Use Tailscale or Cloudflare for "set once".</li>
+                      </ol>
+                      <div style={{marginTop:10,fontWeight:700,color:"#1a1a1a"}}>For any of these: still set OLLAMA_ORIGINS:</div>
                       <div style={{color:"#666",fontSize:11,marginTop:2}}>Stop Ollama, then re-start with origin allowed:</div>
                       {blockCode(`# Windows PowerShell\n$env:OLLAMA_ORIGINS = "${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}"\nollama serve\n\n# macOS / Linux\nOLLAMA_ORIGINS="${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}" ollama serve`)}
                       <div>Paste the tunnel URL into <b>OLLAMA SERVER URL</b> above (replacing <span style={codeI}>http://localhost:11434</span>). Tap <b>TEST</b> → <b>SAVE</b>. No Chrome flag needed.</div>
