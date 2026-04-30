@@ -8264,6 +8264,30 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // writes for carry-over-sensitive fields preserve the previous entry's
   // verified values in batch mode. Mutates `result` in place when auto-
   // escalating severity so the caller sees the final severity for display.
+  // Smaller / weaker LLMs (notably llava:latest) sometimes echo the prompt
+  // instruction text back as the value instead of generating real content
+  // — e.g. returning "max 5 word defect title" verbatim. Detect those
+  // common echo patterns so the form falls back to deriving a title from
+  // the description rather than showing the raw instruction string.
+  const isPromptEcho=(s)=>{
+    if(!s)return true;
+    const v=String(s).toLowerCase().trim().replace(/[.,;:!?\"']+$/,"");
+    return v==="max 5 word defect title"||v==="defect title"||v==="title"
+      ||v==="2 sentence technical description"||v==="2 sentence description"
+      ||v.startsWith("max 5 word")||v.startsWith("max 5-word")
+      ||/^one of:?\s/.test(v)
+      ||/^pick exactly one/.test(v);
+  };
+  // First ~5 meaningful words of the description, used as a derived title
+  // when the AI returned an echo'd instruction or nothing usable.
+  const deriveTitleFromDesc=(desc)=>{
+    if(!desc)return "";
+    const words=String(desc).trim().split(/\s+/);
+    let start=0;
+    if(/^(the|a|an|this|that|there)$/i.test(words[0]||""))start=1;
+    const head=words.slice(start,start+5).join(" ").replace(/[.,;:!?]+$/,"");
+    return head;
+  };
   const applyAiResult=(result)=>{
     if(!result)return;
     const aiProv={source:"ai",verified_by:null,verified_by_name:null,verified_at:null};
@@ -8281,9 +8305,18 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         u[field]=value;
         prov[field]=aiProv;
       };
-      if(result.title)writeAi("title",result.title);
+      // Sanitize the title: if AI returned a prompt-echo, derive from
+      // description instead. Same idea for description (rare but possible).
+      const goodTitle=result.title&&!isPromptEcho(result.title)?result.title:null;
+      const goodDesc=result.description&&!isPromptEcho(result.description)?result.description:null;
+      if(goodTitle){
+        writeAi("title",goodTitle);
+      }else if(goodDesc){
+        const derived=deriveTitleFromDesc(goodDesc);
+        if(derived)writeAi("title",derived);
+      }
       if(result.severity&&SEVERITY.includes(result.severity))writeAi("severity",result.severity);
-      if(result.description)writeAi("description",result.description);
+      if(goodDesc)writeAi("description",goodDesc);
       if(result.safety_risk&&result.safety_risk>=4&&u.severity!=="Critical"){
         writeAi("severity","Critical");
         result.severity="Critical";
