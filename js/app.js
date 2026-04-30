@@ -6201,12 +6201,15 @@ function GeminiSettings({onClose,companyId}){
                 <div style={{background:"rgba(255,255,255,0.6)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"10px 12px",marginBottom:8}}>
                   <div style={{fontSize:11.5,fontWeight:800,color:"#1a1a1a",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>OPTION B — STAY ON {myOrigin.toUpperCase()}, UNBLOCK CHROME + OLLAMA</div>
                   <div style={{fontSize:11,color:"#333",lineHeight:1.55}}>
-                    No tunnel install, but two browser tweaks. Both must be set.<br/>
-                    Step 1 (browser): visit <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code>, add <code>{myOrigin}</code>, set to <b>Enabled</b>, restart Chrome.<br/>
-                    Step 2 (Ollama): stop Ollama, then re-start with the origin allowed:<br/>
-                    &nbsp;&nbsp;• Windows PowerShell: <code>$env:OLLAMA_ORIGINS="{myOrigin}"; ollama serve</code><br/>
-                    &nbsp;&nbsp;• macOS / Linux: <code>OLLAMA_ORIGINS="{myOrigin}" ollama serve</code><br/>
-                    Fixing only one keeps the error.
+                    No tunnel install, but two tweaks. Both must be set.<br/>
+                    <b>Step 1 (browser):</b> visit <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code>, add <code>{myOrigin}</code>, set to <b>Enabled</b>, restart Chrome.<br/>
+                    <b>Step 2 (Ollama):</b> tell Ollama to allow your origin. <i>How depends on how Ollama runs:</i><br/>
+                    &nbsp;&nbsp;<b>Windows tray app (most common):</b> set <i>persistently</i> in PowerShell, kill the tray app, re-launch from Start Menu so it inherits the new env:<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<code>{`[Environment]::SetEnvironmentVariable("OLLAMA_ORIGINS","${myOrigin}","User")`}</code><br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<code>{'taskkill /F /IM "ollama app.exe" /T'}</code><br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;Then: Win key → type "Ollama" → click to relaunch.<br/>
+                    &nbsp;&nbsp;<b>macOS / Linux (manual <code>ollama serve</code>):</b> <code>{`OLLAMA_ORIGINS="${myOrigin}" ollama serve`}</code><br/>
+                    <b>Verify:</b> <code>{`curl -H "Origin: ${myOrigin}" -i http://localhost:11434/api/tags`}</code> — response headers should include <code>{`Access-Control-Allow-Origin: ${myOrigin}`}</code>.
                   </div>
                 </div>
 
@@ -6288,10 +6291,18 @@ function GeminiSettings({onClose,companyId}){
                         <li>Run:{blockCode("ngrok http 11434")}</li>
                         <li>Copy the printed URL (e.g. <span style={codeI}>https://abc123-def.ngrok-free.app</span>) — but you'll have to re-paste it into SiteShrimp every time you restart ngrok. Use Tailscale or Cloudflare for "set once".</li>
                       </ol>
-                      <div style={{marginTop:10,fontWeight:700,color:"#1a1a1a"}}>For any of these: still set OLLAMA_ORIGINS:</div>
-                      <div style={{color:"#666",fontSize:11,marginTop:2}}>Stop Ollama, then re-start with origin allowed:</div>
-                      {blockCode(`# Windows PowerShell\n$env:OLLAMA_ORIGINS = "${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}"\nollama serve\n\n# macOS / Linux\nOLLAMA_ORIGINS="${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}" ollama serve`)}
-                      <div>Paste the tunnel URL into <b>OLLAMA SERVER URL</b> above (replacing <span style={codeI}>http://localhost:11434</span>). Tap <b>TEST</b> → <b>SAVE</b>. No Chrome flag needed.</div>
+                      <div style={{marginTop:10,fontWeight:700,color:"#1a1a1a"}}>For any of these: still set OLLAMA_ORIGINS so Ollama allows your origin.</div>
+                      <div style={{color:"#666",fontSize:11,marginTop:2}}>How depends on how Ollama runs on your OS:</div>
+                      <div style={{marginTop:6,fontWeight:700,color:"#1a1a1a"}}>Windows tray app (most common — auto-starts on login):</div>
+                      <div style={{color:"#666",fontSize:11,marginTop:2}}>Inline <code>$env:</code> won't work because the tray app launched on login can't see env vars set in your current PowerShell. Set it persistently at the User level instead, then kill + relaunch the tray app:</div>
+                      {blockCode(`# 1. Set persistently (no admin needed)\n[Environment]::SetEnvironmentVariable("OLLAMA_ORIGINS","${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}","User")\n\n# 2. Kill the tray app + child server\ntaskkill /F /IM "ollama app.exe" /T\n\n# 3. Verify the env var stuck\n[Environment]::GetEnvironmentVariable("OLLAMA_ORIGINS","User")`)}
+                      <div style={{color:"#666",fontSize:11,marginTop:2}}>Then re-launch Ollama: Win key → type "Ollama" → click. The tray icon reappears with the new env baked in.</div>
+                      <div style={{marginTop:6,fontWeight:700,color:"#1a1a1a"}}>macOS / Linux (manual <code>ollama serve</code>):</div>
+                      {blockCode(`# Inline (this terminal only)\nOLLAMA_ORIGINS="${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}" ollama serve\n\n# Persistent (every future shell)\necho 'export OLLAMA_ORIGINS="${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}"' >> ~/.zshrc\n# Then quit and restart Ollama`)}
+                      <div style={{marginTop:6,fontWeight:700,color:"#1a1a1a"}}>Verify (any OS):</div>
+                      {blockCode(`curl -H "Origin: ${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}" -i http://localhost:11434/api/tags`)}
+                      <div style={{color:"#666",fontSize:11,marginTop:2}}>Look for <code>{`Access-Control-Allow-Origin: ${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}`}</code> in the response headers. If missing, the env var didn't take effect — review the steps above.</div>
+                      <div style={{marginTop:8}}>Paste the tunnel URL into <b>OLLAMA SERVER URL</b> above (replacing <span style={codeI}>http://localhost:11434</span>). Tap <b>TEST</b> → <b>SAVE</b>. No Chrome flag needed.</div>
                     </div>
                   </div>
 
@@ -6307,10 +6318,17 @@ function GeminiSettings({onClose,companyId}){
                         <li>Restart Chrome (a relaunch button appears at the bottom).</li>
                       </ol>
                       <div style={{marginTop:8,fontWeight:700,color:"#1a1a1a"}}>Override 2 — Ollama itself:</div>
-                      <div>By default Ollama only accepts requests from <span style={codeI}>localhost</span>. Tell it your origin is allowed:</div>
-                      <div style={{color:"#666",fontSize:11,marginTop:4}}>Stop the running Ollama (right-click the system tray / menu bar icon → Quit, or <span style={codeI}>Ctrl+C</span> in its terminal). Then re-start it like this:</div>
-                      {blockCode(`# Windows PowerShell\n$env:OLLAMA_ORIGINS = "${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}"\nollama serve\n\n# macOS / Linux\nOLLAMA_ORIGINS="${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}" ollama serve`)}
-                      <div style={{color:"#666",fontSize:11}}>Leave that terminal window open. Then enter <span style={codeI}>http://localhost:11434</span> as URL above and tap TEST.</div>
+                      <div>By default Ollama only accepts requests from <span style={codeI}>localhost</span>. Tell it your origin is allowed.</div>
+                      <div style={{marginTop:6,fontWeight:700,color:"#1a1a1a"}}>Windows tray app (most common):</div>
+                      <div style={{color:"#666",fontSize:11,marginTop:2}}>The tray app auto-starts on login and won't see env vars set inline in another PowerShell. Set it persistently at the User level, then kill + relaunch:</div>
+                      {blockCode(`# 1. Set persistently (no admin needed)\n[Environment]::SetEnvironmentVariable("OLLAMA_ORIGINS","${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}","User")\n\n# 2. Kill the tray app + child server\ntaskkill /F /IM "ollama app.exe" /T\n\n# 3. Verify the env var stuck\n[Environment]::GetEnvironmentVariable("OLLAMA_ORIGINS","User")`)}
+                      <div style={{color:"#666",fontSize:11,marginTop:2}}>Then re-launch Ollama: Win key → type "Ollama" → click. The tray icon reappears with the new env baked in.</div>
+                      <div style={{marginTop:6,fontWeight:700,color:"#1a1a1a"}}>macOS / Linux (manual <code>ollama serve</code>):</div>
+                      {blockCode(`# Inline (this terminal only)\nOLLAMA_ORIGINS="${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}" ollama serve\n\n# Persistent\necho 'export OLLAMA_ORIGINS="${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}"' >> ~/.zshrc`)}
+                      <div style={{marginTop:6,fontWeight:700,color:"#1a1a1a"}}>Verify (any OS):</div>
+                      {blockCode(`curl -H "Origin: ${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}" -i http://localhost:11434/api/tags`)}
+                      <div style={{color:"#666",fontSize:11,marginTop:2}}>Look for <code>{`Access-Control-Allow-Origin: ${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}`}</code> in the response headers — that's the green light. Missing? Re-do the persistent set + tray restart above.</div>
+                      <div style={{marginTop:6}}>Then enter <span style={codeI}>http://localhost:11434</span> as URL above and tap TEST.</div>
                     </div>
                   </div>
 
@@ -6321,7 +6339,7 @@ function GeminiSettings({onClose,companyId}){
                   {sectionHd("✗","When it doesn't work — four things to check, in order","#cc5500")}
                   <ol style={{paddingLeft:18,margin:0,color:"#333"}}>
                     <li><b>Is Ollama actually running?</b> Open a terminal and run <span style={codeI}>ollama list</span>. You should see at least one vision model. If the command fails, Ollama isn't installed or isn't on your PATH.</li>
-                    <li style={{marginTop:6}}><b>Is OLLAMA_ORIGINS set for your origin?</b> Run <span style={codeI}>{`curl -H "Origin: ${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}" -i http://localhost:11434/api/tags`}</span>. Look for <span style={codeI}>Access-Control-Allow-Origin</span> matching your origin in the response headers. If missing, the env var didn't take effect — re-start Ollama in a fresh terminal.</li>
+                    <li style={{marginTop:6}}><b>Is OLLAMA_ORIGINS set for your origin?</b> Run <span style={codeI}>{`curl -H "Origin: ${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}" -i http://localhost:11434/api/tags`}</span>. Look for <span style={codeI}>Access-Control-Allow-Origin</span> matching your origin in the response headers. If missing, the env var didn't take effect. <b>On Windows specifically:</b> the inline <code>$env:OLLAMA_ORIGINS=...</code> approach <i>does not work</i> when Ollama runs as a tray app — set it persistently with <code>{`[Environment]::SetEnvironmentVariable("OLLAMA_ORIGINS","${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}","User")`}</code>, kill <code>"ollama app.exe"</code>, and relaunch from Start Menu.</li>
                     <li style={{marginTop:6}}><b>If on Path A (tunnel), is the tunnel URL still alive?</b> Free ngrok URLs change per restart. Cloudflare/Tailscale persist. Re-copy the URL into the OLLAMA SERVER URL field if you restarted the tunnel.</li>
                     <li style={{marginTop:6}}><b>If on Path B, are both overrides set?</b> Setting only the Chrome flag, or only <span style={codeI}>OLLAMA_ORIGINS</span>, keeps the error. Both have to be in place, with Chrome restarted after the flag change.</li>
                   </ol>
