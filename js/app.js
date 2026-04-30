@@ -6174,9 +6174,90 @@ function GeminiSettings({onClose,companyId}){
               </div>
             ):null}
             <input value={ollamaModel} onChange={e=>setOllamaModel(e.target.value)} placeholder="llava" style={{...inp,width:"100%",flex:"unset",fontFamily:"monospace",fontSize:13}}/>
-            <div style={{fontSize:11,color:"rgba(0,0,0,0.35)",marginTop:6}}>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.35)",marginTop:6,marginBottom:14}}>
               Recommended vision models: llava, llava-llama3, qwen2.5-vl, llama3.2-vision, minicpm-v, bakllava
             </div>
+            {/* Full setup guide — collapsed by default so the form stays
+                compact, expand for the complete walkthrough. Native
+                <details> element handles open/close with no JS state. */}
+            {(()=>{
+              const codeI={display:"inline-block",padding:"1px 6px",background:"rgba(0,0,0,0.06)",borderRadius:4,fontFamily:"'Courier New',monospace",fontSize:11.5,color:"#1a1a1a"};
+              const blockCode=(s)=>(<div style={{background:"#1a1a1a",borderRadius:8,padding:"10px 12px",margin:"8px 0",fontFamily:"'Courier New',monospace",fontSize:11.5,color:"#a4f0c0",whiteSpace:"pre-wrap",wordBreak:"break-word",lineHeight:1.5}}>{s}</div>);
+              const sectionHd=(emoji,text,color="#1a7a35")=>(<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color,letterSpacing:"0.05em",marginTop:14,marginBottom:6}}>{emoji} {text.toUpperCase()}</div>);
+              return(
+              <details style={{background:"rgba(48,209,88,0.04)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:10,padding:"10px 14px"}}>
+                <summary style={{cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#1a7a35",letterSpacing:"0.05em",userSelect:"none"}}>📖 FULL STEP-BY-STEP GUIDE — TAP TO EXPAND</summary>
+                <div style={{marginTop:10,fontSize:12.5,color:"#222",lineHeight:1.6,fontFamily:"'Barlow',sans-serif"}}>
+                  <div style={{color:"#444",marginBottom:6}}>SiteShrimp can run AI photo analysis on your own laptop — free, no API key, no quota, photos never leave your machine. About 5 minutes.</div>
+
+                  {sectionHd("✓","What you need")}
+                  <ul style={{paddingLeft:18,margin:0,color:"#444"}}>
+                    <li>A laptop / desktop with at least <b>8 GB RAM</b> (16 GB recommended).</li>
+                    <li>Windows, macOS, or Linux.</li>
+                    <li>About 5 GB free disk space for the AI model.</li>
+                  </ul>
+
+                  {sectionHd("1","Install Ollama")}
+                  <div>Visit <a href="https://ollama.com" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35",textDecoration:"underline"}}>ollama.com</a>, download the installer for your OS, run it. Ollama starts as a background service automatically.</div>
+
+                  {sectionHd("2","Download a vision model")}
+                  <div>Open a terminal (Windows: PowerShell · macOS / Linux: Terminal) and run:</div>
+                  {blockCode("ollama pull llava")}
+                  <div style={{color:"#666",fontSize:11.5}}>Wait for "success" before continuing. Roughly 4 GB download. Other vision models that work: <span style={codeI}>qwen2.5-vl</span>, <span style={codeI}>llama3.2-vision</span>, <span style={codeI}>minicpm-v</span>, <span style={codeI}>bakllava</span>.</div>
+
+                  {sectionHd("3","Pick the path that fits your setup","#cc7000")}
+                  <div style={{color:"#444",marginBottom:6}}>There are two ways to use SiteShrimp with Ollama. Pick whichever matches your situation.</div>
+
+                  <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.3)",borderRadius:8,padding:"10px 12px",marginTop:8}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12.5,color:"#1a7a35",letterSpacing:"0.04em",marginBottom:5}}>PATH A — RUN SITESHRIMP LOCALLY (RECOMMENDED · NO BROWSER TWEAKS)</div>
+                    <div style={{color:"#333"}}>
+                      Both SiteShrimp and Ollama live on your laptop, so the browser stays out of it. Cleanest path.
+                      <ol style={{paddingLeft:18,marginTop:6,marginBottom:0}}>
+                        <li>Download SiteShrimp from <a href="https://github.com/woonweipong-hub/SiteShrimp" target="_blank" rel="noopener noreferrer" style={{color:"#1a7a35"}}>github.com/woonweipong-hub/SiteShrimp</a> (Code → Download ZIP, then unzip).</li>
+                        <li>Open a terminal in the unzipped folder.</li>
+                        <li>Run <i>one</i> of these:{blockCode("python -m http.server 8000\n# or, if you have Node:\nnpx serve .")}</li>
+                        <li>Open <span style={codeI}>http://localhost:8000</span> in your browser.</li>
+                        <li>Sign in. Open <b>⚙ Settings → AI Setup → Ollama (Local)</b>. Leave URL as <span style={codeI}>http://localhost:11434</span>, model as <span style={codeI}>llava</span>. Tap <b>TEST</b> → <b>SAVE</b>.</li>
+                      </ol>
+                    </div>
+                  </div>
+
+                  <div style={{background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"10px 12px",marginTop:8}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12.5,color:"#1a1a1a",letterSpacing:"0.04em",marginBottom:5}}>PATH B — STAY ON {(typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org").toUpperCase()}</div>
+                    <div style={{color:"#333"}}>
+                      Browsers block secure (HTTPS) websites from talking to insecure (HTTP) localhost. To use this site with local Ollama, override <b>both</b> the browser <b>and</b> Ollama. <b>Both must be set</b> — fixing only one keeps the error.
+                      <div style={{marginTop:8,fontWeight:700,color:"#1a1a1a"}}>Override 1 — your browser (Chrome / Edge):</div>
+                      <ol style={{paddingLeft:18,marginTop:4,marginBottom:0}}>
+                        <li>Visit <span style={codeI}>chrome://flags/#unsafely-treat-insecure-origin-as-secure</span></li>
+                        <li>In the textbox, paste: <span style={codeI}>{typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}</span></li>
+                        <li>Set the dropdown beside it to <b>Enabled</b>.</li>
+                        <li>Restart Chrome (a relaunch button appears at the bottom).</li>
+                      </ol>
+                      <div style={{marginTop:8,fontWeight:700,color:"#1a1a1a"}}>Override 2 — Ollama itself:</div>
+                      <div>By default Ollama only accepts requests from <span style={codeI}>localhost</span>. Tell it your origin is allowed:</div>
+                      <div style={{color:"#666",fontSize:11,marginTop:4}}>Stop the running Ollama (right-click the system tray / menu bar icon → Quit, or <span style={codeI}>Ctrl+C</span> in its terminal). Then re-start it like this:</div>
+                      {blockCode(`# Windows PowerShell\n$env:OLLAMA_ORIGINS = "${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}"\nollama serve\n\n# macOS / Linux\nOLLAMA_ORIGINS="${typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org"}" ollama serve`)}
+                      <div style={{color:"#666",fontSize:11}}>Leave that terminal window open. Then enter the URL + model above and tap TEST.</div>
+                    </div>
+                  </div>
+
+                  {sectionHd("4","Use it")}
+                  <div>Take or upload a photo in <b>LOG</b>. SiteShrimp pre-fills title, description, severity, and component using your local Ollama. The token counter at the top stays at <b>0</b> because nothing leaves your machine.</div>
+
+                  {sectionHd("✗","When it doesn't work — three things to check, in order","#cc5500")}
+                  <ol style={{paddingLeft:18,margin:0,color:"#333"}}>
+                    <li><b>Is Ollama actually running?</b> Open a terminal and run <span style={codeI}>ollama list</span>. You should see at least one vision model. If the command fails, Ollama isn't installed or isn't on your PATH.</li>
+                    <li style={{marginTop:6}}><b>Is the model name right?</b> The model in SiteShrimp's setup must match what <span style={codeI}>ollama list</span> shows, exactly. <span style={codeI}>llava</span> — not <span style={codeI}>Llava</span> or <span style={codeI}>llava:latest</span>.</li>
+                    <li style={{marginTop:6}}><b>If on Path B, are both overrides set?</b> Setting only the Chrome flag, or only <span style={codeI}>OLLAMA_ORIGINS</span>, keeps the error. Both have to be in place.</li>
+                  </ol>
+                  <div style={{marginTop:8,color:"#666",fontSize:11.5}}>Still stuck? Switch to Path A. It removes both browser and CORS issues entirely.</div>
+
+                  {sectionHd("?","Why is this so complicated?","#5856d6")}
+                  <div style={{color:"#555",fontSize:11.5}}>Modern browsers refuse to send requests from a secure (HTTPS) page to an insecure (HTTP) one — even if the destination is your own machine. This is a security feature you can't turn off globally; you can only allow specific origins via the Chrome flag. Ollama adds a second layer (CORS) so it doesn't accidentally accept requests from any random website that knows your IP. The combination protects you, but it makes "free local AI on a public web app" require explicit consent in two places.</div>
+                </div>
+              </details>
+              );
+            })()}
           </div>
           );
         })()}
@@ -22302,94 +22383,6 @@ function App(){
                 </div>
               )}
 
-              {/* ── OLLAMA SECTION (under HELP-tab) ── public step-by-step
-                  setup guide. Kept inline (not translated) because it's
-                  developer-oriented technical content with code snippets
-                  that machine translation tends to mangle. Renders only
-                  when the HELP tab is active so the existing How-to
-                  content is what most users see first. */}
-              {helpTab==="help"&&(()=>{
-                const myOrigin=typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org";
-                const isHttpsPage=typeof window!=="undefined"&&window.location?.protocol==="https:";
-                const codeStyle={display:"inline-block",padding:"1px 6px",background:"rgba(255,255,255,0.08)",borderRadius:4,fontFamily:"'Courier New',monospace",fontSize:11.5,color:"#a4f0c0"};
-                const blockCode=(s)=>(<div style={{background:"rgba(0,0,0,0.35)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,padding:"10px 12px",margin:"8px 0",fontFamily:"'Courier New',monospace",fontSize:11.5,color:"#a4f0c0",whiteSpace:"pre-wrap",wordBreak:"break-word",lineHeight:1.5}}>{s}</div>);
-                const sectionTitle=(emoji,text,color="#30d158")=>(<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color,letterSpacing:"0.05em",marginTop:18,marginBottom:8}}>{emoji} {text.toUpperCase()}</div>);
-                return(
-                <div style={{color:"rgba(255,255,255,0.82)",fontSize:12.5,lineHeight:1.65,fontFamily:"'Barlow',sans-serif"}}>
-                  <div style={{background:"rgba(48,209,88,0.08)",border:"1.5px solid rgba(48,209,88,0.35)",borderRadius:12,padding:"14px 16px",marginBottom:14}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#30d158",letterSpacing:"0.05em",marginBottom:6}}>🦙 LOCAL AI WITH OLLAMA — FREE, PRIVATE, OFFLINE</div>
-                    <div style={{color:"rgba(255,255,255,0.78)"}}>SiteShrimp can run AI photo analysis on your own laptop — free, no API key, no quota, photos never leave your machine. This guide gets you there in about 5 minutes.</div>
-                  </div>
-
-                  {sectionTitle("✓","What you need")}
-                  <ul style={{paddingLeft:18,margin:0,color:"rgba(255,255,255,0.78)"}}>
-                    <li>A laptop / desktop with at least <b>8 GB RAM</b> (16 GB recommended).</li>
-                    <li>Windows, macOS, or Linux.</li>
-                    <li>About 5 GB free disk space for the AI model.</li>
-                  </ul>
-
-                  {sectionTitle("1","Install Ollama")}
-                  <div>Visit <a href="https://ollama.com" target="_blank" rel="noopener noreferrer" style={{color:"#30d158",textDecoration:"underline"}}>ollama.com</a>, download the installer for your OS, run it. Ollama starts as a background service automatically.</div>
-
-                  {sectionTitle("2","Download a vision model")}
-                  <div>Open a terminal (Windows: PowerShell · macOS / Linux: Terminal) and run:</div>
-                  {blockCode("ollama pull llava")}
-                  <div style={{color:"rgba(255,255,255,0.65)",fontSize:11.5}}>Wait for "success" before continuing. Roughly 4 GB download. Other vision models that work: <span style={codeStyle}>qwen2.5-vl</span>, <span style={codeStyle}>llama3.2-vision</span>, <span style={codeStyle}>minicpm-v</span>, <span style={codeStyle}>bakllava</span>.</div>
-
-                  {sectionTitle("3","Pick the path that fits your setup","#ffcc00")}
-                  <div style={{color:"rgba(255,255,255,0.78)",marginBottom:6}}>There are two ways to use SiteShrimp with Ollama. Pick whichever matches your situation.</div>
-
-                  <div style={{background:"rgba(48,209,88,0.06)",border:"1px solid rgba(48,209,88,0.25)",borderRadius:10,padding:"12px 14px",marginTop:8}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#30d158",letterSpacing:"0.04em",marginBottom:6}}>PATH A — RUN SITESHRIMP LOCALLY (RECOMMENDED · NO BROWSER TWEAKS)</div>
-                    <div style={{color:"rgba(255,255,255,0.78)"}}>
-                      Both SiteShrimp and Ollama live on your laptop, so the browser stays out of it. Cleanest path.
-                      <ol style={{paddingLeft:18,marginTop:6,marginBottom:0}}>
-                        <li>Download SiteShrimp from <a href="https://github.com/woonweipong-hub/SiteShrimp" target="_blank" rel="noopener noreferrer" style={{color:"#30d158"}}>github.com/woonweipong-hub/SiteShrimp</a> (Code → Download ZIP, then unzip).</li>
-                        <li>Open a terminal in the unzipped folder.</li>
-                        <li>Run <i>one</i> of these:{blockCode("python -m http.server 8000\n# or, if you have Node:\nnpx serve .")}</li>
-                        <li>Open <span style={codeStyle}>http://localhost:8000</span> in your browser.</li>
-                        <li>Sign in. Open <b>⚙ Settings → AI Setup → Ollama (Local)</b>. Leave URL as <span style={codeStyle}>http://localhost:11434</span>, model as <span style={codeStyle}>llava</span>. Tap <b>TEST</b> → <b>SAVE</b>.</li>
-                      </ol>
-                    </div>
-                  </div>
-
-                  <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"12px 14px",marginTop:8}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#fff",letterSpacing:"0.04em",marginBottom:6}}>PATH B — STAY ON {myOrigin.toUpperCase()} {isHttpsPage?"(HTTPS)":""}</div>
-                    <div style={{color:"rgba(255,255,255,0.78)"}}>
-                      Browsers block secure (HTTPS) websites from talking to insecure (HTTP) localhost. To use this site with local Ollama, override <b>both</b> the browser <b>and</b> Ollama. <b>Both must be set</b> — fixing only one keeps the error.
-                      <div style={{marginTop:10,fontWeight:700,color:"#fff"}}>Override 1 — your browser (Chrome / Edge):</div>
-                      <ol style={{paddingLeft:18,marginTop:4,marginBottom:0}}>
-                        <li>Visit <span style={codeStyle}>chrome://flags/#unsafely-treat-insecure-origin-as-secure</span></li>
-                        <li>In the textbox, paste: <span style={codeStyle}>{myOrigin}</span></li>
-                        <li>Set the dropdown beside it to <b>Enabled</b>.</li>
-                        <li>Restart Chrome (a relaunch button appears at the bottom).</li>
-                      </ol>
-                      <div style={{marginTop:10,fontWeight:700,color:"#fff"}}>Override 2 — Ollama itself:</div>
-                      <div>By default Ollama only accepts requests from <span style={codeStyle}>localhost</span>. Tell it your origin is allowed:</div>
-                      <div style={{color:"rgba(255,255,255,0.6)",fontSize:11,marginTop:6}}>Stop the running Ollama (right-click the system tray / menu bar icon → Quit, or <span style={codeStyle}>Ctrl+C</span> in its terminal). Then re-start it like this:</div>
-                      {blockCode(`# Windows PowerShell\n$env:OLLAMA_ORIGINS = "${myOrigin}"\nollama serve\n\n# macOS / Linux\nOLLAMA_ORIGINS="${myOrigin}" ollama serve`)}
-                      <div style={{color:"rgba(255,255,255,0.6)",fontSize:11}}>Leave that terminal window open.</div>
-                      <div style={{marginTop:10,fontWeight:700,color:"#fff"}}>Then in SiteShrimp:</div>
-                      <div>Open <b>⚙ Settings → AI Setup → Ollama (Local)</b>. Leave URL as <span style={codeStyle}>http://localhost:11434</span>, model as <span style={codeStyle}>llava</span>. Tap <b>TEST</b> → <b>SAVE</b>.</div>
-                    </div>
-                  </div>
-
-                  {sectionTitle("4","Use it")}
-                  <div>Take or upload a photo in <b>LOG</b>. SiteShrimp pre-fills title, description, severity, and component using your local Ollama. The token counter at the top stays at <b>0</b> because nothing leaves your machine.</div>
-
-                  {sectionTitle("✗","When it doesn't work — three things to check, in order","#ff9500")}
-                  <ol style={{paddingLeft:18,margin:0,color:"rgba(255,255,255,0.8)"}}>
-                    <li><b>Is Ollama actually running?</b> Open a terminal and run <span style={codeStyle}>ollama list</span>. You should see at least one vision model. If the command fails, Ollama isn't installed or isn't on your PATH.</li>
-                    <li style={{marginTop:8}}><b>Is the model name right?</b> The model in SiteShrimp's setup must match what <span style={codeStyle}>ollama list</span> shows, exactly. <span style={codeStyle}>llava</span> — not <span style={codeStyle}>Llava</span> or <span style={codeStyle}>llava:latest</span>.</li>
-                    <li style={{marginTop:8}}><b>If on Path B, are both overrides set?</b> Setting only the Chrome flag, or only <span style={codeStyle}>OLLAMA_ORIGINS</span>, keeps the error. Both have to be in place.</li>
-                  </ol>
-                  <div style={{marginTop:10,color:"rgba(255,255,255,0.65)",fontSize:11.5}}>Still stuck? Switch to Path A. It removes both browser and CORS issues entirely.</div>
-
-                  {sectionTitle("?","Why is this so complicated?","#5856d6")}
-                  <div style={{color:"rgba(255,255,255,0.72)",fontSize:11.5}}>Modern browsers refuse to send requests from a secure (HTTPS) page to an insecure (HTTP) one — even if the destination is your own machine. This is a security feature you can't turn off globally; you can only allow specific origins via the Chrome flag. Ollama adds a second layer (CORS) so it doesn't accidentally accept requests from any random website that knows your IP. The combination protects you, but it makes "free local AI on a public web app" require explicit consent in two places.</div>
-                </div>
-                );
-              })()}
 
               {/* ── DISCLAIMER TAB ── */}
               {helpTab==="disclaimer"&&(
