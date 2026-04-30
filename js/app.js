@@ -7597,6 +7597,11 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // surface "Now: IMG_2391.jpg" — useful when reviewing in REVIEW later
   // and figuring out which of 30 photos a given saved entry came from.
   const[batchCurrentName,setBatchCurrentName]=useState("");
+  // Pause/resume gate — set true to block both the auto-save and the
+  // batch-advance effects so the user can edit the current photo's fields
+  // (or jump out to EDIT a just-saved entry) without the queue rolling on
+  // top of them. Reset on batch complete and on a fresh batch start.
+  const[batchPaused,setBatchPaused]=useState(false);
   // Race protection for mid-analysis photo swaps. analyze() writes the
   // photoHash it's working on here at the start, and re-checks before
   // applying the result — if the hash has moved (user swapped to a new
@@ -7782,6 +7787,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       setBatchTotal(files.length);
       setBatchFailed(0);
       setBatchCurrentName(files[0]?.name||"");
+      setBatchPaused(false);
     }catch(err){
       console.error("[Batch] first-photo read failed:",err);
       alert("Could not read the first photo: "+err.message);
@@ -8015,6 +8021,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   useEffect(()=>{
     if(!aiResult)return;
     if(saving||analyzing)return;
+    if(batchPaused)return;  // user paused mid-batch to edit current photo
     const isBatchFail=aiResult&&aiResult.__failed;
     if(!isBatchFail&&!form.title.trim()&&!form.description.trim())return;
     if(!form.photos.length)return;
@@ -8038,6 +8045,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
     if(form.photos.length>0)return;     // current photo still being processed
     if(batchQueue.length===0)return;    // nothing queued
     if(saving||analyzing)return;        // previous cycle still in flight
+    if(batchPaused)return;              // queue frozen while user edits
     const[next,...rest]=batchQueue;
     setBatchQueue(rest);
     if(typeof next==="string"){
@@ -8056,7 +8064,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
     };
     r.readAsDataURL(next);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[form.photos.length,batchQueue.length,saving,analyzing]);
+  },[form.photos.length,batchQueue.length,saving,analyzing,batchPaused]);
 
   // Batch completion: when queue drains and the last photo has been saved,
   // show a single completion toast and reset the progress pill. Avoids
@@ -8069,18 +8077,23 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       setBatchTotal(0);
       setBatchFailed(0);
       setBatchCurrentName("");
+      setBatchPaused(false);
       setBatchSourceType(null); // CONQUAS-batch marker resets per batch
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[batchTotal,batchQueue.length,form.photos.length,saving,analyzing]);
 
   // Auto-clear the post-save toast after 5 s. Tapping EDIT before then
-  // jumps straight to the saved record for rectification.
+  // jumps straight to the saved record for rectification. Per-photo
+  // toasts during a live batch use a tighter 2.5 s window so they
+  // don't block the queue advance for users who don't want to edit.
   useEffect(()=>{
     if(!lastSaved)return;
-    const t=setTimeout(()=>setLastSaved(null),5000);
+    const inLiveBatch=batchTotal>0&&!lastSaved.batch;
+    const ms=inLiveBatch?2500:5000;
+    const t=setTimeout(()=>setLastSaved(null),ms);
     return()=>clearTimeout(t);
-  },[lastSaved]);
+  },[lastSaved,batchTotal]);
 
   // Revoke staging blob URLs on unmount to avoid leaking memory if the
   // user navigates away while the staging overlay is open.
@@ -8297,7 +8310,13 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       //    experience after zero-tap auto-save.
       if(saveAndDoneRef.current){saveAndDoneRef.current=false;}
       else if(auto&&inBatch){
-        /* batch advance; no per-photo modal */
+        // Per-photo toast in batch mode — gives the user a 2.5 s window
+        // to tap EDIT (which pauses the queue and jumps to the saved
+        // entry). If they don't tap, the toast auto-dismisses and the
+        // batch-advance effect continues with the next photo.
+        if(savedEntry){
+          setLastSaved({id:savedEntry.id||null,title:effectiveTitle||"Saved",ts:Date.now(),savedEntry,batch:false});
+        }
       }else{
         setShowBatch(true);
       }
@@ -8562,18 +8581,33 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           the queue in the background. Sits above the capture button so
           it's the first thing seen on LOG. */}
       {batchTotal>0&&(
-        <div style={{marginBottom:12,padding:"10px 14px",background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.3)",borderRadius:12,display:"flex",alignItems:"center",gap:10}}>
-          <div style={{width:28,height:28,borderRadius:"50%",background:"#5856d6",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>📸</div>
+        <div style={{marginBottom:12,padding:"10px 14px",background:batchPaused?"rgba(255,149,0,0.1)":"rgba(88,86,214,0.08)",border:`1px solid ${batchPaused?"rgba(255,149,0,0.4)":"rgba(88,86,214,0.3)"}`,borderRadius:12,display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:28,height:28,borderRadius:"50%",background:batchPaused?"#ff9500":"#5856d6",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>{batchPaused?"⏸":"📸"}</div>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#5856d6",letterSpacing:"0.04em"}}>BATCH — {batchTotal-batchQueue.length} OF {batchTotal}</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:batchPaused?"#ff9500":"#5856d6",letterSpacing:"0.04em"}}>BATCH — {batchTotal-batchQueue.length} OF {batchTotal}{batchPaused?" · PAUSED":""}</div>
             {batchCurrentName&&(
               <div title={batchCurrentName} style={{fontSize:10.5,color:"rgba(0,0,0,0.75)",fontWeight:700,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.02em"}}>📄 {batchCurrentName}</div>
             )}
             <div style={{fontSize:10,color:"rgba(0,0,0,0.55)",marginTop:1}}>
-              {analyzing?"AI pre-filling current photo…":saving?"Saving…":batchQueue.length>0?`${batchQueue.length} photo${batchQueue.length>1?"s":""} queued — keep walking, or rectify later in REVIEW / ENTRIES`:"Finishing up…"}
+              {batchPaused?"Edit fields below, then RESUME to save & continue.":analyzing?"AI pre-filling current photo…":saving?"Saving…":batchQueue.length>0?`${batchQueue.length} photo${batchQueue.length>1?"s":""} queued — keep walking, or rectify later in REVIEW / ENTRIES`:"Finishing up…"}
             </div>
           </div>
-          {(analyzing||saving)&&<Spin size={14}/>}
+          {(analyzing||saving)&&!batchPaused&&<Spin size={14}/>}
+          {/* PAUSE / RESUME — pauses freeze the queue so the user can
+              edit current-photo fields. RESUME triggers an immediate
+              save of the current photo if AI has already filled the
+              form; otherwise it just unlocks the gates and the existing
+              effects pick up where they left off. */}
+          <button onClick={()=>{
+            if(batchPaused){
+              setBatchPaused(false);
+              if(aiResult&&form.photos.length>0&&!saving&&!analyzing){
+                submit({auto:true});
+              }
+            }else{
+              setBatchPaused(true);
+            }
+          }} style={{flexShrink:0,background:batchPaused?"#ff9500":"rgba(88,86,214,0.12)",border:`1px solid ${batchPaused?"#ff9500":"rgba(88,86,214,0.3)"}`,borderRadius:8,padding:"5px 10px",color:batchPaused?"#fff":"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10.5,letterSpacing:"0.05em",cursor:"pointer"}}>{batchPaused?"▶ RESUME":"⏸ PAUSE"}</button>
         </div>
       )}
 
@@ -8859,7 +8893,12 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
             <div style={{fontSize:11,color:"rgba(255,255,255,0.75)",marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{lastSaved.title}</div>
           </div>
           {lastSaved.savedEntry&&onViewEntry&&(
-            <button onClick={()=>{const e=lastSaved.savedEntry;setLastSaved(null);onViewEntry(e);}} style={{background:"#ff6b00",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",letterSpacing:"0.05em",flexShrink:0}}>EDIT</button>
+            <button onClick={()=>{
+              const e=lastSaved.savedEntry;
+              setLastSaved(null);
+              if(batchTotal>0)setBatchPaused(true);
+              onViewEntry(e);
+            }} style={{background:"#ff6b00",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",letterSpacing:"0.05em",flexShrink:0}}>EDIT</button>
           )}
           <button onClick={()=>setLastSaved(null)} style={{background:"transparent",border:"none",color:"rgba(255,255,255,0.55)",fontSize:16,cursor:"pointer",padding:"2px 6px",lineHeight:1,flexShrink:0}}>×</button>
         </div>
