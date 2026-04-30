@@ -7742,7 +7742,7 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
 }
 
 // ── Log Entry (with AI + Batch + Multi-photo) ────────────────────
-function LogDefect({member,company,currentProject,members,onSave,existingDefects=[],onViewEntry,onTagDrawing,onStartConquas,pendingBatchTrigger,onBatchHandled}){
+function LogDefect({member,company,currentProject,members,onSave,existingDefects=[],onViewEntry,onTagDrawing,onStartConquas,onOpenProjects,pendingBatchTrigger,onBatchHandled}){
   const savedWorkCat=local.get(WORK_CATEGORY_KEY)||"Building Defects (Landed)";
   const blank={title:"",location:"",severity:"Major",description:"",assignee:member?.name||"",photos:[],
     component:"",issue:"",locationLevel:"",locationZone:"",locationSubzone:"",locationGrid:"",
@@ -9144,6 +9144,17 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         <button onClick={onStartConquas} style={{width:"100%",padding:"12px 14px",marginBottom:16,background:"rgba(88,86,214,0.08)",border:"1.5px solid rgba(88,86,214,0.3)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
           <span style={{fontSize:16}}>📋</span>
           <span>{t("conquas.start_button")}</span>
+        </button>
+      )}
+      {/* When CONQUAS is OFF for this project, show a one-tap helper that
+          jumps to project settings — otherwise users hit the LOG screen,
+          notice the CONQUAS button is gone, and have no idea where to
+          re-enable it. Hidden if onOpenProjects isn't supplied. */}
+      {currentProject&&!currentProject.ontology_edition&&onOpenProjects&&(
+        <button onClick={onOpenProjects} style={{width:"100%",padding:"10px 14px",marginBottom:16,background:"rgba(88,86,214,0.04)",border:"1px dashed rgba(88,86,214,0.35)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11.5,cursor:"pointer",display:"flex",alignItems:"flex-start",gap:8,textAlign:"left",lineHeight:1.4}}>
+          <span style={{fontSize:14,flexShrink:0}}>💡</span>
+          <span style={{flex:1}}>Need <b>structured CONQUAS inspection</b>? Enable CONQUAS edition for this project — tap to open <u>Settings → Projects</u>.</span>
+          <span style={{fontSize:14,flexShrink:0,opacity:0.5}}>›</span>
         </button>
       )}
 
@@ -22186,7 +22197,7 @@ function App(){
 
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:"calc(100px + env(safe-area-inset-bottom,0px))"}}>
-        {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")} onStartConquas={()=>setShowConquas(true)} pendingBatchTrigger={pendingConquasBatch} onBatchHandled={()=>setPendingConquasBatch(false)}/>}
+        {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")} onStartConquas={()=>setShowConquas(true)} onOpenProjects={()=>setShowProjects(true)} pendingBatchTrigger={pendingConquasBatch} onBatchHandled={()=>setPendingConquasBatch(false)}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} onPatchDefectLocal={updated=>setDefects(prev=>prev.map(d=>d.id===updated.id?updated:d))} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onViewEntry={setViewing}/>}
         {tab==="defects"&&<DefectsList defects={defects} archivedDefects={archivedDefects} onView={setViewing} onUpdate={updateDefect} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onRestore={restoreDefects} onHardDelete={hardDeleteDefects} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")} onOpenInReview={(payload)=>setReviewModal(payload)} queueCount={queueCount} syncing2={syncing2} onSyncQueue={syncQueue}/>}
