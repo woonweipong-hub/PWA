@@ -2747,7 +2747,7 @@ function typeBg(t){
 
 function exportCSV(defects,projectName){
   const esc=v=>`"${String(v||"").replace(/"/g,'""')}"`;
-  const headers=["ID","Entry Type","Title","Component","Issue","Location","Severity","Status","Assignee","Trade","Logged By","Role","Date","Due Date","Duration","Cost Impact","Cost Responsible","Cost Amount","Description","Comments","Source Filename"];
+  const headers=["ID","Entry Type","Title","Component","Issue","Location","Severity","Status","Assignee","Trade","Logged By","Role","Date","Due Date","Duration","Cost Impact","Cost Responsible","Cost Amount","Description","Comments","Source Filename","CONQUAS Element","ISO 19650 Filename"];
   const rows=defects.map(d=>[
     d.defect_id||d.id||"",
     d.entryType||"Defect",
@@ -2769,7 +2769,9 @@ function exportCSV(defects,projectName){
     d.costAmount||"",
     esc(d.description),
     esc((d.comments||[]).filter(c=>c.text).map(c=>`${c.by}: ${c.text}`).join(" | ")),
-    esc(d.original_filename)
+    esc(d.original_filename),
+    esc(typeof conquasElementOf==="function"?conquasElementOf(d.component)||"":""),
+    esc(d.iso_filename)
   ].join(","));
   const bom="\uFEFF";
   const csv=bom+[headers.join(","),...rows].join("\n");
@@ -2972,7 +2974,7 @@ async function exportReportAll(defects,drawings,savedComparisons,projectName,lan
     h("createdAt","Date"),h("dueDate","Due Date"),h("duration","Duration"),
     h("costImpact","Cost Impact"),h("costResponsible","Cost Responsible"),
     h("costAmount","Cost Amount"),h("description","Description"),
-    h("comments","Comments"),"Occurrences","Pin Locations","Source Filename"
+    h("comments","Comments"),"Occurrences","Pin Locations","Source Filename","CONQUAS Element","ISO 19650 Filename"
   ];
   lines.push(defectHeaders.join(","));
   (defects||[]).forEach(d=>{
@@ -3001,7 +3003,9 @@ async function exportReportAll(defects,drawings,savedComparisons,projectName,lan
       esc((d.comments||[]).filter(c=>c.text).map(c=>`${c.by}: ${c.text}`).join(" | ")),
       occurrences,
       esc(locParts.join(" | ")),
-      esc(d.original_filename)
+      esc(d.original_filename),
+      esc(typeof conquasElementOf==="function"?conquasElementOf(d.component)||"":""),
+      esc(d.iso_filename)
     ].join(","));
   });
   // Section 2: Drawing annotations (notes + markup counts)
@@ -4438,7 +4442,7 @@ async function exportToGoogleSheets(defects,projectName,companyName,langCode){
   // when imported into Sheets / Excel (en-GB DD/MM/YYYY would be parsed
   // as text or wrong locale on most installations).
   const fmtDate=d=>d?isoDate(d):"";
-  const headerRow=["ID","Type","Title","Location","Severity","Status","Assignee","Trade","Logged By","Date","Due Date","Duration","Cost Impact","Cost Amount","Cost Responsible","Description","Comments","Source Filename"];
+  const headerRow=["ID","Type","Title","Location","Severity","Status","Assignee","Trade","Logged By","Date","Due Date","Duration","Cost Impact","Cost Amount","Cost Responsible","Description","Comments","Source Filename","CONQUAS Element","ISO 19650 Filename"];
   const dataRows=defects.map(d=>[
     d.defect_id||d.id||"",
     d.entryType||"Defect",
@@ -4457,7 +4461,9 @@ async function exportToGoogleSheets(defects,projectName,companyName,langCode){
     tx(d.costResponsible)||"",
     d.description||"",
     (d.comments||[]).filter(c=>c.text).map(c=>`${c.author||c.by||""}: ${c.text||""}`).join(" | "),
-    d.original_filename||""
+    d.original_filename||"",
+    typeof conquasElementOf==="function"?conquasElementOf(d.component)||"":"",
+    d.iso_filename||""
   ]);
 
   // Summary rows
@@ -10776,10 +10782,10 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
       if(dateToR&&(!ds||ds>dateToR))return false;
     }
     if(q){
-      // Includes original_filename so users can search by source phone-
-      // gallery name (e.g. 'IMG_2391') to find entries from a specific
-      // photo even when the AI-generated title doesn't mention it.
-      const hay=[d.title,d.description,d.component,d.issue,d.assignee,d.location,d.loggedBy,d.entryType,d.defect_id,d.original_filename].filter(Boolean).join(" ").toLowerCase();
+      // Includes original_filename and iso_filename so users can search
+      // by source phone-gallery name (e.g. 'IMG_2391') OR by the ISO 19650
+      // storage name (e.g. 'WL_HOLLOW' for all wall hollowness entries).
+      const hay=[d.title,d.description,d.component,d.issue,d.assignee,d.location,d.loggedBy,d.entryType,d.defect_id,d.original_filename,d.iso_filename].filter(Boolean).join(" ").toLowerCase();
       if(!hay.includes(q))return false;
     }
     return true;
@@ -11319,6 +11325,18 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
             <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:4}}>
               {d.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(d.entryType),background:typeBg(d.entryType),padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(d.entryType)} {tOpt(d.entryType).toUpperCase()}</span>}
               <SevChip s={d.severity}/>
+              {/* CONQUAS Internal Finishes element auto-mapped from the
+                  component field. Lets the user verify at a glance that the
+                  AI bucketed the entry into the right Floor/Wall/Ceiling/
+                  Door/Window/Component/M&E folder for the CONQUAS export.
+                  Hidden when the component doesn't map to an IF element
+                  (structural / external / infra defects). */}
+              {(()=>{
+                if(typeof conquasElementOf!=="function"||!d.component)return null;
+                const _el=conquasElementOf(d.component);
+                if(!_el||_el===CONQUAS_ELEMENT_OTHER)return null;
+                return <span title={`CONQUAS Internal Finishes element — auto-mapped from component '${d.component}'`} style={{fontSize:10,fontWeight:700,color:"#5856d6",background:"rgba(88,86,214,0.1)",border:"1px solid rgba(88,86,214,0.25)",padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif"}}>🦋 {_el.toUpperCase()}</span>;
+              })()}
               {/* OVERDUE pill — only when dueDate is past AND not closed/verified.
                   Sits next to severity so it reads at a glance without taking a
                   full row. Tap-target inherits the card's onView. */}
@@ -11332,7 +11350,13 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
                 batch + review-mode saves; older entries don't have it).
                 Useful when a foreman cross-references back to the source
                 photo in their DCIM folder. */}
-            {d.original_filename&&<div title={d.original_filename} style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Courier New',monospace",marginBottom:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📄 <Highlight text={d.original_filename} query={q}/></div>}
+            {d.original_filename&&<div title={d.original_filename} style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Courier New',monospace",marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📄 <Highlight text={d.original_filename} query={q}/></div>}
+            {/* ISO 19650 storage filename — auto-generated post-AI from the
+                CONQUAS-mapped component, media hash, and project/company
+                codes. Confirms 'this photo got the right CONQUAS-element
+                folder name in the storage / ZIP export'. Hidden if not yet
+                stamped (legacy entries pre-iso_filename feature). */}
+            {d.iso_filename&&<div title={d.iso_filename} style={{fontSize:10,color:"#5856d6",fontFamily:"'Courier New',monospace",marginBottom:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>🦋 <Highlight text={d.iso_filename} query={q}/></div>}
             <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",display:"flex",justifyContent:"space-between"}}>
               <span>→ <Highlight text={d.assignee} query={q}/></span>
               <span>{d.created?new Date(d.created).toLocaleDateString():"Just now"}</span>
