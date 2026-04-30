@@ -1110,7 +1110,18 @@ const[batchCurrentName,setBatchCurrentName]=useState("");// Pause/resume gate �
 // batch-advance effects so the user can edit the current photo's fields
 // (or jump out to EDIT a just-saved entry) without the queue rolling on
 // top of them. Reset on batch complete and on a fresh batch start.
-const[batchPaused,setBatchPaused]=useState(false);// Visible-during-batch thumbnail strip — shows ALL photos in the run,
+const[batchPaused,setBatchPaused]=useState(false);// Reentry guard for the batch-advance effect. The effect's dependency
+// array includes batchQueue.length, but the FileReader that loads the
+// popped file into form.photos is async — so between popping (queue
+// length decreases) and the photo arriving (form.photos.length goes
+// 0->1), the effect re-fires with form.photos still empty and the
+// queue still non-empty, popping ANOTHER file. Without this ref the
+// entire queue cascades through synchronously and only the last
+// FileReader's URL ends up in form.photos — i.e. '12 uploaded but
+// only 1 saved'. Set true at the start of a pop, cleared in the
+// FileReader's onload/onerror or after the synchronous string-URL
+// path completes.
+const batchAdvancingRef=useRef(false);// Visible-during-batch thumbnail strip — shows ALL photos in the run,
 // not just the in-flight one. Each item: {id, name, blobUrl, status}
 // where status is 'queued' | 'processing' | 'saved' | 'failed'. Blob
 // URLs are cheap (just object refs) until the <img> renders them, so
@@ -1178,7 +1189,7 @@ if(files.length<=STAGING_THRESHOLD){if(reviewMode){commitBatchReview(files);}els
 // rest stay as File objects in batchQueue and are read lazily when
 // popped. This is the key to supporting hundreds of selected photos
 // without spiking memory with N simultaneous data-URL allocations.
-const commitBatch=async files=>{if(!files||!files.length)return;try{const firstUrl=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error("Failed to read "+(files[0].name||"photo")));r.readAsDataURL(files[0]);});setForm(prev=>({...prev,photos:[firstUrl]}));setBatchQueue(files.slice(1));setBatchTotal(files.length);setBatchFailed(0);setBatchCurrentName(files[0]?.name||"");setBatchPaused(false);// Cleanup any leftover blob URLs from a previous batch, then
+const commitBatch=async files=>{if(!files||!files.length)return;try{const firstUrl=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error("Failed to read "+(files[0].name||"photo")));r.readAsDataURL(files[0]);});setForm(prev=>({...prev,photos:[firstUrl]}));setBatchQueue(files.slice(1));setBatchTotal(files.length);setBatchFailed(0);setBatchCurrentName(files[0]?.name||"");setBatchPaused(false);batchAdvancingRef.current=false;// Cleanup any leftover blob URLs from a previous batch, then
 // populate the visible thumbnail strip for this run.
 setBatchThumbs(prev=>{prev.forEach(t=>{try{URL.revokeObjectURL(t.blobUrl);}catch{}});return files.map((f,i)=>({id:`bt-${Date.now()}-${i}`,name:f.name||`photo-${i+1}`,blobUrl:URL.createObjectURL(f),status:i===0?"processing":"queued"}));});}catch(err){console.error("[Batch] first-photo read failed:",err);alert("Could not read the first photo: "+err.message);}};// Staging helpers — filter chip logic and bulk tick/untick.
 const stagingCutoffs={today:86400000,week:7*86400000,month:30*86400000};const visibleStaging=stagingFiles.filter(s=>{if(stagingFilter==="all")return true;const cutoff=stagingCutoffs[stagingFilter];if(!cutoff)return true;return s.lastModified>=Date.now()-cutoff;});const selectedStagingCount=visibleStaging.filter(s=>s.selected).length;const toggleStagingOne=id=>setStagingFiles(prev=>prev.map(s=>s.id===id?{...s,selected:!s.selected}:s));const setAllVisibleStaging=v=>{const visibleIds=new Set(visibleStaging.map(s=>s.id));setStagingFiles(prev=>prev.map(s=>visibleIds.has(s.id)?{...s,selected:v}:s));};const closeStaging=()=>{stagingFiles.forEach(s=>{try{URL.revokeObjectURL(s.thumbUrl);}catch{}});setStagingFiles([]);};const commitStaging=async()=>{const selected=stagingFiles.filter(s=>s.selected);if(!selected.length){alert("Pick at least one photo to process.");return;}const files=selected.map(s=>s.file);closeStaging();if(reviewMode&&aiReady){await commitBatchReview(files);}else{await commitBatch(files);}};// ── Review-before-save flow ───────────────────────────────────────
@@ -1285,16 +1296,17 @@ useEffect(()=>{if(form.photos.length>0)return;// current photo still being proce
 if(batchQueue.length===0)return;// nothing queued
 if(saving||analyzing)return;// previous cycle still in flight
 if(batchPaused)return;// queue frozen while user edits
-const[next,...rest]=batchQueue;setBatchQueue(rest);if(typeof next==="string"){setForm(prev=>({...prev,photos:[next]}));setBatchCurrentName("");return;}setBatchCurrentName(next?.name||"");// Promote the next 'queued' thumb to 'processing'. Previous in-flight
+if(batchAdvancingRef.current)return;// a FileReader is already in flight
+batchAdvancingRef.current=true;const[next,...rest]=batchQueue;setBatchQueue(rest);if(typeof next==="string"){setForm(prev=>({...prev,photos:[next]}));setBatchCurrentName("");batchAdvancingRef.current=false;return;}setBatchCurrentName(next?.name||"");// Promote the next 'queued' thumb to 'processing'. Previous in-flight
 // thumb's status was set on save success/failure in submit().
 setBatchThumbs(prev=>{const idx=prev.findIndex(t=>t.status==="queued");if(idx===-1)return prev;const out=[...prev];out[idx]={...out[idx],status:"processing"};return out;});// File/Blob — read lazily
-const r=new FileReader();r.onload=()=>setForm(prev=>({...prev,photos:[r.result]}));r.onerror=()=>{console.warn("[Batch] failed to read queued file, skipping");// Advance will re-fire because form.photos stays []; the remaining
+const r=new FileReader();r.onload=()=>{setForm(prev=>({...prev,photos:[r.result]}));batchAdvancingRef.current=false;};r.onerror=()=>{console.warn("[Batch] failed to read queued file, skipping");batchAdvancingRef.current=false;// Advance will re-fire because form.photos stays []; the remaining
 // queue will pop the next one.
 };r.readAsDataURL(next);// eslint-disable-next-line react-hooks/exhaustive-deps
 },[form.photos.length,batchQueue.length,saving,analyzing,batchPaused]);// Batch completion: when queue drains and the last photo has been saved,
 // show a single completion toast and reset the progress pill. Avoids
 // spamming N individual toasts during batch processing.
-useEffect(()=>{if(batchTotal>0&&batchQueue.length===0&&form.photos.length===0&&!saving&&!analyzing){const saved=batchTotal-batchFailed;const failNote=batchFailed>0?` · ${batchFailed} failed (check DevTools console)`:"";setLastSaved({id:null,title:`Batch complete — ${saved} photo${saved===1?"":"s"} saved${failNote}`,ts:Date.now(),savedEntry:null,batch:true});setBatchTotal(0);setBatchFailed(0);setBatchCurrentName("");setBatchPaused(false);// Free the blob URLs we allocated up-front in commitBatch — they
+useEffect(()=>{if(batchTotal>0&&batchQueue.length===0&&form.photos.length===0&&!saving&&!analyzing){const saved=batchTotal-batchFailed;const failNote=batchFailed>0?` · ${batchFailed} failed (check DevTools console)`:"";setLastSaved({id:null,title:`Batch complete — ${saved} photo${saved===1?"":"s"} saved${failNote}`,ts:Date.now(),savedEntry:null,batch:true});setBatchTotal(0);setBatchFailed(0);setBatchCurrentName("");setBatchPaused(false);batchAdvancingRef.current=false;// Free the blob URLs we allocated up-front in commitBatch — they
 // would otherwise leak until the page is closed.
 setBatchThumbs(prev=>{prev.forEach(t=>{try{URL.revokeObjectURL(t.blobUrl);}catch{}});return[];});setBatchSourceType(null);// CONQUAS-batch marker resets per batch
 }// eslint-disable-next-line react-hooks/exhaustive-deps

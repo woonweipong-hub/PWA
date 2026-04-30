@@ -7844,6 +7844,18 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // (or jump out to EDIT a just-saved entry) without the queue rolling on
   // top of them. Reset on batch complete and on a fresh batch start.
   const[batchPaused,setBatchPaused]=useState(false);
+  // Reentry guard for the batch-advance effect. The effect's dependency
+  // array includes batchQueue.length, but the FileReader that loads the
+  // popped file into form.photos is async — so between popping (queue
+  // length decreases) and the photo arriving (form.photos.length goes
+  // 0->1), the effect re-fires with form.photos still empty and the
+  // queue still non-empty, popping ANOTHER file. Without this ref the
+  // entire queue cascades through synchronously and only the last
+  // FileReader's URL ends up in form.photos — i.e. '12 uploaded but
+  // only 1 saved'. Set true at the start of a pop, cleared in the
+  // FileReader's onload/onerror or after the synchronous string-URL
+  // path completes.
+  const batchAdvancingRef=useRef(false);
   // Visible-during-batch thumbnail strip — shows ALL photos in the run,
   // not just the in-flight one. Each item: {id, name, blobUrl, status}
   // where status is 'queued' | 'processing' | 'saved' | 'failed'. Blob
@@ -8055,6 +8067,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       setBatchFailed(0);
       setBatchCurrentName(files[0]?.name||"");
       setBatchPaused(false);
+      batchAdvancingRef.current=false;
       // Cleanup any leftover blob URLs from a previous batch, then
       // populate the visible thumbnail strip for this run.
       setBatchThumbs(prev=>{
@@ -8561,11 +8574,14 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
     if(batchQueue.length===0)return;    // nothing queued
     if(saving||analyzing)return;        // previous cycle still in flight
     if(batchPaused)return;              // queue frozen while user edits
+    if(batchAdvancingRef.current)return; // a FileReader is already in flight
+    batchAdvancingRef.current=true;
     const[next,...rest]=batchQueue;
     setBatchQueue(rest);
     if(typeof next==="string"){
       setForm(prev=>({...prev,photos:[next]}));
       setBatchCurrentName("");
+      batchAdvancingRef.current=false;
       return;
     }
     setBatchCurrentName(next?.name||"");
@@ -8580,9 +8596,13 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
     });
     // File/Blob — read lazily
     const r=new FileReader();
-    r.onload=()=>setForm(prev=>({...prev,photos:[r.result]}));
+    r.onload=()=>{
+      setForm(prev=>({...prev,photos:[r.result]}));
+      batchAdvancingRef.current=false;
+    };
     r.onerror=()=>{
       console.warn("[Batch] failed to read queued file, skipping");
+      batchAdvancingRef.current=false;
       // Advance will re-fire because form.photos stays []; the remaining
       // queue will pop the next one.
     };
@@ -8602,6 +8622,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       setBatchFailed(0);
       setBatchCurrentName("");
       setBatchPaused(false);
+      batchAdvancingRef.current=false;
       // Free the blob URLs we allocated up-front in commitBatch — they
       // would otherwise leak until the page is closed.
       setBatchThumbs(prev=>{
