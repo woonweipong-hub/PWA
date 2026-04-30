@@ -8712,6 +8712,29 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         const match=assignees.find(a=>a.toLowerCase().includes(suggestion))||assignees.find(a=>suggestion.includes(a.toLowerCase()));
         if(match)writeAi("assignee",match);
       }
+      // Pass-detection backstop: smaller vision models often follow the
+      // title/description part of the prompt's Pass guidance ('Wall finish
+      // — no defect') but miss the entry_type field, leaving the entry
+      // tagged Defect when it's clearly a Pass. Sweep the final title +
+      // description for declarative pass signals and flip if found. Only
+      // applies when entryType is currently Defect — never overrides a
+      // higher-confidence AI choice (Observation / Instruction / Pass).
+      if(u.entryType==="Defect"){
+        const txt=`${u.title||""} ${u.description||""}`.toLowerCase();
+        const passy=/\bno\s+(visible\s+)?defect(s)?\b/.test(txt)
+          ||/\bmeets\s+(the\s+)?standard\b/.test(txt)
+          ||/\bpasses?\s+(inspection|qa|the\s+check|standard)\b/.test(txt)
+          ||/\bno\s+(visible\s+|obvious\s+)?(issue|problem|fault|finding)s?\b/.test(txt)
+          ||/\b(work|finish|installation)\s+is\s+(satisfactory|acceptable|to\s+standard)\b/.test(txt);
+        if(passy){
+          u.entryType="Pass";
+          prov.entryType={source:"ai-heuristic",verified_by:null,verified_by_name:null,verified_at:null};
+          if(u.severity==="Major"||u.severity==="Critical"){
+            u.severity="Observation";
+            prov.severity={source:"ai-heuristic",verified_by:null,verified_by_name:null,verified_at:null};
+          }
+        }
+      }
       return{...u,fieldProvenance:prov};
     });
   };
