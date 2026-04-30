@@ -6103,9 +6103,57 @@ function GeminiSettings({onClose,companyId}){
         )}
 
         {/* Ollama config */}
-        {provider==="ollama"&&(
+        {provider==="ollama"&&(()=>{
+          // Runtime detection — if the user is loading the app over HTTPS
+          // (e.g. siteshrimp.org) but pointing Ollama at http://localhost,
+          // the browser will block the request before it ever leaves the
+          // tab, AND Ollama itself will CORS-reject if it ever did. Both
+          // problems must be fixed for the integration to work, and the
+          // single biggest source of "Ollama doesn't work for me" reports
+          // is users solving one but not the other.
+          const isHttpsPage=typeof window!=="undefined"&&window.location?.protocol==="https:";
+          const ollamaIsLocal=/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:|\/|$)/i.test(ollamaUrl||"http://localhost:11434");
+          const needsHttpsLocalhostFix=isHttpsPage&&ollamaIsLocal;
+          const myOrigin=typeof window!=="undefined"?window.location.origin:"https://siteshrimp.org";
+          return(
           <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#1a1a1a",marginBottom:12}}>OLLAMA LOCAL AI SETUP</div>
+            {needsHttpsLocalhostFix&&(
+              <div style={{background:"rgba(255,149,0,0.08)",border:"1.5px solid rgba(255,149,0,0.4)",borderRadius:10,padding:"12px 14px",marginBottom:14}}>
+                <div style={{fontSize:12,fontWeight:800,color:"#cc7000",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em",marginBottom:6}}>⚠ HEADS UP — TWO EXTRA STEPS NEEDED</div>
+                <div style={{fontSize:11.5,color:"#5a3a00",lineHeight:1.5,marginBottom:8}}>
+                  You're on <code>{myOrigin}</code> (HTTPS) trying to reach <code>{ollamaUrl||"http://localhost:11434"}</code> (HTTP). Browsers block this combo. Pick the easiest path that fits your setup:
+                </div>
+
+                <div style={{background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.3)",borderRadius:8,padding:"10px 12px",marginBottom:8}}>
+                  <div style={{fontSize:11.5,fontWeight:800,color:"#1a7a35",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>OPTION A — RUN SITESHRIMP LOCALLY (RECOMMENDED, NO BROWSER TWEAKS)</div>
+                  <div style={{fontSize:11,color:"#1a4525",lineHeight:1.55}}>
+                    Serve SiteShrimp from your own machine over HTTP, then both sides are localhost and the browser doesn't interfere.<br/>
+                    1. Clone or download the repo to a folder.<br/>
+                    2. In that folder, run <code>python -m http.server 8000</code> (or <code>npx serve .</code>).<br/>
+                    3. Open <code>http://localhost:8000</code>. Sign in. Configure Ollama here. Done.
+                  </div>
+                </div>
+
+                <div style={{background:"rgba(255,255,255,0.6)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"10px 12px",marginBottom:8}}>
+                  <div style={{fontSize:11.5,fontWeight:800,color:"#1a1a1a",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>OPTION B — STAY ON {myOrigin.toUpperCase()}, UNBLOCK CHROME + OLLAMA</div>
+                  <div style={{fontSize:11,color:"#333",lineHeight:1.55}}>
+                    Step 1 (browser): visit <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code>, add <code>{myOrigin}</code>, set to <b>Enabled</b>, restart Chrome.<br/>
+                    Step 2 (Ollama): stop Ollama, then re-start with the origin allowed:<br/>
+                    &nbsp;&nbsp;• Windows PowerShell: <code>$env:OLLAMA_ORIGINS="{myOrigin}"; ollama serve</code><br/>
+                    &nbsp;&nbsp;• macOS / Linux: <code>OLLAMA_ORIGINS="{myOrigin}" ollama serve</code><br/>
+                    Both must be in place — fixing only one keeps the error.
+                  </div>
+                </div>
+
+                <div style={{background:"rgba(255,255,255,0.6)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"10px 12px"}}>
+                  <div style={{fontSize:11.5,fontWeight:800,color:"#1a1a1a",marginBottom:4,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>OPTION C — TUNNEL OLLAMA OVER HTTPS</div>
+                  <div style={{fontSize:11,color:"#333",lineHeight:1.55}}>
+                    Install <a href="https://ngrok.com/download" target="_blank" rel="noopener noreferrer" style={{color:"#5856d6"}}>ngrok</a>, run <code>ngrok http 11434</code>, paste the resulting <code>https://...ngrok-free.app</code> URL into the OLLAMA SERVER URL field below. Still set <code>OLLAMA_ORIGINS={myOrigin}</code> when starting Ollama, but no Chrome flag needed.
+                  </div>
+                </div>
+              </div>
+            )}
             {[["1","Install Ollama from ollama.com"],["2","Pull a vision model: ollama pull llava (or qwen2.5-vl, llama3.2-vision, minicpm-v)"],["3","Ollama runs at http://localhost:11434 by default"],["4","Enter your Ollama URL below → Test → Save"]].map(([n,t])=>(
               <div key={n} style={{display:"flex",gap:10,marginBottom:8,alignItems:"flex-start"}}>
                 <div style={{width:22,height:22,borderRadius:"50%",background:"#30d158",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff"}}>{n}</div>
@@ -6130,7 +6178,8 @@ function GeminiSettings({onClose,companyId}){
               Recommended vision models: llava, llava-llama3, qwen2.5-vl, llama3.2-vision, minicpm-v, bakllava
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* OpenAI / GPT config */}
         {provider==="openai"&&(
