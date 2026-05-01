@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://siteshrimp.org/schema/entries/conquas/v1.json",
+  "title": "SiteShrimp Photo Entry — CONQUAS variant",
+  "version": "1.0.0",
+  "description": "CONQUAS-aligned variant of the SiteShrimp Photo Entry schema. Extends the base schema with the CONQUAS assessment zone and inspection lot, and tightens conquas_element to required. Field semantics follow the CONQUAS (Private Residential) R1 convention; 'Other' is excluded from conquas_element under this variant since CONQUAS scoring is restricted to the seven Internal Finishes elements.",
+  "x-csv-header-convention": "Each property maps 1:1 to a column in the Entries sheet. The 'x-csv-header' field is the exact column header string. Variant columns (Assessment Zone, Inspection Lot) are appended after the base columns when the project's workCategory is 'CONQUAS'.",
+  "x-work-category": "CONQUAS",
+  "x-extends": "https://siteshrimp.org/schema/entries/v1.json",
+  "allOf": [
+    { "$ref": "https://siteshrimp.org/schema/entries/v1.json" },
+    {
+      "type": "object",
+      "required": ["conquas_element", "assessment_zone"],
+      "properties": {
+        "conquas_element": {
+          "enum": ["Floor", "Wall", "Ceiling", "Door", "Window", "Component", "M&E Fittings"],
+          "description": "CONQUAS Internal Finishes element. Required and restricted to the seven IF elements under this variant — 'Other' is not assessable for CONQUAS scoring."
+        },
+        "assessment_zone": {
+          "type": "string",
+          "x-csv-header": "Assessment Zone",
+          "enum": ["Architectural", "Structural", "M&E"],
+          "description": "CONQUAS assessment category. Drives which scoring framework applies (CONQUAS-21 Architectural / Structural / M&E)."
+        },
+        "inspection_lot": {
+          "type": "string",
+          "x-csv-header": "Inspection Lot",
+          "description": "Optional CONQUAS sample lot identifier. Groups photos belonging to the same scored sample for QP traceability and audit reconstruction."
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,273 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://siteshrimp.org/schema/entries/v1.json",
+  "title": "SiteShrimp Photo Entry",
+  "version": "1.2.0",
+  "description": "One row per bundled photo in a SiteShrimp CONQUAS / Photos ZIP export. Pairs an ISO 19650-aligned filename with the originating defect's metadata so reviewers and downstream tools (BIM viewers, ACC engines, audit pipelines) can validate or ingest without bespoke parsing.",
+  "x-csv-header-convention": "Each property maps 1:1 to a column in the Entries sheet of _manifest.xlsx (or _entries.csv fallback). The 'x-csv-header' field on each property is the exact column header string. Consumers parsing the workbook should use the header row as the key source and normalise to the property names below.",
+  "x-i18n-convention": "Storage values are English by design — controlled vocabularies (severity, status, conquas_element, entry_type, …) are STABLE on the wire so downstream parsers, ACC engines, and BIM tooling can rely on a fixed vocabulary across all locales. Display localisation is the consumer's responsibility, resolved against lang/<code>.json (23 locales). Properties MAY carry an 'x-i18n' object with locale-keyed alternates for display-only fields (x-csv-header, description); enum *values* are NEVER translated.",
+  "x-changelog": {
+    "1.1.0": "Additive: gps_lat, gps_lng, drawing_id, drawing_page, pin_x, pin_y, media_hash, created_at, ai_confidence, ai_model, ai_prompt_version, human_reviewed, field_provenance. No breaking changes; all new fields optional.",
+    "1.0.0": "Initial release.",
+    "1.2.0": "Additive: x-jsonld-context IRI pointers on every property; x-jsonld-context-convention top-level docs. JSONL serialisation now supported in photo ZIP export (_entries.jsonl). No breaking changes."
+  },
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "filename",
+    "iso_19650_filename",
+    "folder",
+    "entry_id"
+  ],
+  "properties": {
+    "filename": {
+      "type": "string",
+      "x-csv-header": "Filename",
+      "description": "ZIP-relative path to the bundled photo. Example: 'Floor/PROJ-ORIG-MMP-FLOOR-001.jpg'.",
+      "x-jsonld-context": "siteshrimp:filename"
+    },
+    "iso_19650_filename": {
+      "type": "string",
+      "x-csv-header": "ISO 19650 Filename",
+      "description": "Canonical ISO 19650-aligned filename for this evidence asset. Stable across exports; the ISO-CONQUAS naming anchor.",
+      "x-jsonld-context": "siteshrimp:iso19650Filename"
+    },
+    "conquas_element": {
+      "type": "string",
+      "x-csv-header": "CONQUAS Element",
+      "enum": [
+        "Floor",
+        "Wall",
+        "Ceiling",
+        "Door",
+        "Window",
+        "Component",
+        "M&E Fittings",
+        "Other",
+        ""
+      ],
+      "description": "CONQUAS Internal Finishes element, derived from the defect's component. 'Other' covers non-IF components (structural, external, infra, safety). Empty when no derivation is possible.",
+      "x-jsonld-context": "siteshrimp:conquasElement"
+    },
+    "folder": {
+      "type": "string",
+      "x-csv-header": "Folder",
+      "description": "Bucket name in the ZIP. Derived from the chosen grouping scheme (CONQUAS element / severity / status / trade / component / area).",
+      "x-jsonld-context": "siteshrimp:folder"
+    },
+    "entry_id": {
+      "type": "string",
+      "x-csv-header": "Entry ID",
+      "description": "SiteShrimp defect identifier. Stable across exports.",
+      "x-jsonld-context": "dcterms:identifier"
+    },
+    "entry_type": {
+      "type": "string",
+      "x-csv-header": "Entry Type",
+      "enum": [
+        "Observation",
+        "Defect",
+        "Update",
+        "Instruction",
+        "Pass"
+      ],
+      "x-jsonld-context": "siteshrimp:entryType"
+    },
+    "title": {
+      "type": "string",
+      "x-csv-header": "Title",
+      "x-jsonld-context": "dcterms:title"
+    },
+    "description": {
+      "type": "string",
+      "x-csv-header": "Description",
+      "description": "Defect description text (free text or AI-prefilled). Note: this property is named 'description' to match the column; not to be confused with this JSON Schema metadata 'description' field.",
+      "x-jsonld-context": "dcterms:description"
+    },
+    "severity": {
+      "type": "string",
+      "x-csv-header": "Severity",
+      "enum": [
+        "Critical",
+        "Major",
+        "Minor",
+        "Observation",
+        ""
+      ],
+      "x-jsonld-context": "siteshrimp:severity"
+    },
+    "status": {
+      "type": "string",
+      "x-csv-header": "Status",
+      "enum": [
+        "Open",
+        "In Progress",
+        "Done",
+        "Verified",
+        "Closed",
+        ""
+      ],
+      "x-jsonld-context": "siteshrimp:status"
+    },
+    "component": {
+      "type": "string",
+      "x-csv-header": "Component",
+      "description": "Component label. Stored in English; consumers may apply locale mapping via lang/<code>.json.",
+      "x-jsonld-context": "siteshrimp:component"
+    },
+    "issue": {
+      "type": "string",
+      "x-csv-header": "Issue",
+      "description": "Issue label. Stored in English; consumers may apply locale mapping via lang/<code>.json.",
+      "x-jsonld-context": "siteshrimp:issue"
+    },
+    "location": {
+      "type": "string",
+      "x-csv-header": "Location",
+      "x-jsonld-context": "schema:location"
+    },
+    "assignee": {
+      "type": "string",
+      "x-csv-header": "Assignee",
+      "x-jsonld-context": "schema:assignee"
+    },
+    "trade": {
+      "type": "string",
+      "x-csv-header": "Trade",
+      "x-jsonld-context": "siteshrimp:trade"
+    },
+    "logged_by": {
+      "type": "string",
+      "x-csv-header": "Logged By",
+      "x-jsonld-context": "schema:author"
+    },
+    "role": {
+      "type": "string",
+      "x-csv-header": "Role",
+      "x-jsonld-context": "schema:roleName"
+    },
+    "date": {
+      "type": "string",
+      "x-csv-header": "Date",
+      "description": "Defect creation date in YYYY-MM-DD (ISO 8601, date-only). For the full ISO timestamp with timezone see 'created_at'. Empty when unknown.",
+      "x-jsonld-context": "dcterms:date"
+    },
+    "due_date": {
+      "type": "string",
+      "x-csv-header": "Due Date",
+      "description": "Optional due date in YYYY-MM-DD (ISO 8601). Empty when not set.",
+      "x-jsonld-context": "siteshrimp:dueDate"
+    },
+    "source_filename": {
+      "type": "string",
+      "x-csv-header": "Source Filename",
+      "description": "Original camera-capture filename before ISO 19650 renaming. Empty for older entries that pre-date the iso_filename feature.",
+      "x-jsonld-context": "siteshrimp:sourceFilename"
+    },
+    "gps_lat": {
+      "type": [
+        "number",
+        "string"
+      ],
+      "x-csv-header": "GPS Lat",
+      "description": "Defect's primary latitude in decimal degrees (WGS84). Empty when no GPS captured. Populated from the defect's parsed coordinates when present.",
+      "x-jsonld-context": "geo:lat"
+    },
+    "gps_lng": {
+      "type": [
+        "number",
+        "string"
+      ],
+      "x-csv-header": "GPS Lng",
+      "description": "Defect's primary longitude in decimal degrees (WGS84). Empty when no GPS captured.",
+      "x-jsonld-context": "geo:long"
+    },
+    "drawing_id": {
+      "type": "string",
+      "x-csv-header": "Drawing ID",
+      "description": "Identifier of the linked drawing for the defect's first pin, if any. Defects with multiple pins surface only the first; the full pin set is available via the REPORT export.",
+      "x-jsonld-context": "siteshrimp:drawingId"
+    },
+    "drawing_page": {
+      "type": [
+        "integer",
+        "string"
+      ],
+      "x-csv-header": "Drawing Page",
+      "description": "PDF page number of the linked drawing for the defect's first pin (1-based). Empty when no pin.",
+      "x-jsonld-context": "siteshrimp:drawingPage"
+    },
+    "pin_x": {
+      "type": [
+        "number",
+        "string"
+      ],
+      "x-csv-header": "Pin X",
+      "description": "Normalised X coordinate of the first pin on the drawing (0–1). Empty when no pin.",
+      "x-jsonld-context": "siteshrimp:pinX"
+    },
+    "pin_y": {
+      "type": [
+        "number",
+        "string"
+      ],
+      "x-csv-header": "Pin Y",
+      "description": "Normalised Y coordinate of the first pin on the drawing (0–1). Empty when no pin.",
+      "x-jsonld-context": "siteshrimp:pinY"
+    },
+    "media_hash": {
+      "type": "string",
+      "x-csv-header": "Media Hash",
+      "description": "Hash of the photo bytes. Used by SiteShrimp for ISO 19650 filename derivation and dedup; downstream consumers can use it for tamper-evidence and idempotent ingestion.",
+      "x-jsonld-context": "siteshrimp:mediaHash"
+    },
+    "created_at": {
+      "type": "string",
+      "x-csv-header": "Created At",
+      "description": "Full ISO 8601 timestamp (with timezone offset) when the defect was logged. The 'date' column is a YYYY-MM-DD truncation kept for back-compat and human reading. Empty when unknown.",
+      "x-jsonld-context": "dcterms:created"
+    },
+    "ai_confidence": {
+      "type": [
+        "number",
+        "string"
+      ],
+      "x-csv-header": "AI Confidence",
+      "description": "Per-row AI confidence score (0.0–1.0) when fields were AI-prefilled. Empty for human-only entries. Lets ACC pipelines threshold rows for auto-accept vs human-review queues.",
+      "minimum": 0,
+      "maximum": 1,
+      "x-jsonld-context": "siteshrimp:aiConfidence"
+    },
+    "ai_model": {
+      "type": "string",
+      "x-csv-header": "AI Model",
+      "description": "Model identifier that produced the AI-prefilled fields (e.g. 'claude-opus-4-7'). Empty for human-only entries. Lets pipelines correlate output quality with model version.",
+      "x-jsonld-context": "siteshrimp:aiModel"
+    },
+    "ai_prompt_version": {
+      "type": "string",
+      "x-csv-header": "AI Prompt Version",
+      "description": "Version tag of the prompt used (semver, commit SHA, or schema version). Lets downstream pipelines correlate output drift with prompt changes.",
+      "x-jsonld-context": "siteshrimp:aiPromptVersion"
+    },
+    "human_reviewed": {
+      "type": [
+        "boolean",
+        "string"
+      ],
+      "x-csv-header": "Human Reviewed",
+      "description": "True when a human edited or signed off on the AI-prefilled fields after capture. False/empty when the row is AI-only and unreviewed.",
+      "x-jsonld-context": "siteshrimp:humanReviewed"
+    },
+    "field_provenance": {
+      "type": [
+        "object",
+        "string"
+      ],
+      "x-csv-header": "Field Provenance",
+      "description": "Optional per-field source map indicating which fields came from the AI vs the human, e.g. {\"severity\":\"ai\",\"title\":\"human\"}. Serialised as a JSON-encoded string in CSV/xlsx; surfaced as an object in JSON consumers.",
+      "x-jsonld-context": "siteshrimp:fieldProvenance"
+    }
+  },
+  "x-jsonld-context-convention": "Each property MAY carry an x-jsonld-context field with a candidate IRI for JSON-LD generation. Namespaces: geo: <http://www.w3.org/2003/01/geo/wgs84_pos#>, dcterms: <http://purl.org/dc/terms/>, schema: <https://schema.org/>, siteshrimp: <https://siteshrimp.org/vocab/>. The siteshrimp: namespace is provisional; the IFC + regulatory parsing app may co-design a stable vocabulary with the SiteShrimp team — bumps go in x-changelog."
+}

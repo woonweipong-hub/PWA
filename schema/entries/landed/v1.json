@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://siteshrimp.org/schema/entries/landed/v1.json",
+  "title": "SiteShrimp Photo Entry — Building Defects (Landed) variant",
+  "version": "1.0.0",
+  "description": "Variant for landed-house defect inspections — bungalows, terrace, cluster, semi-detached. Adds typology fields that drive AI-generated severity context (party-wall propagation risk, roof-water ingress risk) and rectification scope. All variant properties optional — landed projects commonly have heterogeneous units.",
+  "x-work-category": "Building Defects (Landed)",
+  "x-extends": "https://siteshrimp.org/schema/entries/v1.json",
+  "allOf": [
+    { "$ref": "https://siteshrimp.org/schema/entries/v1.json" },
+    {
+      "type": "object",
+      "properties": {
+        "storey_count": {
+          "type": "string",
+          "x-csv-header": "Storey Count",
+          "enum": ["1-storey", "2-storey", "3-storey", "4-storey or more", ""],
+          "description": "Number of storeys of the affected unit. Drives roof, drainage and structural defect prioritisation."
+        },
+        "party_wall_side": {
+          "type": "string",
+          "x-csv-header": "Party Wall Side",
+          "enum": ["None", "Left", "Right", "Both", ""],
+          "description": "Which sides share a party wall. 'None' for detached/bungalow, 'Both' for terrace mid-units. Affects defect attribution between adjacent owners."
+        },
+        "roof_type": {
+          "type": "string",
+          "x-csv-header": "Roof Type",
+          "enum": ["Pitched", "Flat", "Mixed", ""],
+          "description": "Roof typology of the affected unit. Drives waterproofing / leak diagnosis pathway."
+        }
+      }
+    }
+  ]
+}

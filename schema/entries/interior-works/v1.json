@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://siteshrimp.org/schema/entries/interior-works/v1.json",
+  "title": "SiteShrimp Photo Entry — Interior Works variant",
+  "version": "1.0.0",
+  "description": "Variant for fit-out / renovation / interior-design works. Adds the trade subscope (drives which contractor's package the defect falls under) and the renovation permit number for owner-corporation / regulatory traceability.",
+  "x-work-category": "Interior Works",
+  "x-extends": "https://siteshrimp.org/schema/entries/v1.json",
+  "allOf": [
+    { "$ref": "https://siteshrimp.org/schema/entries/v1.json" },
+    {
+      "type": "object",
+      "properties": {
+        "trade_subscope": {
+          "type": "string",
+          "x-csv-header": "Trade Subscope",
+          "enum": ["Carpentry", "Painting", "Tiling", "M&E – Electrical", "M&E – Plumbing", "M&E – ACMV", "Wallpaper", "Glass / Mirror", "Stone", "Wood Flooring", "Other", ""],
+          "description": "Fine-grained trade subscope of the affected work. Routes the defect to the right interior-fit-out subcontractor's punch list."
+        },
+        "permit_no": {
+          "type": "string",
+          "x-csv-header": "Permit No",
+          "description": "Renovation / fit-out permit reference (free text). Empty when no permit applies."
+        }
+      }
+    }
+  ]
+}

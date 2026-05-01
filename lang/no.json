@@ -95,6 +95,7 @@
     "interior": "Innredningsarbeid",
     "facilities": "Eiendomsforvaltning",
     "infrastructure": "Infrastrukturarbeid",
+    "conquas": "CONQUAS",
     "others": "Annet"
   },
   "roles": {
@@ -947,6 +948,8 @@
     "tip_multi_projects_desc": "Bruk prosjektvelgeren til å bytte mellom byggeplasser, bygninger eller renoveringsjobber.",
     "tip_export": "Eksportalternativer",
     "tip_export_desc": "Rapport-fanen: CSV, PDF, Google Sheets eller alt-i-ett. Velg hvilke seksjoner (mangler, tegninger, sammenligninger) som skal inkluderes.",
+    "tip_data_schema": "Åpne dataskjema i hvert bilde-zip",
+    "tip_data_schema_desc": "Photo ZIP sender nå et versjonert, åpent JSON-skjema (schema.json + schema.variant.json når en domenevariant gjelder) som beskriver hver kolonne i arbeidsboken. Hver rad sendes også ut som en _entries.jsonl-linje – én selvvaliderende post per linje, innebygd opptaksformat for AI/ACC-rørledninger, BigQuery/Snowflake/Databricks, revisjonsloggstabler. Manifestarket til _manifest.xlsx peker til skjema-URI (https://siteshrimp.org/schema/entries/v1.json) slik at forbrukere kan validere eksporter uten skreddersydde parsere. Skjema er skrevet åpent (ISO/IEC-standardjustering i tankene) og versjonsstemplet slik at nedstrømsverktøy kan feste og migrere rent.",
     "tip_advisor": "Kontraktsrådgiver",
     "tip_advisor_desc": "Fra RAPPORT-fanen trykker du på ADVISOR for å få AI-drevet defekt-til-krav-kartlegging på tvers av tilpassede krav du tar med per prosjekt (arbeidsgivers krav, arbeidsomfang, interne QA-standarder, kontraktsvilkår — FIDIC / SIA / REDAS / skreddersydde utviklervilkår / etc.) pluss et lite sett med bransjeanerkjente standarder basert på gode offentlig tilgjengelige standarder, som CONSQUA. Bransjepraksis-handelsveiledninger, kvalitetsmerke, PSSCOC, BTO-overleveringssjekkliste) – nyttig for defektkrav, FM-SLA-er, DLP-tvister og kvalitetssjekker.",
     "tip_language": "Språk",
@@ -973,6 +976,10 @@
     "tip_map_multi_select_desc": "Alle tidligere og nylig lagt til nåler forblir synlige på kartet – de vedvarer som databaseposter til du fjerner dem. For å jobbe med flere pinner samtidig, skift-klikk (skrivebord) eller trykk på ➕ MULTI-knappen (mobil) i Tag-on-Map-verktøylinjen, og trykk deretter på hver pinne for å legge den til utvalget (en stiplet indigoring vises rundt valgte pinner). Bruk 🗑 UNPIN (N) for å fjerne GPS fra alle valgte oppføringer samtidig - selve oppføringene blir værende, bare kartnålene fjernes. Trykk på ✕ for å avbryte valget. Individuell fjerning av pinne (via popup-knappen FJERN PIN-kode) fungerer fortsatt for enkelt-pinne tilfeller.",
     "tip_ai_language": "AI auto-fill skriver på ditt språk",
     "tip_ai_language_desc": "Når AI-fotoanalyse er konfigurert (Innstillinger → AI-oppsett), kommer den foreslåtte tittelen og beskrivelsen tilbake på ditt nåværende brukergrensesnittspråk. Alvorlighetsverdi (kritisk / større / mindre / observasjon) og handelsverdier forblir på engelsk, så søk, filtrering og batchoperasjoner forblir konsistente på tvers av teammedlemmer som bruker forskjellige språk. Bytt brukergrensesnittspråk i Innstillinger → Språk og neste AI-analyse vil bruke det nye språket automatisk.",
+    "tip_ai_variant": "AI churner forskjellige felt per arbeidskategori",
+    "tip_ai_variant_desc": "Arbeidskategorien du velger på LOG styrer AI til å be om de riktige domenespesifikke feltene, ikke bare de generiske. CONQUAS-prosjekter får Assessment Zone (Arkitektonisk / Strukturell / M&E). Byggeplassprosjekter får samsvar med farekategori og PPE, med alvorlighetsgrad omtolket som skaderisiko (Kritisk = alvorlig skade, Større = tapt tid, Mindre = førstehjelp, Observasjon = nesten-ulykke). Bygningsfeil (Highrise) får blokk/tårn, enhet, vertikal sone. Facilities Management får tjenestekategori og vedlikeholdstype. Infrastruktur får Asset Class and Chainage. Hver variant sender en JSON Schema URI, så nedstrøms AI/ACC/revisjonsrørledninger kan validere hver rad mot den riktige kontrakten for den kategorien.",
+    "tip_ai_provenance": "AI-utgangsstyring – tillit, modell, rask versjon, menneskelig vurdering",
+    "tip_ai_provenance_desc": "Hver AI-preutfylte defektrad bærer herkomstmetadata slik at nedstrøms rørledninger kan styre AI-utdata: ai_confidence (0.0–1.0, AIs egen selvvurdering per rad), ai_model (hvilken leverandør svarte: gemini / openai / ollama), ai_prompt_versjon (sesemver-taggen for å endres) (semver koden for å endres) sann i det øyeblikket et AI-fylt felt blir redigert). field_provenance har et kildekart per felt (ai vs human). Bruk disse til å terskel rader for køer for automatisk aksept kontra menneskelig gjennomgang, korrelere kvalitetsdrift med umiddelbare redigeringer og bevise hvilke bevis som kun var AI versus menneskelig validert for DLP-krav og samsvarsrevisjoner.",
     "set_maps": "Kart",
     "set_maps_desc": "Legg til en Google Maps API-nøkkel for å aktivere GPS-posisjonsfesting på oppføringer.",
     "tip_map_tagging": "Kartposisjonsmerking",

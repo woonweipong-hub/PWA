@@ -342,6 +342,11 @@ const WORK_CATEGORIES = {
     desc: "Roads, drainage, linkway, external works",
     groups: ["Roads","Drainage","Linkway","External/Landscape","Structural","General"],
   },
+  "CONQUAS": {
+    icon: "\u{1F3DB}️",
+    desc: "CONQUAS-scored handover — Internal Finishes assessment",
+    groups: ["Architectural","Finishes","Carpentry","Sanitary","M&E – Plumbing","M&E – Electrical","M&E – ACMV","General"],
+  },
   "Others": {
     icon: "\u{1F4CB}", // 📋
     desc: "Custom — all components available, free-text allowed",
@@ -350,6 +355,25 @@ const WORK_CATEGORIES = {
   },
 };
 const WORK_CATEGORY_KEY = "sdt-work-category-v1";
+
+// ── Photo-entry export base column order ────────────────────────
+// Single source of truth for the Entries-sheet headers in the photo
+// ZIP export. The drift guard at tools/schema-check.js asserts every
+// header here has a matching 'x-csv-header' property in
+// schema/entries/v1.json. Adding a column here without updating the
+// schema (or vice versa) fails the build. Variant columns (CONQUAS
+// Assessment Zone, etc.) are appended to this base at export time
+// using the manifest's extra_columns list.
+const ENTRY_BASE_HEADERS = [
+  "Filename","ISO 19650 Filename","CONQUAS Element","Folder","Entry ID",
+  "Entry Type","Title","Description","Severity","Status",
+  "Component","Issue","Location","Assignee","Trade",
+  "Logged By","Role","Date","Due Date","Source Filename",
+  // v1.1.0 additive — geo, drawing pin, media integrity, AI provenance.
+  "GPS Lat","GPS Lng","Drawing ID","Drawing Page","Pin X","Pin Y",
+  "Media Hash","Created At",
+  "AI Confidence","AI Model","AI Prompt Version","Human Reviewed","Field Provenance",
+];
 
 // ── CONQUAS Internal-Finishes (IF) elements — canonical order ───
 // Verbatim from BCA CONQUAS (Private Residential) R1, Appendix 1.

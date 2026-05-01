@@ -1,8 +1,11 @@
 {
   "scripts": {
-    "build": "node tools/sync-inline-en.js && babel --presets @babel/preset-react js/app.js -o js/app.compiled.js && node tools/bump-cache.js",
+    "build": "node tools/schema-check.js && node tools/sync-inline-en.js && babel --presets @babel/preset-react js/app.js -o js/app.compiled.js && node tools/bump-cache.js",
     "sync-inline-en": "node tools/sync-inline-en.js",
     "bump-cache": "node tools/bump-cache.js",
+    "schema:check": "node tools/schema-check.js",
+    "validate:jsonl": "node tools/validate-jsonl.js",
+    "validate:conquas": "node tools/validate-jsonl.js --variant=schema/entries/conquas/v1.json",
     "check:i18n": "node tools/check-i18n.js",
     "translate": "node tools/translate.js",
     "extract:refs": "node tools/extract-reference-pdfs.js"

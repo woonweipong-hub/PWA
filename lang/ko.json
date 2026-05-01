@@ -95,6 +95,7 @@
     "interior": "인테리어 공사",
     "facilities": "시설 관리",
     "infrastructure": "인프라 공사",
+    "conquas": "콘콰스",
     "others": "기타"
   },
   "roles": {
@@ -947,6 +948,8 @@
     "tip_multi_projects_desc": "프로젝트 선택기를 사용하여 현장, 건물 또는 리노베이션 작업을 전환하세요.",
     "tip_export": "내보내기 옵션",
     "tip_export_desc": "보고서 탭: CSV, PDF, Google Sheets 또는 올인원. 포함할 섹션(하자, 도면, 비교)을 선택하세요.",
+    "tip_data_schema": "모든 사진 ZIP의 공개 데이터 스키마",
+    "tip_data_schema_desc": "이제 Photo ZIP은 통합 문서의 모든 열을 설명하는 버전이 지정된 개방형 JSON 스키마(도메인 변형이 적용되는 경우schema.json +schema.variant.json)를 제공합니다. 각 행은 _entries.jsonl 줄로도 내보내집니다. 즉, 줄당 하나의 자체 검증 레코드, AI/ACC 파이프라인용 기본 수집 형식, BigQuery/Snowflake/Databricks, 감사 로그 스택입니다. _manifest.xlsx의 매니페스트 시트는 소비자가 맞춤형 파서 없이 내보내기의 유효성을 검사할 수 있도록 스키마 URI(https://siteshrimp.org/schema/entries/v1.json)를 가리킵니다. 스키마는 개방형으로 작성되고(ISO/IEC 표준 정렬을 염두에 두고) 버전 스탬프가 지정되므로 다운스트림 도구를 깔끔하게 고정하고 마이그레이션할 수 있습니다.",
     "tip_advisor": "계약 고문",
     "tip_advisor_desc": "REPORT 탭에서 ADVISOR를 탭하면 프로젝트별로 가져오는 맞춤형 요구 사항(고용주 요구 사항, 작업 범위, 내부 QA 표준, 계약 조건 — FIDIC / SIA / REDAS / 맞춤형 개발자 조건 등)과 참조로 제공되는 공개적으로 사용 가능한 요구 사항(예: CONQUAS, Good Industry Practice 무역 가이드, 품질 마크, PSSCOC, BTO 핸드오버 체크리스트) — 결함 주장, FM SLA, DLP 분쟁 및 품질 확인 승인에 유용합니다.",
     "tip_language": "언어",
@@ -973,6 +976,10 @@
     "tip_map_multi_select_desc": "이전 핀과 새로 추가된 핀은 모두 지도에 표시되며, 제거할 때까지 데이터베이스 기록으로 유지됩니다. 한 번에 여러 핀을 사용하려면 Shift 키를 누른 채 클릭(데스크톱)하거나 지도에 태그 도구 모음에서 ➕ MULTI 버튼(모바일)을 누른 다음 각 핀을 눌러 선택 항목에 추가합니다(선택한 핀 주위에 점선 남색 링이 나타남). 선택한 모든 항목에서 GPS를 한 번에 지우려면 🗑 UNPIN(N)을 사용하세요. 항목 자체는 유지되고 지도 핀만 제거됩니다. 선택을 취소하려면 ✕를 탭하세요. 개별 핀 제거(팝업 REMOVE PIN 버튼을 통해)는 단일 핀 케이스에서도 계속 작동합니다.",
     "tip_ai_language": "AI 자동 완성이 귀하의 언어로 작성됩니다.",
     "tip_ai_language_desc": "AI 사진 분석이 구성되면(설정 → AI 설정) 제안된 제목과 설명이 현재 UI 언어로 다시 나타납니다. 심각도(Critical/Major/Minor/Observation) 및 Trade 값은 영어로 유지되므로 검색, 필터링 및 일괄 작업은 다양한 언어를 사용하는 팀 구성원 간에 일관되게 유지됩니다. 설정 → 언어에서 UI 언어를 전환하면 다음 AI 분석에서 자동으로 새 언어를 사용합니다.",
+    "tip_ai_variant": "AI는 업무 카테고리별로 다양한 분야를 이탈합니다.",
+    "tip_ai_variant_desc": "LOG에서 선택한 작업 카테고리는 AI가 일반적인 필드뿐만 아니라 올바른 도메인별 필드를 요청하도록 조정합니다. CONQUAS 프로젝트에는 평가 구역(건축/구조/M&E)이 부여됩니다. 건설 현장 프로젝트는 부상 위험으로 재해석된 심각도를 사용하여 위험 범주 및 PPE 규정을 준수합니다(중요 = 심각한 부상, 주요 = 시간 손실, 경미 = 응급 처치, 관찰 = 거의 실패). 건물 결함(고층)은 블록/타워, 유닛, 수직 구역을 얻습니다. 시설 관리는 서비스 범주와 유지 관리 유형을 가져옵니다. 인프라는 자산 클래스와 연쇄를 얻습니다. 각 변형은 JSON 스키마 URI를 제공하므로 다운스트림 AI/ACC/감사 파이프라인은 해당 범주에 대한 올바른 계약에 대해 모든 행을 검증할 수 있습니다.",
+    "tip_ai_provenance": "AI 출력 거버넌스 — 신뢰도, 모델, 프롬프트 버전, 인적 검토",
+    "tip_ai_provenance_desc": "AI가 미리 채워진 모든 결함 행은 출처 메타데이터를 전달하므로 다운스트림 파이프라인이 AI 출력을 제어할 수 있습니다. ai_confidence(0.0–1.0, 행당 AI의 자체 평가), ai_model(공급자 응답: gemini / openai / ollama), ai_prompt_version(semver 태그 — 프롬프트가 변경될 때 범프됨) 및 human_reviewed(AI가 채워진 필드가 편집되는 순간 true로 전환). field_provenance는 필드별 소스 맵(ai 대 인간)을 전달합니다. 이를 사용하여 자동 수락 및 사람 검토 대기열에 대한 임계값 행을 사용하고, 품질 드리프트를 프롬프트 편집과 연관시키고, DLP 청구 및 규정 준수 감사에 대해 AI 전용 증거와 사람 검증 증거를 증명합니다.",
     "set_maps": "지도",
     "set_maps_desc": "항목에 GPS 위치 고정을 활성화하려면 Google Maps API 키를 추가하세요.",
     "tip_map_tagging": "지도 위치 태그 지정",

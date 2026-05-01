@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://siteshrimp.org/schema/entries/construction-site/v1.json",
+  "title": "SiteShrimp Photo Entry — Construction Site variant",
+  "version": "1.0.0",
+  "description": "Variant for active-site work / WSH-frame defect capture. Construction Site is a DIFFERENT domain from CONQUAS / building-defects: severity is interpreted as injury risk (Critical = fatal/serious-injury, Major = lost-time, Minor = first-aid, Observation = near-miss). Stakeholders are safety officers, not QPs / architects. Consequence of a finding is a stop-work order, not a contractual deduction. The base severity enum is preserved on the wire for ingestion stability — variants augment context, not replace vocabulary.",
+  "x-severity-frame": "WSH (workplace safety and health), not contractual-defect. See description above for value semantics.",
+  "x-work-category": "Construction Site",
+  "x-extends": "https://siteshrimp.org/schema/entries/v1.json",
+  "allOf": [
+    { "$ref": "https://siteshrimp.org/schema/entries/v1.json" },
+    {
+      "type": "object",
+      "required": ["hazard_category"],
+      "properties": {
+        "hazard_category": {
+          "type": "string",
+          "x-csv-header": "Hazard Category",
+          "enum": ["Working at Heights", "Scaffolding", "Electrical", "Confined Space", "Hot Work", "Chemicals", "Falling Objects", "Mobile Plant", "Manual Handling", "Site Condition", "Other"],
+          "description": "Primary hazard class observed in the photo. Drives WSH risk-control routing. Required — every site-safety photo has at least one identifiable hazard class."
+        },
+        "ppe_compliance": {
+          "type": "string",
+          "x-csv-header": "PPE Compliance",
+          "enum": ["Compliant", "Partial", "Non-Compliant", "N/A", ""],
+          "description": "Personal protective equipment compliance observed for workers visible in the photo. 'N/A' for site-condition photos with no workers."
+        },
+        "stop_work_recommended": {
+          "type": ["boolean", "string"],
+          "x-csv-header": "Stop Work Recommended",
+          "description": "True when the hazard severity warrants an immediate stop-work order. AI flags candidates; the safety officer makes the call."
+        },
+        "workers_exposed": {
+          "type": ["integer", "string"],
+          "x-csv-header": "Workers Exposed",
+          "description": "Count of workers visibly exposed to the hazard. Order-of-magnitude estimate is fine; exact headcount not required.",
+          "minimum": 0
+        }
+      }
+    }
+  ]
+}

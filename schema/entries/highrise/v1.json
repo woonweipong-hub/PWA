@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://siteshrimp.org/schema/entries/highrise/v1.json",
+  "title": "SiteShrimp Photo Entry — Building Defects (Highrise) variant",
+  "version": "1.0.0",
+  "description": "Variant for high-rise residential / mixed-use defect inspections — condos, apartments, towers. Adds vertical-zone and unit-identification fields that drive routing to property-management vs main-contractor responsibility, and identify which common-area scope applies for FM handover.",
+  "x-work-category": "Building Defects (Highrise)",
+  "x-extends": "https://siteshrimp.org/schema/entries/v1.json",
+  "allOf": [
+    { "$ref": "https://siteshrimp.org/schema/entries/v1.json" },
+    {
+      "type": "object",
+      "properties": {
+        "block_or_tower": {
+          "type": "string",
+          "x-csv-header": "Block / Tower",
+          "description": "Block or tower identifier (e.g. 'Block A', 'Tower 3'). Free text — projects use varied conventions."
+        },
+        "unit_no": {
+          "type": "string",
+          "x-csv-header": "Unit No",
+          "description": "Unit / stack identifier (e.g. '#08-12'). Empty for common-area defects."
+        },
+        "vertical_zone": {
+          "type": "string",
+          "x-csv-header": "Vertical Zone",
+          "enum": ["Lobby", "Lift Core", "Corridor", "Unit Interior", "Common Area", "Carpark", "Refuse", "Plant Room", "Roof", ""],
+          "description": "Which vertical zone the defect sits in. Drives the responsibility split between management corp / contractor / unit owner."
+        }
+      }
+    }
+  ]
+}

@@ -210,9 +210,15 @@ routerAdd("POST", "/api/storage/test", (e) => {
 // Severity vocabulary mirrors js/constants.js SEVERITY ("Critical","Major",
 // "Minor","Observation"). Do NOT introduce "High/Medium/Low" — those values
 // don't map to any color, status chip, or filter on the client.
+// Bumped on every meaningful prompt change so consumers can correlate
+// AI output drift with prompt edits via the ai_prompt_version column.
+// Semver: minor for additive fields (1.0.0 -> 1.1.0); major for breaking
+// vocabulary changes. Stamped onto every AI-prefilled defect record.
+var AI_PROMPT_VERSION = "1.1.0";
+
 var AI_SERVER_PROMPT = [
   "You are a CONQUAS-aware defect inspector for construction sites, residential building defects (HDB / private), and facilities management. Analyze this photo.",
-  "Return ONLY a JSON object with these eight fields: category, defect_type, severity, trade, location, description, conquas_tier, checkpoint_match. The first four are mandatory; the last four may be null when not applicable.",
+  "Return ONLY a JSON object with these eleven fields: category, defect_type, severity, trade, location, description, conquas_tier, checkpoint_match, title, assessment_zone, confidence. The first four are mandatory; the rest may be null when not applicable.",
   "Categories: Column, Beam, Slab, Door, Window, Wall, Floor, Ceiling, Roof,",
   "Plumbing, Electrical, Aircon, Painting, Tiling, Waterproofing, Cabinet, General.",
   "Pick the category that maps to a BCA CONQUAS Internal-Finishes element when the photo shows interior finishing work:",
@@ -221,22 +227,24 @@ var AI_SERVER_PROMPT = [
   "For defect_type, use BCA Good Industry Practice terminology where applicable (e.g. hollowness / lippage / delamination for tiling; peeling / bubbling / brush marks for painting; bulging / cracking / dampness for waterproofing; misalignment / chipping for joinery).",
   "Severity: Critical, Major, Minor, Observation. Map CONQUAS tiers — 3X (functional, high impact) -> Critical or Major; 2X (functional) -> Major or Minor; 1X (finishings) -> Minor or Observation.",
   "Optionally include conquas_tier (\"1X\", \"2X\" or \"3X\") and checkpoint_match (verbatim CONQUAS checkpoint label closest to the defect, e.g. \"Hollowness (for tiled wall as long as it is hollow)\") when the photo shows residential interior finishing work covered by the BCA CONQUAS Private Residential 2025 manual. Use null for both when not applicable (structural, external, or non-residential work).",
+  "title: short 4-8 word label summarising the defect, written for a defect-list row (e.g. \"Hollow tile, kitchen wall\"). Distinct from description, which is the longer narrative. Use null only when the photo is unanalysable.",
+  "assessment_zone: which CONQUAS-21 stream applies — \"Architectural\" for finishes / fittings / joinery / non-structural; \"Structural\" for column / beam / slab / wall (load-bearing); \"M&E\" for plumbing / electrical / aircon / fire / lift. Use null only for safety / site-condition photos with no CONQUAS scoring stream.",
+  "confidence: your overall confidence in this row's category + defect_type + severity classification, as a number between 0.0 and 1.0. Use 0.9+ when photo is clear and defect type is unambiguous; 0.5-0.7 when defect type is plausible but photo angle / lighting limits certainty; below 0.4 when guessing. Downstream pipelines threshold on this for auto-accept vs human-review queues.",
 ].join(" ");
 
 // Engine-agnostic JSON schema bound to AI providers via responseSchema (Gemini)
-// or response_format json_schema (OpenAI / Groq / Mistral / OpenRouter). The
-// last two fields (conquas_tier, checkpoint_match) are additive and currently
-// log-only — no PocketBase column for them yet, by design.
+// or response_format json_schema (OpenAI / Groq / Mistral / OpenRouter).
 //
-// All eight properties are listed in `required` because OpenAI strict mode
+// All properties listed in `required` because OpenAI strict mode
 // (response_format json_schema with strict: true) refuses any object schema
 // where a property is not required. Optional fields use type: ["string","null"]
-// so the model is allowed to emit explicit null when it has no value.
+// (or ["number","null"]) so the model can emit explicit null when it has no value.
 var AI_OUTPUT_SCHEMA = {
   type: "object",
   required: [
     "category", "defect_type", "severity", "trade",
-    "location", "description", "conquas_tier", "checkpoint_match"
+    "location", "description", "conquas_tier", "checkpoint_match",
+    "title", "assessment_zone", "confidence"
   ],
   properties: {
     category:    { type: "string", enum: [
@@ -250,13 +258,111 @@ var AI_OUTPUT_SCHEMA = {
     location:    { type: ["string","null"] },
     description: { type: ["string","null"] },
     conquas_tier:     { type: ["string","null"], enum: ["1X","2X","3X",null] },
-    checkpoint_match: { type: ["string","null"] }
+    checkpoint_match: { type: ["string","null"] },
+    title:            { type: ["string","null"] },
+    assessment_zone:  { type: ["string","null"], enum: ["Architectural","Structural","M&E",null] },
+    confidence:       { type: ["number","null"], minimum: 0, maximum: 1 }
   },
   additionalProperties: false
 };
 
-function analyzeWithGeminiServer(b64Photo, geminiKey, description) {
-  var prompt = AI_SERVER_PROMPT + " User context: " + (description || "");
+// Variant routing — mirrors schema/entries/manifest.json's ai_prompt_hint
+// and extra_columns. Kept inline here so the hook is self-contained
+// (no path-resolution dance to load the manifest at runtime). When you
+// add a variant to manifest.json, mirror it here. The schema-check tool
+// validates the schema-side; this side is honor-system for now.
+var AI_VARIANT_TABLE = {
+  "CONQUAS": {
+    addendum: "CONQUAS-aware mode: emit assessment_zone (\"Architectural\" / \"Structural\" / \"M&E\") for every photo. Use BCA Good Industry Practice defect-type vocabulary verbatim.",
+    fields: [
+      { property: "inspection_lot",  type: "string" }
+    ]
+  },
+  "Building Defects (Landed)": {
+    addendum: "Landed-house mode: when storey count is visible from the photo, emit storey_count (\"1-storey\" / \"2-storey\" / \"3-storey\" / \"4-storey or more\"). When the photo shows a wall that may be a party wall (terrace / cluster / semi-detached), note party_wall_side (\"None\" / \"Left\" / \"Right\" / \"Both\"). When roof typology is visible, emit roof_type (\"Pitched\" / \"Flat\" / \"Mixed\").",
+    fields: [
+      { property: "storey_count",    type: "string", enum: ["1-storey","2-storey","3-storey","4-storey or more"] },
+      { property: "party_wall_side", type: "string", enum: ["None","Left","Right","Both"] },
+      { property: "roof_type",       type: "string", enum: ["Pitched","Flat","Mixed"] }
+    ]
+  },
+  "Building Defects (Highrise)": {
+    addendum: "Highrise mode: when a block / tower sign or unit number is visible, emit block_or_tower / unit_no. Identify vertical_zone (Lobby / Lift Core / Corridor / Unit Interior / Common Area / Carpark / Refuse / Plant Room / Roof) from visible context.",
+    fields: [
+      { property: "block_or_tower",  type: "string" },
+      { property: "unit_no",         type: "string" },
+      { property: "vertical_zone",   type: "string", enum: ["Lobby","Lift Core","Corridor","Unit Interior","Common Area","Carpark","Refuse","Plant Room","Roof"] }
+    ]
+  },
+  "Construction Site": {
+    addendum: "Construction Site / WSH mode: this is workplace-safety analysis, NOT contractual-defect grading. Re-interpret severity as injury risk: Critical = fatal / serious-injury risk, Major = lost-time injury, Minor = first-aid, Observation = near-miss. Always emit hazard_category from {Working at Heights / Scaffolding / Electrical / Confined Space / Hot Work / Chemicals / Falling Objects / Mobile Plant / Manual Handling / Site Condition / Other}. Emit ppe_compliance only if workers are visible. Emit stop_work_recommended=true only when severity is Critical AND active work is visible. Emit workers_exposed as a count when applicable.",
+    fields: [
+      { property: "hazard_category", type: "string", enum: ["Working at Heights","Scaffolding","Electrical","Confined Space","Hot Work","Chemicals","Falling Objects","Mobile Plant","Manual Handling","Site Condition","Other"] },
+      { property: "ppe_compliance",  type: "string", enum: ["Compliant","Partial","Non-Compliant","N/A"] },
+      { property: "stop_work_recommended", type: "boolean" },
+      { property: "workers_exposed", type: "integer" }
+    ]
+  },
+  "Interior Works": {
+    addendum: "Interior Works mode: emit trade_subscope from {Carpentry / Painting / Tiling / M&E – Electrical / M&E – Plumbing / M&E – ACMV / Wallpaper / Glass / Mirror / Stone / Wood Flooring / Other} based on the affected trade. Permit numbers are user-supplied — leave permit_no null unless visible in the photo.",
+    fields: [
+      { property: "trade_subscope",  type: "string", enum: ["Carpentry","Painting","Tiling","M&E – Electrical","M&E – Plumbing","M&E – ACMV","Wallpaper","Glass / Mirror","Stone","Wood Flooring","Other"] },
+      { property: "permit_no",       type: "string" }
+    ]
+  },
+  "Facilities Management": {
+    addendum: "Facilities Management mode: this is in-operation maintenance, NOT defect-liability inspection. Always emit service_category from {HVAC / Plumbing / Electrical / Fire Safety / Lift / Cleaning / Pest Control / Landscape / Security / General}. Emit maintenance_type from {Preventive / Reactive / Corrective / Breakdown / Inspection} based on the work nature. Asset IDs are owner-private — leave asset_id null unless an asset tag is visible.",
+    fields: [
+      { property: "service_category",  type: "string", enum: ["HVAC","Plumbing","Electrical","Fire Safety","Lift","Cleaning","Pest Control","Landscape","Security","General"] },
+      { property: "maintenance_type",  type: "string", enum: ["Preventive","Reactive","Corrective","Breakdown","Inspection"] },
+      { property: "asset_id",          type: "string" }
+    ]
+  },
+  "Infrastructure Works": {
+    addendum: "Infrastructure Works mode: this is civil / linear-asset inspection, NOT building defect. Always emit asset_class from {Road / Drainage / Linkway / External Works / Bridge / Tunnel / Culvert / Manhole / Other}. Emit chainage_km only for linear assets when a km marker is visible. Emit structure_id only when a structure-ID plate is visible. Severity remains Critical / Major / Minor / Observation interpreted as structural / serviceability impact.",
+    fields: [
+      { property: "asset_class",     type: "string", enum: ["Road","Drainage","Linkway","External Works","Bridge","Tunnel","Culvert","Manhole","Other"] },
+      { property: "chainage_km",     type: "number" },
+      { property: "structure_id",    type: "string" }
+    ]
+  }
+};
+
+// Build a per-call prompt + JSON-output-schema based on the project's
+// workCategory. Variant fields are added to required + properties as
+// nullable types so the AI is allowed to emit explicit null when the
+// field doesn't apply. The base 11-field shape is preserved for every
+// call; variant fields ride additively. Returns { prompt, schema }.
+function buildAiInputs(workCategory, description) {
+  var prompt = AI_SERVER_PROMPT;
+  // shallow clone schema so we never mutate the global
+  var schema = {
+    type: "object",
+    required: AI_OUTPUT_SCHEMA.required.slice(),
+    properties: {},
+    additionalProperties: false
+  };
+  for (var k in AI_OUTPUT_SCHEMA.properties) schema.properties[k] = AI_OUTPUT_SCHEMA.properties[k];
+  var variant = AI_VARIANT_TABLE[workCategory || ""];
+  if (variant) {
+    if (variant.addendum) prompt = prompt + " " + variant.addendum;
+    for (var i = 0; i < variant.fields.length; i++) {
+      var f = variant.fields[i];
+      schema.required.push(f.property);
+      var def = {};
+      if (f.type === "number")       def.type = ["number","null"];
+      else if (f.type === "boolean") def.type = ["boolean","null"];
+      else if (f.type === "integer") def.type = ["integer","null"];
+      else                            def.type = ["string","null"];
+      if (Array.isArray(f.enum))      def.enum = f.enum.concat([null]);
+      schema.properties[f.property] = def;
+    }
+  }
+  prompt = prompt + " User context: " + (description || "") + " Project work category: " + (workCategory || "(unspecified)");
+  return { prompt: prompt, schema: schema };
+}
+
+function analyzeWithGeminiServer(b64Photo, geminiKey, prompt, outputSchema) {
   var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + geminiKey;
   var res = $http.send({
     method: "POST",
@@ -269,7 +375,7 @@ function analyzeWithGeminiServer(b64Photo, geminiKey, description) {
       ]}],
       generationConfig: {
         responseMimeType: "application/json",
-        responseSchema: AI_OUTPUT_SCHEMA
+        responseSchema: outputSchema
       }
     }),
     timeout: 60,
@@ -281,8 +387,7 @@ function analyzeWithGeminiServer(b64Photo, geminiKey, description) {
   return null;
 }
 
-function analyzeWithOllamaServer(b64Photo, ollamaUrl, ollamaModel, description) {
-  var prompt = AI_SERVER_PROMPT + " User context: " + (description || "");
+function analyzeWithOllamaServer(b64Photo, ollamaUrl, ollamaModel, prompt) {
   var url = ollamaUrl.replace(/\/+$/, "") + "/api/generate";
   var res = $http.send({
     method: "POST",
@@ -303,8 +408,7 @@ function analyzeWithOllamaServer(b64Photo, ollamaUrl, ollamaModel, description) 
   return null;
 }
 
-function analyzeWithOpenAIServer(b64Photo, oaiUrl, oaiKey, oaiModel, description) {
-  var prompt = AI_SERVER_PROMPT + " User context: " + (description || "");
+function analyzeWithOpenAIServer(b64Photo, oaiUrl, oaiKey, oaiModel, prompt, outputSchema) {
   var url = oaiUrl.replace(/\/+$/, "") + "/v1/chat/completions";
   var res = $http.send({
     method: "POST",
@@ -315,7 +419,7 @@ function analyzeWithOpenAIServer(b64Photo, oaiUrl, oaiKey, oaiModel, description
       max_tokens: 500,
       response_format: {
         type: "json_schema",
-        json_schema: { name: "defect_analysis", strict: true, schema: AI_OUTPUT_SCHEMA }
+        json_schema: { name: "defect_analysis", strict: true, schema: outputSchema }
       },
       messages: [{ role: "user", content: [
         { type: "image_url", image_url: { url: "data:image/jpeg;base64," + b64Photo, detail: "low" } },
@@ -392,35 +496,73 @@ onRecordAfterCreateSuccess((e) => {
 
     var b64Photo = $security.base64Encode(photoBytes);
     var description = record.get("description") || "";
+    var workCategory = record.get("workCategory") || "";
     var responseText = null;
+
+    // Build variant-aware prompt + response schema. The base 11 fields
+    // are always asked; the variant for the project's workCategory adds
+    // domain-specific fields (CONQUAS / Landed / Highrise / WSH /
+    // Interior / FM / Infra). Provider gets the schema as a hard
+    // structured-output constraint.
+    var built = buildAiInputs(workCategory, description);
 
     // Call the configured provider
     if (aiProvider === "ollama" && ollamaUrl) {
-      responseText = analyzeWithOllamaServer(b64Photo, ollamaUrl, ollamaModel, description);
+      responseText = analyzeWithOllamaServer(b64Photo, ollamaUrl, ollamaModel, built.prompt);
     } else if (aiProvider === "openai" && oaiKey) {
-      responseText = analyzeWithOpenAIServer(b64Photo, oaiUrl, oaiKey, oaiModel, description);
+      responseText = analyzeWithOpenAIServer(b64Photo, oaiUrl, oaiKey, oaiModel, built.prompt, built.schema);
     } else if (geminiKey) {
-      responseText = analyzeWithGeminiServer(b64Photo, geminiKey, description);
+      responseText = analyzeWithGeminiServer(b64Photo, geminiKey, built.prompt, built.schema);
     }
 
     if (responseText) {
       var fields = parseAiResponse(responseText);
       if (fields) {
-        if (fields.category && !record.get("category")) record.set("category", fields.category);
-        if (fields.defect_type && !record.get("defect_type")) record.set("defect_type", fields.defect_type);
-        if (fields.severity && !record.get("severity")) record.set("severity", fields.severity);
-        if (fields.location && !record.get("location")) record.set("location", fields.location);
-        if (fields.description && !record.get("description")) record.set("description", fields.description);
-        if (fields.trade && !record.get("trade")) record.set("trade", fields.trade);
-        $app.save(record);
-        // CONQUAS observability — log-only until pb_schema gains these fields.
-        // Lets us watch how often each provider fills them in real test runs
-        // before committing to a PocketBase migration.
-        if (fields.conquas_tier || fields.checkpoint_match) {
-          console.log("AI conquas:", record.id,
-            "tier=" + (fields.conquas_tier || "null"),
-            "checkpoint=" + (fields.checkpoint_match || "null"));
+        // Provenance tracking — record which fields the AI actually
+        // wrote, so the client can flip human_reviewed=true when a user
+        // edits any of them and downstream tooling can audit AI vs human
+        // contributions per row.
+        var existingProv = {};
+        try { existingProv = JSON.parse(record.get("fieldProvenance") || "{}") || {}; } catch (_) {}
+        var aiTag = { source: "ai", verified_by: null, verified_at: null };
+
+        if (fields.category && !record.get("category"))         { record.set("category", fields.category); existingProv.category = aiTag; }
+        if (fields.defect_type && !record.get("defect_type"))   { record.set("defect_type", fields.defect_type); existingProv.defect_type = aiTag; }
+        if (fields.severity && !record.get("severity"))         { record.set("severity", fields.severity); existingProv.severity = aiTag; }
+        if (fields.location && !record.get("location"))         { record.set("location", fields.location); existingProv.location = aiTag; }
+        if (fields.description && !record.get("description"))   { record.set("description", fields.description); existingProv.description = aiTag; }
+        if (fields.trade && !record.get("trade"))               { record.set("trade", fields.trade); existingProv.trade = aiTag; }
+        // v1.1 additive — persist what was previously log-only or absent.
+        if (fields.title && !record.get("title"))                       { record.set("title", fields.title); existingProv.title = aiTag; }
+        if (fields.conquas_tier && !record.get("conquas_tier"))         { record.set("conquas_tier", fields.conquas_tier); existingProv.conquas_tier = aiTag; }
+        if (fields.checkpoint_match && !record.get("checkpoint_match")) { record.set("checkpoint_match", fields.checkpoint_match); existingProv.checkpoint_match = aiTag; }
+        if (fields.assessment_zone && !record.get("assessment_zone"))   { record.set("assessment_zone", fields.assessment_zone); existingProv.assessment_zone = aiTag; }
+        if (fields.confidence != null)                                  { record.set("ai_confidence", fields.confidence); }
+
+        // Variant fields — persist whichever the AI emitted, gated by
+        // the variant declared for this project's workCategory. Same
+        // not-already-set guard so user input always wins over AI.
+        var _variantConfig = AI_VARIANT_TABLE[workCategory || ""];
+        if (_variantConfig && Array.isArray(_variantConfig.fields)) {
+          for (var _vi = 0; _vi < _variantConfig.fields.length; _vi++) {
+            var _vf = _variantConfig.fields[_vi];
+            var _vv = fields[_vf.property];
+            if (_vv != null && _vv !== "" && record.get(_vf.property) == null) {
+              record.set(_vf.property, _vv);
+              existingProv[_vf.property] = aiTag;
+            }
+          }
         }
+
+        // AI metadata stamping. Lets ACC pipelines correlate quality
+        // with model/prompt-version, and lets the client know to flip
+        // human_reviewed=true on edit (default false on AI write).
+        record.set("ai_model", aiProvider || "");
+        record.set("ai_prompt_version", AI_PROMPT_VERSION);
+        if (record.get("human_reviewed") == null) record.set("human_reviewed", false);
+        record.set("fieldProvenance", JSON.stringify(existingProv));
+
+        $app.save(record);
       } else {
         console.log("AI parse failed: malformed or missing required fields");
       }

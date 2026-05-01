@@ -339,6 +339,114 @@
       {
         "name": "iso_filename",
         "type": "text"
+      },
+      {
+        "name": "assessment_zone",
+        "type": "text"
+      },
+      {
+        "name": "inspection_lot",
+        "type": "text"
+      },
+      {
+        "name": "conquas_tier",
+        "type": "text"
+      },
+      {
+        "name": "checkpoint_match",
+        "type": "text"
+      },
+      {
+        "name": "ai_confidence",
+        "type": "number"
+      },
+      {
+        "name": "ai_model",
+        "type": "text"
+      },
+      {
+        "name": "ai_prompt_version",
+        "type": "text"
+      },
+      {
+        "name": "human_reviewed",
+        "type": "bool"
+      },
+      {
+        "name": "workCategory",
+        "type": "text"
+      },
+      {
+        "name": "storey_count",
+        "type": "text"
+      },
+      {
+        "name": "party_wall_side",
+        "type": "text"
+      },
+      {
+        "name": "roof_type",
+        "type": "text"
+      },
+      {
+        "name": "block_or_tower",
+        "type": "text"
+      },
+      {
+        "name": "unit_no",
+        "type": "text"
+      },
+      {
+        "name": "vertical_zone",
+        "type": "text"
+      },
+      {
+        "name": "hazard_category",
+        "type": "text"
+      },
+      {
+        "name": "ppe_compliance",
+        "type": "text"
+      },
+      {
+        "name": "stop_work_recommended",
+        "type": "bool"
+      },
+      {
+        "name": "workers_exposed",
+        "type": "number"
+      },
+      {
+        "name": "trade_subscope",
+        "type": "text"
+      },
+      {
+        "name": "permit_no",
+        "type": "text"
+      },
+      {
+        "name": "service_category",
+        "type": "text"
+      },
+      {
+        "name": "maintenance_type",
+        "type": "text"
+      },
+      {
+        "name": "asset_id",
+        "type": "text"
+      },
+      {
+        "name": "asset_class",
+        "type": "text"
+      },
+      {
+        "name": "chainage_km",
+        "type": "number"
+      },
+      {
+        "name": "structure_id",
+        "type": "text"
       }
     ],
     "listRule": "@request.auth.id != ''",

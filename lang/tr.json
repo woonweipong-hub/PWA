@@ -95,6 +95,7 @@
     "interior": "İç Mekan İşleri",
     "facilities": "Tesis Yönetimi",
     "infrastructure": "Altyapı İşleri",
+    "conquas": "CONQUAS",
     "others": "Diğer"
   },
   "roles": {
@@ -947,6 +948,8 @@
     "tip_multi_projects_desc": "Sahalar, binalar veya tadilat işleri arasında geçiş yapmak için proje seçiciyi kullanın.",
     "tip_export": "Dışa aktarma seçenekleri",
     "tip_export_desc": "Rapor sekmesi: CSV, PDF, Google Sheets veya hepsi bir arada. Hangi bölümlerin (kusurlar, çizimler, karşılaştırmalar) dahil edileceğini seçin.",
+    "tip_data_schema": "Veri şemasını her Fotoğraf ZIP'inde açın",
+    "tip_data_schema_desc": "Photo ZIP artık çalışma kitabının her sütununu açıklayan sürümlendirilmiş, açık bir JSON Şeması (bir etki alanı değişkeni geçerli olduğunda schema.json + schema.variant.json) sunuyor. Her satır aynı zamanda bir _entries.jsonl satırı olarak da yayınlanır; satır başına bir kendi kendini doğrulayan kayıt, AI / ACC ardışık düzenleri, BigQuery / Snowflake / Databricks, denetim günlüğü yığınları için yerel alma biçimi. _manifest.xlsx dosyasının Manifest sayfası şema URI'sine (https://siteshrimp.org/schema/entries/v1.json) işaret eder, böylece tüketiciler dışa aktarmaları özel ayrıştırıcılar olmadan doğrulayabilir. Şema açık olarak yazılmıştır (ISO/IEC standartları uyumu göz önünde bulundurularak) ve sürüm damgalıdır, böylece aşağı yöndeki araçlar temiz bir şekilde sabitlenebilir ve taşınabilir.",
     "tip_advisor": "Sözleşme Danışmanı",
     "tip_advisor_desc": "RAPOR sekmesinden, proje başına getirdiğiniz özelleştirilmiş gereksinimler (işverenin gereksinimleri, iş kapsamı, şirket içi QA standartları, sözleşme koşulları - FIDIC / SIA / REDAS / özel geliştirici koşulları / vb.) ve ayrıca referans olarak gönderilen kamuya açık gereksinimlere dayalı endüstri tarafından tanınan küçük bir dizi standart (CONQUAS, İyi Endüstri Uygulamaları ticaret kılavuzları, Kalite İşareti, PSSCOC, BTO devir kontrol listesi) — kusur talepleri, FM SLA'lar, DLP anlaşmazlıkları ve kalite kontrol imzaları için kullanışlıdır.",
     "tip_language": "Dil",
@@ -973,6 +976,10 @@
     "tip_map_multi_select_desc": "Geçmişteki ve yeni eklenen tüm pinler haritada görünür durumda kalır; siz kaldırana kadar veritabanı kayıtları olarak kalırlar. Aynı anda birkaç raptiyeyle çalışmak için, Shift tuşunu basılı tutarak tıklayın (masaüstü) veya Haritada Etiketleme araç çubuğundaki ➕ ÇOKLU düğmesine (mobil) dokunun, ardından seçime eklemek için her bir raptiyeye dokunun (seçili raptiyelerin etrafında kesikli çivit rengi bir halka görünür). GPS'i seçilen tüm girişlerden aynı anda temizlemek için 🗑 PIN'İ AÇ (N) tuşunu kullanın; girişlerin kendisi kalır, yalnızca harita işaretçileri kaldırılır. Seçimi iptal etmek için ✕ öğesine dokunun. Bireysel pin çıkarma (PIN'İ KALDIR düğmesi açılır) tek pinli durumlarda hala işe yarar.",
     "tip_ai_language": "AI otomatik doldurma sizin dilinizde yazar",
     "tip_ai_language_desc": "AI fotoğraf analizi yapılandırıldığında (Ayarlar → AI Kurulumu), önerilen başlık ve açıklama mevcut kullanıcı arayüzü dilinizde geri gelir. Önem Derecesi (Kritik / Büyük / Küçük / Gözlem) ve Ticaret değerleri İngilizce olarak kalır; böylece arama, filtreleme ve toplu işlemler, farklı dilleri kullanan ekip üyeleri arasında tutarlı kalır. Ayarlar → Dil bölümünde kullanıcı arayüzü dilinizi değiştirin; bir sonraki AI analizi yeni dili otomatik olarak kullanacaktır.",
+    "tip_ai_variant": "Yapay zeka, iş kategorisi başına farklı alanları değiştirir",
+    "tip_ai_variant_desc": "LOG'da seçtiğiniz iş kategorisi, yapay zekayı yalnızca genel olanları değil, alana özgü doğru alanları istemeye yönlendirir. CONQUAS projeleri Değerlendirme Bölgesi (Mimari / Yapısal / İ&D) alır. İnşaat Sahası projeleri, Tehlike Kategorisi ve KKD uyumluluğunu alır ve ciddiyet, yaralanma riski olarak yeniden yorumlanır (Kritik = ciddi yaralanma, Büyük = kayıp zaman, Küçük = ilk yardım, Gözlem = ramak kala). Bina Kusurları (Çok Katlı) Blok / Kule, Ünite, Dikey Bölge alır. Tesis Yönetimi, Hizmet Kategorisini ve Bakım Türünü alır. Altyapı, Varlık Sınıfı ve Zincirleme alır. Her değişken bir JSON Şema URI'si gönderir; böylece aşağı akışlı AI / ACC / denetim ardışık düzenleri, her satırı o kategori için doğru sözleşmeye göre doğrulayabilir.",
+    "tip_ai_provenance": "Yapay zeka çıktı yönetişimi — güven, model, anlık sürüm, insan incelemesi",
+    "tip_ai_provenance_desc": "Yapay zeka ile önceden doldurulmuş her kusur satırı, köken meta verilerini taşır, böylece aşağı yönlü işlem hatları, yapay zeka çıktısını yönetebilir: ai_confidence (0,0–1,0, yapay zekanın satır başına kendi derecelendirmesi), ai_model (sağlayıcının yanıtladığı: gemini / openai / ollama), ai_prompt_version (semver etiketi — istem değiştiğinde çarpılır) ve human_reviewed (yapay zeka ile doldurulmuş herhangi bir alan düzenlendiği anda doğruya döner). field_provenance, alan başına bir kaynak haritası taşır (yapay zeka ve insan). Otomatik kabul ve insan incelemesi kuyrukları için satırları eşiklemek, kalite sapmasını hızlı düzenlemelerle ilişkilendirmek ve DLP talepleri ve uyumluluk denetimleri için hangi kanıtın yalnızca yapay zekaya karşı insan tarafından doğrulandığını kanıtlamak için bunları kullanın.",
     "set_maps": "Haritalar",
     "set_maps_desc": "Girişlerde GPS konum sabitlemeyi etkinleştirmek için bir Google Haritalar API anahtarı ekleyin.",
     "tip_map_tagging": "Harita konumu etiketleme",

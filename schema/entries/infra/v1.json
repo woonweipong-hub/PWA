@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://siteshrimp.org/schema/entries/infra/v1.json",
+  "title": "SiteShrimp Photo Entry — Infrastructure Works variant",
+  "version": "1.0.0",
+  "description": "Variant for infrastructure / civil-works defect capture — roads, drainage, linkways, bridges, tunnels, culverts. Adds the asset-class identifier, chainage (km marker for linear assets), and structure ID (for point assets) so defects can be located along long linear works without relying on text-only location.",
+  "x-work-category": "Infrastructure Works",
+  "x-extends": "https://siteshrimp.org/schema/entries/v1.json",
+  "allOf": [
+    { "$ref": "https://siteshrimp.org/schema/entries/v1.json" },
+    {
+      "type": "object",
+      "required": ["asset_class"],
+      "properties": {
+        "asset_class": {
+          "type": "string",
+          "x-csv-header": "Asset Class",
+          "enum": ["Road", "Drainage", "Linkway", "External Works", "Bridge", "Tunnel", "Culvert", "Manhole", "Other"],
+          "description": "Class of infrastructure asset the defect sits on. Drives which inspection regime / asset-management system the defect feeds into. Required — every infrastructure photo has an identifiable asset class."
+        },
+        "chainage_km": {
+          "type": ["number", "string"],
+          "x-csv-header": "Chainage (km)",
+          "description": "Chainage / linear-asset position in kilometres along the route. Empty for point assets (bridges, manholes). Decimals supported (e.g. 12.347).",
+          "minimum": 0
+        },
+        "structure_id": {
+          "type": "string",
+          "x-csv-header": "Structure ID",
+          "description": "Point-asset identifier (bridge / tunnel / culvert / manhole reference). Free text. Empty for linear-asset defects identified by chainage."
+        }
+      }
+    }
+  ]
+}

@@ -95,6 +95,7 @@
     "interior": "室内装修",
     "facilities": "设施管理",
     "infrastructure": "基础设施工程",
+    "conquas": "康夸斯",
     "others": "其他"
   },
   "roles": {
@@ -947,6 +948,8 @@
     "tip_multi_projects_desc": "使用项目选择器在现场、建筑或装修工程之间切换。",
     "tip_export": "导出选项",
     "tip_export_desc": "报告选项卡：CSV、PDF、Google Sheets 或一体化。选择要包含的分节（缺陷、图纸、比较）。",
+    "tip_data_schema": "每个照片 ZIP 中的开放数据模式",
+    "tip_data_schema_desc": "Photo ZIP 现在提供版本化的开放 JSON 架构（当应用域变体时为 schema.json + schema.variant.json），用于描述工作簿的每一列。 每一行还作为 _entries.jsonl 行发出 - 每行一个自验证记录、AI / ACC 管道的本机摄取格式、BigQuery / Snowflake / Databricks、审核日志堆栈。 _manifest.xlsx 的清单表指向架构 URI (https://siteshrimp.org/schema/entries/v1.json)，因此消费者无需定制解析器即可验证导出。 架构是开放的（考虑到 ISO/IEC 标准一致性）和版本标记，因此下游工具可以干净地固定和迁移。",
     "tip_advisor": "合约顾问",
     "tip_advisor_desc": "在“报告”选项卡中，点击“顾问”即可获取由人工智能驱动的缺陷到需求映射，涵盖您为每个项目带来的自定义需求（雇主的要求、工作范围、内部 QA 标准、合同条款 - FIDIC / SIA / REDAS / 定制开发人员条款 / 等），以及基于作为参考提供的公开需求的一小组行业认可标准（例如 CONQUAS、良好行业实践贸易指南、质量标志、PSSCOC、BTO 移交） 检查表）——对于缺陷索赔、FM SLA、DLP 争议和质量检查签核很有用。",
     "tip_language": "语言",
@@ -973,6 +976,10 @@
     "tip_map_multi_select_desc": "所有过去和新添加的图钉在地图上都保持可见 - 它们将作为数据库记录持续存在，直到您将其删除。 要同时使用多个图钉，请按住 Shift 键并单击（桌面）或点击地图上标签工具栏中的 ➕ 多个按钮（移动设备），然后点击每个图钉将其添加到选择中（所选图钉周围会出现靛蓝虚线环）。 使用 🗑 UNPIN (N) 一次性清除所有选定条目中的 GPS - 条目本身保留，仅删除地图图钉。 点击 ✕ 取消选择。 单个引脚移除（通过弹出的“移除引脚”按钮）仍然适用于单引脚情况。",
     "tip_ai_language": "人工智能自动填充以您的语言书写",
     "tip_ai_language_desc": "配置 AI 照片分析后（设置 → AI 设置），建议的标题和说明将以您当前的 UI 语言返回。 严重性（严重/主要/次要/观察）和贸易值保留为英语，因此使用不同语言的团队成员之间的搜索、过滤和批处理操作保持一致。 在“设置”→“语言”中切换您的 UI 语言，下一次 AI 分析将自动使用新语言。",
+    "tip_ai_variant": "人工智能在每个工作类别中搅动不同的领域",
+    "tip_ai_variant_desc": "您在 LOG 中选择的工作类别会引导 AI 请求正确的特定领域字段，而不仅仅是通用字段。 CONQUAS 项目获得评估区（建筑/结构/机电）。 建筑工地项目符合危险类别和个人防护装备，严重程度被重新解释为伤害风险（严重=严重伤害，重大=损失时间，轻微=急救，观察=险些发生）。 建筑缺陷（高层建筑）获取街区/塔楼、单元、垂直区域。 设施管理获取服务类别和维护类型。 基础设施具有资产类别和里程。 每个变体都附带一个 JSON Schema URI，因此下游 AI/ACC/审计管道可以根据该类别的正确合同来验证每一行。",
+    "tip_ai_provenance": "AI输出治理——置信度、模型、提示版本、人工审核",
+    "tip_ai_provenance_desc": "每个 AI 预填充的缺陷行都带有出处元数据，因此下游管道可以管理 AI 输出：ai_confidence（0.0–1.0，AI 自己对每行的自我评级）、ai_model（提供者回答：gemini / openai / ollama）、ai_prompt_version（semver 标记 - 提示更改时会发生碰撞）和 human_reviewed（编辑任何 AI 填充字段时翻转为 true）。 field_provenance 带有每个字段的源地图（人工智能与人类）。 使用这些来设置自动接受与人工审核队列的行阈值，将质量漂移与即时编辑相关联，并证明哪些证据是仅由人工智能验证的，哪些证据是经过人工验证的，以用于 DLP 声明和合规性审计。",
     "set_maps": "地图",
     "set_maps_desc": "添加 Google 地图 API 密钥以在条目上启用 GPS 位置固定。",
     "tip_map_tagging": "地图位置标记",

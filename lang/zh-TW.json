@@ -95,6 +95,7 @@
     "interior": "室內裝修",
     "facilities": "設施管理",
     "infrastructure": "基礎設施工程",
+    "conquas": "康誇斯",
     "others": "其他"
   },
   "roles": {
@@ -947,6 +948,8 @@
     "tip_multi_projects_desc": "使用專案選擇器在工地、建築或裝修工程之間切換。",
     "tip_export": "匯出選項",
     "tip_export_desc": "報告分頁：CSV、PDF、Google Sheets 或全部整合。選擇要包含的分節（缺失、圖面、比對）。",
+    "tip_data_schema": "每個照片 ZIP 中的開放資料模式",
+    "tip_data_schema_desc": "Photo ZIP 現在提供版本化的開放 JSON 架構（當應用域變體時為 schema.json + schema.variant.json），用於描述工作簿的每一列。 每一行也作為 _entries.jsonl 行發出 - 每行一個自驗證記錄、AI / ACC 管道的本機攝取格式、BigQuery / Snowflake / Databricks、審核日誌堆疊。 _manifest.xlsx 的清單表指向架構 URI (https://siteshrimp.org/schema/entries/v1.json)，因此消費者無需自訂解析器即可驗證匯出。 架構是開放的（考慮到 ISO/IEC 標準一致性）和版本標記，因此下游工具可以乾淨地固定和遷移。",
     "tip_advisor": "合約顧問",
     "tip_advisor_desc": "在「報告」標籤中，點擊「顧問」即可取得由人工智慧驅動的缺陷到需求映射，涵蓋您為每個項目帶來的自訂需求（雇主的要求、工作範圍、內部 QA 標準、合約條款 - FIDIC / SIA / REDAS / 客製化開發人員條款 / 等），以及基於作為參考小組提供的公開需求的一檔行業標準（例如產業移交）檢查表）—對於缺陷索賠、FM SLA、DLP 爭議和品質檢查簽核很有用。",
     "tip_language": "語言",
@@ -973,6 +976,10 @@
     "tip_map_multi_select_desc": "所有過去和新添加的圖釘在地圖上都保持可見 - 它們將作為資料庫記錄持續存在，直到您將其刪除。 若要同時使用多個圖釘，請按住 Shift 鍵並點擊（桌面）或點擊地圖上標籤工具列中的 ➕ 多個按鈕（行動裝置），然後點擊每個圖釘將其新增至選取範圍（所選圖釘周圍會出現靛藍虛線環）。 使用 🗑 UNPIN (N) 一次清除所有選定條目中的 GPS - 條目本身保留，僅刪除地圖圖釘。 點選 ✕ 取消選擇。 單一引腳移除（透過彈出的“移除引腳”按鈕）仍然適用於單引腳情況。",
     "tip_ai_language": "人工智慧自動填充以您的語言書寫",
     "tip_ai_language_desc": "配置 AI 照片分析後（設定 → AI 設定），建議的標題和說明將以您目前的 UI 語言傳回。 嚴重性（嚴重/主要/次要/觀察）和貿易值保留為英語，因此使用不同語言的團隊成員之間的搜尋、過濾和批次操作保持一致。 在「設定」→「語言」中切換您的 UI 語言，下一次 AI 分析將自動使用新語言。",
+    "tip_ai_variant": "人工智慧在每個工作類別中攪動不同的領域",
+    "tip_ai_variant_desc": "您在 LOG 中選擇的工作類別會引導 AI 請求正確的特定領域字段，而不僅僅是通用字段。 CONQUAS 專案獲得評估區（建築/結構/機電）。 建築工地專案符合危險類別和個人防護裝備，嚴重程度被重新解釋為傷害風險（嚴重=嚴重傷害，重大=損失時間，輕微=急救，觀察=險些發生）。 建築缺陷（高層建築）取得街區/塔樓、單元、垂直區域。 設施管理取得服務類別和維護類型。 基礎設施具有資產類別和里程。 每個變體都附帶一個 JSON Schema URI，因此下游 AI/ACC/審計管道可以根據該類別的正確合約來驗證每一行。",
+    "tip_ai_provenance": "AI輸出治理－信賴度、模型、提示版本、人工審核",
+    "tip_ai_provenance_desc": "每个 AI 预填充的缺陷行都带有出处元数据，因此下游管道可以管理 AI 输出：ai_confidence（0.0–1.0，AI 自己对每行的自我评级）、ai_model（提供者回答：gemini / openai / ollama）、ai_prompt_version（semver 标记 - 提示更改时会发生碰撞）和 human_reviewed（编辑任何 AI 填充字段时翻转为 true）。 field_provenance 帶有每個字段的來源地圖（人工智慧與人類）。 使用这些来设置自动接受与人工审核队列的行阈值，将质量漂移与即时编辑相关联，并证明哪些证据是仅由人工智能验证的，哪些证据是经过人工验证的，以用于 DLP 声明和合规性审计。",
     "set_maps": "地圖",
     "set_maps_desc": "新增 Google 地圖 API 金鑰以在條目上啟用 GPS 位置固定。",
     "tip_map_tagging": "地圖位置標記",

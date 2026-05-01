@@ -1,9 +1,10 @@
-// Bumped 2026-04-30 to purge stale shell caches so laptop/TWA clients
-// pick up the topbar inbox↔settings swap + slimmer inbox panel + REVIEW
-// category-mix chips without manual hard-refresh. The activate handler
-// below deletes every cache whose name doesn't equal CACHE — a single
-// bump here guarantees a clean state.
-const CACHE = 'siteshrimp-v107';
+// Bumped 2026-05-01 to pre-cache the full schema-variant set: base v1.2
+// + 7 work-category variants (CONQUAS, Building Defects Landed/Highrise,
+// Construction Site, Interior Works, FM, Infrastructure). Variant routing
+// drives both the AI prompt (different fields per work category) and
+// the photo-ZIP export. The activate handler below deletes every cache
+// whose name doesn't equal CACHE.
+const CACHE = 'siteshrimp-v110';
 const ASSETS = [
   '/',
   '/index.html',
@@ -40,7 +41,16 @@ const ASSETS = [
   '/lang/da.json',
   '/lang/fi.json',
   '/reference-texts/manifest.json',
-  '/templates/profiles.json'
+  '/templates/profiles.json',
+  '/schema/entries/v1.json',
+  '/schema/entries/manifest.json',
+  '/schema/entries/conquas/v1.json',
+  '/schema/entries/landed/v1.json',
+  '/schema/entries/highrise/v1.json',
+  '/schema/entries/construction-site/v1.json',
+  '/schema/entries/interior-works/v1.json',
+  '/schema/entries/fm/v1.json',
+  '/schema/entries/infra/v1.json'
 ];
 
 // ── Install: pre-cache app shell, then warm Requirements Advisor corpus ──

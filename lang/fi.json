@@ -95,6 +95,7 @@
     "interior": "Sisustustyöt",
     "facilities": "Kiinteistöhallinta",
     "infrastructure": "Infrastruktuurirakentaminen",
+    "conquas": "CONQUAS",
     "others": "Muut"
   },
   "roles": {
@@ -947,6 +948,8 @@
     "tip_multi_projects_desc": "Käytä projektin valitsinta vaihtaaksesi työmaiden, rakennusten tai remonttitöiden välillä.",
     "tip_export": "Vientivaihtoehdot",
     "tip_export_desc": "Raportti-välilehti: CSV, PDF, Google Sheets tai kaikki yhdessä. Valitse sisällytettävät osiot (virheet, piirustukset, vertailut).",
+    "tip_data_schema": "Avaa dataskeema jokaisessa Photo ZIP:ssä",
+    "tip_data_schema_desc": "Photo ZIP toimittaa nyt versioidun avoimen JSON-skeeman (schema.json + schema.variant.json, kun toimialueen muunnelma koskee), joka kuvaa työkirjan jokaisen sarakkeen. Jokainen rivi lähetetään myös _entries.jsonl-rivinä – yksi itsevahvistava tietue riviä kohden, natiivi syöttömuoto AI-/ACC-putkistojen, BigQuery-/Snowflake-/Databricks- ja tarkastuslokipinoille. Tiedoston _manifest.xlsx Manifest-arkki osoittaa skeeman URI:hen (https://siteshrimp.org/schema/entries/v1.json), jotta kuluttajat voivat vahvistaa viennin ilman räätälöityjä jäsentimiä. Kaavio on luotu avoin (ISO/IEC-standardien kohdistus mielessä) ja versioleimattu, jotta loppupään työkalut voivat kiinnittää ja siirtyä puhtaasti.",
     "tip_advisor": "Sopimusneuvoja",
     "tip_advisor_desc": "Napauta RAPORTOINTI-välilehdellä NEUVONTAJA saadaksesi tekoälyllä toimivaa virheiden ja vaatimusten kartoitusta projektikohtaisesti tuoduista mukautetuista vaatimuksista (työnantajan vaatimukset, työn laajuus, sisäiset laadunvarmistusstandardit, sopimusehdot – FIDIC / SIA / REDAS / räätälöidyt kehittäjäehdot / jne.) sekä pieni joukko toimialan tunnustamia saatavilla olevia standardeja (kuten QUAS-standardeja, jotka perustuvat julkisiin vaatimuksiin, kuten myös CON). Käytännön kauppaoppaat, laatumerkki, PSSCOC, BTO:n luovutuksen tarkistuslista) – hyödyllinen vikailmoituksissa, FM-tasosopimuksissa, DLP-kiistoissa ja laaduntarkistusten kirjautumisissa.",
     "tip_language": "Kieli",
@@ -973,6 +976,10 @@
     "tip_map_multi_select_desc": "Kaikki aiemmat ja uudet lisätyt nastat pysyvät näkyvissä kartalla – ne säilyvät tietokantatietueina, kunnes poistat ne. Jos haluat työskennellä usean nastan kanssa kerralla, paina vaihtonapsauta (työpöytä) tai napauta ➕ MULTI-painiketta (mobiili) Tag-on-Map -työkalupalkissa ja napauta sitten kutakin nastaa lisätäksesi sen valintaan (valittujen nastojen ympärille ilmestyy katkoviivainen indigorengas). Käytä 🗑 UNPIN (N) poistaaksesi GPS kaikista valituista merkinnöistä kerralla – itse merkinnät säilyvät, vain karttanastat poistetaan. Napauta ✕ peruuttaaksesi valinnan. Yksittäinen nastan poisto (ponnahdusikkunan REMOVE PIN -painikkeen kautta) toimii edelleen yksitastaisissa koteloissa.",
     "tip_ai_language": "AI automaattinen täyttö kirjoittaa omalla kielelläsi",
     "tip_ai_language_desc": "Kun tekoälykuvaanalyysi on määritetty (Asetukset → AI-asetukset), ehdotettu otsikko ja kuvaus tulevat takaisin nykyisellä käyttöliittymäkielelläsi. Vakavuus (kriittinen / suuri / vähäinen / huomautus) ja kauppa-arvot pysyvät englanninkielisinä, joten haku-, suodatus- ja erätoiminnot pysyvät yhtenäisinä eri kieliä käyttävien tiimin jäsenten välillä. Vaihda käyttöliittymän kieltä kohdassa Asetukset → Kieli, niin seuraava tekoälyanalyysi käyttää uutta kieltä automaattisesti.",
+    "tip_ai_variant": "Tekoäly vaimentaa eri kenttiä työkategorioita kohden",
+    "tip_ai_variant_desc": "LOGissa valitsemasi työluokka ohjaa tekoälyä kysymään oikeita verkkotunnuskohtaisia ​​kenttiä, ei vain yleisiä. CONQUAS-projektit saavat arviointivyöhykkeen (arkkitehtuuri / rakenne / M&E). Työmaaprojektit noudattavat vaarakategorioita ja henkilönsuojaimia, ja vakavuus tulkitaan uudelleen loukkaantumisriskiksi (kriittinen = vakava vamma, vakava = poissaoloaika, vähäinen = ensiapu, havainto = läheltä piti). Rakennusvirheet (Highrise) saavat lohkon/tornin, yksikön, pystyvyöhykkeen. Toimitilojen hallinta saa palvelukategorian ja ylläpitotyypin. Infrastruktuuri saa omaisuusluokan ja ketjun. Jokaisella versiolla on JSON Schema URI, joten loppupään AI-/ACC-/tarkastusputkistot voivat vahvistaa jokaisen rivin kyseisen luokan oikean sopimuksen perusteella.",
+    "tip_ai_provenance": "Tekoälyn tulosten hallinta – luottamus, malli, pikaversio, ihmisen arvio",
+    "tip_ai_provenance_desc": "Jokaisella tekoälyllä esitäytetyllä vikarivillä on alkuperän metatiedot, joten loppupään putkistot voivat ohjata tekoälyn tuotosta: ai_varmuus (0,0–1,0, tekoälyn oma itsearviointi riviä kohti), ai_model (joka toimittaja vastasi: gemini / openai / ollama), ai_prompt_version (semver ja human prompt to bump) kun mitä tahansa tekoälyllä täytettyä kenttää muokataan). field_provenance sisältää kenttäkohtaisen lähdekartan (ai vs. ihminen). Käytä näitä kynnysriveihin automaattisen hyväksynnän ja ihmisen suorittaman tarkastuksen jonoissa, korreloi laadun vaihtelua nopean muokkauksen kanssa ja todistaa, mitkä todisteet olivat vain tekoälyn ja ihmisen vahvistamia DLP-vaatimuksia ja vaatimustenmukaisuustarkastuksia varten.",
     "set_maps": "Kartat",
     "set_maps_desc": "Lisää Google Maps -sovellusliittymäavain ottaaksesi GPS-sijainnin kiinnityksen käyttöön merkinnöissä.",
     "tip_map_tagging": "Kartan sijainnin merkitseminen",

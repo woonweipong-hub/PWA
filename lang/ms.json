@@ -95,6 +95,7 @@
     "interior": "Kerja Dalaman",
     "facilities": "Pengurusan Fasiliti",
     "infrastructure": "Kerja Infrastruktur",
+    "conquas": "CONQUAS",
     "others": "Lain-lain"
   },
   "roles": {
@@ -947,6 +948,8 @@
     "tip_multi_projects_desc": "Gunakan pemilih projek untuk menukar antara tapak, bangunan atau kerja pengubahsuaian.",
     "tip_export": "Pilihan eksport",
     "tip_export_desc": "Tab Laporan: CSV, PDF, Google Sheets atau semua-dalam-satu. Pilih seksyen mana (kecacatan, lukisan, perbandingan) untuk disertakan.",
+    "tip_data_schema": "Buka skema data dalam setiap ZIP Foto",
+    "tip_data_schema_desc": "ZIP Foto kini menghantar Skema JSON terbuka versi (schema.json + schema.variant.json apabila varian domain digunakan) yang menerangkan setiap lajur buku kerja. Setiap baris juga dipancarkan sebagai baris _entries.jsonl — satu rekod pengesahan sendiri setiap baris, format penyerapan asli untuk saluran paip AI / ACC, BigQuery / Snowflake / Databricks, tindanan log audit. Helaian Manifest _manifest.xlsx menghala ke URI skema (https://siteshrimp.org/schema/entries/v1.json) supaya pengguna boleh mengesahkan eksport tanpa penghurai yang dipesan lebih dahulu. Skema dikarang terbuka (penjajaran piawaian ISO/IEC dalam fikiran) dan dicop versi supaya alatan hiliran boleh menyemat dan berhijrah dengan bersih.",
     "tip_advisor": "Penasihat Kontrak",
     "tip_advisor_desc": "Daripada tab LAPORAN, ketik PENASIHAT untuk mendapatkan pemetaan kecacatan kepada keperluan berkuasa AI merentas keperluan tersuai yang anda bawa bagi setiap projek (keperluan majikan, skop kerja, piawaian QA dalaman, syarat kontrak — FIDIC / SIA / REDAS / terma pembangun yang dipesan lebih dahulu / dsb.) serta set kecil piawaian yang diiktiraf industri, seperti piawaian yang diiktiraf oleh industri, dihantar sebagai standard yang diiktiraf oleh industri, seperti standard SUA yang diiktiraf oleh orang ramai Amalan panduan perdagangan, Tanda Kualiti, PSSCOC, senarai semak penyerahan BTO) — berguna untuk tuntutan kecacatan, SLA FM, pertikaian DLP dan tanda keluar semakan kualiti.",
     "tip_language": "Bahasa",
@@ -973,6 +976,10 @@
     "tip_map_multi_select_desc": "Semua pin yang lalu dan yang baru ditambah kekal kelihatan pada peta — ia kekal sebagai rekod pangkalan data sehingga anda mengalih keluarnya. Untuk bekerja dengan beberapa pin sekali gus, klik anjak (desktop) atau ketik ➕ butang MULTI (mudah alih) dalam bar alat Tag-on-Map, kemudian ketik setiap pin untuk menambahkannya pada pilihan (gelang nila putus-putus muncul di sekeliling pin yang dipilih). Gunakan 🗑 UNPIN (N) untuk mengosongkan GPS daripada semua entri yang dipilih sekaligus — entri itu sendiri kekal, hanya pin peta dialih keluar. Ketik ✕ untuk membatalkan pilihan. Alih keluar pin individu (melalui butang KELUARKAN PIN pop timbul) masih berfungsi untuk sarung pin tunggal.",
     "tip_ai_language": "Autoisi AI menulis dalam bahasa anda",
     "tip_ai_language_desc": "Apabila analisis foto AI dikonfigurasikan (Tetapan → Persediaan AI), tajuk dan penerangan yang dicadangkan kembali dalam bahasa UI semasa anda. Nilai Keterukan (Kritikal / Utama / Kecil / Pemerhatian) dan Perdagangan kekal dalam bahasa Inggeris supaya operasi carian, penapisan dan kelompok kekal konsisten merentas ahli pasukan menggunakan bahasa yang berbeza. Tukar bahasa UI anda dalam Tetapan → Bahasa dan analisis AI seterusnya akan menggunakan bahasa baharu secara automatik.",
+    "tip_ai_variant": "AI menghasilkan bidang yang berbeza bagi setiap kategori kerja",
+    "tip_ai_variant_desc": "Kategori kerja yang anda pilih di LOG mengarahkan AI untuk meminta medan khusus domain yang betul, bukan hanya medan generik. Projek CONQUAS mendapat Zon Penilaian (Seni Bina / Struktur / M&E). Projek Tapak Pembinaan mendapat Pematuhan Kategori Bahaya dan PPE, dengan keterukan ditafsirkan semula sebagai risiko kecederaan (Kritis = kecederaan serius, Major = masa hilang, Minor = pertolongan cemas, Pemerhatian = nyaris). Kecacatan Bangunan (Tinggi) mendapat Blok / Menara, Unit, Zon Menegak. Pengurusan Fasiliti mendapat Kategori Perkhidmatan dan Jenis Penyelenggaraan. Infrastruktur mendapat Kelas Aset dan Rantaian. Setiap varian menghantar URI Skema JSON, jadi saluran paip AI / ACC / audit hiliran boleh mengesahkan setiap baris terhadap kontrak yang betul untuk kategori tersebut.",
+    "tip_ai_provenance": "Tadbir urus keluaran AI — keyakinan, model, versi segera, semakan manusia",
+    "tip_ai_provenance_desc": "Setiap baris kecacatan yang dipraisi AI membawa metadata asal supaya saluran paip hiliran boleh mentadbir keluaran AI: ai_confidence (0.0–1.0, penilaian kendiri AI sendiri setiap baris), ai_model (pembekal yang menjawab: gemini / openai / ollama), ai_prompt_version (tag semver — terserempak apabila medan disemak yang betul) dan AI_filled. field_provenance membawa peta sumber setiap medan (ai vs manusia). Gunakan ini untuk ambang baris bagi baris gilir auto-terima vs semakan manusia, kaitkan hanyut kualiti dengan pengeditan segera dan buktikan bukti yang AI sahaja berbanding yang disahkan manusia untuk tuntutan DLP dan audit pematuhan.",
     "set_maps": "Peta",
     "set_maps_desc": "Tambahkan kunci API Peta Google untuk mendayakan penyematan lokasi GPS pada entri.",
     "tip_map_tagging": "Penandaan lokasi peta",

@@ -1,0 +1,112 @@
+{
+  "$id": "https://siteshrimp.org/schema/entries/manifest.json",
+  "title": "SiteShrimp Photo Entry — schema variant registry",
+  "version": "1.0.0",
+  "description": "Registry of all photo-entry schema variants, keyed by SiteShrimp workCategory. Adding a new domain variant: (1) drop a schema file at /schema/entries/<id>/v1.json, (2) append an entry below mapping the workCategory to its URI and any extra Entries-sheet columns, (3) add both files to the service-worker pre-cache list. No app code change required. Modeled after the language-pack pattern (lang/<code>.json) so domain coverage scales by configuration, not by code.",
+  "x-i18n-convention": "Variant extra_columns entries MAY carry an 'x-i18n' object with locale-keyed alternates for display fields, e.g. { \"header\": { \"zh\": \"评估范围\", \"fr\": \"Zone d'évaluation\" } }. Consumers resolve at render time against lang/<code>.json. The English 'header' value remains the canonical column key on the wire — translations are display-only and never affect the property name or stored value. Same principle as the base schema's x-i18n-convention: storage stable in English, display localised.",
+  "base": {
+    "id": "base",
+    "uri": "https://siteshrimp.org/schema/entries/v1.json",
+    "title": "SiteShrimp Photo Entry (base)",
+    "version": "1.0.0"
+  },
+  "variants": [
+    {
+      "id": "conquas",
+      "workCategory": "CONQUAS",
+      "uri": "https://siteshrimp.org/schema/entries/conquas/v1.json",
+      "title": "CONQUAS — Internal Finishes",
+      "version": "1.0.0",
+      "description": "Adds assessment_zone (Architectural / Structural / M&E) and inspection_lot. Tightens conquas_element to required and restricts it to the seven IF elements (no 'Other').",
+      "extra_columns": [
+        { "header": "Assessment Zone", "property": "assessment_zone", "required": true },
+        { "header": "Inspection Lot", "property": "inspection_lot", "required": false }
+      ],
+      "ai_prompt_hint": "CONQUAS-aware mode: emit assessment_zone (\"Architectural\" / \"Structural\" / \"M&E\") for every photo. Use BCA Good Industry Practice defect-type vocabulary verbatim."
+    },
+    {
+      "id": "landed",
+      "workCategory": "Building Defects (Landed)",
+      "uri": "https://siteshrimp.org/schema/entries/landed/v1.json",
+      "title": "Building Defects — Landed",
+      "version": "1.0.0",
+      "description": "Adds storey_count, party_wall_side, roof_type for landed-house typology context.",
+      "extra_columns": [
+        { "header": "Storey Count", "property": "storey_count", "required": false },
+        { "header": "Party Wall Side", "property": "party_wall_side", "required": false },
+        { "header": "Roof Type", "property": "roof_type", "required": false }
+      ],
+      "ai_prompt_hint": "Landed-house mode: when storey count is visible from the photo, emit storey_count. When the photo shows a wall that may be a party wall (terrace / cluster / semi-detached), note party_wall_side. When roof typology is visible, emit roof_type."
+    },
+    {
+      "id": "highrise",
+      "workCategory": "Building Defects (Highrise)",
+      "uri": "https://siteshrimp.org/schema/entries/highrise/v1.json",
+      "title": "Building Defects — Highrise",
+      "version": "1.0.0",
+      "description": "Adds block_or_tower, unit_no, vertical_zone for tower/condo context.",
+      "extra_columns": [
+        { "header": "Block / Tower", "property": "block_or_tower", "required": false },
+        { "header": "Unit No", "property": "unit_no", "required": false },
+        { "header": "Vertical Zone", "property": "vertical_zone", "required": false }
+      ],
+      "ai_prompt_hint": "Highrise mode: when a block/tower sign or unit number is visible, emit block_or_tower / unit_no. Identify vertical_zone (Lobby / Lift Core / Corridor / Unit Interior / Common Area / Carpark / Refuse / Plant Room / Roof) from visible context."
+    },
+    {
+      "id": "construction-site",
+      "workCategory": "Construction Site",
+      "uri": "https://siteshrimp.org/schema/entries/construction-site/v1.json",
+      "title": "Construction Site (WSH frame)",
+      "version": "1.0.0",
+      "description": "WSH-frame variant: severity is interpreted as injury risk (Critical = fatal/serious-injury, Major = lost-time, Minor = first-aid, Observation = near-miss). Adds hazard_category (required), ppe_compliance, stop_work_recommended, workers_exposed.",
+      "extra_columns": [
+        { "header": "Hazard Category", "property": "hazard_category", "required": true },
+        { "header": "PPE Compliance", "property": "ppe_compliance", "required": false },
+        { "header": "Stop Work Recommended", "property": "stop_work_recommended", "required": false },
+        { "header": "Workers Exposed", "property": "workers_exposed", "required": false }
+      ],
+      "ai_prompt_hint": "Construction Site / WSH mode: this is workplace-safety analysis, NOT contractual-defect grading. Re-interpret severity as injury risk: Critical = fatal/serious-injury risk, Major = lost-time injury, Minor = first-aid, Observation = near-miss. Always emit hazard_category from {Working at Heights / Scaffolding / Electrical / Confined Space / Hot Work / Chemicals / Falling Objects / Mobile Plant / Manual Handling / Site Condition / Other}. Emit ppe_compliance only if workers are visible. Emit stop_work_recommended=true only when severity is Critical AND active work is visible. Emit workers_exposed as a count when applicable."
+    },
+    {
+      "id": "interior-works",
+      "workCategory": "Interior Works",
+      "uri": "https://siteshrimp.org/schema/entries/interior-works/v1.json",
+      "title": "Interior Works",
+      "version": "1.0.0",
+      "description": "Adds trade_subscope and permit_no for fit-out / renovation / interior-design context.",
+      "extra_columns": [
+        { "header": "Trade Subscope", "property": "trade_subscope", "required": false },
+        { "header": "Permit No", "property": "permit_no", "required": false }
+      ],
+      "ai_prompt_hint": "Interior Works mode: emit trade_subscope from {Carpentry / Painting / Tiling / M&E – Electrical / M&E – Plumbing / M&E – ACMV / Wallpaper / Glass / Mirror / Stone / Wood Flooring / Other} based on the affected trade. Permit numbers are user-supplied — leave permit_no null unless visible in the photo."
+    },
+    {
+      "id": "fm",
+      "workCategory": "Facilities Management",
+      "uri": "https://siteshrimp.org/schema/entries/fm/v1.json",
+      "title": "Facilities Management",
+      "version": "1.0.0",
+      "description": "Adds service_category (required), maintenance_type, asset_id for in-operation FM context.",
+      "extra_columns": [
+        { "header": "Service Category", "property": "service_category", "required": true },
+        { "header": "Maintenance Type", "property": "maintenance_type", "required": false },
+        { "header": "Asset ID", "property": "asset_id", "required": false }
+      ],
+      "ai_prompt_hint": "Facilities Management mode: this is in-operation maintenance, NOT defect-liability inspection. Always emit service_category from {HVAC / Plumbing / Electrical / Fire Safety / Lift / Cleaning / Pest Control / Landscape / Security / General}. Emit maintenance_type from {Preventive / Reactive / Corrective / Breakdown / Inspection} based on the work nature. Asset IDs are owner-private — leave asset_id null unless an asset tag is visible."
+    },
+    {
+      "id": "infra",
+      "workCategory": "Infrastructure Works",
+      "uri": "https://siteshrimp.org/schema/entries/infra/v1.json",
+      "title": "Infrastructure Works",
+      "version": "1.0.0",
+      "description": "Adds asset_class (required), chainage_km, structure_id for civil / linear-asset context.",
+      "extra_columns": [
+        { "header": "Asset Class", "property": "asset_class", "required": true },
+        { "header": "Chainage (km)", "property": "chainage_km", "required": false },
+        { "header": "Structure ID", "property": "structure_id", "required": false }
+      ],
+      "ai_prompt_hint": "Infrastructure Works mode: this is civil / linear-asset inspection, NOT building defect. Always emit asset_class from {Road / Drainage / Linkway / External Works / Bridge / Tunnel / Culvert / Manhole / Other}. Emit chainage_km only for linear assets when a km marker is visible. Emit structure_id only when a structure-ID plate is visible. Severity remains Critical/Major/Minor/Observation interpreted as structural/serviceability impact."
+    }
+  ]
+}

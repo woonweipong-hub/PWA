@@ -95,6 +95,7 @@
     "interior": "Công Trình Nội Thất",
     "facilities": "Quản Lý Cơ Sở",
     "infrastructure": "Công Trình Hạ Tầng",
+    "conquas": "CHINH PHỤC",
     "others": "Khác"
   },
   "roles": {
@@ -947,6 +948,8 @@
     "tip_multi_projects_desc": "Sử dụng bộ chọn dự án để chuyển đổi giữa các công trường, tòa nhà hoặc công việc cải tạo.",
     "tip_export": "Tùy chọn xuất",
     "tip_export_desc": "Tab Báo cáo: CSV, PDF, Google Sheets hoặc tất cả trong một. Chọn các phần (lỗi, bản vẽ, so sánh) để bao gồm.",
+    "tip_data_schema": "Mở lược đồ dữ liệu trong mọi Photo ZIP",
+    "tip_data_schema_desc": "Photo ZIP hiện gửi Lược đồ JSON mở, đã được phiên bản (schema.json + lược đồ.variant.json khi áp dụng biến thể miền) mô tả mọi cột của sổ làm việc. Mỗi hàng cũng được phát ra dưới dạng một dòng _entries.jsonl — một bản ghi tự xác thực trên mỗi dòng, định dạng nhập gốc cho quy trình AI / ACC, BigQuery / Snowflake / Databricks, ngăn xếp nhật ký kiểm tra. Bảng kê khai của _manifest.xlsx trỏ tới URI lược đồ (https://siteshrimp.org/schema/entries/v1.json) để người tiêu dùng có thể xác thực các bản xuất mà không cần trình phân tích cú pháp riêng. Lược đồ được thiết kế mở (có lưu ý đến việc căn chỉnh các tiêu chuẩn ISO/IEC) và được đóng dấu phiên bản để công cụ hạ nguồn có thể ghim và di chuyển dễ dàng.",
     "tip_advisor": "Cố vấn hợp đồng",
     "tip_advisor_desc": "Từ tab BÁO CÁO, hãy nhấn vào CỐ VẤN TƯ VẤN để có được bản đồ lỗi theo yêu cầu do AI cung cấp cho các yêu cầu tùy chỉnh mà bạn đưa ra cho mỗi dự án (yêu cầu của nhà tuyển dụng, phạm vi công việc, tiêu chuẩn QA nội bộ, điều khoản hợp đồng — FIDIC / SIA / REDAS / điều khoản dành cho nhà phát triển đặt riêng / v.v.) cùng với một bộ nhỏ các tiêu chuẩn được ngành công nhận dựa trên các yêu cầu có sẵn công khai được gửi dưới dạng tài liệu tham khảo (chẳng hạn như CONQUAS, hướng dẫn thương mại Thực hành Công nghiệp Tốt, Nhãn hiệu Chất lượng, PSSCOC, BTO danh sách kiểm tra bàn giao) — hữu ích cho các khiếu nại về lỗi, SLA FM, tranh chấp DLP và phê duyệt kiểm tra chất lượng.",
     "tip_language": "Ngôn ngữ",
@@ -973,6 +976,10 @@
     "tip_map_multi_select_desc": "Tất cả các ghim trước đây và mới được thêm vẫn hiển thị trên bản đồ — chúng vẫn tồn tại dưới dạng bản ghi cơ sở dữ liệu cho đến khi bạn xóa chúng. Để làm việc với nhiều ghim cùng một lúc, hãy nhấp shift (máy tính để bàn) hoặc nhấn vào nút ➕ MULTI (di động) trong thanh công cụ Tag-on-Map, sau đó nhấn vào từng ghim để thêm nó vào vùng chọn (một vòng màu chàm nét đứt xuất hiện xung quanh các ghim đã chọn). Sử dụng 🗑 UNPIN (N) để xóa GPS khỏi tất cả các mục đã chọn cùng một lúc — các mục đó vẫn giữ nguyên, chỉ các ghim bản đồ bị xóa. Nhấn ✕ để hủy lựa chọn. Việc xóa mã pin riêng lẻ (thông qua nút BỎ PIN bật lên) vẫn hoạt động đối với các trường hợp có một mã pin.",
     "tip_ai_language": "AI tự động điền viết bằng ngôn ngữ của bạn",
     "tip_ai_language_desc": "Khi phân tích ảnh AI được định cấu hình (Cài đặt → Thiết lập AI), tiêu đề và mô tả được đề xuất sẽ trở lại bằng ngôn ngữ giao diện người dùng hiện tại của bạn. Mức độ nghiêm trọng (Quan trọng / Chính / Nhỏ / Quan sát) và Giá trị thương mại vẫn bằng tiếng Anh nên các hoạt động tìm kiếm, lọc và hàng loạt vẫn nhất quán giữa các thành viên trong nhóm sử dụng các ngôn ngữ khác nhau. Chuyển ngôn ngữ giao diện người dùng của bạn trong Cài đặt → Ngôn ngữ và phân tích AI tiếp theo sẽ tự động sử dụng ngôn ngữ mới.",
+    "tip_ai_variant": "AI tạo ra các lĩnh vực khác nhau cho mỗi danh mục công việc",
+    "tip_ai_variant_desc": "Danh mục công việc bạn chọn tại LOG sẽ điều khiển AI yêu cầu các trường dành riêng cho miền phù hợp chứ không chỉ các trường chung. Dự án CONQUAS nhận được Vùng đánh giá (Architectural/Structural/M&E). Các dự án tại Công trường xây dựng tuân thủ Danh mục nguy hiểm và PPE, với mức độ nghiêm trọng được diễn giải lại là rủi ro thương tích (Nghiêm trọng = chấn thương nghiêm trọng, Nghiêm trọng = mất thời gian, Nhỏ = sơ cứu, Quan sát = suýt xảy ra). Khuyết Tật Tòa Nhà (Highrise) lấy Block/Tower, Unit, Vertical Zone. Quản lý cơ sở vật chất có Danh mục dịch vụ và Loại bảo trì. Cơ sở hạ tầng nhận được Loại tài sản và Chuỗi. Mỗi biến thể gửi một URI Lược đồ JSON, do đó, quy trình AI/ACC/kiểm toán xuôi dòng có thể xác thực mọi hàng theo hợp đồng phù hợp cho danh mục đó.",
+    "tip_ai_provenance": "Quản trị đầu ra AI - sự tự tin, mô hình, phiên bản nhanh chóng, đánh giá của con người",
+    "tip_ai_provenance_desc": "Mỗi hàng lỗi được AI điền sẵn đều mang siêu dữ liệu xuất xứ để các quy trình xuôi dòng có thể chi phối đầu ra AI: ai_trust (0,0–1,0, tự xếp hạng của AI trên mỗi hàng), ai_model (được nhà cung cấp trả lời: gemini / openai / ollama), ai_prompt_version (thẻ semver — bị lỗi khi lời nhắc thay đổi) và human_reviewed (chuyển thành true ngay khi bất kỳ trường chứa AI nào được chỉnh sửa). field_provenance mang bản đồ nguồn trên mỗi trường (ai vs con người). Sử dụng những thông số này để xác định các hàng cho hàng đợi tự động chấp nhận và hàng đợi đánh giá của con người, so sánh sự chênh lệch chất lượng với các chỉnh sửa nhanh chóng và chứng minh bằng chứng nào chỉ được AI xác thực so với bằng chứng được con người xác thực đối với các xác nhận quyền sở hữu DLP và kiểm tra tuân thủ.",
     "set_maps": "Bản đồ",
     "set_maps_desc": "Thêm khóa API Google Maps để bật tính năng ghim vị trí GPS vào các mục nhập.",
     "tip_map_tagging": "Gắn thẻ vị trí bản đồ",

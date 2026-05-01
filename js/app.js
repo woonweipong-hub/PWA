@@ -2798,6 +2798,19 @@ async function _ensureJSZip(){
     document.head.appendChild(s);
   });
 }
+// SheetJS — used to write the consolidated Manifest + Entries workbook
+// into the photo ZIP. Fails soft: caller falls back to two CSVs so an
+// offline export still ships something openable in Excel.
+async function _ensureXLSX(){
+  if(typeof window!=="undefined"&&window.XLSX)return window.XLSX;
+  return new Promise((resolve,reject)=>{
+    const s=document.createElement("script");
+    s.src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+    s.onload=()=>resolve(window.XLSX);
+    s.onerror=()=>reject(new Error("Could not load XLSX (offline?)."));
+    document.head.appendChild(s);
+  });
+}
 // Generic photo-bundle ZIP exporter. Groups photos into folders by a
 // chosen scheme (CONQUAS IF element / severity / status / trade /
 // component / area) and renames each file to the saved iso_filename
@@ -2866,14 +2879,51 @@ async function exportPhotosZip(defects,projectName,scheme="conquas",onProgress,o
   // saved iso_filename means the ZIP carries the same evidence anchor
   // referenced everywhere else (export CSV, contract advisor, audit log).
   const _isoBase=(name)=>String(name||"").replace(/\.(jpe?g|png|webp)$/i,"");
-  // Per-photo metadata rows for the _entries.csv that ships inside the
-  // ZIP. Reviewers can pair every bundled photo with the originating
-  // defect's title, description, severity, etc. without having to
-  // re-export from REVIEW. Header row matches the in-app CSV export.
-  const _csvEsc=(v)=>`"${String(v==null?"":v).replace(/"/g,'""')}"`;
-  const entryRows=[
-    ["Filename","CONQUAS Element","Folder","Entry ID","Entry Type","Title","Description","Severity","Status","Component","Issue","Location","Assignee","Trade","Logged By","Role","Date","Due Date","Source Filename","ISO 19650 Filename"].join(",")
-  ];
+  // Photo-entry schema variant resolution. Project's workCategory
+  // selects the variant (CONQUAS / Building Defects / FM / Infra /
+  // …); resolved via the language-pack-style manifest so adding a
+  // new domain is a config change, not a code change. Best-effort —
+  // if the manifest isn't reachable, fall back to the base schema URI.
+  const _workCategory=(_project&&_project.workCategory)||"";
+  let _schemaManifest=null;
+  try{
+    const _mResp=await fetch("/schema/entries/manifest.json",{cache:"force-cache"})
+      .catch(()=>fetch("schema/entries/manifest.json"));
+    if(_mResp&&_mResp.ok)_schemaManifest=await _mResp.json();
+  }catch(e){console.warn("[Photo ZIP] schema manifest unavailable:",e?.message||e);}
+  const _baseSchemaUri=(_schemaManifest&&_schemaManifest.base&&_schemaManifest.base.uri)
+    ||"https://siteshrimp.org/schema/entries/v1.json";
+  const _variant=_workCategory&&_schemaManifest&&Array.isArray(_schemaManifest.variants)
+    ?_schemaManifest.variants.find(v=>v&&v.workCategory===_workCategory)||null
+    :null;
+  const _variantColumns=_variant&&Array.isArray(_variant.extra_columns)?_variant.extra_columns:[];
+  // Per-photo metadata rows for the Entries sheet of the workbook (or
+  // _entries.csv fallback). Base column order comes from the canonical
+  // ENTRY_BASE_HEADERS in constants.js; the schema-check tool guards
+  // against drift between this list and schema/entries/v1.json. Variant
+  // columns (e.g. CONQUAS Assessment Zone) are appended at the end.
+  const _baseHeaders=(typeof ENTRY_BASE_HEADERS!=="undefined"&&Array.isArray(ENTRY_BASE_HEADERS))
+    ?ENTRY_BASE_HEADERS
+    :["Filename","ISO 19650 Filename","CONQUAS Element","Folder","Entry ID","Entry Type","Title","Description","Severity","Status","Component","Issue","Location","Assignee","Trade","Logged By","Role","Date","Due Date","Source Filename"];
+  const entryHeaders=[..._baseHeaders,..._variantColumns.map(c=>c.header)];
+  const entryRows=[];
+  // Best-effort pin lookup so each photo row can surface the defect's
+  // first drawing pin (drawing_id, page, x, y). Defects with multiple
+  // pins surface only the first; consumers wanting full pin data use
+  // the REPORT export. Failure is silent — pin fields just stay empty.
+  let _pinsByEntry={};
+  try{
+    if(typeof DB!=="undefined"&&DB&&DB.pins&&typeof DB.pins.list==="function"){
+      const _allPins=await DB.pins.list();
+      (_allPins||[]).forEach(p=>{(_pinsByEntry[p.entryId]=_pinsByEntry[p.entryId]||[]).push(p);});
+    }
+  }catch(e){console.warn("[Photo ZIP] pin lookup unavailable:",e?.message||e);}
+  // Reads a variant column off a defect using either a per-defect
+  // override (d[property]) or empty until the AI/UI starts setting it.
+  const _variantValuesFor=(d)=>_variantColumns.map(c=>{
+    const v=c.property?d[c.property]:undefined;
+    return v==null?"":String(v);
+  });
   for(let di=0;di<defects.length;di++){
     const d=defects[di];
     const folder=_bucketFor(d);
@@ -2904,32 +2954,54 @@ async function exportPhotosZip(defects,projectName,scheme="conquas",onProgress,o
         }
         zip.file(`${folder}/${fname}`,blob);
         processed++;
-        // Capture metadata row for _entries.csv at end. Uses isoDate for
-        // sortable dates and matches the CSV export's column order so
-        // the ZIP's manifest is consistent with the in-app CSV.
+        // Capture metadata row for Entries sheet. ISO 19650 Filename is
+        // promoted next to Filename so the ISO-CONQUAS naming pair is
+        // visually obvious when reviewers open the workbook.
         const _conquasEl=typeof conquasElementOf==="function"?conquasElementOf(d.component)||"":"";
+        // v1.1 additive fields — populated when present on the defect
+        // record; empty otherwise (schema declares them optional).
+        const _coords=(typeof parseDefectCoords==="function")?parseDefectCoords(d):null;
+        const _firstPin=(_pinsByEntry[d.id]||[])[0]||null;
+        const _provenance=d.field_provenance
+          ?(typeof d.field_provenance==="string"?d.field_provenance:JSON.stringify(d.field_provenance))
+          :"";
         entryRows.push([
-          _csvEsc(`${folder}/${fname}`),
-          _csvEsc(_conquasEl),
-          _csvEsc(folder),
-          _csvEsc(d.defect_id||d.id||""),
-          _csvEsc(d.entryType||"Defect"),
-          _csvEsc(d.title||""),
-          _csvEsc(d.description||""),
-          _csvEsc(d.severity||""),
-          _csvEsc(d.status||""),
-          _csvEsc(d.component||""),
-          _csvEsc(d.issue||""),
-          _csvEsc(d.location||""),
-          _csvEsc(d.assignee||""),
-          _csvEsc(d.trade||""),
-          _csvEsc(d.loggedBy||""),
-          _csvEsc(d.loggedByRole||""),
-          _csvEsc((d.createdAt||d.created)?new Date(d.createdAt||d.created).toISOString().slice(0,10):""),
-          _csvEsc(d.dueDate||""),
-          _csvEsc(d.original_filename||""),
-          _csvEsc(d.iso_filename||"")
-        ].join(","));
+          `${folder}/${fname}`,
+          d.iso_filename||"",
+          _conquasEl,
+          folder,
+          d.defect_id||d.id||"",
+          d.entryType||"Defect",
+          d.title||"",
+          d.description||"",
+          d.severity||"",
+          d.status||"",
+          d.component||"",
+          d.issue||"",
+          d.location||"",
+          d.assignee||"",
+          d.trade||"",
+          d.loggedBy||"",
+          d.loggedByRole||"",
+          (d.createdAt||d.created)?new Date(d.createdAt||d.created).toISOString().slice(0,10):"",
+          d.dueDate||"",
+          d.original_filename||"",
+          // v1.1 additive
+          _coords?_coords.lat:"",
+          _coords?_coords.lng:"",
+          _firstPin?(_firstPin.drawingId||""):"",
+          _firstPin?(_firstPin.pageNum||""):"",
+          _firstPin&&_firstPin.x!=null?_firstPin.x:"",
+          _firstPin&&_firstPin.y!=null?_firstPin.y:"",
+          d.media_hash||"",
+          (d.createdAt||d.created)?new Date(d.createdAt||d.created).toISOString():"",
+          d.ai_confidence!=null?d.ai_confidence:"",
+          d.ai_model||"",
+          d.ai_prompt_version||"",
+          d.human_reviewed!=null?d.human_reviewed:"",
+          _provenance,
+          ..._variantValuesFor(d)
+        ]);
         if(onProgress&&processed%3===0)onProgress(`Bundling ${processed} photo${processed===1?"":"s"}…`);
       }catch(e){
         console.warn("[Photo ZIP] fetch failed:",photoUrl,e);
@@ -2941,23 +3013,134 @@ async function exportPhotosZip(defects,projectName,scheme="conquas",onProgress,o
     conquas:"CONQUAS Element",severity:"Severity",status:"Status",
     trade:"Trade",component:"Component",area:"Area",
   }[scheme]||"Bucket";
-  const manifest=[`${schemeLabel},Photos`];
+  const manifestRows=[[schemeLabel,"Photos"]];
   // Stable order for CONQUAS so the manifest is reviewer-friendly; other
   // schemes just sort alphabetically by bucket name.
   if(scheme==="conquas"){
     for(const el of [...CONQUAS_IF_ELEMENTS,CONQUAS_ELEMENT_OTHER]){
-      manifest.push(`"${el}",${counters[el]||0}`);
+      manifestRows.push([el, counters[el]||0]);
     }
   }else{
-    Object.keys(counters).sort().forEach(k=>manifest.push(`"${k}",${counters[k]}`));
+    Object.keys(counters).sort().forEach(k=>manifestRows.push([k, counters[k]]));
   }
-  manifest.push(``,`Project,${safePart(projectName||"")}`,`Scheme,${scheme}`,`Generated,${new Date().toISOString()}`,`Source,"${defects.length} entries; ${processed} photos bundled; ${skipped} skipped"`,`Naming,"ISO 19650 cached + ${isoComputed} computed on-the-fly + ${isoFailed} fallback"`);
-  zip.file("_manifest.csv","﻿"+manifest.join("\n"));
-  // Per-photo entries manifest — full metadata for every bundled photo
-  // (title / description / severity / status / location / assignee /
-  // dates / both filenames). Lets reviewers cross-reference without
-  // re-exporting from REVIEW. UTF-8 BOM for Excel compatibility.
-  zip.file("_entries.csv","﻿"+entryRows.join("\n"));
+  manifestRows.push([]);
+  manifestRows.push(["Project", safePart(projectName||"")]);
+  manifestRows.push(["Scheme", scheme]);
+  manifestRows.push(["Generated", new Date().toISOString()]);
+  manifestRows.push(["Source", `${defects.length} entries; ${processed} photos bundled; ${skipped} skipped`]);
+  manifestRows.push(["Naming", `ISO 19650 cached + ${isoComputed} computed on-the-fly + ${isoFailed} fallback`]);
+  // Versioned JSON Schema URIs for the Entries sheet. Base schema
+  // covers the universal columns; the variant (when set via the
+  // project's workCategory) tightens enums and adds domain-specific
+  // required fields. Both URIs go into the Manifest sheet so consumers
+  // know which schema(s) to validate against; frozen copies are also
+  // bundled inside the ZIP for offline pipelines.
+  manifestRows.push(["Schema (base)", _baseSchemaUri]);
+  if(_variant&&_variant.uri){
+    manifestRows.push(["Schema (variant)", _variant.uri]);
+    manifestRows.push(["Work Category", _workCategory]);
+  }
+  // Schema fetcher: writes the JSON text into the ZIP and returns the
+  // parsed object. The parsed form is reused below to build the
+  // header->property map for JSONL emission, so we only fetch once.
+  const _bundleSchema=async(uri,zipPath,fallbackPath)=>{
+    try{
+      const resp=await fetch(uri,{cache:"force-cache"}).catch(()=>fallbackPath?fetch(fallbackPath):null);
+      if(resp&&resp.ok){
+        const text=await resp.text();
+        zip.file(zipPath, text);
+        try{return JSON.parse(text);}catch{return null;}
+      }
+    }catch(e){console.warn("[Photo ZIP] schema fetch failed for",uri,":",e?.message||e);}
+    return null;
+  };
+  const _baseSchemaJson=await _bundleSchema(_baseSchemaUri, "schema.json", "/schema/entries/v1.json");
+  let _variantSchemaJson=null;
+  if(_variant&&_variant.uri){
+    _variantSchemaJson=await _bundleSchema(_variant.uri, "schema.variant.json", `/schema/entries/${_variant.id}/v1.json`);
+  }
+  // Build header -> snake_case property map by walking the bundled
+  // schemas (allOf-recursive). The variant manifest's extra_columns
+  // supplies the authoritative property name for variant-only columns.
+  // If schema fetches failed (offline before first online visit) the
+  // map stays empty and JSONL emission is skipped — pipelines can
+  // still parse the xlsx, and the URI in the Manifest tells consumers
+  // where to fetch the schema next time.
+  const _headerToProp={};
+  const _walk=(s)=>{
+    if(!s||typeof s!=="object")return;
+    if(s.properties)for(const [k,v] of Object.entries(s.properties)){
+      if(v&&v["x-csv-header"])_headerToProp[v["x-csv-header"]]=k;
+    }
+    if(Array.isArray(s.allOf))s.allOf.forEach(_walk);
+  };
+  _walk(_baseSchemaJson);
+  _walk(_variantSchemaJson);
+  if(Array.isArray(_variantColumns)){
+    for(const c of _variantColumns){
+      if(c&&c.header&&c.property)_headerToProp[c.header]=c.property;
+    }
+  }
+  // JSONL serialisation — one self-validating record per line. Native
+  // ingest format for AI/ACC pipelines, BigQuery / Snowflake / audit
+  // log stacks. Pairs with schema.json (each line validates against
+  // the same schema bundled in the ZIP). Skipped silently if the
+  // schema fetch failed and no header map could be built.
+  if(Object.keys(_headerToProp).length>0&&entryRows.length>0){
+    const _jsonlLines=entryRows.map(row=>{
+      const obj={};
+      for(let i=0;i<entryHeaders.length;i++){
+        const prop=_headerToProp[entryHeaders[i]];
+        if(!prop)continue;
+        const val=row[i];
+        if(val===""||val==null)continue;
+        // field_provenance round-trips: stored as JSON string in
+        // CSV/xlsx for readability, but JSONL consumers expect the
+        // object form so they can index per-field source.
+        if(prop==="field_provenance"&&typeof val==="string"){
+          try{obj[prop]=JSON.parse(val);}catch{obj[prop]=val;}
+        }else{
+          obj[prop]=val;
+        }
+      }
+      return JSON.stringify(obj);
+    });
+    zip.file("_entries.jsonl", _jsonlLines.join("\n"));
+    manifestRows.push(["JSONL", "_entries.jsonl"]);
+  }
+  // One xlsx workbook with two related sheets — Manifest (per-bucket
+  // counts + project metadata) and Entries (per-photo metadata with
+  // ISO-CONQUAS naming columns). Replaces the legacy _manifest.csv +
+  // _entries.csv pair so reviewers get a single double-click open.
+  // CSV pair is kept as an offline-safe fallback when SheetJS can't load.
+  let xlsxOk=false;
+  try{
+    const XLSX=await _ensureXLSX();
+    const wb=XLSX.utils.book_new();
+    const wsManifest=XLSX.utils.aoa_to_sheet(manifestRows);
+    const wsEntries=XLSX.utils.aoa_to_sheet([entryHeaders, ...entryRows]);
+    if(entryRows.length>0){
+      // Excel-style column letter (A..Z, AA..AZ, BA..). Header count
+      // grew past 26 with the v1.1 additive fields, so single-letter
+      // arithmetic isn't enough.
+      const _colLetter=(n)=>{let s="";while(n>0){const r=(n-1)%26;s=String.fromCharCode(65+r)+s;n=Math.floor((n-1)/26);}return s;};
+      const lastCol=_colLetter(entryHeaders.length);
+      wsEntries["!autofilter"]={ref:`A1:${lastCol}1`};
+    }
+    XLSX.utils.book_append_sheet(wb, wsManifest, "Manifest");
+    XLSX.utils.book_append_sheet(wb, wsEntries, "Entries");
+    const xlsxBuf=XLSX.write(wb,{type:"array",bookType:"xlsx"});
+    zip.file("_manifest.xlsx", xlsxBuf);
+    xlsxOk=true;
+  }catch(e){
+    console.warn("[Photo ZIP] XLSX unavailable, falling back to CSVs:", e?.message||e);
+  }
+  if(!xlsxOk){
+    const _csvEsc=v=>`"${String(v==null?"":v).replace(/"/g,'""')}"`;
+    const _csvRow=row=>row.map(_csvEsc).join(",");
+    zip.file("_manifest.csv","﻿"+manifestRows.map(_csvRow).join("\n"));
+    zip.file("_entries.csv","﻿"+[entryHeaders, ...entryRows].map(_csvRow).join("\n"));
+  }
   if(processed===0){
     throw new Error(`No photos bundled (${skipped} skipped — likely CORS or missing files). Check that photos load in REVIEW first.`);
   }
@@ -4785,7 +4968,7 @@ function MicBtn({onResult,currentValue,append}){
 }
 
 const SEV_I18N={"Critical":"severity.critical","Major":"severity.major","Minor":"severity.minor","Observation":"severity.observation"};
-const WORKCAT_I18N={"Building Defects (Landed)":"work_categories.landed","Building Defects (Highrise)":"work_categories.highrise","Construction Site":"work_categories.construction","Interior Works":"work_categories.interior","Facilities Management":"work_categories.facilities","Infrastructure Works":"work_categories.infrastructure","Others":"work_categories.others"};
+const WORKCAT_I18N={"Building Defects (Landed)":"work_categories.landed","Building Defects (Highrise)":"work_categories.highrise","Construction Site":"work_categories.construction","Interior Works":"work_categories.interior","Facilities Management":"work_categories.facilities","Infrastructure Works":"work_categories.infrastructure","CONQUAS":"work_categories.conquas","Others":"work_categories.others"};
 const sevDisplayFn=v=>SEV_I18N[v]?t(SEV_I18N[v]):v;
 const workcatDisplayFn=v=>WORKCAT_I18N[v]?t(WORKCAT_I18N[v]):v;
 const SevChip=({s})=><span style={{display:"inline-flex",alignItems:"center",padding:"3px 9px",borderRadius:20,fontSize:11,fontWeight:600,fontFamily:"'Barlow Condensed',sans-serif",color:SEV_COLOR[s],background:SEV_BG[s]}}>{(SEV_I18N[s]?t(SEV_I18N[s]):s).toUpperCase()}</span>;
@@ -8235,12 +8418,16 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   const speakVoice=useVoice();
   // Generic setter. When the user edits an AI-filled field, we flip its
   // provenance to human so the form (and later the saved record) shows who
-  // verified the value and when. Fields that were never AI-filled stay
-  // provenance-free — no chip clutter for pure-human input.
+  // verified the value and when. We also set human_reviewed=true on the
+  // form so AI-governance consumers can distinguish AI-only rows from
+  // human-validated ones via the ai_prompt_version + human_reviewed pair.
+  // Fields that were never AI-filled stay provenance-free — no chip
+  // clutter for pure-human input, and human_reviewed stays untouched
+  // (server defaults it to false on AI write; null when no AI ran).
   const set=(k,v)=>setForm(f=>{
     const prevProv=f.fieldProvenance&&f.fieldProvenance[k];
     if(prevProv&&prevProv.source==="ai"){
-      return{...f,[k]:v,fieldProvenance:{...f.fieldProvenance,[k]:{source:"human",verified_by:member?.id||"",verified_by_name:member?.name||"",verified_at:new Date().toISOString()}}};
+      return{...f,[k]:v,human_reviewed:true,fieldProvenance:{...f.fieldProvenance,[k]:{source:"human",verified_by:member?.id||"",verified_by_name:member?.name||"",verified_at:new Date().toISOString()}}};
     }
     return{...f,[k]:v};
   });
@@ -8805,6 +8992,26 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           }
         }
       }
+      // v1.1 governance fields — accept new AI outputs when the client
+      // endpoint emits them. assessment_zone is required by the CONQUAS
+      // variant schema; the others give downstream pipelines a confidence
+      // threshold and a row-level review flag. Empty until the field is
+      // provided by AI; user edits via set() flip human_reviewed=true.
+      if(result.assessment_zone&&["Architectural","Structural","M&E"].includes(result.assessment_zone)){
+        writeAiIfEmpty("assessment_zone",result.assessment_zone);
+      }
+      if(result.conquas_tier&&["1X","2X","3X"].includes(result.conquas_tier)){
+        writeAiIfEmpty("conquas_tier",result.conquas_tier);
+      }
+      if(result.checkpoint_match){
+        writeAiIfEmpty("checkpoint_match",result.checkpoint_match);
+      }
+      if(typeof result.confidence==="number"&&result.confidence>=0&&result.confidence<=1){
+        u.ai_confidence=result.confidence;
+      }
+      // Mark this row AI-prefilled until the user touches an AI field;
+      // set() flips human_reviewed=true on first edit of any AI-tagged field.
+      if(u.human_reviewed==null)u.human_reviewed=false;
       return{...u,fieldProvenance:prov};
     });
   };
@@ -22744,6 +22951,9 @@ function App(){
                       [t("help.tip_save_device"),t("help.tip_save_device_desc")],
                       [t("help.tip_bulk_delete"),t("help.tip_bulk_delete_desc")],
                       [t("help.tip_advisor_upload"),t("help.tip_advisor_upload_desc")],
+                      [t("help.tip_ai_variant"),t("help.tip_ai_variant_desc")],
+                      [t("help.tip_ai_provenance"),t("help.tip_ai_provenance_desc")],
+                      [t("help.tip_data_schema"),t("help.tip_data_schema_desc")],
                     ]],
                   ].map(([section,items])=>(
                     <div key={section} style={{marginBottom:24}}>

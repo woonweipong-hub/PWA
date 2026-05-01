@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://siteshrimp.org/schema/entries/fm/v1.json",
+  "title": "SiteShrimp Photo Entry — Facilities Management variant",
+  "version": "1.0.0",
+  "description": "Variant for in-operation building / facilities-management defect capture. Different from contractual-defect inspection: the asset is in service, the defect goes to a maintenance ticket (preventive vs reactive), and the SLA window matters for owner / occupier reporting.",
+  "x-work-category": "Facilities Management",
+  "x-extends": "https://siteshrimp.org/schema/entries/v1.json",
+  "allOf": [
+    { "$ref": "https://siteshrimp.org/schema/entries/v1.json" },
+    {
+      "type": "object",
+      "required": ["service_category"],
+      "properties": {
+        "service_category": {
+          "type": "string",
+          "x-csv-header": "Service Category",
+          "enum": ["HVAC", "Plumbing", "Electrical", "Fire Safety", "Lift", "Cleaning", "Pest Control", "Landscape", "Security", "General"],
+          "description": "Primary FM service line the defect falls under. Routes to the right maintenance contractor / in-house team. Required — every FM-frame photo has an identifiable service line."
+        },
+        "maintenance_type": {
+          "type": "string",
+          "x-csv-header": "Maintenance Type",
+          "enum": ["Preventive", "Reactive", "Corrective", "Breakdown", "Inspection", ""],
+          "description": "Maintenance lifecycle stage. Drives ticket prioritisation and SLA expectation."
+        },
+        "asset_id": {
+          "type": "string",
+          "x-csv-header": "Asset ID",
+          "description": "FM asset register reference (free text — owners use varied conventions). Empty when the photo isn't tied to a tagged asset."
+        }
+      }
+    }
+  ]
+}
