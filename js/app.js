@@ -7850,6 +7850,11 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
       }
       const severity=tierSev[worstTier]||"Minor";
       const cps=group.map(r=>({r,cp:checkpoints.find(x=>x.itemId===r.checkpointId)})).filter(x=>x.cp);
+      // Defensive: every fail had its checkpoint deleted between wizard
+      // start and save (race / ontology edit). Mirrors the original
+      // per-result `if(!cp)continue` so the loop doesn't crash on the
+      // empty group.
+      if(!cps.length)continue;
       const elementName=pickedComponent?pickedComponent.name:"";
       // Title: single fail keeps the verbatim CONQUAS checkpoint wording so
       // contractual terminology survives. Multi-fail uses an element-level
@@ -11295,10 +11300,10 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
           ))}
         </div>
         {source==="entries"&&!showMapView&&(
-          <button onClick={()=>persistGroupByConquas(!groupByConquas)} title="Group entries into the 7 CONQUAS Internal-Finishes elements (Floor/Wall/Ceiling/Door/Window/Component/M&E Fittings) plus Other. Derived from each entry's component." style={{padding:"7px 12px",borderRadius:18,border:`1.5px solid ${groupByConquas?"#5856d6":"rgba(0,0,0,0.12)"}`,background:groupByConquas?"#5856d6":"#fff",color:groupByConquas?"#fff":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",letterSpacing:"0.04em"}}>🏛 {groupByConquas?"GROUPED: CONQUAS":"GROUP BY CONQUAS"}</button>
+          <button onClick={()=>{const next=!groupByConquas;persistGroupByConquas(next);if(next)persistGroupByBatch(false);}} title="Group entries into the 7 CONQUAS Internal-Finishes elements (Floor/Wall/Ceiling/Door/Window/Component/M&E Fittings) plus Other. Derived from each entry's component. Mutually exclusive with GROUP BY BATCH." style={{padding:"7px 12px",borderRadius:18,border:`1.5px solid ${groupByConquas?"#5856d6":"rgba(0,0,0,0.12)"}`,background:groupByConquas?"#5856d6":"#fff",color:groupByConquas?"#fff":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",letterSpacing:"0.04em"}}>🏛 {groupByConquas?"GROUPED: CONQUAS":"GROUP BY CONQUAS"}</button>
         )}
         {source==="entries"&&!showMapView&&(
-          <button onClick={()=>persistGroupByBatch(!groupByBatch)} title="Group entries by CONQUAS wizard run (observation_batch_id). One header per element+batch, so 50 photos × 51 checks reads as a handful of cards. Entries without a batch id render flat below." style={{padding:"7px 12px",borderRadius:18,border:`1.5px solid ${groupByBatch?"#5856d6":"rgba(0,0,0,0.12)"}`,background:groupByBatch?"#5856d6":"#fff",color:groupByBatch?"#fff":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",letterSpacing:"0.04em"}}>📦 {groupByBatch?"GROUPED: BATCH":"GROUP BY BATCH"}</button>
+          <button onClick={()=>{const next=!groupByBatch;persistGroupByBatch(next);if(next)persistGroupByConquas(false);}} title="Group entries by CONQUAS wizard run (observation_batch_id). One header per element+batch, so 50 photos × 51 checks reads as a handful of cards. Entries without a batch id render flat below. Mutually exclusive with GROUP BY CONQUAS." style={{padding:"7px 12px",borderRadius:18,border:`1.5px solid ${groupByBatch?"#5856d6":"rgba(0,0,0,0.12)"}`,background:groupByBatch?"#5856d6":"#fff",color:groupByBatch?"#fff":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",letterSpacing:"0.04em"}}>📦 {groupByBatch?"GROUPED: BATCH":"GROUP BY BATCH"}</button>
         )}
       </div>
 
@@ -12581,7 +12586,7 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
             {defect.description&&(
               <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid rgba(0,0,0,0.06)"}}>
                 <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em",marginBottom:4}}>{t("detail.description")}</div>
-                <div style={{fontSize:13,color:"#444",lineHeight:1.5}}>{defect.description}</div>
+                <div style={{fontSize:13,color:"#444",lineHeight:1.5,whiteSpace:"pre-line"}}>{defect.description}</div>
               </div>
             )}
             <DefectMiniMap defect={defect} allDefects={allDefects}/>
