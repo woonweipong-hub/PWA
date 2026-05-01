@@ -4354,7 +4354,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     doc.setFontSize(9);doc.setFont(undefined,"normal");doc.setTextColor(0);
     doc.text(`Projected NC rate: ${cs.projectedRate.toFixed(1)}%  (${cs.projectedBasis})`,margin,y);y+=5;
     doc.text(`Projected Band: ${cs.projectedBand}  (CONQUAS Private Residential R1 §3.3)`,margin,y);y+=5;
-    doc.text(`Internal Finishes (IF): ${cs.rate.toFixed(1)}% — ${cs.totalWeightedNCs} weighted NC(s) of ${cs.totalWeightedApplicable} applicable; ${cs.failCount} defect(s) across ${cs.batchCount} assessment(s); ${cs.totalChecks} checkpoint(s) assessed.`,margin,y);y+=5;
+    doc.text(`Internal Finishes (IF): ${cs.rate.toFixed(1)}% — ${cs.totalWeightedNCs} weighted NC(s) of ${cs.totalWeightedApplicable} applicable; ${cs.failCount} non-conformance(s) in ${cs.defectCount||cs.failCount} defect record(s) across ${cs.batchCount} assessment(s); ${cs.totalChecks} checkpoint(s) assessed.`,margin,y);y+=5;
     if(cs.ftRate!==null){
       doc.text(`Functional Tests (FT): ${cs.ftRate.toFixed(1)}% — ${cs.ftFails} fail(s) of ${cs.ftApplicable} applicable across WTT/WPT/WFT.`,margin,y);y+=5;
       doc.text(`FT breakdown: WTT ${cs.ftRows[0].fails}/${cs.ftRows[0].applicable}  ·  WPT ${cs.ftRows[1].fails}/${cs.ftRows[1].applicable}  ·  WFT ${cs.ftRows[2].fails}/${cs.ftRows[2].applicable}`,margin,y);y+=5;
@@ -7769,23 +7769,21 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
     // were attempted in this batch.
     const batchWeightedApplicable=activeCheckpoints.reduce((sum,cp)=>sum+(tierWeight[cp.tier]||0),0);
     let defectsSaved=0,observationsSaved=0;
-    const failCount=results.filter(r=>r.status==="fail").length;
+    const failResults=results.filter(r=>r.status==="fail");
+    const failCount=failResults.length;
+
+    // Pass 1 — observations table keeps full per-checkpoint granularity
+    // (pass/fail/uncertain) so the weighted NC-rate math (R1 §3.3) and the
+    // audit trail stay intact. Defects are merged in pass 2.
     for(const r of results){
       const cp=checkpoints.find(x=>x.itemId===r.checkpointId);
       if(!cp)continue;
-      // Compress photo once; reused for both observation row and (if fail)
-      // defect row so we don't double-work large images.
       let compressed=r.photo||null;
       if(compressed){try{const c=await compressPhoto(r.photo);if(c)compressed=c;}catch(_){}}
-      // Compress extra photos in parallel for multi-photo checkpoints (Phase 3.8C)
       let extraCompressed=[];
       if(Array.isArray(r.extraPhotos)&&r.extraPhotos.length){
         extraCompressed=await Promise.all(r.extraPhotos.map(async p=>{try{const c=await compressPhoto(p);return c||p;}catch{return p;}}));
       }
-      // Phase 3.8B — save an observation row for EVERY verdict (pass/fail/uncertain)
-      // so REPORT can show the full audit trail. Gracefully no-op if the
-      // conquas_observations collection doesn't exist on this PB instance yet
-      // (migration 1745290005 not applied) — the wizard still saves defects.
       try{
         if(DB.conquasObservations&&typeof DB.conquasObservations.create==="function"){
           await DB.conquasObservations.create({
@@ -7809,51 +7807,112 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
           observationsSaved++;
         }
       }catch(err){console.warn("observation save failed for checkpoint "+cp.itemId,err);}
-      // For fail verdicts, also create the existing defect row (unchanged
-      // schema) so REVIEW > Entries + REPORT defect tally keep working.
-      if(r.status==="fail"){
+    }
+
+    // Pass 2 — defect rows are merged per-photo so a single AI-mode shot
+    // that fails N checkpoints produces ONE defect, not N. AI mode shares
+    // one photo across all checkpoint verdicts; manual walk takes a fresh
+    // photo per fail, so each manual fail still becomes its own defect
+    // (different data URL → different group). Keeps REVIEW > Entries
+    // legible (50 photos × 51 checks → ~50 rows instead of 250+) while
+    // the NC-rate calc continues to read per-checkpoint observations.
+    const photoGroups=new Map();
+    for(const r of failResults){
+      const key=r.photo||"__no_photo__";
+      if(!photoGroups.has(key))photoGroups.set(key,[]);
+      photoGroups.get(key).push(r);
+    }
+    const tierRank={"3X":3,"2X":2,"1X":1};
+    for(const [photoKey,group] of photoGroups){
+      const sharedPhoto=photoKey==="__no_photo__"?null:photoKey;
+      let compressed=sharedPhoto;
+      if(compressed){try{const c=await compressPhoto(sharedPhoto);if(c)compressed=c;}catch(_){}}
+      // Union of extra photos across the group, deduped against the main
+      // photo so a checkpoint that re-uploaded the same close-up doesn't
+      // duplicate it on the merged record.
+      const extrasList=[];
+      const seen=new Set([photoKey]);
+      for(const r of group){
+        const extras=Array.isArray(r.extraPhotos)?r.extraPhotos:[];
+        for(const p of extras){
+          if(p&&!seen.has(p)){seen.add(p);extrasList.push(p);}
+        }
+      }
+      const extraCompressed=await Promise.all(extrasList.map(async p=>{try{const c=await compressPhoto(p);return c||p;}catch{return p;}}));
+      // Worst tier across the group drives severity (one bad 3X drags the
+      // whole defect to Critical even if other fails on the same photo
+      // are only 1X). Matches how reviewers triage in practice.
+      let worstTier="";
+      for(const r of group){
+        const cp=checkpoints.find(x=>x.itemId===r.checkpointId);
+        const t=cp?.tier||"";
+        if((tierRank[t]||0)>(tierRank[worstTier]||0))worstTier=t;
+      }
+      const severity=tierSev[worstTier]||"Minor";
+      const cps=group.map(r=>({r,cp:checkpoints.find(x=>x.itemId===r.checkpointId)})).filter(x=>x.cp);
+      const elementName=pickedComponent?pickedComponent.name:"";
+      // Title: single fail keeps the verbatim CONQUAS checkpoint wording so
+      // contractual terminology survives. Multi-fail uses an element-level
+      // summary because no single checkpoint string would be accurate.
+      const title=cps.length===1
+        ? (cps[0].cp.description||"CONQUAS checkpoint")
+        : `${elementName||"CONQUAS"} — ${cps.length} non-conformances`;
+      // Description: one line per failed checkpoint, ordered by tier (worst
+      // first) so the contractor sees the headline issue immediately.
+      const tierOrder=(t)=>tierRank[t]||0;
+      const sortedCps=cps.slice().sort((a,b)=>tierOrder(b.cp.tier)-tierOrder(a.cp.tier));
+      const descLines=sortedCps.map(({r,cp})=>{
         const related=Array.isArray(cp.related_defect_type_ids)?cp.related_defect_type_ids:[];
         const dtId=related[0]||null;
         const dt=dtId?defectTypes.find(x=>x.itemId===dtId):null;
-        const severity=tierSev[cp.tier]||"Minor";
-        const descParts=[];
-        if(dt&&dt.name)descParts.push(dt.name);
-        if(dt&&dt.measurement_threshold)descParts.push(dt.measurement_threshold);
-        if(r.note)descParts.push(r.note);
-        try{
-          await onSave({
-            title:cp.description||"CONQUAS checkpoint",
-            description:descParts.join(" · "),
-            location:"",locationDisplay:"",
-            severity,status:"Open",
-            component:pickedComponent?pickedComponent.name:"",
-            component_id:pickedId,
-            checkpoint_id:cp.itemId,
-            defect_type_id:dtId,
-            nc_tier:cp.tier||"",
-            observation_batch_id:batchId,
-            batch_total_checks:batchTotalChecks,
-            batch_weighted_applicable:batchWeightedApplicable,
-            entryType:"CONQUAS Check",
-            photo:compressed,extraPhotos:extraCompressed,
-            projectId:currentProject?.id||"default",
-            projectName:currentProject?.name||"",
-            loggedBy:member?.name||"",
-            loggedByRole:member?.role||"",
-            assignee:member?.name||"",
-            createdAt:DB.serverTimestamp(),
-            updatedAt:DB.serverTimestamp(),
-            comments:[]
-          });
-          defectsSaved++;
-        }catch(err){console.error("CONQUAS defect save failed for "+cp.itemId,err);}
-      }
+        const parts=[];
+        parts.push(`[${cp.tier||"?"}] ${cp.description||cp.itemId}`);
+        if(dt&&dt.name)parts.push(dt.name);
+        if(dt&&dt.measurement_threshold)parts.push(dt.measurement_threshold);
+        if(r.note)parts.push(r.note);
+        return parts.join(" · ");
+      });
+      const description=descLines.join("\n");
+      // First checkpoint id wins for the legacy single-value fields so
+      // older REPORT consumers that only read checkpoint_id keep showing
+      // something meaningful; defect_type_id picks the worst-tier match.
+      const firstCp=sortedCps[0].cp;
+      const firstRelated=Array.isArray(firstCp.related_defect_type_ids)?firstCp.related_defect_type_ids:[];
+      const firstDtId=firstRelated[0]||null;
+      try{
+        await onSave({
+          title,
+          description,
+          location:"",locationDisplay:"",
+          severity,status:"Open",
+          component:pickedComponent?pickedComponent.name:"",
+          component_id:pickedId,
+          checkpoint_id:firstCp.itemId,
+          defect_type_id:firstDtId,
+          nc_tier:worstTier,
+          observation_batch_id:batchId,
+          batch_total_checks:batchTotalChecks,
+          batch_weighted_applicable:batchWeightedApplicable,
+          entryType:"CONQUAS Check",
+          photo:compressed,extraPhotos:extraCompressed,
+          projectId:currentProject?.id||"default",
+          projectName:currentProject?.name||"",
+          loggedBy:member?.name||"",
+          loggedByRole:member?.role||"",
+          assignee:member?.name||"",
+          createdAt:DB.serverTimestamp(),
+          updatedAt:DB.serverTimestamp(),
+          comments:[]
+        });
+        defectsSaved++;
+      }catch(err){console.error("CONQUAS merged defect save failed",err);}
     }
     setSaving(false);
     try{
-      const parts=[defectsSaved+" of "+failCount+" defect(s)"];
+      const parts=[];
+      if(failCount>0)parts.push(`${defectsSaved} defect(s) covering ${failCount} non-conformance(s)`);
       if(observationsSaved>0)parts.push(observationsSaved+" observation(s)");
-      alert("Saved "+parts.join(" + ")+".");
+      alert(parts.length?"Saved "+parts.join(" + ")+".":"Saved.");
     }catch(_){}
     onClose();
   };
@@ -10882,6 +10941,12 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
   // Persist per-device so a QP/assessor keeps their preferred view.
   const[groupByConquas,setGroupByConquas]=useState(()=>local.get("sdt-group-conquas-v1")===true);
   const persistGroupByConquas=(v)=>{setGroupByConquas(v);local.set("sdt-group-conquas-v1",v);};
+  // CONQUAS wizard run grouping — collapses entries that share an
+  // observation_batch_id under one header so 50 photos × 51 checks reads
+  // as a handful of element/batch cards instead of a flat list. Entries
+  // without a batch id (manual LOG saves) render flat at the bottom.
+  const[groupByBatch,setGroupByBatch]=useState(()=>local.get("sdt-group-batch-v1")===true);
+  const persistGroupByBatch=(v)=>{setGroupByBatch(v);local.set("sdt-group-batch-v1",v);};
   const[bulkStatus,setBulkStatus]=useState("");
   const[bulkSeverity,setBulkSeverity]=useState("");
   const[bulkAssignee,setBulkAssignee]=useState("");
@@ -11232,6 +11297,9 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
         {source==="entries"&&!showMapView&&(
           <button onClick={()=>persistGroupByConquas(!groupByConquas)} title="Group entries into the 7 CONQUAS Internal-Finishes elements (Floor/Wall/Ceiling/Door/Window/Component/M&E Fittings) plus Other. Derived from each entry's component." style={{padding:"7px 12px",borderRadius:18,border:`1.5px solid ${groupByConquas?"#5856d6":"rgba(0,0,0,0.12)"}`,background:groupByConquas?"#5856d6":"#fff",color:groupByConquas?"#fff":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",letterSpacing:"0.04em"}}>🏛 {groupByConquas?"GROUPED: CONQUAS":"GROUP BY CONQUAS"}</button>
         )}
+        {source==="entries"&&!showMapView&&(
+          <button onClick={()=>persistGroupByBatch(!groupByBatch)} title="Group entries by CONQUAS wizard run (observation_batch_id). One header per element+batch, so 50 photos × 51 checks reads as a handful of cards. Entries without a batch id render flat below." style={{padding:"7px 12px",borderRadius:18,border:`1.5px solid ${groupByBatch?"#5856d6":"rgba(0,0,0,0.12)"}`,background:groupByBatch?"#5856d6":"#fff",color:groupByBatch?"#fff":"rgba(0,0,0,0.6)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",letterSpacing:"0.04em"}}>📦 {groupByBatch?"GROUPED: BATCH":"GROUP BY BATCH"}</button>
+        )}
       </div>
 
       {/* Display-language translation toggle — only shown for entries source.
@@ -11533,12 +11601,47 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
           </div>
       )}
       {!showMapView&&!showGridView&&filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>{q?t("review.no_matching")+" \""+search+"\"":t("review.no_entries")}</div>}
-      {/* CONQUAS grouping — interleaves section headers with card rows
-          in canonical IF order. When the toggle is off this is a passthrough
-          and the render below is identical to the old flat list. */}
+      {/* CONQUAS / batch grouping — interleaves section headers with card
+          rows. Batch grouping takes precedence when both toggles are on
+          because each wizard run is tied to a single CONQUAS element, so
+          batch headers already imply element. With both off this is a
+          passthrough and the render is identical to the old flat list. */}
       {(()=>{
         const renderRows=[];
-        if(groupByConquas){
+        if(groupByBatch){
+          // Bucket by observation_batch_id (CONQUAS wizard run). Entries
+          // without one go into a single "Other entries" trailing group.
+          const batches=new Map();
+          const orphans=[];
+          for(const d of filtered){
+            const bid=d.observation_batch_id;
+            if(!bid){orphans.push(d);continue;}
+            if(!batches.has(bid))batches.set(bid,[]);
+            batches.get(bid).push(d);
+          }
+          // Sort batches by newest entry first so the latest wizard run is
+          // surfaced at the top — matches reviewer flow (assess what just
+          // happened, then drill down into older runs).
+          const _ts=(d)=>{const t=d.created||d.createdAt;return t?new Date(t).getTime():0;};
+          const sortedBatches=[...batches.entries()].sort((a,b)=>{
+            const aMax=a[1].reduce((m,d)=>Math.max(m,_ts(d)),0);
+            const bMax=b[1].reduce((m,d)=>Math.max(m,_ts(d)),0);
+            return bMax-aMax;
+          });
+          for(const [bid,items] of sortedBatches){
+            // All entries in a wizard batch share the same element, so
+            // pull from the first item; fall back to derived element if
+            // component is missing (legacy rows).
+            const elFirst=conquasElementOf(items[0].component)||CONQUAS_ELEMENT_OTHER;
+            const bidShort=String(bid).slice(0,8);
+            renderRows.push({type:"batchHeader",element:elFirst,count:items.length,bidShort,key:`bhdr_${bid}`});
+            for(const d of items)renderRows.push({type:"card",d,key:`card_${d.id}`});
+          }
+          if(orphans.length){
+            renderRows.push({type:"orphanHeader",count:orphans.length,key:"hdr_orphans"});
+            for(const d of orphans)renderRows.push({type:"card",d,key:`card_${d.id}`});
+          }
+        }else if(groupByConquas){
           const groups={};
           for(const d of filtered){
             const el=conquasElementOf(d.component)||CONQUAS_ELEMENT_OTHER;
@@ -11564,6 +11667,24 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
               <div key={row.key} style={{display:"flex",alignItems:"center",gap:8,margin:"14px 2px 6px",padding:"6px 10px",background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.18)",borderRadius:8}}>
                 <span style={{fontSize:13}}>🏛</span>
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#3a39a6",letterSpacing:"0.06em",textTransform:"uppercase"}}>{row.element}</div>
+                <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",marginLeft:"auto"}}>{row.count}</div>
+              </div>
+            );
+          }
+          if(row.type==="batchHeader"){
+            return(
+              <div key={row.key} style={{display:"flex",alignItems:"center",gap:8,margin:"14px 2px 6px",padding:"6px 10px",background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.18)",borderRadius:8}}>
+                <span style={{fontSize:13}}>📦</span>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#3a39a6",letterSpacing:"0.06em",textTransform:"uppercase"}}>{row.element} · BATCH {row.bidShort}</div>
+                <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",marginLeft:"auto"}}>{row.count}</div>
+              </div>
+            );
+          }
+          if(row.type==="orphanHeader"){
+            return(
+              <div key={row.key} style={{display:"flex",alignItems:"center",gap:8,margin:"14px 2px 6px",padding:"6px 10px",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:8}}>
+                <span style={{fontSize:13}}>📝</span>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"rgba(0,0,0,0.55)",letterSpacing:"0.06em",textTransform:"uppercase"}}>OTHER ENTRIES</div>
                 <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",marginLeft:"auto"}}>{row.count}</div>
               </div>
             );
@@ -13419,8 +13540,24 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
     }
     const totalWeightedApplicable=Array.from(batches.values()).reduce((s,b)=>s+b.weightedApplicable,0);
     const totalChecks=Array.from(batches.values()).reduce((s,b)=>s+b.totalChecks,0);
-    const totalWeightedNCs=conquasDefects.reduce((s,d)=>s+(CONQUAS_TIER_WEIGHT[d.nc_tier]||0),0);
-    const failCount=conquasDefects.length;
+    // Per-photo merge means one defect can cover multiple failed checkpoints,
+    // so summing tier weight per defect under-counts the numerator. Prefer
+    // the conquas_observations table (unchanged — still per-checkpoint) when
+    // it has rows for the same batches; fall back to per-defect counting on
+    // legacy PB instances that don't have the observations collection.
+    const filteredBatchIds=new Set(Array.from(batches.keys()));
+    const failObsInScope=Array.isArray(conquasObs)
+      ? conquasObs.filter(o=>o.verdict==="fail"&&o.nc_tier&&(filteredBatchIds.size===0||filteredBatchIds.has(o.observation_batch_id)))
+      : [];
+    const useObs=failObsInScope.length>0;
+    const totalWeightedNCs=useObs
+      ? failObsInScope.reduce((s,o)=>s+(CONQUAS_TIER_WEIGHT[o.nc_tier]||0),0)
+      : conquasDefects.reduce((s,d)=>s+(CONQUAS_TIER_WEIGHT[d.nc_tier]||0),0);
+    // failCount reports non-conformances (per checkpoint) when observations
+    // are available so the user sees the real volume; the defect tally is
+    // exposed separately as defectCount for the punchlist view.
+    const failCount=useObs?failObsInScope.length:conquasDefects.length;
+    const defectCount=conquasDefects.length;
     const rate=totalWeightedApplicable>0?(totalWeightedNCs/totalWeightedApplicable*100):0;
     // R1 §3.3 banding thresholds applied to IF-only projection
     let band=6;
@@ -13429,14 +13566,25 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
     else if(rate<15)band=3;
     else if(rate<20)band=4;
     else if(rate<25)band=5;
-    // Per element
+    // Per element — use observations when available so per-checkpoint
+    // accuracy is preserved; otherwise fall back to per-defect counting.
     const byComponent=new Map();
-    for(const d of conquasDefects){
-      const key=d.component||"(unspecified)";
-      if(!byComponent.has(key))byComponent.set(key,{name:key,failCount:0,weightedNCs:0,weightedApplicable:0,totalChecks:0,componentId:d.component_id||""});
-      const row=byComponent.get(key);
-      row.failCount+=1;
-      row.weightedNCs+=CONQUAS_TIER_WEIGHT[d.nc_tier]||0;
+    if(useObs){
+      for(const o of failObsInScope){
+        const key=o.component_name||"(unspecified)";
+        if(!byComponent.has(key))byComponent.set(key,{name:key,failCount:0,weightedNCs:0,weightedApplicable:0,totalChecks:0,componentId:o.component_id||""});
+        const row=byComponent.get(key);
+        row.failCount+=1;
+        row.weightedNCs+=CONQUAS_TIER_WEIGHT[o.nc_tier]||0;
+      }
+    }else{
+      for(const d of conquasDefects){
+        const key=d.component||"(unspecified)";
+        if(!byComponent.has(key))byComponent.set(key,{name:key,failCount:0,weightedNCs:0,weightedApplicable:0,totalChecks:0,componentId:d.component_id||""});
+        const row=byComponent.get(key);
+        row.failCount+=1;
+        row.weightedNCs+=CONQUAS_TIER_WEIGHT[d.nc_tier]||0;
+      }
     }
     // Component-level denominator from batches
     for(const b of batches.values()){
@@ -13450,9 +13598,15 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
     const componentRows=Array.from(byComponent.values()).map(r=>({
       ...r,rate:r.weightedApplicable>0?(r.weightedNCs/r.weightedApplicable*100):0
     })).sort((a,b)=>b.rate-a.rate);
-    // By tier
+    // By tier — observations table preserves the per-checkpoint tier mix;
+    // a merged defect only stores the worst tier so per-defect counts are
+    // misleading. Mirror the same fallback as above.
     const byTier={"1X":0,"2X":0,"3X":0};
-    for(const d of conquasDefects)if(byTier[d.nc_tier]!==undefined)byTier[d.nc_tier]+=1;
+    if(useObs){
+      for(const o of failObsInScope)if(byTier[o.nc_tier]!==undefined)byTier[o.nc_tier]+=1;
+    }else{
+      for(const d of conquasDefects)if(byTier[d.nc_tier]!==undefined)byTier[d.nc_tier]+=1;
+    }
 
     // ── Functional Tests NC rate (R1 §3.3) ──
     // Direct count, NOT tier-weighted. FT NC rate = (Σ fails) / (Σ applicable)
@@ -13513,7 +13667,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
     else if(projectedRate<25)projectedBand=5;
     else projectedBand=6;
 
-    return{failCount,totalChecks,totalWeightedNCs,totalWeightedApplicable,rate,band,componentRows,byTier,batchCount:batches.size,
+    return{failCount,defectCount,totalChecks,totalWeightedNCs,totalWeightedApplicable,rate,band,componentRows,byTier,batchCount:batches.size,
       ftRate,ftFails,ftApplicable,ftRows,qpStatuses,
       efRate,efFails,efApplicable,efRows,
       projectedRate,projectedBand,projectedBasis,isFullBand};
@@ -13974,7 +14128,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
               <div style={{background:conquasStats.projectedRate>=25?"#ff3b30":conquasStats.projectedRate>=15?"#ff9500":conquasStats.projectedRate>=10?"#5856d6":"#30d158",height:"100%",width:`${Math.min(100,conquasStats.projectedRate)}%`,borderRadius:4,transition:"width 0.3s ease"}}/>
             </div>
             <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",marginTop:6,lineHeight:1.4}}>
-              <b>IF:</b> {conquasStats.rate.toFixed(1)}% ({conquasStats.totalWeightedNCs} weighted of {conquasStats.totalWeightedApplicable} applicable; {conquasStats.failCount} defect{conquasStats.failCount!==1?"s":""} across {conquasStats.batchCount} assessment{conquasStats.batchCount!==1?"s":""})
+              <b>IF:</b> {conquasStats.rate.toFixed(1)}% ({conquasStats.totalWeightedNCs} weighted of {conquasStats.totalWeightedApplicable} applicable; {conquasStats.failCount} non-conformance{conquasStats.failCount!==1?"s":""} in {conquasStats.defectCount} defect record{conquasStats.defectCount!==1?"s":""} across {conquasStats.batchCount} assessment{conquasStats.batchCount!==1?"s":""})
               {conquasStats.ftRate!==null&&<> · <b>FT:</b> {conquasStats.ftRate.toFixed(1)}% ({conquasStats.ftFails}/{conquasStats.ftApplicable})</>}
               {conquasStats.efRate!==null&&<> · <b>EF:</b> {conquasStats.efRate.toFixed(1)}% ({conquasStats.efFails}/{conquasStats.efApplicable})</>}
             </div>
