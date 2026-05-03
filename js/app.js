@@ -1749,7 +1749,39 @@ const _AI_LANG_NAMES={en:"English",zh:"Simplified Chinese",
   ja:"Japanese",ko:"Korean",de:"German",fr:"French",es:"Spanish",
   pt:"Portuguese",it:"Italian",tr:"Turkish",sv:"Swedish",no:"Norwegian",
   da:"Danish",fi:"Finnish"};
-function getAIPrompt(){
+// Per-work-category variant addendums — single source of truth is
+// schema/entries/manifest.json (mirrors what AI_VARIANT_TABLE does
+// server-side in pb_hooks/main.pb.js). Eager-loaded at module init so
+// getAIPrompt(workCategory) can read synchronously. First AI call before
+// the manifest resolves falls back to the base prompt — acceptable trade-off
+// to keep the existing sync prompt API.
+let _aiVariantTable=null;
+const _aiVariantTableReady=(async()=>{
+  try{
+    const r=await fetch("/schema/entries/manifest.json",{cache:"force-cache"})
+      .catch(()=>fetch("schema/entries/manifest.json"));
+    if(!r||!r.ok)return null;
+    const m=await r.json();
+    const table={};
+    if(m&&Array.isArray(m.variants)){
+      for(const v of m.variants){
+        if(v&&v.workCategory){
+          table[v.workCategory]={addendum:v.ai_prompt_hint||""};
+        }
+      }
+    }
+    _aiVariantTable=table;
+    return table;
+  }catch(err){
+    console.warn("[AI variant manifest load failed]",err?.message||err);
+    return null;
+  }
+})();
+function _getAiVariant(workCategory){
+  if(!_aiVariantTable||!workCategory)return null;
+  return _aiVariantTable[workCategory]||null;
+}
+function getAIPrompt(workCategory){
   const lang=(typeof getCurrentLang==="function"?getCurrentLang():"en")||"en";
   const langName=_AI_LANG_NAMES[lang]||"English";
   // CRITICAL: All categorical/enum fields MUST stay English so search, filter,
@@ -1757,7 +1789,14 @@ function getAIPrompt(){
   // different language preferences. Only freeform fields (title, description,
   // location_area) are localized. Categoricals are translated at render via tOpt().
   const langClause=lang==="en"?"":` Write "title", "description", and "location_area" in ${langName}. Keep all other field values in English exactly as specified.`;
-  return 'Analyze this construction site photo. Respond in valid JSON only, no markdown fences:\n{"title":"max 5 word defect title","severity":"one of: Critical Major Minor Observation","description":"2 sentence technical description of what is wrong and where","trade":"responsible trade: Plumbing Electrical Waterproofing Painting Tiling Structural Carpentry Aircon Civil Landscaping General","component":"PICK EXACTLY ONE from this canonical list — Wall, Floor, Ceiling, Door, Window, Cabinet, Plumbing, Electrical, Aircon, Painting, Tiling, Waterproofing, Column, Beam, Slab, Roof, General. CONQUAS Internal-Finishes mapping is automatic from this field, so accuracy here drives correct categorisation: pick Floor/Wall/Ceiling/Door/Window for visible interior surfaces; Cabinet for joinery / sanitary ware / vanity / wardrobe (CONQUAS Component bucket); Plumbing/Electrical/Aircon for M&E fittings. Use Column/Beam/Slab/Roof only for structural or external work. General is a last resort","issue":"most applicable defect type for that component — use BCA Good Industry Practice terminology where applicable e.g. hollowness lippage delamination for tiling; peeling bubbling brush marks for painting; bulging cracking dampness for waterproofing; misalignment chipping for joinery; otherwise Crack Leak Peeling Loose Stain Blocked Chipped Sagging Exposed-rebar Missing Damaged","entry_type":"one of: Defect Observation Instruction Pass — Defect for quality/workmanship issues, Observation for non-urgent notes, Instruction for directives, Pass when the work in the photo meets standard with NO visible defect (use this for batch QA where many photos will pass — fill title/description with what was checked, e.g. \\\"Wall finish — no defect\\\", and set severity to Observation)","location_area":"short visible-area description from photo context e.g. bathroom ceiling external wall corridor floor lift lobby site perimeter","room_area":"specific room or area visible in photo. Prefer exact match from: Kitchen Bathroom Master Bedroom Bedroom 2 Bedroom 3 Living Room Dining Room Balcony Toilet Store Room Corridor Staircase Lobby Car Park Yard Entrance Hallway Utility Room Laundry Pantry Meeting Room Office Reception. Otherwise return a short descriptive phrase matching what the photo shows (e.g. residential courtyard, rooftop terrace, basement carpark ramp, exterior facade, stair core).","level_floor":"best-guess floor level from photo context (windows, stairs, skylines, vegetation, vehicles). Prefer exact match from: Basement 2, Basement 1, Ground Floor, 1st Floor, 2nd Floor, 3rd Floor, 4th Floor, 5th Floor, 6th Floor, 7th Floor, 8th Floor, 9th Floor, 10th Floor, Roof, Attic, External, Common Area. Otherwise return a descriptive phrase (e.g. upper floor, podium level, ground level exterior). Leave empty only if photo shows no vertical cue at all.","zone":"best-guess zone/block/area type from photo context. Prefer exact match from: Zone A, Zone B, Zone C, Zone D, North Wing, South Wing, East Wing, West Wing, Block A, Block B, Block C, Tower 1, Tower 2, Tower 3. Otherwise return a descriptive spatial phrase (e.g. residential courtyard, commercial lobby, service corridor, main atrium, loading bay). Leave empty only if photo shows no spatial context at all.","time_needed":"rough repair scope — one of: Same day, 1 day, 2 days, 3 days, 1 week, 2 weeks, 1 month, 2 months, 3 months, TBD","cost_change":"cost impact — default to \\"No change\\" for workmanship/minor defects; use \\"To be confirmed by QS\\" when rework scope is unclear; \\"Variation Order (VO)\\" only when the issue indicates a design/scope variation requiring contractual variation","safety_risk":1,"suggested_assignee":"trade role e.g. Plumber Electrician Painter Tiler Contractor"}\nReplace safety_risk 1 with integer 1–5 where 5 is life-threatening hazard.'+langClause;
+  // Variant addendum — when workCategory matches a known variant, append the
+  // domain-specific instructions (e.g. WSH severity reframing for Construction
+  // Site, asset_class for Infrastructure Works, etc.). Same hints the
+  // server hook applies post-save, so client-side AI pre-fill and server-side
+  // re-analysis stay aligned.
+  const variant=_getAiVariant(workCategory);
+  const variantClause=(variant&&variant.addendum)?` ${variant.addendum}`:"";
+  return 'Analyze this construction site photo. Respond in valid JSON only, no markdown fences:\n{"title":"max 5 word defect title","severity":"one of: Critical Major Minor Observation","description":"2 sentence technical description of what is wrong and where","trade":"responsible trade: Plumbing Electrical Waterproofing Painting Tiling Structural Carpentry Aircon Civil Landscaping General","component":"PICK EXACTLY ONE from this canonical list — Wall, Floor, Ceiling, Door, Window, Cabinet, Plumbing, Electrical, Aircon, Painting, Tiling, Waterproofing, Column, Beam, Slab, Roof, General. CONQUAS Internal-Finishes mapping is automatic from this field, so accuracy here drives correct categorisation: pick Floor/Wall/Ceiling/Door/Window for visible interior surfaces; Cabinet for joinery / sanitary ware / vanity / wardrobe (CONQUAS Component bucket); Plumbing/Electrical/Aircon for M&E fittings. Use Column/Beam/Slab/Roof only for structural or external work. General is a last resort","issue":"most applicable defect type for that component — use BCA Good Industry Practice terminology where applicable e.g. hollowness lippage delamination for tiling; peeling bubbling brush marks for painting; bulging cracking dampness for waterproofing; misalignment chipping for joinery; otherwise Crack Leak Peeling Loose Stain Blocked Chipped Sagging Exposed-rebar Missing Damaged","entry_type":"one of: Defect Observation Instruction Pass — Defect for quality/workmanship issues, Observation for non-urgent notes, Instruction for directives, Pass when the work in the photo meets standard with NO visible defect (use this for batch QA where many photos will pass — fill title/description with what was checked, e.g. \\\"Wall finish — no defect\\\", and set severity to Observation)","location_area":"short visible-area description from photo context e.g. bathroom ceiling external wall corridor floor lift lobby site perimeter","room_area":"specific room or area visible in photo. Prefer exact match from: Kitchen Bathroom Master Bedroom Bedroom 2 Bedroom 3 Living Room Dining Room Balcony Toilet Store Room Corridor Staircase Lobby Car Park Yard Entrance Hallway Utility Room Laundry Pantry Meeting Room Office Reception. Otherwise return a short descriptive phrase matching what the photo shows (e.g. residential courtyard, rooftop terrace, basement carpark ramp, exterior facade, stair core).","level_floor":"best-guess floor level from photo context (windows, stairs, skylines, vegetation, vehicles). Prefer exact match from: Basement 2, Basement 1, Ground Floor, 1st Floor, 2nd Floor, 3rd Floor, 4th Floor, 5th Floor, 6th Floor, 7th Floor, 8th Floor, 9th Floor, 10th Floor, Roof, Attic, External, Common Area. Otherwise return a descriptive phrase (e.g. upper floor, podium level, ground level exterior). Leave empty only if photo shows no vertical cue at all.","zone":"best-guess zone/block/area type from photo context. Prefer exact match from: Zone A, Zone B, Zone C, Zone D, North Wing, South Wing, East Wing, West Wing, Block A, Block B, Block C, Tower 1, Tower 2, Tower 3. Otherwise return a descriptive spatial phrase (e.g. residential courtyard, commercial lobby, service corridor, main atrium, loading bay). Leave empty only if photo shows no spatial context at all.","time_needed":"rough repair scope — one of: Same day, 1 day, 2 days, 3 days, 1 week, 2 weeks, 1 month, 2 months, 3 months, TBD","cost_change":"cost impact — default to \\"No change\\" for workmanship/minor defects; use \\"To be confirmed by QS\\" when rework scope is unclear; \\"Variation Order (VO)\\" only when the issue indicates a design/scope variation requiring contractual variation","safety_risk":1,"suggested_assignee":"trade role e.g. Plumber Electrician Painter Tiler Contractor"}\nReplace safety_risk 1 with integer 1–5 where 5 is life-threatening hazard.'+langClause+variantClause;
 }
 // Backward-compatible export — callers that don't need language awareness
 // still see English. New callers should call getAIPrompt() per request to
@@ -8573,7 +8612,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // The extra clause tells AI the floor/zone/trade so its suggestions are more
   // targeted when logging several defects on the same run.
   const buildContextPrompt=(ctx)=>{
-    const base=getAIPrompt();
+    const base=getAIPrompt(ctx?.workCategory||"");
     if(!ctx)return base;
     const parts=[];
     if(ctx.locationLevel)parts.push(`floor/level: ${ctx.locationLevel}`);
@@ -11177,7 +11216,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
         if(!result){
           try{window.__lastAiError=null;}catch{}
           const compressed=await compressPhoto(dataUrl,600,0.7);
-          result=await analyzePhoto(compressed||dataUrl,getAIPrompt());
+          result=await analyzePhoto(compressed||dataUrl,getAIPrompt(defect.workCategory||""));
           if(result){
             bumpAiUsage(getLastAiTokens());
             if(hash)writeAiCache(hash,result);
