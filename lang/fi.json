@@ -4,7 +4,9 @@
     "log": "Loki",
     "tag": "Tunniste",
     "review": "Tarkistus",
-    "report": "Raportti"
+    "report": "Raportti",
+    "main_nav": "Päänavigointi",
+    "close": "Lähellä"
   },
   "banner": {
     "server_down": "SiteShrimp on keskeytetty päivityksen vuoksi – palaa pian. Kaikki olemassa oleva työ on turvallista."
@@ -584,6 +586,8 @@
     "telegram_desc": "Reaaliaikainen vika ping",
     "storage": "Varastointi ja isännöinti",
     "storage_desc": "VALINNAINEN · Missä tiedostot + palvelin sijaitsevat",
+    "photo_stamp": "Leima valokuvat päivämäärällä / GPS: llä",
+    "photo_stamp_desc": "Polttaa tallennuspäivämäärän, -ajan, GPS:n ja projektin nimen jokaiseen tallennettuun valokuvaan. Näkyy viennissä ja kuvakaappauksissa – hyödyllinen alkuperäketjussa.",
     "email": "Sähköpostin asetukset",
     "email_desc": "VALINNAINEN · SMTP raporttisähköpostien lähettämiseen",
     "maps": "Kartat",

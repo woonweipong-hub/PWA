@@ -4,7 +4,9 @@
     "log": "Erfassen",
     "tag": "Markieren",
     "review": "Überprüfen",
-    "report": "Bericht"
+    "report": "Bericht",
+    "main_nav": "Hauptnavigation",
+    "close": "Schließen"
   },
   "banner": {
     "server_down": "SiteShrimp ist wegen eines Upgrades pausiert – bald zurück. Bestehende Arbeiten sind sicher."
@@ -584,6 +586,8 @@
     "telegram_desc": "Echtzeit-Mängelmeldungen",
     "storage": "Speicherung und Hosting",
     "storage_desc": "OPTIONAL · Wo Dateien + Server leben",
+    "photo_stamp": "Stempeln Sie Fotos mit Datum / GPS",
+    "photo_stamp_desc": "Burns erfasst Datum, Uhrzeit, GPS und Projektnamen auf jedem gespeicherten Foto. Sichtbar bei Exporten und Screenshots – nützlich für die Überwachungskette.",
     "email": "E-Mail-Setup",
     "email_desc": "OPTIONAL · SMTP zum Versenden von Berichts-E-Mails",
     "maps": "Karten",

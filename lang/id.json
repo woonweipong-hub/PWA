@@ -4,7 +4,9 @@
     "log": "Catatan",
     "tag": "Menandai",
     "review": "Tinjauan",
-    "report": "Laporan"
+    "report": "Laporan",
+    "main_nav": "Navigasi utama",
+    "close": "Menutup"
   },
   "banner": {
     "server_down": "SiteShrimp dijeda untuk peningkatan — segera kembali. Pekerjaan yang ada aman."
@@ -584,6 +586,8 @@
     "telegram_desc": "Ping cacat real-time",
     "storage": "Penyimpanan & Hosting",
     "storage_desc": "OPSIONAL · Tempat file + server berada",
+    "photo_stamp": "Stempel foto dengan tanggal / GPS",
+    "photo_stamp_desc": "Membakar tanggal pengambilan, waktu, GPS, dan nama proyek ke setiap foto yang disimpan. Terlihat pada ekspor dan tangkapan layar — berguna untuk lacak balak.",
     "email": "Pengaturan Email",
     "email_desc": "OPSIONAL · SMTP untuk mengirim email Laporan",
     "maps": "Peta",

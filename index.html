@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="theme-color" content="#ff6b00"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -23,8 +23,15 @@
 html,body,#root{height:100%;background:#f0ede8;touch-action:pan-x pan-y;}
 body{font-family:'Barlow',sans-serif;}
 input,textarea,select{outline:none;font-family:'Barlow',sans-serif;}
-::-webkit-scrollbar{width:2px;}
-::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.15);}
+::-webkit-scrollbar{width:2px;height:2px;}
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.15);border-radius:4px;}
+/* Desktop: wider, hoverable scrollbars so laptop reviewers (PMs) can grab them. */
+@media (hover:hover) and (pointer:fine){
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.28);}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,0.45);}
+  html{scrollbar-width:auto;}
+}
 @keyframes slideUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
 @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
@@ -95,12 +102,12 @@ window.addEventListener('beforeinstallprompt', e => {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js" defer></script>
 <script src="https://unpkg.com/@googlemaps/markerclusterer@2.5.3/dist/index.min.js" defer></script>
 <!-- PocketBase data layer -->
-<script src="js/db.js?v=c811ef7"></script>
+<script src="js/db.js?v=65eafc7"></script>
 <!-- Shared constants (entry types, statuses, components, locations) -->
-<script src="js/constants.js?v=c811ef7"></script>
+<script src="js/constants.js?v=65eafc7"></script>
 <!-- i18n — lightweight translation helper (must load before app.js) -->
-<script src="js/lang.js?v=c811ef7"></script>
+<script src="js/lang.js?v=65eafc7"></script>
 <!-- App logic — pre-compiled, no Babel needed -->
-<script src="js/app.compiled.js?v=c811ef7"></script>
+<script src="js/app.compiled.js?v=65eafc7"></script>
 </body>
 </html>

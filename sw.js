@@ -4,7 +4,7 @@
 // drives both the AI prompt (different fields per work category) and
 // the photo-ZIP export. The activate handler below deletes every cache
 // whose name doesn't equal CACHE.
-const CACHE = 'siteshrimp-v110';
+const CACHE = 'siteshrimp-v111';
 const ASSETS = [
   '/',
   '/index.html',

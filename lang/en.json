@@ -4,7 +4,9 @@
     "log": "Log",
     "tag": "Tag",
     "review": "Review",
-    "report": "Report"
+    "report": "Report",
+    "main_nav": "Main navigation",
+    "close": "Close"
   },
   "banner": {
     "server_down": "SiteShrimp is paused for an upgrade — back soon. All existing work is safe."
@@ -399,11 +401,6 @@
     "resolved_by": "Resolved by",
     "resolution_prompt": "Resolution note (optional — what was fixed, in which build):"
   },
-  "feedback": {
-    "section_title": "TESTER FEEDBACK",
-    "none_yet": "No feedback received yet. Testers can file via Settings → Feedback.",
-    "more": "older entries"
-  },
   "report": {
     "title": "Report",
     "site_report": "SITE REPORT",
@@ -581,6 +578,8 @@
     "telegram_desc": "Real-time defect pings",
     "storage": "Storage & Hosting",
     "storage_desc": "OPTIONAL · Where files + server live",
+    "photo_stamp": "Stamp photos with date / GPS",
+    "photo_stamp_desc": "Burns capture date, time, GPS and project name onto every saved photo. Visible on exports and screenshots — useful for chain-of-custody.",
     "email": "Email Setup",
     "email_desc": "OPTIONAL · SMTP for sending Report emails",
     "maps": "Maps",

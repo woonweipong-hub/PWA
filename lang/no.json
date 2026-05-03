@@ -4,7 +4,9 @@
     "log": "Logg",
     "tag": "Tagg",
     "review": "Gjennomgang",
-    "report": "Rapport"
+    "report": "Rapport",
+    "main_nav": "Hovednavigasjon",
+    "close": "Lukke"
   },
   "banner": {
     "server_down": "SiteShrimp er satt på pause for en oppgradering — tilbake snart. Alt eksisterende arbeid er trygt."
@@ -584,6 +586,8 @@
     "telegram_desc": "Sanntidsfeil pinger",
     "storage": "Lagring og hosting",
     "storage_desc": "VALGFRITT · Hvor filer + server bor",
+    "photo_stamp": "Stempelbilder med dato / GPS",
+    "photo_stamp_desc": "Brenner fangstdato, klokkeslett, GPS og prosjektnavn på hvert lagret bilde. Synlig på eksport og skjermbilder - nyttig for kjede-of-custody.",
     "email": "E-postoppsett",
     "email_desc": "VALGFRI · SMTP for sending av rapport-e-poster",
     "maps": "Kart",

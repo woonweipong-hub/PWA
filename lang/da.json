@@ -4,7 +4,9 @@
     "log": "Log",
     "tag": "Tag",
     "review": "Gennemgang",
-    "report": "Rapport"
+    "report": "Rapport",
+    "main_nav": "Hovednavigation",
+    "close": "Tæt"
   },
   "banner": {
     "server_down": "SiteShrimp er sat på pause for en opgradering - tilbage snart. Alt eksisterende arbejde er sikkert."
@@ -584,6 +586,8 @@
     "telegram_desc": "Defekte pinger i realtid",
     "storage": "Opbevaring & Hosting",
     "storage_desc": "VALGFRI · Hvor filer + server bor",
+    "photo_stamp": "Stempelbilleder med dato / GPS",
+    "photo_stamp_desc": "Brænder optagelsesdato, klokkeslæt, GPS og projektnavn på hvert gemt billede. Synlig på eksport og skærmbilleder - nyttigt til chain-of-custody.",
     "email": "E-mail opsætning",
     "email_desc": "VALGFRI · SMTP til afsendelse af rapportmails",
     "maps": "Kort",

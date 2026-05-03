@@ -4,7 +4,9 @@
     "log": "Nhật ký",
     "tag": "Gắn thẻ",
     "review": "Xem xét",
-    "report": "Báo cáo"
+    "report": "Báo cáo",
+    "main_nav": "Điều hướng chính",
+    "close": "Đóng"
   },
   "banner": {
     "server_down": "SiteShrimp đang tạm dừng để nâng cấp — sẽ sớm quay lại. Công việc hiện tại là an toàn."
@@ -584,6 +586,8 @@
     "telegram_desc": "Thông báo lỗi thời gian thực",
     "storage": "Lưu trữ & Lưu trữ",
     "storage_desc": "TÙY CHỌN · Nơi tập tin + máy chủ hoạt động",
+    "photo_stamp": "Đóng dấu ảnh có ngày tháng/GPS",
+    "photo_stamp_desc": "Ghi ngày, giờ chụp, GPS và tên dự án vào mỗi ảnh đã lưu. Hiển thị trên bản xuất và ảnh chụp màn hình — hữu ích cho chuỗi hành trình sản phẩm.",
     "email": "Cài đặt email",
     "email_desc": "TÙY CHỌN · SMTP để gửi email báo cáo",
     "maps": "Bản đồ",

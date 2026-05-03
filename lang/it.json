@@ -4,7 +4,9 @@
     "log": "Registro",
     "tag": "Etichetta",
     "review": "Revisione",
-    "report": "Rapporto"
+    "report": "Rapporto",
+    "main_nav": "Navigazione principale",
+    "close": "Vicina"
   },
   "banner": {
     "server_down": "SiteShrimp è in pausa per un aggiornamento: tornerà presto. Il lavoro esistente è sicuro."
@@ -584,6 +586,8 @@
     "telegram_desc": "Ping dei difetti in tempo reale",
     "storage": "Archiviazione e hosting",
     "storage_desc": "FACOLTATIVO · Dove risiedono i file + il server",
+    "photo_stamp": "Timbra le foto con data/GPS",
+    "photo_stamp_desc": "Masterizza la data di acquisizione, l'ora, il GPS e il nome del progetto su ogni foto salvata. Visibile su esportazioni e screenshot: utile per la catena di custodia.",
     "email": "Configurazione e-mail",
     "email_desc": "FACOLTATIVO · SMTP per l'invio di e-mail di report",
     "maps": "Mappe",

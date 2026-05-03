@@ -4,7 +4,9 @@
     "log": "Logg",
     "tag": "Tagga",
     "review": "Granska",
-    "report": "Rapport"
+    "report": "Rapport",
+    "main_nav": "Huvudnavigering",
+    "close": "Nära"
   },
   "banner": {
     "server_down": "SiteShrimp är pausad för en uppgradering — tillbaka snart. Allt befintligt arbete är säkert."
@@ -584,6 +586,8 @@
     "telegram_desc": "Defekt pingar i realtid",
     "storage": "Lagring & Hosting",
     "storage_desc": "VALFRITT · Där filer + server bor",
+    "photo_stamp": "Stämpelfoton med datum / GPS",
+    "photo_stamp_desc": "Bränner inspelningsdatum, tid, GPS och projektnamn på varje sparat foto. Synlig på export och skärmdumpar — användbart för spårbarhet.",
     "email": "E-postinställningar",
     "email_desc": "VALFRITT · SMTP för att skicka rapportmail",
     "maps": "Kartor",

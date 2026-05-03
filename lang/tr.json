@@ -4,7 +4,9 @@
     "log": "Kayıt",
     "tag": "Etiketle",
     "review": "İnceleme",
-    "report": "Rapor"
+    "report": "Rapor",
+    "main_nav": "Ana gezinme",
+    "close": "Kapalı"
   },
   "banner": {
     "server_down": "SiteShrimp yükseltme işlemi için duraklatıldı; yakında geri dönecek. Mevcut tüm işler güvenlidir."
@@ -584,6 +586,8 @@
     "telegram_desc": "Gerçek zamanlı kusur ping'leri",
     "storage": "Depolama ve Barındırma",
     "storage_desc": "İSTEĞE BAĞLI · Dosyaların + sunucunun bulunduğu yer",
+    "photo_stamp": "Fotoğrafları tarih / GPS ile damgalama",
+    "photo_stamp_desc": "Kaydedilen her fotoğrafın üzerine yakalama tarihini, saatini, GPS'i ve proje adını yazar. Dışa aktarmalarda ve ekran görüntülerinde görünür; gözetim zinciri için kullanışlıdır.",
     "email": "E-posta Kurulumu",
     "email_desc": "İSTEĞE BAĞLI · Rapor e-postalarını göndermek için SMTP",
     "maps": "Haritalar",

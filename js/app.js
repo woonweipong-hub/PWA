@@ -305,6 +305,76 @@ function compressPhoto(dataUrl,maxPx=1800,quality=0.8){
   });
 }
 
+// ── Photo stamp (chain-of-custody) ────────────────────────────────
+// Burns a translucent footer band onto a photo with capture timestamp,
+// GPS coordinates (when known), and project name. Visible on the saved
+// JPEG and on every export downstream — survives screenshot, share, and
+// re-export. Deliberately NO user name (photos may be shared externally).
+// On any failure returns the input dataUrl unchanged so save flow never
+// blocks. Default-on; togglable in Settings → Storage.
+const PHOTO_STAMP_KEY="ss-photostamp-v1";
+function isPhotoStampEnabled(){
+  const v=local.get(PHOTO_STAMP_KEY);
+  // null/undefined → default ON. Explicit false → OFF.
+  return v===null||v===undefined||v.enabled!==false;
+}
+function burnPhotoStamp(dataUrl,opts){
+  return new Promise(resolve=>{
+    if(!dataUrl||typeof dataUrl!=="string"){resolve(dataUrl);return;}
+    let done=false;let tid=null;
+    const finish=v=>{if(done)return;done=true;if(tid)clearTimeout(tid);resolve(v);};
+    tid=setTimeout(()=>{console.warn("[burnPhotoStamp] timeout — using original");finish(dataUrl);},10000);
+    const img=new Image();
+    img.onload=()=>{
+      try{
+        const w=img.naturalWidth||img.width,h=img.naturalHeight||img.height;
+        if(!w||!h){finish(dataUrl);return;}
+        const cv=document.createElement("canvas");
+        cv.width=w;cv.height=h;
+        const ctx=cv.getContext("2d");
+        ctx.drawImage(img,0,0);
+        const o=opts||{};
+        const t=o.when instanceof Date?o.when:new Date();
+        const pad=n=>String(n).padStart(2,"0");
+        const dateStr=`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())} ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}`;
+        let tzAbbr="";
+        try{
+          const parts=t.toLocaleTimeString(undefined,{timeZoneName:"short"}).split(" ");
+          tzAbbr=parts[parts.length-1]||"";
+        }catch{}
+        let gpsStr="";
+        if(Number.isFinite(o.lat)&&Number.isFinite(o.lng)){
+          gpsStr=`${o.lat.toFixed(4)}, ${o.lng.toFixed(4)}`;
+          if(Number.isFinite(o.accuracy)&&o.accuracy>0)gpsStr+=` ±${Math.round(o.accuracy)}m`;
+        }
+        const projStr=o.projectName||"";
+        const row1=tzAbbr?`${dateStr} ${tzAbbr}`:dateStr;
+        const row2=[gpsStr,projStr].filter(Boolean).join(" · ");
+        // Layout: footer band sized relative to image, capped so very tall
+        // images don't get a giant band and tiny images stay legible.
+        const bandH=Math.max(48,Math.min(120,Math.round(h*0.075)));
+        const fontSize=Math.max(13,Math.round(bandH*0.30));
+        const padX=Math.round(bandH*0.20);
+        const padY=Math.round(bandH*0.18);
+        ctx.fillStyle="rgba(0,0,0,0.58)";
+        ctx.fillRect(0,h-bandH,w,bandH);
+        ctx.textBaseline="top";
+        ctx.fillStyle="#fff";
+        ctx.font=`600 ${fontSize}px -apple-system, "Segoe UI", Roboto, sans-serif`;
+        ctx.fillText(row1,padX,h-bandH+padY);
+        if(row2){
+          ctx.fillStyle="rgba(255,255,255,0.88)";
+          ctx.font=`400 ${Math.round(fontSize*0.82)}px -apple-system, "Segoe UI", Roboto, sans-serif`;
+          ctx.fillText(row2,padX,h-bandH+padY+Math.round(fontSize*1.18));
+        }
+        finish(cv.toDataURL("image/jpeg",0.9));
+      }catch(e){console.warn("[burnPhotoStamp] draw failed:",e?.message||e);finish(dataUrl);}
+    };
+    img.onerror=()=>{console.warn("[burnPhotoStamp] image load failed — using original");finish(dataUrl);};
+    img.src=dataUrl;
+  });
+}
+
 // Activity-log helper — diffs a `patch` against the existing defect for the
 // audit-tracked fields and returns event records that get appended to the
 // `comments` JSON array. Events use `kind:"event"` so the existing comment
@@ -6954,6 +7024,28 @@ const STORAGE_MODES=[
   {id:"local",label:"Local Path",icon:"💾",desc:"Store photos to a folder on your server/machine"},
   {id:"gdrive",label:"Google Drive",icon:"☁",desc:"Store photos in your own Google Drive"},
 ];
+// One-row toggle for the photo-stamp feature. Persists immediately on
+// click; no SAVE button needed. Default ON — explicit false = OFF.
+function PhotoStampToggle(){
+  const[on,setOn]=useState(()=>isPhotoStampEnabled());
+  const flip=()=>{
+    const next=!on;
+    local.set(PHOTO_STAMP_KEY,{enabled:next});
+    setOn(next);
+  };
+  return(
+    <div style={{background:"#fff",borderRadius:14,padding:"14px 16px",marginTop:14,display:"flex",alignItems:"center",gap:12}}>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a1a1a"}}>{t("settings.photo_stamp")}</div>
+        <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",marginTop:3,lineHeight:1.4}}>{t("settings.photo_stamp_desc")}</div>
+      </div>
+      <button onClick={flip} role="switch" aria-checked={on} aria-label={t("settings.photo_stamp")} style={{width:46,height:26,borderRadius:13,border:"none",background:on?"#30d158":"rgba(0,0,0,0.18)",cursor:"pointer",padding:0,position:"relative",flexShrink:0,transition:"background 0.18s ease"}}>
+        <span aria-hidden="true" style={{position:"absolute",top:3,left:on?23:3,width:20,height:20,borderRadius:"50%",background:"#fff",transition:"left 0.18s ease",boxShadow:"0 1px 3px rgba(0,0,0,0.25)"}}/>
+      </button>
+    </div>
+  );
+}
+
 function StorageSettings({onClose,companyId}){
   const storageCfg=local.get(STORAGE_KEY)||{mode:"pocketbase",localPath:"",gdriveClientId:""};
   const[mode,setMode]=useState(storageCfg.mode||"pocketbase");
@@ -7227,6 +7319,11 @@ function StorageSettings({onClose,companyId}){
 
         {/* Google Sheets Integration */}
         <GoogleSheetsSetup gClientId={gClientId}/>
+
+        {/* Photo stamp — burns timestamp + GPS + project onto saved photos
+            for chain-of-custody. Stored under its own key so the toggle
+            persists immediately on click (no SAVE button required). */}
+        <PhotoStampToggle/>
 
         {/* Save button */}
         <button onClick={save} style={{width:"100%",background:"#ff6b00",border:"none",borderRadius:10,padding:14,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>{saved?"✓ SAVED":"SAVE SETTINGS"}</button>
@@ -7758,6 +7855,20 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
   const saveAll=async()=>{
     if(!results.length){onClose();return;}
     setSaving(true);
+    // Photo-stamp params for this wizard run — one timestamp + project name
+    // shared across every observation and merged defect so the chain-of-custody
+    // burn matches the inspection moment, not the per-record save moment.
+    // GPS is null because the CONQUAS walk does not capture per-photo geolocation.
+    const stampOn=isPhotoStampEnabled();
+    const stampWhen=new Date();
+    const stampProj=currentProject?.name||"";
+    const _burnIfEnabled=async(c)=>{
+      if(!stampOn||!c)return c;
+      try{
+        const s=await burnPhotoStamp(c,{lat:null,lng:null,accuracy:null,projectName:stampProj,when:stampWhen});
+        return s||c;
+      }catch(_){return c;}
+    };
     // One UUID per wizard run groups all observations + fail-defects into an
     // "observation batch" so REPORT can compute the weighted NC rate
     // (R1 §3.3) and the drawing viewer can cluster pins one-per-batch.
@@ -7779,10 +7890,10 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
       const cp=checkpoints.find(x=>x.itemId===r.checkpointId);
       if(!cp)continue;
       let compressed=r.photo||null;
-      if(compressed){try{const c=await compressPhoto(r.photo);if(c)compressed=c;}catch(_){}}
+      if(compressed){try{const c=await compressPhoto(r.photo);if(c)compressed=await _burnIfEnabled(c);}catch(_){}}
       let extraCompressed=[];
       if(Array.isArray(r.extraPhotos)&&r.extraPhotos.length){
-        extraCompressed=await Promise.all(r.extraPhotos.map(async p=>{try{const c=await compressPhoto(p);return c||p;}catch{return p;}}));
+        extraCompressed=await Promise.all(r.extraPhotos.map(async p=>{try{const c=await compressPhoto(p);return c?(await _burnIfEnabled(c)):p;}catch{return p;}}));
       }
       try{
         if(DB.conquasObservations&&typeof DB.conquasObservations.create==="function"){
@@ -7826,7 +7937,7 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
     for(const [photoKey,group] of photoGroups){
       const sharedPhoto=photoKey==="__no_photo__"?null:photoKey;
       let compressed=sharedPhoto;
-      if(compressed){try{const c=await compressPhoto(sharedPhoto);if(c)compressed=c;}catch(_){}}
+      if(compressed){try{const c=await compressPhoto(sharedPhoto);if(c)compressed=await _burnIfEnabled(c);}catch(_){}}
       // Union of extra photos across the group, deduped against the main
       // photo so a checkpoint that re-uploaded the same close-up doesn't
       // duplicate it on the merged record.
@@ -7838,7 +7949,7 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
           if(p&&!seen.has(p)){seen.add(p);extrasList.push(p);}
         }
       }
-      const extraCompressed=await Promise.all(extrasList.map(async p=>{try{const c=await compressPhoto(p);return c||p;}catch{return p;}}));
+      const extraCompressed=await Promise.all(extrasList.map(async p=>{try{const c=await compressPhoto(p);return c?(await _burnIfEnabled(c)):p;}catch{return p;}}));
       // Worst tier across the group drives severity (one bad 3X drags the
       // whole defect to Critical even if other fails on the same photo
       // are only 1X). Matches how reviewers triage in practice.
@@ -8797,9 +8908,22 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   const saveOneReviewItem=async(item)=>{
     const photos=[item.dataUrl];
     const compressed=[];
+    // Photo-stamp params per item — each review item is its own entry,
+    // so each gets its own save-time timestamp. GPS is null because the
+    // review-before-save batch path takes pre-existing photos with no
+    // resolved per-photo geolocation in scope here.
+    const stampOn=isPhotoStampEnabled();
+    const stampWhen=new Date();
+    const stampProj=currentProject?.name||"";
     for(const p of photos){
       const c=await compressPhoto(p);
-      if(c)compressed.push(c);
+      if(!c)continue;
+      if(stampOn){
+        const stamped=await burnPhotoStamp(c,{lat:null,lng:null,accuracy:null,projectName:stampProj,when:stampWhen});
+        compressed.push(stamped||c);
+      }else{
+        compressed.push(c);
+      }
     }
     const trade=COMPONENT_TRADE[item.component]||"";
     let effectiveTitle=(item.title||"").trim();
@@ -9413,9 +9537,25 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
     setSaving(true);
     try{
       const compressed=[];
+      // Photo-stamp inputs resolved once per save so every photo on the same
+      // entry shares one timestamp (chain-of-custody — they were captured as
+      // one observation set). GPS comes from the form's resolved lat/lng so
+      // the burned coords match the saved record.
+      const stampOn=isPhotoStampEnabled();
+      const stampLat=Number.isFinite(parseFloat(form.lat))?parseFloat(form.lat):null;
+      const stampLng=Number.isFinite(parseFloat(form.lng))?parseFloat(form.lng):null;
+      const stampAcc=Number.isFinite(parseFloat(form?.fieldProvenance?.lat?.accuracy))?parseFloat(form.fieldProvenance.lat.accuracy):null;
+      const stampWhen=new Date();
+      const stampProj=currentProject?.name||"";
       for(const p of form.photos){
         const c=await compressPhoto(p);
-        if(c)compressed.push(c);
+        if(!c)continue;
+        if(stampOn){
+          const stamped=await burnPhotoStamp(c,{lat:stampLat,lng:stampLng,accuracy:stampAcc,projectName:stampProj,when:stampWhen});
+          compressed.push(stamped||c);
+        }else{
+          compressed.push(c);
+        }
       }
       const trade=COMPONENT_TRADE[form.component]||"";
       // Promote auto-captured GPS to top-level lat/lng/mapZoom so the
@@ -11764,7 +11904,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
         <div style={{position:"fixed",bottom:64,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 24px)",maxWidth:406,background:"#fff",border:"1px solid rgba(0,0,0,0.1)",borderRadius:14,padding:14,zIndex:60,boxShadow:"0 12px 40px rgba(0,0,0,0.25)",maxHeight:"60vh",overflowY:"auto"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a1a1a"}}>UPDATE {selectedIds.size} ENTR{selectedIds.size>1?"IES":"Y"}</div>
-            <button onClick={()=>setShowBulkPanel(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:"50%",width:24,height:24,cursor:"pointer",fontSize:14,color:"rgba(0,0,0,0.5)"}}>×</button>
+            <button onClick={()=>setShowBulkPanel(false)} aria-label={t("nav.close")} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:"50%",width:24,height:24,cursor:"pointer",fontSize:14,color:"rgba(0,0,0,0.5)"}}><span aria-hidden="true">×</span></button>
           </div>
           <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",marginBottom:10,fontStyle:"italic"}}>Blank fields are not changed. Picked values overwrite all selected entries.</div>
 
@@ -12628,7 +12768,7 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
             <div style={lbl("#30d158")}>VERIFICATION PHOTO — {pendingVerifyStatus.toUpperCase()}</div>
             <div style={{position:"relative",marginBottom:10}}>
               <img src={verifyPhoto} alt="" onClick={()=>setViewerPhoto(verifyPhoto)} style={{width:"100%",maxHeight:280,objectFit:"contain",borderRadius:10,background:"#f8f8f6",cursor:"pointer"}} title="Tap to view full screen"/>
-              <button onClick={()=>{setVerifyPhoto(null);setPendingVerifyStatus(null);}} style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,0.7)",border:"none",borderRadius:"50%",color:"#fff",width:26,height:26,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+              <button onClick={()=>{setVerifyPhoto(null);setPendingVerifyStatus(null);}} aria-label={t("nav.close")} style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,0.7)",border:"none",borderRadius:"50%",color:"#fff",width:26,height:26,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><span aria-hidden="true">×</span></button>
             </div>
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>updateStatus(pendingVerifyStatus)} style={{flex:1,background:"#30d158",border:"none",borderRadius:10,padding:"12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer"}}>CONFIRM {pendingVerifyStatus.toUpperCase()}</button>
@@ -12770,7 +12910,7 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
               {commentPhoto&&(
                 <div style={{position:"relative",marginBottom:8,display:"inline-block"}}>
                   <img src={commentPhoto} alt="" style={{height:80,borderRadius:8,objectFit:"cover"}}/>
-                  <button onClick={()=>setCommentPhoto(null)} style={{position:"absolute",top:2,right:2,background:"rgba(0,0,0,0.7)",border:"none",borderRadius:"50%",color:"#fff",width:20,height:20,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+                  <button onClick={()=>setCommentPhoto(null)} aria-label={t("nav.close")} style={{position:"absolute",top:2,right:2,background:"rgba(0,0,0,0.7)",border:"none",borderRadius:"50%",color:"#fff",width:20,height:20,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><span aria-hidden="true">×</span></button>
                 </div>
               )}
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -19267,7 +19407,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         <div style={{position:"fixed",bottom:64,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 24px)",maxWidth:406,background:"#fff",border:"1px solid rgba(0,0,0,0.1)",borderRadius:14,padding:14,zIndex:60,boxShadow:"0 12px 40px rgba(0,0,0,0.25)",maxHeight:"70vh",overflowY:"auto"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a1a1a"}}>RENAME {selectedDrawingIds.size} DRAWING{selectedDrawingIds.size>1?"S":""}</div>
-            <button onClick={()=>setShowDrawingRenamePanel(false)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:"50%",width:24,height:24,cursor:"pointer",fontSize:14,color:"rgba(0,0,0,0.5)"}}>×</button>
+            <button onClick={()=>setShowDrawingRenamePanel(false)} aria-label={t("nav.close")} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:"50%",width:24,height:24,cursor:"pointer",fontSize:14,color:"rgba(0,0,0,0.5)"}}><span aria-hidden="true">×</span></button>
           </div>
           <div style={{display:"flex",gap:4,padding:3,background:"rgba(0,0,0,0.05)",borderRadius:10,marginBottom:10}}>
             {["prefix","suffix","replace"].map(m=>(
@@ -21572,7 +21712,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
             {qPhoto?(
               <div style={{position:"relative",marginBottom:12}}>
                 <img src={qPhoto} alt="" style={{width:"100%",maxHeight:150,objectFit:"contain",borderRadius:10,background:"rgba(255,255,255,0.05)"}}/>
-                <button onClick={()=>setQPhoto(null)} style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,0.7)",border:"none",borderRadius:"50%",color:"#fff",width:24,height:24,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+                <button onClick={()=>setQPhoto(null)} aria-label={t("nav.close")} style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,0.7)",border:"none",borderRadius:"50%",color:"#fff",width:24,height:24,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><span aria-hidden="true">×</span></button>
               </div>
             ):(
               <button onClick={()=>qPhotoRef.current?.click()} style={{width:"100%",background:"rgba(255,255,255,0.05)",border:"2px dashed rgba(255,255,255,0.15)",borderRadius:10,padding:16,color:"rgba(255,255,255,0.4)",fontSize:13,cursor:"pointer",marginBottom:12}}>📷 Take photo</button>
@@ -22696,8 +22836,8 @@ function App(){
         </div>
       )}
       {/* Header */}
-        <div style={{background:"#1a1a1a",padding:"10px 12px 8px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,position:"relative"}}>
-          <button onClick={()=>setShowProjects(true)} style={{background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0,flex:1,minWidth:0,maxWidth:"calc(100% - 240px)"}}>
+        <div role="banner" style={{background:"#1a1a1a",padding:"10px 12px 8px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,position:"relative"}}>
+          <button onClick={()=>setShowProjects(true)} aria-label={`${t("settings.projects")} — ${currentProject?.name||t("dashboard.select_project")}`} aria-haspopup="dialog" style={{background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0,flex:1,minWidth:0,maxWidth:"calc(100% - 240px)"}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:8.5,fontWeight:700,color:"#ff6b00",letterSpacing:"0.13em",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{company.companyName}</div>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13.5,fontWeight:800,color:"#fff",marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
             {currentProject?.name||t("dashboard.select_project")} <span style={{fontSize:10,color:"rgba(255,255,255,0.3)"}}>▼</span>
@@ -22708,7 +22848,7 @@ function App(){
               (assigned to me, status change on my entries, severity
               escalations on my entries, due-date changes on my entries). */}
           <div style={{position:"relative"}}>
-            <button onClick={()=>setShowInbox(v=>!v)} title={t("inbox.title")} style={{position:"relative",width:34,height:34,borderRadius:9,background:showInbox?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showInbox?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:showInbox?"#ff6b00":"rgba(255,255,255,0.75)",flexShrink:0}}>
+            <button onClick={()=>setShowInbox(v=>!v)} title={t("inbox.title")} aria-label={inboxUnread>0?`${t("inbox.title")} (${inboxUnread})`:t("inbox.title")} aria-haspopup="menu" aria-expanded={showInbox} style={{position:"relative",width:34,height:34,borderRadius:9,background:showInbox?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showInbox?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:showInbox?"#ff6b00":"rgba(255,255,255,0.75)",flexShrink:0}}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
               {inboxUnread>0&&<span style={{position:"absolute",top:-3,right:-3,background:"#ff3b30",color:"#fff",borderRadius:10,minWidth:16,height:16,fontSize:9,fontWeight:800,padding:"0 4px",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",border:"1.5px solid #1a1a1a"}}>{inboxUnread>99?"99+":inboxUnread}</span>}
             </button>
@@ -22719,7 +22859,7 @@ function App(){
                     <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.14em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("inbox.title")}</div>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff",marginTop:2,lineHeight:1}}>{inboxUnread>0?t("inbox.unread_count").replace("{n}",inboxUnread):t("inbox.all_read")}</div>
                   </div>
-                  <button onClick={()=>setShowInbox(false)} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:6,padding:"4px 8px",color:"rgba(255,255,255,0.7)",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>×</button>
+                  <button onClick={()=>setShowInbox(false)} aria-label={t("nav.close")} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:6,padding:"4px 8px",color:"rgba(255,255,255,0.7)",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}><span aria-hidden="true">×</span></button>
                 </div>
                 <div style={{flex:1,overflowY:"auto",padding:"4px 0"}}>
                   {inboxEvents.length===0?(
@@ -22764,7 +22904,7 @@ function App(){
           </div>
           {/* Settings dropdown — all one-time setup in one place */}
           <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(settingsMenuTimer.current);setShowSettingsMenu(true);}} onMouseLeave={()=>{settingsMenuTimer.current=setTimeout(()=>setShowSettingsMenu(false),250);}}>
-            <button onClick={()=>setShowSettingsMenu(v=>!v)} title="Settings" style={{position:"relative",width:34,height:34,borderRadius:9,background:showSettingsMenu?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showSettingsMenu?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:17,color:showSettingsMenu?"#ff6b00":"rgba(255,255,255,0.75)",flexShrink:0}}>⚙
+            <button onClick={()=>setShowSettingsMenu(v=>!v)} title={t("settings.title")} aria-label={t("settings.title")} aria-haspopup="menu" aria-expanded={showSettingsMenu} style={{position:"relative",width:34,height:34,borderRadius:9,background:showSettingsMenu?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showSettingsMenu?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:17,color:showSettingsMenu?"#ff6b00":"rgba(255,255,255,0.75)",flexShrink:0}}><span aria-hidden="true">⚙</span>
             </button>
             {showSettingsMenu&&(()=>{
               const donePill={background:"rgba(48,209,88,0.15)",color:"#30d158",border:"1px solid rgba(48,209,88,0.3)"};
@@ -22862,12 +23002,12 @@ function App(){
             })()}
           </div>
           {/* Help button */}
-          <button onClick={()=>setShowHelp(true)} title={t("avatar_menu.help")} style={{width:34,height:34,borderRadius:9,background:showHelp?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showHelp?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:showHelp?"#ff6b00":"rgba(255,255,255,0.75)",flexShrink:0}}>
+          <button onClick={()=>setShowHelp(true)} title={t("avatar_menu.help")} aria-label={t("avatar_menu.help")} aria-haspopup="dialog" style={{width:34,height:34,borderRadius:9,background:showHelp?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showHelp?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:showHelp?"#ff6b00":"rgba(255,255,255,0.75)",flexShrink:0}}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5c.5-1.5 1.5-2 2.5-2 1.5 0 2.5 1 2.5 2.3 0 1.2-.8 1.7-1.5 2.2-.8.5-1 1-1 2"/><circle cx="12" cy="17" r="0.6" fill="currentColor"/></svg>
           </button>
           {/* Avatar dropdown — profile, admin analytics, feedback, sign out */}
           <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(avatarMenuTimer.current);setShowAvatarMenu(true);}} onMouseLeave={()=>{avatarMenuTimer.current=setTimeout(()=>setShowAvatarMenu(false),250);}}>
-            <button onClick={()=>setShowAvatarMenu(v=>!v)} style={{width:34,height:34,borderRadius:"50%",background:"#ff6b00",border:showAvatarMenu?"2px solid #fff":"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",flexShrink:0}}>
+            <button onClick={()=>setShowAvatarMenu(v=>!v)} aria-label={`${t("avatar_menu.profile")}${member?.name?` — ${member.name}`:""}`} aria-haspopup="menu" aria-expanded={showAvatarMenu} style={{width:34,height:34,borderRadius:"50%",background:"#ff6b00",border:showAvatarMenu?"2px solid #fff":"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",flexShrink:0}}>
               {(member?.name||"?")[0].toUpperCase()}
             </button>
             {showAvatarMenu&&(
@@ -22944,14 +23084,14 @@ function App(){
       </div>
 
       {/* Bottom Nav */}
-      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:"#1a1a1a",borderTop:"1px solid rgba(255,255,255,0.06)",display:"flex",padding:"10px 0 14px",zIndex:50}}>
+      <nav aria-label={t("nav.main_nav")} style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:"#1a1a1a",borderTop:"1px solid rgba(255,255,255,0.06)",display:"flex",padding:"10px 0 14px",zIndex:50}}>
         {navItems.map(n=>(
-          <button key={n.id} onClick={()=>setTab(n.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"4px 0"}}>
-            <div style={{height:26,display:"flex",alignItems:"center",justifyContent:"center",fontSize:n.id==="log"?28:22,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.55)",fontWeight:700,lineHeight:1,fontFamily:n.id==="log"?"'Barlow Condensed',sans-serif":"inherit"}}>{n.icon}</div>
+          <button key={n.id} onClick={()=>setTab(n.id)} aria-label={t(n.labelKey)} aria-current={tab===n.id?"page":undefined} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"4px 0"}}>
+            <div aria-hidden="true" style={{height:26,display:"flex",alignItems:"center",justifyContent:"center",fontSize:n.id==="log"?28:22,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.55)",fontWeight:700,lineHeight:1,fontFamily:n.id==="log"?"'Barlow Condensed',sans-serif":"inherit"}}>{n.icon}</div>
             <div style={{fontSize:11,fontWeight:700,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",lineHeight:1}}>{t(n.labelKey).toUpperCase()}</div>
           </button>
         ))}
-      </div>
+      </nav>
 
       {/* Overlays */}
       {/* Inline DRAWING / COMPARISON viewer launched from REVIEW. Keeps users

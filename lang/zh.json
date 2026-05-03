@@ -4,7 +4,9 @@
     "log": "记录",
     "tag": "标记",
     "review": "审查",
-    "report": "报告"
+    "report": "报告",
+    "main_nav": "主导航",
+    "close": "关闭"
   },
   "banner": {
     "server_down": "SiteShrimp 已暂停升级 - 很快就会恢复。 现有工作是安全的。"
@@ -584,6 +586,8 @@
     "telegram_desc": "实时缺陷提醒",
     "storage": "存储和托管",
     "storage_desc": "可选·文件+服务器所在的位置",
+    "photo_stamp": "为照片添加日期/GPS 标记",
+    "photo_stamp_desc": "将拍摄日期、时间、GPS 和项目名称刻录到每张保存的照片上。 在导出和屏幕截图中可见——对于监管链很有用。",
     "email": "电子邮件设置",
     "email_desc": "可选 · 用于发送报告电子邮件的 SMTP",
     "maps": "地图",
