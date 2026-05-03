@@ -5953,7 +5953,7 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
   // mirrors the checklist/profile pattern: optimistic local override so the
   // chip reflects the latest save without waiting for a parent re-fetch.
   const[weeklyEditing,setWeeklyEditing]=useState(null);
-  const[weeklyDraft,setWeeklyDraft]=useState({enabled:false,recipients:"",dow:1,hour:9});
+  const[weeklyDraft,setWeeklyDraft]=useState({enabled:false,recipients:"",dow:1,hour:9,minute:0});
   const[weeklyBusy,setWeeklyBusy]=useState(null);
   const[weeklyOverrides,setWeeklyOverrides]=useState({});
   const weeklyOf=(p)=>{
@@ -5963,6 +5963,7 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
       recipients:p.weekly_report_recipients||"",
       dow:typeof p.weekly_report_dow==="number"?p.weekly_report_dow:1,
       hour:typeof p.weekly_report_hour==="number"?p.weekly_report_hour:9,
+      minute:typeof p.weekly_report_minute==="number"?p.weekly_report_minute:0,
       last_sent:p.weekly_report_last_sent||""
     };
   };
@@ -5974,7 +5975,8 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
         weekly_report_enabled:!!s.enabled,
         weekly_report_recipients:s.recipients||"",
         weekly_report_dow:Number(s.dow)||0,
-        weekly_report_hour:Number(s.hour)||0
+        weekly_report_hour:Number(s.hour)||0,
+        weekly_report_minute:Number(s.minute)||0
       };
       await DB.projects.update(id,patch);
       setWeeklyOverrides(prev=>({...prev,[id]:{...patch,last_sent:(prev[id]?.last_sent)||""}}));
@@ -6257,13 +6259,13 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
                     const on=!!w.enabled&&!!(w.recipients||"").trim();
                     const dowKey=["sun","mon","tue","wed","thu","fri","sat"][w.dow]||"mon";
                     const dowAbbr=t("report.weekly_dow_"+dowKey);
-                    const chipLabel=on?(`📅 ${dowAbbr} ${String(w.hour).padStart(2,"0")}:00`):t("report.weekly_off_label");
+                    const chipLabel=on?(`📅 ${dowAbbr} ${String(w.hour).padStart(2,"0")}:${String(w.minute||0).padStart(2,"0")}`):t("report.weekly_off_label");
                     const bg=on?(active?"rgba(255,255,255,0.18)":"rgba(255,107,0,0.1)"):(active?"rgba(255,255,255,0.12)":"rgba(0,0,0,0.04)");
                     const fg=on?(active?"#fff":"#ff6b00"):(active?"rgba(255,255,255,0.85)":"rgba(0,0,0,0.55)");
                     const border=on?(active?"1px solid rgba(255,255,255,0.35)":"1px solid rgba(255,107,0,0.3)"):(active?"1px solid rgba(255,255,255,0.2)":"1px solid rgba(0,0,0,0.1)");
                     return(
                       <span onClick={e=>e.stopPropagation()} style={{display:"inline-block",marginTop:5,marginLeft:6}}>
-                        <button onClick={()=>{setWeeklyEditing(editing?null:p.id);setWeeklyDraft({enabled:w.enabled,recipients:w.recipients,dow:w.dow,hour:w.hour});}} style={{background:bg,border,borderRadius:6,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,letterSpacing:"0.04em",color:fg,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}} title={t("report.weekly_button_title")}>
+                        <button onClick={()=>{setWeeklyEditing(editing?null:p.id);setWeeklyDraft({enabled:w.enabled,recipients:w.recipients,dow:w.dow,hour:w.hour,minute:w.minute||0});}} style={{background:bg,border,borderRadius:6,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,letterSpacing:"0.04em",color:fg,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}} title={t("report.weekly_button_title")}>
                           {chipLabel}
                         </button>
                         {editing&&(
@@ -6291,7 +6293,9 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
                               <div style={{fontSize:10,color:active?"rgba(255,255,255,0.7)":"rgba(0,0,0,0.55)",marginBottom:4,fontWeight:700,letterSpacing:"0.04em",textTransform:"uppercase"}}>{t("report.weekly_time")}</div>
                               <div style={{display:"flex",alignItems:"center",gap:6}}>
                                 <input type="number" min={0} max={23} value={weeklyDraft.hour} onChange={e=>setWeeklyDraft(d=>({...d,hour:Math.max(0,Math.min(23,parseInt(e.target.value)||0))}))} style={{width:64,padding:"7px 10px",border:"1px solid rgba(0,0,0,0.15)",borderRadius:6,fontSize:13,textAlign:"center",background:"#fff"}}/>
-                                <span style={{fontSize:12,color:active?"rgba(255,255,255,0.7)":"rgba(0,0,0,0.55)"}}>:00 {t("report.weekly_time_sgt")}</span>
+                                <span style={{fontSize:14,color:active?"rgba(255,255,255,0.85)":"rgba(0,0,0,0.7)",fontWeight:700}}>:</span>
+                                <input type="number" min={0} max={59} value={weeklyDraft.minute||0} onChange={e=>setWeeklyDraft(d=>({...d,minute:Math.max(0,Math.min(59,parseInt(e.target.value)||0))}))} style={{width:64,padding:"7px 10px",border:"1px solid rgba(0,0,0,0.15)",borderRadius:6,fontSize:13,textAlign:"center",background:"#fff"}}/>
+                                <span style={{fontSize:12,color:active?"rgba(255,255,255,0.7)":"rgba(0,0,0,0.55)"}}>{t("report.weekly_time_sgt")}</span>
                               </div>
                             </div>
                             <div style={{display:"flex",gap:6,marginTop:10}}>

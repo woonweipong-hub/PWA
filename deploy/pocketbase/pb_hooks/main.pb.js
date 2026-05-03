@@ -799,8 +799,9 @@ function _sgtParts() {
   var sgtMs = nowUtcMs + (8 * 3600 * 1000);
   var d = new Date(sgtMs);
   return {
-    dow: d.getUTCDay(),   // 0=Sun..6=Sat
+    dow: d.getUTCDay(),     // 0=Sun..6=Sat
     hour: d.getUTCHours(),
+    minute: d.getUTCMinutes(),
     iso: new Date(nowUtcMs).toISOString()
   };
 }
@@ -996,16 +997,23 @@ function _sendWeeklyForProject(project) {
       console.log("[weekly_report] cronAdd not available on this PocketBase build — scheduled reports disabled");
       return;
     }
-    cronAdd("siteshrimp_weekly_reports", "0 * * * *", function () {
+    // Minute-precision schedule (v2 2026-05-03): cron now fires every minute
+    // and the handler matches both hour AND minute. 60x more cron ticks but
+    // each tick is a single fast filter query that returns 0 in 99.9% of
+    // cases. Enables non-top-of-hour subscriptions like "Mon 09:30".
+    cronAdd("siteshrimp_weekly_reports", "* * * * *", function () {
       try {
         var when = _sgtParts();
+        // Backward-compat: rows where weekly_report_minute is null/missing
+        // (created before the v2 schema field was added) are treated as
+        // top-of-hour, so legacy subscriptions keep firing as before.
         var projects = $app.findRecordsByFilter(
           "projects",
-          "weekly_report_enabled = true && weekly_report_dow = {:dow} && weekly_report_hour = {:hour} && (archived = false || archived = null || archived = '')",
-          "", 200, 0, { dow: when.dow, hour: when.hour }
+          "weekly_report_enabled = true && weekly_report_dow = {:dow} && weekly_report_hour = {:hour} && (weekly_report_minute = {:minute} || (weekly_report_minute = null && {:minute} = 0) || (weekly_report_minute = 0 && {:minute} = 0)) && (archived = false || archived = null || archived = '')",
+          "", 200, 0, { dow: when.dow, hour: when.hour, minute: when.minute }
         );
         if (!projects.length) return;
-        console.log("[weekly_report] cron fired SGT dow=" + when.dow + " hour=" + when.hour + " — " + projects.length + " project(s) due");
+        console.log("[weekly_report] cron fired SGT dow=" + when.dow + " hour=" + when.hour + " minute=" + when.minute + " — " + projects.length + " project(s) due");
         for (var i = 0; i < projects.length; i++) {
           _sendWeeklyForProject(projects[i]);
         }
@@ -1013,7 +1021,7 @@ function _sendWeeklyForProject(project) {
         console.log("[weekly_report] cron handler error (ignored):", err);
       }
     });
-    console.log("[weekly_report] cron registered (siteshrimp_weekly_reports, 0 * * * *)");
+    console.log("[weekly_report] cron registered (siteshrimp_weekly_reports, * * * * *) — minute precision");
   } catch (err) {
     console.log("[weekly_report] cron registration failed (ignored):", err);
   }

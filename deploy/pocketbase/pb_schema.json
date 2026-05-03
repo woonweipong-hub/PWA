@@ -648,6 +648,10 @@
         "type": "number"
       },
       {
+        "name": "weekly_report_minute",
+        "type": "number"
+      },
+      {
         "name": "weekly_report_last_sent",
         "type": "text"
       }
