@@ -793,6 +793,16 @@ routerAdd("POST", "/api/test-smtp", (e) => {
 // Avoids re-implementing the full client-side generateEmailHTML (which is
 // React/JSX-rendered) on the server side.
 
+// NOTE 2026-05-03: PocketBase JSVM (goja) invokes cron callbacks in a
+// fresh JS runtime per fire that does NOT carry the host file's top-level
+// function scope. Confirmed by `ReferenceError: _sgtParts is not defined`
+// thrown from within the cron handler at minute boundaries even after a
+// systemctl restart. The fix is to nest every helper INSIDE the cron
+// callback so each fire re-declares them in local scope. The functions
+// below are kept here as documentation / legacy callers; the cron itself
+// has its own copies further down. Do NOT remove these without confirming
+// nothing else in main.pb.js calls them.
+
 function _sgtParts() {
   // SGT = UTC+8 with no DST. Compute by shifting the UTC ms.
   var nowUtcMs = Date.now();
@@ -987,23 +997,209 @@ function _sendWeeklyForProject(project) {
   console.log("[weekly_report] project " + pid + " (" + pname + ") — sent " + sentCount + ", failed " + failedCount);
 }
 
-// Register the hourly cron. Defensive — a missing cronAdd symbol or a
+// Register the minute cron. Defensive — a missing cronAdd symbol or a
 // throw during registration MUST NOT take down the rest of the hooks
 // file (else every defect create would start failing because the
 // storage-cap + defect_id hooks above never get reached on next reload).
+//
+// IMPORTANT (goja scope fix v3 2026-05-03): every helper used by the
+// cron callback is declared INSIDE the callback body. PocketBase's
+// JSVM invokes cron callbacks in a fresh runtime per fire that does
+// NOT inherit the file's top-level lexical scope. Calling top-level
+// helpers from inside throws `ReferenceError: <fn> is not defined`.
+// Re-declaring helpers per fire is cheap (microseconds) and removes
+// the closure dependency entirely. Function declarations are hoisted
+// so the order inside the callback doesn't matter.
 (function registerWeeklyReportCron() {
   try {
     if (typeof cronAdd !== "function") {
       console.log("[weekly_report] cronAdd not available on this PocketBase build — scheduled reports disabled");
       return;
     }
-    // Minute-precision schedule (v2 2026-05-03): cron now fires every minute
-    // and the handler matches both hour AND minute. 60x more cron ticks but
-    // each tick is a single fast filter query that returns 0 in 99.9% of
-    // cases. Enables non-top-of-hour subscriptions like "Mon 09:30".
     cronAdd("siteshrimp_weekly_reports", "* * * * *", function () {
+      // ── helpers (local to this cron fire) ──────────────────────
+      function sgtParts() {
+        var nowUtcMs = Date.now();
+        var sgtMs = nowUtcMs + (8 * 3600 * 1000);
+        var d = new Date(sgtMs);
+        return {
+          dow: d.getUTCDay(),
+          hour: d.getUTCHours(),
+          minute: d.getUTCMinutes(),
+          iso: new Date(nowUtcMs).toISOString()
+        };
+      }
+      function sanitizeHtml(s) {
+        if (s == null) return "";
+        return String(s)
+          .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      }
+      function parseRecipients(text) {
+        if (!text) return [];
+        var parts = String(text).split(/[,;\n\r]+/);
+        var out = [];
+        var seen = {};
+        var emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        for (var i = 0; i < parts.length; i++) {
+          var v = parts[i].trim();
+          if (!v || seen[v.toLowerCase()]) continue;
+          if (!emailRe.test(v)) continue;
+          seen[v.toLowerCase()] = true;
+          out.push(v);
+        }
+        return out;
+      }
+      function buildWeeklyHtml(project, defects) {
+        var counts = { Open: 0, "In Progress": 0, Done: 0, Verified: 0, Closed: 0 };
+        var sevCounts = { Critical: 0, Major: 0, Minor: 0, Observation: 0 };
+        var critical = [];
+        var sevenDaysAgo = Date.now() - 7 * 86400 * 1000;
+        var recentEvents = [];
+        for (var i = 0; i < defects.length; i++) {
+          var d = defects[i];
+          var status = d.getString("status") || "Open";
+          var sev = d.getString("severity") || "Major";
+          if (counts[status] !== undefined) counts[status]++;
+          if (sevCounts[sev] !== undefined) sevCounts[sev]++;
+          var isOpen = status !== "Closed" && status !== "Verified";
+          if (isOpen && sev === "Critical") {
+            critical.push({
+              id: d.getString("defect_id") || d.getString("id"),
+              title: d.getString("title") || "(untitled)",
+              location: d.getString("location") || "",
+              assignee: d.getString("assignee") || ""
+            });
+          }
+          var comments = [];
+          try { comments = JSON.parse(d.getString("comments") || "[]"); } catch (_) {}
+          if (Array.isArray(comments)) {
+            for (var j = 0; j < comments.length; j++) {
+              var c = comments[j];
+              if (!c || c.kind !== "event") continue;
+              if (typeof c.at !== "number" || c.at < sevenDaysAgo) continue;
+              recentEvents.push({
+                defect: d.getString("defect_id") || "",
+                title: d.getString("title") || "",
+                type: c.type || "",
+                from: c.from || "",
+                to: c.to || "",
+                by: c.by || "",
+                at: c.at
+              });
+            }
+          }
+        }
+        recentEvents.sort(function (a, b) { return b.at - a.at; });
+        if (recentEvents.length > 20) recentEvents = recentEvents.slice(0, 20);
+
+        var open = counts.Open + counts["In Progress"];
+        var html = '<div style="font-family: -apple-system, system-ui, sans-serif; color: #1a1a1a; max-width: 640px; margin: 0 auto; padding: 24px;">';
+        html += '<h1 style="font-size: 22px; margin: 0 0 8px; color: #ff6b00;">SiteShrimp Weekly Summary</h1>';
+        html += '<div style="color: rgba(0,0,0,0.5); font-size: 14px; margin-bottom: 24px;">' + sanitizeHtml(project.getString("name")) + ' — week ending ' + new Date().toISOString().slice(0, 10) + '</div>';
+        html += '<div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">';
+        html += '<div style="background: #fff; border: 1px solid rgba(0,0,0,0.08); border-radius: 10px; padding: 14px 18px; min-width: 100px;"><div style="font-size: 28px; font-weight: 800; color: #ff3b30;">' + open + '</div><div style="font-size: 11px; color: rgba(0,0,0,0.5); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px;">Open</div></div>';
+        html += '<div style="background: #fff; border: 1px solid rgba(0,0,0,0.08); border-radius: 10px; padding: 14px 18px; min-width: 100px;"><div style="font-size: 28px; font-weight: 800; color: #5856d6;">' + sevCounts.Critical + '</div><div style="font-size: 11px; color: rgba(0,0,0,0.5); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px;">Critical</div></div>';
+        html += '<div style="background: #fff; border: 1px solid rgba(0,0,0,0.08); border-radius: 10px; padding: 14px 18px; min-width: 100px;"><div style="font-size: 28px; font-weight: 800; color: #34c759;">' + (counts.Closed + counts.Verified) + '</div><div style="font-size: 11px; color: rgba(0,0,0,0.5); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px;">Closed</div></div>';
+        html += '</div>';
+
+        if (critical.length) {
+          html += '<h2 style="font-size: 16px; margin: 24px 0 8px; color: #ff3b30;">Critical Unresolved (' + critical.length + ')</h2>';
+          html += '<table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 24px;">';
+          html += '<thead><tr style="background: rgba(255,59,48,0.06);"><th style="text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(0,0,0,0.5);">ID</th><th style="text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(0,0,0,0.5);">Title</th><th style="text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(0,0,0,0.5);">Location</th><th style="text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(0,0,0,0.5);">Assignee</th></tr></thead><tbody>';
+          for (var k = 0; k < critical.length; k++) {
+            var cr = critical[k];
+            html += '<tr style="border-bottom: 1px solid rgba(0,0,0,0.06);"><td style="padding: 8px 10px; color: rgba(0,0,0,0.7);">' + sanitizeHtml(cr.id) + '</td><td style="padding: 8px 10px; font-weight: 600;">' + sanitizeHtml(cr.title) + '</td><td style="padding: 8px 10px; color: rgba(0,0,0,0.7);">' + sanitizeHtml(cr.location) + '</td><td style="padding: 8px 10px; color: rgba(0,0,0,0.7);">' + sanitizeHtml(cr.assignee) + '</td></tr>';
+          }
+          html += '</tbody></table>';
+        }
+
+        if (recentEvents.length) {
+          html += '<h2 style="font-size: 16px; margin: 24px 0 8px; color: #5856d6;">Recent Changes (last 7 days)</h2>';
+          html += '<div style="font-size: 13px;">';
+          for (var m = 0; m < recentEvents.length; m++) {
+            var ev = recentEvents[m];
+            html += '<div style="padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.06);"><span style="color: rgba(0,0,0,0.5);">' + new Date(ev.at).toISOString().slice(0, 10) + '</span> &middot; <span style="font-weight: 600;">' + sanitizeHtml(ev.defect || ev.title) + '</span> &middot; ' + sanitizeHtml(ev.type) + ': ' + sanitizeHtml(ev.from || "—") + ' &rarr; <b>' + sanitizeHtml(ev.to || "—") + '</b> &middot; <span style="color: rgba(0,0,0,0.5);">by ' + sanitizeHtml(ev.by) + '</span></div>';
+          }
+          html += '</div>';
+        }
+
+        if (!critical.length && !recentEvents.length) {
+          html += '<div style="background: rgba(48,209,88,0.08); border-radius: 10px; padding: 16px; color: #1a7a35; font-size: 14px; margin: 24px 0;">No critical unresolved entries and no tracked changes in the last 7 days. All quiet.</div>';
+        }
+
+        html += '<div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid rgba(0,0,0,0.06); font-size: 11px; color: rgba(0,0,0,0.4);">SiteShrimp weekly summary &middot; <a href="https://siteshrimp.org" style="color: #ff6b00; text-decoration: none;">siteshrimp.org</a> &middot; To unsubscribe, open the project in SiteShrimp &rarr; Settings &rarr; Projects.</div>';
+        html += '</div>';
+        return html;
+      }
+      function sendWeeklyForProject(project) {
+        var pid = project.getString("id");
+        var pname = project.getString("name") || "Project";
+        var recipientsRaw = project.getString("weekly_report_recipients") || "";
+        var recipients = parseRecipients(recipientsRaw);
+        if (!recipients.length) {
+          console.log("[weekly_report] project " + pid + " enabled but has no valid recipients — skipping");
+          return;
+        }
+        var lastSent = project.getString("weekly_report_last_sent") || "";
+        if (lastSent) {
+          try {
+            var lastMs = Date.parse(lastSent);
+            if (!isNaN(lastMs) && Date.now() - lastMs < 12 * 3600 * 1000) {
+              console.log("[weekly_report] project " + pid + " already sent within last 12h — skipping");
+              return;
+            }
+          } catch (_) {}
+        }
+        var defects = [];
+        try {
+          defects = $app.findRecordsByFilter(
+            "defects",
+            "projectId = {:pid} && (archivedAt = '' || archivedAt = null)",
+            "-created", 1000, 0, { pid: pid }
+          );
+        } catch (err) {
+          console.log("[weekly_report] failed to query defects for project " + pid + ":", err);
+          return;
+        }
+        var html;
+        try {
+          html = buildWeeklyHtml(project, defects);
+        } catch (err) {
+          console.log("[weekly_report] HTML build failed for project " + pid + ":", err);
+          return;
+        }
+        var subject = "SiteShrimp — " + pname + " weekly summary";
+        var sentCount = 0;
+        var failedCount = 0;
+        for (var i = 0; i < recipients.length; i++) {
+          try {
+            var msg = new MailerMessage();
+            msg.from = { address: $app.settings().meta.senderAddress, name: $app.settings().meta.senderName || "SiteShrimp" };
+            msg.to = [{ address: recipients[i] }];
+            msg.subject = subject;
+            msg.html = html;
+            $app.newMailClient().send(msg);
+            sentCount++;
+          } catch (err) {
+            failedCount++;
+            console.log("[weekly_report] send failed for " + recipients[i] + " (project " + pid + "):", err);
+          }
+        }
+        if (sentCount > 0) {
+          try {
+            project.set("weekly_report_last_sent", new Date().toISOString());
+            $app.save(project);
+          } catch (err) {
+            console.log("[weekly_report] failed to update last_sent for project " + pid + ":", err);
+          }
+        }
+        console.log("[weekly_report] project " + pid + " (" + pname + ") — sent " + sentCount + ", failed " + failedCount);
+      }
+
+      // ── handler body ──────────────────────────────────────────
       try {
-        var when = _sgtParts();
+        var when = sgtParts();
         // Backward-compat: rows where weekly_report_minute is null/missing
         // (created before the v2 schema field was added) are treated as
         // top-of-hour, so legacy subscriptions keep firing as before.
@@ -1014,14 +1210,14 @@ function _sendWeeklyForProject(project) {
         );
         if (!projects.length) return;
         console.log("[weekly_report] cron fired SGT dow=" + when.dow + " hour=" + when.hour + " minute=" + when.minute + " — " + projects.length + " project(s) due");
-        for (var i = 0; i < projects.length; i++) {
-          _sendWeeklyForProject(projects[i]);
+        for (var pi = 0; pi < projects.length; pi++) {
+          sendWeeklyForProject(projects[pi]);
         }
       } catch (err) {
         console.log("[weekly_report] cron handler error (ignored):", err);
       }
     });
-    console.log("[weekly_report] cron registered (siteshrimp_weekly_reports, * * * * *) — minute precision");
+    console.log("[weekly_report] cron registered (siteshrimp_weekly_reports, * * * * *) — minute precision, helpers nested (v3)");
   } catch (err) {
     console.log("[weekly_report] cron registration failed (ignored):", err);
   }
