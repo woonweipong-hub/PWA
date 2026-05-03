@@ -5947,6 +5947,48 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
     setChecklistEditing(null);
   };
 
+  // ── Weekly summary subscription (commercial-gap #3) ──
+  // Per-project opt-in: user picks recipients + day-of-week + hour (SGT),
+  // server-side cron in pb_hooks fires hourly and emails the digest. State
+  // mirrors the checklist/profile pattern: optimistic local override so the
+  // chip reflects the latest save without waiting for a parent re-fetch.
+  const[weeklyEditing,setWeeklyEditing]=useState(null);
+  const[weeklyDraft,setWeeklyDraft]=useState({enabled:false,recipients:"",dow:1,hour:9});
+  const[weeklyBusy,setWeeklyBusy]=useState(null);
+  const[weeklyOverrides,setWeeklyOverrides]=useState({});
+  const weeklyOf=(p)=>{
+    if(weeklyOverrides[p.id])return weeklyOverrides[p.id];
+    return{
+      enabled:!!p.weekly_report_enabled,
+      recipients:p.weekly_report_recipients||"",
+      dow:typeof p.weekly_report_dow==="number"?p.weekly_report_dow:1,
+      hour:typeof p.weekly_report_hour==="number"?p.weekly_report_hour:9,
+      last_sent:p.weekly_report_last_sent||""
+    };
+  };
+  const saveWeeklyFor=async(id,s)=>{
+    if(weeklyBusy)return;
+    setWeeklyBusy(id);
+    try{
+      const patch={
+        weekly_report_enabled:!!s.enabled,
+        weekly_report_recipients:s.recipients||"",
+        weekly_report_dow:Number(s.dow)||0,
+        weekly_report_hour:Number(s.hour)||0
+      };
+      await DB.projects.update(id,patch);
+      setWeeklyOverrides(prev=>({...prev,[id]:{...patch,last_sent:(prev[id]?.last_sent)||""}}));
+      if(currentProject?.id===id)onSelect({...currentProject,id,name:currentProject.name,...patch});
+      setWeeklyEditing(null);
+    }catch(e){
+      // Strict-schema rejection is expected when the PB admin hasn't yet
+      // imported the updated pb_schema.json carrying the weekly_report_* fields.
+      console.warn("[Weekly] save failed — schema may not be deployed yet:",e?.message||e);
+      alert("Could not save weekly subscription: "+(e?.message||e)+"\n\nIf this is the first time you've enabled this, the PocketBase schema may need to be re-imported with the new weekly_report_* fields. Ask your admin.");
+    }
+    setWeeklyBusy(null);
+  };
+
   // ── Project Profiles — Phase 1 feature flag + picker (off by default) ──
   // Feature flag lives in localStorage per (companyId, projectId) so turning
   // it on for one project does NOT affect other projects or other users'
@@ -6201,6 +6243,69 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
                         {busy&&<Spin size={10}/>}
                         <button onClick={()=>toggleProfileFlag(p.id)} style={{background:"transparent",border:"none",color:active?"rgba(255,255,255,0.5)":"rgba(88,86,214,0.5)",fontSize:12,cursor:"pointer",padding:"0 2px",lineHeight:1}} title="Turn off custom template — revert to default export format.">×</button>
                       </div>
+                    );
+                  })()}
+                  {/* Weekly summary subscription chip (commercial-gap #3).
+                      Tap to open an inline panel with toggle + recipients +
+                      day + hour pickers. Server-side cron in pb_hooks reads
+                      these fields hourly and emails the digest. */}
+                  {canManage&&(()=>{
+                    const w=weeklyOf(p);
+                    const editing=weeklyEditing===p.id;
+                    const active=currentProject?.id===p.id;
+                    const busy=weeklyBusy===p.id;
+                    const on=!!w.enabled&&!!(w.recipients||"").trim();
+                    const dowKey=["sun","mon","tue","wed","thu","fri","sat"][w.dow]||"mon";
+                    const dowAbbr=t("report.weekly_dow_"+dowKey);
+                    const chipLabel=on?(`📅 ${dowAbbr} ${String(w.hour).padStart(2,"0")}:00`):t("report.weekly_off_label");
+                    const bg=on?(active?"rgba(255,255,255,0.18)":"rgba(255,107,0,0.1)"):(active?"rgba(255,255,255,0.12)":"rgba(0,0,0,0.04)");
+                    const fg=on?(active?"#fff":"#ff6b00"):(active?"rgba(255,255,255,0.85)":"rgba(0,0,0,0.55)");
+                    const border=on?(active?"1px solid rgba(255,255,255,0.35)":"1px solid rgba(255,107,0,0.3)"):(active?"1px solid rgba(255,255,255,0.2)":"1px solid rgba(0,0,0,0.1)");
+                    return(
+                      <span onClick={e=>e.stopPropagation()} style={{display:"inline-block",marginTop:5,marginLeft:6}}>
+                        <button onClick={()=>{setWeeklyEditing(editing?null:p.id);setWeeklyDraft({enabled:w.enabled,recipients:w.recipients,dow:w.dow,hour:w.hour});}} style={{background:bg,border,borderRadius:6,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,letterSpacing:"0.04em",color:fg,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}} title={t("report.weekly_button_title")}>
+                          {chipLabel}
+                        </button>
+                        {editing&&(
+                          <div style={{marginTop:8,padding:12,background:active?"rgba(0,0,0,0.15)":"rgba(0,0,0,0.04)",borderRadius:8,maxWidth:340}}>
+                            <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,fontSize:12,color:active?"rgba(255,255,255,0.9)":"#1a1a1a",cursor:"pointer"}}>
+                              <input type="checkbox" role="switch" aria-checked={!!weeklyDraft.enabled} checked={!!weeklyDraft.enabled} onChange={e=>setWeeklyDraft(d=>({...d,enabled:e.target.checked}))} style={{width:18,height:18,cursor:"pointer"}}/>
+                              <span style={{fontWeight:700}}>{t("report.weekly_enabled")}</span>
+                            </label>
+                            <div style={{marginBottom:10}}>
+                              <div style={{fontSize:10,color:active?"rgba(255,255,255,0.7)":"rgba(0,0,0,0.55)",marginBottom:4,fontWeight:700,letterSpacing:"0.04em",textTransform:"uppercase"}}>{t("report.weekly_recipients")}</div>
+                              <textarea value={weeklyDraft.recipients} onChange={e=>setWeeklyDraft(d=>({...d,recipients:e.target.value}))} placeholder={t("report.weekly_recipients_placeholder")} rows={3} style={{width:"100%",padding:"8px 10px",border:"1px solid rgba(0,0,0,0.15)",borderRadius:8,fontSize:12,resize:"vertical",lineHeight:1.4,background:"#fff",fontFamily:"-apple-system, system-ui, sans-serif",boxSizing:"border-box"}}/>
+                              <div style={{fontSize:10,color:active?"rgba(255,255,255,0.55)":"rgba(0,0,0,0.4)",marginTop:3,lineHeight:1.4}}>{t("report.weekly_recipients_hint")}</div>
+                            </div>
+                            <div style={{marginBottom:10}}>
+                              <div style={{fontSize:10,color:active?"rgba(255,255,255,0.7)":"rgba(0,0,0,0.55)",marginBottom:4,fontWeight:700,letterSpacing:"0.04em",textTransform:"uppercase"}}>{t("report.weekly_day")}</div>
+                              <div style={{display:"flex",gap:4}}>
+                                {["sun","mon","tue","wed","thu","fri","sat"].map((dk,di)=>(
+                                  <button key={dk} onClick={()=>setWeeklyDraft(d=>({...d,dow:di}))} style={{flex:1,background:weeklyDraft.dow===di?"#ff6b00":(active?"rgba(255,255,255,0.15)":"#fff"),border:weeklyDraft.dow===di?"1px solid #ff6b00":"1px solid rgba(0,0,0,0.15)",borderRadius:6,padding:"8px 0",color:weeklyDraft.dow===di?"#fff":(active?"#fff":"rgba(0,0,0,0.65)"),fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",letterSpacing:"0.04em"}} title={t("report.weekly_dow_full_"+dk)}>
+                                    {t("report.weekly_dow_"+dk)}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div style={{marginBottom:10}}>
+                              <div style={{fontSize:10,color:active?"rgba(255,255,255,0.7)":"rgba(0,0,0,0.55)",marginBottom:4,fontWeight:700,letterSpacing:"0.04em",textTransform:"uppercase"}}>{t("report.weekly_time")}</div>
+                              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                                <input type="number" min={0} max={23} value={weeklyDraft.hour} onChange={e=>setWeeklyDraft(d=>({...d,hour:Math.max(0,Math.min(23,parseInt(e.target.value)||0))}))} style={{width:64,padding:"7px 10px",border:"1px solid rgba(0,0,0,0.15)",borderRadius:6,fontSize:13,textAlign:"center",background:"#fff"}}/>
+                                <span style={{fontSize:12,color:active?"rgba(255,255,255,0.7)":"rgba(0,0,0,0.55)"}}>:00 {t("report.weekly_time_sgt")}</span>
+                              </div>
+                            </div>
+                            <div style={{display:"flex",gap:6,marginTop:10}}>
+                              <button onClick={()=>saveWeeklyFor(p.id,weeklyDraft)} disabled={busy} style={{flex:1,background:"#30d158",border:"none",borderRadius:6,padding:"8px 12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,letterSpacing:"0.04em",cursor:busy?"wait":"pointer"}}>{busy?t("report.weekly_saving"):t("actions.save")}</button>
+                              <button onClick={()=>setWeeklyEditing(null)} style={{background:"rgba(0,0,0,0.08)",border:"none",borderRadius:6,padding:"8px 12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")}</button>
+                            </div>
+                            {w.last_sent&&(
+                              <div style={{marginTop:8,fontSize:10,color:active?"rgba(255,255,255,0.55)":"rgba(0,0,0,0.4)"}}>
+                                {t("report.weekly_last_sent")}: {new Date(w.last_sent).toLocaleString()}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </span>
                     );
                   })()}
                 </div>

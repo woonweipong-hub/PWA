@@ -630,6 +630,26 @@
       {
         "name": "ef_works_fails",
         "type": "number"
+      },
+      {
+        "name": "weekly_report_enabled",
+        "type": "bool"
+      },
+      {
+        "name": "weekly_report_recipients",
+        "type": "text"
+      },
+      {
+        "name": "weekly_report_dow",
+        "type": "number"
+      },
+      {
+        "name": "weekly_report_hour",
+        "type": "number"
+      },
+      {
+        "name": "weekly_report_last_sent",
+        "type": "text"
       }
     ],
     "listRule": "@request.auth.id != ''",
