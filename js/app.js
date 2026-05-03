@@ -2932,6 +2932,298 @@ async function _ensureXLSX(){
     document.head.appendChild(s);
   });
 }
+
+// Self-contained HTML viewer bundled inside every Photo ZIP. Renders the
+// _entries.jsonl payload as a 5W1H evidence pack that the recipient can
+// double-click open offline (no server, no install, no account, no network).
+// Why: every ZIP today travels to an architect / QS / main-contractor who
+// is not yet a SiteShrimp user. Today they get photos + workbook; this
+// surface turns that into an interactive evidence pack so the schema's
+// existence is visible at the point of use, not buried in Settings → Help.
+// The data is inlined into the file so file:// CORS rules don't bite;
+// photos are referenced by relative path which works in every browser.
+function buildPhotoZipViewerHTML({projectName,generatedAt,entries,workCategory,variantTitle,schemaBaseUri,schemaVariantUri,scheme}){
+  const safe=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+  // Embed the data as JSON inside a <script> tag — defuse any inline
+  // </script> sequences that would otherwise prematurely close the block.
+  const jsonInline=JSON.stringify(entries).replace(/<\/(script)/gi,"<\\/$1");
+  const meta={
+    project:safe(projectName||"SiteShrimp"),
+    generated:safe(generatedAt||new Date().toISOString()),
+    workCategory:safe(workCategory||""),
+    variantTitle:safe(variantTitle||""),
+    schemaBase:safe(schemaBaseUri||""),
+    schemaVariant:safe(schemaVariantUri||""),
+    scheme:safe(scheme||""),
+    nEntries:Array.isArray(entries)?entries.length:0,
+  };
+  // Tally counts on the build side so the header strip renders instantly
+  // even before the viewer's JS runs (good for print-to-PDF too).
+  let nCritical=0,nOpen=0,nOverdue=0;
+  const todayStr=new Date().toISOString().slice(0,10);
+  (entries||[]).forEach(e=>{
+    if((e.severity||"")==="Critical")nCritical++;
+    if(["Open","In Progress"].indexOf(e.status||"")>=0)nOpen++;
+    if(e.due_date&&e.due_date<todayStr&&(e.status||"")!=="Closed"&&(e.status||"")!=="Verified")nOverdue++;
+  });
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${meta.project} — SiteShrimp Evidence Pack</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{font-family:'Barlow Condensed',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1a1a1a;background:#f5f5f5;line-height:1.4}
+a{color:#ff6b00;text-decoration:none}a:hover{text-decoration:underline}
+.bar{background:#1a1a1a;color:#fff;padding:14px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:5}
+.bar .brand{font-weight:800;font-size:13px;letter-spacing:0.08em;color:#ff6b00}
+.bar .proj{font-weight:800;font-size:18px;flex:1;min-width:200px}
+.bar .meta{font-size:11px;color:rgba(255,255,255,0.55);font-weight:600}
+.counts{display:flex;gap:8px;padding:10px 20px;background:#fff;border-bottom:1px solid rgba(0,0,0,0.08);flex-wrap:wrap}
+.count{padding:6px 12px;border-radius:20px;font-weight:800;font-size:11px;letter-spacing:0.04em}
+.count.total{background:rgba(0,0,0,0.06);color:rgba(0,0,0,0.7)}
+.count.crit{background:rgba(255,59,48,0.12);color:#cc0000}
+.count.open{background:rgba(255,149,0,0.12);color:#cc6600}
+.count.over{background:rgba(175,82,222,0.12);color:#7a3fb8}
+.layout{display:grid;grid-template-columns:240px 1fr;gap:0;min-height:calc(100vh - 110px)}
+@media(max-width:760px){.layout{grid-template-columns:1fr}}
+aside{background:#fff;border-right:1px solid rgba(0,0,0,0.08);padding:16px 14px;font-size:12px;max-height:calc(100vh - 60px);overflow-y:auto;position:sticky;top:60px}
+@media(max-width:760px){aside{position:static;max-height:none;border-right:none;border-bottom:1px solid rgba(0,0,0,0.08)}}
+aside h2{font-size:10px;font-weight:800;letter-spacing:0.1em;color:rgba(0,0,0,0.4);margin:14px 0 6px}aside h2:first-child{margin-top:0}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
+.chip{padding:4px 9px;border-radius:14px;border:1px solid rgba(0,0,0,0.12);background:#fafafa;font-size:11px;font-weight:700;cursor:pointer;color:rgba(0,0,0,0.65);user-select:none}
+.chip:hover{background:#f0f0f0}
+.chip.on{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.chip.sev-Critical.on{background:#cc0000;border-color:#cc0000}
+.chip.sev-Major.on{background:#cc6600;border-color:#cc6600}
+.chip.sev-Minor.on{background:#1971c2;border-color:#1971c2}
+.chip.sev-Observation.on{background:#666;border-color:#666}
+.searchbox{width:100%;padding:7px 10px;border:1px solid rgba(0,0,0,0.12);border-radius:6px;font-size:12px;font-family:inherit;color:#1a1a1a;background:#fff}
+main{padding:14px;overflow-y:auto}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.card{background:#fff;border-radius:8px;overflow:hidden;cursor:pointer;border:1px solid rgba(0,0,0,0.06);transition:transform 0.1s,box-shadow 0.1s}
+.card:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.1)}
+.card .photo{width:100%;aspect-ratio:4/3;background:#eee;object-fit:cover;display:block}
+.card .photo.broken{display:flex;align-items:center;justify-content:center;color:rgba(0,0,0,0.3);font-size:11px;font-weight:700}
+.card .body{padding:10px 12px}
+.card .badges{display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap}
+.badge{font-size:9px;font-weight:800;padding:2px 7px;border-radius:10px;letter-spacing:0.04em}
+.badge.crit{background:rgba(255,59,48,0.12);color:#cc0000}
+.badge.maj{background:rgba(255,149,0,0.14);color:#b35900}
+.badge.min{background:rgba(25,113,194,0.12);color:#1565a8}
+.badge.obs{background:rgba(0,0,0,0.06);color:rgba(0,0,0,0.55)}
+.badge.open{background:rgba(255,59,48,0.08);color:#cc0000}
+.badge.prog{background:rgba(255,149,0,0.1);color:#b35900}
+.badge.done{background:rgba(52,199,89,0.12);color:#1f7a3a}
+.badge.ver{background:rgba(0,184,217,0.14);color:#006d8b}
+.badge.cls{background:rgba(0,0,0,0.06);color:rgba(0,0,0,0.55)}
+.badge.type{background:rgba(88,86,214,0.1);color:#5856d6}
+.card h3{font-size:13px;font-weight:800;margin-bottom:5px;line-height:1.3;color:#1a1a1a}
+.card .where,.card .who,.card .when{font-size:10px;color:rgba(0,0,0,0.55);font-weight:600;margin-top:2px}
+.card .prov{margin-top:6px;padding-top:6px;border-top:1px solid rgba(0,0,0,0.05);font-size:9px;color:rgba(0,0,0,0.4);font-weight:700;letter-spacing:0.04em;display:flex;gap:6px;flex-wrap:wrap}
+.card .prov .pill{padding:1px 6px;border-radius:8px;background:rgba(0,0,0,0.04)}
+.card .prov .pill.ai{background:rgba(88,86,214,0.08);color:#5856d6}
+.card .prov .pill.hum{background:rgba(52,199,89,0.1);color:#1f7a3a}
+.empty{padding:40px 20px;text-align:center;color:rgba(0,0,0,0.4);font-size:13px}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:50;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+.modal.on{display:flex}
+.modal .panel{background:#fff;border-radius:10px;max-width:760px;width:100%;max-height:90vh;overflow-y:auto;padding:0}
+.modal img.hero{width:100%;max-height:50vh;object-fit:contain;background:#000}
+.modal .panel-body{padding:18px 22px}
+.modal h2{font-size:18px;font-weight:800;margin-bottom:6px}
+.modal .badges{margin-bottom:12px}
+.modal section{margin-top:14px;padding-top:12px;border-top:1px solid rgba(0,0,0,0.08)}
+.modal section h4{font-size:10px;font-weight:800;letter-spacing:0.1em;color:rgba(0,0,0,0.45);margin-bottom:8px}
+.modal .kv{display:grid;grid-template-columns:120px 1fr;gap:6px 12px;font-size:12px}
+.modal .kv .k{color:rgba(0,0,0,0.55);font-weight:700}
+.modal .kv .v{color:#1a1a1a;font-weight:600;word-break:break-word}
+.modal .desc{font-size:13px;line-height:1.5;color:rgba(0,0,0,0.85);white-space:pre-wrap}
+.modal .x{position:absolute;top:14px;right:18px;background:rgba(0,0,0,0.4);color:#fff;border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;font-weight:700}
+.modal .panel{position:relative}
+footer{padding:18px 20px;background:#1a1a1a;color:rgba(255,255,255,0.55);font-size:11px;text-align:center;line-height:1.6}
+footer a{color:#ff6b00}
+footer .open-badge{display:inline-block;padding:2px 8px;border-radius:10px;background:rgba(255,107,0,0.15);color:#ff8c1a;font-weight:800;letter-spacing:0.05em;margin:0 4px;font-size:10px}
+@media print{
+  .bar,aside,footer{position:static}
+  aside{display:none}
+  .layout{grid-template-columns:1fr}
+  .card{break-inside:avoid;page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="bar">
+  <div class="brand">SITESHRIMP · EVIDENCE PACK</div>
+  <div class="proj">${meta.project}</div>
+  <div class="meta">${meta.workCategory?safe(meta.workCategory)+" · ":""}${meta.nEntries} photos · ${safe(meta.generated.slice(0,10))}</div>
+</div>
+<div class="counts">
+  <span class="count total">${meta.nEntries} TOTAL</span>
+  <span class="count crit">${nCritical} CRITICAL</span>
+  <span class="count open">${nOpen} OPEN</span>
+  <span class="count over">${nOverdue} OVERDUE</span>
+</div>
+<div class="layout">
+  <aside>
+    <h2>WHAT — Severity</h2><div class="chips" id="f-sev"></div>
+    <h2>WHAT — Status</h2><div class="chips" id="f-stat"></div>
+    <h2>WHAT — Type</h2><div class="chips" id="f-type"></div>
+    <h2>WHO — Trade</h2><div class="chips" id="f-trade"></div>
+    <h2>WHO — Assignee</h2><div class="chips" id="f-asgn"></div>
+    <h2>WHEN</h2><div class="chips" id="f-when"></div>
+    <h2>WHERE — Search</h2><input class="searchbox" id="f-loc" placeholder="filter location text">
+    <h2>HOW — Source</h2><div class="chips" id="f-src"></div>
+  </aside>
+  <main>
+    <div class="cards" id="cards"></div>
+    <div class="empty" id="empty" style="display:none">No entries match the current filters.</div>
+  </main>
+</div>
+<div class="modal" id="m"><div class="panel">
+  <button class="x" onclick="closeM()">×</button>
+  <img class="hero" id="m-img" alt="">
+  <div class="panel-body">
+    <div class="badges" id="m-badges"></div>
+    <h2 id="m-title"></h2>
+    <p class="desc" id="m-desc"></p>
+    <section><h4>WHEN</h4><div class="kv" id="m-when"></div></section>
+    <section><h4>WHERE</h4><div class="kv" id="m-where"></div></section>
+    <section><h4>WHO</h4><div class="kv" id="m-who"></div></section>
+    <section><h4>HOW — Provenance</h4><div class="kv" id="m-how"></div></section>
+    <section id="m-extra-sec" style="display:none"><h4>WHAT — Domain Fields</h4><div class="kv" id="m-extra"></div></section>
+  </div>
+</div></div>
+<footer>
+  <div>Open data — schema <a href="${meta.schemaBase}">${meta.schemaBase.replace(/^https?:\/\//,"")}</a>${meta.schemaVariant?` · variant <a href="${meta.schemaVariant}">${meta.schemaVariant.replace(/^https?:\/\//,"")}</a>`:""}</div>
+  <div style="margin-top:6px">Generated by <a href="https://siteshrimp.org">SiteShrimp</a> <span class="open-badge">FREE · 23 LANGUAGES</span> phone-first construction inspection. Bundle works offline; photos and data live in this folder only.</div>
+</footer>
+<script>
+const ENTRIES=${jsonInline};
+const VARIANT=${JSON.stringify({workCategory:meta.workCategory,variantTitle:meta.variantTitle}).replace(/<\/(script)/gi,"<\\/$1")};
+const F={sev:new Set(),stat:new Set(),type:new Set(),trade:new Set(),asgn:new Set(),when:new Set(),src:new Set(),loc:""};
+const SEV_ORDER=["Critical","Major","Minor","Observation"];
+const STAT_ORDER=["Open","In Progress","Done","Verified","Closed"];
+const TYPE_ORDER=["Defect","Observation","Update","Instruction","Pass"];
+function uniq(key){const s=new Set();ENTRIES.forEach(e=>{const v=e[key];if(v!=null&&v!=="")s.add(String(v));});return Array.from(s);}
+function chipClass(field,val){let c="chip";if(field==="sev")c+=" sev-"+val;return c;}
+function renderChips(id,field,values){
+  const el=document.getElementById(id);
+  el.innerHTML="";
+  values.forEach(v=>{
+    const b=document.createElement("button");b.className=chipClass(field,v);b.textContent=v;
+    b.onclick=()=>{F[field].has(v)?F[field].delete(v):F[field].add(v);b.classList.toggle("on");render();};
+    el.appendChild(b);
+  });
+}
+function inDateBucket(iso,bucket){
+  if(!iso)return false;
+  const d=new Date(iso);if(isNaN(d))return false;
+  const now=new Date();const ms=now-d;
+  if(bucket==="Today")return d.toISOString().slice(0,10)===now.toISOString().slice(0,10);
+  if(bucket==="Last 7 days")return ms<=7*864e5;
+  if(bucket==="Last 30 days")return ms<=30*864e5;
+  if(bucket==="Older")return ms>30*864e5;
+  return false;
+}
+function pass(e){
+  if(F.sev.size&&!F.sev.has(e.severity||""))return false;
+  if(F.stat.size&&!F.stat.has(e.status||""))return false;
+  if(F.type.size&&!F.type.has(e.entry_type||""))return false;
+  if(F.trade.size&&!F.trade.has(e.trade||""))return false;
+  if(F.asgn.size&&!F.asgn.has(e.assignee||""))return false;
+  if(F.when.size&&!Array.from(F.when).some(b=>inDateBucket(e.created_at||e.date||"",b)))return false;
+  if(F.src.size){
+    const src=(e.human_reviewed===true||e.human_reviewed==="true")?"Human-reviewed":(e.ai_model?"AI-prefilled":"Manual");
+    if(!F.src.has(src))return false;
+  }
+  if(F.loc&&!String(e.location||"").toLowerCase().includes(F.loc))return false;
+  return true;
+}
+function badgeFor(field,v){
+  const map={Critical:"crit",Major:"maj",Minor:"min",Observation:"obs",Open:"open","In Progress":"prog",Done:"done",Verified:"ver",Closed:"cls"};
+  const cls=map[v]||"";
+  if(field==="type")return '<span class="badge type">'+esc(v||"")+'</span>';
+  return '<span class="badge '+cls+'">'+esc(v||"")+'</span>';
+}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#39;"}[c]));}
+function provFor(e){
+  const out=[];
+  if(e.ai_model)out.push('<span class="pill ai">AI '+esc(e.ai_model)+'</span>');
+  if(e.human_reviewed===true||e.human_reviewed==="true")out.push('<span class="pill hum">HUMAN ✓</span>');
+  if(e.ai_confidence!=null&&e.ai_confidence!=="")out.push('<span class="pill">conf '+(Number(e.ai_confidence).toFixed(2))+'</span>');
+  return out.join("");
+}
+function render(){
+  const cards=document.getElementById("cards");
+  const empty=document.getElementById("empty");
+  cards.innerHTML="";
+  let n=0;
+  ENTRIES.forEach((e,i)=>{
+    if(!pass(e))return;
+    n++;
+    const card=document.createElement("div");card.className="card";card.onclick=()=>openM(i);
+    const photo=e.filename?'<img class="photo" src="'+esc(e.filename)+'" loading="lazy" onerror="this.classList.add(\\'broken\\');this.outerHTML=\\'<div class=&quot;photo broken&quot;>photo missing</div>\\'">':'<div class="photo broken">no photo</div>';
+    const badges=[badgeFor("type",e.entry_type),badgeFor("sev",e.severity),badgeFor("stat",e.status)].join("");
+    const where=esc(e.location||(e.gps_lat?'GPS '+Number(e.gps_lat).toFixed(4)+','+Number(e.gps_lng).toFixed(4):"—"));
+    const who=[e.assignee&&"→ "+esc(e.assignee),e.trade&&esc(e.trade),e.logged_by&&"by "+esc(e.logged_by)].filter(Boolean).join(" · ");
+    const when=[e.date&&esc(e.date),e.due_date&&"due "+esc(e.due_date)].filter(Boolean).join(" · ");
+    card.innerHTML=photo+'<div class="body"><div class="badges">'+badges+'</div><h3>'+esc(e.title||"(untitled)")+'</h3><div class="where">'+where+'</div>'+(who?'<div class="who">'+who+'</div>':"")+(when?'<div class="when">'+when+'</div>':"")+(provFor(e)?'<div class="prov">'+provFor(e)+'</div>':"")+'</div>';
+    cards.appendChild(card);
+  });
+  empty.style.display=n===0?"block":"none";
+}
+function kv(k,v){return v?'<div class="k">'+esc(k)+'</div><div class="v">'+esc(v)+'</div>':'';}
+const BASE_KEYS=new Set(["filename","iso_19650_filename","conquas_element","folder","entry_id","entry_type","title","description","severity","status","component","issue","location","assignee","trade","logged_by","role","date","due_date","source_filename","gps_lat","gps_lng","drawing_id","drawing_page","pin_x","pin_y","media_hash","created_at","ai_confidence","ai_model","ai_prompt_version","human_reviewed","field_provenance"]);
+function openM(i){
+  const e=ENTRIES[i];const m=document.getElementById("m");
+  document.getElementById("m-img").src=e.filename||"";
+  document.getElementById("m-title").textContent=e.title||"(untitled)";
+  document.getElementById("m-desc").textContent=e.description||"";
+  document.getElementById("m-badges").innerHTML=[badgeFor("type",e.entry_type),badgeFor("sev",e.severity),badgeFor("stat",e.status)].join("");
+  document.getElementById("m-when").innerHTML=kv("Created",e.created_at||e.date)+kv("Due",e.due_date);
+  let where=kv("Location",e.location)+kv("CONQUAS Element",e.conquas_element);
+  if(e.gps_lat)where+=kv("GPS",Number(e.gps_lat).toFixed(5)+", "+Number(e.gps_lng).toFixed(5));
+  if(e.drawing_id)where+=kv("Drawing",e.drawing_id+(e.drawing_page?" p."+e.drawing_page:""));
+  document.getElementById("m-where").innerHTML=where;
+  document.getElementById("m-who").innerHTML=kv("Assignee",e.assignee)+kv("Trade",e.trade)+kv("Logged by",e.logged_by)+kv("Role",e.role);
+  let how=kv("Filename",e.filename)+kv("ISO 19650 Name",e.iso_19650_filename)+kv("Source File",e.source_filename)+kv("Media Hash",e.media_hash);
+  if(e.ai_model)how+=kv("AI Model",e.ai_model);
+  if(e.ai_confidence!=null&&e.ai_confidence!=="")how+=kv("AI Confidence",Number(e.ai_confidence).toFixed(2));
+  if(e.ai_prompt_version)how+=kv("Prompt Version",e.ai_prompt_version);
+  how+=kv("Human Reviewed",e.human_reviewed===true||e.human_reviewed==="true"?"Yes":"No");
+  if(e.field_provenance){
+    const fp=typeof e.field_provenance==="string"?e.field_provenance:JSON.stringify(e.field_provenance);
+    how+=kv("Field Provenance",fp);
+  }
+  document.getElementById("m-how").innerHTML=how;
+  // Domain (variant) fields = anything not in the base schema key set.
+  const extras=Object.keys(e).filter(k=>!BASE_KEYS.has(k));
+  const extraEl=document.getElementById("m-extra");const extraSec=document.getElementById("m-extra-sec");
+  if(extras.length){extraEl.innerHTML=extras.map(k=>kv(k.replace(/_/g," "),typeof e[k]==="object"?JSON.stringify(e[k]):e[k])).join("");extraSec.style.display="block";}
+  else{extraSec.style.display="none";}
+  m.classList.add("on");
+}
+function closeM(){document.getElementById("m").classList.remove("on");}
+document.getElementById("m").addEventListener("click",ev=>{if(ev.target.id==="m")closeM();});
+document.addEventListener("keydown",ev=>{if(ev.key==="Escape")closeM();});
+document.getElementById("f-loc").addEventListener("input",ev=>{F.loc=ev.target.value.toLowerCase();render();});
+const sevs=SEV_ORDER.filter(s=>uniq("severity").indexOf(s)>=0);
+const stats=STAT_ORDER.filter(s=>uniq("status").indexOf(s)>=0);
+const types=TYPE_ORDER.filter(s=>uniq("entry_type").indexOf(s)>=0);
+renderChips("f-sev","sev",sevs);
+renderChips("f-stat","stat",stats);
+renderChips("f-type","type",types);
+renderChips("f-trade","trade",uniq("trade").sort());
+renderChips("f-asgn","asgn",uniq("assignee").sort());
+renderChips("f-when","when",["Today","Last 7 days","Last 30 days","Older"]);
+renderChips("f-src","src",["AI-prefilled","Human-reviewed","Manual"]);
+render();
+</script>
+</body>
+</html>`;
+}
+
 // Generic photo-bundle ZIP exporter. Groups photos into folders by a
 // chosen scheme (CONQUAS IF element / severity / status / trade /
 // component / area) and renames each file to the saved iso_filename
@@ -3228,6 +3520,24 @@ async function exportPhotosZip(defects,projectName,scheme="conquas",onProgress,o
     });
     zip.file("_entries.jsonl", _jsonlLines.join("\n"));
     manifestRows.push(["JSONL", "_entries.jsonl"]);
+    // Self-contained 5W1H evidence-pack viewer. Only built when JSONL
+    // succeeded — i.e. when we have a real schema map and real objects to
+    // hand the viewer. Pure additive, no external libs, no network.
+    try{
+      const _viewerEntries=_jsonlLines.map(l=>{try{return JSON.parse(l);}catch{return null;}}).filter(Boolean);
+      const _viewerHtml=buildPhotoZipViewerHTML({
+        projectName,
+        generatedAt:new Date().toISOString(),
+        entries:_viewerEntries,
+        workCategory:_workCategory,
+        variantTitle:_variant&&_variant.title||"",
+        schemaBaseUri:_baseSchemaUri,
+        schemaVariantUri:_variant&&_variant.uri||"",
+        scheme,
+      });
+      zip.file("index.html", _viewerHtml);
+      manifestRows.push(["Viewer", "index.html — open in any browser, works offline"]);
+    }catch(e){console.warn("[Photo ZIP] viewer generation failed:",e?.message||e);}
   }
   // One xlsx workbook with two related sheets — Manifest (per-bucket
   // counts + project metadata) and Entries (per-photo metadata with
@@ -10292,6 +10602,12 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         <div style={{animation:"fadeIn 0.2s ease",marginTop:showMoreDetails?0:0}}>
           {/* Work Category */}
           <ComboField label={t("fields.work_category")} value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")} displayFn={workcatDisplayFn}/>
+          {(()=>{const v=_getAiVariant(form.workCategory);if(!v||!v.addendum)return null;return(
+            <div style={{marginTop:-10,marginBottom:12,padding:"8px 12px",borderRadius:8,background:"rgba(88,86,214,0.06)",borderLeft:"3px solid #5856d6",fontSize:11,color:"rgba(0,0,0,0.65)",fontFamily:"'Barlow Condensed',sans-serif",lineHeight:1.4}}>
+              <div style={{fontWeight:800,color:"#5856d6",letterSpacing:"0.06em",fontSize:9,marginBottom:3}}>{t("log.variant_hint_label")}</div>
+              {v.addendum}
+            </div>
+          );})()}
 
           {/* Entry Type */}
           <ComboField label={<>{t("fields.entry_type")}<ProvChip prov={form.fieldProvenance?.entryType}/></>} value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder={t("fields.entry_type_placeholder")} displayFn={tOpt}/>
@@ -11550,6 +11866,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
                     </button>
                   ))}
                   <div style={{padding:"8px 14px",fontSize:10,color:"rgba(0,0,0,0.4)",lineHeight:1.4,background:"#fafafa"}}>{selectMode&&selectedIds.size>0?t("review.zip_scope_selected").replace("{n}",selectedIds.size):t("review.zip_scope_filtered").replace("{n}",filtered.length)}</div>
+                  <div style={{padding:"8px 14px 10px",fontSize:10,color:"rgba(88,86,214,0.85)",lineHeight:1.4,background:"#fafafa",borderTop:"1px solid rgba(0,0,0,0.04)",fontWeight:700}}>{t("review.zip_includes_viewer")}</div>
                 </div>
               )}
             </div>
