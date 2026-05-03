@@ -1156,7 +1156,7 @@ function _sendWeeklyForProject(project) {
           defects = $app.findRecordsByFilter(
             "defects",
             "projectId = {:pid} && (archivedAt = '' || archivedAt = null)",
-            "-created", 1000, 0, { pid: pid }
+            "", 1000, 0, { pid: pid }
           );
         } catch (err) {
           console.log("[weekly_report] failed to query defects for project " + pid + ":", err);
