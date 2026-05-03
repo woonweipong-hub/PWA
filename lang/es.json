@@ -318,6 +318,27 @@
     "event_severity": "Gravedad",
     "event_assignee": "Cesionaria",
     "event_due_date": "dos citas",
+    "event_duration": "Duración",
+    "event_component": "Componente",
+    "event_issue": "Asunto",
+    "event_trade": "Comercio",
+    "event_entry_type": "Tipo de entrada",
+    "event_work_category": "Categoría de trabajo",
+    "event_location": "Ubicación",
+    "event_location_level": "Nivel",
+    "event_location_zone": "Zona",
+    "event_location_subzone": "Subzona",
+    "event_location_grid": "Red",
+    "event_cost_impact": "Impacto en los costos",
+    "event_cost_responsible": "Responsable de Costos",
+    "event_cost_amount": "Monto del costo",
+    "filter_label": "Filtro de línea de tiempo",
+    "filter_all": "TODA",
+    "filter_comments": "COMENTARIOS",
+    "filter_changes": "CAMBIOS",
+    "no_changes_yet": "Aún no se han registrado cambios: aquí aparecerán las ediciones de estado, gravedad, asignado, ubicación, costo y otros campos rastreados.",
+    "no_comments_yet": "Aún no hay comentarios.",
+    "empty": "Nada aquí todavía.",
     "unknown_user": "Desconocida"
   },
   "inbox": {
@@ -400,14 +421,6 @@
     "reopen": "REABRIR",
     "resolved_by": "Resuelto por",
     "resolution_prompt": "Nota de resolución (opcional: qué se solucionó, en qué compilación):"
-  },
-  "feedback": {
-    "title": "Comentarios",
-    "send_note": "Envíanos una nota",
-    "placeholder": "Escriba sus comentarios aquí... ¿Qué mejoraría esta aplicación para su equipo?",
-    "suggestion": "Sugerencia",
-    "bug_report": "Reporte de Error",
-    "what_i_like": "Lo que me gusta"
   },
   "report": {
     "title": "Informe",
@@ -1046,6 +1059,14 @@
     "different_body": "La IA opera en el momento de la captura (de la foto al registro estructurado en un solo paso) en lugar de como una capa de informes administrativos. \n\nLas indicaciones se pueden ajustar para que coincidan con el lenguaje regulatorio o contractual, de modo que los resultados se alineen directamente con la forma en que los equipos informan en el sitio. \n\nLos usuarios conservan el control: \n• Elija el proveedor de IA (en la nube o local) \n• Pausar o desactivar la IA en cualquier momento \n• Realice un seguimiento del uso con un contador de llamadas \n• Volver a analizar los registros existentes cuando mejoren las indicaciones \n\nEl Asesor de requisitos amplía esto aún más al evaluar el conjunto completo de defectos en comparación con referencias específicas del proyecto, lo que revela lagunas en un lenguaje sencillo.",
     "audience_title": "¿Para quién es?",
     "audience_body": "• Desarrolladores, contratistas y subcontratistas que gestionan defectos, progreso y control de calidad en todos los proyectos. \n\n• Gerentes de instalaciones y propietarios de edificios que manejan inspecciones, DLP y registros de mantenimiento. \n\n• Equipos de renovación e interior que gestionan listas de problemas y traspasos. \n\n• Consultores, QP y evaluadores que registran inspecciones y aprobaciones con evidencia rastreable \n\n• Pymes y usuarios individuales que necesitan una solución gratuita, multilingüe e implementable (incluidas opciones de autohospedaje)"
+  },
+  "feedback": {
+    "title": "Comentarios",
+    "send_note": "Envíanos una nota",
+    "placeholder": "Escriba sus comentarios aquí... ¿Qué mejoraría esta aplicación para su equipo?",
+    "suggestion": "Sugerencia",
+    "bug_report": "Reporte de Error",
+    "what_i_like": "Lo que me gusta"
   },
   "onboarding": {
     "the_problem": "El problema",

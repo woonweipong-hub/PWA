@@ -318,6 +318,27 @@
     "event_severity": "Schwere",
     "event_assignee": "Abtretungsempfängerin",
     "event_due_date": "Zwei Termine",
+    "event_duration": "Dauer",
+    "event_component": "Komponente",
+    "event_issue": "Ausgabe",
+    "event_trade": "Handel",
+    "event_entry_type": "Eintragstyp",
+    "event_work_category": "Arbeitskategorie",
+    "event_location": "Standort",
+    "event_location_level": "Ebene",
+    "event_location_zone": "Zone",
+    "event_location_subzone": "Unterzone",
+    "event_location_grid": "Netz",
+    "event_cost_impact": "Kostenauswirkungen",
+    "event_cost_responsible": "Kostenverantwortlich",
+    "event_cost_amount": "Kostenbetrag",
+    "filter_label": "Timeline-Filter",
+    "filter_all": "ALLE",
+    "filter_comments": "KOMMENTARE",
+    "filter_changes": "ÄNDERUNGEN",
+    "no_changes_yet": "Es wurden noch keine Änderungen aufgezeichnet – Änderungen an Status, Schweregrad, Beauftragter, Standort, Kosten und anderen nachverfolgten Feldern werden hier angezeigt.",
+    "no_comments_yet": "Noch keine Kommentare.",
+    "empty": "Hier ist noch nichts.",
     "unknown_user": "Unbekannt"
   },
   "inbox": {
@@ -400,14 +421,6 @@
     "reopen": "WIEDER ÖFFNEN",
     "resolved_by": "Gelöst von",
     "resolution_prompt": "Hinweis zur Lösung (optional – was wurde in welchem ​​Build behoben):"
-  },
-  "feedback": {
-    "title": "Rückmeldung",
-    "send_note": "Nachricht senden",
-    "placeholder": "Geben Sie hier Ihr Feedback ein... Was würde diese App für Ihr Team verbessern?",
-    "suggestion": "Vorschlag",
-    "bug_report": "Fehlerbericht",
-    "what_i_like": "Was mir gefällt"
   },
   "report": {
     "title": "Bericht",
@@ -1046,6 +1059,14 @@
     "different_body": "KI arbeitet im Moment der Erfassung – vom Foto bis zur strukturierten Aufzeichnung in einem einzigen Schritt – und nicht als Back-Office-Berichtsebene. \n\nDie Eingabeaufforderungen können so abgestimmt werden, dass sie der regulatorischen oder vertraglichen Sprache entsprechen, sodass die Ergebnisse direkt mit der Berichterstattung der Teams vor Ort übereinstimmen. \n\nBenutzer behalten die Kontrolle: \n• Wählen Sie einen KI-Anbieter (Cloud oder lokal) \n• AI jederzeit pausieren oder deaktivieren \n• Verfolgen Sie die Nutzung mit einem Anrufzähler \n• Analysieren Sie vorhandene Datensätze erneut, wenn sich die Eingabeaufforderungen verbessern \n\nDer Anforderungsratgeber erweitert dies, indem er den gesamten Fehlersatz anhand projektspezifischer Referenzen bewertet und Lücken im Klartext aufdeckt.",
     "audience_title": "Für wen es ist",
     "audience_body": "• Entwickler, Auftragnehmer und Subunternehmer verwalten Mängel, Fortschritte und Qualitätssicherung projektübergreifend \n\n• Facility Manager und Gebäudeeigentümer kümmern sich um Inspektionen, DLP und Wartungsaufzeichnungen \n\n• Renovierungs- und Innenausstattungsteams verwalten Mängellisten und Übergaben \n\n• Berater, QPs und Gutachter protokollieren Inspektionen und Abnahmen mit nachvollziehbaren Beweisen \n\n• KMU und Einzelanwender, die eine kostenlose, mehrsprachige und einsetzbare Lösung benötigen (einschließlich Selbsthosting-Optionen)"
+  },
+  "feedback": {
+    "title": "Rückmeldung",
+    "send_note": "Nachricht senden",
+    "placeholder": "Geben Sie hier Ihr Feedback ein... Was würde diese App für Ihr Team verbessern?",
+    "suggestion": "Vorschlag",
+    "bug_report": "Fehlerbericht",
+    "what_i_like": "Was mir gefällt"
   },
   "onboarding": {
     "the_problem": "Das Problem",

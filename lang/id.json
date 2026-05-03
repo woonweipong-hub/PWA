@@ -318,6 +318,27 @@
     "event_severity": "Kerasnya",
     "event_assignee": "Penerima tugas",
     "event_due_date": "Dua Tanggal",
+    "event_duration": "Lamanya",
+    "event_component": "Komponen",
+    "event_issue": "Masalah",
+    "event_trade": "Berdagang",
+    "event_entry_type": "Jenis Entri",
+    "event_work_category": "Kategori Pekerjaan",
+    "event_location": "Lokasi",
+    "event_location_level": "Tingkat",
+    "event_location_zone": "Daerah",
+    "event_location_subzone": "Sub-zona",
+    "event_location_grid": "jaringan",
+    "event_cost_impact": "Dampak Biaya",
+    "event_cost_responsible": "Bertanggung Jawab Biaya",
+    "event_cost_amount": "Jumlah Biaya",
+    "filter_label": "Filter garis waktu",
+    "filter_all": "SEMUA",
+    "filter_comments": "KOMENTAR",
+    "filter_changes": "PERUBAHAN",
+    "no_changes_yet": "Belum ada perubahan yang dicatat — pengeditan pada status, tingkat keparahan, penerima tugas, lokasi, biaya, dan bidang terlacak lainnya akan muncul di sini.",
+    "no_comments_yet": "Belum ada komentar.",
+    "empty": "Belum ada apa pun di sini.",
     "unknown_user": "Tidak dikenal"
   },
   "inbox": {
@@ -400,14 +421,6 @@
     "reopen": "BUKA KEMBALI",
     "resolved_by": "Diselesaikan oleh",
     "resolution_prompt": "Catatan resolusi (opsional — apa yang diperbaiki, di build mana):"
-  },
-  "feedback": {
-    "title": "Umpan Balik",
-    "send_note": "Kirim catatan kepada kami",
-    "placeholder": "Ketik umpan balik Anda di sini... Apa yang akan membuat aplikasi ini lebih baik untuk tim Anda?",
-    "suggestion": "Saran",
-    "bug_report": "Laporan Bug",
-    "what_i_like": "Yang Saya Suka"
   },
   "report": {
     "title": "Laporan",
@@ -1046,6 +1059,14 @@
     "different_body": "AI beroperasi pada saat pengambilan — foto ke rekaman terstruktur dalam satu langkah — bukan sebagai lapisan pelaporan back-office. \n\nPerintah dapat disesuaikan agar sesuai dengan peraturan atau bahasa kontrak sehingga keluaran selaras langsung dengan cara tim melaporkan di lokasi. \n\nPengguna tetap memegang kendali: \n• Pilih penyedia AI (cloud atau lokal) \n• Jeda atau nonaktifkan AI kapan saja \n• Lacak penggunaan dengan penghitung panggilan \n• Analisis ulang catatan yang ada ketika petunjuknya membaik \n\nPenasihat Persyaratan memperluas hal ini lebih jauh dengan mengevaluasi seluruh rangkaian kerusakan berdasarkan referensi spesifik proyek, memunculkan kesenjangan dalam bahasa yang sederhana.",
     "audience_title": "Untuk Siapa",
     "audience_body": "• Pengembang, kontraktor, dan subkontraktor yang mengelola cacat, kemajuan, dan QA di seluruh proyek \n\n• Manajer fasilitas dan pemilik gedung yang menangani inspeksi, DLP, dan catatan pemeliharaan \n\n• Tim renovasi dan interior mengelola daftar halangan dan serah terima \n\n• Konsultan, QP, dan penilai mencatat inspeksi dan penandatanganan dengan bukti yang dapat ditelusuri \n\n• UKM dan pengguna tunggal yang membutuhkan solusi gratis, multibahasa, dan dapat diterapkan (termasuk opsi self-host)"
+  },
+  "feedback": {
+    "title": "Umpan Balik",
+    "send_note": "Kirim catatan kepada kami",
+    "placeholder": "Ketik umpan balik Anda di sini... Apa yang akan membuat aplikasi ini lebih baik untuk tim Anda?",
+    "suggestion": "Saran",
+    "bug_report": "Laporan Bug",
+    "what_i_like": "Yang Saya Suka"
   },
   "onboarding": {
     "the_problem": "Masalah",

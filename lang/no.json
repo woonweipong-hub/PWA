@@ -318,6 +318,27 @@
     "event_severity": "Alvorlighetsgrad",
     "event_assignee": "Oppdragstaker",
     "event_due_date": "To datoer",
+    "event_duration": "Varighet",
+    "event_component": "Komponent",
+    "event_issue": "Utgave",
+    "event_trade": "Handel",
+    "event_entry_type": "Oppføringstype",
+    "event_work_category": "Arbeidskategori",
+    "event_location": "Sted",
+    "event_location_level": "Nivå",
+    "event_location_zone": "Sone",
+    "event_location_subzone": "Undersone",
+    "event_location_grid": "Rutenett",
+    "event_cost_impact": "Kostnadspåvirkning",
+    "event_cost_responsible": "Kostnadsansvarlig",
+    "event_cost_amount": "Kostnadsbeløp",
+    "filter_label": "Tidslinjefilter",
+    "filter_all": "ALLE",
+    "filter_comments": "KOMMENTARER",
+    "filter_changes": "ENDRINGER",
+    "no_changes_yet": "Ingen endringer er registrert ennå - endringer i status, alvorlighetsgrad, mottaker, plassering, kostnad og andre sporede felt vil vises her.",
+    "no_comments_yet": "Ingen kommentarer ennå.",
+    "empty": "Ingenting her ennå.",
     "unknown_user": "Ukjent"
   },
   "inbox": {
@@ -400,14 +421,6 @@
     "reopen": "ÅPNE GJEN",
     "resolved_by": "Løst av",
     "resolution_prompt": "Oppløsningsnotat (valgfritt - hva ble løst, i hvilken versjon):"
-  },
-  "feedback": {
-    "title": "Tilbakemelding",
-    "send_note": "Send oss ​​en melding",
-    "placeholder": "Skriv inn tilbakemeldingen din her... Hva vil gjøre denne appen bedre for teamet ditt?",
-    "suggestion": "Forslag",
-    "bug_report": "Feilrapport",
-    "what_i_like": "Det jeg liker"
   },
   "report": {
     "title": "Rapportere",
@@ -1046,6 +1059,14 @@
     "different_body": "AI fungerer i fangstøyeblikket - foto til strukturert registrering i ett enkelt trinn - i stedet for som et backoffice-rapporteringslag. \n\nForespørsler kan justeres til å samsvare med regulatorisk eller kontraktsmessig språk, slik at utdata stemmer direkte med hvordan team rapporterer på stedet. \n\nBrukere beholder kontrollen: \n• Velg AI-leverandør (sky eller lokal) \n• Sett AI på pause eller deaktiver når som helst \n• Spor bruk med en samtaleteller \n• Analyser eksisterende poster på nytt når forespørsler forbedres \n\nRequirements Advisor utvider dette ytterligere ved å evaluere hele defekten opp mot prosjektspesifikke referanser, og avdekke hull i vanlig språk.",
     "audience_title": "Hvem er det for",
     "audience_body": "• Utviklere, entreprenører og underleverandører som håndterer defekter, fremdrift og kvalitetssikring på tvers av prosjekter \n\n• Anleggsledere og bygningseiere håndterer inspeksjoner, DLP og vedlikeholdsregistreringer \n\n• Renovasjons- og interiørteam som administrerer snaglister og overleveringer \n\n• Konsulenter, QPs og assessorer registrerer inspeksjoner og sign-offs med sporbare bevis \n\n• SMB-er og solobrukere som trenger en gratis, flerspråklig og distribuerbar løsning (inkludert alternativer for selvvert)"
+  },
+  "feedback": {
+    "title": "Tilbakemelding",
+    "send_note": "Send oss ​​en melding",
+    "placeholder": "Skriv inn tilbakemeldingen din her... Hva vil gjøre denne appen bedre for teamet ditt?",
+    "suggestion": "Forslag",
+    "bug_report": "Feilrapport",
+    "what_i_like": "Det jeg liker"
   },
   "onboarding": {
     "the_problem": "Problemet",

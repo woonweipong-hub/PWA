@@ -318,6 +318,27 @@
     "event_severity": "Vakavuus",
     "event_assignee": "Valtuutettu",
     "event_due_date": "Kaksi päivämäärää",
+    "event_duration": "Kesto",
+    "event_component": "Komponentti",
+    "event_issue": "Antaa",
+    "event_trade": "Kauppa",
+    "event_entry_type": "Sisääntulotyyppi",
+    "event_work_category": "Työluokka",
+    "event_location": "Sijainti",
+    "event_location_level": "Taso",
+    "event_location_zone": "Alue",
+    "event_location_subzone": "Alavyöhyke",
+    "event_location_grid": "Ruudukko",
+    "event_cost_impact": "Kustannusvaikutus",
+    "event_cost_responsible": "Kustannusvastuullinen",
+    "event_cost_amount": "Kustannussumma",
+    "filter_label": "Aikajanan suodatin",
+    "filter_all": "KAIKKI",
+    "filter_comments": "KOMMENTIT",
+    "filter_changes": "MUUTOKSET",
+    "no_changes_yet": "Muutoksia ei ole vielä tallennettu – tilan, vakavuuden, siirronsaajan, sijainnin, hinnan ja muiden seurattujen kenttien muokkaukset näkyvät täällä.",
+    "no_comments_yet": "Ei vielä kommentteja.",
+    "empty": "Ei täällä vielä mitään.",
     "unknown_user": "Tuntematon"
   },
   "inbox": {
@@ -400,14 +421,6 @@
     "reopen": "AVAA UUDELLEEN",
     "resolved_by": "Ratkaisi",
     "resolution_prompt": "Ratkaisuhuomautus (valinnainen – mitä korjattiin, missä versiossa):"
-  },
-  "feedback": {
-    "title": "Palaute",
-    "send_note": "Lähetä meille huomautus",
-    "placeholder": "Kirjoita palautteesi tähän... Mikä tekisi tästä sovelluksesta paremman tiimillesi?",
-    "suggestion": "Ehdotus",
-    "bug_report": "Vikailmoitus",
-    "what_i_like": "Mistä pidän"
   },
   "report": {
     "title": "Raportoi",
@@ -1046,6 +1059,14 @@
     "different_body": "Tekoäly toimii sieppaushetkellä – valokuvasta strukturoituun tallenteeseen yhdessä vaiheessa – sen sijaan, että se toimisi taustaraportointikerroksena. \n\nKehotteet voidaan virittää vastaamaan säädösten tai sopimusten kieltä, joten tulosteet ovat suoraan linjassa sen kanssa, miten tiimit raportoivat paikan päällä. \n\nKäyttäjät säilyttävät hallinnan: \n• Valitse AI-palveluntarjoaja (pilvi tai paikallinen) \n• Keskeytä tai poista käytöstä AI milloin tahansa \n• Seuraa käyttöä puhelulaskurin avulla \n• Analysoi olemassa olevat tietueet uudelleen, kun kehotteet paranevat \n\nRequirements Advisor laajentaa tätä edelleen arvioimalla koko vikajoukon projektikohtaisia referenssejä vastaan ja täsmentäen aukot selkeällä kielellä.",
     "audience_title": "Kenelle se on tarkoitettu",
     "audience_body": "• Kehittäjät, urakoitsijat ja alihankkijat, jotka hallitsevat vikoja, edistymistä ja laadunvarmistusta projekteissa \n\n• Kiinteistöpäälliköt ja rakennusten omistajat, jotka käsittelevät tarkastuksia, DLP:tä ja huoltokirjanpitoa \n\n• Remontti- ja sisustustiimit hoitavat hankaluuksia ja luovutuksia \n\n• Konsultit, QP:t ja arvioijat kirjaavat tarkastukset ja allekirjoitukset jäljitettävillä todisteilla \n\n• Pk-yritykset ja yksinkäyttäjät, jotka tarvitsevat ilmaisen, monikielisen ja käyttöön otettavan ratkaisun (mukaan lukien itseisäntävaihtoehdot)"
+  },
+  "feedback": {
+    "title": "Palaute",
+    "send_note": "Lähetä meille huomautus",
+    "placeholder": "Kirjoita palautteesi tähän... Mikä tekisi tästä sovelluksesta paremman tiimillesi?",
+    "suggestion": "Ehdotus",
+    "bug_report": "Vikailmoitus",
+    "what_i_like": "Mistä pidän"
   },
   "onboarding": {
     "the_problem": "Ongelma",

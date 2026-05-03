@@ -318,6 +318,27 @@
     "event_severity": "Gravidade",
     "event_assignee": "Cessionária",
     "event_due_date": "Duas datas",
+    "event_duration": "Duração",
+    "event_component": "Componente",
+    "event_issue": "Emitir",
+    "event_trade": "Troca",
+    "event_entry_type": "Tipo de entrada",
+    "event_work_category": "Categoria de trabalho",
+    "event_location": "Localização",
+    "event_location_level": "Nível",
+    "event_location_zone": "Zona",
+    "event_location_subzone": "Subzona",
+    "event_location_grid": "Grade",
+    "event_cost_impact": "Impacto nos custos",
+    "event_cost_responsible": "Responsável de custos",
+    "event_cost_amount": "Valor do custo",
+    "filter_label": "Filtro de linha do tempo",
+    "filter_all": "TODOS",
+    "filter_comments": "COMENTÁRIOS",
+    "filter_changes": "MUDANÇAS",
+    "no_changes_yet": "Nenhuma alteração registrada ainda – edições de status, gravidade, responsável, local, custo e outros campos rastreados aparecerão aqui.",
+    "no_comments_yet": "Nenhum comentário ainda.",
+    "empty": "Nada aqui ainda.",
     "unknown_user": "Desconhecida"
   },
   "inbox": {
@@ -400,14 +421,6 @@
     "reopen": "REABRIR",
     "resolved_by": "Resolvido por",
     "resolution_prompt": "Nota de resolução (opcional — o que foi corrigido, em qual build):"
-  },
-  "feedback": {
-    "title": "Opinião",
-    "send_note": "Envie-nos uma nota",
-    "placeholder": "Digite seu feedback aqui... O que tornaria este aplicativo melhor para sua equipe?",
-    "suggestion": "Sugestão",
-    "bug_report": "Relatório de Bug",
-    "what_i_like": "O que eu gosto"
   },
   "report": {
     "title": "Relatório",
@@ -1046,6 +1059,14 @@
     "different_body": "A IA opera no momento da captura – da foto ao registro estruturado em uma única etapa – e não como uma camada de relatórios de back-office. \n\nOs prompts podem ser ajustados para corresponder à linguagem regulatória ou contratual, de modo que os resultados se alinhem diretamente com a forma como as equipes reportam no local. \n\nOs usuários mantêm o controle: \n• Escolha o provedor de IA (nuvem ou local) \n• Pause ou desative a IA a qualquer momento \n• Acompanhe o uso com um contador de chamadas \n• Reanalisar os registros existentes quando os prompts melhorarem \n\nO Consultor de Requisitos estende isso ainda mais, avaliando todo o conjunto de defeitos em relação a referências específicas do projeto, revelando lacunas em linguagem simples.",
     "audience_title": "Para quem é",
     "audience_body": "• Desenvolvedores, contratados e subcontratados gerenciando defeitos, progresso e controle de qualidade em projetos \n\n• Gerentes de instalações e proprietários de edifícios lidando com inspeções, DLP e registros de manutenção \n\n• Equipes de reforma e interiores gerenciando listas de problemas e transferências \n\n• Consultores, QPs e avaliadores registrando inspeções e aprovações com evidências rastreáveis \n\n• PMEs e usuários individuais que precisam de uma solução gratuita, multilíngue e implantável (incluindo opções de auto-hospedagem)"
+  },
+  "feedback": {
+    "title": "Opinião",
+    "send_note": "Envie-nos uma nota",
+    "placeholder": "Digite seu feedback aqui... O que tornaria este aplicativo melhor para sua equipe?",
+    "suggestion": "Sugestão",
+    "bug_report": "Relatório de Bug",
+    "what_i_like": "O que eu gosto"
   },
   "onboarding": {
     "the_problem": "O problema",

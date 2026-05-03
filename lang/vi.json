@@ -318,6 +318,27 @@
     "event_severity": "Mức độ nghiêm trọng",
     "event_assignee": "Người được chuyển nhượng",
     "event_due_date": "Hai ngày",
+    "event_duration": "Khoảng thời gian",
+    "event_component": "Thành phần",
+    "event_issue": "Vấn đề",
+    "event_trade": "Buôn bán",
+    "event_entry_type": "Loại mục nhập",
+    "event_work_category": "Hạng mục công việc",
+    "event_location": "Vị trí",
+    "event_location_level": "Mức độ",
+    "event_location_zone": "Vùng",
+    "event_location_subzone": "Tiểu vùng",
+    "event_location_grid": "Lưới",
+    "event_cost_impact": "Tác động chi phí",
+    "event_cost_responsible": "Chịu trách nhiệm về chi phí",
+    "event_cost_amount": "Số tiền chi phí",
+    "filter_label": "Bộ lọc dòng thời gian",
+    "filter_all": "TẤT CẢ",
+    "filter_comments": "BÌNH LUẬN",
+    "filter_changes": "THAY ĐỔI",
+    "no_changes_yet": "Chưa có thay đổi nào được ghi lại — các chỉnh sửa về trạng thái, mức độ nghiêm trọng, người được giao, vị trí, chi phí và các trường được theo dõi khác sẽ xuất hiện ở đây.",
+    "no_comments_yet": "Chưa có bình luận nào",
+    "empty": "Chưa có gì ở đây.",
     "unknown_user": "Không xác định"
   },
   "inbox": {
@@ -400,14 +421,6 @@
     "reopen": "MỞ LẠI",
     "resolved_by": "Đã giải quyết bởi",
     "resolution_prompt": "Ghi chú giải quyết (tùy chọn - những gì đã được sửa, trong bản dựng nào):"
-  },
-  "feedback": {
-    "title": "Phản hồi",
-    "send_note": "Gửi ghi chú cho chúng tôi",
-    "placeholder": "Nhập phản hồi của bạn tại đây... Điều gì sẽ làm ứng dụng này tốt hơn cho nhóm của bạn?",
-    "suggestion": "Gợi ý",
-    "bug_report": "Báo cáo lỗi",
-    "what_i_like": "Điều tôi thích"
   },
   "report": {
     "title": "Báo cáo",
@@ -1046,6 +1059,14 @@
     "different_body": "AI hoạt động tại thời điểm chụp — chuyển ảnh sang bản ghi có cấu trúc trong một bước duy nhất — thay vì dưới dạng lớp báo cáo của bộ phận hành chính. \n\nLời nhắc có thể được điều chỉnh để phù hợp với ngôn ngữ quy định hoặc hợp đồng để kết quả đầu ra phù hợp trực tiếp với cách các nhóm báo cáo tại chỗ. \n\nNgười dùng giữ quyền kiểm soát: \n• Chọn nhà cung cấp AI (đám mây hoặc cục bộ) \n• Tạm dừng hoặc tắt AI bất kỳ lúc nào \n• Theo dõi việc sử dụng bằng bộ đếm cuộc gọi \n• Phân tích lại các hồ sơ hiện có khi có lời nhắc cải thiện \n\nTrình cố vấn yêu cầu mở rộng điều này hơn nữa bằng cách đánh giá toàn bộ bộ lỗi dựa trên các tài liệu tham khảo dành riêng cho dự án, khắc phục các lỗ hổng bằng ngôn ngữ đơn giản.",
     "audience_title": "Nó dành cho ai",
     "audience_body": "• Nhà phát triển, nhà thầu và nhà thầu phụ quản lý lỗi, tiến độ và QA trong các dự án \n\n• Người quản lý cơ sở vật chất và chủ sở hữu tòa nhà xử lý hồ sơ kiểm tra, DLP và bảo trì \n\n• Đội cải tạo và nội thất quản lý danh sách các vấn đề và bàn giao \n\n• Chuyên gia tư vấn, QP và người đánh giá ghi lại các cuộc kiểm tra và phê duyệt bằng bằng chứng có thể theo dõi \n\n• Các doanh nghiệp vừa và nhỏ và người dùng đơn lẻ cần một giải pháp miễn phí, đa ngôn ngữ và có thể triển khai (bao gồm các tùy chọn tự lưu trữ)"
+  },
+  "feedback": {
+    "title": "Phản hồi",
+    "send_note": "Gửi ghi chú cho chúng tôi",
+    "placeholder": "Nhập phản hồi của bạn tại đây... Điều gì sẽ làm ứng dụng này tốt hơn cho nhóm của bạn?",
+    "suggestion": "Gợi ý",
+    "bug_report": "Báo cáo lỗi",
+    "what_i_like": "Điều tôi thích"
   },
   "onboarding": {
     "the_problem": "Vấn đề",

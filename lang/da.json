@@ -318,6 +318,27 @@
     "event_severity": "Sværhedsgrad",
     "event_assignee": "Opdragsgiver",
     "event_due_date": "To datoer",
+    "event_duration": "Varighed",
+    "event_component": "Komponent",
+    "event_issue": "Spørgsmål",
+    "event_trade": "Handle",
+    "event_entry_type": "Indgangstype",
+    "event_work_category": "Arbejdskategori",
+    "event_location": "Beliggenhed",
+    "event_location_level": "Niveau",
+    "event_location_zone": "Zone",
+    "event_location_subzone": "Underzone",
+    "event_location_grid": "Gitter",
+    "event_cost_impact": "Omkostningspåvirkning",
+    "event_cost_responsible": "Omkostningsansvarlig",
+    "event_cost_amount": "Omkostningsbeløb",
+    "filter_label": "Tidslinjefilter",
+    "filter_all": "ALLE",
+    "filter_comments": "KOMMENTARER",
+    "filter_changes": "ÆNDRINGER",
+    "no_changes_yet": "Ingen ændringer registreret endnu - redigeringer af status, alvor, modtager, placering, pris og andre sporede felter vises her.",
+    "no_comments_yet": "Ingen kommentarer endnu.",
+    "empty": "Intet her endnu.",
     "unknown_user": "Ukendt"
   },
   "inbox": {
@@ -400,14 +421,6 @@
     "reopen": "ÅBN GEN",
     "resolved_by": "Løst af",
     "resolution_prompt": "Opløsningsnotat (valgfrit - hvad blev rettet, i hvilken build):"
-  },
-  "feedback": {
-    "title": "Feedback",
-    "send_note": "Send os en note",
-    "placeholder": "Skriv din feedback her... Hvad ville gøre denne app bedre for dit team?",
-    "suggestion": "Forslag",
-    "bug_report": "Fejlrapport",
-    "what_i_like": "Hvad jeg kan lide"
   },
   "report": {
     "title": "Rapport",
@@ -1046,6 +1059,14 @@
     "different_body": "AI fungerer i optagelsesøjeblikket - foto til struktureret registrering i et enkelt trin - snarere end som et backoffice-rapporteringslag. \n\nPrompter kan indstilles til at matche lovgivnings- eller kontraktsprog, så output stemmer direkte overens med, hvordan teams rapporterer på stedet. \n\nBrugere bevarer kontrollen: \n• Vælg AI-udbyder (sky eller lokal) \n• Sæt AI på pause eller deaktiver når som helst \n• Spor brugen med en opkaldstæller \n• Genanalysere eksisterende poster, når prompter forbedres \n\nRequirements Advisor udvider dette yderligere ved at evaluere den fulde defekt set i forhold til projektspecifikke referencer, hvilket viser huller i almindeligt sprog.",
     "audience_title": "Hvem er det til",
     "audience_body": "• Udviklere, entreprenører og underleverandører, der håndterer defekter, fremskridt og QA på tværs af projekter \n\n• Facility managers og bygningsejere håndterer inspektioner, DLP og vedligeholdelsesregistreringer \n\n• Renoverings- og interiørteams, der håndterer snag-lister og overdragelser \n\n• Konsulenter, QP'er og bedømmere, der registrerer inspektioner og sign-offs med sporbare beviser \n\n• SMV'er og solobrugere, der har brug for en gratis, flersproget og implementerbar løsning (inklusive muligheder for selvvært)"
+  },
+  "feedback": {
+    "title": "Feedback",
+    "send_note": "Send os en note",
+    "placeholder": "Skriv din feedback her... Hvad ville gøre denne app bedre for dit team?",
+    "suggestion": "Forslag",
+    "bug_report": "Fejlrapport",
+    "what_i_like": "Hvad jeg kan lide"
   },
   "onboarding": {
     "the_problem": "Problemet",

@@ -318,6 +318,27 @@
     "event_severity": "Gravità",
     "event_assignee": "Assegnataria",
     "event_due_date": "Due Date",
+    "event_duration": "Durata",
+    "event_component": "Componente",
+    "event_issue": "Problema",
+    "event_trade": "Commercio",
+    "event_entry_type": "Tipo di voce",
+    "event_work_category": "Categoria di lavoro",
+    "event_location": "Posizione",
+    "event_location_level": "Livello",
+    "event_location_zone": "Zona",
+    "event_location_subzone": "Sottozona",
+    "event_location_grid": "Griglia",
+    "event_cost_impact": "Impatto sui costi",
+    "event_cost_responsible": "Responsabile dei costi",
+    "event_cost_amount": "Importo del costo",
+    "filter_label": "Filtro sequenza temporale",
+    "filter_all": "TUTTA",
+    "filter_comments": "COMMENTI",
+    "filter_changes": "CAMBIAMENTI",
+    "no_changes_yet": "Nessuna modifica ancora registrata: le modifiche a stato, gravità, assegnatario, posizione, costo e altri campi tracciati verranno visualizzate qui.",
+    "no_comments_yet": "Nessun commento ancora",
+    "empty": "Niente qui ancora.",
     "unknown_user": "Sconosciuta"
   },
   "inbox": {
@@ -400,14 +421,6 @@
     "reopen": "RIAPRIRE",
     "resolved_by": "Risolto da",
     "resolution_prompt": "Nota sulla risoluzione (facoltativa: cosa è stato corretto, in quale build):"
-  },
-  "feedback": {
-    "title": "Feedback",
-    "send_note": "Inviaci una nota",
-    "placeholder": "Scrivi qui il tuo feedback... Cosa renderebbe questa app migliore per il tuo team?",
-    "suggestion": "Suggerimento",
-    "bug_report": "Segnalazione Bug",
-    "what_i_like": "Cosa mi piace"
   },
   "report": {
     "title": "Rapporto",
@@ -1046,6 +1059,14 @@
     "different_body": "L'intelligenza artificiale opera al momento dell'acquisizione, dalla foto al record strutturato in un unico passaggio, anziché come livello di reporting di back-office. \n\nLe richieste possono essere ottimizzate per corrispondere al linguaggio normativo o contrattuale in modo che i risultati si allineino direttamente con il modo in cui i team riferiscono in loco. \n\nGli utenti mantengono il controllo: \n• Scegli il provider AI (cloud o locale) \n• Metti in pausa o disabilita l'IA in qualsiasi momento \n• Tieni traccia dell'utilizzo con un contatore delle chiamate \n• Rianalizzare i record esistenti quando i suggerimenti migliorano \n\nIl consulente dei requisiti estende ulteriormente questo aspetto valutando l'intero insieme di difetti rispetto ai riferimenti specifici del progetto, facendo emergere le lacune in un linguaggio semplice.",
     "audience_title": "Per chi è",
     "audience_body": "• Sviluppatori, appaltatori e subappaltatori che gestiscono difetti, progressi e QA nei progetti \n\n• Responsabili di strutture e proprietari di edifici che gestiscono ispezioni, DLP e registri di manutenzione \n\n• Team di ristrutturazione e interni che gestiscono elenchi di intoppi e consegne \n\n• Consulenti, QP e valutatori registrano ispezioni e approvazioni con prove tracciabili \n\n• PMI e utenti singoli che necessitano di una soluzione gratuita, multilingue e implementabile (comprese le opzioni di self-host)"
+  },
+  "feedback": {
+    "title": "Feedback",
+    "send_note": "Inviaci una nota",
+    "placeholder": "Scrivi qui il tuo feedback... Cosa renderebbe questa app migliore per il tuo team?",
+    "suggestion": "Suggerimento",
+    "bug_report": "Segnalazione Bug",
+    "what_i_like": "Cosa mi piace"
   },
   "onboarding": {
     "the_problem": "Il problema",

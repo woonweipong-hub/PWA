@@ -318,6 +318,27 @@
     "event_severity": "严重性",
     "event_assignee": "受让人",
     "event_due_date": "两个日期",
+    "event_duration": "期间",
+    "event_component": "成分",
+    "event_issue": "问题",
+    "event_trade": "贸易",
+    "event_entry_type": "条目类型",
+    "event_work_category": "作品类别",
+    "event_location": "地点",
+    "event_location_level": "等级",
+    "event_location_zone": "区",
+    "event_location_subzone": "分区",
+    "event_location_grid": "网格",
+    "event_cost_impact": "成本影响",
+    "event_cost_responsible": "成本责任",
+    "event_cost_amount": "成本金额",
+    "filter_label": "时间轴过滤器",
+    "filter_all": "全部",
+    "filter_comments": "评论",
+    "filter_changes": "变化",
+    "no_changes_yet": "尚未记录任何更改 - 对状态、严重性、受让人、位置、成本和其他跟踪字段的编辑将显示在此处。",
+    "no_comments_yet": "还没有评论。",
+    "empty": "这里还什么都没有。",
     "unknown_user": "未知"
   },
   "inbox": {
@@ -400,14 +421,6 @@
     "reopen": "重新开放",
     "resolved_by": "解决方法：",
     "resolution_prompt": "解决方案说明（可选 - 修复了什么，在哪个版本中）："
-  },
-  "feedback": {
-    "title": "反馈",
-    "send_note": "给我们留言",
-    "placeholder": "在此输入您的反馈...什么能让这个应用对您的团队更好？",
-    "suggestion": "建议",
-    "bug_report": "错误报告",
-    "what_i_like": "我喜欢的"
   },
   "report": {
     "title": "报告",
@@ -1046,6 +1059,14 @@
     "different_body": "人工智能在拍摄时运行——只需一步即可将照片转换为结构化记录——而不是作为后台报告层。 \n\n可以调整提示以匹配监管或合同语言，以便输出直接与团队现场报告的方式保持一致。 \n\n用户保留控制权：\n • 选择人工智能提供商（云或本地）\n • 随时暂停或禁用人工智能\n • 通过呼叫计数器跟踪使用情况\n • 当提示改进时重新分析现有记录\n\n 需求顾问通过根据项目特定的参考评估完整的缺陷集，以简单的语言表达差距，进一步扩展了这一点。",
     "audience_title": "适合谁",
     "audience_body": "• 开发商、承包商和分包商管理项目中的缺陷、进度和质量保证\n\n • 处理检查、DLP 和维护记录的设施经理和业主\n\n • 装修和室内团队管理障碍清单和移交\n\n • 顾问、QP 和评估员用可追溯的证据记录检查和签核\n\n • 需要免费、多语言且可部署的解决方案（包括自托管选项）的中小企业和独立用户"
+  },
+  "feedback": {
+    "title": "反馈",
+    "send_note": "给我们留言",
+    "placeholder": "在此输入您的反馈...什么能让这个应用对您的团队更好？",
+    "suggestion": "建议",
+    "bug_report": "错误报告",
+    "what_i_like": "我喜欢的"
   },
   "onboarding": {
     "the_problem": "问题",

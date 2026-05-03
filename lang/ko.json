@@ -318,6 +318,27 @@
     "event_severity": "심각성",
     "event_assignee": "양수인",
     "event_due_date": "두 개의 날짜",
+    "event_duration": "지속",
+    "event_component": "요소",
+    "event_issue": "문제",
+    "event_trade": "거래",
+    "event_entry_type": "출품 유형",
+    "event_work_category": "업무 카테고리",
+    "event_location": "위치",
+    "event_location_level": "수준",
+    "event_location_zone": "존",
+    "event_location_subzone": "하위 구역",
+    "event_location_grid": "그리드",
+    "event_cost_impact": "비용 영향",
+    "event_cost_responsible": "비용 책임",
+    "event_cost_amount": "비용 금액",
+    "filter_label": "타임라인 필터",
+    "filter_all": "모두",
+    "filter_comments": "코멘트",
+    "filter_changes": "변경 사항",
+    "no_changes_yet": "아직 기록된 변경 사항이 없습니다. 상태, 심각도, 담당자, 위치, 비용 및 기타 추적 필드에 대한 편집 내용이 여기에 표시됩니다.",
+    "no_comments_yet": "아직 댓글이 없습니다.",
+    "empty": "아직 아무것도 없습니다.",
     "unknown_user": "알려지지 않은"
   },
   "inbox": {
@@ -400,14 +421,6 @@
     "reopen": "다시 열다",
     "resolved_by": "해결자:",
     "resolution_prompt": "해결 참고 사항(선택 사항 - 수정된 내용, 빌드에서 수정됨):"
-  },
-  "feedback": {
-    "title": "피드백",
-    "send_note": "메시지 보내기",
-    "placeholder": "여기에 피드백을 입력하세요... 팀을 위해 이 앱을 어떻게 개선할 수 있을까요?",
-    "suggestion": "제안",
-    "bug_report": "버그 보고",
-    "what_i_like": "마음에 드는 점"
   },
   "report": {
     "title": "보고서",
@@ -1046,6 +1059,14 @@
     "different_body": "AI는 백오피스 보고 계층이 아닌 캡처 순간에 즉, 사진을 구조화된 기록으로 단일 단계로 작동합니다. \n\n규제 또는 계약 언어와 일치하도록 프롬프트를 조정할 수 있으므로 출력은 팀이 현장에서 보고하는 방식과 직접적으로 일치합니다. \n\n사용자는 다음을 제어할 수 있습니다. \n• AI 공급자 선택(클라우드 또는 로컬) \n• 언제든지 AI를 일시중지하거나 비활성화하세요. \n• 통화 카운터로 사용량 추적 \n• 프롬프트가 개선되면 기존 기록을 다시 분석합니다. \n\n요구 사항 관리자는 프로젝트별 참조에 대해 전체 결함 세트를 평가하고 일반 언어로 격차를 표면화함으로써 이를 더욱 확장합니다.",
     "audience_title": "누구를 위한 것인가",
     "audience_body": "• 프로젝트 전반에 걸쳐 결함, 진행, QA를 관리하는 개발자, 계약자, 하청업체 \n\n• 검사, DLP, 유지관리 기록을 처리하는 시설 관리자 및 건물 소유자 \n\n• 걸림돌 목록 및 인계를 관리하는 리노베이션 및 인테리어 팀 \n\n• 추적 가능한 증거로 검사 및 승인을 기록하는 컨설턴트, QP 및 평가자 \n\n• 배포 가능한 무료 다국어 솔루션(셀프 호스트 옵션 포함)이 필요한 SME 및 개인 사용자"
+  },
+  "feedback": {
+    "title": "피드백",
+    "send_note": "메시지 보내기",
+    "placeholder": "여기에 피드백을 입력하세요... 팀을 위해 이 앱을 어떻게 개선할 수 있을까요?",
+    "suggestion": "제안",
+    "bug_report": "버그 보고",
+    "what_i_like": "마음에 드는 점"
   },
   "onboarding": {
     "the_problem": "문제점",

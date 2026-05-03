@@ -381,7 +381,19 @@ function burnPhotoStamp(dataUrl,opts){
 // timeline can render them with a distinct compact style; old text comments
 // have no `kind` field and stay untouched. Schema-free by design — reuses
 // the existing `comments` column so no migration is needed.
-const TRACKED_EVENT_FIELDS = ["status","severity","assignee","dueDate"];
+// Tracked-field expansion 2026-05-03 — extends per-defect audit history
+// to cover the rest of the user-editable fields surfaced in REVIEW Detail
+// edit mode and REVIEW batch-update. Title/description deliberately
+// excluded — they change a lot via AI auto-fill / re-analyze and would
+// drown the timeline. workCategory is included because changing it
+// retargets variant routing + Quality Check applicability so it's worth
+// recording who flipped it and when.
+const TRACKED_EVENT_FIELDS = [
+  "status","severity","assignee","dueDate","duration",
+  "component","issue","trade","entryType","workCategory",
+  "location","locationLevel","locationZone","locationSubzone","locationGrid",
+  "costImpact","costResponsible","costAmount"
+];
 function diffDefectEvents(before, patch, by, role){
   if(!patch||typeof patch!=="object")return [];
   const events=[];
@@ -12509,6 +12521,11 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
     }catch(e){alert("Save failed: "+e.message);}
     setEditSaving(false);
   };
+  // Timeline filter chip — ALL (default), COMMENTS, CHANGES (events).
+  // Procurement-grade audit view: tap CHANGES to see only the
+  // status / severity / assignee / cost / location / etc. mutation
+  // history, hiding chat noise.
+  const[timelineFilter,setTimelineFilter]=useState("all");
   // Comment editing state
   const[editingCommentIdx,setEditingCommentIdx]=useState(null);
   const[editingCommentText,setEditingCommentText]=useState("");
@@ -12821,15 +12838,64 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
             const all=latestRef.current.comments||[];
             const cmts=all.filter(c=>c.kind!=="event").length;
             const evs=all.filter(c=>c.kind==="event").length;
-            return <div style={lbl()}>{t("detail.timeline")} ({cmts}{evs?` · ${evs} ${t("timeline.events_suffix")}`:""})</div>;
+            return(
+              <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:8}}>
+                <div style={{...lbl(),marginBottom:0}}>{t("detail.timeline")} ({cmts}{evs?` · ${evs} ${t("timeline.events_suffix")}`:""})</div>
+                {(cmts>0||evs>0)&&(
+                  <div role="tablist" aria-label={t("timeline.filter_label")} style={{display:"flex",gap:4,marginLeft:"auto",background:"rgba(0,0,0,0.04)",borderRadius:8,padding:2}}>
+                    {[
+                      {k:"all",l:t("timeline.filter_all"),n:cmts+evs},
+                      {k:"comments",l:t("timeline.filter_comments"),n:cmts},
+                      {k:"events",l:t("timeline.filter_changes"),n:evs}
+                    ].map(opt=>(
+                      <button key={opt.k} role="tab" aria-selected={timelineFilter===opt.k} onClick={()=>setTimelineFilter(opt.k)} style={{background:timelineFilter===opt.k?"#fff":"transparent",border:"none",borderRadius:6,padding:"4px 9px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,color:timelineFilter===opt.k?"#ff6b00":"rgba(0,0,0,0.55)",letterSpacing:"0.04em",boxShadow:timelineFilter===opt.k?"0 1px 2px rgba(0,0,0,0.06)":"none"}}>
+                        {opt.l} {opt.n>0&&<span style={{opacity:0.6}}>{opt.n}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+          {(()=>{
+            const all=latestRef.current.comments||[];
+            const visibleCount=all.filter(c=>{
+              if(timelineFilter==="comments")return c.kind!=="event";
+              if(timelineFilter==="events")return c.kind==="event";
+              return true;
+            }).length;
+            if(visibleCount>0)return null;
+            return(
+              <div style={{padding:"12px 14px",background:"rgba(0,0,0,0.03)",borderRadius:8,fontSize:12,color:"rgba(0,0,0,0.5)",fontStyle:"italic",marginBottom:10}}>
+                {timelineFilter==="events"?t("timeline.no_changes_yet"):timelineFilter==="comments"?t("timeline.no_comments_yet"):t("timeline.empty")}
+              </div>
+            );
           })()}
           {(latestRef.current.comments||[]).map((c,i)=>{
-            // Auto-event row (status/severity/assignee/dueDate change)
+            // Honour the filter chip (ALL / COMMENTS / CHANGES) without
+            // disturbing `i` — keeping it as the unfiltered index lets the
+            // reaction handler at line ~12880 continue to splice into
+            // latestRef.current.comments[i] correctly.
+            if(timelineFilter==="comments"&&c.kind==="event")return null;
+            if(timelineFilter==="events"&&c.kind!=="event")return null;
+            // Compute "is this the last visible item" once so the timeline
+            // connector line ends cleanly at the bottom of a filtered view
+            // instead of dangling toward a hidden item.
+            const _isLastVisible=!(latestRef.current.comments||[]).slice(i+1).some(_x=>{
+              if(timelineFilter==="comments")return _x.kind!=="event";
+              if(timelineFilter==="events")return _x.kind==="event";
+              return true;
+            });
+            // Auto-event row (status / severity / assignee / dueDate / duration /
+            // component / issue / trade / entryType / workCategory / location* /
+            // cost* change). Field-label and icon dictionaries cover the
+            // expanded TRACKED_EVENT_FIELDS list; falls back to ✏️ + raw type
+            // for any future field added without a label entry.
             if(c.kind==="event"){
-              const ICON={status:"🔄",severity:"⚡",assignee:"👤",dueDate:"📅"};
-              const FIELD_LABEL={status:t("timeline.event_status"),severity:t("timeline.event_severity"),assignee:t("timeline.event_assignee"),dueDate:t("timeline.event_due_date")};
+              const ICON={status:"🔄",severity:"⚡",assignee:"👤",dueDate:"📅",duration:"⏱",component:"🧱",issue:"⚠️",trade:"🔧",entryType:"🏷",workCategory:"📂",location:"📍",locationLevel:"📍",locationZone:"📍",locationSubzone:"📍",locationGrid:"📍",costImpact:"💰",costResponsible:"💰",costAmount:"💰"};
+              const FIELD_LABEL={status:t("timeline.event_status"),severity:t("timeline.event_severity"),assignee:t("timeline.event_assignee"),dueDate:t("timeline.event_due_date"),duration:t("timeline.event_duration"),component:t("timeline.event_component"),issue:t("timeline.event_issue"),trade:t("timeline.event_trade"),entryType:t("timeline.event_entry_type"),workCategory:t("timeline.event_work_category"),location:t("timeline.event_location"),locationLevel:t("timeline.event_location_level"),locationZone:t("timeline.event_location_zone"),locationSubzone:t("timeline.event_location_subzone"),locationGrid:t("timeline.event_location_grid"),costImpact:t("timeline.event_cost_impact"),costResponsible:t("timeline.event_cost_responsible"),costAmount:t("timeline.event_cost_amount")};
               const evColor="#5856d6";
-              const isLast=i===(latestRef.current.comments||[]).length-1;
+              const isLast=_isLastVisible;
               return(
                 <div key={i} style={{display:"flex",gap:10,marginBottom:0,position:"relative"}}>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0,width:20}}>
@@ -12875,7 +12941,7 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
                 {/* Timeline line */}
                 <div style={{display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0,width:20}}>
                   <div style={{width:10,height:10,borderRadius:"50%",background:timelineColor,border:"2px solid #f0ede8",zIndex:1,flexShrink:0}}/>
-                  {i<(latestRef.current.comments||[]).length-1&&<div style={{width:2,flex:1,background:"rgba(0,0,0,0.08)"}}/>}
+                  {!_isLastVisible&&<div style={{width:2,flex:1,background:"rgba(0,0,0,0.08)"}}/>}
                 </div>
                 {/* Content */}
                 <div style={{flex:1,background:"#fff",borderRadius:10,padding:"10px 12px",marginBottom:10,borderLeft:`3px solid ${timelineColor}`}}>

@@ -318,6 +318,27 @@
     "event_severity": "Keterukan",
     "event_assignee": "penerima tugasan",
     "event_due_date": "Dua Kurma",
+    "event_duration": "Tempoh",
+    "event_component": "Komponen",
+    "event_issue": "Isu",
+    "event_trade": "Berdagang",
+    "event_entry_type": "Jenis Kemasukan",
+    "event_work_category": "Kategori Kerja",
+    "event_location": "Lokasi",
+    "event_location_level": "Tahap",
+    "event_location_zone": "Zon",
+    "event_location_subzone": "Sub-zon",
+    "event_location_grid": "Grid",
+    "event_cost_impact": "Kesan Kos",
+    "event_cost_responsible": "Bertanggungjawab Kos",
+    "event_cost_amount": "Jumlah Kos",
+    "filter_label": "Penapis garis masa",
+    "filter_all": "SEMUA",
+    "filter_comments": "KOMEN",
+    "filter_changes": "PERUBAHAN",
+    "no_changes_yet": "Tiada perubahan direkodkan lagi — pengeditan kepada status, keterukan, penerima serah hak, lokasi, kos dan medan jejak lain akan dipaparkan di sini.",
+    "no_comments_yet": "Tiada ulasan lagi.",
+    "empty": "Tiada apa-apa lagi di sini.",
     "unknown_user": "Tidak diketahui"
   },
   "inbox": {
@@ -400,14 +421,6 @@
     "reopen": "DIBUKA SEMULA",
     "resolved_by": "Diselesaikan oleh",
     "resolution_prompt": "Nota resolusi (pilihan — perkara yang telah ditetapkan, di mana binaan):"
-  },
-  "feedback": {
-    "title": "Maklum Balas",
-    "send_note": "Hantar nota kepada kami",
-    "placeholder": "Taip maklum balas anda di sini... Apa yang boleh menjadikan aplikasi ini lebih baik untuk pasukan anda?",
-    "suggestion": "Cadangan",
-    "bug_report": "Laporan Pepijat",
-    "what_i_like": "Apa yang Saya Suka"
   },
   "report": {
     "title": "Laporan",
@@ -1046,6 +1059,14 @@
     "different_body": "AI beroperasi pada saat tangkapan — foto kepada rekod berstruktur dalam satu langkah — bukannya sebagai lapisan pelaporan pejabat belakang. \n\nGesaan boleh ditala untuk memadankan bahasa kawal selia atau kontrak supaya output sejajar secara langsung dengan cara pasukan melaporkan di tapak. \n\nPengguna mengekalkan kawalan: \n• Pilih pembekal AI (awan atau tempatan) \n• Jeda atau lumpuhkan AI pada bila-bila masa \n• Jejaki penggunaan dengan kaunter panggilan \n• Analisis semula rekod sedia ada apabila gesaan bertambah baik \n\nPenasihat Keperluan melanjutkan perkara ini dengan menilai set kecacatan penuh terhadap rujukan khusus projek, menimbulkan jurang dalam bahasa biasa.",
     "audience_title": "Untuk Siapa",
     "audience_body": "• Pemaju, kontraktor dan subkontraktor menguruskan kecacatan, kemajuan dan QA merentas projek \n\n• Pengurus kemudahan dan pemilik bangunan mengendalikan pemeriksaan, DLP dan rekod penyelenggaraan \n\n• Pasukan pengubahsuaian dan dalaman menguruskan senarai snag dan penyerahan \n\n• Perunding, QP dan penilai merekodkan pemeriksaan dan tandatangan dengan bukti yang boleh dikesan \n\n• PKS dan pengguna solo memerlukan penyelesaian percuma, berbilang bahasa dan boleh digunakan (termasuk pilihan hos sendiri)"
+  },
+  "feedback": {
+    "title": "Maklum Balas",
+    "send_note": "Hantar nota kepada kami",
+    "placeholder": "Taip maklum balas anda di sini... Apa yang boleh menjadikan aplikasi ini lebih baik untuk pasukan anda?",
+    "suggestion": "Cadangan",
+    "bug_report": "Laporan Pepijat",
+    "what_i_like": "Apa yang Saya Suka"
   },
   "onboarding": {
     "the_problem": "Masalah",

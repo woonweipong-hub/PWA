@@ -318,6 +318,27 @@
     "event_severity": "Stränghet",
     "event_assignee": "Uppdragstagare",
     "event_due_date": "Två datum",
+    "event_duration": "Varaktighet",
+    "event_component": "Komponent",
+    "event_issue": "Utfärda",
+    "event_trade": "Handel",
+    "event_entry_type": "Ingångstyp",
+    "event_work_category": "Arbetskategori",
+    "event_location": "Plats",
+    "event_location_level": "Nivå",
+    "event_location_zone": "Zon",
+    "event_location_subzone": "Underzon",
+    "event_location_grid": "Rutnät",
+    "event_cost_impact": "Kostnadspåverkan",
+    "event_cost_responsible": "Kostnadsansvarig",
+    "event_cost_amount": "Kostnadsbelopp",
+    "filter_label": "Tidslinjefilter",
+    "filter_all": "ALLA",
+    "filter_comments": "KOMMENTARER",
+    "filter_changes": "FÖRÄNDRINGAR",
+    "no_changes_yet": "Inga ändringar har registrerats ännu – redigeringar av status, allvarlighetsgrad, mottagare, plats, kostnad och andra spårade fält kommer att visas här.",
+    "no_comments_yet": "Inga kommentarer än.",
+    "empty": "Inget här ännu.",
     "unknown_user": "Okänd"
   },
   "inbox": {
@@ -400,14 +421,6 @@
     "reopen": "ÖPPNA ÅTER",
     "resolved_by": "Löst av",
     "resolution_prompt": "Upplösningsanteckning (valfritt – vad fixades, i vilken version):"
-  },
-  "feedback": {
-    "title": "Feed-back",
-    "send_note": "Skicka oss ett meddelande",
-    "placeholder": "Skriv din feedback här... Vad skulle göra den här appen bättre för ditt team?",
-    "suggestion": "Förslag",
-    "bug_report": "Felrapport",
-    "what_i_like": "Vad jag gillar"
   },
   "report": {
     "title": "Rapportera",
@@ -1046,6 +1059,14 @@
     "different_body": "AI fungerar vid inspelningsögonblicket - foto till strukturerad post i ett enda steg - snarare än som ett backoffice-rapporteringslager. \n\nUppmaningar kan ställas in för att matcha reglerings- eller avtalsspråk så att utdata överensstämmer direkt med hur team rapporterar på plats. \n\nAnvändare behåller kontrollen: \n• Välj AI-leverantör (moln eller lokal) \n• Pausa eller inaktivera AI när som helst \n• Spåra användning med en samtalsräknare \n• Analysera om befintliga poster när uppmaningarna förbättras \n\nRequirements Advisor utökar detta ytterligare genom att utvärdera hela defekten mot projektspecifika referenser, vilket visar luckor i klarspråk.",
     "audience_title": "Vem är det för",
     "audience_body": "• Developers, contractors, and subcontractors managing defects, progress, and QA across projects\n\n • Anläggningschefer och fastighetsägare som hanterar inspektioner, DLP och underhållsregister \n\n• Renoverings- och inredningsteam som hanterar smutslistor och överlämningar \n\n• Konsulter, QPs och bedömare som registrerar inspektioner och sign-offs med spårbara bevis \n\n• Små och medelstora företag och ensamanvändare som behöver en gratis, flerspråkig och implementerbar lösning (inklusive alternativ för självvärd)"
+  },
+  "feedback": {
+    "title": "Feed-back",
+    "send_note": "Skicka oss ett meddelande",
+    "placeholder": "Skriv din feedback här... Vad skulle göra den här appen bättre för ditt team?",
+    "suggestion": "Förslag",
+    "bug_report": "Felrapport",
+    "what_i_like": "Vad jag gillar"
   },
   "onboarding": {
     "the_problem": "Problemet",

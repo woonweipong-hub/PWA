@@ -318,6 +318,27 @@
     "event_severity": "Gravité",
     "event_assignee": "Cessionnaire",
     "event_due_date": "Deux rendez-vous",
+    "event_duration": "Durée",
+    "event_component": "Composante",
+    "event_issue": "Problème",
+    "event_trade": "Commerce",
+    "event_entry_type": "Type d'entrée",
+    "event_work_category": "Catégorie de travail",
+    "event_location": "Emplacement",
+    "event_location_level": "Niveau",
+    "event_location_zone": "Zone",
+    "event_location_subzone": "Sous-zone",
+    "event_location_grid": "Grille",
+    "event_cost_impact": "Impact sur les coûts",
+    "event_cost_responsible": "Responsable des coûts",
+    "event_cost_amount": "Montant du coût",
+    "filter_label": "Filtre de chronologie",
+    "filter_all": "TOUTE",
+    "filter_comments": "COMMENTAIRES",
+    "filter_changes": "CHANGEMENTS",
+    "no_changes_yet": "No changes recorded yet — edits to status, severity, assignee, location, cost and other tracked fields will appear here.",
+    "no_comments_yet": "Pas encore de commentaires.",
+    "empty": "Rien ici encore.",
     "unknown_user": "Inconnue"
   },
   "inbox": {
@@ -400,14 +421,6 @@
     "reopen": "ROUVRIR",
     "resolved_by": "Résolu par",
     "resolution_prompt": "Note de résolution (facultatif – ce qui a été corrigé, dans quelle version) :"
-  },
-  "feedback": {
-    "title": "Avis",
-    "send_note": "Envoyez-nous un message",
-    "placeholder": "Tapez votre avis ici... Qu'est-ce qui rendrait cette app meilleure pour votre équipe ?",
-    "suggestion": "Suggestion",
-    "bug_report": "Rapport de bug",
-    "what_i_like": "Ce que j'aime"
   },
   "report": {
     "title": "Rapport",
@@ -1046,6 +1059,14 @@
     "different_body": "L’IA fonctionne au moment de la capture – de la photo à l’enregistrement structuré en une seule étape – plutôt que comme une couche de reporting back-office. \n\nLes invites peuvent être adaptées au langage réglementaire ou contractuel afin que les résultats s'alignent directement sur la manière dont les équipes rendent compte sur site. \n\nLes utilisateurs gardent le contrôle : \n• Choisissez un fournisseur d'IA (cloud ou local) \n• Suspendez ou désactivez l'IA à tout moment \n• Suivre l'utilisation avec un compteur d'appels \n• Réanalysez les enregistrements existants lorsque les invites s'améliorent \n\nL'Exigences Advisor va plus loin en évaluant l'ensemble des défauts par rapport aux références spécifiques au projet, faisant apparaître les lacunes dans un langage simple.",
     "audience_title": "À qui s'adresse-t-il",
     "audience_body": "• Développeurs, entrepreneurs et sous-traitants gérant les défauts, les progrès et l'assurance qualité dans l'ensemble des projets. \n\n• Les gestionnaires d'installations et les propriétaires de bâtiments gérant les inspections, la DLP et les dossiers de maintenance. \n\n• Équipes de rénovation et d'intérieur gérant les listes d'accrocs et les transferts \n\n• Les consultants, les personnes qualifiées et les évaluateurs enregistrent les inspections et les approbations avec des preuves traçables. \n\n• PME et utilisateurs individuels ayant besoin d'une solution gratuite, multilingue et déployable (y compris des options d'auto-hébergement)"
+  },
+  "feedback": {
+    "title": "Avis",
+    "send_note": "Envoyez-nous un message",
+    "placeholder": "Tapez votre avis ici... Qu'est-ce qui rendrait cette app meilleure pour votre équipe ?",
+    "suggestion": "Suggestion",
+    "bug_report": "Rapport de bug",
+    "what_i_like": "Ce que j'aime"
   },
   "onboarding": {
     "the_problem": "Le problème",

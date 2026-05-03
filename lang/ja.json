@@ -318,6 +318,27 @@
     "event_severity": "重大度",
     "event_assignee": "譲受人",
     "event_due_date": "2 つの日付",
+    "event_duration": "間隔",
+    "event_component": "成分",
+    "event_issue": "問題",
+    "event_trade": "貿易",
+    "event_entry_type": "エントリータイプ",
+    "event_work_category": "職種",
+    "event_location": "位置",
+    "event_location_level": "レベル",
+    "event_location_zone": "ゾーン",
+    "event_location_subzone": "サブゾーン",
+    "event_location_grid": "グリッド",
+    "event_cost_impact": "コストへの影響",
+    "event_cost_responsible": "コスト責任",
+    "event_cost_amount": "費用金額",
+    "filter_label": "タイムラインフィルター",
+    "filter_all": "全て",
+    "filter_comments": "コメント",
+    "filter_changes": "変更点",
+    "no_changes_yet": "変更はまだ記録されていません。ステータス、重大度、担当者、場所、コスト、その他の追跡フィールドへの編集がここに表示されます。",
+    "no_comments_yet": "コメントはまだありません。",
+    "empty": "ここにはまだ何もありません。",
     "unknown_user": "未知"
   },
   "inbox": {
@@ -400,14 +421,6 @@
     "reopen": "再開",
     "resolved_by": "解決者",
     "resolution_prompt": "解決策メモ (オプション - どのビルドで何が修正されたか):"
-  },
-  "feedback": {
-    "title": "フィードバック",
-    "send_note": "メッセージを送信",
-    "placeholder": "フィードバックを入力...チームにとってこのアプリをどう改善できますか？",
-    "suggestion": "提案",
-    "bug_report": "バグ報告",
-    "what_i_like": "気に入っている点"
   },
   "report": {
     "title": "レポート",
@@ -1046,6 +1059,14 @@
     "different_body": "AI は、バックオフィスのレポート層としてではなく、撮影の瞬間に動作します (写真を 1 ステップで構造化記録に変換します)。 \n\nプロンプトは規制または契約上の文言に合わせて調整できるため、チームが現場で報告する方法と出力が直接一致します。 \n\nユーザーは制御を保持します:\n • AI プロバイダー (クラウドまたはローカル) を選択します\n •いつでもAIを一時停止または無効にできます\n • コールカウンターで使用状況を追跡\n • プロンプトが改善されたら既存のレコードを再分析する\n\n Requirements Advisor は、プロジェクト固有の参照に対して完全な欠陥セットを評価することでこれをさらに拡張し、平易な言葉でギャップを明らかにします。",
     "audience_title": "誰のためのものか",
     "audience_body": "• プロジェクト全体の欠陥、進捗状況、QA を管理する開発者、請負業者、下請け業者\n\n • 検査、DLP、保守記録を扱う施設管理者と建物所有者\n\n • 不具合リストと引き継ぎを管理する改修チームと内装チーム\n\n • コンサルタント、QP、評価者が検査と承認を追跡可能な証拠とともに記録する\n\n • 無料の多言語展開可能なソリューション (セルフホスト オプションを含む) を必要とする中小企業および個人ユーザー"
+  },
+  "feedback": {
+    "title": "フィードバック",
+    "send_note": "メッセージを送信",
+    "placeholder": "フィードバックを入力...チームにとってこのアプリをどう改善できますか？",
+    "suggestion": "提案",
+    "bug_report": "バグ報告",
+    "what_i_like": "気に入っている点"
   },
   "onboarding": {
     "the_problem": "課題",

@@ -318,6 +318,27 @@
     "event_severity": "Şiddet",
     "event_assignee": "Vekil",
     "event_due_date": "İki Tarih",
+    "event_duration": "Süre",
+    "event_component": "Bileşen",
+    "event_issue": "Sorun",
+    "event_trade": "Ticaret",
+    "event_entry_type": "Giriş Türü",
+    "event_work_category": "İş Kategorisi",
+    "event_location": "Konum",
+    "event_location_level": "Seviye",
+    "event_location_zone": "Alan",
+    "event_location_subzone": "Alt bölge",
+    "event_location_grid": "Izgara",
+    "event_cost_impact": "Maliyet Etkisi",
+    "event_cost_responsible": "Maliyet Sorumlusu",
+    "event_cost_amount": "Maliyet Tutarı",
+    "filter_label": "Zaman çizelgesi filtresi",
+    "filter_all": "TÜM",
+    "filter_comments": "YORUMLAR",
+    "filter_changes": "DEĞİŞİKLİKLER",
+    "no_changes_yet": "Henüz hiçbir değişiklik kaydedilmedi; durum, önem derecesi, atanan kişi, konum, maliyet ve izlenen diğer alanlarda yapılan düzenlemeler burada görünecektir.",
+    "no_comments_yet": "Henüz yorum yok.",
+    "empty": "Burada henüz bir şey yok.",
     "unknown_user": "Bilinmiyor"
   },
   "inbox": {
@@ -400,14 +421,6 @@
     "reopen": "YENİDEN AÇ",
     "resolved_by": "Tarafından çözüldü",
     "resolution_prompt": "Çözüm notu (isteğe bağlı - ne düzeltildi, hangi derlemede):"
-  },
-  "feedback": {
-    "title": "Geri Bildirim",
-    "send_note": "Bize bir not gönderin",
-    "placeholder": "Geri bildiriminizi buraya yazın... Bu uygulamayı ekibiniz için daha iyi hale getiren şey nedir?",
-    "suggestion": "Öneri",
-    "bug_report": "Hata Raporu",
-    "what_i_like": "Beğendiklerim"
   },
   "report": {
     "title": "Rapor",
@@ -1046,6 +1059,14 @@
     "different_body": "Yapay zeka, arka ofis raporlama katmanı yerine, fotoğraftan yapılandırılmış kayda tek adımda yakalama anında çalışır. \n\nİstemler, düzenleme veya sözleşme diliyle eşleşecek şekilde ayarlanabilir; böylece çıktılar, ekiplerin sahadaki raporlama şekliyle doğrudan uyumlu hale gelir. \n\nKullanıcılar kontrolü elinde tutar: \n• Yapay zeka sağlayıcısını seçin (bulut veya yerel) \n• AI'yi istediğiniz zaman duraklatın veya devre dışı bırakın \n• Çağrı sayacıyla kullanımı izleyin \n• Bilgi istemleri iyileştiğinde mevcut kayıtları yeniden analiz edin \n\nGereksinim Danışmanı, tüm kusur setini projeye özel referanslara göre değerlendirerek ve boşlukları sade bir dille ortaya çıkararak bunu daha da genişletir.",
     "audience_title": "Kimin İçin?",
     "audience_body": "• Projelerdeki kusurları, ilerlemeyi ve kalite güvencesini yöneten geliştiriciler, yükleniciler ve alt yükleniciler \n\n• Denetimleri, DLP'yi ve bakım kayıtlarını yöneten tesis yöneticileri ve bina sahipleri \n\n• Arıza listelerini ve devir teslimleri yöneten yenileme ve iç ekipler \n\n• Denetimleri ve onayları izlenebilir kanıtlarla kaydeden danışmanlar, QP'ler ve değerlendiriciler \n\n• Ücretsiz, çok dilli ve dağıtılabilir bir çözüme (kendi kendine barındırma seçenekleri dahil) ihtiyaç duyan KOBİ'ler ve tek başına kullanıcılar"
+  },
+  "feedback": {
+    "title": "Geri Bildirim",
+    "send_note": "Bize bir not gönderin",
+    "placeholder": "Geri bildiriminizi buraya yazın... Bu uygulamayı ekibiniz için daha iyi hale getiren şey nedir?",
+    "suggestion": "Öneri",
+    "bug_report": "Hata Raporu",
+    "what_i_like": "Beğendiklerim"
   },
   "onboarding": {
     "the_problem": "Sorun",
