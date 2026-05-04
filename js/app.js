@@ -22984,6 +22984,11 @@ function AdminAnalytics({defects,members,company,currentProject,projects,allDefe
   // project on first render. Multi-project owners need a single screen
   // that answers "across everything I run, how bad is it right now?"
   const[crossDefects,setCrossDefects]=useState(null);
+  // Date-range filter for the cross-project roll-up. Default to "all time"
+  // (empty strings) so the headline stays unchanged. Inclusive bounds —
+  // YYYY-MM-DD strings compared lexicographically against ISO timestamps.
+  const[crossFrom,setCrossFrom]=useState("");
+  const[crossTo,setCrossTo]=useState("");
   const[crossLoading,setCrossLoading]=useState(false);
   const[crossErr,setCrossErr]=useState("");
   useEffect(()=>{
@@ -23075,10 +23080,20 @@ function AdminAnalytics({defects,members,company,currentProject,projects,allDefe
 
       {/* ── ACROSS ALL PROJECTS — multi-project owner roll-up ── */}
       <div style={{background:"linear-gradient(135deg, rgba(88,86,214,0.08), rgba(255,107,0,0.06))",border:"1.5px solid rgba(88,86,214,0.2)",borderRadius:14,padding:16,marginBottom:20}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}>
           <span style={{fontSize:18}}>🌐</span>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#3a39a6",letterSpacing:"0.06em"}}>ACROSS ALL PROJECTS</div>
           <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",marginLeft:"auto"}}>{projects?.length||0} project{projects?.length===1?"":"s"}</div>
+        </div>
+        {/* Date-range filter — restrict the roll-up to a window. Useful for
+            "this quarter", "since last DLP review", or "since handover". */}
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+          <label style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em"}}>FROM</label>
+          <input type="date" value={crossFrom} onChange={e=>setCrossFrom(e.target.value)} style={{fontSize:11,padding:"4px 8px",borderRadius:6,border:"1px solid rgba(0,0,0,0.15)",background:"#fff",fontFamily:"inherit"}}/>
+          <label style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em"}}>TO</label>
+          <input type="date" value={crossTo} onChange={e=>setCrossTo(e.target.value)} style={{fontSize:11,padding:"4px 8px",borderRadius:6,border:"1px solid rgba(0,0,0,0.15)",background:"#fff",fontFamily:"inherit"}}/>
+          {(crossFrom||crossTo)&&<button onClick={()=>{setCrossFrom("");setCrossTo("");}} style={{fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:6,border:"1px solid rgba(255,59,48,0.25)",background:"rgba(255,59,48,0.05)",color:"#ff3b30",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>CLEAR</button>}
+          {crossDefects&&(crossFrom||crossTo)&&<span style={{fontSize:10,color:"rgba(0,0,0,0.45)",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>{(()=>{const cdDate=d=>(d.createdAt||d.created||d.timestamp_utc||"").slice(0,10);const filt=crossDefects.filter(d=>{const dt=cdDate(d);if(!dt)return false;if(crossFrom&&dt<crossFrom)return false;if(crossTo&&dt>crossTo)return false;return true;});return `${filt.length} of ${crossDefects.length} entries in window`;})()}</span>}
         </div>
         {crossLoading?(
           <div style={{fontSize:12,color:"rgba(0,0,0,0.5)",padding:"10px 0"}}>Loading company-wide data…</div>
@@ -23087,7 +23102,16 @@ function AdminAnalytics({defects,members,company,currentProject,projects,allDefe
         ):crossDefects===null?(
           <div style={{fontSize:12,color:"rgba(0,0,0,0.5)",padding:"10px 0"}}>—</div>
         ):(()=>{
-          const cd=crossDefects;
+          // Apply date-range filter (inclusive). Empty bounds = open-ended.
+          const allCd=crossDefects;
+          const cdDate=d=>(d.createdAt||d.created||d.timestamp_utc||"").slice(0,10);
+          const cd=allCd.filter(d=>{
+            const dt=cdDate(d);
+            if(!dt&&(crossFrom||crossTo))return false;
+            if(crossFrom&&dt<crossFrom)return false;
+            if(crossTo&&dt>crossTo)return false;
+            return true;
+          });
           const open=cd.filter(d=>d.status==="Open").length;
           const inProg=cd.filter(d=>d.status==="In Progress").length;
           const done=cd.filter(d=>d.status==="Done").length;
