@@ -5414,6 +5414,41 @@ function Spin({size=14}){
   return <div style={{width:size,height:size,border:"2px solid currentColor",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.8s linear infinite",display:"inline-block"}}/>;
 }
 
+// Tap-to-expand filename row used on REVIEW > ENTRIES cards. Long ISO
+// 19650 / camera filenames don't fit on a 360px phone card, so we render
+// truncated by default and expand to wrapping multi-line on tap. A second
+// tap copies the full string to clipboard with brief "✓ COPIED" feedback.
+// e.stopPropagation keeps the card's onView handler from firing on tap.
+function FilenameRow({icon,text,color,mb,q}){
+  const[expanded,setExpanded]=useState(false);
+  const[copied,setCopied]=useState(false);
+  const onClick=async(e)=>{
+    e?.stopPropagation?.();
+    if(!expanded){setExpanded(true);return;}
+    try{
+      if(navigator.clipboard&&window.isSecureContext){
+        await navigator.clipboard.writeText(text);
+      }else{
+        const ta=document.createElement("textarea");
+        ta.value=text;ta.style.position="fixed";ta.style.left="-9999px";
+        document.body.appendChild(ta);ta.select();
+        try{document.execCommand("copy");}finally{document.body.removeChild(ta);}
+      }
+      setCopied(true);
+      setTimeout(()=>setCopied(false),1500);
+    }catch(err){console.warn("filename copy failed",err);}
+  };
+  const baseStyle={fontSize:10,color,fontFamily:"'Courier New',monospace",marginBottom:mb,cursor:"pointer"};
+  const collapsedStyle={...baseStyle,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"};
+  const expandedStyle={...baseStyle,whiteSpace:"normal",wordBreak:"break-all",lineHeight:1.4,padding:"4px 6px",background:"rgba(88,86,214,0.06)",borderRadius:4,border:"1px solid rgba(88,86,214,0.18)"};
+  return(
+    <div onClick={onClick} title={expanded?"Tap to copy":"Tap to expand"} style={expanded?expandedStyle:collapsedStyle}>
+      {icon} <Highlight text={text} query={q}/>
+      {expanded&&<span style={{marginLeft:6,fontSize:9,fontWeight:800,color:copied?"#30d158":"#5856d6",letterSpacing:"0.05em"}}>{copied?"✓ COPIED":"📋 TAP TO COPY"}</span>}
+    </div>
+  );
+}
+
 // One-tap clipboard copy with brief "✓ COPIED" feedback. Falls back to
 // document.execCommand for browsers without navigator.clipboard (older
 // iOS, http:// pages where the secure-context Clipboard API is gated).
@@ -12358,13 +12393,13 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
                 batch + review-mode saves; older entries don't have it).
                 Useful when a foreman cross-references back to the source
                 photo in their DCIM folder. */}
-            {d.original_filename&&<div title={d.original_filename} style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Courier New',monospace",marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>📄 <Highlight text={d.original_filename} query={q}/></div>}
+            {d.original_filename&&<FilenameRow icon="📄" text={d.original_filename} color="rgba(0,0,0,0.4)" mb={2} q={q}/>}
             {/* ISO 19650 storage filename — auto-generated post-AI from the
                 CONQUAS-mapped component, media hash, and project/company
                 codes. Confirms 'this photo got the right CONQUAS-element
                 folder name in the storage / ZIP export'. Hidden if not yet
                 stamped (legacy entries pre-iso_filename feature). */}
-            {d.iso_filename&&<div title={d.iso_filename} style={{fontSize:10,color:"#5856d6",fontFamily:"'Courier New',monospace",marginBottom:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>🦋 <Highlight text={d.iso_filename} query={q}/></div>}
+            {d.iso_filename&&<FilenameRow icon="🦋" text={d.iso_filename} color="#5856d6" mb={3} q={q}/>}
             <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",display:"flex",justifyContent:"space-between"}}>
               <span>→ <Highlight text={d.assignee} query={q}/></span>
               <span>{d.created?new Date(d.created).toLocaleDateString():"Just now"}</span>
