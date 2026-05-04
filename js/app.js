@@ -5556,6 +5556,95 @@ function SignaturePad({initialDataUrl,onChange,height=120}){
   );
 }
 
+// ── Webcam capture (laptop / desktop primary use case) ─────────────
+// Mobile already uses <input type="file" capture="environment"> which
+// pops the OS camera. On laptop that just opens the file picker, so
+// users couldn't take a photo from a built-in webcam without leaving
+// the app. WebcamCapture pulls a live video stream via getUserMedia,
+// previews it inline, and on capture writes a JPEG blob into a
+// File-shaped object so the existing handlePhoto pipeline (HEIC
+// reject, batch / single split, AI prefill, etc.) reuses untouched.
+//
+// Caller passes `onPhoto(file)` and `onClose()`. Stream is stopped on
+// unmount via the effect cleanup so we don't leak a hot camera light.
+function WebcamCapture({onPhoto,onClose}){
+  const videoRef=useRef(null);
+  const canvasRef=useRef(null);
+  const streamRef=useRef(null);
+  const[err,setErr]=useState("");
+  const[capturing,setCapturing]=useState(false);
+  const[facing,setFacing]=useState("user"); // "user" = front, "environment" = back
+
+  useEffect(()=>{
+    let cancelled=false;
+    const start=async()=>{
+      try{
+        if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+          setErr("Your browser does not support webcam access. Try Chrome / Edge / Firefox / Safari latest.");
+          return;
+        }
+        // Stop any prior stream when toggling facing mode
+        if(streamRef.current){streamRef.current.getTracks().forEach(t=>t.stop());streamRef.current=null;}
+        const constraints={video:{facingMode:facing,width:{ideal:1920},height:{ideal:1080}},audio:false};
+        const s=await navigator.mediaDevices.getUserMedia(constraints);
+        if(cancelled){s.getTracks().forEach(t=>t.stop());return;}
+        streamRef.current=s;
+        if(videoRef.current){videoRef.current.srcObject=s;}
+      }catch(e){
+        const msg=e?.name==="NotAllowedError"
+          ?"Camera permission denied. Allow camera access in your browser settings, then try again."
+          :e?.name==="NotFoundError"
+          ?"No camera found on this device."
+          :"Could not start the camera: "+(e?.message||e);
+        setErr(msg);
+      }
+    };
+    start();
+    return()=>{
+      cancelled=true;
+      if(streamRef.current){streamRef.current.getTracks().forEach(t=>t.stop());streamRef.current=null;}
+    };
+  },[facing]);
+
+  const capture=()=>{
+    const v=videoRef.current;const c=canvasRef.current;
+    if(!v||!c||!v.videoWidth)return;
+    setCapturing(true);
+    c.width=v.videoWidth;c.height=v.videoHeight;
+    c.getContext("2d").drawImage(v,0,0,c.width,c.height);
+    c.toBlob(b=>{
+      setCapturing(false);
+      if(!b){setErr("Capture failed — please retry.");return;}
+      const file=new File([b],"webcam-"+Date.now()+".jpg",{type:"image/jpeg"});
+      onPhoto(file);
+    },"image/jpeg",0.92);
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:2100,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{position:"absolute",top:14,left:14,right:14,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+        <div style={{color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em"}}>📷 WEBCAM CAPTURE</div>
+        <button onClick={onClose} style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.2)",borderRadius:20,padding:"6px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")}</button>
+      </div>
+      {err?(
+        <div style={{maxWidth:480,background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.4)",borderRadius:12,padding:18,color:"#ff8f8f",textAlign:"center",fontSize:13,lineHeight:1.5}}>
+          {err}
+        </div>
+      ):(
+        <>
+          <video ref={videoRef} autoPlay playsInline muted style={{maxWidth:"100%",maxHeight:"70vh",borderRadius:12,background:"#000"}}/>
+          <canvas ref={canvasRef} style={{display:"none"}}/>
+          <div style={{display:"flex",gap:12,marginTop:18,alignItems:"center"}}>
+            <button onClick={()=>setFacing(f=>f==="user"?"environment":"user")} title="Switch camera" style={{background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.2)",borderRadius:50,width:48,height:48,color:"#fff",fontSize:18,cursor:"pointer"}}>🔄</button>
+            <button onClick={capture} disabled={capturing} style={{background:"#ff6b00",border:"none",borderRadius:50,width:72,height:72,color:"#fff",fontSize:32,cursor:capturing?"wait":"pointer",boxShadow:"0 4px 12px rgba(255,107,0,0.4)",opacity:capturing?0.6:1}}>📸</button>
+            <div style={{width:48}}/>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function VoiceField({label,value,onChange,placeholder,multiline}){
   return(
     <div style={{marginBottom:16}}>
@@ -9070,6 +9159,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // Persisted in localStorage so the user's preference survives reloads.
   const REVIEW_MODE_KEY="sdt-review-before-save-v1";
   const[reviewMode,setReviewMode]=useState(()=>!!local.get(REVIEW_MODE_KEY));
+  const[showWebcam,setShowWebcam]=useState(false);
   const persistReviewMode=(v)=>{setReviewMode(v);local.set(REVIEW_MODE_KEY,v);};
   // Each item: {id, name, dataUrl, title, description, severity, aiStatus, aiError}
   // aiStatus: "pending" | "analyzing" | "done" | "failed"
@@ -10508,6 +10598,12 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
               <button onClick={()=>folderRef.current.click()} style={{width:"100%",padding:"10px 14px",background:"rgba(88,86,214,0.06)",border:"1.5px dashed rgba(88,86,214,0.4)",borderRadius:12,color:"#5856d6",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.03em"}}>
                 <span style={{fontSize:16}}>📁</span> PICK FOLDER OR MULTIPLE PHOTOS · AI PRE-FILLS EACH
               </button>
+              {/* Use Webcam — primary value on laptop where the file-input
+                  capture hint is ignored. getUserMedia gives a live preview
+                  and a snap → blob → File pipeline that reuses handlePhoto. */}
+              <button onClick={()=>setShowWebcam(true)} style={{width:"100%",padding:"10px 14px",background:"rgba(48,209,88,0.06)",border:"1.5px dashed rgba(48,209,88,0.4)",borderRadius:12,color:"#1a7a35",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.03em"}}>
+                <span style={{fontSize:16}}>📷</span> USE WEBCAM (LAPTOP / DESKTOP)
+              </button>
               {/* Review-before-save toggle — opt-in, off by default so the
                   zero-tap batch behaviour stays the unsurprising default.
                   When on, multi-pick opens an editable card list instead
@@ -10878,6 +10974,11 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         <PhotoMarkup src={form.photos[markupIdx]}
           onSave={dataUrl=>{setForm(f=>({...f,photos:f.photos.map((p,i)=>i===markupIdx?dataUrl:p)}));setMarkupIdx(null);}}
           onCancel={()=>setMarkupIdx(null)}/>
+      )}
+      {showWebcam&&(
+        <WebcamCapture
+          onPhoto={file=>{setShowWebcam(false);handlePhoto({target:{files:[file]}});}}
+          onClose={()=>setShowWebcam(false)}/>
       )}
     </div>
   );
