@@ -265,6 +265,7 @@
     "manual_mode_desc": "Gå hver sjekkpunkt selv. Best for offline eller når AI ikke er tilgjengelig.",
     "ai_waiting_photo": "Ta et tydelig bilde av elementet du inspiserer.",
     "take_photo": "TA BILDE",
+    "ask_ai_button": "SPØR AI — PROSESSFOTO(ER)",
     "ai_analyzing": "ANALYSERER MED AI...",
     "ai_analyzing_sub": "Vanligvis 2-3 sekunder",
     "ai_failed": "AI kunne ikke analysere dette bildet",

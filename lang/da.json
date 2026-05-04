@@ -265,6 +265,7 @@
     "manual_mode_desc": "Gå selv gennem hvert kontrolpunkt. Bedst til offline, eller når AI ikke er tilgængelig.",
     "ai_waiting_photo": "Tag et klart billede af det element, du inspicerer.",
     "take_photo": "TAG FOTO",
+    "ask_ai_button": "SPØRG AI — PROCESFOTO(ER)",
     "ai_analyzing": "ANALYSERER MED AI...",
     "ai_analyzing_sub": "Typisk 2-3 sekunder",
     "ai_failed": "AI kunne ikke analysere dette billede",

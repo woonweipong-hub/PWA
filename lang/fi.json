@@ -265,6 +265,7 @@
     "manual_mode_desc": "Kävele jokainen tarkistuspiste itse. Paras offline-käyttöön tai silloin, kun tekoäly ei ole käytettävissä.",
     "ai_waiting_photo": "Ota selkeä valokuva tarkastamastasi elementistä.",
     "take_photo": "OTA KUVA",
+    "ask_ai_button": "KYSY AI – KÄSITTELY KUVAT",
     "ai_analyzing": "ANALYSOINTI AI:lla...",
     "ai_analyzing_sub": "Tyypillisesti 2-3 sekuntia",
     "ai_failed": "Tekoäly ei voinut analysoida tätä kuvaa",
