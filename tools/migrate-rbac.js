@@ -32,7 +32,10 @@ const PB_PASSWORD = process.env.PB_PASSWORD;
 const APPLY = process.argv.includes("--apply-rbac");
 const PHASE = (() => {
   const a = process.argv.find((x) => x.startsWith("--phase="));
-  return a ? parseInt(a.split("=")[1], 10) : null;
+  if (!a) return null;
+  const v = a.split("=")[1];
+  // Allow "2a" / "2b" alongside numeric phases
+  return /^\d+$/.test(v) ? parseInt(v, 10) : v;
 })();
 const HAS_CREDS = !!(PB_URL && PB_EMAIL && PB_PASSWORD);
 
@@ -49,9 +52,15 @@ if (APPLY && !PHASE) {
 // that have either no user data (location_presets/component_presets/
 // map_markups created 2026-05-04, empty), or are reference data already
 // locked at the create/update/delete level (ontology_*, counters).
+// Phase 2 split: 2a = companies + members (read tightening, low blast),
+// 2b = invites (needs custom redeem-flow handling, parked).
+// Phase 4 = hot path (defects + activity + settings + conquas_observations
+// + pins + map_pins) — needs goja-safe companyId autofill hook before
+// applying so missing-companyId writes auto-fill rather than 403.
 const PHASE_COLLECTIONS = {
   1: ["ontology_components", "ontology_defect_types", "ontology_checkpoints", "ontology_trades", "counters", "location_presets", "component_presets", "map_markups"],
-  2: ["companies", "members", "invites"],
+  "2a": ["companies", "members"],
+  "2b": ["invites"],
   3: ["projects", "drawings"],
   4: ["defects", "activity", "conquas_observations", "pins", "map_pins", "settings"],
 };
