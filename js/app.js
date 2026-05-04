@@ -11752,7 +11752,7 @@ function DefectsMapView({defects,allDefects,onView,onUpdate,selectMode,selectedI
 function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onClearNl,onAiSearch,aiEnabled,member,members,onBulkUpdate,onBulkDelete,onRestore,onHardDelete,company,currentProject,onJumpToTag,onOpenInReview,queueCount=0,syncing2=false,onSyncQueue}){
   const[showArchive,setShowArchive]=useState(false);
   const[archiveSelIds,setArchiveSelIds]=useState(()=>new Set());
-  const[filter,setFilter]=useState("All");const[sevF,setSevF]=useState("All");const[typeF,setTypeF]=useState("All");
+  const[filter,setFilter]=useState("All");const[sevF,setSevF]=useState("All");const[typeF,setTypeF]=useState("All");const[orgF,setOrgF]=useState("All");
   // Date-range filter — compares against d.createdAt / timestamp_utc / created.
   // YYYY-MM-DD strings (native <input type="date">) lexically compare against
   // the ISO date prefix, so no Date object math is required. R suffix avoids
@@ -12030,6 +12030,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
     if(filter!=="All"&&d.status!==filter)return false;
     if(sevF!=="All"&&d.severity!==sevF)return false;
     if(typeF!=="All"&&d.entryType!==typeF)return false;
+    if(orgF!=="All"&&(d.assignee_org||"")!==orgF)return false;
     if(overdueOnly&&!_isOverdue(d))return false;
     if(dateFromR||dateToR){
       // Take the ISO date prefix from whichever timestamp the record carries.
@@ -12049,8 +12050,8 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
     }
     return true;
   });
-  const activeFilters=(filter!=="All"?1:0)+(sevF!=="All"?1:0)+(typeF!=="All"?1:0)+(dateFromR?1:0)+(dateToR?1:0)+(overdueOnly?1:0);
-  const clearAll=()=>{setFilter("All");setSevF("All");setTypeF("All");setSearch("");setDateFromR("");setDateToR("");setOverdueOnly(false);if(onClearNl)onClearNl();};
+  const activeFilters=(filter!=="All"?1:0)+(sevF!=="All"?1:0)+(typeF!=="All"?1:0)+(orgF!=="All"?1:0)+(dateFromR?1:0)+(dateToR?1:0)+(overdueOnly?1:0);
+  const clearAll=()=>{setFilter("All");setSevF("All");setTypeF("All");setOrgF("All");setSearch("");setDateFromR("");setDateToR("");setOverdueOnly(false);if(onClearNl)onClearNl();};
   // Overdue tally for header pill — counts ALL eligible entries, not just
   // the currently-filtered subset, so the badge is the same regardless of
   // which other filters are toggled. Lets the user see total work past due
@@ -12388,6 +12389,27 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
               ))}
             </div>
           </div>
+          {/* Sub-contractor / vendor org filter (gap #1 v2) — only shown
+              when there's at least one defect with assignee_org set.
+              Lets foremen see "everything routed to Acme Plumbing" with
+              a single tap. (NONE) covers internal-only defects. */}
+          {(()=>{
+            const orgs=Array.from(new Set(defects.map(d=>(d.assignee_org||"").trim()).filter(Boolean))).sort();
+            if(!orgs.length)return null;
+            const hasInternal=defects.some(d=>!(d.assignee_org||"").trim());
+            return(
+              <div style={{marginTop:12}}>
+                <div style={lbl()}>🏢 SUB-CONTRACTOR / VENDOR</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  <button onClick={()=>setOrgF("All")} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${orgF==="All"?"#3a39a6":"rgba(0,0,0,0.12)"}`,background:orgF==="All"?"#3a39a6":"#fff",color:orgF==="All"?"#fff":"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>ALL</button>
+                  {hasInternal&&<button onClick={()=>setOrgF("")} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${orgF===""?"#3a39a6":"rgba(0,0,0,0.12)"}`,background:orgF===""?"rgba(58,57,166,0.1)":"#fff",color:orgF===""?"#3a39a6":"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>(INTERNAL ONLY)</button>}
+                  {orgs.map(org=>(
+                    <button key={org} onClick={()=>setOrgF(org)} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${orgF===org?"#3a39a6":"rgba(0,0,0,0.12)"}`,background:orgF===org?"rgba(58,57,166,0.1)":"#fff",color:orgF===org?"#3a39a6":"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{org}</button>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
           {/* Overdue quick toggle — past dueDate, not closed/verified.
               Single chip; on by default after first tap so foremen can flip
               the list straight to actionable items. Count is the global
