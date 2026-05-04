@@ -24499,6 +24499,15 @@ function App(){
                       [t("help.tip_ai_variant"),t("help.tip_ai_variant_desc")],
                       [t("help.tip_ai_provenance"),t("help.tip_ai_provenance_desc")],
                       [t("help.tip_data_schema"),t("help.tip_data_schema_desc")],
+                      [t("help.tip_subcontractor"),t("help.tip_subcontractor_desc")],
+                      [t("help.tip_inspection_templates"),t("help.tip_inspection_templates_desc")],
+                      [t("help.tip_signoff"),t("help.tip_signoff_desc")],
+                      [t("help.tip_webcam"),t("help.tip_webcam_desc")],
+                      [t("help.tip_client_viewer"),t("help.tip_client_viewer_desc")],
+                      [t("help.tip_cross_project"),t("help.tip_cross_project_desc")],
+                      [t("help.tip_api_access"),t("help.tip_api_access_desc")],
+                      [t("help.tip_webhooks"),t("help.tip_webhooks_desc")],
+                      [t("help.tip_rbac"),t("help.tip_rbac_desc")],
                     ]],
                   ].map(([section,items])=>(
                     <div key={section} style={{marginBottom:24}}>
