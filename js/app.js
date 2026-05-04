@@ -22648,6 +22648,20 @@ function AdminAnalytics({defects,members,company,currentProject,projects,allDefe
   const weekAgo=new Date(now-7*86400000);
   const monthAgo=new Date(now-30*86400000);
 
+  // Cross-project roll-up — load all the company's defects across every
+  // project on first render. Multi-project owners need a single screen
+  // that answers "across everything I run, how bad is it right now?"
+  const[crossDefects,setCrossDefects]=useState(null);
+  const[crossLoading,setCrossLoading]=useState(false);
+  const[crossErr,setCrossErr]=useState("");
+  useEffect(()=>{
+    if(!company?.companyId)return;
+    setCrossLoading(true);setCrossErr("");
+    DB.defects.list(`companyId="${company.companyId}"`,"-created",1000)
+      .then(rows=>{setCrossDefects(rows||[]);setCrossLoading(false);})
+      .catch(e=>{setCrossErr(e?.message||"Could not load company-wide defects");setCrossLoading(false);});
+  },[company?.companyId]);
+
   // Time-based counts
   const toDate=d=>d.createdAt||d.created||d.timestamp_utc||"";
   const today=defects.filter(d=>toDate(d).slice(0,10)===todayStr).length;
@@ -22726,6 +22740,95 @@ function AdminAnalytics({defects,members,company,currentProject,projects,allDefe
         <div style={{fontSize:10,fontWeight:700,color:"#ff3b30",background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>ADMIN ONLY</div>
       </div>
       <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:20}}>📁 {currentProject?.name||"All"} · {company?.companyName}</div>
+
+      {/* ── ACROSS ALL PROJECTS — multi-project owner roll-up ── */}
+      <div style={{background:"linear-gradient(135deg, rgba(88,86,214,0.08), rgba(255,107,0,0.06))",border:"1.5px solid rgba(88,86,214,0.2)",borderRadius:14,padding:16,marginBottom:20}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+          <span style={{fontSize:18}}>🌐</span>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#3a39a6",letterSpacing:"0.06em"}}>ACROSS ALL PROJECTS</div>
+          <div style={{fontSize:10,color:"rgba(0,0,0,0.4)",marginLeft:"auto"}}>{projects?.length||0} project{projects?.length===1?"":"s"}</div>
+        </div>
+        {crossLoading?(
+          <div style={{fontSize:12,color:"rgba(0,0,0,0.5)",padding:"10px 0"}}>Loading company-wide data…</div>
+        ):crossErr?(
+          <div style={{fontSize:12,color:"#ff3b30",padding:"10px 0"}}>{crossErr}</div>
+        ):crossDefects===null?(
+          <div style={{fontSize:12,color:"rgba(0,0,0,0.5)",padding:"10px 0"}}>—</div>
+        ):(()=>{
+          const cd=crossDefects;
+          const open=cd.filter(d=>d.status==="Open").length;
+          const inProg=cd.filter(d=>d.status==="In Progress").length;
+          const done=cd.filter(d=>d.status==="Done").length;
+          const verified=cd.filter(d=>d.status==="Verified").length;
+          const closed=cd.filter(d=>d.status==="Closed").length;
+          const critical=cd.filter(d=>d.severity==="Critical").length;
+          const major=cd.filter(d=>d.severity==="Major").length;
+          const today=new Date().toISOString().slice(0,10);
+          const overdue=cd.filter(d=>d.dueDate&&d.dueDate<today&&!["Closed","Verified"].includes(d.status)).length;
+          // Per-project breakdown
+          const byProj={};
+          cd.forEach(d=>{const p=d.projectName||d.projectId||"Unknown";if(!byProj[p])byProj[p]={total:0,open:0,critical:0,overdue:0};byProj[p].total++;if(d.status==="Open")byProj[p].open++;if(d.severity==="Critical")byProj[p].critical++;if(d.dueDate&&d.dueDate<today&&!["Closed","Verified"].includes(d.status))byProj[p].overdue++;});
+          const projRows=Object.entries(byProj).sort((a,b)=>b[1].total-a[1].total);
+          // Trade roll-up
+          const byTrade={};
+          cd.forEach(d=>{const tr=d.trade||"—";byTrade[tr]=(byTrade[tr]||0)+1;});
+          const tradeRows=Object.entries(byTrade).sort((a,b)=>b[1]-a[1]).slice(0,8);
+          return(
+            <>
+              <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+                <div style={{flex:"1 1 90px",minWidth:90,background:"#fff",borderRadius:10,padding:"10px 12px"}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#1a1a1a",lineHeight:1}}>{cd.length}</div>
+                  <div style={{fontSize:10,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",marginTop:3,letterSpacing:"0.06em"}}>TOTAL</div>
+                </div>
+                <div style={{flex:"1 1 90px",minWidth:90,background:"#fff",borderRadius:10,padding:"10px 12px",borderLeft:"3px solid #ff9500"}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#1a1a1a",lineHeight:1}}>{open}</div>
+                  <div style={{fontSize:10,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",marginTop:3,letterSpacing:"0.06em"}}>OPEN</div>
+                </div>
+                <div style={{flex:"1 1 90px",minWidth:90,background:"#fff",borderRadius:10,padding:"10px 12px",borderLeft:"3px solid #ff3b30"}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:"#ff3b30",lineHeight:1}}>{critical}</div>
+                  <div style={{fontSize:10,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",marginTop:3,letterSpacing:"0.06em"}}>CRITICAL</div>
+                </div>
+                <div style={{flex:"1 1 90px",minWidth:90,background:"#fff",borderRadius:10,padding:"10px 12px",borderLeft:"3px solid #ff3b30"}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color:overdue>0?"#ff3b30":"#1a1a1a",lineHeight:1}}>{overdue}</div>
+                  <div style={{fontSize:10,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",marginTop:3,letterSpacing:"0.06em"}}>OVERDUE</div>
+                </div>
+              </div>
+              <div style={{fontSize:10,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",marginBottom:6}}>STATUS BREAKDOWN</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+                {[["Open",open,"#ff9500"],["In Progress",inProg,"#34aadc"],["Done",done,"#5856d6"],["Verified",verified,"#30d158"],["Closed",closed,"#8e8e93"]].filter(([,c])=>c>0).map(([s,c,clr])=>(
+                  <span key={s} style={{fontSize:11,background:clr+"15",border:`1px solid ${clr}40`,borderRadius:20,padding:"3px 10px",color:clr,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{s.toUpperCase()} · {c}</span>
+                ))}
+              </div>
+              {projRows.length>0&&(
+                <>
+                  <div style={{fontSize:10,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",marginBottom:6}}>PER PROJECT (TOP {Math.min(projRows.length,6)})</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
+                    {projRows.slice(0,6).map(([p,s])=>(
+                      <div key={p} style={{display:"flex",alignItems:"center",gap:8,fontSize:12,padding:"6px 10px",background:"rgba(255,255,255,0.7)",borderRadius:8}}>
+                        <span style={{flex:1,fontWeight:700,color:"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p}</span>
+                        <span style={{fontSize:10,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif"}}>{s.total}</span>
+                        {s.critical>0&&<span style={{fontSize:10,color:"#ff3b30",fontWeight:700,background:"rgba(255,59,48,0.1)",borderRadius:10,padding:"1px 7px",fontFamily:"'Barlow Condensed',sans-serif"}}>!{s.critical}</span>}
+                        {s.overdue>0&&<span style={{fontSize:10,color:"#ff3b30",fontWeight:700,background:"rgba(255,59,48,0.1)",borderRadius:10,padding:"1px 7px",fontFamily:"'Barlow Condensed',sans-serif"}}>⏰{s.overdue}</span>}
+                        <span style={{fontSize:10,color:"#ff9500",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>{s.open} open</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              {tradeRows.length>0&&(
+                <>
+                  <div style={{fontSize:10,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",marginBottom:6}}>BY TRADE (TOP 8)</div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {tradeRows.map(([tr,c])=>(
+                      <span key={tr} style={{fontSize:11,background:"rgba(0,0,0,0.04)",borderRadius:20,padding:"3px 10px",color:"#444",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600}}>{tr} · {c}</span>
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          );
+        })()}
+      </div>
 
       {/* Entries logged today/week/month */}
       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.1em",marginBottom:8}}>ENTRIES LOGGED</div>
