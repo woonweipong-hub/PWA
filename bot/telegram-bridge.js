@@ -57,7 +57,9 @@ if (!TG_TOKEN || !PB_URL || !PB_EMAIL || !PB_PASSWORD) {
 
 // ── State ─────────────────────────────────────────────────────────
 let pbToken = '';
+let pbUserId = '';        // bridge user id (for resolving membership)
 let defaultProjectId = PROJECT_ID;
+let defaultCompanyId = '';  // resolved from members.companyId on startup
 let botInfo = null;
 let lastUpdateId = 0;
 
@@ -71,8 +73,31 @@ async function pbAuth() {
   if (!resp.ok) throw new Error('PocketBase auth failed: ' + (await resp.text()));
   const data = await resp.json();
   pbToken = data.token;
+  pbUserId = data.record.id;
   console.log(`[PB] Authenticated as ${data.record.name || data.record.email}`);
   return data;
+}
+
+// Resolve the bridge user's company. Caches on first success. Required so
+// every defect write carries companyId — RBAC tenant rules will reject
+// orphaned writes once tightened, and the server-side autofill hook can't
+// run before rule validation.
+async function getDefaultCompanyId() {
+  if (defaultCompanyId) return defaultCompanyId;
+  if (!pbUserId) return '';
+  try {
+    const filter = encodeURIComponent(`userId="${pbUserId}"`);
+    const resp = await pbApi(`/api/collections/members/records?perPage=1&filter=${filter}`);
+    if (resp.items && resp.items.length > 0) {
+      defaultCompanyId = resp.items[0].companyId;
+      console.log(`[PB] Bridge company: ${defaultCompanyId} (member role: ${resp.items[0].role})`);
+    } else {
+      console.warn('[PB] Bridge user has no members row — defects will be tenant-orphaned until membership is set up.');
+    }
+  } catch (e) {
+    console.warn('[PB] Could not resolve bridge company:', e.message);
+  }
+  return defaultCompanyId;
 }
 
 async function pbApi(path, opts = {}) {
@@ -383,6 +408,7 @@ async function handleMessage(msg) {
     const parsed = parseDefectText(text);
     try {
       const projectId = await getDefaultProject();
+      const companyId = await getDefaultCompanyId();
       await pbCreate('defects', {
         title: parsed.title,
         severity: parsed.severity,
@@ -393,6 +419,7 @@ async function handleMessage(msg) {
         entryType: 'Defect',
         loggedBy: from,
         loggedByRole: 'Field',
+        companyId,
         projectId,
         source: 'telegram',
       });
@@ -430,6 +457,7 @@ async function handleMessage(msg) {
       };
 
       const projectId = await getDefaultProject();
+      const companyId = await getDefaultCompanyId();
       const record = await pbCreate('defects', {
         title: result.title,
         severity: result.severity,
@@ -440,6 +468,7 @@ async function handleMessage(msg) {
         entryType: 'Defect',
         loggedBy: from,
         loggedByRole: 'Field',
+        companyId,
         projectId,
         photo: 'data:image/jpeg;base64,' + base64,
         source: 'telegram',
@@ -479,6 +508,7 @@ async function handleMessage(msg) {
       }
 
       const projectId = await getDefaultProject();
+      const companyId = await getDefaultCompanyId();
       await pbCreate('defects', {
         title: result.title || 'Voice entry',
         severity: result.severity || 'Major',
@@ -489,6 +519,7 @@ async function handleMessage(msg) {
         entryType: 'Defect',
         loggedBy: from,
         loggedByRole: 'Field',
+        companyId,
         projectId,
         source: 'telegram-voice',
       });
@@ -518,6 +549,7 @@ async function handleMessage(msg) {
 
     try {
       const projectId = await getDefaultProject();
+      const companyId = await getDefaultCompanyId();
       await pbCreate('defects', {
         title: result.title,
         severity: result.severity || 'Major',
@@ -528,6 +560,7 @@ async function handleMessage(msg) {
         entryType: 'Defect',
         loggedBy: from,
         loggedByRole: 'Field',
+        companyId,
         projectId,
         source: 'telegram',
       });
