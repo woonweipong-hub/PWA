@@ -5582,8 +5582,8 @@ function ComboField({label,value,onChange,options,placeholder,grouped,displayFn}
   if(!open)return(
     <div style={{marginBottom:16}}>
       <label style={lbl()}>{label}</label>
-      <div style={{display:"flex",gap:8,alignItems:"center"}}>
-        <input value={_d(value)} onChange={e=>onChange(e.target.value)} placeholder={placeholder||"Type or tap LIST..."} style={{...inp,flex:1}} readOnly={!!displayFn}/>
+      <div style={{display:"flex",gap:8,alignItems:"center",minWidth:0}}>
+        <input value={_d(value)} onChange={e=>onChange(e.target.value)} placeholder={placeholder||"Type or tap LIST..."} style={{...inp,flex:1,minWidth:0}} readOnly={!!displayFn}/>
         <MicBtn onResult={t=>onChange(t)} currentValue={value}/>
         <button onClick={()=>{setSearch("");setOpen(true);}} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"8px 10px",fontSize:11,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,flexShrink:0}}>{t("actions.list")}</button>
       </div>
@@ -13188,8 +13188,19 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
       <div style={{position:embedded?"relative":"sticky",top:0,background:"rgba(240,237,232,0.95)",backdropFilter:"blur(8px)",padding:"16px 16px 12px",display:"flex",alignItems:"center",gap:12,borderBottom:"1px solid rgba(0,0,0,0.08)",zIndex:10}}>
         <button onClick={onClose} style={{background:"rgba(0,0,0,0.08)",border:"none",borderRadius:20,padding:"7px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{embedded?"◀ BACK TO MAP":t("actions.back")}</button>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a",flex:1}}>ENTRY DETAIL</div>
+        {/* In edit mode, show SAVE + CANCEL prominently in the top bar so
+            users don't mistake exiting via BACK for "saved". The bottom-of-
+            panel save/cancel pair stays as the natural end-of-form action.
+            EDIT + DELETE are hidden while editing — both would be confusing
+            verbs to expose mid-edit. */}
+        {editing&&(
+          <>
+            <button onClick={saveEdits} disabled={editSaving} style={{background:"#ff6b00",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:editSaving?"wait":"pointer",opacity:editSaving?0.7:1,letterSpacing:"0.04em"}}>{editSaving?"…":"💾 "+t("actions.save")}</button>
+            <button onClick={()=>setEditing(false)} disabled={editSaving} style={{background:"rgba(0,0,0,0.07)",border:"none",borderRadius:20,padding:"7px 14px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")}</button>
+          </>
+        )}
         {canUpdate&&!editing&&<button onClick={()=>{setEditFields({title:defect.title||"",description:defect.description||"",severity:defect.severity||"Major",location:defect.location||"",assignee:defect.assignee||"",component:defect.component||"",issue:defect.issue||"",trade:defect.trade||"",entryType:defect.entryType||"Defect",workCategory:defect.workCategory||"Building Defects (Landed)",locationLevel:defect.locationLevel||"",locationZone:defect.locationZone||"",locationSubzone:defect.locationSubzone||"",locationGrid:defect.locationGrid||"",dueDate:defect.dueDate||"",duration:defect.duration||"",costImpact:defect.costImpact||"",costResponsible:defect.costResponsible||"",costAmount:defect.costAmount||"",costRemarks:defect.costRemarks||""});setEditing(true);}} style={{background:"rgba(255,107,0,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.edit")}</button>}
-        {canDelete&&<button onClick={deleteDefect} disabled={deleting} title="Delete — moves to Archive, retrievable within 7 days" style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{deleting?"...":t("actions.delete")}</button>}
+        {canDelete&&!editing&&<button onClick={deleteDefect} disabled={deleting} title="Delete — moves to Archive, retrievable within 7 days" style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{deleting?"...":t("actions.delete")}</button>}
       </div>
       <div style={{padding:16}}>
         {editing?(
