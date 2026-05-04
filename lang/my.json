@@ -439,6 +439,26 @@
     "resolved_by": "ဖြင့် ဖြေရှင်းခဲ့သည်။",
     "resolution_prompt": "ဆုံးဖြတ်ချက်မှတ်စု (ချန်လှပ်ထားနိုင်သည် — မည်သည့်အရာကို တည်ဆောက်ခဲ့သည်)။"
   },
+  "viewer": {
+    "evidence_pack": "သက်သေအထုပ်",
+    "total": "စုစုပေါင်း",
+    "critical": "အရေးပါတဲ့",
+    "open": "ဖွင့်ပါ။",
+    "overdue": "ရက်လွန်",
+    "what_severity": "ဘာလဲ - ပြင်းထန်မှု",
+    "what_status": "ဘာလဲ — အခြေအနေ",
+    "what_type": "ဘာလဲ - ရိုက်ပါ။",
+    "who_trade": "WHO - ကုန်သွယ်မှု",
+    "who_assignee": "WHO - တာဝန်ပေးသူ",
+    "when": "ဘယ်တော့လဲ",
+    "where_search": "ဘယ်မှာ - ရှာပါ။",
+    "how_source": "How — အရင်းအမြစ်",
+    "filter_loc_placeholder": "တည်နေရာစာသားကို စစ်ထုတ်ပါ။",
+    "photos": "ဓာတ်ပုံများ",
+    "no_photo": "ဓာတ်ပုံ မရှိပါ။",
+    "domain_fields": "DOMAIN နယ်ပယ်များ",
+    "free_badge": "အခမဲ့ · 23 ဘာသာစကားများ"
+  },
   "report": {
     "title": "သတင်းပို့တယ်။",
     "weekly_off_label": "+ အပတ်စဉ်အစီရင်ခံစာ",

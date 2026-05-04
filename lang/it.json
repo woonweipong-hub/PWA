@@ -439,6 +439,26 @@
     "resolved_by": "Risolto da",
     "resolution_prompt": "Nota sulla risoluzione (facoltativa: cosa è stato corretto, in quale build):"
   },
+  "viewer": {
+    "evidence_pack": "PACCHETTO PROVE",
+    "total": "TOTALE",
+    "critical": "CRITICA",
+    "open": "APRIRE",
+    "overdue": "IN RITARDO",
+    "what_severity": "COSA – Gravità",
+    "what_status": "COSA – Stato",
+    "what_type": "COSA – Tipo",
+    "who_trade": "Oms – Commercio",
+    "who_assignee": "OMS – Cessionario",
+    "when": "QUANDO",
+    "where_search": "DOVE – Cerca",
+    "how_source": "COME – Fonte",
+    "filter_loc_placeholder": "filtrare il testo della posizione",
+    "photos": "foto",
+    "no_photo": "NESSUNA FOTO",
+    "domain_fields": "CAMPI DI DOMINIO",
+    "free_badge": "GRATUITO · 23 LINGUE"
+  },
   "report": {
     "title": "Rapporto",
     "weekly_off_label": "+ REPORT SETTIMANALE",

@@ -439,6 +439,26 @@
     "resolved_by": "解決方法：",
     "resolution_prompt": "解決方案說明（可選 - 修復了什麼，在哪個版本中）："
   },
+  "viewer": {
+    "evidence_pack": "證據包",
+    "total": "全部的",
+    "critical": "批判的",
+    "open": "打開",
+    "overdue": "逾期",
+    "what_severity": "什麼——嚴重性",
+    "what_status": "什麼——狀態",
+    "what_type": "什麼——類型",
+    "who_trade": "世界衛生組織 — 貿易",
+    "who_assignee": "世界衛生組織 — 受讓人",
+    "when": "什麼時候",
+    "where_search": "哪裡 — 搜索",
+    "how_source": "如何——來源",
+    "filter_loc_placeholder": "過濾位置文字",
+    "photos": "照片",
+    "no_photo": "沒有照片",
+    "domain_fields": "領域",
+    "free_badge": "免費 · 23 種語言"
+  },
   "report": {
     "title": "報告",
     "weekly_off_label": "+ 每週報告",

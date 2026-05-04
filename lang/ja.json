@@ -439,6 +439,26 @@
     "resolved_by": "解決者",
     "resolution_prompt": "解決策メモ (オプション - どのビルドで何が修正されたか):"
   },
+  "viewer": {
+    "evidence_pack": "証拠パック",
+    "total": "合計",
+    "critical": "致命的",
+    "open": "開ける",
+    "overdue": "期限を過ぎました",
+    "what_severity": "内容 — 重大度",
+    "what_status": "何を — ステータス",
+    "what_type": "何を — タイプ",
+    "who_trade": "WHO — 貿易",
+    "who_assignee": "WHO — 譲受人",
+    "when": "いつ",
+    "where_search": "どこで — 検索",
+    "how_source": "どのように — ソース",
+    "filter_loc_placeholder": "場所のテキストをフィルタリングする",
+    "photos": "写真",
+    "no_photo": "写真なし",
+    "domain_fields": "ドメインフィールド",
+    "free_badge": "無料 · 23 言語"
+  },
   "report": {
     "title": "レポート",
     "weekly_off_label": "+ 週次レポート",

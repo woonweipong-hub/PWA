@@ -439,6 +439,26 @@
     "resolved_by": "Løst av",
     "resolution_prompt": "Oppløsningsnotat (valgfritt - hva ble løst, i hvilken versjon):"
   },
+  "viewer": {
+    "evidence_pack": "BEVISPAKKE",
+    "total": "TOTAL",
+    "critical": "KRITISK",
+    "open": "ÅPNE",
+    "overdue": "FORSINKET",
+    "what_severity": "HVA – alvorlighetsgrad",
+    "what_status": "HVA - Status",
+    "what_type": "HVA - Type",
+    "who_trade": "WHO - Handel",
+    "who_assignee": "WHO - Oppdragstaker",
+    "when": "NÅR",
+    "where_search": "HVOR - Søk",
+    "how_source": "HVORDAN - Kilde",
+    "filter_loc_placeholder": "filtrere stedstekst",
+    "photos": "bilder",
+    "no_photo": "INGEN FOTO",
+    "domain_fields": "DOMENE FELT",
+    "free_badge": "GRATIS · 23 SPRÅK"
+  },
   "report": {
     "title": "Rapportere",
     "weekly_off_label": "+ UKE-RAPPORT",

@@ -439,6 +439,26 @@
     "resolved_by": "แก้ไขโดย",
     "resolution_prompt": "บันทึกการแก้ไข (ไม่บังคับ — สิ่งที่ได้รับการแก้ไข ในรุ่นใด):"
   },
+  "viewer": {
+    "evidence_pack": "ชุดหลักฐาน",
+    "total": "ทั้งหมด",
+    "critical": "วิกฤต",
+    "open": "เปิด",
+    "overdue": "เกินกำหนด",
+    "what_severity": "อะไร — ความรุนแรง",
+    "what_status": "อะไร — สถานะ",
+    "what_type": "อะไร — ประเภท",
+    "who_trade": "WHO — การค้า",
+    "who_assignee": "WHO — ผู้ได้รับมอบหมาย",
+    "when": "เมื่อไร",
+    "where_search": "ที่ไหน — ค้นหา",
+    "how_source": "อย่างไร — ที่มา",
+    "filter_loc_placeholder": "กรองข้อความตำแหน่ง",
+    "photos": "ภาพถ่าย",
+    "no_photo": "ไม่มีรูปถ่าย",
+    "domain_fields": "ฟิลด์โดเมน",
+    "free_badge": "ฟรี · 23 ภาษา"
+  },
   "report": {
     "title": "รายงาน",
     "weekly_off_label": "+ รายงานประจำสัปดาห์",

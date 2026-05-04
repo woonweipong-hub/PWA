@@ -439,6 +439,26 @@
     "resolved_by": "Ratkaisi",
     "resolution_prompt": "Ratkaisuhuomautus (valinnainen – mitä korjattiin, missä versiossa):"
   },
+  "viewer": {
+    "evidence_pack": "TODISTUSPAKETTI",
+    "total": "KOKONAIS",
+    "critical": "KRIITTINEN",
+    "open": "AVATA",
+    "overdue": "MYÖHÄSSÄ",
+    "what_severity": "MITÄ — vakavuus",
+    "what_status": "MITÄ — Tila",
+    "what_type": "MITÄ - tyyppi",
+    "who_trade": "WHO - Kauppa",
+    "who_assignee": "WHO – valtuutettu",
+    "when": "KUN",
+    "where_search": "MISSÄ — Hae",
+    "how_source": "MITEN - Lähde",
+    "filter_loc_placeholder": "suodattimen sijaintiteksti",
+    "photos": "valokuvat",
+    "no_photo": "EI KUVAA",
+    "domain_fields": "DOMAIN KENTÄT",
+    "free_badge": "ILMAINEN · 23 KIELTÄ"
+  },
   "report": {
     "title": "Raportoi",
     "weekly_off_label": "+ VIIKKORAPORTTI",

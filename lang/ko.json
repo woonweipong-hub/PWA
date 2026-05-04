@@ -439,6 +439,26 @@
     "resolved_by": "해결자:",
     "resolution_prompt": "해결 참고 사항(선택 사항 - 수정된 내용, 빌드에서 수정됨):"
   },
+  "viewer": {
+    "evidence_pack": "증거 팩",
+    "total": "총",
+    "critical": "비판적인",
+    "open": "열려 있는",
+    "overdue": "연체",
+    "what_severity": "무엇 - 심각도",
+    "what_status": "무엇 - 상태",
+    "what_type": "무엇을 — 유형",
+    "who_trade": "WHO - 무역",
+    "who_assignee": "WHO - 양수인",
+    "when": "언제",
+    "where_search": "어디서 — 검색",
+    "how_source": "어떻게 — 출처",
+    "filter_loc_placeholder": "위치 텍스트 필터링",
+    "photos": "사진",
+    "no_photo": "사진 없음",
+    "domain_fields": "도메인 필드",
+    "free_badge": "무료 · 23개 언어"
+  },
   "report": {
     "title": "보고서",
     "weekly_off_label": "+ 주간 보고서",

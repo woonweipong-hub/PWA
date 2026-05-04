@@ -439,6 +439,26 @@
     "resolved_by": "Løst af",
     "resolution_prompt": "Opløsningsnotat (valgfrit - hvad blev rettet, i hvilken build):"
   },
+  "viewer": {
+    "evidence_pack": "BEVISPAKKE",
+    "total": "TOTAL",
+    "critical": "KRITISK",
+    "open": "ÅBEN",
+    "overdue": "FORSINKET",
+    "what_severity": "HVAD - Sværhedsgrad",
+    "what_status": "HVAD - Status",
+    "what_type": "HVAD - Type",
+    "who_trade": "WHO - Handel",
+    "who_assignee": "WHO — Befuldmægtiget",
+    "when": "NÅR",
+    "where_search": "HVOR — Søg",
+    "how_source": "HVORDAN - Kilde",
+    "filter_loc_placeholder": "filtrere lokationstekst",
+    "photos": "fotos",
+    "no_photo": "INGEN FOTO",
+    "domain_fields": "DOMÆNEFELTER",
+    "free_badge": "GRATIS · 23 SPROG"
+  },
   "report": {
     "title": "Rapport",
     "weekly_off_label": "+ UGERAPPORT",

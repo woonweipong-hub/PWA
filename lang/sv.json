@@ -439,6 +439,26 @@
     "resolved_by": "Löst av",
     "resolution_prompt": "Upplösningsanteckning (valfritt – vad fixades, i vilken version):"
   },
+  "viewer": {
+    "evidence_pack": "BEVISPACK",
+    "total": "TOTAL",
+    "critical": "KRITISK",
+    "open": "ÖPPNA",
+    "overdue": "FÖRSENAD",
+    "what_severity": "VAD - Allvarlighet",
+    "what_status": "VAD — Status",
+    "what_type": "VAD — Typ",
+    "who_trade": "WHO - Handel",
+    "who_assignee": "WHO — Representant",
+    "when": "NÄR",
+    "where_search": "VAR — Sök",
+    "how_source": "HUR — Källa",
+    "filter_loc_placeholder": "filtrera platstext",
+    "photos": "foton",
+    "no_photo": "INGET FOTO",
+    "domain_fields": "DOMÄNFÄLT",
+    "free_badge": "GRATIS · 23 SPRÅK"
+  },
   "report": {
     "title": "Rapportera",
     "weekly_off_label": "+ VECKORAPPORT",

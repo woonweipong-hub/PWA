@@ -439,6 +439,26 @@
     "resolved_by": "Gelöst von",
     "resolution_prompt": "Hinweis zur Lösung (optional – was wurde in welchem ​​Build behoben):"
   },
+  "viewer": {
+    "evidence_pack": "BEWEISPAKET",
+    "total": "GESAMT",
+    "critical": "KRITISCH",
+    "open": "OFFEN",
+    "overdue": "ÜBERFÄLLIG",
+    "what_severity": "WAS – Schweregrad",
+    "what_status": "WAS – Status",
+    "what_type": "WAS – Typ",
+    "who_trade": "WHO – Handel",
+    "who_assignee": "WER – Bevollmächtigter",
+    "when": "WANN",
+    "where_search": "WO – Suchen",
+    "how_source": "WIE – Quelle",
+    "filter_loc_placeholder": "Standorttext filtern",
+    "photos": "Fotos",
+    "no_photo": "KEIN FOTO",
+    "domain_fields": "DOMAIN-FELDER",
+    "free_badge": "KOSTENLOS · 23 SPRACHEN"
+  },
   "report": {
     "title": "Bericht",
     "weekly_off_label": "+ WÖCHENTLICHER BERICHT",

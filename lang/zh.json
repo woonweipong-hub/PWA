@@ -439,6 +439,26 @@
     "resolved_by": "解决方法：",
     "resolution_prompt": "解决方案说明（可选 - 修复了什么，在哪个版本中）："
   },
+  "viewer": {
+    "evidence_pack": "证据包",
+    "total": "全部的",
+    "critical": "批判的",
+    "open": "打开",
+    "overdue": "逾期",
+    "what_severity": "什么——严重性",
+    "what_status": "什么——状态",
+    "what_type": "什么——类型",
+    "who_trade": "世界卫生组织 — 贸易",
+    "who_assignee": "世界卫生组织 — 受让人",
+    "when": "什么时候",
+    "where_search": "哪里 — 搜索",
+    "how_source": "如何——来源",
+    "filter_loc_placeholder": "过滤位置文本",
+    "photos": "照片",
+    "no_photo": "没有照片",
+    "domain_fields": "领域",
+    "free_badge": "免费 · 23 种语言"
+  },
   "report": {
     "title": "报告",
     "weekly_off_label": "+ 每周报告",

@@ -439,6 +439,26 @@
     "resolved_by": "மூலம் தீர்க்கப்பட்டது",
     "resolution_prompt": "தீர்மானக் குறிப்பு (விரும்பினால் - எது சரி செய்யப்பட்டது, எந்த உருவாக்கத்தில்):"
   },
+  "viewer": {
+    "evidence_pack": "எவிடன்ஸ் பேக்",
+    "total": "மொத்தம்",
+    "critical": "முக்கியமான",
+    "open": "திறந்த",
+    "overdue": "காலாவதியானது",
+    "what_severity": "என்ன - தீவிரம்",
+    "what_status": "என்ன - நிலை",
+    "what_type": "என்ன - வகை",
+    "who_trade": "WHO - வர்த்தகம்",
+    "who_assignee": "WHO - ஒதுக்கப்பட்டவர்",
+    "when": "எப்போது",
+    "where_search": "எங்கே - தேடு",
+    "how_source": "எப்படி - ஆதாரம்",
+    "filter_loc_placeholder": "இருப்பிட உரையை வடிகட்டி",
+    "photos": "புகைப்படங்கள்",
+    "no_photo": "புகைப்படம் இல்லை",
+    "domain_fields": "டொமைன் புலங்கள்",
+    "free_badge": "இலவசம் · 23 மொழிகள்"
+  },
   "report": {
     "title": "அறிக்கை",
     "weekly_off_label": "+ வாராந்திர அறிக்கை",

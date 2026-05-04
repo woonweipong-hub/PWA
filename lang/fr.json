@@ -439,6 +439,26 @@
     "resolved_by": "Résolu par",
     "resolution_prompt": "Note de résolution (facultatif – ce qui a été corrigé, dans quelle version) :"
   },
+  "viewer": {
+    "evidence_pack": "KIT DE PREUVES",
+    "total": "TOTALE",
+    "critical": "CRITIQUE",
+    "open": "OUVRIR",
+    "overdue": "EN RETARD",
+    "what_severity": "QUOI — Gravité",
+    "what_status": "QUOI — Statut",
+    "what_type": "QUOI — Type",
+    "who_trade": "OMS — Commerce",
+    "who_assignee": "OMS — Cessionnaire",
+    "when": "QUAND",
+    "where_search": "OÙ — Rechercher",
+    "how_source": "COMMENT — Source",
+    "filter_loc_placeholder": "filtrer le texte de l'emplacement",
+    "photos": "des photos",
+    "no_photo": "PAS DE PHOTO",
+    "domain_fields": "CHAMPS DE DOMAINE",
+    "free_badge": "GRATUIT · 23 LANGUES"
+  },
   "report": {
     "title": "Rapport",
     "weekly_off_label": "+ RAPPORT HEBDOMADAIRE",

@@ -439,6 +439,26 @@
     "resolved_by": "দ্বারা সমাধান করা হয়েছে",
     "resolution_prompt": "রেজোলিউশন নোট (ঐচ্ছিক — কী স্থির করা হয়েছিল, কোন বিল্ডে):"
   },
+  "viewer": {
+    "evidence_pack": "প্রমাণ প্যাক",
+    "total": "মোট",
+    "critical": "ক্রিটিকাল",
+    "open": "খোলা",
+    "overdue": "ওভারডিউ",
+    "what_severity": "কি - তীব্রতা",
+    "what_status": "কি - স্থিতি",
+    "what_type": "কি - টাইপ করুন",
+    "who_trade": "WHO - বাণিজ্য",
+    "who_assignee": "WHO - নিয়োগকারী",
+    "when": "কখন",
+    "where_search": "কোথায় - অনুসন্ধান করুন",
+    "how_source": "কিভাবে - উৎস",
+    "filter_loc_placeholder": "ফিল্টার অবস্থান পাঠ্য",
+    "photos": "ফটো",
+    "no_photo": "কোনো ফটো নেই",
+    "domain_fields": "DOMAIN ক্ষেত্র",
+    "free_badge": "বিনামূল্যে · 23টি ভাষা"
+  },
   "report": {
     "title": "রিপোর্ট",
     "weekly_off_label": "+ সাপ্তাহিক প্রতিবেদন",

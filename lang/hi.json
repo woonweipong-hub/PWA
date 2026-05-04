@@ -439,6 +439,26 @@
     "resolved_by": "द्वारा हल किया गया",
     "resolution_prompt": "रिज़ॉल्यूशन नोट (वैकल्पिक - क्या तय किया गया था, किस बिल्ड में):"
   },
+  "viewer": {
+    "evidence_pack": "साक्ष्य पैक",
+    "total": "कुल",
+    "critical": "गंभीर",
+    "open": "खुला",
+    "overdue": "समय से कर",
+    "what_severity": "क्या - गंभीरता",
+    "what_status": "क्या - स्थिति",
+    "what_type": "क्या - टाइप करें",
+    "who_trade": "कौन - व्यापार",
+    "who_assignee": "डब्ल्यूएचओ - समनुदेशिती",
+    "when": "कब",
+    "where_search": "कहाँ - खोजें",
+    "how_source": "कैसे - स्रोत",
+    "filter_loc_placeholder": "स्थान पाठ फ़िल्टर करें",
+    "photos": "तस्वीरें",
+    "no_photo": "कोई फोटो नहीं",
+    "domain_fields": "डोमेन फ़ील्ड",
+    "free_badge": "मुफ़्त · 23 भाषाएँ"
+  },
   "report": {
     "title": "रिपोर्ट",
     "weekly_off_label": "+ साप्ताहिक रिपोर्ट",

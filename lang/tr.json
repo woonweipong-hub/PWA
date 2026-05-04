@@ -439,6 +439,26 @@
     "resolved_by": "Tarafından çözüldü",
     "resolution_prompt": "Çözüm notu (isteğe bağlı - ne düzeltildi, hangi derlemede):"
   },
+  "viewer": {
+    "evidence_pack": "KANIT PAKETİ",
+    "total": "TOPLAM",
+    "critical": "KRİTİK",
+    "open": "AÇIK",
+    "overdue": "GEÇMİŞ",
+    "what_severity": "NE — Şiddet",
+    "what_status": "NE — Durum",
+    "what_type": "NE — Tür",
+    "who_trade": "DSÖ — Ticaret",
+    "who_assignee": "DSÖ — Vekil",
+    "when": "NE ZAMAN",
+    "where_search": "NEREDE — Ara",
+    "how_source": "NASIL — Kaynak",
+    "filter_loc_placeholder": "konum metnini filtrele",
+    "photos": "fotoğraflar",
+    "no_photo": "FOTOĞRAF YOK",
+    "domain_fields": "ALAN ALANLARI",
+    "free_badge": "ÜCRETSİZ · 23 DİL"
+  },
   "report": {
     "title": "Rapor",
     "weekly_off_label": "+ HAFTALIK RAPOR",

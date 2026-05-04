@@ -439,6 +439,26 @@
     "resolved_by": "Diselesaikan oleh",
     "resolution_prompt": "Nota resolusi (pilihan — perkara yang telah ditetapkan, di mana binaan):"
   },
+  "viewer": {
+    "evidence_pack": "PEK BUKTI",
+    "total": "JUMLAH",
+    "critical": "KRITIKAL",
+    "open": "TERBUKA",
+    "overdue": "TERLAMBAT",
+    "what_severity": "APA - Keterukan",
+    "what_status": "APA — Status",
+    "what_type": "APA — Taip",
+    "who_trade": "WHO — Perdagangan",
+    "who_assignee": "WHO - Penerima tugas",
+    "when": "BILA",
+    "where_search": "DI MANA — Cari",
+    "how_source": "BAGAIMANA — Sumber",
+    "filter_loc_placeholder": "teks lokasi penapis",
+    "photos": "foto",
+    "no_photo": "TIADA FOTO",
+    "domain_fields": "BIDANG DOMAIN",
+    "free_badge": "PERCUMA · 23 BAHASA"
+  },
   "report": {
     "title": "Laporan",
     "weekly_off_label": "+ LAPORAN MINGGUAN",

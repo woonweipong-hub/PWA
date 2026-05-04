@@ -439,6 +439,26 @@
     "resolved_by": "Resolvido por",
     "resolution_prompt": "Nota de resolução (opcional — o que foi corrigido, em qual build):"
   },
+  "viewer": {
+    "evidence_pack": "PACOTE DE EVIDÊNCIAS",
+    "total": "TOTAL",
+    "critical": "CRÍTICA",
+    "open": "ABRIR",
+    "overdue": "ATRASADA",
+    "what_severity": "O QUE - Gravidade",
+    "what_status": "O QUE - Status",
+    "what_type": "O QUE - Tipo",
+    "who_trade": "OMS – Comércio",
+    "who_assignee": "QUEM – Cessionário",
+    "when": "QUANDO",
+    "where_search": "ONDE – Pesquisa",
+    "how_source": "COMO - Fonte",
+    "filter_loc_placeholder": "filtrar texto de localização",
+    "photos": "fotos",
+    "no_photo": "SEM FOTO",
+    "domain_fields": "CAMPOS DE DOMÍNIO",
+    "free_badge": "GRATUITO · 23 IDIOMAS"
+  },
   "report": {
     "title": "Relatório",
     "weekly_off_label": "+ RELATÓRIO SEMANAL",

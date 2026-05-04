@@ -439,6 +439,26 @@
     "resolved_by": "Đã giải quyết bởi",
     "resolution_prompt": "Ghi chú giải quyết (tùy chọn - những gì đã được sửa, trong bản dựng nào):"
   },
+  "viewer": {
+    "evidence_pack": "GÓI BẰNG CHỨNG",
+    "total": "TỔNG CỘNG",
+    "critical": "PHÊ BÌNH",
+    "open": "MỞ",
+    "overdue": "QUÁ HẠN",
+    "what_severity": "CÁI GÌ - Mức độ nghiêm trọng",
+    "what_status": "CÁI GÌ - Trạng thái",
+    "what_type": "CÁI GÌ - Loại",
+    "who_trade": "WHO — Thương mại",
+    "who_assignee": "WHO — Người được chuyển nhượng",
+    "when": "KHI",
+    "where_search": "Ở ĐÂU - Tìm kiếm",
+    "how_source": "CÁCH NÀO - Nguồn",
+    "filter_loc_placeholder": "lọc văn bản vị trí",
+    "photos": "những bức ảnh",
+    "no_photo": "KHÔNG CÓ ẢNH",
+    "domain_fields": "TRƯỜNG MIỀN",
+    "free_badge": "MIỄN PHÍ · 23 NGÔN NGỮ"
+  },
   "report": {
     "title": "Báo cáo",
     "weekly_off_label": "+ BÁO CÁO HÀNG TUẦN",
