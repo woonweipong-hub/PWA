@@ -265,6 +265,7 @@
     "manual_mode_desc": "Gehen Sie jeden Kontrollpunkt selbst ab. Am besten für Offline oder wenn KI nicht verfügbar ist.",
     "ai_waiting_photo": "Machen Sie ein klares Foto des Elements, das Sie prüfen.",
     "take_photo": "Machen Sie ein Foto",
+    "ask_ai_button": "ASK AI – PROZESSFOTO(S)",
     "ai_analyzing": "ANALYSE MIT KI...",
     "ai_analyzing_sub": "Normalerweise 2-3 Sekunden",
     "ai_failed": "AI konnte dieses Foto nicht analysieren",

@@ -265,6 +265,7 @@
     "manual_mode_desc": "Her kontrol noktasında kendiniz yürüyün. Çevrimdışı kullanım için veya AI kullanılamadığında en iyisi.",
     "ai_waiting_photo": "İncelediğiniz öğenin net bir fotoğrafını çekin.",
     "take_photo": "FOTOĞRAF ÇEK",
+    "ask_ai_button": "AI'YA ASK — FOTOĞRAFLARI İŞLEYİN",
     "ai_analyzing": "Yapay Zekayla Analiz Ediyorum...",
     "ai_analyzing_sub": "Genellikle 2-3 saniye",
     "ai_failed": "Yapay zeka bu fotoğrafı analiz edemedi",

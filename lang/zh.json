@@ -265,6 +265,7 @@
     "manual_mode_desc": "亲自走过每个检查站。 最适合离线或人工智能不可用时。",
     "ai_waiting_photo": "为您正在检查的元件拍一张清晰的照片。",
     "take_photo": "拍照",
+    "ask_ai_button": "ASK AI — 处理照片",
     "ai_analyzing": "用人工智能分析...",
     "ai_analyzing_sub": "通常 2-3 秒",
     "ai_failed": "AI 无法分析这张照片",

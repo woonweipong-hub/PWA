@@ -265,6 +265,7 @@
     "manual_mode_desc": "Camine por cada punto de control usted mismo. Lo mejor para sin conexión o cuando la IA no está disponible.",
     "ai_waiting_photo": "Tome una fotografía clara del elemento que está inspeccionando.",
     "take_photo": "TOMAR FOTO",
+    "ask_ai_button": "PREGUNTE A AI: FOTO(S) DEL PROCESO",
     "ai_analyzing": "ANALIZANDO CON IA...",
     "ai_analyzing_sub": "Normalmente 2-3 segundos",
     "ai_failed": "La IA no pudo analizar esta foto",

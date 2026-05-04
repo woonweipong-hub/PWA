@@ -265,6 +265,7 @@
     "manual_mode_desc": "Parcourez vous-même chaque point de contrôle. Idéal pour hors ligne ou lorsque l’IA n’est pas disponible.",
     "ai_waiting_photo": "Prenez une photo claire de l’élément que vous inspectez.",
     "take_photo": "PRENDRE UNE PHOTO",
+    "ask_ai_button": "DEMANDER À L'IA — TRAITER LA(LES) PHOTO(S)",
     "ai_analyzing": "ANALYSER AVEC L'IA...",
     "ai_analyzing_sub": "Généralement 2-3 secondes",
     "ai_failed": "L'IA n'a pas pu analyser cette photo",

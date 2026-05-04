@@ -265,6 +265,7 @@
     "manual_mode_desc": "Percorri tu stesso ogni checkpoint. Ideale per offline o quando l'intelligenza artificiale non è disponibile.",
     "ai_waiting_photo": "Scatta una foto nitida dell'elemento che stai ispezionando.",
     "take_photo": "SCATTARE UNA FOTO",
+    "ask_ai_button": "CHIEDI AI - FOTO DEL PROCESSO",
     "ai_analyzing": "ANALISI CON L'AI...",
     "ai_analyzing_sub": "In genere 2-3 secondi",
     "ai_failed": "L'intelligenza artificiale non è riuscita ad analizzare questa foto",

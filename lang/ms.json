@@ -265,6 +265,7 @@
     "manual_mode_desc": "Berjalan sendiri di setiap pusat pemeriksaan. Terbaik untuk luar talian atau apabila AI tidak tersedia.",
     "ai_waiting_photo": "Ambil gambar jelas elemen yang anda periksa.",
     "take_photo": "AMBIL FOTO",
+    "ask_ai_button": "ASK AI — PROSES FOTO(S)",
     "ai_analyzing": "MENGANALISIS DENGAN AI...",
     "ai_analyzing_sub": "Biasanya 2-3 saat",
     "ai_failed": "AI tidak dapat menganalisis foto ini",

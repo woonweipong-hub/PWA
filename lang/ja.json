@@ -265,6 +265,7 @@
     "manual_mode_desc": "各チェックポイントを自分で歩きます。 オフラインまたは AI が利用できない場合に最適です。",
     "ai_waiting_photo": "検査している要素の鮮明な写真を撮ります。",
     "take_photo": "写真を撮る",
+    "ask_ai_button": "AI に質問する — 写真を処理する",
     "ai_analyzing": "AIで分析中…",
     "ai_analyzing_sub": "通常 2 ～ 3 秒",
     "ai_failed": "AIはこの写真を分析できませんでした",

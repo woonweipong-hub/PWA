@@ -265,6 +265,7 @@
     "manual_mode_desc": "Tự mình đi từng trạm kiểm soát. Tốt nhất cho ngoại tuyến hoặc khi không có AI.",
     "ai_waiting_photo": "Chụp ảnh rõ ràng về yếu tố bạn đang kiểm tra.",
     "take_photo": "CHỤP ẢNH",
+    "ask_ai_button": "HỎI AI — (Các) ẢNH XỬ LÝ",
     "ai_analyzing": "PHÂN TÍCH BẰNG AI...",
     "ai_analyzing_sub": "Thông thường 2-3 giây",
     "ai_failed": "AI không thể phân tích bức ảnh này",

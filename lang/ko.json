@@ -265,6 +265,7 @@
     "manual_mode_desc": "각 검문소를 직접 걸어보세요. 오프라인이거나 AI를 사용할 수 없는 경우에 가장 적합합니다.",
     "ai_waiting_photo": "검사 중인 요소의 선명한 사진을 찍으십시오.",
     "take_photo": "사진 찍기",
+    "ask_ai_button": "AI에게 물어보세요 — 프로세스 사진",
     "ai_analyzing": "AI로 분석…",
     "ai_analyzing_sub": "일반적으로 2~3초",
     "ai_failed": "AI가 이 사진을 분석할 수 없습니다.",
