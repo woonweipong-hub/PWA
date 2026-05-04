@@ -5556,6 +5556,76 @@ function SignaturePad({initialDataUrl,onChange,height=120}){
   );
 }
 
+// ── Sign-off pad (handover signature — gap parity vs SnagR / Novade) ──
+// Canvas-backed signature capture for handover walkthroughs and per-
+// defect sign-off. Returns a JPEG-on-white dataURL. Caller stores it
+// wherever — comments JSON event, project field, etc.
+//
+// (Distinct from the existing SignaturePad component used in markup
+// flows — that one takes initialDataUrl/onChange and is a draggable
+// inline element, this one is a modal with name + role + sign + save.)
+function SignOffPad({title,onSave,onClose,defaultName}){
+  const canvasRef=useRef(null);
+  const drawingRef=useRef(false);
+  const[hasInk,setHasInk]=useState(false);
+  const[name,setName]=useState(defaultName||"");
+  const[role,setRole]=useState("");
+
+  useEffect(()=>{
+    const c=canvasRef.current;if(!c)return;
+    // High-DPI canvas — match physical pixels for crisp strokes
+    const dpr=window.devicePixelRatio||1;
+    const cw=c.clientWidth,ch=c.clientHeight;
+    c.width=cw*dpr;c.height=ch*dpr;
+    const ctx=c.getContext("2d");
+    ctx.scale(dpr,dpr);
+    ctx.fillStyle="#fff";ctx.fillRect(0,0,cw,ch);
+    ctx.strokeStyle="#1a1a1a";ctx.lineWidth=2.2;ctx.lineCap="round";ctx.lineJoin="round";
+  },[]);
+  const xy=(e)=>{
+    const c=canvasRef.current;const r=c.getBoundingClientRect();
+    const t=e.touches?e.touches[0]:e;
+    return{x:(t.clientX-r.left),y:(t.clientY-r.top)};
+  };
+  const start=(e)=>{e.preventDefault();drawingRef.current=true;const{x,y}=xy(e);const ctx=canvasRef.current.getContext("2d");ctx.beginPath();ctx.moveTo(x,y);};
+  const move=(e)=>{if(!drawingRef.current)return;e.preventDefault();const{x,y}=xy(e);const ctx=canvasRef.current.getContext("2d");ctx.lineTo(x,y);ctx.stroke();setHasInk(true);};
+  const end=()=>{drawingRef.current=false;};
+  const clear=()=>{
+    const c=canvasRef.current;const ctx=c.getContext("2d");
+    const dpr=window.devicePixelRatio||1;
+    ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle="#fff";ctx.fillRect(0,0,c.width,c.height);ctx.scale(dpr,dpr);
+    ctx.strokeStyle="#1a1a1a";ctx.lineWidth=2.2;ctx.lineCap="round";ctx.lineJoin="round";
+    setHasInk(false);
+  };
+  const save=()=>{
+    if(!hasInk||!name.trim())return;
+    const c=canvasRef.current;const dataUrl=c.toDataURL("image/jpeg",0.92);
+    onSave({dataUrl,name:name.trim(),role:role.trim(),at:Date.now()});
+  };
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.86)",zIndex:2200,display:"flex",alignItems:"center",justifyContent:"center",padding:14}}>
+      <div style={{background:"#fff",borderRadius:14,padding:18,maxWidth:560,width:"100%"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,letterSpacing:"0.04em"}}>{title||"🖊 SIGN-OFF"}</div>
+          <button onClick={onClose} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:20,padding:"6px 12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>✕</button>
+        </div>
+        <input value={name} onChange={e=>setName(e.target.value)} placeholder="Full name" style={{...inp,marginBottom:8}}/>
+        <input value={role} onChange={e=>setRole(e.target.value)} placeholder="Role / title (optional, e.g. Site QS)" style={{...inp,marginBottom:12}}/>
+        <div style={{position:"relative",border:"2px dashed rgba(0,0,0,0.2)",borderRadius:10,marginBottom:8,overflow:"hidden"}}>
+          <canvas ref={canvasRef} style={{display:"block",width:"100%",height:200,touchAction:"none",cursor:"crosshair",background:"#fff"}}
+            onMouseDown={start} onMouseMove={move} onMouseUp={end} onMouseLeave={end}
+            onTouchStart={start} onTouchMove={move} onTouchEnd={end}/>
+          {!hasInk&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none",fontSize:12,color:"rgba(0,0,0,0.3)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>SIGN HERE</div>}
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={clear} style={{padding:"10px 14px",borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>↺ CLEAR</button>
+          <button onClick={save} disabled={!hasInk||!name.trim()} style={{flex:1,padding:"10px 14px",borderRadius:10,border:"none",background:hasInk&&name.trim()?"#ff6b00":"rgba(0,0,0,0.1)",color:hasInk&&name.trim()?"#fff":"rgba(0,0,0,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:hasInk&&name.trim()?"pointer":"not-allowed",letterSpacing:"0.04em"}}>✓ SAVE SIGNATURE</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Webcam capture (laptop / desktop primary use case) ─────────────
 // Mobile already uses <input type="file" capture="environment"> which
 // pops the OS camera. On laptop that just opens the file picker, so
@@ -13133,6 +13203,7 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
   const[markupBA,setMarkupBA]=useState(null); // "before" | "after" | null
   // Full-screen photo viewer state
   const[viewerPhoto,setViewerPhoto]=useState(null);
+  const[showSignPad,setShowSignPad]=useState(false);
   // Pending verify status (stored when user picks photo before confirming)
   const[pendingVerifyStatus,setPendingVerifyStatus]=useState(null);
 
@@ -13424,7 +13495,31 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
                 <button key={s} onClick={()=>updateStatus(s)} style={{flex:1,padding:"10px 4px",borderRadius:10,border:`2px solid ${status===s?STATUS_COLOR[s]:"rgba(0,0,0,0.1)"}`,background:status===s?STATUS_COLOR[s]+"20":"#fff",color:status===s?STATUS_COLOR[s]:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{(STATUS_I18N[s]?t(STATUS_I18N[s]):s).toUpperCase()}</button>
               ))}
             </div>
+            {/* Handover sign-off — captures a signature with name + role and
+                pushes a kind:"signature" entry into comments so it shows on
+                the timeline + flows into PDF export. Useful at handover or
+                Verified status; available at any status because rectifications
+                often need partial sign-offs too. */}
+            <button onClick={()=>setShowSignPad(true)} style={{width:"100%",marginTop:10,padding:"10px 14px",background:"rgba(255,107,0,0.06)",border:"1.5px dashed rgba(255,107,0,0.4)",borderRadius:10,color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",letterSpacing:"0.06em",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+              <span style={{fontSize:14}}>🖊</span> ADD SIGN-OFF SIGNATURE
+            </button>
           </div>
+        )}
+        {showSignPad&&(
+          <SignOffPad
+            title={`🖊 SIGN OFF — ${defect.title||defect.defect_id||""}`}
+            defaultName={member?.name||""}
+            onSave={async sig=>{
+              setShowSignPad(false);
+              const sigEntry={kind:"signature",by:sig.name,role:sig.role||(member?.role||""),at:sig.at,photo:sig.dataUrl,text:sig.role?`Signed off as ${sig.role}`:"Signed off"};
+              const newComments=[...(latestRef.current.comments||[]),sigEntry];
+              try{
+                await DB.defects.update(defect.id,{comments:newComments});
+                latestRef.current={...latestRef.current,comments:newComments};
+                onUpdate({...latestRef.current});
+              }catch(e){alert("Failed to save signature: "+e.message);}
+            }}
+            onClose={()=>setShowSignPad(false)}/>
         )}
 
         {/* Verification photo preview + confirm panel */}
