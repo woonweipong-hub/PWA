@@ -8451,6 +8451,15 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
   const[aiReasons,setAiReasons]=useState({});     // {checkpointId: 'short reason'}
   const[aiOverrides,setAiOverrides]=useState({}); // user-flipped verdicts
   const[aiErrorMsg,setAiErrorMsg]=useState("");   // last AI failure message
+  // Multi-photo fan-out (gap #4 polish — analyse every selected photo,
+  // merge verdicts using fail > pass > uncertain precedence, attach the
+  // photo that flagged each fail as that fail's evidence). aiPhoto stays
+  // as the primary thumbnail in the existing UI; aiAdditionalPhotos
+  // carries the rest. aiPhotoSources maps checkpointId → photoIdx so
+  // saveAllFromAi knows which photo to attach per fail.
+  const[aiAdditionalPhotos,setAiAdditionalPhotos]=useState([]);
+  const[aiPhotoSources,setAiPhotoSources]=useState({});
+  const[aiAnalysisProgress,setAiAnalysisProgress]=useState({done:0,total:0});
   // Single-checkpoint AI helper during manual walk. Separate from aiPhoto so a
   // mid-walk AI check doesn't clobber an in-progress batch AI review.
   const[askAiBusy,setAskAiBusy]=useState(false);
@@ -8504,29 +8513,87 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
     setStep(isAiConfigured()?"modeChoice":"walk");
   };
   // ── AI mode handlers ──
+  // Multi-photo fan-out: read all selected files to dataURLs in parallel,
+  // dispatch each to analyzeCONQUASPhoto in parallel, then merge verdicts
+  // using worst-case-wins precedence (fail > pass > uncertain). Each fail
+  // remembers WHICH photo flagged it so saveAllFromAi attaches the right
+  // evidence. Single-photo flow (webcam capture, single gallery pick) is
+  // preserved transparently — the array path collapses to length=1.
   const aiHandlePhoto=(e)=>{
-    const f=(e.target.files||[])[0];
-    if(!f)return;
-    const r=new FileReader();
-    r.onload=()=>{setAiPhoto(r.result);setStep("aiAnalyzing");runAiAnalysis(r.result);};
-    r.readAsDataURL(f);
+    const files=Array.from(e.target.files||[]);
+    if(!files.length)return;
+    Promise.all(files.map(f=>new Promise((res,rej)=>{
+      const r=new FileReader();
+      r.onload=()=>res(r.result);
+      r.onerror=rej;
+      r.readAsDataURL(f);
+    }))).then(photos=>{
+      setAiPhoto(photos[0]);
+      setAiAdditionalPhotos(photos.slice(1));
+      setStep("aiAnalyzing");
+      runAiAnalysisMulti(photos);
+    }).catch(err=>{
+      console.error("photo read failed",err);
+      setAiErrorMsg("Could not read selected photo(s).");
+      setStep("aiError");
+    });
     if(aiFileRef.current)aiFileRef.current.value="";
   };
-  const runAiAnalysis=async(photoData)=>{
+  const runAiAnalysisMulti=async(photos)=>{
     setAiBusy(true);setAiErrorMsg("");
-    const res=await analyzeCONQUASPhoto(photoData,pickedComponent?pickedComponent.name:"",activeCheckpoints);
+    setAiAnalysisProgress({done:0,total:photos.length});
+    // Analyse every photo in parallel; track progress per completion so
+    // the user sees the count tick up rather than a frozen spinner.
+    const results=await Promise.all(photos.map(async(photo,i)=>{
+      const res=await analyzeCONQUASPhoto(photo,pickedComponent?pickedComponent.name:"",activeCheckpoints);
+      setAiAnalysisProgress(p=>({...p,done:p.done+1}));
+      return{photoIdx:i,res};
+    }));
     setAiBusy(false);
-    if(res.error){
-      setAiErrorMsg(res.detail||res.error);
+    // If every photo errored, surface the first error and bail.
+    const allErrored=results.every(({res})=>res&&res.error);
+    if(allErrored){
+      const first=results.find(({res})=>res&&res.error);
+      setAiErrorMsg(first?.res?.detail||first?.res?.error||"AI analysis failed for every photo.");
       setStep("aiError");
       return;
     }
-    setAiVerdicts(res.verdicts||{});
-    setAiReasons(res.reasons||{});
-    if(res.rawPhoto)setAiPhoto(res.rawPhoto); // keep compressed version for upload
+    // Merge verdicts: fail > pass > uncertain. When multiple photos agree,
+    // remember the photo with a non-empty reason so the user sees the
+    // most-actionable explanation. photoSources[cpId] = the photoIdx whose
+    // verdict won, used at save time to attach the right evidence photo.
+    const score=v=>v==="f"?3:v==="p"?2:v==="u"?1:0;
+    const merged={};const reasons={};const sources={};
+    activeCheckpoints.forEach(cp=>{
+      const cpId=cp.itemId;
+      let bestVerdict="u";let bestReason="";let bestPhotoIdx=0;let bestScore=0;
+      for(const{photoIdx,res} of results){
+        if(!res||res.error||!res.verdicts)continue;
+        const v=String(res.verdicts[cpId]||"").toLowerCase();
+        const reason=String((res.reasons||{})[cpId]||"").trim();
+        const s=score(v);
+        // Stricter wins; tie + new has reason wins; tie + neither has reason → first wins
+        if(s>bestScore||(s===bestScore&&reason&&!bestReason)){
+          bestVerdict=v||"u";bestReason=reason;bestPhotoIdx=photoIdx;bestScore=s;
+        }
+      }
+      if(bestVerdict)merged[cpId]=bestVerdict;
+      if(bestReason)reasons[cpId]=bestReason;
+      sources[cpId]=bestPhotoIdx;
+    });
+    // Compressed primary photo from the first successful result (mirror the
+    // legacy single-photo behaviour where rawPhoto was the canonical thumb).
+    const firstOk=results.find(({res})=>res&&!res.error&&res.rawPhoto);
+    if(firstOk&&firstOk.res.rawPhoto&&firstOk.photoIdx===0)setAiPhoto(firstOk.res.rawPhoto);
+    setAiVerdicts(merged);
+    setAiReasons(reasons);
+    setAiPhotoSources(sources);
     setAiOverrides({});
     setStep("aiReview");
   };
+  // Backward-compat single-photo entry point (kept for callers that
+  // explicitly pass one base64 string, e.g. retry flows).
+  const runAiAnalysis=(photoData)=>runAiAnalysisMulti([photoData]);
   const finalVerdict=(cpId)=>aiOverrides[cpId]||aiVerdicts[cpId]||"u";
   const cycleVerdict=(cpId)=>{
     // p → f → u → p
@@ -8544,12 +8611,16 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
   };
   const saveAllFromAi=async()=>{
     // Build the same shape as manual walk's `results` array, then reuse saveAll.
+    // Multi-photo: each fail gets the photo that flagged it (via aiPhotoSources)
+    // as primary evidence. Single-photo flow falls through cleanly — sources
+    // map empty → photoIdx 0 → aiPhoto.
+    const allPhotos=[aiPhoto,...aiAdditionalPhotos];
     const newResults=activeCheckpoints.map(cp=>{
       const v=finalVerdict(cp.itemId);
       if(v==="p")return{checkpointId:cp.itemId,status:"pass"};
-      // For fails, attach the single AI photo as evidence. Reason (if any)
-      // becomes the defect's note.
-      return{checkpointId:cp.itemId,status:"fail",photo:aiPhoto,note:aiReasons[cp.itemId]||""};
+      const idx=aiPhotoSources[cp.itemId]||0;
+      const photoForFail=allPhotos[idx]||aiPhoto;
+      return{checkpointId:cp.itemId,status:"fail",photo:photoForFail,note:aiReasons[cp.itemId]||""};
     });
     setResults(newResults);
     // Go to summary, which already has saveAll wired up.
@@ -9096,16 +9167,25 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
   }
 
   if(step==="aiAnalyzing"){
+    const isMulti=aiAnalysisProgress.total>1;
+    const progressLabel=isMulti?` · ${aiAnalysisProgress.done} / ${aiAnalysisProgress.total}`:"";
     return(
       <div style={overlay}>
         <div style={topBar}>
           <div style={{color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,letterSpacing:"0.08em"}}>{t("conquas.wizard_title")}</div>
         </div>
         <div style={{padding:"40px 16px",textAlign:"center"}}>
-          {aiPhoto&&<img src={aiPhoto} alt="" style={{width:"100%",maxWidth:240,maxHeight:240,objectFit:"cover",borderRadius:12,marginBottom:24}}/>}
+          {/* Show primary thumbnail; if multi, show count badge so the user
+              knows fan-out is in progress (single photo = silent backward-compat) */}
+          {aiPhoto&&(
+            <div style={{position:"relative",display:"inline-block",marginBottom:24}}>
+              <img src={aiPhoto} alt="" style={{width:"100%",maxWidth:240,maxHeight:240,objectFit:"cover",borderRadius:12,display:"block"}}/>
+              {isMulti&&<div style={{position:"absolute",top:6,right:6,background:"rgba(88,86,214,0.95)",color:"#fff",borderRadius:10,padding:"3px 8px",fontSize:11,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>+{aiAdditionalPhotos.length}</div>}
+            </div>
+          )}
           <Spin size={24}/>
-          <div style={{marginTop:16,fontSize:14,color:"rgba(0,0,0,0.7)",fontWeight:600,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>{t("conquas.ai_analyzing")}</div>
-          <div style={{marginTop:6,fontSize:11,color:"rgba(0,0,0,0.4)"}}>{t("conquas.ai_analyzing_sub")}</div>
+          <div style={{marginTop:16,fontSize:14,color:"rgba(0,0,0,0.7)",fontWeight:600,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>{t("conquas.ai_analyzing")}{progressLabel}</div>
+          <div style={{marginTop:6,fontSize:11,color:"rgba(0,0,0,0.4)"}}>{isMulti?`Analysing ${aiAnalysisProgress.total} photos in parallel — verdicts merge worst-case-wins (fail beats pass beats uncertain)`:t("conquas.ai_analyzing_sub")}</div>
         </div>
       </div>
     );
