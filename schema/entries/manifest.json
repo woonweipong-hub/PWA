@@ -107,6 +107,49 @@
         { "header": "Structure ID", "property": "structure_id", "required": false }
       ],
       "ai_prompt_hint": "Infrastructure Works mode: this is civil / linear-asset inspection, NOT building defect. Always emit asset_class from {Road / Drainage / Linkway / External Works / Bridge / Tunnel / Culvert / Manhole / Other}. Emit chainage_km only for linear assets when a km marker is visible. Emit structure_id only when a structure-ID plate is visible. Severity remains Critical/Major/Minor/Observation interpreted as structural/serviceability impact."
+    },
+    {
+      "id": "handover",
+      "workCategory": "Handover Walkthrough",
+      "uri": "https://siteshrimp.org/schema/entries/handover/v1.json",
+      "title": "Handover Walkthrough",
+      "version": "1.0.0",
+      "description": "Pre-handover snag list with unit / room context and a sign-off owner so each defect routes to the right party for rectification before keys handover.",
+      "extra_columns": [
+        { "header": "Unit No", "property": "unit_no", "required": false },
+        { "header": "Room", "property": "room", "required": false },
+        { "header": "Sign-off Owner", "property": "signoff_owner", "required": false }
+      ],
+      "ai_prompt_hint": "Handover Walkthrough mode: pre-keys snag list. When a unit number is visible (door plate, signage), emit unit_no. Identify room from {Living Room / Dining Room / Kitchen / Master Bedroom / Bedroom 2 / Master Bathroom / Common Bathroom / Toilet / Yard / Balcony / Store / Utility / Foyer / Hallway / Common Area / External} based on visible context. Severity is interpreted as buyer-impact: Critical = unit not handover-ready, Major = significant defect to fix before move-in, Minor = cosmetic, Observation = note-only. Emit signoff_owner from {Developer / Main Contractor / Sub-contractor / Interior Fit-out / M&E Contractor / Vendor / Owner / Other} based on which trade the defect falls under."
+    },
+    {
+      "id": "tnc",
+      "workCategory": "Test & Commission (T&C)",
+      "uri": "https://siteshrimp.org/schema/entries/tnc/v1.json",
+      "title": "Test & Commission (T&C)",
+      "version": "1.0.0",
+      "description": "Functional / pass-fail test outcomes with measured value, witnessing party, and re-test status. Drives contractual T&C records.",
+      "extra_columns": [
+        { "header": "Test Type", "property": "test_type", "required": true },
+        { "header": "Test Outcome", "property": "test_outcome", "required": false },
+        { "header": "Measured Value", "property": "measured_value", "required": false },
+        { "header": "Witnessed By", "property": "witnessed_by", "required": false }
+      ],
+      "ai_prompt_hint": "Test & Commission mode: this is functional-test reporting, NOT contractual-defect grading. Always emit test_type from {Water Tightness Test (WTT) / Water Pressure Test (WPT) / Water Flow Test (WFT) / Electrical Insulation Resistance / Earth Continuity / Polarity Test / ACMV Air Balancing / ACMV Water Balancing / Lift Functional Test / Fire Alarm Functional Test / Sprinkler Hydrostatic Test / Smoke Detector Test / Lighting Lux Level / Drainage Smoke Test / Other} based on visible context (test rig / instrument / setup). Severity reflects test outcome: Critical = fail with safety implication, Major = fail requiring re-test, Minor = marginal pass, Observation = monitoring note. Emit measured_value with units only if a clear reading is visible (e.g. pressure gauge, multimeter, lux meter)."
+    },
+    {
+      "id": "me",
+      "workCategory": "M&E Inspection",
+      "uri": "https://siteshrimp.org/schema/entries/me/v1.json",
+      "title": "M&E Inspection",
+      "version": "1.0.0",
+      "description": "Services-focused inspection — adds m&e service line, equipment / asset reference, and rating from nameplate. Routes defects to the right specialist trade.",
+      "extra_columns": [
+        { "header": "M&E Service", "property": "me_service", "required": true },
+        { "header": "Equipment ID", "property": "equipment_id", "required": false },
+        { "header": "Rating", "property": "rating", "required": false }
+      ],
+      "ai_prompt_hint": "M&E Inspection mode: services-focused trade inspection. Always emit me_service from {Plumbing / Sanitary / Electrical — LV / Electrical — ELV / Electrical — Lighting / ACMV — Air-side / ACMV — Water-side / Fire Protection / Fire Detection / Lift / Escalator / Gas / Standby Generator / BMS / Controls / Other} based on visible service / fitting / fixture. Equipment IDs only when a tag / nameplate is visible — copy verbatim, don't infer. Rating from nameplate (e.g. '50 A 415V', '5 hp', '300 m³/h') — copy verbatim. Severity reflects safety + serviceability impact specific to that service."
     }
   ]
 }

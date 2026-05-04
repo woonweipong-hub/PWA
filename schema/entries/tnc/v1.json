@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://siteshrimp.org/schema/entries/tnc/v1.json",
+  "title": "SiteShrimp Photo Entry — Test & Commission variant",
+  "version": "1.0.0",
+  "description": "Variant for Test & Commissioning (T&C) inspections — water-tightness, plumbing pressure, electrical, ACMV balancing, lift commissioning, fire-system functional tests. Defects in this frame are pass/fail outcomes against a documented test, with measured values and witnessed-by context for contractual record.",
+  "x-work-category": "Test & Commission (T&C)",
+  "x-extends": "https://siteshrimp.org/schema/entries/v1.json",
+  "allOf": [
+    { "$ref": "https://siteshrimp.org/schema/entries/v1.json" },
+    {
+      "type": "object",
+      "required": ["test_type"],
+      "properties": {
+        "test_type": {
+          "type": "string",
+          "x-csv-header": "Test Type",
+          "enum": ["Water Tightness Test (WTT)", "Water Pressure Test (WPT)", "Water Flow Test (WFT)", "Electrical Insulation Resistance", "Earth Continuity", "Polarity Test", "ACMV Air Balancing", "ACMV Water Balancing", "Lift Functional Test", "Fire Alarm Functional Test", "Sprinkler Hydrostatic Test", "Smoke Detector Test", "Lighting Lux Level", "Drainage Smoke Test", "Other"],
+          "description": "Specific T&C test being performed. Drives the test-procedure reference and acceptance criteria. Required."
+        },
+        "test_outcome": {
+          "type": "string",
+          "x-csv-header": "Test Outcome",
+          "enum": ["", "Pass", "Fail", "Re-test required", "Conditional pass"],
+          "description": "Pass/fail verdict for the test. Empty if the test is in progress."
+        },
+        "measured_value": {
+          "type": "string",
+          "x-csv-header": "Measured Value",
+          "description": "Test reading + unit (e.g. '0.5 MPa', '2.0 m³/s', '1500 lux'). Free text — units depend on test_type."
+        },
+        "witnessed_by": {
+          "type": "string",
+          "x-csv-header": "Witnessed By",
+          "description": "Authority / consultant / client representative who witnessed the test. Required for contractual T&C; empty for in-progress dry runs."
+        }
+      }
+    }
+  ]
+}

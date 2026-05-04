@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://siteshrimp.org/schema/entries/me/v1.json",
+  "title": "SiteShrimp Photo Entry — M&E Inspection variant",
+  "version": "1.0.0",
+  "description": "Variant for services-focused inspections of mechanical, electrical, plumbing, ACMV, fire systems. Adds the specific service line, equipment / asset reference, and rating context so defects can be routed to the right specialist trade and tracked against equipment maintenance history.",
+  "x-work-category": "M&E Inspection",
+  "x-extends": "https://siteshrimp.org/schema/entries/v1.json",
+  "allOf": [
+    { "$ref": "https://siteshrimp.org/schema/entries/v1.json" },
+    {
+      "type": "object",
+      "required": ["me_service"],
+      "properties": {
+        "me_service": {
+          "type": "string",
+          "x-csv-header": "M&E Service",
+          "enum": ["Plumbing", "Sanitary", "Electrical — LV", "Electrical — ELV", "Electrical — Lighting", "ACMV — Air-side", "ACMV — Water-side", "Fire Protection", "Fire Detection", "Lift / Escalator", "Gas", "Standby Generator", "BMS / Controls", "Other"],
+          "description": "M&E service line being inspected. Required — every M&E-frame photo has an identifiable service line. Drives routing to the right specialist sub-contractor."
+        },
+        "equipment_id": {
+          "type": "string",
+          "x-csv-header": "Equipment ID",
+          "description": "Tag / asset ID / nameplate identifier for the equipment in the photo (free text — owner conventions vary). Empty when the photo isn't tied to a single piece of tagged equipment."
+        },
+        "rating": {
+          "type": "string",
+          "x-csv-header": "Rating",
+          "description": "Equipment rating from nameplate, e.g. '50 A 415V', '5 hp', '300 m³/h'. Free text — units depend on me_service."
+        }
+      }
+    }
+  ]
+}

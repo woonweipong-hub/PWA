@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://siteshrimp.org/schema/entries/handover/v1.json",
+  "title": "SiteShrimp Photo Entry — Handover Walkthrough variant",
+  "version": "1.0.0",
+  "description": "Variant for pre-handover snag list inspections — the final walkthrough before keys are handed over. Tracks unit / room context for room-by-room reporting and a sign-off owner so each defect is routed to the responsible party (developer / contractor / sub-trade) for rectification before TOP / handover acceptance.",
+  "x-work-category": "Handover Walkthrough",
+  "x-extends": "https://siteshrimp.org/schema/entries/v1.json",
+  "allOf": [
+    { "$ref": "https://siteshrimp.org/schema/entries/v1.json" },
+    {
+      "type": "object",
+      "properties": {
+        "unit_no": {
+          "type": "string",
+          "x-csv-header": "Unit No",
+          "description": "Unit / apartment / townhouse number being walked through. Empty when the entry covers a common area."
+        },
+        "room": {
+          "type": "string",
+          "x-csv-header": "Room",
+          "enum": ["", "Living Room", "Dining Room", "Kitchen", "Master Bedroom", "Bedroom 2", "Bedroom 3", "Bedroom 4", "Master Bathroom", "Common Bathroom", "Powder Room", "Toilet", "Yard", "Balcony", "Store Room", "Utility Room", "Pantry", "Foyer", "Hallway", "Common Area", "External"],
+          "description": "Specific room within the unit. Drives room-by-room handover report grouping."
+        },
+        "signoff_owner": {
+          "type": "string",
+          "x-csv-header": "Sign-off Owner",
+          "enum": ["", "Developer", "Main Contractor", "Sub-contractor", "Interior Fit-out", "M&E Contractor", "Vendor", "Owner / Buyer", "Other"],
+          "description": "Party responsible for accepting / rectifying this defect at handover. Routes the snag to the right approver."
+        }
+      }
+    }
+  ]
+}

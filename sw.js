@@ -50,7 +50,10 @@ const ASSETS = [
   '/schema/entries/construction-site/v1.json',
   '/schema/entries/interior-works/v1.json',
   '/schema/entries/fm/v1.json',
-  '/schema/entries/infra/v1.json'
+  '/schema/entries/infra/v1.json',
+  '/schema/entries/handover/v1.json',
+  '/schema/entries/tnc/v1.json',
+  '/schema/entries/me/v1.json'
 ];
 
 // ── Install: pre-cache app shell, then warm Requirements Advisor corpus ──
