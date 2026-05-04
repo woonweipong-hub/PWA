@@ -1946,7 +1946,7 @@ const providerRef=useRef("");const[status,setStatus]=useState("loading");const[f
 // its location after capture (initial GPS drop is rarely pixel-perfect on
 // site). Save goes straight to PocketBase; parent's realtime subscription
 // reflects the new coords on next tick.
-const canEdit=member?.role&&member.role!=="viewer"&&member.role!=="Viewer";const saveDefectMove=async(d,newLat,newLng)=>{try{await DB.defects.update(d.id,{lat:newLat,lng:newLng});}catch(e){console.warn("pin move save failed",e);}};const unpinDefect=async d=>{if(!confirm("Remove this entry's map pin?\n(The entry itself will stay — only its GPS location is cleared.)"))return;try{await DB.defects.update(d.id,{lat:null,lng:null,mapZoom:null});}catch(e){alert("Failed to remove pin: "+e.message);}};// Parity with Tag on Map — every GPS-pinned entry in the project appears,
+const canEdit=member?.role&&member.role!=="Viewer";const saveDefectMove=async(d,newLat,newLng)=>{try{await DB.defects.update(d.id,{lat:newLat,lng:newLng});}catch(e){console.warn("pin move save failed",e);}};const unpinDefect=async d=>{if(!confirm("Remove this entry's map pin?\n(The entry itself will stay — only its GPS location is cleared.)"))return;try{await DB.defects.update(d.id,{lat:null,lng:null,mapZoom:null});}catch(e){alert("Failed to remove pin: "+e.message);}};// Parity with Tag on Map — every GPS-pinned entry in the project appears,
 // even if the Review filters/search would otherwise hide it. Out-of-filter
 // pins render desaturated so users can still see them for context.
 const filteredIds=useMemo(()=>new Set((defects||[]).map(d=>d.id)),[defects]);const src=(allDefects&&allDefects.length?allDefects:defects)||[];const pinned=src.map(d=>({d,c:parseDefectCoords(d),inFilter:filteredIds.has(d.id)})).filter(x=>x.c);const focused=pinned.find(x=>x.d.id===focusId);const showDetail=!!focused&&!selectMode;// Build a pin icon. Selected entries get a filled-severity look so batch
@@ -2399,7 +2399,7 @@ const[pendingPhoto,setPendingPhoto]=useState(null);// {dataUrl, aspect}
 // Inline bulk-update sheet state for selected pins — parity with REVIEW's
 // bulk UPDATE flow, scoped to the fields that matter for on-site triage.
 const[bulkSheetOpen,setBulkSheetOpen]=useState(false);const[bulkStatus,setBulkStatus]=useState("");const[bulkSeverity,setBulkSeverity]=useState("");const[bulkSaving,setBulkSaving]=useState(false);const markupDrawRef=useRef(null);// {tool, first:{lat,lng}, tempLayer, points[]}
-const markupLayersRef=useRef([]);const photoInputRef=useRef(null);const provider=providerRef.current;const canEdit=member?.role!=="viewer";// Extra map_pins rows — same defect pinned at additional locations.
+const markupLayersRef=useRef([]);const photoInputRef=useRef(null);const provider=providerRef.current;const canEdit=member?.role!=="Viewer";// Extra map_pins rows — same defect pinned at additional locations.
 // Subscribed per-project so visibility matches the defects filter.
 const[extraMapPins,setExtraMapPins]=useState([]);useEffect(()=>{const pid=currentProject?.id||"default";return DB.mapPins.subscribe(`projectId="${pid}"`,items=>setExtraMapPins(items||[]));},[currentProject?.id]);// Use the same parseDefectCoords as REVIEW > MAP for exact parity —
 // handles null lat/lng by falling back to parsing the description/location

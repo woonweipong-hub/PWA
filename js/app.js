@@ -11215,7 +11215,7 @@ function DefectsMapView({defects,allDefects,onView,onUpdate,selectMode,selectedI
   // its location after capture (initial GPS drop is rarely pixel-perfect on
   // site). Save goes straight to PocketBase; parent's realtime subscription
   // reflects the new coords on next tick.
-  const canEdit=member?.role&&member.role!=="viewer"&&member.role!=="Viewer";
+  const canEdit=member?.role&&member.role!=="Viewer";
   const saveDefectMove=async(d,newLat,newLng)=>{
     try{await DB.defects.update(d.id,{lat:newLat,lng:newLng});}catch(e){console.warn("pin move save failed",e);}
   };
@@ -15518,7 +15518,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
   const markupLayersRef=useRef([]);
   const photoInputRef=useRef(null);
   const provider=providerRef.current;
-  const canEdit=member?.role!=="viewer";
+  const canEdit=member?.role!=="Viewer";
 
   // Extra map_pins rows — same defect pinned at additional locations.
   // Subscribed per-project so visibility matches the defects filter.
