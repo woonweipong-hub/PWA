@@ -8269,6 +8269,7 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
   const fileRef=useRef();
   const aiFileRef=useRef();
   const askAiRef=useRef();
+  const[showWebcam,setShowWebcam]=useState(null); // null | "ai" | "askai"
 
   // Fetch ontology once on open. Edition pin comes from the current project.
   useEffect(()=>{
@@ -8762,9 +8763,14 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
                   the current checkpoint only, pre-fills pass / fail / reason.
                   Hidden when AI isn't configured so the UI doesn't dead-end. */}
               {isAiConfigured()&&(
-                <button onClick={()=>askAiRef.current&&askAiRef.current.click()} disabled={askAiBusy} style={{width:"100%",height:52,background:askAiBusy?"rgba(88,86,214,0.15)":"rgba(88,86,214,0.1)",border:"1.5px solid rgba(88,86,214,0.4)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em",cursor:askAiBusy?"wait":"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-                  {askAiBusy?<><Spin size={14}/><span>AI ANALYSING…</span></>:<><span>🤖</span><span>{t("conquas.ask_ai_button")}</span></>}
-                </button>
+                <>
+                  <button onClick={()=>askAiRef.current&&askAiRef.current.click()} disabled={askAiBusy} style={{width:"100%",height:52,background:askAiBusy?"rgba(88,86,214,0.15)":"rgba(88,86,214,0.1)",border:"1.5px solid rgba(88,86,214,0.4)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em",cursor:askAiBusy?"wait":"pointer",marginBottom:6,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                    {askAiBusy?<><Spin size={14}/><span>AI ANALYSING…</span></>:<><span>🤖</span><span>{t("conquas.ask_ai_button")}</span></>}
+                  </button>
+                  <button onClick={()=>setShowWebcam("askai")} disabled={askAiBusy} style={{width:"100%",padding:"8px 14px",background:"rgba(48,209,88,0.06)",border:"1.5px dashed rgba(48,209,88,0.4)",borderRadius:10,color:"#1a7a35",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.03em",marginBottom:10}}>
+                    <span style={{fontSize:13}}>📷</span> USE WEBCAM (LAPTOP)
+                  </button>
+                </>
               )}
               {askAiHint&&(
                 <div style={{background:"rgba(255,149,0,0.1)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:10,padding:"10px 12px",marginBottom:10,fontSize:12,color:"#b46700",lineHeight:1.4}}>
@@ -8784,6 +8790,9 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
           <input type="file" accept="image/*" capture="environment" multiple ref={fileRef} onChange={handleFailPhoto} style={{display:"none"}}/>
           <input type="file" accept="image/*" capture="environment" multiple ref={askAiRef} onChange={handleAskAiPhoto} style={{display:"none"}}/>
         </div>
+        {showWebcam==="askai"&&<WebcamCapture
+          onPhoto={f=>{setShowWebcam(null);handleAskAiPhoto({target:{files:[f]}});}}
+          onClose={()=>setShowWebcam(null)}/>}
       </div>
     );
   }
@@ -8855,9 +8864,14 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"#1a1a1a",marginBottom:6}}>{t("conquas.choose_mode")}</div>
           <div style={{fontSize:12,color:"rgba(0,0,0,0.5)",marginBottom:24}}>{t("conquas.choose_mode_desc")}</div>
           {/* AI mode card */}
-          <button onClick={()=>{setStep("aiCapture");setTimeout(()=>aiFileRef.current&&aiFileRef.current.click(),50);}} style={{width:"100%",padding:"18px 18px",background:"rgba(88,86,214,0.08)",border:"1.5px solid rgba(88,86,214,0.3)",borderRadius:14,cursor:"pointer",textAlign:"left",marginBottom:12,display:"block"}}>
+          <button onClick={()=>{setStep("aiCapture");setTimeout(()=>aiFileRef.current&&aiFileRef.current.click(),50);}} style={{width:"100%",padding:"18px 18px",background:"rgba(88,86,214,0.08)",border:"1.5px solid rgba(88,86,214,0.3)",borderRadius:14,cursor:"pointer",textAlign:"left",marginBottom:8,display:"block"}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#5856d6",letterSpacing:"0.04em",marginBottom:4}}>📷 {t("conquas.ai_mode_title")}</div>
             <div style={{fontSize:12,color:"rgba(0,0,0,0.65)",lineHeight:1.4}}>{t("conquas.ai_mode_desc")}</div>
+          </button>
+          {/* Webcam alternative for laptop/desktop — same AI flow, captured
+              via getUserMedia instead of file picker. */}
+          <button onClick={()=>setShowWebcam("ai")} style={{width:"100%",padding:"10px 14px",background:"rgba(48,209,88,0.06)",border:"1.5px dashed rgba(48,209,88,0.4)",borderRadius:12,color:"#1a7a35",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.03em",marginBottom:12}}>
+            <span style={{fontSize:16}}>📷</span> USE WEBCAM (LAPTOP / DESKTOP)
           </button>
           {/* Manual walk card */}
           <button onClick={()=>setStep("walk")} style={{width:"100%",padding:"18px 18px",background:"#fff",border:"1.5px solid rgba(0,0,0,0.12)",borderRadius:14,cursor:"pointer",textAlign:"left",display:"block"}}>
@@ -8866,6 +8880,9 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
           </button>
         </div>
         <input type="file" accept="image/*" capture="environment" multiple ref={aiFileRef} onChange={aiHandlePhoto} style={{display:"none"}}/>
+        {showWebcam==="ai"&&<WebcamCapture
+          onPhoto={f=>{setShowWebcam(null);const r=new FileReader();r.onload=()=>{setAiPhoto(r.result);setStep("aiAnalyzing");runAiAnalysis(r.result);};r.readAsDataURL(f);}}
+          onClose={()=>setShowWebcam(null)}/>}
       </div>
     );
   }
