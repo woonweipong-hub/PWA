@@ -13273,6 +13273,8 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
       latestRef.current=updated;
       onUpdate(updated);
       setEditing(false);
+      // Webhook fan-out (gap #8 v2) — generic edit, route via "updated"
+      fireWebhook("updated",updated,null);
       // Telegram alerts for high-signal changes — assignee handoff and
       // severity escalation (Major/Minor → Critical). Status changes already
       // fire elsewhere; due-date changes are too noisy for chat.
@@ -13353,6 +13355,10 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
       latestRef.current={...latestRef.current,...updateData};
       onUpdate({...latestRef.current});
       setVerifyPhoto(null);
+      // Webhook fan-out (gap #8 v2) — Verified gets its own event so
+      // automations can route differently (e.g. handover trigger), all
+      // other status changes share the "updated" channel.
+      fireWebhook(s==="Verified"?"verified":"updated",latestRef.current,null);
       if(tgCfg?.token&&tgCfg?.chatId){
         const e=STATUS_ICON[s]||"⚪";
         sendTelegram(tgCfg.token,tgCfg.chatId,`${e} <b>Status Updated</b>\n<b>${sanitize(defect.title)}</b>\nStatus: <b>${s}</b>\nBy: ${sanitize(member?.name)}`).catch(()=>{});
