@@ -445,6 +445,8 @@ const SAVED_COMPARISONS_KEY="saved_comparisons_v1";
 const DISPLAY_XLATE_KEY="display_xlate_v1";
 const DISPLAY_XLATE_PREF_KEY="display_xlate_pref_v1";
 const WEBHOOKS_KEY="webhooks_v1";
+const WEBHOOK_HISTORY_KEY="webhook_history_v1";
+const WEBHOOK_HISTORY_MAX=20;
 
 // ── Webhooks v1 (gap #8 v2 — client-side outbound notifications) ──
 // Fires HTTP POST to registered URLs when the PWA creates / updates /
@@ -480,15 +482,23 @@ async function fireWebhook(event, defect, currentProject){
       at: new Date().toISOString(),
     };
     cfg.urls.filter(u=>u&&u.trim()).forEach(url=>{
+      const cleanUrl=url.trim();
+      const recordHistory=(status,detail)=>{
+        try{
+          const hist=local.get(WEBHOOK_HISTORY_KEY)||[];
+          hist.unshift({at:Date.now(),event,url:cleanUrl,status,detail:detail||"",defect_id:payload.defect_id||""});
+          local.set(WEBHOOK_HISTORY_KEY,hist.slice(0,WEBHOOK_HISTORY_MAX));
+        }catch{}
+      };
       try{
-        fetch(url.trim(),{
+        fetch(cleanUrl,{
           method:"POST",
           headers:{"Content-Type":"application/json"},
           body:JSON.stringify(payload),
           // Keep it fire-and-forget. Don't block the user on webhook latency.
           keepalive:true,
-        }).catch(()=>{});
-      }catch{}
+        }).then(r=>recordHistory(r.ok?"ok":"http_"+r.status)).catch(e=>recordHistory("network",String(e?.message||e).slice(0,80)));
+      }catch(e){recordHistory("error",String(e?.message||e).slice(0,80));}
     });
   }catch(err){console.warn("webhook fire failed (ignored):",err);}
 }
@@ -16129,6 +16139,55 @@ function WebhooksSection(){
       <div style={{background:"rgba(255,149,0,0.06)",border:"1px solid rgba(255,149,0,0.2)",borderRadius:8,padding:"8px 10px",fontSize:10,color:"rgba(0,0,0,0.55)",marginTop:10,lineHeight:1.5}}>
         <b>v1 scope:</b> fires when <i>this app</i> saves a defect. Telegram bridge writes and direct REST API writes don't trigger webhooks yet — the server-side hook fan-out is shipping in v2 (post goja-safe redeploy of `pb_hooks/main.pb.js`).
       </div>
+      <WebhookHistory/>
+    </div>
+  );
+}
+
+// Recent webhook fires — most-recent-first, capped at WEBHOOK_HISTORY_MAX.
+// Useful for verifying that an automation actually receives the payload
+// (or for debugging when a Zapier zap silently stops working). Stored
+// per-device in localStorage; each device sees its own fire history.
+function WebhookHistory(){
+  const[hist,setHist]=useState(()=>local.get(WEBHOOK_HISTORY_KEY)||[]);
+  const[showAll,setShowAll]=useState(false);
+  const refresh=()=>setHist(local.get(WEBHOOK_HISTORY_KEY)||[]);
+  const clear=()=>{
+    if(!window.confirm("Clear webhook fire history?"))return;
+    local.del(WEBHOOK_HISTORY_KEY);
+    setHist([]);
+  };
+  if(!hist.length)return null;
+  const visible=showAll?hist:hist.slice(0,5);
+  const fmtTime=at=>{
+    const d=new Date(at);
+    const now=new Date();
+    const sameDay=d.toDateString()===now.toDateString();
+    return sameDay?d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):d.toLocaleString([],{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});
+  };
+  const statusColor=s=>s==="ok"?"#1a7a35":s==="network"||s==="error"?"#ff3b30":s.startsWith("http_4")||s.startsWith("http_5")?"#ff9500":"rgba(0,0,0,0.5)";
+  const statusLabel=s=>s==="ok"?"✓ OK":s==="network"?"✗ NETWORK":s==="error"?"✗ ERROR":s.startsWith("http_")?"✗ "+s.replace("http_","HTTP "):s.toUpperCase();
+  return(
+    <div style={{marginTop:14,padding:"10px 12px",background:"rgba(0,0,0,0.02)",border:"1px solid rgba(0,0,0,0.06)",borderRadius:10}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+        <span style={{fontSize:13}}>📜</span>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,color:"rgba(0,0,0,0.6)",letterSpacing:"0.06em"}}>RECENT FIRES — LAST {hist.length}</div>
+        <button onClick={refresh} title="Refresh from storage" style={{marginLeft:"auto",fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:6,border:"1px solid rgba(0,0,0,0.1)",background:"#fff",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.55)"}}>↻</button>
+        <button onClick={clear} title="Clear history" style={{fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:6,border:"1px solid rgba(255,59,48,0.2)",background:"rgba(255,59,48,0.04)",color:"#ff3b30",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>✕</button>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:4}}>
+        {visible.map((h,i)=>(
+          <div key={i} style={{display:"grid",gridTemplateColumns:"auto auto 1fr auto",gap:8,alignItems:"center",fontSize:10,padding:"4px 6px",background:"#fff",borderRadius:6,fontFamily:"'Barlow Condensed',sans-serif"}}>
+            <span style={{fontWeight:700,color:statusColor(h.status),letterSpacing:"0.04em"}}>{statusLabel(h.status)}</span>
+            <span style={{fontWeight:700,color:"#5856d6",fontSize:10}}>{h.event}</span>
+            <span title={h.url} style={{color:"rgba(0,0,0,0.5)",fontFamily:"'Courier New',monospace",fontSize:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{h.defect_id?h.defect_id+" · ":""}{h.url.replace(/^https?:\/\//,"").slice(0,40)}</span>
+            <span style={{color:"rgba(0,0,0,0.4)",fontSize:9,fontWeight:600}}>{fmtTime(h.at)}</span>
+          </div>
+        ))}
+      </div>
+      {hist.length>5&&(
+        <button onClick={()=>setShowAll(s=>!s)} style={{marginTop:6,width:"100%",padding:"4px 8px",borderRadius:6,border:"none",background:"transparent",color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,cursor:"pointer",letterSpacing:"0.04em"}}>{showAll?"COLLAPSE":`SHOW ALL ${hist.length}`}</button>
+      )}
     </div>
   );
 }
