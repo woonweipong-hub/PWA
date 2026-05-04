@@ -444,6 +444,54 @@ const DRAWING_MARKUP_KEY="drawing_markup_v1";
 const SAVED_COMPARISONS_KEY="saved_comparisons_v1";
 const DISPLAY_XLATE_KEY="display_xlate_v1";
 const DISPLAY_XLATE_PREF_KEY="display_xlate_pref_v1";
+const WEBHOOKS_KEY="webhooks_v1";
+
+// ── Webhooks v1 (gap #8 v2 — client-side outbound notifications) ──
+// Fires HTTP POST to registered URLs when the PWA creates / updates /
+// verifies a defect. Server-side fan-out (catching direct REST writes
+// from the Telegram bridge / future public API) is a follow-up that
+// needs goja-safe `onRecordAfter*Success` hook deployment.
+//
+// Payload shape (kept small + stable):
+//   { event, project_id, defect_id, id, title, severity, status,
+//     trade, assignee, assignee_org, location, url, at }
+//
+// Errors are swallowed — webhook failures must never block a save.
+async function fireWebhook(event, defect, currentProject){
+  try{
+    const cfg=local.get(WEBHOOKS_KEY);
+    if(!cfg||!Array.isArray(cfg.urls)||!cfg.urls.length)return;
+    const enabledEvents=cfg.events||{created:true,updated:true,verified:true};
+    if(!enabledEvents[event])return;
+    const payload={
+      event,
+      project_id: currentProject?.id||defect?.projectId||"",
+      project_name: currentProject?.name||defect?.projectName||"",
+      defect_id: defect?.defect_id||"",
+      id: defect?.id||"",
+      title: defect?.title||"",
+      severity: defect?.severity||"",
+      status: defect?.status||"",
+      trade: defect?.trade||"",
+      assignee: defect?.assignee||"",
+      assignee_org: defect?.assignee_org||"",
+      location: defect?.location||"",
+      url: typeof window!=="undefined"?window.location.origin:"",
+      at: new Date().toISOString(),
+    };
+    cfg.urls.filter(u=>u&&u.trim()).forEach(url=>{
+      try{
+        fetch(url.trim(),{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify(payload),
+          // Keep it fire-and-forget. Don't block the user on webhook latency.
+          keepalive:true,
+        }).catch(()=>{});
+      }catch{}
+    });
+  }catch(err){console.warn("webhook fire failed (ignored):",err);}
+}
 // Display-language translation cache — survives reloads so browsing the
 // Review list in a non-English UI doesn't re-hit the AI for entries
 // already translated. Keyed by `${defectId}__${targetLang}__${updatedEpoch}`
@@ -15796,6 +15844,80 @@ function ApiAccessPanel({onClose,companyId}){
         <div style={{background:"rgba(255,149,0,0.08)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:10,padding:"10px 12px",fontSize:11,color:"#a85d00",marginTop:6,lineHeight:1.5}}>
           <b>{t("settings.api_more_label")}:</b> {t("settings.api_more")} <a href="https://pocketbase.io/docs/api-records/" target="_blank" rel="noopener noreferrer" style={{color:"#a85d00",textDecoration:"underline"}}>pocketbase.io/docs/api-records</a>
         </div>
+
+        {/* ── Webhooks (outbound) — gap #8 v2 — client-side fan-out ── */}
+        <WebhooksSection/>
+      </div>
+    </div>
+  );
+}
+
+// ── Webhooks Settings (outbound HTTP POST on PWA defect events) ─────
+function WebhooksSection(){
+  const cfg=local.get(WEBHOOKS_KEY)||{urls:[""],events:{created:true,updated:true,verified:true}};
+  const[urls,setUrls]=useState(cfg.urls&&cfg.urls.length?cfg.urls:[""]);
+  const[evCreated,setEvCreated]=useState(cfg.events?.created!==false);
+  const[evUpdated,setEvUpdated]=useState(cfg.events?.updated!==false);
+  const[evVerified,setEvVerified]=useState(cfg.events?.verified!==false);
+  const[saved,setSaved]=useState(false);
+  const[testing,setTesting]=useState(false);
+  const[testRes,setTestRes]=useState(null);
+  const save=()=>{
+    const clean=urls.map(u=>u.trim()).filter(Boolean);
+    local.set(WEBHOOKS_KEY,{urls:clean,events:{created:evCreated,updated:evUpdated,verified:evVerified}});
+    setSaved(true);setTimeout(()=>setSaved(false),2000);
+  };
+  const testFire=async()=>{
+    setTesting(true);setTestRes(null);
+    const sample={event:"test.ping",project_id:"test-project",defect_id:"DEF-TEST",id:"test-id",title:"Test webhook from SiteShrimp",severity:"Observation",status:"Open",trade:"General",assignee:"Test User",assignee_org:"",location:"Test location",url:typeof window!=="undefined"?window.location.origin:"",at:new Date().toISOString()};
+    const targets=urls.map(u=>u.trim()).filter(Boolean);
+    if(!targets.length){setTestRes("no_url");setTesting(false);return;}
+    let ok=0,fail=0;
+    await Promise.all(targets.map(async u=>{
+      try{
+        const r=await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(sample)});
+        if(r.ok)ok++;else fail++;
+      }catch{fail++;}
+    }));
+    setTestRes(fail===0?"ok":ok===0?"fail":"partial");
+    setTesting(false);
+  };
+  return(
+    <div style={{background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:12,padding:14,marginTop:14}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+        <span style={{fontSize:18}}>🔔</span>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a1a1a",letterSpacing:"0.04em"}}>WEBHOOKS — OUTBOUND</div>
+      </div>
+      <div style={{fontSize:12,color:"rgba(0,0,0,0.55)",marginBottom:12,lineHeight:1.5}}>
+        Fire HTTP POST to your URL when this app creates / updates / verifies a defect. Send to Zapier, Make, Slack via Incoming Webhooks, your CRM, or any internal endpoint. Payload is a small JSON: <code style={{fontFamily:"'Courier New',monospace",fontSize:11,background:"rgba(0,0,0,0.05)",padding:"1px 5px",borderRadius:3}}>event, project_id, defect_id, id, title, severity, status, trade, assignee, assignee_org, location, url, at</code>.
+      </div>
+      <label style={{display:"block",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.5)",letterSpacing:"0.12em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>WEBHOOK URLS</label>
+      {urls.map((u,i)=>(
+        <div key={i} style={{display:"flex",gap:6,marginBottom:6}}>
+          <input value={u} onChange={e=>setUrls(prev=>prev.map((x,j)=>j===i?e.target.value:x))} placeholder="https://hooks.your-service.example.com/abc123" style={{...inp,flex:1,fontFamily:"'Courier New',monospace",fontSize:12}}/>
+          {urls.length>1&&<button onClick={()=>setUrls(prev=>prev.filter((_,j)=>j!==i))} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:8,padding:"0 12px",color:"#ff3b30",cursor:"pointer",fontSize:16}}>×</button>}
+        </div>
+      ))}
+      <button onClick={()=>setUrls(prev=>[...prev,""])} style={{background:"rgba(255,107,0,0.06)",border:"1.5px dashed rgba(255,107,0,0.3)",borderRadius:10,padding:"8px",width:"100%",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",marginBottom:12,letterSpacing:"0.04em"}}>+ ADD WEBHOOK URL</button>
+      <label style={{display:"block",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.5)",letterSpacing:"0.12em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>EVENTS TO SEND</label>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
+        {[["created",evCreated,setEvCreated,"defect.created"],["updated",evUpdated,setEvUpdated,"defect.updated"],["verified",evVerified,setEvVerified,"defect.verified"]].map(([key,val,setter,label])=>(
+          <label key={key} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",background:val?"rgba(48,209,88,0.08)":"rgba(0,0,0,0.04)",border:`1px solid ${val?"rgba(48,209,88,0.3)":"rgba(0,0,0,0.1)"}`,borderRadius:8,cursor:"pointer",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:val?"#1a7a35":"rgba(0,0,0,0.5)"}}>
+            <input type="checkbox" checked={val} onChange={e=>setter(e.target.checked)} style={{width:14,height:14,accentColor:"#30d158",cursor:"pointer"}}/>
+            {label}
+          </label>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={save} style={{flex:1,padding:"10px 14px",borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer"}}>{saved?"✓ SAVED":"SAVE"}</button>
+        <button onClick={testFire} disabled={testing||!urls.some(u=>u.trim())} style={{padding:"10px 14px",borderRadius:10,border:"1px solid rgba(0,0,0,0.14)",background:"#fff",color:"rgba(0,0,0,0.7)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:testing||!urls.some(u=>u.trim())?"not-allowed":"pointer"}}>{testing?"…":"🧪 TEST PING"}</button>
+      </div>
+      {testRes==="ok"&&<div style={{fontSize:11,color:"#30d158",marginTop:8,fontWeight:700}}>✓ Test ping accepted by all URLs</div>}
+      {testRes==="fail"&&<div style={{fontSize:11,color:"#ff3b30",marginTop:8,fontWeight:700}}>✗ All URLs failed — check the URL or the receiver</div>}
+      {testRes==="partial"&&<div style={{fontSize:11,color:"#ff9500",marginTop:8,fontWeight:700}}>⚠ Some URLs failed</div>}
+      {testRes==="no_url"&&<div style={{fontSize:11,color:"rgba(0,0,0,0.5)",marginTop:8}}>Add at least one URL above first</div>}
+      <div style={{background:"rgba(255,149,0,0.06)",border:"1px solid rgba(255,149,0,0.2)",borderRadius:8,padding:"8px 10px",fontSize:10,color:"rgba(0,0,0,0.55)",marginTop:10,lineHeight:1.5}}>
+        <b>v1 scope:</b> fires when <i>this app</i> saves a defect. Telegram bridge writes and direct REST API writes don't trigger webhooks yet — the server-side hook fan-out is shipping in v2 (post goja-safe redeploy of `pb_hooks/main.pb.js`).
       </div>
     </div>
   );
@@ -23475,6 +23597,8 @@ function App(){
         const normalised={...saved,lat:_n(saved.lat),lng:_n(saved.lng),mapZoom:_n(saved.mapZoom)};
         setDefects(prev=>prev.some(d=>d.id===saved.id)?prev:[...prev,normalised]);
       }
+      // Webhook fan-out (fire-and-forget) \u2014 gap #8 v2
+      fireWebhook("created",saved||data,currentProject);
       // Telegram notification (fire-and-forget)
       try{
         const cfg=local.get(TG_KEY);
