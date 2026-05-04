@@ -1,24 +1,70 @@
 #!/usr/bin/env node
-// Generate the proposed RBAC rules for every collection and diff against
-// the current rules in deploy/pocketbase/pb_schema.json. Prints a per-
-// collection plan. Does NOT mutate live PB — apply path is gated behind
-// review of the printed plan + a future --apply-rbac flag.
+// Generate the proposed RBAC rules per collection and diff against the
+// current rules in deploy/pocketbase/pb_schema.json. Phased apply path:
 //
-// Run:
-//   node tools/migrate-rbac.js
+//   Phase 1 (lowest blast — applied first): ontology_*, counters,
+//           location_presets, component_presets, map_markups
+//   Phase 2 (auth-adjacent): companies, members, invites
+//   Phase 3 (mid-traffic):   projects, drawings
+//   Phase 4 (hot path):      defects, activity, conquas_observations,
+//                            pins, map_pins, settings
 //
-// Pre-deploy checklist (must be done before any RBAC apply):
+// Run modes:
+//   node tools/migrate-rbac.js                                  # local dry-run
+//   PB_URL=… PB_EMAIL=… PB_PASSWORD=… node tools/migrate-rbac.js  # live dry-run
+//   …                                            --apply-rbac --phase=1
+//
+// Pre-deploy checklist (before any RBAC apply touching the hot path):
 //   1. tools/migrate-schema.js --apply    — fix the schema drift first
 //   2. Deploy main.pb.js to VM            — companyId autofill must be live
 //   3. Backfill any defects/etc with NULL companyId (one-off SQL)
 //   4. Verify Telegram-bridge user role >= Inspector
 //   5. Verify all members.role values are in canonical Title Case
-//      (we already normalised the code; data check is owed)
 
 const fs = require("fs");
 const path = require("path");
 
 const SCHEMA = path.join(__dirname, "..", "deploy", "pocketbase", "pb_schema.json");
+
+const PB_URL = process.env.PB_URL;
+const PB_EMAIL = process.env.PB_EMAIL;
+const PB_PASSWORD = process.env.PB_PASSWORD;
+const APPLY = process.argv.includes("--apply-rbac");
+const PHASE = (() => {
+  const a = process.argv.find((x) => x.startsWith("--phase="));
+  return a ? parseInt(a.split("=")[1], 10) : null;
+})();
+const HAS_CREDS = !!(PB_URL && PB_EMAIL && PB_PASSWORD);
+
+if (APPLY && !HAS_CREDS) {
+  console.error("--apply-rbac requires PB_URL, PB_EMAIL, PB_PASSWORD env vars.");
+  process.exit(1);
+}
+if (APPLY && !PHASE) {
+  console.error("--apply-rbac requires --phase=N (1, 2, 3, or 4).");
+  process.exit(1);
+}
+
+// Per-phase collection list. Phase 1 is the lowest-blast set: collections
+// that have either no user data (location_presets/component_presets/
+// map_markups created 2026-05-04, empty), or are reference data already
+// locked at the create/update/delete level (ontology_*, counters).
+const PHASE_COLLECTIONS = {
+  1: ["ontology_components", "ontology_defect_types", "ontology_checkpoints", "ontology_trades", "counters", "location_presets", "component_presets", "map_markups"],
+  2: ["companies", "members", "invites"],
+  3: ["projects", "drawings"],
+  4: ["defects", "activity", "conquas_observations", "pins", "map_pins", "settings"],
+};
+
+async function api(p, opts = {}) {
+  const url = PB_URL.replace(/\/$/, "") + p;
+  const res = await fetch(url, { ...opts, headers: { "Content-Type": "application/json", ...(opts.headers || {}) } });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`${opts.method || "GET"} ${p} → ${res.status} ${body}`);
+  }
+  return res.json();
+}
 
 // ── Helpers for rule expressions ────────────────────────────────────────
 // PocketBase v0.23+ filter syntax. `?=` is "any" (returns true if at least
@@ -233,7 +279,65 @@ const PLAN = {
   },
 };
 
+// ── Apply path (when --apply-rbac --phase=N) ────────────────────────────
+async function applyPhase(phase) {
+  console.log(`\n=== APPLY MODE — Phase ${phase} ===`);
+  const auth = await api("/api/collections/_superusers/auth-with-password", {
+    method: "POST",
+    body: JSON.stringify({ identity: PB_EMAIL, password: PB_PASSWORD }),
+  });
+  const headers = { Authorization: "Bearer " + auth.token };
+  console.log("Authenticated as " + auth.record.email);
+
+  const targets = PHASE_COLLECTIONS[phase];
+  if (!targets) throw new Error("Unknown phase: " + phase);
+
+  let applied = 0;
+  let skipped = 0;
+  for (const name of targets) {
+    const proposed = PLAN[name];
+    if (!proposed) {
+      console.log(`  ! ${name}: no plan defined — skipping`);
+      skipped++;
+      continue;
+    }
+    if (proposed.needsFollowup) {
+      console.log(`  ! ${name}: needs follow-up before apply — skipping`);
+      skipped++;
+      continue;
+    }
+    const live = await api("/api/collections/" + name, { headers });
+    const patch = {
+      listRule: proposed.listRule,
+      viewRule: proposed.viewRule,
+      createRule: proposed.createRule,
+      updateRule: proposed.updateRule,
+      deleteRule: proposed.deleteRule,
+    };
+    const same = ["listRule", "viewRule", "createRule", "updateRule", "deleteRule"].every((f) => live[f] === patch[f]);
+    if (same) {
+      console.log(`  = ${name}: rules already match — skipping`);
+      skipped++;
+      continue;
+    }
+    await api("/api/collections/" + live.id, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(patch),
+    });
+    console.log(`  ✓ ${name}: rules updated`);
+    applied++;
+  }
+  console.log(`\n=== Phase ${phase} done: ${applied} applied, ${skipped} skipped ===`);
+}
+
+// ── Main flow ────────────────────────────────────────────────────────────
+if (APPLY) {
+  applyPhase(PHASE).catch((e) => { console.error("FAIL:", e.message); process.exit(1); });
+} else dryRunDiff();
+
 // ── Diff against current schema ─────────────────────────────────────────
+function dryRunDiff() {
 const all = JSON.parse(fs.readFileSync(SCHEMA, "utf8"));
 const followups = [];
 let changedCount = 0;
@@ -285,7 +389,8 @@ console.log(`Collections with rule changes: ${changedCount}`);
 console.log(`Collections unchanged:         ${unchangedCount}`);
 console.log(`Collections needing follow-up: ${followups.length}${followups.length ? " (" + followups.join(", ") + ")" : ""}`);
 console.log("");
-console.log("This is a plan only — nothing has been applied. Once reviewed,");
-console.log("an --apply-rbac path can be added that PATCHes each collection.");
+console.log("This is a plan only — nothing has been applied.");
+console.log("To apply: PB_URL=… PB_EMAIL=… PB_PASSWORD=… node tools/migrate-rbac.js --apply-rbac --phase=N");
 console.log("");
 console.log("Pre-apply checklist (see header comment).");
+} // end dryRunDiff
