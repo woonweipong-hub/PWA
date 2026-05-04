@@ -8692,8 +8692,8 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
               gallery and files, so users can upload existing photos too.
               Phase 3.8C — fail-photo input is `multiple` so users can pick
               several gallery images at once (camera mode still captures one). */}
-          <input type="file" accept="image/*" multiple ref={fileRef} onChange={handleFailPhoto} style={{display:"none"}}/>
-          <input type="file" accept="image/*" ref={askAiRef} onChange={handleAskAiPhoto} style={{display:"none"}}/>
+          <input type="file" accept="image/*" capture="environment" multiple ref={fileRef} onChange={handleFailPhoto} style={{display:"none"}}/>
+          <input type="file" accept="image/*" capture="environment" ref={askAiRef} onChange={handleAskAiPhoto} style={{display:"none"}}/>
         </div>
       </div>
     );
@@ -8776,7 +8776,7 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
             <div style={{fontSize:12,color:"rgba(0,0,0,0.65)",lineHeight:1.4}}>{t("conquas.manual_mode_desc")}</div>
           </button>
         </div>
-        <input type="file" accept="image/*" ref={aiFileRef} onChange={aiHandlePhoto} style={{display:"none"}}/>
+        <input type="file" accept="image/*" capture="environment" ref={aiFileRef} onChange={aiHandlePhoto} style={{display:"none"}}/>
       </div>
     );
   }
@@ -8795,7 +8795,7 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
           <div style={{fontSize:14,color:"rgba(0,0,0,0.6)",marginBottom:20,lineHeight:1.5}}>{t("conquas.ai_waiting_photo")}</div>
           <button onClick={()=>aiFileRef.current&&aiFileRef.current.click()} style={{background:"#ff6b00",border:"none",borderRadius:12,padding:"12px 24px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>{t("conquas.take_photo")}</button>
         </div>
-        <input type="file" accept="image/*" ref={aiFileRef} onChange={aiHandlePhoto} style={{display:"none"}}/>
+        <input type="file" accept="image/*" capture="environment" ref={aiFileRef} onChange={aiHandlePhoto} style={{display:"none"}}/>
       </div>
     );
   }
@@ -8832,7 +8832,7 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
             <button onClick={switchToManual} style={{height:48,background:"#fff",border:"1.5px solid rgba(0,0,0,0.12)",borderRadius:12,color:"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>▶ {t("conquas.switch_manual")}</button>
           </div>
         </div>
-        <input type="file" accept="image/*" ref={aiFileRef} onChange={aiHandlePhoto} style={{display:"none"}}/>
+        <input type="file" accept="image/*" capture="environment" ref={aiFileRef} onChange={aiHandlePhoto} style={{display:"none"}}/>
       </div>
     );
   }
