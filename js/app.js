@@ -14992,6 +14992,37 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang,getActiveProfileId(currentProject,company?.companyId));await new Promise(r=>setTimeout(r,600));await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId),companyLogo:(local.get(COMPANY_LOGO_KEY)||{})[company?.companyId]||"",inspectorSignature:_resolveMySignature()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
               <button onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);const result=await exportToGoogleSheets(defs,currentProject?.name,company?.companyName,exportLang);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
               <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Bundling CONQUAS photos…"});try{const result=await exportConquasZip(filtered,currentProject?.name,(msg)=>setPdfExport({active:true,label:msg}),{company,project:currentProject});const parts=Object.entries(result.counters).filter(([,n])=>n>0).map(([el,n])=>`${el}: ${n}`).join(" · ");alert(`✓ CONQUAS ZIP downloaded\n\n${result.processed} photo${result.processed===1?"":"s"} bundled across ${Object.keys(result.counters).length} element${Object.keys(result.counters).length===1?"":"s"}.${result.skipped?`\n${result.skipped} skipped (see console).`:""}\n\n${parts}`);}catch(e){alert("CONQUAS ZIP export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#5856d6",opacity:pdfExport.active?0.5:1}}>🏛 CONQUAS ZIP <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· 7 element folders, renamed</span></button>
+              {/* Client viewer (lite portal v1) — share the project's
+                  defect list as a single self-contained HTML file.
+                  Reuses the 5W1H interactive viewer infra. Photos are
+                  not bundled (Photo ZIP is for full evidence); this
+                  is a "send the punch list to a client" link. */}
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Building client viewer…"});try{const defs=incDefects?filtered:[];if(!defs.length){alert("No entries to share. Adjust filters first.");return;}const entries=defs.map(d=>({
+                entry_id:d.defect_id||d.id||"",
+                title:d.title||"",
+                description:d.description||"",
+                severity:d.severity||"",
+                status:d.status||"",
+                trade:d.trade||"",
+                assignee:d.assignee||"",
+                assignee_org:d.assignee_org||"",
+                assignee_org_contact:d.assignee_org_contact||"",
+                location:d.location||"",
+                component:d.component||"",
+                issue:d.issue||"",
+                workCategory:d.workCategory||"",
+                entry_type:d.entryType||"Defect",
+                gps_lat:d.lat,
+                gps_lng:d.lng,
+                drawing_id:d.drawingPinId||"",
+                date:d.created||d.createdAt||"",
+                logged_by:d.loggedBy||"",
+                role:d.loggedByRole||"",
+                ai_model:d.ai_model||"",
+                ai_confidence:d.ai_confidence,
+                human_reviewed:d.human_reviewed,
+                conquas_element:typeof conquasElementOf==="function"?conquasElementOf(d.component)||"":"",
+              }));const projName=currentProject?.name||"Project";const html=buildPhotoZipViewerHTML({projectName:projName,generatedAt:new Date().toISOString(),entries,workCategory:currentProject?.ontology_edition?"CONQUAS":"",variantTitle:"",schemaBaseUri:"",schemaVariantUri:"",scheme:"client"});const blob=new Blob([html],{type:"text/html;charset=utf-8"});const a=document.createElement("a");const url=URL.createObjectURL(blob);a.href=url;a.download=`${projName.replace(/[^a-z0-9]+/gi,"_")}-client-view-${new Date().toISOString().slice(0,10)}.html`;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),200);alert(`✓ Client viewer downloaded\n\n${entries.length} entries · single self-contained HTML file.\n\nShare via email / WhatsApp / cloud drive. Recipient opens in any browser; works offline.\n\nPhotos not bundled — use Photo ZIP for full evidence.`);}catch(e){alert("Client viewer failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderTop:"1px solid rgba(0,0,0,0.06)",background:"rgba(48,209,88,0.04)",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a7a35",opacity:pdfExport.active?0.5:1}}>🔗 CLIENT VIEWER (HTML) <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· share single file, no install</span></button>
             </div>
           )}
         </div>
