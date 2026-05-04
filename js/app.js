@@ -7663,8 +7663,36 @@ function SmtpSetup(){
         )}
       </div>
       {result==="test_ok"&&<div style={{marginTop:10,padding:"10px 12px",background:"rgba(52,199,89,0.08)",borderRadius:8,fontSize:12,color:"#34c759",fontWeight:600}}>✓ {t("email.test_success")}</div>}
-      {result==="test_fail"&&<div style={{marginTop:10,padding:"10px 12px",background:"rgba(255,59,48,0.08)",borderRadius:8,fontSize:12,color:"#ff3b30",fontWeight:600}}>✗ {t("email.test_fail")}{errMsg&&<div style={{fontSize:10,marginTop:4,opacity:0.8}}>{errMsg}</div>}</div>}
-      {result==="fail"&&<div style={{marginTop:10,padding:"10px 12px",background:"rgba(255,59,48,0.08)",borderRadius:8,fontSize:12,color:"#ff3b30",fontWeight:600}}>✗ {t("email.save_fail")}{errMsg&&<div style={{fontSize:10,marginTop:4,opacity:0.8}}>{errMsg}</div>}</div>}
+      {(result==="test_fail"||result==="fail")&&(()=>{
+        // Decode common SMTP failure modes to give an actionable next step.
+        // The single biggest user issue is Gmail requiring App Passwords,
+        // not the regular account password — auth fails with 535 5.7.8.
+        const isGmailAuthFail=provider==="Gmail"&&/535\b|BadCredentials|Username and Password not accepted/i.test(errMsg||"");
+        const isAuthFail=/535\b|5\.7\.8|authentication failed|BadCredentials/i.test(errMsg||"");
+        return(
+          <div style={{marginTop:10,padding:"12px 14px",background:"rgba(255,59,48,0.08)",border:"1.5px solid rgba(255,59,48,0.25)",borderRadius:10,fontSize:12,color:"#a01d1d",lineHeight:1.5}}>
+            <div style={{fontWeight:800,marginBottom:isGmailAuthFail||isAuthFail?6:0}}>✗ {result==="test_fail"?t("email.test_fail"):t("email.save_fail")}</div>
+            {isGmailAuthFail&&(
+              <div style={{background:"rgba(255,255,255,0.6)",borderRadius:8,padding:"10px 12px",marginTop:6,color:"#1a1a1a",fontSize:12,lineHeight:1.6}}>
+                <div style={{fontWeight:700,color:"#a01d1d",marginBottom:4}}>⚠ Gmail requires an App Password</div>
+                Your regular Gmail password won't work for SMTP. Generate a 16-character App Password and paste THAT into the password field above.
+                <ol style={{margin:"6px 0 0 18px",padding:0,fontSize:11.5,lineHeight:1.6}}>
+                  <li>Open <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener" style={{color:"#1a73e8",fontWeight:700,textDecoration:"underline"}}>myaccount.google.com/apppasswords</a> (sign in if asked)</li>
+                  <li>If the page won't open, you must first enable 2-Step Verification at <a href="https://myaccount.google.com/signinoptions/two-step-verification" target="_blank" rel="noopener" style={{color:"#1a73e8",fontWeight:700,textDecoration:"underline"}}>myaccount.google.com/signinoptions/two-step-verification</a></li>
+                  <li>Generate password named "SiteShrimp" → copy the 16-character string (spaces don't matter)</li>
+                  <li>Paste it into the password field above and click SAVE → TEST again</li>
+                </ol>
+              </div>
+            )}
+            {!isGmailAuthFail&&isAuthFail&&(
+              <div style={{fontSize:11.5,marginTop:4,lineHeight:1.6}}>
+                Authentication failed (535). Most providers need an app-specific password, not your regular login. Check your provider's docs.
+              </div>
+            )}
+            {errMsg&&<div style={{fontSize:10,marginTop:isGmailAuthFail||isAuthFail?6:4,opacity:0.7,fontFamily:"'Courier New',monospace"}}>{errMsg}</div>}
+          </div>
+        );
+      })()}
     </div>
   );
 }
