@@ -2868,7 +2868,7 @@ function typeBg(t){
 
 function exportCSV(defects,projectName){
   const esc=v=>`"${String(v||"").replace(/"/g,'""')}"`;
-  const headers=["ID","Entry Type","Title","Component","Issue","Location","Severity","Status","Assignee","Trade","Logged By","Role","Date","Due Date","Duration","Cost Impact","Cost Responsible","Cost Amount","Description","Comments","Source Filename","CONQUAS Element","ISO 19650 Filename"];
+  const headers=["ID","Entry Type","Title","Component","Issue","Location","Severity","Status","Assignee","Sub-contractor / Vendor","Sub-contractor Contact","Trade","Logged By","Role","Date","Due Date","Duration","Cost Impact","Cost Responsible","Cost Amount","Description","Comments","Source Filename","CONQUAS Element","ISO 19650 Filename"];
   const rows=defects.map(d=>[
     d.defect_id||d.id||"",
     d.entryType||"Defect",
@@ -2879,6 +2879,8 @@ function exportCSV(defects,projectName){
     d.severity||"",
     d.status||"",
     esc(d.assignee),
+    esc(d.assignee_org),
+    esc(d.assignee_org_contact),
     esc(d.trade),
     esc(d.loggedBy),
     d.loggedByRole||"",
@@ -3186,7 +3188,7 @@ function openM(i){
   if(e.gps_lat)where+=kv("GPS",Number(e.gps_lat).toFixed(5)+", "+Number(e.gps_lng).toFixed(5));
   if(e.drawing_id)where+=kv("Drawing",e.drawing_id+(e.drawing_page?" p."+e.drawing_page:""));
   document.getElementById("m-where").innerHTML=where;
-  document.getElementById("m-who").innerHTML=kv("Assignee",e.assignee)+kv("Trade",e.trade)+kv("Logged by",e.logged_by)+kv("Role",e.role);
+  document.getElementById("m-who").innerHTML=kv("Assignee",e.assignee)+kv("Sub-contractor / Vendor",e.assignee_org)+kv("Sub-contractor Contact",e.assignee_org_contact)+kv("Trade",e.trade)+kv("Logged by",e.logged_by)+kv("Role",e.role);
   let how=kv("Filename",e.filename)+kv("ISO 19650 Name",e.iso_19650_filename)+kv("Source File",e.source_filename)+kv("Media Hash",e.media_hash);
   if(e.ai_model)how+=kv("AI Model",e.ai_model);
   if(e.ai_confidence!=null&&e.ai_confidence!=="")how+=kv("AI Confidence",Number(e.ai_confidence).toFixed(2));
@@ -8913,6 +8915,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   const blank={title:"",location:"",severity:"Major",description:"",assignee:member?.name||"",photos:[],
     component:"",issue:"",locationLevel:"",locationZone:"",locationSubzone:"",locationGrid:"",
     workCategory:savedWorkCat,
+    assignee_org:"",assignee_org_contact:"",
     entryType:"Defect",dueDate:"",duration:"",costImpact:"",costResponsible:"",costAmount:"",costRemarks:"",
     fieldProvenance:{}};
   const[form,setForm]=useState(blank);
@@ -10665,6 +10668,12 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           {/* Assignee */}
           <ComboField label={<>{t("fields.assign_to")}<ProvChip prov={form.fieldProvenance?.assignee}/></>} value={form.assignee} onChange={v=>set("assignee",v)} options={assignees} placeholder={t("fields.assign_to_placeholder")}/>
 
+          {/* Subcontractor / vendor org (gap #1 v1) — beside the in-company
+              Assignee. Both optional; the "send to plumber sub" workflow
+              uses these to route the issue to an external trade. */}
+          <VoiceField label={t("fields.assignee_org")} value={form.assignee_org} onChange={v=>set("assignee_org",v)} placeholder={t("fields.assignee_org_placeholder")}/>
+          <VoiceField label={t("fields.assignee_org_contact")} value={form.assignee_org_contact} onChange={v=>set("assignee_org_contact",v)} placeholder={t("fields.assignee_org_contact_placeholder")}/>
+
           {/* Cost & Time */}
           <div style={{background:"rgba(0,0,0,0.02)",borderRadius:12,padding:14,marginBottom:16,border:"1px solid rgba(0,0,0,0.06)"}}>
             <div style={{marginBottom:12}}>
@@ -11771,7 +11780,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
       // Includes original_filename and iso_filename so users can search
       // by source phone-gallery name (e.g. 'IMG_2391') OR by the ISO 19650
       // storage name (e.g. 'WL_HOLLOW' for all wall hollowness entries).
-      const hay=[d.title,d.description,d.component,d.issue,d.assignee,d.location,d.loggedBy,d.entryType,d.defect_id,d.original_filename,d.iso_filename].filter(Boolean).join(" ").toLowerCase();
+      const hay=[d.title,d.description,d.component,d.issue,d.assignee,d.assignee_org,d.assignee_org_contact,d.location,d.loggedBy,d.entryType,d.defect_id,d.original_filename,d.iso_filename].filter(Boolean).join(" ").toLowerCase();
       if(!hay.includes(q))return false;
     }
     return true;
@@ -12404,6 +12413,16 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
               <span>→ <Highlight text={d.assignee} query={q}/></span>
               <span>{d.created?new Date(d.created).toLocaleDateString():"Just now"}</span>
             </div>
+            {/* Subcontractor / vendor org row (gap #1) — visible when set so
+                "send to plumber sub" workflow reads at a glance. Tap to copy
+                contact follows the same pattern as filename rows. */}
+            {(d.assignee_org||d.assignee_org_contact)&&(
+              <div style={{fontSize:11,color:"#3a39a6",marginTop:2,display:"flex",gap:6,alignItems:"center"}}>
+                <span style={{fontSize:11}}>🏢</span>
+                {d.assignee_org&&<Highlight text={d.assignee_org} query={q}/>}
+                {d.assignee_org_contact&&<span style={{color:"rgba(0,0,0,0.5)"}}>· <Highlight text={d.assignee_org_contact} query={q}/></span>}
+              </div>
+            )}
           </div>
           <EntryThumb defect={d} drawingByEntryId={drawingByEntryId}/>
         </div>
@@ -13236,7 +13255,7 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:20,color:"#1a1a1a",marginBottom:10}}>{defect.title}</div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>{defect.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(defect.entryType),background:typeBg(defect.entryType),padding:"3px 10px",borderRadius:12,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(defect.entryType)} {tOpt(defect.entryType).toUpperCase()}</span>}<SevChip s={defect.severity}/><StatusChip s={status}/></div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              {[["📍 "+t("fields.location"),defect.location],["👤 "+t("detail.assigned"),defect.assignee],["📁 "+t("fields.project_name"),defect.projectName||"—"],["🗓 "+t("fields.date"),defect.created?new Date(defect.created).toLocaleDateString():"—"],["✍️ "+t("fields.logged_by"),defect.loggedBy],["🔑 "+t("fields.role"),defect.loggedByRole||"—"]].map(([l,v])=>(
+              {[["📍 "+t("fields.location"),defect.location],["👤 "+t("detail.assigned"),defect.assignee],...(defect.assignee_org?[["🏢 "+t("fields.assignee_org"),defect.assignee_org]]:[]),...(defect.assignee_org_contact?[["📞 "+t("fields.assignee_org_contact"),defect.assignee_org_contact]]:[]),["📁 "+t("fields.project_name"),defect.projectName||"—"],["🗓 "+t("fields.date"),defect.created?new Date(defect.created).toLocaleDateString():"—"],["✍️ "+t("fields.logged_by"),defect.loggedBy],["🔑 "+t("fields.role"),defect.loggedByRole||"—"]].map(([l,v])=>(
                 <div key={l}><div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em"}}>{l}</div><div style={{fontSize:13,color:"#1a1a1a",marginTop:2}}>{v||"—"}</div></div>
               ))}
             </div>
