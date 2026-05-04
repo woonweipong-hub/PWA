@@ -1905,6 +1905,149 @@ function getAIPrompt(workCategory){
 // pick up the user's currently-selected language.
 const AI_PROMPT=getAIPrompt();
 
+// ── Strict JSON Schema for client-side AI output (gap #4 v3) ──────
+// The base schema mirrors what getAIPrompt() asks for and parseAiResult
+// reads. Variant fields are added per workCategory so the AI is forced
+// to emit them when applicable (rather than only being asked nicely via
+// the prompt addendum). Mirrors the server hook's AI_OUTPUT_SCHEMA +
+// AI_VARIANT_TABLE pattern in deploy/pocketbase/pb_hooks/main.pb.js,
+// adapted for the LOG-flow field names (the server uses different field
+// names because it does post-create reanalysis, not prefill).
+const _AI_BASE_SCHEMA={
+  type:"object",
+  properties:{
+    title:{type:"string"},
+    severity:{type:"string",enum:["Critical","Major","Minor","Observation"]},
+    description:{type:"string"},
+    trade:{type:"string"},
+    component:{type:"string"},
+    issue:{type:"string"},
+    entry_type:{type:"string",enum:["Defect","Observation","Instruction","Pass"]},
+    location_area:{type:"string"},
+    room_area:{type:"string"},
+    level_floor:{type:"string"},
+    zone:{type:"string"},
+    time_needed:{type:"string"},
+    cost_change:{type:"string"},
+    safety_risk:{type:"integer",minimum:1,maximum:5},
+    suggested_assignee:{type:"string"},
+  },
+  required:["title","severity","description","trade","component","entry_type"],
+  additionalProperties:false,
+};
+const _AI_VARIANT_FIELDS={
+  "CONQUAS":[
+    {property:"assessment_zone",type:"string",enum:["Architectural","Structural","M&E"]},
+    {property:"inspection_lot",type:"string"},
+  ],
+  "Building Defects (Landed)":[
+    {property:"storey_count",type:"string",enum:["1-storey","2-storey","3-storey","4-storey or more"]},
+    {property:"party_wall_side",type:"string",enum:["None","Left","Right","Both"]},
+    {property:"roof_type",type:"string",enum:["Pitched","Flat","Mixed"]},
+  ],
+  "Building Defects (Highrise)":[
+    {property:"block_or_tower",type:"string"},
+    {property:"unit_no",type:"string"},
+    {property:"vertical_zone",type:"string",enum:["Lobby","Lift Core","Corridor","Unit Interior","Common Area","Carpark","Refuse","Plant Room","Roof"]},
+  ],
+  "Construction Site":[
+    {property:"hazard_category",type:"string",enum:["Working at Heights","Scaffolding","Electrical","Confined Space","Hot Work","Chemicals","Falling Objects","Mobile Plant","Manual Handling","Site Condition","Other"]},
+    {property:"ppe_compliance",type:"string",enum:["Compliant","Partial","Non-Compliant","N/A"]},
+    {property:"stop_work_recommended",type:"boolean"},
+    {property:"workers_exposed",type:"integer"},
+  ],
+  "Interior Works":[
+    {property:"trade_subscope",type:"string",enum:["Carpentry","Painting","Tiling","M&E – Electrical","M&E – Plumbing","M&E – ACMV","Wallpaper","Glass / Mirror","Stone","Wood Flooring","Other"]},
+    {property:"permit_no",type:"string"},
+  ],
+  "Facilities Management":[
+    {property:"service_category",type:"string",enum:["HVAC","Plumbing","Electrical","Fire Safety","Lift","Cleaning","Pest Control","Landscape","Security","General"]},
+    {property:"maintenance_type",type:"string",enum:["Preventive","Reactive","Corrective","Breakdown","Inspection"]},
+    {property:"asset_id",type:"string"},
+  ],
+  "Infrastructure Works":[
+    {property:"asset_class",type:"string",enum:["Road","Drainage","Linkway","External Works","Bridge","Tunnel","Culvert","Manhole","Other"]},
+    {property:"chainage_km",type:"number"},
+    {property:"structure_id",type:"string"},
+  ],
+  "Handover Walkthrough":[
+    {property:"unit_no",type:"string"},
+    {property:"room",type:"string",enum:["Living Room","Dining Room","Kitchen","Master Bedroom","Bedroom 2","Bedroom 3","Bedroom 4","Master Bathroom","Common Bathroom","Powder Room","Toilet","Yard","Balcony","Store Room","Utility Room","Pantry","Foyer","Hallway","Common Area","External"]},
+    {property:"signoff_owner",type:"string",enum:["Developer","Main Contractor","Sub-contractor","Interior Fit-out","M&E Contractor","Vendor","Owner / Buyer","Other"]},
+  ],
+  "Test & Commission (T&C)":[
+    {property:"test_type",type:"string",enum:["Water Tightness Test (WTT)","Water Pressure Test (WPT)","Water Flow Test (WFT)","Electrical Insulation Resistance","Earth Continuity","Polarity Test","ACMV Air Balancing","ACMV Water Balancing","Lift Functional Test","Fire Alarm Functional Test","Sprinkler Hydrostatic Test","Smoke Detector Test","Lighting Lux Level","Drainage Smoke Test","Other"]},
+    {property:"test_outcome",type:"string",enum:["Pass","Fail","Re-test required","Conditional pass"]},
+    {property:"measured_value",type:"string"},
+    {property:"witnessed_by",type:"string"},
+  ],
+  "M&E Inspection":[
+    {property:"me_service",type:"string",enum:["Plumbing","Sanitary","Electrical — LV","Electrical — ELV","Electrical — Lighting","ACMV — Air-side","ACMV — Water-side","Fire Protection","Fire Detection","Lift / Escalator","Gas","Standby Generator","BMS / Controls","Other"]},
+    {property:"equipment_id",type:"string"},
+    {property:"rating",type:"string"},
+  ],
+};
+// Build a per-call JSON Schema given a workCategory. Falls back to the
+// base 15-field schema when the workCategory is empty / unknown. Variant
+// fields are added as optional (not required) so the AI can omit them
+// when not visible in the photo — matches the prompt-addendum guidance.
+//
+// TODO (architecture follow-up): _AI_VARIANT_FIELDS above duplicates info
+// already authored in schema/entries/<variant>/v1.json + manifest.json
+// (extra_columns + enum lists). Cleaner pattern: extend the existing
+// _aiVariantTableReady fetch to also load variant schemas and derive
+// fields/enums at runtime — single source of truth, future-proof when
+// new variants are added by dropping JSON files. Shipped as constants
+// for now to ship the strict-schema feature in demo window; refactor
+// is purely internal (no API change to buildClientAiSchema callers).
+function buildClientAiSchema(workCategory){
+  const props={..._AI_BASE_SCHEMA.properties};
+  const required=_AI_BASE_SCHEMA.required.slice();
+  const variant=_AI_VARIANT_FIELDS[workCategory||""]||[];
+  for(const f of variant){
+    const def={type:f.type};
+    if(f.enum)def.enum=f.enum;
+    if(typeof f.minimum==="number")def.minimum=f.minimum;
+    if(typeof f.maximum==="number")def.maximum=f.maximum;
+    props[f.property]=def;
+  }
+  return{
+    type:"object",
+    properties:props,
+    required,
+    additionalProperties:false,
+  };
+}
+
+// Convert a JSON Schema (draft-2020-12-ish) to Gemini's responseSchema
+// format. Gemini supports a subset: type names are uppercase (STRING,
+// INTEGER, NUMBER, BOOLEAN, OBJECT, ARRAY), no additionalProperties,
+// enums supported, no $ref or oneOf/anyOf/allOf. Drops keywords Gemini
+// rejects so a malformed schema doesn't 400 the entire AI call.
+function _toGeminiSchema(jsonSchema){
+  const TY={string:"STRING",integer:"INTEGER",number:"NUMBER",boolean:"BOOLEAN",object:"OBJECT",array:"ARRAY"};
+  const conv=(s)=>{
+    if(!s||typeof s!=="object")return null;
+    const out={};
+    if(s.type&&TY[s.type])out.type=TY[s.type];
+    if(s.enum&&Array.isArray(s.enum))out.enum=s.enum.slice();
+    if(s.properties){
+      out.properties={};
+      for(const k of Object.keys(s.properties)){
+        const sub=conv(s.properties[k]);
+        if(sub)out.properties[k]=sub;
+      }
+    }
+    if(s.required&&Array.isArray(s.required))out.required=s.required.slice();
+    if(s.items)out.items=conv(s.items);
+    if(typeof s.minimum==="number")out.minimum=s.minimum;
+    if(typeof s.maximum==="number")out.maximum=s.maximum;
+    if(s.description)out.description=s.description;
+    return out;
+  };
+  return conv(jsonSchema);
+}
+
 // Single hardcoded primary model — same as laptop. Earlier we probed the
 // models-list endpoint and cached the result per device, but that diverged
 // across devices (mobile cached gemini-1.5-flash; Google retired 1.5 →
@@ -2099,7 +2242,7 @@ function _mimeFromDataUrl(dataUrl){
   return"image/jpeg";
 }
 
-async function analyzeWithGemini(apiKey,base64Image,prompt){
+async function analyzeWithGemini(apiKey,base64Image,prompt,opts){
   try{
     const b64=base64Image.split(",")[1];
     const mimeType=_mimeFromDataUrl(base64Image);
@@ -2112,14 +2255,33 @@ async function analyzeWithGemini(apiKey,base64Image,prompt){
     // forces clean JSON; maxOutputTokens gives the response room. Older models
     // (1.5, 2.0) may 400 on thinkingConfig — we retry with minimal config in
     // that case so analyses keep working across the fallback model list.
+    // Gap #4 v3 — when the caller passes opts.workCategory, attach a strict
+    // responseSchema so Gemini MUST emit the variant-extended shape (rather
+    // than just being asked nicely via the prompt addendum).
     const fullConfig={
       responseMimeType:"application/json",
       temperature:0.2,
       maxOutputTokens:2048,
       thinkingConfig:{thinkingBudget:0}
     };
+    const wc=opts&&opts.workCategory;
+    if(wc){
+      try{
+        const gs=_toGeminiSchema(buildClientAiSchema(wc));
+        if(gs)fullConfig.responseSchema=gs;
+      }catch(e){console.warn("[AI] Gemini schema build failed (continuing without):",e?.message||e);}
+    }
     const minimalConfig={temperature:0.2,maxOutputTokens:2048};
     let res=await geminiGenerate(apiKey,{contents:[{parts:promptParts}],generationConfig:fullConfig});
+    // 400 on responseSchema is more common than on thinkingConfig (older
+    // models reject schema entirely). Retry without schema before the
+    // final minimal-config retry so we don't lose responseMimeType too.
+    if(res.status===400&&fullConfig.responseSchema){
+      const errText400a=await res.text().catch(()=>"");
+      console.warn("[AI] Gemini 400 with responseSchema:",errText400a.slice(0,300),"— retrying without strict schema");
+      const noSchemaConfig={...fullConfig};delete noSchemaConfig.responseSchema;
+      res=await geminiGenerate(apiKey,{contents:[{parts:promptParts}],generationConfig:noSchemaConfig});
+    }
     if(res.status===400){
       const errText400=await res.text().catch(()=>"");
       console.warn("[AI] Gemini 400 on full config:",errText400.slice(0,300),"— retrying with minimal config");
@@ -2192,7 +2354,7 @@ async function analyzeWithOllama(cfg,base64Image,prompt){
   }
 }
 
-async function analyzeWithOpenAI(cfg,base64Image,prompt){
+async function analyzeWithOpenAI(cfg,base64Image,prompt,opts){
   try{
     const b64=base64Image.split(",")[1];
     const mimeType=_mimeFromDataUrl(base64Image);
@@ -2201,14 +2363,31 @@ async function analyzeWithOpenAI(cfg,base64Image,prompt){
     // max_tokens bumped from 300 → 1000 so the enlarged JSON response
     // (more fields per the current prompt) can finish cleanly. response_format
     // enforces valid JSON output on models that support it.
-    const res=await fetchWithTimeout(url+"/v1/chat/completions",{
+    // Gap #4 v3 — when the caller passes opts.workCategory, swap json_object
+    // for strict json_schema so the model MUST emit the variant-extended
+    // shape. Falls back to json_object on first 400 (older/local models
+    // may not support strict json_schema yet).
+    const wc=opts&&opts.workCategory;
+    const buildResponseFormat=(strict)=>{
+      if(!strict||!wc)return{type:"json_object"};
+      try{
+        return{type:"json_schema",json_schema:{name:"construction_defect_analysis",schema:buildClientAiSchema(wc),strict:true}};
+      }catch(e){console.warn("[AI] OpenAI schema build failed (continuing without):",e?.message||e);return{type:"json_object"};}
+    };
+    const fire=async(strict)=>fetchWithTimeout(url+"/v1/chat/completions",{
       method:"POST",
       headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},
-      body:JSON.stringify({model,max_tokens:1000,response_format:{type:"json_object"},messages:[{role:"user",content:[
+      body:JSON.stringify({model,max_tokens:1000,response_format:buildResponseFormat(strict),messages:[{role:"user",content:[
         {type:"image_url",image_url:{url:"data:"+mimeType+";base64,"+b64,detail:"low"}},
         {type:"text",text:prompt||getAIPrompt()}
       ]}]})
     },30000);
+    let res=await fire(true);
+    if(res.status===400&&wc){
+      const errText400=await res.text().catch(()=>"");
+      console.warn("[AI] OpenAI 400 with strict json_schema:",errText400.slice(0,300),"— retrying with json_object");
+      res=await fire(false);
+    }
     if(!res.ok){
       const errText=await res.text().catch(()=>"");
       const msg=`OpenAI HTTP ${res.status} — ${errText.slice(0,200)||"no body"}`;
@@ -2231,11 +2410,17 @@ async function analyzeWithOpenAI(cfg,base64Image,prompt){
 
 // Unified dispatcher — picks the right provider based on user settings.
 // Optional `prompt` overrides the default getAIPrompt() for context-aware calls.
-async function analyzePhoto(base64Image,prompt){
+async function analyzePhoto(base64Image,prompt,opts){
   // Master kill switch — any code path that reaches here while the user has
   // paused AI exits silently without a network call. The calling UI already
   // gates on isAiConfigured(); this is a last-line defense.
   if(!isAiEnabled())return null;
+  // opts.workCategory drives the strict JSON Schema binding (gap #4 v3).
+  // Providers that support strict json_schema (OpenAI / Groq / Mistral /
+  // OpenRouter) and Gemini's responseSchema get the variant-extended schema
+  // built from buildClientAiSchema(workCategory). Providers that don't
+  // (Ollama generic) silently ignore the schema arg.
+  const _opts=opts||{};
   const provider=local.get(AI_PROVIDER_KEY)||"gemini";
   if(provider==="ollama"){
     const cfg=local.get(OLLAMA_KEY)||{};
@@ -2243,7 +2428,7 @@ async function analyzePhoto(base64Image,prompt){
   }
   if(provider==="openai"){
     const cfg=local.get(OPENAI_KEY)||{};
-    return analyzeWithOpenAI(cfg,base64Image,prompt);
+    return analyzeWithOpenAI(cfg,base64Image,prompt,_opts);
   }
   if(provider==="groq"){
     // Groq exposes an OpenAI-compatible chat-completions endpoint, so we
@@ -2255,12 +2440,12 @@ async function analyzePhoto(base64Image,prompt){
       url:"https://api.groq.com/openai",
       apiKey:cfg.apiKey,
       model:cfg.model||"meta-llama/llama-4-scout-17b-16e-instruct"
-    },base64Image,prompt);
+    },base64Image,prompt,_opts);
   }
   // Default: Gemini
   const key=local.get(GEMINI_KEY);
   if(!key)return null;
-  return analyzeWithGemini(key,base64Image,prompt);
+  return analyzeWithGemini(key,base64Image,prompt,_opts);
 }
 
 // Map a raw Gemini / OpenAI / network error into a short user-facing
@@ -9766,7 +9951,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
             continue;
           }
           const compressed=await compressPhoto(photo,600,0.7);
-          result=await analyzePhoto(compressed||photo,buildContextPrompt(last));
+          result=await analyzePhoto(compressed||photo,buildContextPrompt(last),{workCategory:last?.workCategory||form?.workCategory||""});
           if(result&&(result.title||result.description)){
             bumpAiUsage(getLastAiTokens());
             writeAiCache(hash,result);
@@ -10356,7 +10541,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       // is the failure mode that surfaced on 2026-04-26.
       const ANALYZE_HARD_CEILING_MS=90000;
       const result=await Promise.race([
-        analyzePhoto(compressed||photo,buildContextPrompt(last)),
+        analyzePhoto(compressed||photo,buildContextPrompt(last),{workCategory:last?.workCategory||form?.workCategory||""}),
         new Promise((_,rej)=>setTimeout(()=>rej(new Error("AI analyze timed out after 90s — service may be unavailable. Please try again or fill manually.")),ANALYZE_HARD_CEILING_MS))
       ]);
       // Race guard — discard a stale result if the user swapped photos
@@ -12126,7 +12311,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
         if(!result){
           try{window.__lastAiError=null;}catch{}
           const compressed=await compressPhoto(dataUrl,600,0.7);
-          result=await analyzePhoto(compressed||dataUrl,getAIPrompt(defect.workCategory||""));
+          result=await analyzePhoto(compressed||dataUrl,getAIPrompt(defect.workCategory||""),{workCategory:defect.workCategory||""});
           if(result){
             bumpAiUsage(getLastAiTokens());
             if(hash)writeAiCache(hash,result);
