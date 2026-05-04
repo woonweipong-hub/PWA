@@ -123,6 +123,99 @@ onRecordCreate((e) => {
     record.set("input_source", "pwa");
   }
 
+  // Autofill companyId from the requesting user's membership when missing.
+  // The Telegram bridge sets only projectId; without this, bridge-created
+  // defects are tenant-orphaned and become invisible once RBAC tightens
+  // tenant-isolation rules. Also defends any future direct-REST writers.
+  if (!record.get("companyId")) {
+    try {
+      var authUser = e.auth;
+      if (authUser) {
+        var mem = $app.findFirstRecordByFilter("members", 'userId="' + authUser.id + '"');
+        if (mem) record.set("companyId", mem.getString("companyId"));
+      }
+    } catch (err) {
+      console.log("companyId autofill skipped:", err);
+    }
+  }
+
+  return e.next();
+}, "defects");
+
+// ====== AUDIT LOG PHASE 2: server-side onRecordUpdate auto-emit ======
+// Catches direct REST writes to defects (Telegram bridge, future public
+// API, anything that bypasses js/app.js) and emits kind:"event" rows
+// into the same `comments` JSON array the Defect Detail timeline reads.
+// Mirrors the client-side diffDefectEvents() in js/app.js so the audit
+// surface is uniform regardless of writer.
+//
+// Dedup: if the client already appended events (newComments.length grew
+// during this update), we assume the client emitted and skip. The PWA
+// patches comments + fields together; bridge/REST writers don't touch
+// comments at all, so the length-grew check is a reliable origin signal.
+
+var TRACKED_EVENT_FIELDS_HOOK = [
+  "status", "severity", "assignee", "dueDate", "duration",
+  "component", "issue", "trade", "entryType", "workCategory",
+  "location", "locationLevel", "locationZone", "locationSubzone", "locationGrid",
+  "costImpact", "costResponsible", "costAmount"
+];
+
+onRecordUpdate((e) => {
+  if (e.collection.name !== "defects") return e.next();
+
+  try {
+    var record = e.record;
+    var original = record.original();
+    if (!original) return e.next();
+
+    // If the client already appended events (e.g. PWA emitted via
+    // diffDefectEvents), let it own the audit row to avoid duplicates.
+    var origComments = original.get("comments") || [];
+    var newComments = record.get("comments") || [];
+    if (!Array.isArray(origComments)) origComments = [];
+    if (!Array.isArray(newComments)) newComments = [];
+    if (newComments.length > origComments.length) return e.next();
+
+    // Resolve actor from auth context, fall back to email.
+    var by = "";
+    var role = "";
+    var authUser = e.auth;
+    if (authUser) {
+      try {
+        var mem = $app.findFirstRecordByFilter("members", 'userId="' + authUser.id + '"');
+        if (mem) {
+          by = mem.getString("name") || authUser.getString("email") || "";
+          role = mem.getString("role") || "";
+        } else {
+          by = authUser.getString("email") || "";
+        }
+      } catch (_) {
+        by = authUser.getString("email") || "";
+      }
+    }
+
+    // Diff tracked fields and append events.
+    var newEvents = [];
+    var at = Date.now();
+    for (var i = 0; i < TRACKED_EVENT_FIELDS_HOOK.length; i++) {
+      var f = TRACKED_EVENT_FIELDS_HOOK[i];
+      var a = (original.get(f) == null ? "" : String(original.get(f))).trim();
+      var b = (record.get(f) == null ? "" : String(record.get(f))).trim();
+      if (a === b) continue;
+      newEvents.push({
+        kind: "event", type: f, from: a, to: b,
+        by: by, role: role, at: at, _src: "server"
+      });
+    }
+
+    if (newEvents.length > 0) {
+      record.set("comments", newComments.concat(newEvents));
+    }
+  } catch (err) {
+    console.log("audit emit skipped:", err);
+  }
+
   return e.next();
 }, "defects");
 
