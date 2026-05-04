@@ -465,19 +465,51 @@ async function fireWebhook(event, defect, currentProject){
     if(!cfg||!Array.isArray(cfg.urls)||!cfg.urls.length)return;
     const enabledEvents=cfg.events||{created:true,updated:true,verified:true};
     if(!enabledEvents[event])return;
+    // Enriched payload — includes everything an automation typically wants
+    // for routing (company, project, sub-contractor contact, inspector,
+    // due date, work category, AI provenance) without forcing the receiver
+    // to make a follow-up REST call. Stable property names — additions are
+    // additive going forward; existing fields will not change shape.
     const payload={
       event,
+      // tenancy
+      company_id: defect?.companyId||"",
+      // project context
       project_id: currentProject?.id||defect?.projectId||"",
       project_name: currentProject?.name||defect?.projectName||"",
+      // identity
       defect_id: defect?.defect_id||"",
       id: defect?.id||"",
+      // defect content
       title: defect?.title||"",
+      description: defect?.description||"",
       severity: defect?.severity||"",
       status: defect?.status||"",
+      entry_type: defect?.entryType||"",
+      work_category: defect?.workCategory||"",
+      component: defect?.component||"",
+      issue: defect?.issue||"",
+      // assignment / routing
       trade: defect?.trade||"",
       assignee: defect?.assignee||"",
       assignee_org: defect?.assignee_org||"",
+      assignee_org_contact: defect?.assignee_org_contact||"",
+      // who logged it
+      logged_by: defect?.loggedBy||"",
+      logged_by_role: defect?.loggedByRole||"",
+      // location
       location: defect?.location||"",
+      location_level: defect?.locationLevel||"",
+      location_zone: defect?.locationZone||"",
+      lat: defect?.lat||null,
+      lng: defect?.lng||null,
+      // dates
+      due_date: defect?.dueDate||"",
+      // AI provenance (for audit-grade automations)
+      ai_model: defect?.ai_model||"",
+      ai_confidence: defect?.ai_confidence||null,
+      human_reviewed: defect?.human_reviewed||false,
+      // meta
       url: typeof window!=="undefined"?window.location.origin:"",
       at: new Date().toISOString(),
     };
@@ -16089,7 +16121,7 @@ function WebhooksSection(){
   };
   const testFire=async()=>{
     setTesting(true);setTestRes(null);
-    const sample={event:"test.ping",project_id:"test-project",defect_id:"DEF-TEST",id:"test-id",title:"Test webhook from SiteShrimp",severity:"Observation",status:"Open",trade:"General",assignee:"Test User",assignee_org:"",location:"Test location",url:typeof window!=="undefined"?window.location.origin:"",at:new Date().toISOString()};
+    const sample={event:"test.ping",company_id:"test-company",project_id:"test-project",project_name:"Test Project",defect_id:"DEF-TEST",id:"test-id",title:"Test webhook from SiteShrimp",description:"This is a test ping. No real defect was created.",severity:"Observation",status:"Open",entry_type:"Defect",work_category:"Building Defects (Highrise)",component:"General",issue:"",trade:"General",assignee:"Test User",assignee_org:"",assignee_org_contact:"",logged_by:"Test User",logged_by_role:"Admin",location:"Test location",location_level:"",location_zone:"",lat:null,lng:null,due_date:"",ai_model:"",ai_confidence:null,human_reviewed:false,url:typeof window!=="undefined"?window.location.origin:"",at:new Date().toISOString()};
     const targets=urls.map(u=>u.trim()).filter(Boolean);
     if(!targets.length){setTestRes("no_url");setTesting(false);return;}
     let ok=0,fail=0;
@@ -16109,7 +16141,7 @@ function WebhooksSection(){
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a1a1a",letterSpacing:"0.04em"}}>WEBHOOKS — OUTBOUND</div>
       </div>
       <div style={{fontSize:12,color:"rgba(0,0,0,0.55)",marginBottom:12,lineHeight:1.5}}>
-        Fire HTTP POST to your URL when this app creates / updates / verifies a defect. Send to Zapier, Make, Slack via Incoming Webhooks, your CRM, or any internal endpoint. Payload is a small JSON: <code style={{fontFamily:"'Courier New',monospace",fontSize:11,background:"rgba(0,0,0,0.05)",padding:"1px 5px",borderRadius:3}}>event, project_id, defect_id, id, title, severity, status, trade, assignee, assignee_org, location, url, at</code>.
+        Fire HTTP POST to your URL when this app creates / updates / verifies a defect. Send to Zapier, Make, Slack via Incoming Webhooks, your CRM, or any internal endpoint. Payload is a stable JSON envelope including <code style={{fontFamily:"'Courier New',monospace",fontSize:11,background:"rgba(0,0,0,0.05)",padding:"1px 5px",borderRadius:3}}>event, company_id, project_id/name, defect_id, id, title, description, severity, status, entry_type, work_category, component, issue, trade, assignee, assignee_org, assignee_org_contact, logged_by/role, location, location_level/zone, lat, lng, due_date, ai_model, ai_confidence, human_reviewed, url, at</code>. Tap 🧪 TEST PING below to fire a sample envelope to your URLs.
       </div>
       <label style={{display:"block",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.5)",letterSpacing:"0.12em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>WEBHOOK URLS</label>
       {urls.map((u,i)=>(
