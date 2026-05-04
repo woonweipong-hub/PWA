@@ -439,6 +439,26 @@
     "resolved_by": "Resolved by",
     "resolution_prompt": "Resolution note (optional — what was fixed, in which build):"
   },
+  "viewer": {
+    "evidence_pack": "EVIDENCE PACK",
+    "total": "TOTAL",
+    "critical": "CRITICAL",
+    "open": "OPEN",
+    "overdue": "OVERDUE",
+    "what_severity": "WHAT — Severity",
+    "what_status": "WHAT — Status",
+    "what_type": "WHAT — Type",
+    "who_trade": "WHO — Trade",
+    "who_assignee": "WHO — Assignee",
+    "when": "WHEN",
+    "where_search": "WHERE — Search",
+    "how_source": "HOW — Source",
+    "filter_loc_placeholder": "filter location text",
+    "photos": "photos",
+    "no_photo": "NO PHOTO",
+    "domain_fields": "DOMAIN FIELDS",
+    "free_badge": "FREE · 23 LANGUAGES"
+  },
   "report": {
     "title": "Report",
     "weekly_off_label": "+ WEEKLY REPORT",

@@ -2992,7 +2992,49 @@ async function _ensureXLSX(){
 // existence is visible at the point of use, not buried in Settings → Help.
 // The data is inlined into the file so file:// CORS rules don't bite;
 // photos are referenced by relative path which works in every browser.
-function buildPhotoZipViewerHTML({projectName,generatedAt,entries,workCategory,variantTitle,schemaBaseUri,schemaVariantUri,scheme}){
+// Build the localised labels object the 5W1H viewer template renders
+// at export time. exportPhotosZip + the Client Viewer button both call
+// this so non-English handover recipients see the rail / counts / bar
+// in their language.
+function _viewerLabels(){
+  return{
+    evidencePack:t("viewer.evidence_pack")||"EVIDENCE PACK",
+    total:t("viewer.total")||"TOTAL",
+    critical:t("viewer.critical")||"CRITICAL",
+    open:t("viewer.open")||"OPEN",
+    overdue:t("viewer.overdue")||"OVERDUE",
+    whatSeverity:t("viewer.what_severity")||"WHAT — Severity",
+    whatStatus:t("viewer.what_status")||"WHAT — Status",
+    whatType:t("viewer.what_type")||"WHAT — Type",
+    whoTrade:t("viewer.who_trade")||"WHO — Trade",
+    whoAssignee:t("viewer.who_assignee")||"WHO — Assignee",
+    when:t("viewer.when")||"WHEN",
+    whereSearch:t("viewer.where_search")||"WHERE — Search",
+    howSource:t("viewer.how_source")||"HOW — Source",
+    filterLocPlaceholder:t("viewer.filter_loc_placeholder")||"filter location text",
+    photos:t("viewer.photos")||"photos",
+    noPhoto:t("viewer.no_photo")||"NO PHOTO",
+    domainFields:t("viewer.domain_fields")||"DOMAIN FIELDS",
+    freeBadge:t("viewer.free_badge")||"FREE · 23 LANGUAGES",
+  };
+}
+
+function buildPhotoZipViewerHTML({projectName,generatedAt,entries,workCategory,variantTitle,schemaBaseUri,schemaVariantUri,scheme,labels}){
+  // Bake-at-export-time localisation (Viewer v2 lang-pack consumption).
+  // Exporter's UI language drives the recipient's view — matches the
+  // existing "per-export language selector" pattern in REPORT. Stored
+  // values stay English (severity / status / trade canonical) so filter
+  // hash + search continue working; only display chrome localises.
+  const L=Object.assign({
+    evidencePack:"EVIDENCE PACK",
+    total:"TOTAL",critical:"CRITICAL",open:"OPEN",overdue:"OVERDUE",
+    whatSeverity:"WHAT — Severity",whatStatus:"WHAT — Status",whatType:"WHAT — Type",
+    whoTrade:"WHO — Trade",whoAssignee:"WHO — Assignee",
+    when:"WHEN",whereSearch:"WHERE — Search",howSource:"HOW — Source",
+    filterLocPlaceholder:"filter location text",
+    photos:"photos",noPhoto:"NO PHOTO",
+    domainFields:"DOMAIN FIELDS",freeBadge:"FREE · 23 LANGUAGES",
+  },labels||{});
   const safe=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   // Embed the data as JSON inside a <script> tag — defuse any inline
   // </script> sequences that would otherwise prematurely close the block.
@@ -3104,26 +3146,26 @@ footer .open-badge{display:inline-block;padding:2px 8px;border-radius:10px;backg
 </head>
 <body>
 <div class="bar">
-  <div class="brand">SITESHRIMP · EVIDENCE PACK</div>
+  <div class="brand">SITESHRIMP · ${safe(L.evidencePack)}</div>
   <div class="proj">${meta.project}</div>
-  <div class="meta">${meta.workCategory?safe(meta.workCategory)+" · ":""}${meta.nEntries} photos · ${safe(meta.generated.slice(0,10))}</div>
+  <div class="meta">${meta.workCategory?safe(meta.workCategory)+" · ":""}${meta.nEntries} ${safe(L.photos)} · ${safe(meta.generated.slice(0,10))}</div>
 </div>
 <div class="counts">
-  <span class="count total">${meta.nEntries} TOTAL</span>
-  <span class="count crit">${nCritical} CRITICAL</span>
-  <span class="count open">${nOpen} OPEN</span>
-  <span class="count over">${nOverdue} OVERDUE</span>
+  <span class="count total">${meta.nEntries} ${safe(L.total)}</span>
+  <span class="count crit">${nCritical} ${safe(L.critical)}</span>
+  <span class="count open">${nOpen} ${safe(L.open)}</span>
+  <span class="count over">${nOverdue} ${safe(L.overdue)}</span>
 </div>
 <div class="layout">
   <aside>
-    <h2>WHAT — Severity</h2><div class="chips" id="f-sev"></div>
-    <h2>WHAT — Status</h2><div class="chips" id="f-stat"></div>
-    <h2>WHAT — Type</h2><div class="chips" id="f-type"></div>
-    <h2>WHO — Trade</h2><div class="chips" id="f-trade"></div>
-    <h2>WHO — Assignee</h2><div class="chips" id="f-asgn"></div>
-    <h2>WHEN</h2><div class="chips" id="f-when"></div>
-    <h2>WHERE — Search</h2><input class="searchbox" id="f-loc" placeholder="filter location text">
-    <h2>HOW — Source</h2><div class="chips" id="f-src"></div>
+    <h2>${safe(L.whatSeverity)}</h2><div class="chips" id="f-sev"></div>
+    <h2>${safe(L.whatStatus)}</h2><div class="chips" id="f-stat"></div>
+    <h2>${safe(L.whatType)}</h2><div class="chips" id="f-type"></div>
+    <h2>${safe(L.whoTrade)}</h2><div class="chips" id="f-trade"></div>
+    <h2>${safe(L.whoAssignee)}</h2><div class="chips" id="f-asgn"></div>
+    <h2>${safe(L.when)}</h2><div class="chips" id="f-when"></div>
+    <h2>${safe(L.whereSearch)}</h2><input class="searchbox" id="f-loc" placeholder="${safe(L.filterLocPlaceholder)}">
+    <h2>${safe(L.howSource)}</h2><div class="chips" id="f-src"></div>
   </aside>
   <main>
     <div class="cards" id="cards"></div>
@@ -3584,6 +3626,7 @@ async function exportPhotosZip(defects,projectName,scheme="conquas",onProgress,o
         schemaBaseUri:_baseSchemaUri,
         schemaVariantUri:_variant&&_variant.uri||"",
         scheme,
+        labels:_viewerLabels(),
       });
       zip.file("index.html", _viewerHtml);
       manifestRows.push(["Viewer", "index.html — open in any browser, works offline"]);
@@ -15050,7 +15093,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
                 ai_confidence:d.ai_confidence,
                 human_reviewed:d.human_reviewed,
                 conquas_element:typeof conquasElementOf==="function"?conquasElementOf(d.component)||"":"",
-              }));const projName=currentProject?.name||"Project";const html=buildPhotoZipViewerHTML({projectName:projName,generatedAt:new Date().toISOString(),entries,workCategory:currentProject?.ontology_edition?"CONQUAS":"",variantTitle:"",schemaBaseUri:"",schemaVariantUri:"",scheme:"client"});const blob=new Blob([html],{type:"text/html;charset=utf-8"});const a=document.createElement("a");const url=URL.createObjectURL(blob);a.href=url;a.download=`${projName.replace(/[^a-z0-9]+/gi,"_")}-client-view-${new Date().toISOString().slice(0,10)}.html`;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),200);alert(`✓ Client viewer downloaded\n\n${entries.length} entries · single self-contained HTML file.\n\nShare via email / WhatsApp / cloud drive. Recipient opens in any browser; works offline.\n\nPhotos not bundled — use Photo ZIP for full evidence.`);}catch(e){alert("Client viewer failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderTop:"1px solid rgba(0,0,0,0.06)",background:"rgba(48,209,88,0.04)",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a7a35",opacity:pdfExport.active?0.5:1}}>🔗 CLIENT VIEWER (HTML) <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· share single file, no install</span></button>
+              }));const projName=currentProject?.name||"Project";const html=buildPhotoZipViewerHTML({projectName:projName,generatedAt:new Date().toISOString(),entries,workCategory:currentProject?.ontology_edition?"CONQUAS":"",variantTitle:"",schemaBaseUri:"",schemaVariantUri:"",scheme:"client",labels:_viewerLabels()});const blob=new Blob([html],{type:"text/html;charset=utf-8"});const a=document.createElement("a");const url=URL.createObjectURL(blob);a.href=url;a.download=`${projName.replace(/[^a-z0-9]+/gi,"_")}-client-view-${new Date().toISOString().slice(0,10)}.html`;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),200);alert(`✓ Client viewer downloaded\n\n${entries.length} entries · single self-contained HTML file.\n\nShare via email / WhatsApp / cloud drive. Recipient opens in any browser; works offline.\n\nPhotos not bundled — use Photo ZIP for full evidence.`);}catch(e){alert("Client viewer failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderTop:"1px solid rgba(0,0,0,0.06)",background:"rgba(48,209,88,0.04)",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a7a35",opacity:pdfExport.active?0.5:1}}>🔗 CLIENT VIEWER (HTML) <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· share single file, no install</span></button>
             </div>
           )}
         </div>
