@@ -347,6 +347,21 @@ const WORK_CATEGORIES = {
     desc: "CONQUAS-scored handover — Internal Finishes assessment",
     groups: ["Architectural","Finishes","Carpentry","Sanitary","M&E – Plumbing","M&E – Electrical","M&E – ACMV","General"],
   },
+  "Handover Walkthrough": {
+    icon: "\u{1F511}", // 🔑
+    desc: "Pre-handover snag list — finishes, sanitary, fixtures, doors/windows, electrical points",
+    groups: ["Architectural","Finishes","Carpentry","Sanitary","M&E – Electrical","M&E – Plumbing","M&E – ACMV","General"],
+  },
+  "Test & Commission (T&C)": {
+    icon: "\u{2699}️", // ⚙️
+    desc: "Water-tightness, plumbing pressure, electrical, ACMV balancing, lift commissioning",
+    groups: ["M&E – Plumbing","M&E – Electrical","M&E – ACMV","M&E – Fire","M&E – Lift","Sanitary","Structural","General"],
+  },
+  "M&E Inspection": {
+    icon: "\u{26A1}", // ⚡
+    desc: "Mechanical, electrical, plumbing, ACMV, fire — services-focused inspection",
+    groups: ["M&E – Plumbing","M&E – Electrical","M&E – ACMV","M&E – Fire","M&E – Lift","General"],
+  },
   "Others": {
     icon: "\u{1F4CB}", // 📋
     desc: "Custom — all components available, free-text allowed",
