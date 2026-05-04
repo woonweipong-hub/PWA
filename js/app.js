@@ -15500,6 +15500,83 @@ function MapsSettings({onClose}){
   );
 }
 
+// ── API Access (gap #8 v1) ──────────────────────────────────────
+// Surfaces the existing PocketBase REST API to users so SiteShrimp
+// can answer "do you have an API?" with yes + working curl examples.
+// PocketBase exposes a complete REST surface natively; we just hand
+// the user their auth token and 4 representative endpoints. Token
+// is read from localStorage (pb_auth) — same store js/db.js writes.
+// Read-only panel; no settings to save here.
+function ApiAccessPanel({onClose,companyId}){
+  const apiBase=(typeof localStorage!=="undefined"&&localStorage.getItem("pb_url"))||"https://api.siteshrimp.org";
+  const tokenFromStore=(()=>{
+    try{return (JSON.parse(localStorage.getItem("pb_auth")||"{}").token)||"";}catch{return "";}
+  })();
+  const tok=tokenFromStore||"YOUR_TOKEN";
+  const cId=companyId||"YOUR_COMPANY_ID";
+  const examples=[
+    {
+      title:"List your defects",
+      desc:"GET — paginated, filter by company, sort newest first",
+      cmd:`curl -H "Authorization: Bearer ${tok}" \\\n  "${apiBase}/api/collections/defects/records?perPage=50&sort=-created&filter=companyId%3D%22${cId}%22"`,
+    },
+    {
+      title:"Get a specific defect",
+      desc:"GET — single record by id",
+      cmd:`curl -H "Authorization: Bearer ${tok}" \\\n  "${apiBase}/api/collections/defects/records/RECORD_ID"`,
+    },
+    {
+      title:"Create a defect",
+      desc:"POST — programmatic defect logging from your own tooling",
+      cmd:`curl -X POST -H "Authorization: Bearer ${tok}" \\\n  -H "Content-Type: application/json" \\\n  -d '{"companyId":"${cId}","projectId":"YOUR_PROJECT_ID","title":"Programmatic entry","severity":"Major","entryType":"Defect","status":"Open"}' \\\n  ${apiBase}/api/collections/defects/records`,
+    },
+    {
+      title:"List your projects",
+      desc:"GET — useful for picking projectId before posting",
+      cmd:`curl -H "Authorization: Bearer ${tok}" \\\n  "${apiBase}/api/collections/projects/records?perPage=50&filter=companyId%3D%22${cId}%22"`,
+    },
+  ];
+  return(
+    <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
+      <SettingsBack onClose={onClose} title={t("settings.api")}/>
+      <div style={{padding:20}}>
+        <p style={{fontSize:13,color:"rgba(0,0,0,0.6)",marginBottom:14,lineHeight:1.5}}>{t("settings.api_intro")}</p>
+
+        <div style={{background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:12,padding:14,marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <label style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.5)",letterSpacing:"0.12em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("settings.api_endpoint")}</label>
+          </div>
+          <div style={{fontFamily:"'Courier New',monospace",fontSize:12,color:"#1a1a1a",wordBreak:"break-all",marginBottom:12}}>{apiBase}/api/</div>
+
+          <label style={{display:"block",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.5)",letterSpacing:"0.12em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>{t("settings.api_token")}</label>
+          <div style={{position:"relative",background:"rgba(0,0,0,0.04)",borderRadius:8,padding:"10px 12px",paddingRight:80,fontFamily:"'Courier New',monospace",fontSize:11,color:"#1a1a1a",wordBreak:"break-all",lineHeight:1.5}}>
+            {tokenFromStore?tokenFromStore.slice(0,40)+"…":t("settings.api_token_missing")}
+            {tokenFromStore&&<CopyBtn text={tokenFromStore}/>}
+          </div>
+          <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",marginTop:8,lineHeight:1.5}}>{t("settings.api_token_note")}</div>
+        </div>
+
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#1a1a1a",marginBottom:10,marginTop:6,letterSpacing:"0.04em"}}>{t("settings.api_examples")}</div>
+
+        {examples.map((ex,i)=>(
+          <div key={i} style={{background:"#fff",border:"1px solid rgba(0,0,0,0.08)",borderRadius:12,padding:14,marginBottom:10,position:"relative"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#1a1a1a",marginBottom:2}}>{ex.title}</div>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.55)",marginBottom:8}}>{ex.desc}</div>
+            <div style={{position:"relative",background:"#1a1a1a",borderRadius:8,padding:"10px 12px",fontFamily:"'Courier New',monospace",fontSize:11,color:"#a4f0c0",lineHeight:1.5,whiteSpace:"pre-wrap",wordBreak:"break-all"}}>
+              {ex.cmd}
+              <CopyBtn text={ex.cmd} dark/>
+            </div>
+          </div>
+        ))}
+
+        <div style={{background:"rgba(255,149,0,0.08)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:10,padding:"10px 12px",fontSize:11,color:"#a85d00",marginTop:6,lineHeight:1.5}}>
+          <b>{t("settings.api_more_label")}:</b> {t("settings.api_more")} <a href="https://pocketbase.io/docs/api-records/" target="_blank" rel="noopener noreferrer" style={{color:"#a85d00",textDecoration:"underline"}}>pocketbase.io/docs/api-records</a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Tag on Map (Google Maps pin canvas) ──────────────────────────
 function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,onBulkUpdate,onBulkDelete,company,onSnapped,onViewEntry}){
   const mapRef=useRef(null);
@@ -22548,6 +22625,7 @@ const DdIcon=({name,size=16})=>{
     case"blueprint":return <svg {...p}><path d="M4 20L20 4"/><path d="M4 20h13"/><path d="M4 20V7"/></svg>;
     case"server":return <svg {...p}><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><circle cx="7" cy="7" r="0.7" fill="currentColor"/><circle cx="7" cy="17" r="0.7" fill="currentColor"/></svg>;
     case"mail":return <svg {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>;
+    case"code":return <svg {...p}><path d="M8 6l-5 6 5 6"/><path d="M16 6l5 6-5 6"/><path d="M14 4l-4 16"/></svg>;
     default:return null;
   }
 };
@@ -22606,6 +22684,7 @@ function App(){
   const[showFeedback,setShowFeedback]=useState(false);
   const[showStorage,setShowStorage]=useState(false);
   const[showMaps,setShowMaps]=useState(false);
+  const[showApi,setShowApi]=useState(false);
   const[showAdminAnalytics,setShowAdminAnalytics]=useState(false);
   const[showSettingsMenu,setShowSettingsMenu]=useState(false);const settingsMenuTimer=useRef(null);
   // Close settings dropdown on outside click/touch (mouseleave alone doesn't
@@ -23510,6 +23589,7 @@ function App(){
                 {label:t("settings.storage"),desc:t("settings.storage_desc"),icon:"server",optional:true,onClick:()=>{setShowStorage(true);setShowSettingsMenu(false);}},
                 {label:t("settings.email")||"Email Setup",desc:t("settings.email_desc")||"SMTP for report emails",icon:"mail",optional:true,onClick:()=>{setShowEmail(true);setShowSettingsMenu(false);}},
                 {label:t("settings.maps"),desc:t("settings.maps_desc"),icon:"pin",optional:true,onClick:()=>{setShowMaps(true);setShowSettingsMenu(false);}},
+                {label:t("settings.api"),desc:t("settings.api_desc"),icon:"code",optional:true,onClick:()=>{setShowApi(true);setShowSettingsMenu(false);}},
                 {section:t("language.title")},
                 {label:t("settings.language"),desc:(languages.find(l=>l.code===lang)||{}).name||"English",icon:"globe",optional:true,onClick:()=>{setShowLangPicker(true);setShowSettingsMenu(false);}},
                 {section:t("settings.section_app")},
@@ -24207,6 +24287,7 @@ function App(){
       {showGemini&&<GeminiSettings onClose={()=>setShowGemini(false)} companyId={company?.companyId}/>}
       {showStorage&&<StorageSettings onClose={()=>setShowStorage(false)} companyId={company?.companyId}/>}
       {showMaps&&<MapsSettings onClose={()=>setShowMaps(false)}/>}
+      {showApi&&<ApiAccessPanel onClose={()=>setShowApi(false)} companyId={company?.companyId}/>}
       {showUsers&&<UserManagement onClose={()=>setShowUsers(false)} company={company} member={member} members={members}/>}
       {showAdminAnalytics&&isAdmin&&(
         <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:300,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
