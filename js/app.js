@@ -6724,6 +6724,22 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
   const[newName,setNewName]=useState("");const[adding,setAdding]=useState(false);
   const[editingId,setEditingId]=useState(null);const[editName,setEditName]=useState("");
   const[archived,setArchived]=useState([]);const[showArchived,setShowArchived]=useState(false);
+  // Defensive re-fetch — if the parent's SSE subscribe missed a delivery
+  // (lost connection, race with company load, server restart) the list
+  // would render empty even though projects exist. A one-shot list call on
+  // open guarantees the user sees their projects every time the panel opens.
+  // Result merges with the prop in `displayProjects` below, so a successful
+  // SSE feed still wins (prop is fresher in normal operation).
+  const[fallbackProjects,setFallbackProjects]=useState([]);
+  const[fetchState,setFetchState]=useState("idle"); // "idle" | "loading" | "ready"
+  useEffect(()=>{
+    if(!company?.companyId){setFetchState("ready");return;}
+    setFetchState("loading");
+    DB.projects.list(`companyId="${company.companyId}" && archived!=true`)
+      .then(items=>{setFallbackProjects(items||[]);setFetchState("ready");})
+      .catch(()=>setFetchState("ready"));
+  },[company?.companyId]);
+  const displayProjects=(projects&&projects.length>0)?projects:fallbackProjects;
   // Optimistic local overrides for ontology_edition so the chip reflects
   // the user's last action without waiting for a parent re-fetch. Shape:
   // { [projectId]: editionString | "" }. Merged with projects[i].ontology_edition
@@ -6867,18 +6883,18 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
     try{return JSON.parse(localStorage.getItem(orderKey)||"[]");}catch{return[];}
   });
   const sortedProjects=useMemo(()=>{
-    if(!projects||!projects.length)return projects||[];
-    if(!projectOrder.length)return projects;
+    if(!displayProjects||!displayProjects.length)return displayProjects||[];
+    if(!projectOrder.length)return displayProjects;
     const indexMap=new Map(projectOrder.map((id,i)=>[id,i]));
     // Known ids in stored order; unknown ids (newly-created since last save)
     // fall to the end, alphabetically among themselves.
-    return[...projects].sort((a,b)=>{
+    return[...displayProjects].sort((a,b)=>{
       const ai=indexMap.has(a.id)?indexMap.get(a.id):Number.MAX_SAFE_INTEGER;
       const bi=indexMap.has(b.id)?indexMap.get(b.id):Number.MAX_SAFE_INTEGER;
       if(ai!==bi)return ai-bi;
       return(a.name||"").localeCompare(b.name||"");
     });
-  },[projects,projectOrder]);
+  },[displayProjects,projectOrder]);
   const commitOrder=(idsInNewOrder)=>{
     setProjectOrder(idsInNewOrder);
     if(orderKey){try{localStorage.setItem(orderKey,JSON.stringify(idsInNewOrder));}catch{}}
@@ -6971,6 +6987,17 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
       <SettingsBack onClose={onClose} title={t("projects.title")}/>
       <div style={{padding:20}}>
         <div style={lbl()}>SELECT ACTIVE PROJECT</div>
+        {sortedProjects.length===0&&fetchState==="loading"&&(
+          <div style={{display:"flex",alignItems:"center",gap:10,padding:"14px 16px",background:"#fff",borderRadius:12,marginBottom:8,color:"rgba(0,0,0,0.55)",fontSize:13}}>
+            <Spin size={14}/><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>Loading projects…</span>
+          </div>
+        )}
+        {sortedProjects.length===0&&fetchState==="ready"&&(
+          <div style={{padding:"14px 16px",background:"#fff",borderRadius:12,marginBottom:8,color:"rgba(0,0,0,0.55)",fontSize:13,lineHeight:1.5}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#1a1a1a",marginBottom:4}}>No projects yet</div>
+            <div style={{fontSize:12}}>Use ADD NEW PROJECT below to create one. If you expected to see existing projects, sign out and back in to refresh, or check that you're signed into the right workspace.</div>
+          </div>
+        )}
         {canManage&&sortedProjects.length>1&&<div style={{fontSize:10,color:"rgba(0,0,0,0.4)",marginBottom:8,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>Hold the ≡ handle on the right and drag up or down to rearrange.</div>}
         <div ref={listRef} onPointerMove={onDragMove} onPointerUp={onDragEnd} onPointerCancel={onDragEnd}>
         {sortedProjects.map((p,i)=>(
@@ -16223,28 +16250,32 @@ function ApiAccessPanel({onClose,companyId}){
   })();
   const tok=tokenFromStore||"YOUR_TOKEN";
   const cId=companyId||"YOUR_COMPANY_ID";
-  const examples=[
-    {
-      title:"List your defects",
-      desc:"GET — paginated, filter by company, sort newest first",
-      cmd:`curl -H "Authorization: Bearer ${tok}" \\\n  "${apiBase}/api/collections/defects/records?perPage=50&sort=-created&filter=companyId%3D%22${cId}%22"`,
-    },
-    {
-      title:"Get a specific defect",
-      desc:"GET — single record by id",
-      cmd:`curl -H "Authorization: Bearer ${tok}" \\\n  "${apiBase}/api/collections/defects/records/RECORD_ID"`,
-    },
-    {
-      title:"Create a defect",
-      desc:"POST — programmatic defect logging from your own tooling",
-      cmd:`curl -X POST -H "Authorization: Bearer ${tok}" \\\n  -H "Content-Type: application/json" \\\n  -d '{"companyId":"${cId}","projectId":"YOUR_PROJECT_ID","title":"Programmatic entry","severity":"Major","entryType":"Defect","status":"Open"}' \\\n  ${apiBase}/api/collections/defects/records`,
-    },
-    {
-      title:"List your projects",
-      desc:"GET — useful for picking projectId before posting",
-      cmd:`curl -H "Authorization: Bearer ${tok}" \\\n  "${apiBase}/api/collections/projects/records?perPage=50&filter=companyId%3D%22${cId}%22"`,
-    },
+  // Default-masked. Anyone who picks up the unlocked phone (or shoulder-surfs,
+  // or screenshots this panel) shouldn't be able to read the bearer token at
+  // a glance. Auto-hides 30s after reveal so the exposure window stays small.
+  // COPY still copies the real value while masked — masking is purely visual.
+  const[revealed,setRevealed]=useState(false);
+  useEffect(()=>{
+    if(!revealed)return;
+    const id=setTimeout(()=>setRevealed(false),30000);
+    return()=>clearTimeout(id);
+  },[revealed]);
+  const TOK_MASK="•".repeat(20);
+  const exampleTpls=[
+    {title:"List your defects",desc:"GET — paginated, filter by company, sort newest first",
+     tpl:`curl -H "Authorization: Bearer {TOK}" \\\n  "${apiBase}/api/collections/defects/records?perPage=50&sort=-created&filter=companyId%3D%22${cId}%22"`},
+    {title:"Get a specific defect",desc:"GET — single record by id",
+     tpl:`curl -H "Authorization: Bearer {TOK}" \\\n  "${apiBase}/api/collections/defects/records/RECORD_ID"`},
+    {title:"Create a defect",desc:"POST — programmatic defect logging from your own tooling",
+     tpl:`curl -X POST -H "Authorization: Bearer {TOK}" \\\n  -H "Content-Type: application/json" \\\n  -d '{"companyId":"${cId}","projectId":"YOUR_PROJECT_ID","title":"Programmatic entry","severity":"Major","entryType":"Defect","status":"Open"}' \\\n  ${apiBase}/api/collections/defects/records`},
+    {title:"List your projects",desc:"GET — useful for picking projectId before posting",
+     tpl:`curl -H "Authorization: Bearer {TOK}" \\\n  "${apiBase}/api/collections/projects/records?perPage=50&filter=companyId%3D%22${cId}%22"`},
   ];
+  const examples=exampleTpls.map(e=>({
+    title:e.title,desc:e.desc,
+    display:e.tpl.replace(/\{TOK\}/g,revealed?tok:TOK_MASK),
+    real:e.tpl.replace(/\{TOK\}/g,tok),
+  }));
   return(
     <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
       <SettingsBack onClose={onClose} title={t("settings.api")}/>
@@ -16257,11 +16288,15 @@ function ApiAccessPanel({onClose,companyId}){
           </div>
           <div style={{fontFamily:"'Courier New',monospace",fontSize:12,color:"#1a1a1a",wordBreak:"break-all",marginBottom:12}}>{apiBase}/api/</div>
 
-          <label style={{display:"block",fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.5)",letterSpacing:"0.12em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>{t("settings.api_token")}</label>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:6}}>
+            <label style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.5)",letterSpacing:"0.12em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("settings.api_token")}</label>
+            {tokenFromStore&&<button type="button" onClick={()=>setRevealed(v=>!v)} aria-pressed={revealed} title={revealed?t("settings.api_hide_hint"):t("settings.api_show_hint")} style={{background:revealed?"rgba(255,107,0,0.15)":"rgba(0,0,0,0.06)",border:"1px solid "+(revealed?"rgba(255,107,0,0.4)":"rgba(0,0,0,0.12)"),borderRadius:6,padding:"4px 10px",color:revealed?"#ff6b00":"rgba(0,0,0,0.65)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,letterSpacing:"0.05em",cursor:"pointer"}}>{revealed?t("settings.api_hide"):t("settings.api_show")}</button>}
+          </div>
           <div style={{position:"relative",background:"rgba(0,0,0,0.04)",borderRadius:8,padding:"10px 12px",paddingRight:80,fontFamily:"'Courier New',monospace",fontSize:11,color:"#1a1a1a",wordBreak:"break-all",lineHeight:1.5}}>
-            {tokenFromStore?tokenFromStore.slice(0,40)+"…":t("settings.api_token_missing")}
+            {!tokenFromStore?t("settings.api_token_missing"):(revealed?tokenFromStore.slice(0,40)+"…":"•".repeat(40))}
             {tokenFromStore&&<CopyBtn text={tokenFromStore}/>}
           </div>
+          {tokenFromStore&&<div style={{fontSize:10,color:revealed?"#a85d00":"rgba(0,0,0,0.5)",marginTop:6,lineHeight:1.4,fontWeight:revealed?700:400}}>{revealed?t("settings.api_revealed_warn"):t("settings.api_hidden_note")}</div>}
           <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",marginTop:8,lineHeight:1.5}}>{t("settings.api_token_note")}</div>
         </div>
 
@@ -16272,8 +16307,8 @@ function ApiAccessPanel({onClose,companyId}){
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#1a1a1a",marginBottom:2}}>{ex.title}</div>
             <div style={{fontSize:11,color:"rgba(0,0,0,0.55)",marginBottom:8}}>{ex.desc}</div>
             <div style={{position:"relative",background:"#1a1a1a",borderRadius:8,padding:"10px 12px",fontFamily:"'Courier New',monospace",fontSize:11,color:"#a4f0c0",lineHeight:1.5,whiteSpace:"pre-wrap",wordBreak:"break-all"}}>
-              {ex.cmd}
-              <CopyBtn text={ex.cmd} dark/>
+              {ex.display}
+              <CopyBtn text={ex.real} dark/>
             </div>
           </div>
         ))}
@@ -18000,7 +18035,13 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
         </div>
       )}
       <div style={{position:"relative"}}>
-        <div ref={mapRef} style={{width:"100%",height:"min(calc(100dvh - 420px),420px)",minHeight:240,borderRadius:12,border:"1px solid rgba(0,0,0,0.12)",background:"#e5e3dc",overscrollBehavior:"contain",touchAction:"pan-x pan-y",marginBottom:12}}/>
+        {/* Height calc reserves: ~310px above (app header + DrawingsPanel
+            header + sub-mode toggle + search + action bar), ~100px bottom nav,
+            ~70px chip strip below, plus iPhone safe-area-inset. Without the
+            nav budget the map's bottom slid behind the fixed bottom-nav. Cap
+            at 380px so the chip strip / preview card / Quick Log card stay
+            visible on tall laptop viewports too. */}
+        <div ref={mapRef} style={{width:"100%",height:"min(calc(100dvh - 480px - env(safe-area-inset-bottom,0px)),380px)",minHeight:220,borderRadius:12,border:"1px solid rgba(0,0,0,0.12)",background:"#e5e3dc",overscrollBehavior:"contain",touchAction:"pan-x pan-y",marginBottom:12}}/>
         {/* Counter badge — parity with REVIEW > MAP. Hidden when Quick Log
             is open so it doesn't overlap the pending-pin affordance. */}
         {mapDefects.length>0&&!pendingPin&&!showList&&(
@@ -18281,7 +18322,11 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
 
   // Load drawings for current project
   useEffect(()=>{
-    if(!company?.companyId||!currentProject?.id)return;
+    // Without a project there is nothing to fetch — drop the spinner so the
+    // empty state ("No drawings yet") can render instead of the indefinite
+    // rotating icon. Same for races where the panel mounts before company /
+    // project resolve; loading flips back to true below once we actually fetch.
+    if(!company?.companyId||!currentProject?.id){setLoading(false);return;}
     setLoading(true);
     DB.drawings.list(`companyId="${company.companyId}" && projectId="${currentProject.id}"`).then(items=>{
       // Split active vs archived so the default DRAWINGS view only shows
