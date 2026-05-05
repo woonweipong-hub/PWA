@@ -6943,12 +6943,16 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
     setDropIndex(null);
   };
 
+  // Pre-fetch archived count on open (not just when the toggle expands), so
+  // we can hide the "▶ SHOW ARCHIVED PROJECTS" affordance entirely when
+  // there are zero archived. The empty toggle was confusing — users read it
+  // as a prompt to act, not a collapsible section.
   useEffect(()=>{
-    if(!showArchived||!company?.companyId)return;
+    if(!company?.companyId)return;
     DB.projects.list(`companyId="${company.companyId}" && archived=true`).then(items=>{
-      setArchived(items);
-    });
-  },[showArchived]);
+      setArchived(items||[]);
+    }).catch(()=>{});
+  },[company?.companyId]);
 
   const restoreProject=async id=>{
     await DB.projects.update(id,{archived:false});
@@ -7203,13 +7207,12 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
             </div>
           </div>
         )}
-        {canManage&&(
+        {canManage&&archived.length>0&&(
           <div style={{marginTop:20}}>
-            <button onClick={()=>setShowArchived(!showArchived)} style={{background:"none",border:"none",color:"rgba(0,0,0,0.4)",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,cursor:"pointer",letterSpacing:"0.08em"}}>{showArchived?"▼ HIDE":"▶ SHOW"} ARCHIVED PROJECTS</button>
+            <button onClick={()=>setShowArchived(!showArchived)} style={{background:"none",border:"none",color:"rgba(0,0,0,0.4)",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,cursor:"pointer",letterSpacing:"0.08em"}}>{showArchived?"▼ HIDE":"▶ SHOW"} ARCHIVED PROJECTS ({archived.length})</button>
             {showArchived&&(
               <div style={{marginTop:10}}>
-                {archived.length===0?<div style={{fontSize:12,color:"rgba(0,0,0,0.3)",padding:8}}>No archived projects</div>:
-                archived.map(p=>(
+                {archived.map(p=>(
                   <div key={p.id} style={{background:"rgba(0,0,0,0.04)",borderRadius:10,padding:"10px 14px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <div style={{fontSize:13,color:"rgba(0,0,0,0.5)"}}>{p.name}</div>
                     <button onClick={()=>restoreProject(p.id)} style={{background:"rgba(48,209,88,0.12)",border:"none",borderRadius:8,padding:"5px 10px",color:"#30d158",fontSize:12,fontWeight:700,cursor:"pointer"}}>Restore</button>
