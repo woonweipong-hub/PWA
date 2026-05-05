@@ -17497,9 +17497,11 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
     }
   // Re-render markers when selection OR focus changes so the selected ring
   // and focused-pin enlargement appear/disappear immediately without waiting
-  // for a data refresh.
+  // for a data refresh. extraMapPins is in deps because mapDefects merges
+  // it with `defects` — without it, deleting a synthetic map_pin row leaves
+  // a ghost marker on the layer until the next mount.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[status,defects,provider,selectedPinIds,focusedDefectId]);
+  },[status,defects,extraMapPins,provider,selectedPinIds,focusedDefectId]);
   // Reset the auto-fit guard when switching projects or providers.
   useEffect(()=>{hasAutoFitRef.current=false;},[currentProject?.id,provider]);
 

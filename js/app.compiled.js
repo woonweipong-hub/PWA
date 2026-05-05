@@ -2679,9 +2679,11 @@ if(L.markerClusterGroup){const group=L.markerClusterGroup({showCoverageOnHover:f
 // entries were added instead of staring at the saved default.
 if(!hasAutoFitRef.current&&mapDefects.length>0){hasAutoFitRef.current=true;setTimeout(fitToAllPins,120);}// Re-render markers when selection OR focus changes so the selected ring
 // and focused-pin enlargement appear/disappear immediately without waiting
-// for a data refresh.
+// for a data refresh. extraMapPins is in deps because mapDefects merges
+// it with `defects` — without it, deleting a synthetic map_pin row leaves
+// a ghost marker on the layer until the next mount.
 // eslint-disable-next-line react-hooks/exhaustive-deps
-},[status,defects,provider,selectedPinIds,focusedDefectId]);// Reset the auto-fit guard when switching projects or providers.
+},[status,defects,extraMapPins,provider,selectedPinIds,focusedDefectId]);// Reset the auto-fit guard when switching projects or providers.
 useEffect(()=>{hasAutoFitRef.current=false;},[currentProject?.id,provider]);// Snap the current map view and save as a drawing. User then pins defects
 // using the drawing pin system (multi-pin, drag, markup, heatmap — parity).
 const[snapping,setSnapping]=useState(false);const[savedToast,setSavedToast]=useState(false);const quickLogRef=useRef(null);// Scroll the Quick Log card into view the moment it appears, so narrow
