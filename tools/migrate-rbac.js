@@ -83,9 +83,12 @@ async function api(p, opts = {}) {
 //     && @collection.members.role ?~ "<allowed>"
 
 // Role-set guards. PB doesn't have an `IN` operator on string lists, so
-// we OR the equality checks. ?~ is "contains" — using = is safer.
+// we OR the existential checks. `?=` is "any-match" against @collection.X
+// (returns true if at least one related record matches). Plain `=` on
+// @collection.X is "all-match" — almost never what we want, and the cause
+// of the 2026-05-05 RBAC outage.
 function rolesIn(roles) {
-  return "(" + roles.map((r) => `@collection.members.role = "${r}"`).join(" || ") + ")";
+  return "(" + roles.map((r) => `@collection.members.role ?= "${r}"`).join(" || ") + ")";
 }
 
 // The most common rule shape: same-company AND auth-user has one of the
@@ -94,7 +97,7 @@ function sameCompanyAndRole(roles, companyIdField = "companyId") {
   return [
     `@request.auth.id != ""`,
     `@collection.members.userId ?= @request.auth.id`,
-    `@collection.members.companyId = ${companyIdField}`,
+    `@collection.members.companyId ?= ${companyIdField}`,
     rolesIn(roles),
   ].join(" && ");
 }
@@ -104,7 +107,7 @@ function sameCompany(companyIdField = "companyId") {
   return [
     `@request.auth.id != ""`,
     `@collection.members.userId ?= @request.auth.id`,
-    `@collection.members.companyId = ${companyIdField}`,
+    `@collection.members.companyId ?= ${companyIdField}`,
   ].join(" && ");
 }
 
@@ -116,7 +119,7 @@ function createRuleSameCompany(roles) {
     `@request.auth.id != ""`,
     `@collection.members.userId ?= @request.auth.id`,
     rolesIn(roles),
-    `(@request.body.companyId:isset = false || @request.body.companyId = "" || @collection.members.companyId = @request.body.companyId)`,
+    `(@request.body.companyId:isset = false || @request.body.companyId = "" || @collection.members.companyId ?= @request.body.companyId)`,
   ].join(" && ");
 }
 
@@ -214,16 +217,16 @@ const PLAN = {
     note: "Same as location_presets.",
   },
   companies: {
-    listRule: `@request.auth.id != "" && @collection.members.userId ?= @request.auth.id && @collection.members.companyId = id`,
-    viewRule: `@request.auth.id != "" && @collection.members.userId ?= @request.auth.id && @collection.members.companyId = id`,
+    listRule: `@request.auth.id != "" && @collection.members.userId ?= @request.auth.id && @collection.members.companyId ?= id`,
+    viewRule: `@request.auth.id != "" && @collection.members.userId ?= @request.auth.id && @collection.members.companyId ?= id`,
     createRule: `@request.auth.id != ""`,
-    updateRule: `@request.auth.id != "" && @collection.members.userId ?= @request.auth.id && @collection.members.companyId = id && ${rolesIn(ADMINS)}`,
+    updateRule: `@request.auth.id != "" && @collection.members.userId ?= @request.auth.id && @collection.members.companyId ?= id && ${rolesIn(ADMINS)}`,
     deleteRule: SERVER_ONLY,
     note: "User can only see their own company. Create open to any auth (registration flow). Update Admin-only. Delete server-only (data preservation).",
   },
   members: {
-    listRule: `@request.auth.id != "" && @collection.members.userId ?= @request.auth.id && @collection.members.companyId = companyId`,
-    viewRule: `@request.auth.id != "" && @collection.members.userId ?= @request.auth.id && @collection.members.companyId = companyId`,
+    listRule: `@request.auth.id != "" && @collection.members.userId ?= @request.auth.id && @collection.members.companyId ?= companyId`,
+    viewRule: `@request.auth.id != "" && @collection.members.userId ?= @request.auth.id && @collection.members.companyId ?= companyId`,
     createRule: createRuleSameCompany(ADMINS),
     updateRule: sameCompanyAndRole(ADMINS),
     deleteRule: sameCompanyAndRole(ADMINS),
