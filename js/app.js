@@ -8475,7 +8475,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
     if(status!=="ready"||!mapObj.current)return;
     // Clear previous markers AND any active cluster layer (so we can rebuild
     // with current defects — both arrays and clusters).
-    markersRef.current.existing.forEach(m=>{if(m.setMap)m.setMap(null);else if(m.remove)m.remove();});
+    markersRef.current.existing.forEach(m=>{try{if(m.setMap)m.setMap(null);else if(m.remove)m.remove();}catch(_){}});
     if(clusterRef.current){
       try{
         if(clusterRef.current.clearMarkers)clusterRef.current.clearMarkers(); // gmaps MarkerClusterer
@@ -8488,10 +8488,22 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
     const saveDefectMove=async(d,newLat,newLng)=>{
       try{await DB.defects.update(d.id,{lat:newLat,lng:newLng});}catch(e){console.warn("pin move save failed",e);}
     };
-    // Permanent-delete a defect's GPS location (unpins from map, entry stays)
-    const unpinDefect=async(d)=>{
+    // Permanent-delete a defect's GPS location (unpins from map, entry stays).
+    // Caller passes the marker so we can eagerly remove it from the cluster
+    // without waiting for the subscription to refresh — fixes a UX issue where
+    // testers thought REMOVE PIN was broken because the marker stayed on screen.
+    const unpinDefect=async(d,marker)=>{
       if(!confirm("Remove this entry's map pin?\n(The entry itself will stay — only its GPS location is cleared.)"))return;
-      try{await DB.defects.update(d.id,{lat:null,lng:null,mapZoom:null});}catch(e){alert("Failed to remove pin: "+e.message);}
+      try{
+        await DB.defects.update(d.id,{lat:null,lng:null,mapZoom:null});
+        try{
+          if(marker&&clusterRef.current){
+            if(typeof clusterRef.current.removeLayer==="function")clusterRef.current.removeLayer(marker);
+            else if(typeof clusterRef.current.removeMarker==="function")clusterRef.current.removeMarker(marker);
+          }
+          if(marker){if(marker.setMap)marker.setMap(null);else if(marker.remove)marker.remove();}
+        }catch(eVis){console.warn("unpin: eager visual removal failed",eVis);}
+      }catch(e){console.error("unpinDefect: update failed",d.id,e);alert("Failed to remove pin: "+e.message);}
     };
     // Shared letter-in-ring SVG for both providers (matches drawing pin style).
     // 28×28 overall; severity letter in the middle. When `selected` is true,
@@ -8538,7 +8550,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
           if(additive&&canEdit){togglePinSelection(d.id);return;}
           // Plain click: show info window (existing behaviour)
           iw.open({anchor:m,map:mapObj.current});
-          if(canEdit){setTimeout(()=>{const b=document.getElementById("mm-del-"+d.id);if(b)b.onclick=()=>{iw.close();unpinDefect(d);};},30);}
+          if(canEdit){setTimeout(()=>{const b=document.getElementById("mm-del-"+d.id);if(b)b.onclick=()=>{iw.close();unpinDefect(d,m);};},30);}
         });
         if(canEdit)m.addListener("dragend",e=>saveDefectMove(d,e.latLng.lat(),e.latLng.lng()));
         return m;
@@ -8585,7 +8597,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
               togglePinSelection(d.id);
             }
           });
-          m.on("popupopen",()=>{setTimeout(()=>{const b=document.getElementById("mm-del-"+d.id);if(b)b.onclick=()=>{m.closePopup();unpinDefect(d);};},30);});
+          m.on("popupopen",()=>{setTimeout(()=>{const b=document.getElementById("mm-del-"+d.id);if(b)b.onclick=()=>{m.closePopup();unpinDefect(d,m);};},30);});
           m.on("dragend",e=>{const p=e.target.getLatLng();saveDefectMove(d,p.lat,p.lng);});
         }
         return m;
@@ -8839,6 +8851,20 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
                 try{await DB.defects.update(id,{lat:null,lng:null,mapZoom:null});}
                 catch(e){console.warn("unpin failed",id,e);failures.push(id);}
               }
+              // Eager visual removal — clear successful markers from the cluster
+              // immediately rather than waiting on the subscription to refresh.
+              try{
+                const successSet=new Set(ids.filter(id=>!failures.includes(id)));
+                markersRef.current.existing.forEach(mk=>{
+                  if(mk?._defect&&successSet.has(mk._defect.id)){
+                    try{
+                      if(typeof clusterRef.current?.removeLayer==="function")clusterRef.current.removeLayer(mk);
+                      else if(typeof clusterRef.current?.removeMarker==="function")clusterRef.current.removeMarker(mk);
+                      if(mk.setMap)mk.setMap(null);else if(mk.remove)mk.remove();
+                    }catch(_){}
+                  }
+                });
+              }catch(_){}
               clearPinSelection();
               if(failures.length)alert(`Unpinned ${ids.length-failures.length}/${ids.length}. ${failures.length} failed — check connection and retry.`);
             }} title={`Unpin ${selectedPinIds.size} selected entries from the map`} style={{padding:"8px 12px",borderRadius:10,border:"1px solid rgba(255,59,48,0.4)",background:"rgba(255,59,48,0.12)",color:"#cc0000",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
