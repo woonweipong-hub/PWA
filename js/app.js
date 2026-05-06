@@ -13358,41 +13358,14 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
         </div>
       )}
 
-      {/* Category mix — informational chip strip showing the work-category
-          distribution of the currently filtered set. Hidden when no entries
-          carry workCategory. Reuses workcatDisplayFn for translated labels.
-          Sits above the view toggle so the toggle stays purely about HOW
-          entries render (LIST/GRID/MAP), not WHAT category they are. */}
-      {filtered.length>0&&(()=>{
-        const counts={};
-        for(const d of filtered){
-          const k=d.workCategory||"";
-          if(!k)continue;
-          counts[k]=(counts[k]||0)+1;
-        }
-        const entries=Object.entries(counts);
-        if(entries.length===0)return null;
-        return(
-          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8,alignItems:"center"}}>
-            {entries.map(([cat,n])=>{
-              const meta=WORK_CATEGORIES[cat];
-              const icon=meta?.icon||"\u{1F4CB}";
-              const label=workcatDisplayFn(cat);
-              return(
-                <span key={cat} title={`${label} (${n})`} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 9px",background:"rgba(0,0,0,0.045)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:14,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,color:"rgba(0,0,0,0.65)",letterSpacing:"0.02em"}}>
-                  <span style={{fontSize:12}}>{icon}</span>
-                  <span>{label}</span>
-                  <span style={{color:"rgba(0,0,0,0.4)",fontSize:10,fontWeight:600}}>· {n}</span>
-                </span>
-              );
-            })}
-          </div>
-        );
-      })()}
       {/* View toggle: LIST | GRID | MAP. GRID is always available; MAP
           appears only when at least one entry has GPS coords. Gallery-style
           GRID gives QA reviewers a fast visual scan across photos for
-          duplicate / wrong-trade / mis-categorised captures. */}
+          duplicate / wrong-trade / mis-categorised captures.
+          (The earlier informational "Category mix" chip strip was removed
+          2026-05-06 — replaced by the interactive Work Category filter
+          chip strip below, which surfaces the same counts AND lets the
+          user filter with a tap.) */}
       {/* Work-category filter chip strip — surfaces the AI-routing context
           as top-of-page chips. Only renders when the project has 2+ work
           categories present (single-category projects don't need them).
