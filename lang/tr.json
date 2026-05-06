@@ -11,6 +11,25 @@
   "tagline": {
     "text": "Yakalayın. Çıkışı yönetin. Tek bir yer."
   },
+  "top": {
+    "start_button": "ÜST HAZIRLIK ÖZ DENETİMİNİ BAŞLATIN",
+    "wizard_title": "EN ÜST HAZIRLIK ÖZ DENETİMİ",
+    "ready": "ZİRVEYE HAZIR",
+    "gate_fails": "{n} KAPI AÇILMADI",
+    "in_progress": "DENETİM DEVAM EDİYOR",
+    "gates_passed": "Hazırlık kapıları",
+    "items": "öğeler",
+    "pass": "✓ GEÇ",
+    "fail": "✕ BAŞARISIZ",
+    "na": "- O",
+    "pending": "○ BEKLEMEDE",
+    "record_fail": "KAYIT NC",
+    "evidence_photo": "DELİL FOTOĞRAFI",
+    "capture_photo": "FOTOĞRAF YAKALA",
+    "notes": "GÖZLEM NOTLARI (İSTEĞE BAĞLI)",
+    "notes_placeholder": "örneğin 945 mm ölçülmüştür, en darı L1-L2 dönüşündedir",
+    "save_nc": "✕ NC'Yİ KAYDET + HATA OLUŞTUR"
+  },
   "empty_state": {
     "log": "Herhangi bir kusurun fotoğrafını çekin. AI başlığı, ciddiyeti ve açıklamayı doldurur. Otomatik olarak kaydeder.",
     "tag": "Kendi kat planlarınızı veya çizimlerinizi buraya yükleyin, ardından kesin konum için kusurları üzerlerine sabitleyin. Raporlarınızda zaten bulunan GPS otomatik sabitleme özelliğiyle eşleşir.",
@@ -133,6 +152,7 @@
     "severity": "ŞİDDET",
     "severity_placeholder": "Önem derecesini seçin...",
     "work_category": "İŞ KATEGORİSİ",
+    "work_category_hint": "(Yapay zeka destekli çıktı için ilgili kapsamı seçin)",
     "work_category_placeholder": "İş kategorisini seçin...",
     "entry_type": "GİRİŞ TÜRÜ",
     "entry_type_placeholder": "Giriş türünü seçin...",

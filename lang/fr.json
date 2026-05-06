@@ -11,6 +11,25 @@
   "tagline": {
     "text": "Capturez. Gérez. Un seul endroit."
   },
+  "top": {
+    "start_button": "AUTO-AUDIT DE PRÉPARATION DE DÉMARRAGE",
+    "wizard_title": "AUTO-AUDIT DE PRÉPARATION SUPÉRIEURE",
+    "ready": "PRÊT POUR LE HAUT",
+    "gate_fails": "{n} LA PORTE NE S'OUVRE PAS",
+    "in_progress": "AUDIT EN COURS",
+    "gates_passed": "Portes de préparation",
+    "items": "articles",
+    "pass": "✓ RÉUSSIR",
+    "fail": "✕ ÉCHEC",
+    "na": "- QUE",
+    "pending": "○ EN ATTENTE",
+    "record_fail": "ENREGISTREMENT NC",
+    "evidence_photo": "PHOTO DE PREUVE",
+    "capture_photo": "CAPTURER DES PHOTOS",
+    "notes": "NOTES D'OBSERVATION (OPTIONNEL)",
+    "notes_placeholder": "par ex. mesuré 945 mm, le plus étroit au virage L1-L2",
+    "save_nc": "✕ ENREGISTRER NC + CRÉER UN DÉFAUT"
+  },
   "empty_state": {
     "log": "Prenez une photo de tout défaut. L'IA remplit le titre, la gravité et la description. Il enregistre automatiquement.",
     "tag": "Téléchargez ici vos propres plans ou dessins d'étage, puis épinglez les défauts dessus pour un emplacement précis. S'associe à l'épinglage automatique GPS déjà présent dans vos rapports.",
@@ -133,6 +152,7 @@
     "severity": "GRAVITÉ",
     "severity_placeholder": "Sélectionner la gravité...",
     "work_category": "CATÉGORIE DE TRAVAIL",
+    "work_category_hint": "(Sélectionnez la portée appropriée pour la sortie assistée par l'IA)",
     "work_category_placeholder": "Sélectionner la catégorie...",
     "entry_type": "TYPE D'ENTRÉE",
     "entry_type_placeholder": "Sélectionner le type...",

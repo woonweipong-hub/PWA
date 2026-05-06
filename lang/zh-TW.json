@@ -11,6 +11,25 @@
   "tagline": {
     "text": "捕捉進來，管理出去。 一處。"
   },
+  "top": {
+    "start_button": "開始頂級準備自我審核",
+    "wizard_title": "頂級準備情況自我審核",
+    "ready": "準備登頂",
+    "gate_fails": "{n} 門未能打開",
+    "in_progress": "審核進行中",
+    "gates_passed": "準備門",
+    "items": "專案",
+    "pass": "✓ 透過",
+    "fail": "✕ 失敗",
+    "na": "- 那",
+    "pending": "○ 待定",
+    "record_fail": "記錄數控",
+    "evidence_photo": "證據照片",
+    "capture_photo": "拍攝照片",
+    "notes": "觀察筆記（可選）",
+    "notes_placeholder": "例如測量長度為 945 毫米，L1-L2 轉彎處最窄",
+    "save_nc": "✕ 儲存 NC + 建立缺陷"
+  },
   "empty_state": {
     "log": "拍攝任何缺陷的照片。 AI填寫標題、嚴重性、描述。 它會自動保存。",
     "tag": "在此上傳您自己的平面圖或圖紙，然後將缺陷固定在其上以進行精確定位。 與報告中已有的 GPS 自動固定配對。",

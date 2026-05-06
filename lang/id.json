@@ -11,6 +11,25 @@
   "tagline": {
     "text": "Tangkap masuk. Kelola keluar. Satu tempat."
   },
+  "top": {
+    "start_button": "MULAI AUDIT DIRI KESIAPAN ATAS",
+    "wizard_title": "AUDIT DIRI KESIAPAN TERBAIK",
+    "ready": "SIAP UNTUK ATAS",
+    "gate_fails": "{n} GERBANG GAGAL TERBUKA",
+    "in_progress": "AUDIT DALAM PROGRES",
+    "gates_passed": "Gerbang kesiapan",
+    "items": "item",
+    "pass": "✓ LULUS",
+    "fail": "✕ GAGAL",
+    "na": "- ITU",
+    "pending": "○ TERTUNDA",
+    "record_fail": "REKAM NC",
+    "evidence_photo": "FOTO BUKTI",
+    "capture_photo": "TANGKAP FOTO",
+    "notes": "CATATAN PENGAMATAN (OPSIONAL)",
+    "notes_placeholder": "misalnya diukur 945 mm, tersempit pada belokan L1-L2",
+    "save_nc": "✕ SIMPAN NC + BUAT CACAT"
+  },
   "empty_state": {
     "log": "Ambil foto jika ada cacat. AI mengisi judul, tingkat keparahan, deskripsi. Ini menghemat secara otomatis.",
     "tag": "Unggah denah atau gambar lantai Anda sendiri di sini, lalu sematkan cacat pada gambar tersebut untuk mendapatkan lokasi yang tepat. Pasangkan dengan penyematan otomatis GPS yang sudah ada di laporan Anda.",

@@ -11,6 +11,25 @@
   "tagline": {
     "text": "Capture. Gerencie. Um lugar."
   },
+  "top": {
+    "start_button": "INICIE A AUTO-AUDITORIA DE PRONTIDÃO SUPERIOR",
+    "wizard_title": "AUTO-AUDITORIA DE PRONTIDÃO SUPERIOR",
+    "ready": "PRONTO PARA O TOPO",
+    "gate_fails": "{n} PORTÃO FALHA ABERTO",
+    "in_progress": "AUDITORIA EM ANDAMENTO",
+    "gates_passed": "Portões de prontidão",
+    "items": "Unid",
+    "pass": "✓ PASSAR",
+    "fail": "✕ FALHA",
+    "na": "- QUE",
+    "pending": "○ PENDENTE",
+    "record_fail": "REGISTRO NC",
+    "evidence_photo": "FOTO DE EVIDÊNCIA",
+    "capture_photo": "CAPTURAR FOTO",
+    "notes": "NOTAS DE OBSERVAÇÃO (OPCIONAL)",
+    "notes_placeholder": "por exemplo mediu 945 mm, mais estreito na curva L1-L2",
+    "save_nc": "✕ SALVAR NC + CRIAR DEFEITO"
+  },
   "empty_state": {
     "log": "Tire uma foto de qualquer defeito. AI preenche título, gravidade, descrição. Ele salva automaticamente.",
     "tag": "Carregue aqui suas próprias plantas baixas ou desenhos e, em seguida, fixe os defeitos neles para obter uma localização precisa. Pareia com a fixação automática de GPS que já está em seus relatórios.",
@@ -133,6 +152,7 @@
     "severity": "GRAVIDADE",
     "severity_placeholder": "Selecione a gravidade...",
     "work_category": "CATEGORIA DE TRABALHO",
+    "work_category_hint": "(Selecione o escopo relevante para resultados assistidos por IA)",
     "work_category_placeholder": "Selecione a categoria de trabalho...",
     "entry_type": "TIPO DE ENTRADA",
     "entry_type_placeholder": "Selecione o tipo de entrada...",

@@ -11,6 +11,25 @@
   "tagline": {
     "text": "포착하고 관리하세요. 한 곳."
   },
+  "top": {
+    "start_button": "최고의 준비 상태 자체 감사 시작",
+    "wizard_title": "최고의 준비 상태 자체 감사",
+    "ready": "TOP을 위한 준비",
+    "gate_fails": "{n} 게이트 열림 실패",
+    "in_progress": "감사 진행 중",
+    "gates_passed": "준비 게이트",
+    "items": "아이템",
+    "pass": "✓ 통과",
+    "fail": "✕ 실패",
+    "na": "- 저것",
+    "pending": "○ 보류 중",
+    "record_fail": "레코드 NC",
+    "evidence_photo": "증거 사진",
+    "capture_photo": "사진 캡처",
+    "notes": "관찰 메모(선택 사항)",
+    "notes_placeholder": "예를 들어 945mm 측정, L1-L2 회전에서 가장 좁음",
+    "save_nc": "✕ NC 저장 + 결함 생성"
+  },
   "empty_state": {
     "log": "결함이 있는 부분을 사진으로 찍습니다. AI가 제목, 심각도, 설명을 입력합니다. 자동으로 저장됩니다.",
     "tag": "여기에 자신의 평면도나 도면을 업로드한 다음 결함을 고정하여 정확한 위치를 확인하세요. 보고서에 이미 있는 GPS 자동 고정 기능과 페어링됩니다.",

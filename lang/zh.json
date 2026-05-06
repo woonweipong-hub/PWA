@@ -11,6 +11,25 @@
   "tagline": {
     "text": "捕捉进来，管理出去。 一处。"
   },
+  "top": {
+    "start_button": "开始顶级准备情况自我审核",
+    "wizard_title": "顶级准备情况自我审核",
+    "ready": "准备登顶",
+    "gate_fails": "{n} 门未能打开",
+    "in_progress": "审核正在进行中",
+    "gates_passed": "准备门",
+    "items": "项目",
+    "pass": "✓ 通过",
+    "fail": "✕ 失败",
+    "na": "- 那",
+    "pending": "○ 待定",
+    "record_fail": "记录数控",
+    "evidence_photo": "证据照片",
+    "capture_photo": "拍摄照片",
+    "notes": "观察笔记（可选）",
+    "notes_placeholder": "例如 测量长度为 945 毫米，L1-L2 转弯处最窄",
+    "save_nc": "✕ 保存 NC + 创建缺陷"
+  },
   "empty_state": {
     "log": "拍摄任何缺陷的照片。 AI填写标题、严重性、描述。 它会自动保存。",
     "tag": "在此处上传您自己的平面图或图纸，然后将缺陷固定在其上以进行精确定位。 与报告中已有的 GPS 自动固定配对。",

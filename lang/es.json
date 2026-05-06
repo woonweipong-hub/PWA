@@ -11,6 +11,25 @@
   "tagline": {
     "text": "Capturar. Gestionar. Un lugar."
   },
+  "top": {
+    "start_button": "INICIAR LA AUTOAUDIOLOGÍA DE PREPARACIÓN MÁXIMA",
+    "wizard_title": "AUTOAUDITORIA DE PREPARACIÓN SUPERIOR",
+    "ready": "LISTO PARA LA CIMA",
+    "gate_fails": "{n} LA PUERTA FALLA AL ABRIRSE",
+    "in_progress": "AUDITORÍA EN CURSO",
+    "gates_passed": "Puertas de preparación",
+    "items": "elementos",
+    "pass": "✓ APROBAR",
+    "fail": "✕ FALLO",
+    "na": "- ESO",
+    "pending": "○ PENDIENTE",
+    "record_fail": "GRABAR NC",
+    "evidence_photo": "FOTO DE PRUEBA",
+    "capture_photo": "CAPTURAR FOTO",
+    "notes": "NOTAS DE OBSERVACIÓN (OPCIONAL)",
+    "notes_placeholder": "p.ej. medido 945 mm, más estrecho en el giro L1-L2",
+    "save_nc": "✕ GUARDAR NC + CREAR DEFECTO"
+  },
   "empty_state": {
     "log": "Tome una foto de cualquier defecto. La IA completa el título, la gravedad y la descripción. Se guarda automáticamente.",
     "tag": "Cargue sus propios planos de planta o dibujos aquí y luego señale los defectos para ubicarlos con precisión. Se empareja con la fijación automática de GPS que ya está en sus informes.",
@@ -133,6 +152,7 @@
     "severity": "SEVERIDAD",
     "severity_placeholder": "Seleccione la gravedad...",
     "work_category": "CATEGORÍA DE TRABAJO",
+    "work_category_hint": "(Seleccione el alcance relevante para la producción asistida por IA)",
     "work_category_placeholder": "Seleccione categoría de trabajo...",
     "entry_type": "TIPO DE ENTRADA",
     "entry_type_placeholder": "Seleccione el tipo de entrada...",

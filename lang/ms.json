@@ -11,6 +11,25 @@
   "tagline": {
     "text": "Tangkap masuk. Urus keluar. Satu tempat."
   },
+  "top": {
+    "start_button": "MULAKAN AUDIT DIRI KESEDIAAN ATAS",
+    "wizard_title": "AUDIT DIRI KESEDIAAN ATAS",
+    "ready": "BERSEDIA UNTUK TOP",
+    "gate_fails": "{n} GATE GAGAL DIBUKA",
+    "in_progress": "AUDIT SEDANG BERLANGSUNG",
+    "gates_passed": "Gerbang kesediaan",
+    "items": "barang",
+    "pass": "✓ LULUS",
+    "fail": "✕ GAGAL",
+    "na": "- ITU",
+    "pending": "○ MENUNGGU",
+    "record_fail": "REKOD NC",
+    "evidence_photo": "FOTO BUKTI",
+    "capture_photo": "TANGKAP FOTO",
+    "notes": "NOTA PEMERHATIAN (PILIHAN)",
+    "notes_placeholder": "cth. berukuran 945 mm, paling sempit pada pusingan L1-L2",
+    "save_nc": "✕ JIMAT NC + CIPTA KECACATAN"
+  },
   "empty_state": {
     "log": "Ambil gambar sebarang kecacatan. AI mengisi tajuk, keterukan, perihalan. Ia menjimatkan secara automatik.",
     "tag": "Muat naik pelan lantai atau lukisan anda sendiri di sini, kemudian sematkan kecacatan padanya untuk lokasi yang tepat. Berpasangan dengan penyematan automatik GPS yang sudah ada dalam laporan anda.",

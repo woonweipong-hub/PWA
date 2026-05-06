@@ -11,6 +11,25 @@
   "tagline": {
     "text": "Kaappaa sisään. Hallitse ulos. Yksi paikka."
   },
+  "top": {
+    "start_button": "ALOITA TOP VALMISITTARKASTUS",
+    "wizard_title": "HUIPPUVALMISTEEN ITSETARKASTUS",
+    "ready": "VALMIS HUIPPUON",
+    "gate_fails": "{n} PORTTI EI AUKI",
+    "in_progress": "TARKASTUS KÄYNNISSÄ",
+    "gates_passed": "Valmiusportit",
+    "items": "kohteita",
+    "pass": "✓ PASS",
+    "fail": "✕ Epäonnistui",
+    "na": "– SITÄ",
+    "pending": "○ ODOTTAA",
+    "record_fail": "RECORD NC",
+    "evidence_photo": "TODISTUSKUVA",
+    "capture_photo": "OTA KUVA",
+    "notes": "HUOMAUTUKSET (VALINNAINEN)",
+    "notes_placeholder": "esim. mitattu 945 mm, kapein käännöksessä L1-L2",
+    "save_nc": "✕ SAVE NC + CREATE DEFECT"
+  },
   "empty_state": {
     "log": "Ota kuva kaikista vioista. AI täyttää otsikon, vakavuuden ja kuvauksen. Se tallentaa automaattisesti.",
     "tag": "Lataa omat pohjapiirustuksesi tai piirustuksesi tähän ja kiinnitä niihin viat tarkan sijainnin varmistamiseksi. Muodostuu pariksi GPS-automaattisen kiinnityksen kanssa, joka on jo raporteissasi.",
@@ -133,6 +152,7 @@
     "severity": "VAKAVUUS",
     "severity_placeholder": "Valitse vakavuus...",
     "work_category": "TYÖLUOKKA",
+    "work_category_hint": "(Valitse tarvittava laajuus tekoälyavusteiselle lähdölle)",
     "work_category_placeholder": "Valitse työluokka...",
     "entry_type": "SISÄÄNTÖTYYPPI",
     "entry_type_placeholder": "Valitse merkintätyyppi...",

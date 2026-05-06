@@ -11,6 +11,25 @@
   "tagline": {
     "text": "Cattura dentro. Gestisci fuori. Un posto."
   },
+  "top": {
+    "start_button": "INIZIA IL SELF-AUDIT TOP READYNESS",
+    "wizard_title": "AUTOAUDIT DI PRONTEZZA TOP",
+    "ready": "PRONTO PER IL TOP",
+    "gate_fails": "{n} CANCELLO NON APERTO",
+    "in_progress": "VERIFICA IN CORSO",
+    "gates_passed": "Cancelli di prontezza",
+    "items": "elementi",
+    "pass": "✓ PASSARE",
+    "fail": "✕ FALLIMENTO",
+    "na": "- QUELLO",
+    "pending": "○ IN ATTESA",
+    "record_fail": "REGISTRA NC",
+    "evidence_photo": "FOTO PROVA",
+    "capture_photo": "CATTURA FOTO",
+    "notes": "NOTE DI OSSERVAZIONE (FACOLTATIVE)",
+    "notes_placeholder": "per esempio. misurato 945 mm, più stretto alla curva L1-L2",
+    "save_nc": "✕ SALVA NC + CREA DIFETTO"
+  },
   "empty_state": {
     "log": "Scatta una foto di qualsiasi difetto. L'intelligenza artificiale inserisce titolo, gravità, descrizione. Si salva automaticamente.",
     "tag": "Carica qui le tue planimetrie o i tuoi disegni, quindi appunta i difetti su di essi per una posizione precisa. Si abbina al rilevamento automatico del GPS già presente nei tuoi report.",
@@ -133,6 +152,7 @@
     "severity": "GRAVITÀ",
     "severity_placeholder": "Seleziona gravità...",
     "work_category": "CATEGORIA DI LAVORO",
+    "work_category_hint": "(Seleziona l'ambito pertinente per l'output assistito dall'intelligenza artificiale)",
     "work_category_placeholder": "Seleziona la categoria di lavoro...",
     "entry_type": "TIPO DI INGRESSO",
     "entry_type_placeholder": "Seleziona il tipo di voce...",

@@ -13551,6 +13551,20 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
             </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:4}}>
               {d.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(d.entryType),background:typeBg(d.entryType),padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(d.entryType)} {tOpt(d.entryType).toUpperCase()}</span>}
+              {/* Work Category chip — surfaces the AI-routing context that
+                  drives every variant field on the record. Without this
+                  pill, the work category was silent on the cards even
+                  though it shapes everything from the AI prompt to the
+                  variant schema. Contractor feedback 2026-05-06. */}
+              {d.workCategory&&WORK_CATEGORIES[d.workCategory]&&(()=>{
+                const _wc=d.workCategory;
+                const _ico=WORK_CATEGORIES[_wc].icon||"📋";
+                // Compact display name — strip parenthetical suffix to fit
+                // the chip on phone widths. Full name remains as title attr
+                // for the long form when the user hovers/long-presses.
+                const _short=_wc.replace(/\s*\(.*?\)\s*/g,"").replace(/^Test &amp; Commission$/i,"T&C").replace(/^M&E Inspection$/i,"M&E").replace(/^TOP Inspection$/i,"TOP").replace(/^Handover Walkthrough$/i,"Handover").replace(/^Building Defects$/i,_wc.includes("Landed")?"Landed":"Highrise");
+                return <span title={`Work Category: ${_wc}`} style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.65)",background:"rgba(88,86,214,0.06)",border:"1px solid rgba(88,86,214,0.18)",padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif"}}>{_ico} {_short.toUpperCase()}</span>;
+              })()}
               <SevChip s={d.severity}/>
               {/* CONQUAS Internal Finishes element auto-mapped from the
                   component field. Lets the user verify at a glance that the

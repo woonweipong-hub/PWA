@@ -11,6 +11,25 @@
   "tagline": {
     "text": "Fånga in. Hantera ut. Ett ställe."
   },
+  "top": {
+    "start_button": "START TOPBEREDSKAP SJÄLVREVISION",
+    "wizard_title": "TOPBEREDSKAP SJÄLVREVISION",
+    "ready": "REDO FÖR TOPPEN",
+    "gate_fails": "{n} PORTEN INTE ÖPPEN",
+    "in_progress": "REVISION PÅGÅR",
+    "gates_passed": "Beredskapsportar",
+    "items": "föremål",
+    "pass": "✓ PASS",
+    "fail": "✕ FAIL",
+    "na": "– DET",
+    "pending": "○ VÄNTAR",
+    "record_fail": "RECORD NC",
+    "evidence_photo": "BEVISFOTO",
+    "capture_photo": "FÅNGA FOTO",
+    "notes": "OBSERVATIONSANMÄRKNINGAR (VALFRITT)",
+    "notes_placeholder": "till exempel mätt 945 mm, smalast vid L1-L2 varv",
+    "save_nc": "✕ SPARA NC + SKAPA DEFEKT"
+  },
   "empty_state": {
     "log": "Ta ett foto av eventuella defekter. AI fyller i titel, svårighetsgrad, beskrivning. Den sparas automatiskt.",
     "tag": "Ladda upp dina egna planritningar eller ritningar här, fäst sedan defekter på dem för exakt plats. Paras ihop med GPS-automatiken som redan finns i dina rapporter.",
@@ -133,6 +152,7 @@
     "severity": "STRÄNGHET",
     "severity_placeholder": "Välj svårighetsgrad...",
     "work_category": "ARBETSKATEGORI",
+    "work_category_hint": "(Välj relevant omfattning för AI-assisterad utdata)",
     "work_category_placeholder": "Välj arbetskategori...",
     "entry_type": "INKOMSTTYP",
     "entry_type_placeholder": "Välj posttyp...",

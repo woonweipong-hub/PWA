@@ -11,6 +11,25 @@
   "tagline": {
     "text": "Chụp vào. Quản lý ra. Một nơi."
   },
+  "top": {
+    "start_button": "BẮT ĐẦU TỰ KIỂM TRA SẴN SÀNG HÀNG ĐẦU",
+    "wizard_title": "TỰ KIỂM TOÁN SẴN SÀNG HÀNG ĐẦU",
+    "ready": "READY FOR TOP",
+    "gate_fails": "{n} CỔNG MỞ LỖI",
+    "in_progress": "ĐANG KIỂM TOÁN ĐANG TIẾN HÀNH",
+    "gates_passed": "Cổng sẵn sàng",
+    "items": "mặt hàng",
+    "pass": "✓ ĐẠT",
+    "fail": "✕ THẤT BẠI",
+    "na": "- CÁI ĐÓ",
+    "pending": "○ ĐANG CHỜ",
+    "record_fail": "GHI NC",
+    "evidence_photo": "HÌNH ẢNH CHỨNG CỨ",
+    "capture_photo": "CHỤP ẢNH",
+    "notes": "LƯU Ý QUAN SÁT (TÙY CHỌN)",
+    "notes_placeholder": "ví dụ. đo được 945 mm, hẹp nhất ở lượt L1-L2",
+    "save_nc": "✕ LƯU NC + TẠO LỖI"
+  },
   "empty_state": {
     "log": "Chụp ảnh bất kỳ khiếm khuyết nào. AI điền tiêu đề, mức độ nghiêm trọng, mô tả. Nó tự động lưu.",
     "tag": "Tải lên sơ đồ mặt bằng hoặc bản vẽ của riêng bạn tại đây, sau đó ghim các khuyết điểm lên chúng để có vị trí chính xác. Ghép nối với tính năng tự động ghim GPS đã có trong báo cáo của bạn.",

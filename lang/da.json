@@ -11,6 +11,25 @@
   "tagline": {
     "text": "Fang ind. Administrer ud. Ét sted."
   },
+  "top": {
+    "start_button": "START TOP BERETNING SELVREVISION",
+    "wizard_title": "TOP BERETNING SELVREVISION",
+    "ready": "KLAR TIL TOPPEN",
+    "gate_fails": "{n} PORTEN FEJLLER ÅBEN",
+    "in_progress": "REVISION I GANG",
+    "gates_passed": "Beredskabsporte",
+    "items": "genstande",
+    "pass": "✓ PASS",
+    "fail": "✕ FAIL",
+    "na": "– DET",
+    "pending": "○ AFVENTER",
+    "record_fail": "OPTAG NC",
+    "evidence_photo": "BEVISFOTO",
+    "capture_photo": "FAST FOTO",
+    "notes": "OBSERVATIONSBEMÆRKNINGER (VALGFRI)",
+    "notes_placeholder": "f.eks. målt 945 mm, smallest ved L1-L2 vending",
+    "save_nc": "✕ GEM NC + OPRET DEFEKT"
+  },
   "empty_state": {
     "log": "Tag et billede af enhver defekt. AI udfylder titel, sværhedsgrad, beskrivelse. Den gemmer automatisk.",
     "tag": "Upload dine egne plantegninger eller tegninger her, og sæt derefter defekter på dem for præcis placering. Parrer med den automatiske GPS-fastgørelse, der allerede er i dine rapporter.",
@@ -133,6 +152,7 @@
     "severity": "ALVARLIGHED",
     "severity_placeholder": "Vælg sværhedsgrad...",
     "work_category": "ARBEJDSKATEGORI",
+    "work_category_hint": "(Vælg relevant omfang for AI-assisteret output)",
     "work_category_placeholder": "Vælg arbejdskategori...",
     "entry_type": "INDGANGSTYPE",
     "entry_type_placeholder": "Vælg indgangstype...",

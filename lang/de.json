@@ -11,6 +11,25 @@
   "tagline": {
     "text": "Einfangen. Raus verwalten. Ein Ort."
   },
+  "top": {
+    "start_button": "Starten Sie das Top-Readiness-Selbstaudit",
+    "wizard_title": "TOP-BEREITSCHAFTS-SELBSTPRÜFUNG",
+    "ready": "BEREIT FÜR TOP",
+    "gate_fails": "{n} Das Tor lässt sich nicht öffnen",
+    "in_progress": "PRÜFUNG LÄUFT",
+    "gates_passed": "Bereitschaftstore",
+    "items": "Artikel",
+    "pass": "✓ BESTEHEN",
+    "fail": "✕ FEHLER",
+    "na": "- DAS",
+    "pending": "○ AUSSTEHEND",
+    "record_fail": "AUFZEICHNUNG NC",
+    "evidence_photo": "BEWEISFOTO",
+    "capture_photo": "FOTO AUFNEHMEN",
+    "notes": "BEOBACHTUNGSHINWEISE (OPTIONAL)",
+    "notes_placeholder": "z.B. gemessen 945 mm, am schmalsten bei der L1-L2-Kurve",
+    "save_nc": "✕ NC SPEICHERN + DEFEKT ERSTELLEN"
+  },
   "empty_state": {
     "log": "Machen Sie ein Foto von jedem Defekt. KI gibt Titel, Schweregrad und Beschreibung ein. Es speichert automatisch.",
     "tag": "Laden Sie hier Ihre eigenen Grundrisse oder Zeichnungen hoch und heften Sie dann die Mängel zur genauen Lokalisierung darauf an. Lässt sich mit dem automatischen GPS-Pinning koppeln, das bereits in Ihren Berichten enthalten ist.",
