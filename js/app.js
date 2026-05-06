@@ -5049,6 +5049,9 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       </div>
       <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:20}}>📁 {currentProject?.name||"—"} · {t("log.photo_speak_type")}</div>
 
+      {/* ── 0. WORK CATEGORY — sets AI variant context; pick before capturing ── */}
+      <ComboField label={t("fields.work_category")} value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")} displayFn={workcatDisplayFn}/>
+
       {/* ── 1. TAKE PHOTO — big prominent capture ── */}
       <div style={{marginBottom:16}}>
         <label style={lbl()}>{t("log.photos_count")} ({form.photos.length}/{MAX_PHOTOS})</label>
@@ -5122,9 +5125,6 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
 
       {showMoreDetails&&(
         <div style={{animation:"fadeIn 0.2s ease",marginTop:showMoreDetails?0:0}}>
-          {/* Work Category */}
-          <ComboField label={t("fields.work_category")} value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")} displayFn={workcatDisplayFn}/>
-
           {/* Entry Type */}
           <ComboField label={t("fields.entry_type")} value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder={t("fields.entry_type_placeholder")} displayFn={tOpt}/>
           <div style={{marginTop:-10,marginBottom:12}}><button onClick={()=>setShowTypeManager(true)} style={{background:"none",border:"none",fontSize:11,color:"rgba(255,107,0,0.7)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:0}}>⚙ Manage custom types</button></div>
