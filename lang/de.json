@@ -299,6 +299,9 @@
   "review": {
     "title": "Überprüfen",
     "defect_entries": "MANGELEINTRÄGE",
+    "insight_aged_critical": "Kritisch > 7 Tage",
+    "insight_bottleneck": "{n}× langsamer",
+    "insight_x_average": "× Durchschnitt",
     "no_entries": "Keine Einträge gefunden",
     "no_matching": "Keine passenden Einträge",
     "search_placeholder": "Titel, Beschreibung, Bearbeiter suchen...",

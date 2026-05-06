@@ -299,6 +299,9 @@
   "review": {
     "title": "மதிப்பாய்வு",
     "defect_entries": "குறைபாடு பதிவுகள்",
+    "insight_aged_critical": "முக்கியமான > 7 நாட்கள்",
+    "insight_bottleneck": "{n}× மெதுவாக",
+    "insight_x_average": "× சராசரி",
     "no_entries": "பதிவுகள் இல்லை",
     "no_matching": "பொருந்தும் பதிவுகள் இல்லை",
     "search_placeholder": "தலைப்பு, விளக்கம், பொறுப்பாளரை தேடு...",

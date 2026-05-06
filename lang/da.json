@@ -299,6 +299,9 @@
   "review": {
     "title": "Gennemgå",
     "defect_entries": "DEFEKT INDSTILLINGER",
+    "insight_aged_critical": "Kritisk > 7 dage",
+    "insight_bottleneck": "{n}× langsommere",
+    "insight_x_average": "× gennemsnit",
     "no_entries": "Ingen poster fundet",
     "no_matching": "Ingen poster matcher",
     "search_placeholder": "Søg titel, beskrivelse, modtager...",

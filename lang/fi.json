@@ -299,6 +299,9 @@
   "review": {
     "title": "Arvostelu",
     "defect_entries": "VIKATIEDOT",
+    "insight_aged_critical": "Kriittinen > 7 päivää",
+    "insight_bottleneck": "{n}× hitaampi",
+    "insight_x_average": "× keskiarvo",
     "no_entries": "Merkintöjä ei löytynyt",
     "no_matching": "Ei vastaavia merkintöjä",
     "search_placeholder": "Hae otsikkoa, kuvausta, valtuutettua...",

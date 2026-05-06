@@ -299,6 +299,9 @@
   "review": {
     "title": "Semakan",
     "defect_entries": "ENTRI KECACATAN",
+    "insight_aged_critical": "Kritikal >7 hari",
+    "insight_bottleneck": "{n}× lebih perlahan",
+    "insight_x_average": "× purata",
     "no_entries": "Tiada entri dijumpai",
     "no_matching": "Tiada entri sepadan",
     "search_placeholder": "Cari tajuk, penerangan, penerima tugas...",

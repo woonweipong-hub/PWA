@@ -299,6 +299,9 @@
   "review": {
     "title": "Análise",
     "defect_entries": "ENTRADAS DE DEFEITO",
+    "insight_aged_critical": "Crítico >7 dias",
+    "insight_bottleneck": "{n}× mais lento",
+    "insight_x_average": "× média",
     "no_entries": "Nenhuma entrada encontrada",
     "no_matching": "Nenhuma entrada correspondente",
     "search_placeholder": "Pesquisar título, descrição, responsável...",

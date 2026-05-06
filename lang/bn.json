@@ -299,6 +299,9 @@
   "review": {
     "title": "পর্যালোচনা",
     "defect_entries": "ত্রুটি এন্ট্রি",
+    "insight_aged_critical": "ক্রিটিক্যাল > 7 দিন",
+    "insight_bottleneck": "{n}× ধীর",
+    "insight_x_average": "× গড়",
     "no_entries": "কোনো এন্ট্রি পাওয়া যায়নি",
     "no_matching": "কোনো মিলের এন্ট্রি নেই",
     "search_placeholder": "শিরোনাম, বিবরণ, নিযুক্তকারী খুঁজুন...",

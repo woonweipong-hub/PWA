@@ -299,6 +299,9 @@
   "review": {
     "title": "Review",
     "defect_entries": "DEFECT ENTRIES",
+    "insight_aged_critical": "Critical >7 days",
+    "insight_bottleneck": "{n}× slower",
+    "insight_x_average": "× average",
     "no_entries": "No entries found",
     "no_matching": "No entries matching",
     "search_placeholder": "Search title, description, assignee...",

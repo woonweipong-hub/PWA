@@ -299,6 +299,9 @@
   "review": {
     "title": "審查",
     "defect_entries": "缺陷條目",
+    "insight_aged_critical": "關鍵 >7 天",
+    "insight_bottleneck": "{n}× 較慢",
+    "insight_x_average": "× 平均值",
     "no_entries": "未找到條目",
     "no_matching": "沒有符合的條目",
     "search_placeholder": "搜尋標題、描述、負責人...",

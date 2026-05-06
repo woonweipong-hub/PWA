@@ -12558,6 +12558,86 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
   // which other filters are toggled. Lets the user see total work past due
   // before they even open the panel.
   const overdueCount=defects.filter(_isOverdue).length;
+  // ── Pattern-detection insights — Tier 4-lite cycle insights, client-side
+  // only. Each insight is a pill on the REVIEW header that taps through to
+  // the relevant filter. Computed in one pass over `defects` so cost stays
+  // O(N). No backend, no schema, no AI dependency. Surfaces "where work
+  // is stuck" without needing analytics.
+  const _insights=useMemo(()=>{
+    if(!defects||defects.length===0)return[];
+    const NOW=Date.now();
+    const open=defects.filter(d=>d.status==="Open"||d.status==="In Progress");
+    // 1. Aged Critical — Critical+Open(or InProgress) with status-anchor
+    //    older than 7 days. Highest-priority insight; renders red.
+    let agedCritical=0;
+    for(const d of open){
+      if(d.severity!=="Critical")continue;
+      const cs=Array.isArray(d.comments)?d.comments:[];
+      let anchor=0;
+      for(let i=cs.length-1;i>=0;i--){const c=cs[i];if(c&&c.kind==="event"&&c.type==="status"&&typeof c.at==="number"){anchor=c.at;break;}}
+      if(!anchor&&d.created){const tt=new Date(d.created).getTime();if(!isNaN(tt))anchor=tt;}
+      if(!anchor)continue;
+      if((NOW-anchor)/86400000>=7)agedCritical++;
+    }
+    // 2. Trade bottleneck — among trades with >=3 entries, pick the one
+    //    where median age-of-open-defect is highest AND > overall median * 1.8.
+    const byTrade={};
+    for(const d of open){
+      const tr=(d.trade||"").trim();
+      if(!tr)continue;
+      const cs=Array.isArray(d.comments)?d.comments:[];
+      let anchor=0;
+      for(let i=cs.length-1;i>=0;i--){const c=cs[i];if(c&&c.kind==="event"&&c.type==="status"&&typeof c.at==="number"){anchor=c.at;break;}}
+      if(!anchor&&d.created){const tt=new Date(d.created).getTime();if(!isNaN(tt))anchor=tt;}
+      if(!anchor)continue;
+      const days=(NOW-anchor)/86400000;
+      if(!byTrade[tr])byTrade[tr]={ages:[],count:0};
+      byTrade[tr].ages.push(days);byTrade[tr].count++;
+    }
+    const median=arr=>{if(!arr.length)return 0;const s=arr.slice().sort((a,b)=>a-b);return s[Math.floor(s.length/2)];};
+    const allAges=[];Object.values(byTrade).forEach(t=>allAges.push(...t.ages));
+    const overallMed=median(allAges);
+    let bottleneck=null;
+    if(overallMed>0){
+      let worst=null,worstMed=0;
+      for(const tr in byTrade){
+        const t=byTrade[tr];
+        if(t.count<3)continue;
+        const m=median(t.ages);
+        if(m>worstMed){worstMed=m;worst=tr;}
+      }
+      if(worst&&worstMed>=overallMed*1.8&&worstMed>=5){
+        bottleneck={trade:worst,multiple:Math.round((worstMed/overallMed)*10)/10,count:byTrade[worst].count};
+      }
+    }
+    // 3. Location cluster — Level/Zone with >=3 defects AND >= 3x project
+    //    average per-location density. Compares per-location count to
+    //    overall mean across all populated locations.
+    const byLoc={};
+    for(const d of defects){
+      // Group by Level (most stable) — fall back to first-segment of
+      // composite location string.
+      const lv=(d.locationLevel||(d.location||"").split(">")[0]||"").trim();
+      if(!lv)continue;
+      byLoc[lv]=(byLoc[lv]||0)+1;
+    }
+    const locValues=Object.values(byLoc);
+    const locMean=locValues.length?locValues.reduce((a,b)=>a+b,0)/locValues.length:0;
+    let cluster=null;
+    if(locMean>0){
+      let topLoc=null,topCount=0;
+      for(const lv in byLoc){if(byLoc[lv]>topCount){topCount=byLoc[lv];topLoc=lv;}}
+      if(topLoc&&topCount>=3&&topCount>=locMean*3){
+        cluster={loc:topLoc,count:topCount,multiple:Math.round((topCount/locMean)*10)/10};
+      }
+    }
+    const out=[];
+    if(agedCritical>0)out.push({id:"aged_critical",count:agedCritical});
+    if(bottleneck)out.push({id:"bottleneck",...bottleneck});
+    if(cluster)out.push({id:"cluster",...cluster});
+    return out;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[defects]);
   // Apply a saved preset by replacing every filter slot with the preset's
   // values. Missing fields fall back to a safe default ("All", empty string).
   const applyPreset=(p)=>{
@@ -12642,6 +12722,26 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
   const displayMap=useDefectDisplayMap(filtered,currentUiLang,translateDisplay,aiDisplayAvailable);
   return(
     <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
+      {/* Pattern-detection insights — Tier 4-lite cycle insights. Surface
+          "where work is stuck" right above the REVIEW filters so the user
+          sees the most-actionable view in one tap. Each pill applies the
+          relevant filter on click. Hidden when there's nothing to flag. */}
+      {!selectMode&&_insights.length>0&&(
+        <div style={{display:"flex",gap:6,marginBottom:10,overflowX:"auto",paddingBottom:2,WebkitOverflowScrolling:"touch"}}>
+          {_insights.map(ins=>{
+            if(ins.id==="aged_critical"){
+              return <button key="aged_critical" onClick={()=>{setSevF("Critical");setFilter("Open");}} title="Tap to filter: Critical · Open" style={{flexShrink:0,background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.35)",borderRadius:20,padding:"6px 12px",color:"#cc0000",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",letterSpacing:"0.04em",display:"inline-flex",alignItems:"center",gap:6}}>⚠ {ins.count} {t("review.insight_aged_critical")}</button>;
+            }
+            if(ins.id==="bottleneck"){
+              return <button key="bottleneck" onClick={()=>{setSearch(ins.trade.toLowerCase());}} title={`${ins.trade} closing slower than other trades · tap to search`} style={{flexShrink:0,background:"rgba(255,107,0,0.08)",border:"1px solid rgba(255,107,0,0.3)",borderRadius:20,padding:"6px 12px",color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",letterSpacing:"0.04em",display:"inline-flex",alignItems:"center",gap:6}}>🐢 {ins.trade} {t("review.insight_bottleneck").replace("{n}",ins.multiple)}</button>;
+            }
+            if(ins.id==="cluster"){
+              return <button key="cluster" onClick={()=>{setSearch(ins.loc.toLowerCase());}} title={`${ins.count} defects in ${ins.loc} · ${ins.multiple}× project average · tap to search`} style={{flexShrink:0,background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.3)",borderRadius:20,padding:"6px 12px",color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",letterSpacing:"0.04em",display:"inline-flex",alignItems:"center",gap:6}}>📍 {ins.count} @ {ins.loc} · {ins.multiple}{t("review.insight_x_average")}</button>;
+            }
+            return null;
+          })}
+        </div>
+      )}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,gap:8}}>
         <div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>REVIEW <span style={{color:"rgba(0,0,0,0.3)",fontSize:18}}>({filtered.length})</span></div>

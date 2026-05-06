@@ -299,6 +299,9 @@
   "review": {
     "title": "ตรวจสอบ",
     "defect_entries": "รายการข้อบกพร่อง",
+    "insight_aged_critical": "วิกฤติ >7 วัน",
+    "insight_bottleneck": "{n}× ช้าลง",
+    "insight_x_average": "× เฉลี่ย",
     "no_entries": "ไม่พบรายการ",
     "no_matching": "ไม่พบรายการที่ตรงกัน",
     "search_placeholder": "ค้นหาหัวข้อ คำอธิบาย ผู้รับผิดชอบ...",

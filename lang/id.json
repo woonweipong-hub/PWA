@@ -299,6 +299,9 @@
   "review": {
     "title": "Tinjauan",
     "defect_entries": "ENTRI CACAT",
+    "insight_aged_critical": "Kritis >7 hari",
+    "insight_bottleneck": "{n}× lebih lambat",
+    "insight_x_average": "× rata-rata",
     "no_entries": "Tidak ada entri ditemukan",
     "no_matching": "Tidak ada entri yang cocok",
     "search_placeholder": "Cari judul, deskripsi, penerima tugas...",

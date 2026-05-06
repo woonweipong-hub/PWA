@@ -299,6 +299,9 @@
   "review": {
     "title": "レビュー",
     "defect_entries": "欠陥エントリー",
+    "insight_aged_critical": "7日以上の重大な状態",
+    "insight_bottleneck": "{n}× 遅い",
+    "insight_x_average": "× 平均",
     "no_entries": "エントリーが見つかりません",
     "no_matching": "一致するエントリーがありません",
     "search_placeholder": "タイトル、説明、担当者を検索...",

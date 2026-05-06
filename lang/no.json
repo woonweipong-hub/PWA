@@ -299,6 +299,9 @@
   "review": {
     "title": "Gjennomgå",
     "defect_entries": "DEFEKT INNLEGG",
+    "insight_aged_critical": "Kritisk >7 dager",
+    "insight_bottleneck": "{n}× tregere",
+    "insight_x_average": "× gjennomsnitt",
     "no_entries": "Ingen oppføringer funnet",
     "no_matching": "Ingen oppføringer samsvarer",
     "search_placeholder": "Søk i tittel, beskrivelse, mottaker...",

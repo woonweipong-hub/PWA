@@ -299,6 +299,9 @@
   "review": {
     "title": "Gözden geçirmek",
     "defect_entries": "HATA GİRİŞLERİ",
+    "insight_aged_critical": "Kritik >7 gün",
+    "insight_bottleneck": "{n}× daha yavaş",
+    "insight_x_average": "× ortalama",
     "no_entries": "Giriş bulunamadı",
     "no_matching": "Eşleşen giriş yok",
     "search_placeholder": "Başlığı, açıklamayı, atanan kişiyi arayın...",

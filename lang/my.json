@@ -299,6 +299,9 @@
   "review": {
     "title": "သုံးသပ်ချက်",
     "defect_entries": "ချွတ်ယွင်းချက်များ",
+    "insight_aged_critical": "စိုးရိမ်ရ >7 ရက်",
+    "insight_bottleneck": "{n}× ပိုနှေးသည်။",
+    "insight_x_average": "× ပျမ်းမျှ",
     "no_entries": "ထည့်သွင်းမှုများမတွေ့ပါ။",
     "no_matching": "ကိုက်ညီသော ထည့်သွင်းမှုများမရှိပါ။",
     "search_placeholder": "ခေါင်းစဉ်၊ ဖော်ပြချက်၊ တာဝန်ပေးသူကို ရှာဖွေပါ...",

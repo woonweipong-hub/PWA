@@ -299,6 +299,9 @@
   "review": {
     "title": "समीक्षा",
     "defect_entries": "दोष प्रविष्टियां",
+    "insight_aged_critical": "गंभीर>7 दिन",
+    "insight_bottleneck": "{n}× धीमा",
+    "insight_x_average": "× औसत",
     "no_entries": "कोई प्रविष्टि नहीं मिली",
     "no_matching": "कोई मिलान प्रविष्टि नहीं",
     "search_placeholder": "शीर्षक, विवरण, असाइनी खोजें...",

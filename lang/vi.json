@@ -299,6 +299,9 @@
   "review": {
     "title": "Xem xét",
     "defect_entries": "CÁC MỤC LỖI",
+    "insight_aged_critical": "Nguy cấp >7 ngày",
+    "insight_bottleneck": "{n}× chậm hơn",
+    "insight_x_average": "× trung bình",
     "no_entries": "Không tìm thấy mục nào",
     "no_matching": "Không có mục phù hợp",
     "search_placeholder": "Tìm tiêu đề, mô tả, người nhận...",

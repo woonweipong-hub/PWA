@@ -299,6 +299,9 @@
   "review": {
     "title": "검토",
     "defect_entries": "결함 항목",
+    "insight_aged_critical": "심각 > 7일",
+    "insight_bottleneck": "{n}× 느림",
+    "insight_x_average": "× 평균",
     "no_entries": "항목이 없습니다",
     "no_matching": "일치하는 항목 없음",
     "search_placeholder": "제목, 설명, 담당자 검색...",

@@ -299,6 +299,9 @@
   "review": {
     "title": "审查",
     "defect_entries": "缺陷条目",
+    "insight_aged_critical": "关键 >7 天",
+    "insight_bottleneck": "{n}× 较慢",
+    "insight_x_average": "× 平均值",
     "no_entries": "未找到条目",
     "no_matching": "没有匹配的条目",
     "search_placeholder": "搜索标题、描述、负责人...",

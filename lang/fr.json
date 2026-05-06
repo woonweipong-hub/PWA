@@ -299,6 +299,9 @@
   "review": {
     "title": "Révision",
     "defect_entries": "ENTRÉES DE DÉFAUTS",
+    "insight_aged_critical": "Critique > 7 jours",
+    "insight_bottleneck": "{n}× plus lent",
+    "insight_x_average": "× moyenne",
     "no_entries": "Aucune entrée trouvée",
     "no_matching": "Aucune entrée correspondante",
     "search_placeholder": "Rechercher titre, description, responsable...",
