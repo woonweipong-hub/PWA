@@ -8,6 +8,16 @@
     "main_nav": "Päänavigointi",
     "close": "Lähellä"
   },
+  "tagline": {
+    "text": "Kaappaa sisään. Hallitse ulos. Yksi paikka."
+  },
+  "empty_state": {
+    "log": "Ota kuva kaikista vioista. AI täyttää otsikon, vakavuuden ja kuvauksen. Se tallentaa automaattisesti.",
+    "tag": "Lataa omat pohjapiirustuksesi tai piirustuksesi tähän ja kiinnitä niihin viat tarkan sijainnin varmistamiseksi. Muodostuu pariksi GPS-automaattisen kiinnityksen kanssa, joka on jo raporteissasi.",
+    "review": "Seuraa vian tilaa, kun työ ratkeaa – käynnissä, valmis, vahvistettu, suljettu. Hyödyllinen, kun tarvitset tilatyönkulun sieppauksen päälle.",
+    "report": "Vedä kaiken, mitä olet KIRJUNUT CSV-, PDF-, sähköposti- tai jaettavaan HTML-tiedostoon asiakkaalle. Ei vielä lähetettävää – aloita LOGissa.",
+    "dashboard": "Vikojen tilakatsaus – määrät, vakavuus, viimeaikainen toiminta. Ei täällä vielä mitään; mene LOGiin aloittaaksesi."
+  },
   "banner": {
     "server_down": "SiteShrimp on keskeytetty päivityksen vuoksi – palaa pian. Kaikki olemassa oleva työ on turvallista."
   },
@@ -1131,7 +1141,16 @@
     "workflow_offline": "Offline-tilassa paikan päällä",
     "workflow_offline_desc": "Sieppaukset toimivat edelleen ilman signaalia – merkinnät ovat IndexedDB:n jonossa ja synkronoidaan automaattisesti, kun olet taas online-tilassa. Katso otsikossa olevaa jonomerkkiä.",
     "purpose_origin_title": "Alkuperä",
-    "purpose_origin_body": "SiteShrimpin on rakentanut ei-insinööri, joka työskentelee tekoälyn kanssa päivittäisenä ajattelukumppanina – henkilökohtainen oppimisprojekti, jonka on kestettävä myös todellisella rakennustyömaalla. Se on sekä rohkea testi siitä, mitä tekoälyavusteinen kehitys voi tuottaa, kun baari on oikeudessa puolustettavissa oleva vikatietue (ei demo), että välähdys siitä, mikä on mahdollista, kun tavalliset ammattilaiset lakkaavat odottamasta tekniikkatiimiä ja rakentavat työnsä tarvitsemat työkalut."
+    "purpose_origin_body": "SiteShrimpin on rakentanut ei-insinööri, joka työskentelee tekoälyn kanssa päivittäisenä ajattelukumppanina – henkilökohtainen oppimisprojekti, jonka on kestettävä myös todellisella rakennustyömaalla. Se on sekä rohkea testi siitä, mitä tekoälyavusteinen kehitys voi tuottaa, kun baari on oikeudessa puolustettavissa oleva vikatietue (ei demo), että välähdys siitä, mikä on mahdollista, kun tavalliset ammattilaiset lakkaavat odottamasta tekniikkatiimiä ja rakentavat työnsä tarvitsemat työkalut.",
+    "tabs_fit_title": "Kuinka välilehdet sopivat yhteen",
+    "tabs_fit_spine_title": "Selkä: LOG → RAPORTOINTI",
+    "tabs_fit_spine_body": "Ota valokuva LOGissa. AI täyttää lomakkeen. Se tallentaa automaattisesti. Kun olet valmis, siirry kohtaan REPORT ja lähetä asiakkaalle CSV, PDF, sähköposti tai jaettava HTML-tiedosto. Nämä kaksi välilehteä kattavat vähimmäismatkan – ota sisään, hallitse.",
+    "tabs_fit_tag_title": "TAG sopii, kun sinulla on omat piirustuksesi",
+    "tabs_fit_tag_body": "Pohjapiirrokset, M&E-asettelut, rakennepiirustukset – lataa ne ja kiinnitä jokainen vika tarkalleen oikeaan paikkaan. Jos sinulla ei ole piirroksia, valokuvasi kiinnitetään automaattisesti GPS-kartalle, ja se on jo raporteissasi.",
+    "tabs_fit_review_title": "REVIEW sopii silloin, kun työllä on elinikää",
+    "tabs_fit_review_body": "Tilamuutokset (Käynnissä / Valmis / Vahvistettu / Suljettu), kommentit, kirjautumiset, vahvistukset. Jos vain kirjaat ja viet kerralla, et tarvitse tätä. Jos samat viat ovat auki viikkoja, kun alat työskentelevät niiden parissa, tämä on triage-työasemasi.",
+    "tabs_fit_dashboard_title": "Kojelauta on yhdellä silmäyksellä",
+    "tabs_fit_dashboard_body": "Lukumäärät, vakavuusaste, viimeaikainen toiminta. Avaa se, kun haluat tietää, mitä on kasattu, klikkaamatta."
   },
   "about": {
     "title": "Noin",

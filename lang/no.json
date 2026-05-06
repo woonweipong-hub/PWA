@@ -8,6 +8,16 @@
     "main_nav": "Hovednavigasjon",
     "close": "Lukke"
   },
+  "tagline": {
+    "text": "Fang inn. Administrer ut. Ett sted."
+  },
+  "empty_state": {
+    "log": "Ta et bilde av enhver defekt. AI fyller ut tittel, alvorlighetsgrad, beskrivelse. Den lagres automatisk.",
+    "tag": "Last opp dine egne plantegninger eller tegninger her, og fest deretter defekter på dem for nøyaktig plassering. Sammenkobles med GPS-auto-festingen som allerede er i rapportene dine.",
+    "review": "Spor defektstatus etter hvert som arbeidet blir løst – Pågår, Ferdig, Verifisert, Lukket. Nyttig når du trenger en statusarbeidsflyt i tillegg til fangst.",
+    "report": "Trekker alt du har logget inn i en CSV, PDF, e-post eller delbar HTML for klienten. Ingenting å sende ennå - start i LOG.",
+    "dashboard": "Statusoversikt over defektene dine - antall, alvorlighetsgrad, nylig aktivitet. Ingenting her ennå; gå til LOG for å komme i gang."
+  },
   "banner": {
     "server_down": "SiteShrimp er satt på pause for en oppgradering — tilbake snart. Alt eksisterende arbeid er trygt."
   },
@@ -1131,7 +1141,16 @@
     "workflow_offline": "Offline på stedet",
     "workflow_offline_desc": "Opptakene fortsetter å fungere uten signal – oppføringer kø i IndexedDB og automatisk synkronisering når du er online igjen. Se kømerket i overskriften.",
     "purpose_origin_title": "Opprinnelse",
-    "purpose_origin_body": "SiteShrimp er bygget av en ikke-ingeniør som jobber med AI som en daglig tenkende partner – et personlig læringsprosjekt som også må stå opp på en ekte byggeplass. Det er både en dristig test av hva AI-assistert utvikling kan produsere når baren er en rettslig forsvarlig mangelrekord (ikke en demo), og et glimt av hva som blir mulig når vanlige fagfolk slutter å vente på et tech-team og bygger verktøyene deres eget arbeid trenger."
+    "purpose_origin_body": "SiteShrimp er bygget av en ikke-ingeniør som jobber med AI som en daglig tenkende partner – et personlig læringsprosjekt som også må stå opp på en ekte byggeplass. Det er både en dristig test av hva AI-assistert utvikling kan produsere når baren er en rettslig forsvarlig mangelrekord (ikke en demo), og et glimt av hva som blir mulig når vanlige fagfolk slutter å vente på et tech-team og bygger verktøyene deres eget arbeid trenger.",
+    "tabs_fit_title": "Hvordan fanene passer sammen",
+    "tabs_fit_spine_title": "Ryggraden: LOGG → RAPPORT",
+    "tabs_fit_spine_body": "Ta et bilde i LOG. AI fyller ut skjemaet. Den lagres automatisk. Når du er ferdig, gå til RAPPORT for å sende en CSV, PDF, e-post eller delbar HTML til klienten. Disse to fanene dekker minimumsreisen – fang inn, administrer ut.",
+    "tabs_fit_tag_title": "TAG passer inn når du har egne tegninger",
+    "tabs_fit_tag_body": "Plantegninger, M&E-oppsett, strukturelle tegninger – last dem opp og fest hver defekt på nøyaktig sted. Hvis du ikke har tegninger, er bildene dine fortsatt automatisk festet på et GPS-kart, og det er allerede i rapportene dine.",
+    "tabs_fit_review_title": "ANMELDELSE passer inn når arbeidet har levetid",
+    "tabs_fit_review_body": "Statusendringer (pågår / ferdig / bekreftet / lukket), kommentarer, avmeldinger, verifikasjoner. Hvis du bare logger-og-eksporterer på én gang, trenger du ikke dette. Hvis de samme defektene sitter åpne i flere uker mens subs jobber med dem, er dette din triage arbeidsstasjon.",
+    "tabs_fit_dashboard_title": "Dashboard er et øyeblikk",
+    "tabs_fit_dashboard_body": "Antall, alvorlighetsgrad, nylig aktivitet. Åpne den når du vil vite hva som er hopet opp uten å klikke rundt."
   },
   "about": {
     "title": "Om",

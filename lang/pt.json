@@ -8,6 +8,16 @@
     "main_nav": "Navegação principal",
     "close": "Fechar"
   },
+  "tagline": {
+    "text": "Capture. Gerencie. Um lugar."
+  },
+  "empty_state": {
+    "log": "Tire uma foto de qualquer defeito. AI preenche título, gravidade, descrição. Ele salva automaticamente.",
+    "tag": "Carregue aqui suas próprias plantas baixas ou desenhos e, em seguida, fixe os defeitos neles para obter uma localização precisa. Pareia com a fixação automática de GPS que já está em seus relatórios.",
+    "review": "Acompanhe o status do defeito à medida que o trabalho é resolvido — Em andamento, Concluído, Verificado, Fechado. Útil quando você precisa de um fluxo de trabalho de status além da captura.",
+    "report": "Extrai tudo o que você registrou em um CSV, PDF, e-mail ou HTML compartilhável para o cliente. Nada para enviar ainda — comece no LOG.",
+    "dashboard": "Visão geral do status dos seus defeitos — contagens, gravidades, atividades recentes. Nada aqui ainda; vá para LOG para começar."
+  },
   "banner": {
     "server_down": "SiteShrimp está pausado para atualização – voltará em breve. O trabalho existente é seguro."
   },
@@ -1131,7 +1141,16 @@
     "workflow_offline": "Off-line no local",
     "workflow_offline_desc": "As capturas continuam funcionando sem sinal – as entradas são enfileiradas no IndexedDB e sincronizadas automaticamente quando você estiver online novamente. Observe o emblema da fila no cabeçalho.",
     "purpose_origin_title": "Origem",
-    "purpose_origin_body": "O SiteShrimp é construído por um não-engenheiro que trabalha com IA como parceiro de pensamento diário – um projeto de aprendizagem pessoal que também precisa se sustentar em um canteiro de obras real. É tanto um teste ousado do que o desenvolvimento assistido por IA pode produzir quando o bar é um registro de defeito defensável pelo tribunal (não uma demonstração), quanto um vislumbre do que se torna possível quando profissionais comuns param de esperar por uma equipe de tecnologia e criam as ferramentas que seu próprio trabalho precisa."
+    "purpose_origin_body": "O SiteShrimp é construído por um não-engenheiro que trabalha com IA como parceiro de pensamento diário – um projeto de aprendizagem pessoal que também precisa se sustentar em um canteiro de obras real. É tanto um teste ousado do que o desenvolvimento assistido por IA pode produzir quando o bar é um registro de defeito defensável pelo tribunal (não uma demonstração), quanto um vislumbre do que se torna possível quando profissionais comuns param de esperar por uma equipe de tecnologia e criam as ferramentas que seu próprio trabalho precisa.",
+    "tabs_fit_title": "Como as guias se encaixam",
+    "tabs_fit_spine_title": "A coluna vertebral: LOG → RELATÓRIO",
+    "tabs_fit_spine_body": "Tire uma foto no LOG. AI preenche o formulário. Ele salva automaticamente. Quando terminar, vá para REPORT para enviar um CSV, PDF, e-mail ou HTML compartilhável ao cliente. Essas duas guias cobrem a jornada mínima – capturar, gerenciar.",
+    "tabs_fit_tag_title": "TAG se encaixa quando você tem seus próprios desenhos",
+    "tabs_fit_tag_body": "Plantas baixas, layouts de M&A, desenhos estruturais – carregue-os e fixe cada defeito no local exato. Se você não tiver desenhos, suas fotos ainda serão fixadas automaticamente em um mapa GPS e isso já estará em seus relatórios.",
+    "tabs_fit_review_title": "REVIEW cabe quando o trabalho tem vida útil",
+    "tabs_fit_review_body": "Mudanças de status (Em Andamento/Concluído/Verificado/Fechado), comentários, aprovações, verificações. Se você estiver apenas registrando e exportando de uma só vez, não precisará disso. Se os mesmos defeitos permanecerem abertos por semanas enquanto os substitutos trabalham neles, esta é a sua estação de trabalho de triagem.",
+    "tabs_fit_dashboard_title": "Dashboard é um resumo",
+    "tabs_fit_dashboard_body": "Contagens, gravidades, atividade recente. Abra-o quando quiser saber o que está empilhado sem clicar."
   },
   "about": {
     "title": "Sobre",

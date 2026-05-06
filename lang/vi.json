@@ -8,6 +8,16 @@
     "main_nav": "Điều hướng chính",
     "close": "Đóng"
   },
+  "tagline": {
+    "text": "Chụp vào. Quản lý ra. Một nơi."
+  },
+  "empty_state": {
+    "log": "Chụp ảnh bất kỳ khiếm khuyết nào. AI điền tiêu đề, mức độ nghiêm trọng, mô tả. Nó tự động lưu.",
+    "tag": "Tải lên sơ đồ mặt bằng hoặc bản vẽ của riêng bạn tại đây, sau đó ghim các khuyết điểm lên chúng để có vị trí chính xác. Ghép nối với tính năng tự động ghim GPS đã có trong báo cáo của bạn.",
+    "review": "Theo dõi trạng thái lỗi khi công việc được giải quyết — Đang tiến hành, Đã hoàn tất, Đã xác minh, Đã đóng. Hữu ích khi bạn cần một quy trình làm việc về trạng thái sau khi chụp.",
+    "report": "Kéo mọi thứ bạn đã ĐĂNG NHẬP vào CSV, PDF, email hoặc HTML có thể chia sẻ cho khách hàng. Chưa có gì để gửi - hãy bắt đầu bằng LOG.",
+    "dashboard": "Tổng quan về trạng thái lỗi của bạn — số lượng, mức độ nghiêm trọng, hoạt động gần đây. Chưa có gì ở đây; đi tới LOG để bắt đầu."
+  },
   "banner": {
     "server_down": "SiteShrimp đang tạm dừng để nâng cấp — sẽ sớm quay lại. Công việc hiện tại là an toàn."
   },
@@ -1131,7 +1141,16 @@
     "workflow_offline": "Ngoại tuyến tại chỗ",
     "workflow_offline_desc": "Các ảnh chụp tiếp tục hoạt động mà không có tín hiệu — các mục nhập xếp hàng trong IndexedDB và tự động đồng bộ hóa khi bạn trực tuyến trở lại. Xem huy hiệu hàng đợi trong tiêu đề.",
     "purpose_origin_title": "Nguồn gốc",
-    "purpose_origin_body": "SiteShrimp được xây dựng bởi một người không phải là kỹ sư làm việc với AI với tư cách là đối tác tư duy hàng ngày — một dự án học tập cá nhân cũng phải được thực hiện trên một công trường xây dựng thực sự. Đây vừa là một thử nghiệm táo bạo về những gì mà quá trình phát triển có sự hỗ trợ của AI có thể tạo ra khi thanh là một bản ghi lỗi có thể được tòa án bảo vệ (không phải bản demo), vừa là một cái nhìn thoáng qua về những gì có thể xảy ra khi các chuyên gia bình thường ngừng chờ đợi đội công nghệ và xây dựng các công cụ mà họ cần cho công việc của riêng họ."
+    "purpose_origin_body": "SiteShrimp được xây dựng bởi một người không phải là kỹ sư làm việc với AI với tư cách là đối tác tư duy hàng ngày — một dự án học tập cá nhân cũng phải được thực hiện trên một công trường xây dựng thực sự. Đây vừa là một thử nghiệm táo bạo về những gì mà quá trình phát triển có sự hỗ trợ của AI có thể tạo ra khi thanh là một bản ghi lỗi có thể được tòa án bảo vệ (không phải bản demo), vừa là một cái nhìn thoáng qua về những gì có thể xảy ra khi các chuyên gia bình thường ngừng chờ đợi đội công nghệ và xây dựng các công cụ mà họ cần cho công việc của riêng họ.",
+    "tabs_fit_title": "Cách các tab khớp với nhau",
+    "tabs_fit_spine_title": "Cột sống: LOG → BÁO CÁO",
+    "tabs_fit_spine_body": "Chụp ảnh trong LOG. AI điền vào biểu mẫu. Nó tự động lưu. Khi bạn hoàn tất, hãy đi tới BÁO CÁO để gửi CSV, PDF, email hoặc HTML có thể chia sẻ cho khách hàng. Hai tab này bao gồm hành trình tối thiểu — nắm bắt, quản lý.",
+    "tabs_fit_tag_title": "TAG phù hợp khi bạn có bản vẽ của riêng mình",
+    "tabs_fit_tag_body": "Sơ đồ mặt bằng, bố trí M&E, bản vẽ kết cấu — tải chúng lên và ghim từng khiếm khuyết vào vị trí chính xác. Nếu bạn không có bản vẽ, ảnh của bạn vẫn được tự động ghim trên bản đồ GPS và ảnh đó đã có trong báo cáo của bạn.",
+    "tabs_fit_review_title": "ĐÁNH GIÁ phù hợp khi công việc có tuổi thọ",
+    "tabs_fit_review_body": "Thay đổi trạng thái (Đang tiến hành / Hoàn thành / Đã xác minh / Đã đóng), nhận xét, phê duyệt, xác minh. Nếu bạn chỉ ghi nhật ký và xuất trong một lần, bạn sẽ không cần điều này. Nếu những lỗi tương tự vẫn tồn tại trong nhiều tuần trong khi người phụ xử lý chúng thì đây là trạm phân loại của bạn.",
+    "tabs_fit_dashboard_title": "Bảng điều khiển là cái nhìn tổng quan",
+    "tabs_fit_dashboard_body": "Số lượng, mức độ nghiêm trọng, hoạt động gần đây. Mở nó khi bạn muốn biết những gì đang chất đống mà không cần nhấp chuột xung quanh."
   },
   "about": {
     "title": "Về",

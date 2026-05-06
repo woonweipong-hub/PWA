@@ -8,6 +8,16 @@
     "main_nav": "Navigasi utama",
     "close": "tutup"
   },
+  "tagline": {
+    "text": "Tangkap masuk. Urus keluar. Satu tempat."
+  },
+  "empty_state": {
+    "log": "Ambil gambar sebarang kecacatan. AI mengisi tajuk, keterukan, perihalan. Ia menjimatkan secara automatik.",
+    "tag": "Muat naik pelan lantai atau lukisan anda sendiri di sini, kemudian sematkan kecacatan padanya untuk lokasi yang tepat. Berpasangan dengan penyematan automatik GPS yang sudah ada dalam laporan anda.",
+    "review": "Jejaki status kecacatan apabila kerja diselesaikan — Sedang Berlangsung, Selesai, Disahkan, Ditutup. Berguna apabila anda memerlukan aliran kerja status di atas tangkapan.",
+    "report": "Menarik semua yang anda LOGLOG ke dalam CSV, PDF, e-mel atau HTML yang boleh dikongsi untuk pelanggan. Tiada apa-apa untuk dihantar lagi — mulakan dalam LOG.",
+    "dashboard": "Gambaran keseluruhan status kecacatan anda — kiraan, keterukan, aktiviti terkini. Tiada apa-apa lagi di sini; pergi ke LOG untuk bermula."
+  },
   "banner": {
     "server_down": "SiteShrimp dijeda untuk naik taraf — kembali tidak lama lagi. Kerja sedia ada selamat."
   },
@@ -1131,7 +1141,16 @@
     "workflow_offline": "Luar talian di tapak",
     "workflow_offline_desc": "Tangkapan terus berfungsi tanpa isyarat — entri beratur dalam IndexedDB dan penyegerakan automatik apabila anda kembali dalam talian. Tonton lencana baris gilir dalam pengepala.",
     "purpose_origin_title": "asal usul",
-    "purpose_origin_body": "SiteShrimp dibina oleh bukan jurutera yang bekerja dengan AI sebagai rakan kongsi pemikiran harian — projek pembelajaran peribadi yang juga perlu berdiri di tapak pembinaan sebenar. Ia merupakan ujian berani tentang apa yang boleh dihasilkan oleh pembangunan berbantukan AI apabila bar adalah rekod kecacatan yang boleh dipertahankan oleh mahkamah (bukan demo), dan gambaran sekilas tentang perkara yang mungkin berlaku apabila profesional biasa berhenti menunggu pasukan teknologi dan membina alat yang diperlukan untuk kerja mereka sendiri."
+    "purpose_origin_body": "SiteShrimp dibina oleh bukan jurutera yang bekerja dengan AI sebagai rakan kongsi pemikiran harian — projek pembelajaran peribadi yang juga perlu berdiri di tapak pembinaan sebenar. Ia merupakan ujian berani tentang apa yang boleh dihasilkan oleh pembangunan berbantukan AI apabila bar adalah rekod kecacatan yang boleh dipertahankan oleh mahkamah (bukan demo), dan gambaran sekilas tentang perkara yang mungkin berlaku apabila profesional biasa berhenti menunggu pasukan teknologi dan membina alat yang diperlukan untuk kerja mereka sendiri.",
+    "tabs_fit_title": "Cara tab sesuai bersama",
+    "tabs_fit_spine_title": "Tulang belakang: LOG → LAPORAN",
+    "tabs_fit_spine_body": "Ambil gambar dalam LOG. AI mengisi borang. Ia menjimatkan secara automatik. Apabila anda selesai, pergi ke REPORT untuk menghantar CSV, PDF, e-mel atau HTML yang boleh dikongsi kepada pelanggan. Kedua-dua tab ini merangkumi perjalanan minimum — tangkap masuk, urus keluar.",
+    "tabs_fit_tag_title": "TAG sesuai apabila anda mempunyai lukisan anda sendiri",
+    "tabs_fit_tag_body": "Pelan lantai, susun atur M&E, lukisan struktur — muat naik dan sematkan setiap kecacatan pada tempat yang tepat. Jika anda tidak mempunyai lukisan, foto anda masih disemat secara automatik pada peta GPS dan itu sudah pun dalam laporan anda.",
+    "tabs_fit_review_title": "ULASAN sesuai apabila kerja mempunyai jangka hayat",
+    "tabs_fit_review_body": "Perubahan status (Sedang Berlangsung / Selesai / Disahkan / Ditutup), ulasan, tandatangan, pengesahan. Jika anda hanya mengelog dan mengeksport sekali gus, anda tidak memerlukan ini. Jika kecacatan yang sama berlaku selama berminggu-minggu sementara subs berfungsi padanya, ini ialah stesen kerja triage anda.",
+    "tabs_fit_dashboard_title": "Papan pemuka ialah sekilas pandang",
+    "tabs_fit_dashboard_body": "Kiraan, keterukan, aktiviti terkini. Bukanya apabila anda ingin mengetahui apa yang bertimbun tanpa mengklik."
   },
   "about": {
     "title": "Tentang",

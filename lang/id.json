@@ -8,6 +8,16 @@
     "main_nav": "Navigasi utama",
     "close": "Menutup"
   },
+  "tagline": {
+    "text": "Tangkap masuk. Kelola keluar. Satu tempat."
+  },
+  "empty_state": {
+    "log": "Ambil foto jika ada cacat. AI mengisi judul, tingkat keparahan, deskripsi. Ini menghemat secara otomatis.",
+    "tag": "Unggah denah atau gambar lantai Anda sendiri di sini, lalu sematkan cacat pada gambar tersebut untuk mendapatkan lokasi yang tepat. Pasangkan dengan penyematan otomatis GPS yang sudah ada di laporan Anda.",
+    "review": "Lacak status kerusakan saat pekerjaan diselesaikan — Sedang Berlangsung, Selesai, Terverifikasi, Ditutup. Berguna saat Anda memerlukan alur kerja status selain pengambilan.",
+    "report": "Menarik semua yang telah Anda MASUK ke dalam CSV, PDF, email, atau HTML yang dapat dibagikan untuk klien. Belum ada yang dikirim — mulai di LOG.",
+    "dashboard": "Ikhtisar status kerusakan Anda — jumlah, tingkat keparahan, aktivitas terkini. Belum ada apa pun di sini; buka LOG untuk memulai."
+  },
   "banner": {
     "server_down": "SiteShrimp dijeda untuk peningkatan — segera kembali. Pekerjaan yang ada aman."
   },
@@ -1131,7 +1141,16 @@
     "workflow_offline": "Offline di tempat",
     "workflow_offline_desc": "Pengambilan gambar tetap berfungsi tanpa sinyal — antrean entri di IndexedDB dan sinkronisasi otomatis saat Anda kembali online. Perhatikan lencana antrean di header.",
     "purpose_origin_title": "Asal",
-    "purpose_origin_body": "SiteShrimp dibangun oleh seorang non-insinyur yang bekerja dengan AI sebagai mitra berpikir sehari-hari — sebuah proyek pembelajaran pribadi yang juga harus berdiri di lokasi konstruksi nyata. Hal ini merupakan ujian yang berani atas apa yang dapat dihasilkan oleh pengembangan yang didukung AI ketika standarnya adalah catatan cacat yang dapat dipertahankan oleh pengadilan (bukan demo), dan sekilas tentang apa yang mungkin terjadi ketika para profesional biasa berhenti menunggu tim teknologi dan membangun alat yang dibutuhkan pekerjaan mereka sendiri."
+    "purpose_origin_body": "SiteShrimp dibangun oleh seorang non-insinyur yang bekerja dengan AI sebagai mitra berpikir sehari-hari — sebuah proyek pembelajaran pribadi yang juga harus berdiri di lokasi konstruksi nyata. Hal ini merupakan ujian yang berani atas apa yang dapat dihasilkan oleh pengembangan yang didukung AI ketika standarnya adalah catatan cacat yang dapat dipertahankan oleh pengadilan (bukan demo), dan sekilas tentang apa yang mungkin terjadi ketika para profesional biasa berhenti menunggu tim teknologi dan membangun alat yang dibutuhkan pekerjaan mereka sendiri.",
+    "tabs_fit_title": "Bagaimana tab-tab tersebut cocok satu sama lain",
+    "tabs_fit_spine_title": "Tulang belakang: LOG → LAPORAN",
+    "tabs_fit_spine_body": "Ambil foto di LOG. AI mengisi formulir. Ini menghemat secara otomatis. Setelah selesai, buka LAPORAN untuk mengirim CSV, PDF, email, atau HTML yang dapat dibagikan ke klien. Kedua tab ini mencakup perjalanan minimum — ambil masuk, kelola keluar.",
+    "tabs_fit_tag_title": "TAG cocok jika Anda memiliki gambar sendiri",
+    "tabs_fit_tag_body": "Denah lantai, tata letak M&E, gambar struktur — unggah dan tempelkan setiap cacat pada tempatnya. Jika Anda tidak memiliki gambar, foto Anda masih dipasangi pin otomatis pada peta GPS dan itu sudah ada dalam laporan Anda.",
+    "tabs_fit_review_title": "REVIEW cocok ketika pekerjaan memiliki umur panjang",
+    "tabs_fit_review_body": "Perubahan status (Sedang Berlangsung / Selesai / Terverifikasi / Ditutup), komentar, penandatanganan, verifikasi. Jika Anda hanya mencatat dan mengekspor sekaligus, Anda tidak memerlukan ini. Jika cacat yang sama tetap terbuka selama berminggu-minggu sementara kapal selam mengerjakannya, ini adalah tempat kerja triase Anda.",
+    "tabs_fit_dashboard_title": "Dasbor adalah sekilasnya",
+    "tabs_fit_dashboard_body": "Jumlah, tingkat keparahan, aktivitas terkini. Buka ketika Anda ingin tahu apa yang menumpuk tanpa perlu mengklik."
   },
   "about": {
     "title": "Tentang",

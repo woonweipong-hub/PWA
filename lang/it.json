@@ -8,6 +8,16 @@
     "main_nav": "Navigazione principale",
     "close": "Vicina"
   },
+  "tagline": {
+    "text": "Cattura dentro. Gestisci fuori. Un posto."
+  },
+  "empty_state": {
+    "log": "Scatta una foto di qualsiasi difetto. L'intelligenza artificiale inserisce titolo, gravità, descrizione. Si salva automaticamente.",
+    "tag": "Carica qui le tue planimetrie o i tuoi disegni, quindi appunta i difetti su di essi per una posizione precisa. Si abbina al rilevamento automatico del GPS già presente nei tuoi report.",
+    "review": "Tieni traccia dello stato dei difetti man mano che il lavoro viene risolto: In corso, Fatto, Verificato, Chiuso. Utile quando è necessario un flusso di lavoro relativo allo stato oltre all'acquisizione.",
+    "report": "Estrae tutto ciò che hai REGISTRATO in un CSV, PDF, e-mail o HTML condivisibile per il cliente. Niente da inviare ancora: inizia in LOG.",
+    "dashboard": "Panoramica dello stato dei tuoi difetti: conteggi, gravità, attività recente. Niente qui ancora; vai su LOG ​​per iniziare."
+  },
   "banner": {
     "server_down": "SiteShrimp è in pausa per un aggiornamento: tornerà presto. Il lavoro esistente è sicuro."
   },
@@ -1131,7 +1141,16 @@
     "workflow_offline": "Offline sul posto",
     "workflow_offline_desc": "Le acquisizioni continuano a funzionare senza segnale: le voci vengono accodate in IndexedDB e si sincronizzano automaticamente quando sei di nuovo online. Guarda il badge della coda nell'intestazione.",
     "purpose_origin_title": "Origine",
-    "purpose_origin_body": "SiteShrimp è costruito da un non ingegnere che lavora con l'intelligenza artificiale come partner di pensiero quotidiano: un progetto di apprendimento personale che deve reggere anche in un vero cantiere. È sia un test audace di ciò che lo sviluppo assistito dall'intelligenza artificiale può produrre quando la barra è un record di difetti difendibili in tribunale (non una demo), sia uno sguardo a ciò che diventa possibile quando i professionisti ordinari smettono di aspettare un team tecnico e costruiscono gli strumenti di cui il loro lavoro ha bisogno."
+    "purpose_origin_body": "SiteShrimp è costruito da un non ingegnere che lavora con l'intelligenza artificiale come partner di pensiero quotidiano: un progetto di apprendimento personale che deve reggere anche in un vero cantiere. È sia un test audace di ciò che lo sviluppo assistito dall'intelligenza artificiale può produrre quando la barra è un record di difetti difendibili in tribunale (non una demo), sia uno sguardo a ciò che diventa possibile quando i professionisti ordinari smettono di aspettare un team tecnico e costruiscono gli strumenti di cui il loro lavoro ha bisogno.",
+    "tabs_fit_title": "Come si incastrano le linguette",
+    "tabs_fit_spine_title": "La colonna vertebrale: LOG → REPORT",
+    "tabs_fit_spine_body": "Scatta una foto in LOG. L'intelligenza artificiale compila il modulo. Si salva automaticamente. Quando hai finito, vai su REPORT per inviare un CSV, PDF, email o HTML condivisibile al cliente. Queste due schede coprono il percorso minimo: acquisisci, gestisci.",
+    "tabs_fit_tag_title": "TAG si adatta quando hai i tuoi disegni",
+    "tabs_fit_tag_body": "Planimetrie, layout M&E, disegni strutturali: caricali e appunta ogni difetto nel punto esatto. Se non hai disegni, le tue foto vengono comunque bloccate automaticamente su una mappa GPS e questo è già nei tuoi rapporti.",
+    "tabs_fit_review_title": "REVIEW si inserisce quando il lavoro ha una durata di vita",
+    "tabs_fit_review_body": "Modifiche di stato (In corso/Fine/Verificato/Chiuso), commenti, approvazioni, verifiche. Se stai semplicemente registrando ed esportando in una volta sola, non ne avrai bisogno. Se gli stessi difetti restano aperti per settimane mentre i sub lavorano su di essi, questa è la tua postazione di triage.",
+    "tabs_fit_dashboard_title": "Dashboard è tutto a colpo d'occhio",
+    "tabs_fit_dashboard_body": "Conteggi, gravità, attività recente. Aprilo quando vuoi sapere cosa c'è accumulato senza cliccare qua e là."
   },
   "about": {
     "title": "Di",

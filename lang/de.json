@@ -8,6 +8,16 @@
     "main_nav": "Hauptnavigation",
     "close": "Schließen"
   },
+  "tagline": {
+    "text": "Einfangen. Raus verwalten. Ein Ort."
+  },
+  "empty_state": {
+    "log": "Machen Sie ein Foto von jedem Defekt. KI gibt Titel, Schweregrad und Beschreibung ein. Es speichert automatisch.",
+    "tag": "Laden Sie hier Ihre eigenen Grundrisse oder Zeichnungen hoch und heften Sie dann die Mängel zur genauen Lokalisierung darauf an. Lässt sich mit dem automatischen GPS-Pinning koppeln, das bereits in Ihren Berichten enthalten ist.",
+    "review": "Verfolgen Sie den Fehlerstatus, sobald die Arbeit gelöst wird – „In Bearbeitung“, „Fertig“, „Überprüft“, „Geschlossen“. Nützlich, wenn Sie zusätzlich zur Erfassung einen Status-Workflow benötigen.",
+    "report": "Zieht alles, was Sie ANGEMELDET haben, in eine CSV-, PDF-, E-Mail- oder gemeinsam nutzbare HTML-Datei für den Kunden. Es gibt noch nichts zu senden – beginnen Sie im LOG.",
+    "dashboard": "Statusübersicht Ihrer Mängel – Anzahl, Schweregrad, aktuelle Aktivitäten. Hier ist noch nichts; Gehen Sie zu LOG, um zu beginnen."
+  },
   "banner": {
     "server_down": "SiteShrimp ist wegen eines Upgrades pausiert – bald zurück. Bestehende Arbeiten sind sicher."
   },
@@ -1131,7 +1141,16 @@
     "workflow_offline": "Offline vor Ort",
     "workflow_offline_desc": "Aufnahmen funktionieren auch ohne Signal – Einträge werden in IndexedDB in die Warteschlange gestellt und automatisch synchronisiert, wenn Sie wieder online sind. Achten Sie auf das Warteschlangenabzeichen in der Kopfzeile.",
     "purpose_origin_title": "Herkunft",
-    "purpose_origin_body": "SiteShrimp wird von einem Nicht-Ingenieur erstellt, der mit KI als täglich denkendem Partner arbeitet – ein persönliches Lernprojekt, das auch auf einer echten Baustelle bestehen muss. Es ist sowohl ein gewagter Test dessen, was KI-gestützte Entwicklung bewirken kann, wenn die Messlatte ein gerichtlich vertretbarer Fehlerdatensatz (keine Demo) ist, als auch ein Blick darauf, was möglich wird, wenn normale Profis nicht mehr auf ein Technikteam warten und die Tools entwickeln, die sie für ihre eigene Arbeit benötigen."
+    "purpose_origin_body": "SiteShrimp wird von einem Nicht-Ingenieur erstellt, der mit KI als täglich denkendem Partner arbeitet – ein persönliches Lernprojekt, das auch auf einer echten Baustelle bestehen muss. Es ist sowohl ein gewagter Test dessen, was KI-gestützte Entwicklung bewirken kann, wenn die Messlatte ein gerichtlich vertretbarer Fehlerdatensatz (keine Demo) ist, als auch ein Blick darauf, was möglich wird, wenn normale Profis nicht mehr auf ein Technikteam warten und die Tools entwickeln, die sie für ihre eigene Arbeit benötigen.",
+    "tabs_fit_title": "Wie die Laschen zusammenpassen",
+    "tabs_fit_spine_title": "Die Wirbelsäule: LOG → BERICHT",
+    "tabs_fit_spine_body": "Machen Sie ein Foto in LOG. KI füllt das Formular aus. Es speichert automatisch. Wenn Sie fertig sind, gehen Sie zu BERICHT, um eine CSV-, PDF-, E-Mail- oder gemeinsam nutzbare HTML-Datei an den Kunden zu senden. Diese beiden Registerkarten decken den minimalen Weg ab – Einfangen, Verwalten.",
+    "tabs_fit_tag_title": "TAG passt, wenn Sie Ihre eigenen Zeichnungen haben",
+    "tabs_fit_tag_body": "Grundrisse, M&E-Layouts, Strukturzeichnungen – laden Sie sie hoch und heften Sie jeden Defekt genau an die richtige Stelle. Wenn Sie keine Zeichnungen haben, werden Ihre Fotos trotzdem automatisch auf einer GPS-Karte angeheftet und sind bereits in Ihren Berichten enthalten.",
+    "tabs_fit_review_title": "REVIEW passt, wenn Arbeit eine Lebensdauer hat",
+    "tabs_fit_review_body": "Statusänderungen (In Bearbeitung / Fertig / Verifiziert / Geschlossen), Kommentare, Freigaben, Überprüfungen. Wenn Sie nur auf einmal protokollieren und exportieren, brauchen Sie das nicht. Wenn die gleichen Mängel wochenlang offen bleiben, während Subs daran arbeiten, ist dies Ihr Triage-Arbeitsplatz.",
+    "tabs_fit_dashboard_title": "Das Dashboard ist auf einen Blick verfügbar",
+    "tabs_fit_dashboard_body": "Anzahl, Schweregrade, aktuelle Aktivität. Öffnen Sie es, wenn Sie wissen möchten, was sich angesammelt hat, ohne herumklicken zu müssen."
   },
   "about": {
     "title": "Um",

@@ -5682,39 +5682,122 @@ function generateComparisonsEmailHTML(comparisons){
 }
 
 // ── UI Helpers ────────────────────────────────────────────────────
+// Continuous voice input. Was push-to-talk pretending to be hands-free
+// (continuous=false → one phrase per tap, user re-taps for the next),
+// which defeated the entire point. Now: one tap turns the mic ON, it
+// stays open across utterances, each finalised phrase fires onResult,
+// and a second tap turns it OFF. Chrome silently ends `continuous`
+// recognition every ~60 seconds — onend restarts while wantOn ref is
+// true so the session feels uninterrupted from the user's side.
 function useVoice(){
   const[listening,setListening]=useState(false);
   const[supported]=useState(()=>"webkitSpeechRecognition" in window||"SpeechRecognition" in window);
   const recRef=useRef(null);
-  const start=useCallback(onResult=>{
-    if(!supported||listening)return;
+  const wantOnRef=useRef(false);   // user intent — keep listening until explicit stop
+  const onResultRef=useRef(null);  // latest callback (so closures don't capture stale state)
+  const _build=useCallback(()=>{
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
     const rec=new SR();
-    rec.lang="en-US";rec.continuous=false;rec.interimResults=false;
+    rec.lang="en-US";
+    rec.continuous=true;
+    rec.interimResults=true;
     rec.onstart=()=>setListening(true);
-    rec.onend=()=>setListening(false);
-    rec.onerror=()=>setListening(false);
-    rec.onresult=e=>onResult(e.results[0][0].transcript);
+    rec.onerror=(e)=>{
+      // not-allowed / service-not-allowed = user revoked or browser blocked.
+      // Other errors (no-speech / audio-capture / network) are transient — let
+      // onend restart. Setting wantOnRef=false here would silently kill it.
+      const k=e&&e.error;
+      if(k==="not-allowed"||k==="service-not-allowed"){
+        wantOnRef.current=false;
+        setListening(false);
+      }
+    };
+    rec.onend=()=>{
+      if(wantOnRef.current){
+        try{rec.start();}catch{wantOnRef.current=false;setListening(false);}
+      }else{
+        setListening(false);
+      }
+    };
+    rec.onresult=(e)=>{
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const r=e.results[i];
+        if(!r||!r.isFinal)continue;
+        const tx=((r[0]&&r[0].transcript)||"").trim();
+        if(tx&&onResultRef.current)onResultRef.current(tx);
+      }
+    };
+    return rec;
+  },[]);
+  const start=useCallback(onResult=>{
+    if(!supported)return;
+    onResultRef.current=onResult;
+    if(wantOnRef.current)return; // already on; just refresh callback
+    wantOnRef.current=true;
+    const rec=_build();
     recRef.current=rec;
-    try{rec.start();}catch{setListening(false);}
-  },[supported,listening]);
-  const stop=useCallback(()=>{try{recRef.current?.stop();}catch{}setListening(false);},[]);
-  const toggle=useCallback(onResult=>{if(listening)stop();else start(onResult);},[listening,start,stop]);
-  return{listening,supported,toggle};
+    try{rec.start();}catch{wantOnRef.current=false;setListening(false);}
+  },[supported,_build]);
+  const stop=useCallback(()=>{
+    wantOnRef.current=false;
+    try{recRef.current&&recRef.current.stop();}catch{}
+    setListening(false);
+  },[]);
+  const toggle=useCallback(onResult=>{
+    if(wantOnRef.current||listening)stop();
+    else start(onResult);
+  },[listening,start,stop]);
+  // Tear the recognizer down when the consumer unmounts — e.g. the user
+  // navigates away from the form. Without this the mic stays hot in the
+  // background.
+  useEffect(()=>()=>{
+    wantOnRef.current=false;
+    try{recRef.current&&recRef.current.stop();}catch{}
+  },[]);
+  return{listening,supported,toggle,start,stop};
 }
 
+// Per-field mic toggle. The inner callback now reads currentValue from a
+// ref so each finalised utterance appends to whatever the field looks
+// like NOW — not the stale value captured when the user first tapped.
 function MicBtn({onResult,currentValue,append}){
-  const{listening,supported,toggle}=useVoice();
+  const{listening,supported,toggle,stop}=useVoice();
+  const valRef=useRef(currentValue);
+  useEffect(()=>{valRef.current=currentValue;},[currentValue]);
   if(!supported)return null;
   return(
-    <button onClick={()=>toggle(t=>onResult(append&&currentValue?currentValue+" "+t:t))}
-      style={{width:40,height:40,borderRadius:10,flexShrink:0,cursor:"pointer",background:listening?"#ff3b30":"rgba(255,107,0,0.1)",border:`2px solid ${listening?"#ff3b30":"rgba(255,107,0,0.3)"}`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:listening?"0 0 14px rgba(255,59,48,0.5)":"none",transition:"all 0.2s"}}>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-        <rect x="9" y="2" width="6" height="12" rx="3" fill={listening?"#fff":"#ff6b00"}/>
-        <path d="M5 10a7 7 0 0014 0" stroke={listening?"#fff":"#ff6b00"} strokeWidth="2" strokeLinecap="round"/>
-        <line x1="12" y1="19" x2="12" y2="22" stroke={listening?"#fff":"#ff6b00"} strokeWidth="2" strokeLinecap="round"/>
-      </svg>
-    </button>
+    <>
+      <HandsFreeListeningBar listening={listening} onStop={stop}/>
+      <button onClick={()=>toggle(tx=>{
+        const cv=valRef.current;
+        onResult(append&&cv?cv+" "+tx:tx);
+      })}
+        title={listening?"Tap to stop listening":"Tap to start hands-free dictation — keeps listening until you stop"}
+        aria-pressed={listening}
+        style={{width:40,height:40,borderRadius:10,flexShrink:0,cursor:"pointer",background:listening?"#ff3b30":"rgba(255,107,0,0.1)",border:`2px solid ${listening?"#ff3b30":"rgba(255,107,0,0.3)"}`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:listening?"0 0 14px rgba(255,59,48,0.5)":"none",transition:"all 0.2s"}}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <rect x="9" y="2" width="6" height="12" rx="3" fill={listening?"#fff":"#ff6b00"}/>
+          <path d="M5 10a7 7 0 0014 0" stroke={listening?"#fff":"#ff6b00"} strokeWidth="2" strokeLinecap="round"/>
+          <line x1="12" y1="19" x2="12" y2="22" stroke={listening?"#fff":"#ff6b00"} strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      </button>
+    </>
+  );
+}
+
+// Visible top-of-screen affordance shown whenever any useVoice instance is
+// recording. Lives outside individual MicBtns so it persists no matter
+// which field the user is dictating into. STOP button is always reachable
+// — privacy-by-design — and matches the OS-level "I'm recording" cue
+// the user would expect on a phone.
+function HandsFreeListeningBar({listening,onStop}){
+  if(!listening)return null;
+  return(
+    <div role="status" aria-live="polite" style={{position:"fixed",top:0,left:0,right:0,zIndex:300,background:"linear-gradient(90deg,#ff3b30,#ff6b00)",padding:"8px 14px",display:"flex",alignItems:"center",justifyContent:"center",gap:12,boxShadow:"0 2px 12px rgba(255,59,48,0.4)",animation:"pulse 1.6s ease-in-out infinite"}}>
+      <span aria-hidden="true" style={{width:9,height:9,borderRadius:"50%",background:"#fff",boxShadow:"0 0 8px rgba(255,255,255,0.9)"}}/>
+      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff",letterSpacing:"0.08em",textTransform:"uppercase"}}>Listening — speak now</span>
+      <button onClick={onStop} style={{background:"rgba(255,255,255,0.18)",border:"1px solid rgba(255,255,255,0.4)",borderRadius:6,padding:"3px 9px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",letterSpacing:"0.06em"}}>STOP</button>
+    </div>
   );
 }
 
@@ -10998,6 +11081,11 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
 
   return(
     <div style={{padding:"20px 16px 120px",animation:"fadeIn 0.25s ease"}}>
+      {existingDefects.length===0&&(
+        <div style={{background:"rgba(255,107,0,0.06)",border:"1px solid rgba(255,107,0,0.18)",borderRadius:10,padding:"10px 12px",marginBottom:14,fontSize:12,color:"rgba(0,0,0,0.65)",lineHeight:1.5,fontFamily:"'Barlow',sans-serif"}}>
+          {t("empty_state.log")}
+        </div>
+      )}
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4,flexWrap:"wrap"}}>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>{t("log.log_entry")}</div>
         {count>0&&<div style={{fontSize:10,fontWeight:700,color:"#30d158",background:"rgba(48,209,88,0.1)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>{count} {t("log.logged")}</div>}
@@ -12406,6 +12494,39 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
   // timezone drift and Date-parsing surprises across browsers.
   const _todayISO=new Date().toISOString().slice(0,10);
   const _isOverdue=d=>!!(d.dueDate&&String(d.dueDate).slice(0,10)<_todayISO&&!["Verified","Closed"].includes(d.status));
+  // Days the defect has sat in its current status. Looks at the comments
+  // timeline for the most recent kind:"event" type:"status" entry —
+  // that's when the current status started. If no status-change event,
+  // the defect has been in its initial status since creation. Returns
+  // null when there's nothing to compute against. Hidden client-side for
+  // terminal statuses (Verified / Closed) — time-in-status is informational
+  // for active work, not for archived rows.
+  const _daysInStatus=d=>{
+    if(!d||!d.status)return null;
+    const cs=Array.isArray(d.comments)?d.comments:[];
+    let anchor=0;
+    for(let i=cs.length-1;i>=0;i--){
+      const c=cs[i];
+      if(c&&c.kind==="event"&&c.type==="status"&&typeof c.at==="number"){anchor=c.at;break;}
+    }
+    if(!anchor&&d.created){
+      const t=new Date(d.created).getTime();
+      if(!isNaN(t))anchor=t;
+    }
+    if(!anchor)return null;
+    const days=Math.floor((Date.now()-anchor)/86400000);
+    return days<0?0:days;
+  };
+  // Color tier — only flagged for active (non-terminal) statuses. ≥8d
+  // open is a quiet warning; ≥15d is louder. Verified / Closed always
+  // render muted so closed rows don't visually compete with active ones.
+  const _statusAgeColor=(d,days)=>{
+    if(["Verified","Closed"].includes(d.status))return{c:"rgba(0,0,0,0.35)",b:"rgba(0,0,0,0.05)",bd:"rgba(0,0,0,0.08)"};
+    if(days>=15)return{c:"#cc0000",b:"rgba(255,59,48,0.1)",bd:"rgba(255,59,48,0.3)"};
+    if(days>=8) return{c:"#ff6b00",b:"rgba(255,107,0,0.1)",bd:"rgba(255,107,0,0.28)"};
+    if(days>=3) return{c:"#ff9500",b:"rgba(255,149,0,0.1)",bd:"rgba(255,149,0,0.28)"};
+    return{c:"rgba(0,0,0,0.5)",b:"rgba(0,0,0,0.05)",bd:"rgba(0,0,0,0.1)"};
+  };
   const filtered=defects.filter(d=>{
     if(filter!=="All"&&d.status!==filter)return false;
     if(sevF!=="All"&&d.severity!==sevF)return false;
@@ -12899,7 +13020,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
           title, so they're not silently hidden. */}
       {showGridView&&(
         filtered.length===0
-          ?<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>{q?t("review.no_matching")+" \""+search+"\"":t("review.no_entries")}</div>
+          ?<div style={{textAlign:"center",color:"rgba(0,0,0,0.45)",padding:"40px 24px",fontSize:13,lineHeight:1.55,maxWidth:520,margin:"0 auto"}}>{(defects||[]).length===0?t("empty_state.review"):(q?t("review.no_matching")+" \""+search+"\"":t("review.no_entries"))}</div>
           :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(106px,1fr))",gap:8,marginBottom:16}}>
             {filtered.map(d=>{
               const _photo=Array.isArray(d.photo)?d.photo[0]:d.photo;
@@ -12932,7 +13053,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
             })}
           </div>
       )}
-      {!showMapView&&!showGridView&&filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.3)",padding:"50px 0",fontSize:14}}>{q?t("review.no_matching")+" \""+search+"\"":t("review.no_entries")}</div>}
+      {!showMapView&&!showGridView&&filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.45)",padding:"40px 24px",fontSize:13,lineHeight:1.55,maxWidth:520,margin:"0 auto"}}>{(defects||[]).length===0?t("empty_state.review"):(q?t("review.no_matching")+" \""+search+"\"":t("review.no_entries"))}</div>}
       {/* CONQUAS / batch grouping — interleaves section headers with card
           rows. Batch grouping takes precedence when both toggles are on
           because each wizard run is tied to a single CONQUAS element, so
@@ -13059,6 +13180,9 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
                   Sits next to severity so it reads at a glance without taking a
                   full row. Tap-target inherits the card's onView. */}
               {_isOverdue(d)&&<span title={`Due ${d.dueDate}`} style={{fontSize:10,fontWeight:800,color:"#fff",background:"#ff3b30",padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>⏰ {t("review.overdue")}</span>}
+              {/* DAYS-IN-STATUS pill — surfaces "where work is stuck" without
+                  needing analytics. Tier 4-lite of cycle insights. */}
+              {(()=>{const _days=_daysInStatus(d);if(_days==null||["Verified","Closed"].includes(d.status))return null;const _ac=_statusAgeColor(d,_days);return <span title={`${_days} day${_days===1?"":"s"} in ${d.status}`} style={{fontSize:10,fontWeight:700,color:_ac.c,background:_ac.b,border:`1px solid ${_ac.bd}`,padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>⏱ {_days}d</span>;})()}
               <span style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>📍 <Highlight text={dv.location} query={q}/></span>
             </div>
             {q&&dv.description&&dv.description.toLowerCase().includes(q)&&(
@@ -13968,7 +14092,28 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
         ):(
           <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,borderLeft:`5px solid ${SEV_COLOR[defect.severity]}`}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:20,color:"#1a1a1a",marginBottom:10}}>{defect.title}</div>
-            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>{defect.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(defect.entryType),background:typeBg(defect.entryType),padding:"3px 10px",borderRadius:12,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(defect.entryType)} {tOpt(defect.entryType).toUpperCase()}</span>}<SevChip s={defect.severity}/><StatusChip s={status}/></div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12,alignItems:"center"}}>
+              {defect.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(defect.entryType),background:typeBg(defect.entryType),padding:"3px 10px",borderRadius:12,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(defect.entryType)} {tOpt(defect.entryType).toUpperCase()}</span>}
+              <SevChip s={defect.severity}/>
+              <StatusChip s={status}/>
+              {/* DAYS-IN-STATUS — Tier 4-lite cycle insight. Tells the
+                  reviewer at a glance how long this defect has sat where
+                  it is. Hidden for terminal statuses (Verified/Closed). */}
+              {(()=>{
+                if(["Verified","Closed"].includes(status))return null;
+                const cs=Array.isArray(defect.comments)?defect.comments:[];
+                let anchor=0;
+                for(let i=cs.length-1;i>=0;i--){const c=cs[i];if(c&&c.kind==="event"&&c.type==="status"&&typeof c.at==="number"){anchor=c.at;break;}}
+                if(!anchor&&defect.created){const tt=new Date(defect.created).getTime();if(!isNaN(tt))anchor=tt;}
+                if(!anchor)return null;
+                const days=Math.max(0,Math.floor((Date.now()-anchor)/86400000));
+                let c="rgba(0,0,0,0.5)",b="rgba(0,0,0,0.05)",bd="rgba(0,0,0,0.1)";
+                if(days>=15){c="#cc0000";b="rgba(255,59,48,0.1)";bd="rgba(255,59,48,0.3)";}
+                else if(days>=8){c="#ff6b00";b="rgba(255,107,0,0.1)";bd="rgba(255,107,0,0.28)";}
+                else if(days>=3){c="#ff9500";b="rgba(255,149,0,0.1)";bd="rgba(255,149,0,0.28)";}
+                return <span title={`${days} day${days===1?"":"s"} in ${status}`} style={{fontSize:10,fontWeight:700,color:c,background:b,border:`1px solid ${bd}`,padding:"2px 9px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>⏱ {days}d in {status.toUpperCase()}</span>;
+              })()}
+            </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
               {[["📍 "+t("fields.location"),defect.location],["👤 "+t("detail.assigned"),defect.assignee],...(defect.assignee_org?[["🏢 "+t("fields.assignee_org"),defect.assignee_org]]:[]),...(defect.assignee_org_contact?[["📞 "+t("fields.assignee_org_contact"),defect.assignee_org_contact]]:[]),["📁 "+t("fields.project_name"),defect.projectName||"—"],["🗓 "+t("fields.date"),defect.created?new Date(defect.created).toLocaleDateString():"—"],["✍️ "+t("fields.logged_by"),defect.loggedBy],["🔑 "+t("fields.role"),defect.loggedByRole||"—"]].map(([l,v])=>(
                 <div key={l}><div style={{fontSize:10,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.08em"}}>{l}</div><div style={{fontSize:13,color:"#1a1a1a",marginTop:2}}>{v||"—"}</div></div>
@@ -15275,6 +15420,11 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
 
   return(
     <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
+      {(defects||[]).length===0&&(
+        <div style={{background:"rgba(255,107,0,0.06)",border:"1px solid rgba(255,107,0,0.18)",borderRadius:10,padding:"10px 12px",marginBottom:14,fontSize:12,color:"rgba(0,0,0,0.65)",lineHeight:1.5,fontFamily:"'Barlow',sans-serif"}}>
+          {t("empty_state.report")}
+        </div>
+      )}
       {/* Merged from former Dashboard tab: title + status dots + status
           cards + critical banner + offline queue sync. Gives the report
           surface a glanceable landing, same info at-a-glance that used to
@@ -17427,7 +17577,10 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
         });
         m._defect=d;
         const safeTitle=(d.title||"Entry").replace(/</g,"&lt;");
-        const iw=new g.InfoWindow({content:`<div style="font-family:'Barlow Condensed',sans-serif;padding:4px 6px;min-width:140px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${canEdit?`<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div><button id="mm-del-${d.id}" style="margin-top:6px;width:100%;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);border-radius:6px;padding:4px 8px;color:#cc0000;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;cursor:pointer">REMOVE PIN</button>`:""}</div>`});
+        const editBtnHtml=typeof onViewEntry==="function"?`<button id="mm-edit-${d.id}" style="margin-top:6px;width:100%;background:#ff6b00;border:none;border-radius:6px;padding:5px 8px;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:10px;cursor:pointer;letter-spacing:0.04em">EDIT ENTRY</button>`:"";
+        const removeBtnHtml=canEdit?`<button id="mm-del-${d.id}" style="margin-top:6px;width:100%;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);border-radius:6px;padding:4px 8px;color:#cc0000;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;cursor:pointer">REMOVE PIN</button>`:"";
+        const dragHint=canEdit?`<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div>`:"";
+        const iw=new g.InfoWindow({content:`<div style="font-family:'Barlow Condensed',sans-serif;padding:4px 6px;min-width:140px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${dragHint}${editBtnHtml}${removeBtnHtml}</div>`});
         m.addListener("click",(e)=>{
           // Multi-select path: shift/ctrl/cmd-click OR additive-mode toggle.
           // Google Maps MouseEvent wraps the native DOM event as `domEvent`.
@@ -17439,7 +17592,19 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
           // thumb-reachable surface; the info window keeps desktop parity.
           setFocusedDefectId(d.id);
           iw.open({anchor:m,map:mapObj.current});
-          if(canEdit){setTimeout(()=>{const b=document.getElementById("mm-del-"+d.id);if(b)b.onclick=()=>{iw.close();unpinDefect(d);};},30);}
+          // Wire popup buttons after the InfoWindow paints. EDIT ENTRY is
+          // primary action per contractor feedback 2026-05-06; REMOVE PIN
+          // stays for the unpin flow.
+          setTimeout(()=>{
+            if(typeof onViewEntry==="function"){
+              const eb=document.getElementById("mm-edit-"+d.id);
+              if(eb)eb.onclick=()=>{iw.close();onViewEntry(d._parentEntryId?defects.find(x=>x.id===d._parentEntryId)||d:d);};
+            }
+            if(canEdit){
+              const b=document.getElementById("mm-del-"+d.id);
+              if(b)b.onclick=()=>{iw.close();unpinDefect(d);};
+            }
+          },30);
         });
         if(canEdit)m.addListener("dragend",e=>saveDefectMove(d,e.latLng.lat(),e.latLng.lng()));
         return m;
@@ -17474,7 +17639,10 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
         const m=L.marker([d.lat,d.lng],{icon,draggable:canEdit,title:canEdit?(d.title||"Entry")+" — drag to move":(d.title||"Entry"),zIndexOffset:isFocused?1000:0});
         m._defect=d;
         const safeTitle=(d.title||"Entry").replace(/</g,"&lt;");
-        m.bindPopup(`<div style="font-family:'Barlow Condensed',sans-serif;padding:2px 4px;min-width:140px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${canEdit?`<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div><button id="mm-del-${d.id}" style="margin-top:6px;width:100%;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);border-radius:6px;padding:4px 8px;color:#cc0000;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;cursor:pointer">REMOVE PIN</button>`:""}</div>`);
+        const editBtnHtmlOSM=typeof onViewEntry==="function"?`<button id="mm-edit-${d.id}" style="margin-top:6px;width:100%;background:#ff6b00;border:none;border-radius:6px;padding:5px 8px;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:10px;cursor:pointer;letter-spacing:0.04em">EDIT ENTRY</button>`:"";
+        const removeBtnHtmlOSM=canEdit?`<button id="mm-del-${d.id}" style="margin-top:6px;width:100%;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);border-radius:6px;padding:4px 8px;color:#cc0000;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;cursor:pointer">REMOVE PIN</button>`:"";
+        const dragHintOSM=canEdit?`<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div>`:"";
+        m.bindPopup(`<div style="font-family:'Barlow Condensed',sans-serif;padding:2px 4px;min-width:140px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${dragHintOSM}${editBtnHtmlOSM}${removeBtnHtmlOSM}</div>`);
         // Open the slide-up preview card on every marker click (phone-thumb
         // surface), regardless of whether the user can edit. Leaflet auto-
         // opens its bundled popup on click too; both coexist.
@@ -17489,8 +17657,21 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
           }
           setFocusedDefectId(d.id);
         });
+        // Wire popup buttons after the popup paints. EDIT ENTRY (primary)
+        // works for all viewers; REMOVE PIN only for users with edit rights.
+        m.on("popupopen",()=>{
+          setTimeout(()=>{
+            if(typeof onViewEntry==="function"){
+              const eb=document.getElementById("mm-edit-"+d.id);
+              if(eb)eb.onclick=()=>{m.closePopup();onViewEntry(d._parentEntryId?defects.find(x=>x.id===d._parentEntryId)||d:d);};
+            }
+            if(canEdit){
+              const b=document.getElementById("mm-del-"+d.id);
+              if(b)b.onclick=()=>{m.closePopup();unpinDefect(d);};
+            }
+          },30);
+        });
         if(canEdit){
-          m.on("popupopen",()=>{setTimeout(()=>{const b=document.getElementById("mm-del-"+d.id);if(b)b.onclick=()=>{m.closePopup();unpinDefect(d);};},30);});
           m.on("dragend",e=>{const p=e.target.getLatLng();saveDefectMove(d,p.lat,p.lng);});
         }
         return m;
@@ -18164,7 +18345,15 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
           pick an existing entry or create a new one. Create-new flips to
           the inline Quick Log form below. */}
       {pendingPin&&!mapQuickCreate&&(()=>{
-        const projDefects=(defects||[]).filter(d=>!currentProject||d.projectId===currentProject.id||d.projectId==="default");
+        const projDefects=(defects||[]).filter(d=>!currentProject||d.projectId===currentProject.id||d.projectId==="default")
+          // Latest-first ordering so a freshly-logged defect sits at the top
+          // of the picker, not buried at the bottom (contractor feedback
+          // 2026-05-06).
+          .slice().sort((a,b)=>{
+            const ta=a.created?new Date(a.created).getTime():0;
+            const tb=b.created?new Date(b.created).getTime():0;
+            return tb-ta;
+          });
         // Count map_pins per entry so the badge reflects total GPS locations.
         const mpByEntry={};extraMapPins.forEach(mp=>{mpByEntry[mp.entryId]=(mpByEntry[mp.entryId]||0)+1;});
         const q=(mapPickerSearch||"").trim().toLowerCase();
@@ -20624,7 +20813,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     }
   };
 
-  if(viewing)return <DrawingViewer drawing={viewing} onClose={closeViewerAndRefreshPins} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry}/>;
+  if(viewing)return <DrawingViewer drawing={viewing} onClose={closeViewerAndRefreshPins} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={onSaveEntry} onViewEntry={onViewEntry}/>;
 
   return(
     <div style={embedded?{background:"#f0ede8",minHeight:"100%"}:{position:"fixed",inset:0,background:"#f0ede8",zIndex:200,overflowY:"auto",animation:"slideUp 0.25s ease"}}>
@@ -20634,6 +20823,11 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>{t("drawings.tag_compare")}</div>
           <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>Upload, pin, overlay photos and compare</div>
         </div>}
+        {embedded&&drawings.length===0&&(defects||[]).length===0&&(
+          <div style={{background:"rgba(255,107,0,0.06)",border:"1px solid rgba(255,107,0,0.18)",borderRadius:10,padding:"10px 12px",marginBottom:14,fontSize:12,color:"rgba(0,0,0,0.65)",lineHeight:1.5,fontFamily:"'Barlow',sans-serif"}}>
+            {t("empty_state.tag")}
+          </div>
+        )}
 
         {/* Sub-mode toggle bar */}
         <div style={{display:"flex",gap:6,padding:4,background:"rgba(0,0,0,0.05)",borderRadius:12,marginBottom:14}}>
@@ -21732,7 +21926,7 @@ function PdfThumb({url}){
   return <canvas ref={ref} style={{width:"100%",display:"block",background:"#f8f8f6"}}/>;
 }
 
-function DrawingViewer({drawing,onClose,company,currentProject,member,defects,onSaveEntry}){
+function DrawingViewer({drawing,onClose,company,currentProject,member,defects,onSaveEntry,onViewEntry}){
   const[pins,setPins]=useState([]);const[loading,setLoading]=useState(true);
   const[placing,setPlacing]=useState(false);const[linkEntry,setLinkEntry]=useState(null);
   const[quickCreate,setQuickCreate]=useState(false);
@@ -22842,6 +23036,14 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
                 </div>
                 <div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginBottom:6}}>{d.severity} · {d.status}{d.assignee?` · ${d.assignee}`:""}</div>
               </>):(<div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginBottom:6}}>Entry not found</div>)}
+              {/* EDIT ENTRY — primary action when tapping a pin. Contractor feedback
+                  2026-05-06: users want to click on PINs to edit the underlying
+                  entry directly without hopping to REVIEW first. */}
+              {d&&typeof onViewEntry==="function"&&(
+                <button onClick={e=>{e.stopPropagation();setActivePin(null);onViewEntry(d);}}
+                  title="Open this entry in detail to view or edit"
+                  style={{display:"block",width:"100%",marginBottom:6,background:"#ff6b00",border:"none",borderRadius:6,padding:"7px 10px",color:"#fff",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>✏ EDIT ENTRY</button>
+              )}
               {canPin&&(
                 <div style={{display:"flex",gap:6}}>
                   <button onClick={e=>{
@@ -23241,8 +23443,16 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
         // Helps users spot entries already pinned multiple times here.
         const pinCountByEntry={};
         pins.forEach(pp=>{pinCountByEntry[pp.entryId]=(pinCountByEntry[pp.entryId]||0)+1;});
+        // Latest-first ordering — contractor feedback 2026-05-06: a freshly-
+        // logged defect should be at the TOP of this picker, not buried at
+        // the bottom of a chronological scroll.
+        const sortedDefects=[...defects].sort((a,b)=>{
+          const ta=a.created?new Date(a.created).getTime():0;
+          const tb=b.created?new Date(b.created).getTime():0;
+          return tb-ta;
+        });
         const q=pickerSearch.trim().toLowerCase();
-        const filtered=q?defects.filter(d=>(d.title||"").toLowerCase().includes(q)||(d.location||"").toLowerCase().includes(q)||(d.severity||"").toLowerCase().includes(q)):defects;
+        const filtered=q?sortedDefects.filter(d=>(d.title||"").toLowerCase().includes(q)||(d.location||"").toLowerCase().includes(q)||(d.severity||"").toLowerCase().includes(q)):sortedDefects;
         return (
         <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
           <div style={{background:"#1a1a1a",borderRadius:16,padding:20,width:"100%",maxWidth:400,maxHeight:"80vh",display:"flex",flexDirection:"column"}}>
@@ -24778,6 +24988,15 @@ function App(){
         </div>
       </div>
 
+      {/* Persistent tagline under the top bar — every tab. Names the spine
+          (LOG → REPORT) so a first-time user immediately knows what the
+          app's two main verbs are. Tester feedback 2026-05-06: "don't
+          know the actual main use" / "after going to any tab i don't
+          know what to do". One line, muted, never grabs primary focus. */}
+      <div style={{background:"#1a1a1a",padding:"0 14px 8px",display:"flex",justifyContent:"center"}}>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,color:"rgba(255,255,255,0.55)",letterSpacing:"0.06em",textAlign:"center"}}>{t("tagline.text")}</div>
+      </div>
+
       {/* AI Query bar — shown on Report tab (merged in from former Dashboard) */}
       {tab==="report"&&(
         <div style={{background:"#1a1a1a",padding:"0 12px 10px"}}>
@@ -24824,7 +25043,7 @@ function App(){
           inside REVIEW context (no jump to TAG, no lost scroll). DrawingViewer
           and DrawingsPanel both render as fixed full-screen overlays already,
           so no wrapper modal is needed. */}
-      {reviewModal?.type==="drawing"&&<DrawingViewer drawing={reviewModal.drawing} onClose={()=>setReviewModal(null)} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect}/>}
+      {reviewModal?.type==="drawing"&&<DrawingViewer drawing={reviewModal.drawing} onClose={()=>setReviewModal(null)} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} onViewEntry={(d)=>{setReviewModal(null);setViewing(d);setTab("defects");}}/>}
       {reviewModal?.type==="comparison"&&<DrawingsPanel onClose={()=>setReviewModal(null)} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} initialCompare={reviewModal.comparison}/>}
       {showAiSearch&&<AiSearch defects={defects} onClose={()=>setShowAiSearch(false)} onApplyFilters={f=>{setNlFilters(f);setTab("defects");}}/>}
       {showConquas&&<ConquasCheckWizard currentProject={currentProject} company={company} member={member} onSave={addDefect} onClose={()=>setShowConquas(false)} onStartBatch={()=>{setShowConquas(false);setTab("log");setPendingConquasBatch(true);}}/>}
@@ -24851,6 +25070,12 @@ function App(){
               {helpTab==="help"&&(
                 <div>
                   {[
+                    [t("help.tabs_fit_title"),[
+                      [t("help.tabs_fit_spine_title"),t("help.tabs_fit_spine_body")],
+                      [t("help.tabs_fit_tag_title"),t("help.tabs_fit_tag_body")],
+                      [t("help.tabs_fit_review_title"),t("help.tabs_fit_review_body")],
+                      [t("help.tabs_fit_dashboard_title"),t("help.tabs_fit_dashboard_body")],
+                    ]],
                     [t("help.first_time_setup"),[
                       ["",t("help.setup_1")],
                       ["",t("help.setup_2")],

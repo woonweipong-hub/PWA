@@ -8,6 +8,16 @@
     "main_nav": "Ana gezinme",
     "close": "Kapalı"
   },
+  "tagline": {
+    "text": "Yakalayın. Çıkışı yönetin. Tek bir yer."
+  },
+  "empty_state": {
+    "log": "Herhangi bir kusurun fotoğrafını çekin. AI başlığı, ciddiyeti ve açıklamayı doldurur. Otomatik olarak kaydeder.",
+    "tag": "Kendi kat planlarınızı veya çizimlerinizi buraya yükleyin, ardından kesin konum için kusurları üzerlerine sabitleyin. Raporlarınızda zaten bulunan GPS otomatik sabitleme özelliğiyle eşleşir.",
+    "review": "İş çözüldükçe kusur durumunu takip edin - Devam Ediyor, Tamamlandı, Doğrulandı, Kapalı. Yakalamanın yanı sıra bir durum iş akışına ihtiyaç duyduğunuzda kullanışlıdır.",
+    "report": "KAYIT ETTİĞİNİZ her şeyi istemci için bir CSV, PDF, e-posta veya paylaşılabilir HTML'ye çeker. Henüz gönderilecek bir şey yok - LOG'da başlayın.",
+    "dashboard": "Kusurlarınızın durumuna genel bakış - sayımlar, ciddiyetler, son etkinlikler. Henüz burada hiçbir şey yok; Başlamak için LOG'a gidin."
+  },
   "banner": {
     "server_down": "SiteShrimp yükseltme işlemi için duraklatıldı; yakında geri dönecek. Mevcut tüm işler güvenlidir."
   },
@@ -1131,7 +1141,16 @@
     "workflow_offline": "Sitede çevrimdışı",
     "workflow_offline_desc": "Yakalamalar sinyal olmadan çalışmaya devam eder; girişler IndexedDB'de sıraya girer ve tekrar çevrimiçi olduğunuzda otomatik olarak senkronize edilir. Başlıktaki kuyruk rozetine dikkat edin.",
     "purpose_origin_title": "Menşei",
-    "purpose_origin_body": "SiteShrimp, yapay zeka ile günlük düşünme ortağı olarak çalışan, mühendis olmayan bir kişi tarafından inşa edildi; aynı zamanda gerçek bir inşaat sahasında da ayakta durması gereken kişisel bir öğrenme projesi. Bu, hem bar mahkeme tarafından savunulabilir bir kusur kaydı (demo değil) olduğunda, yapay zeka destekli geliştirmenin neler üretebileceğine dair cesur bir test, hem de sıradan profesyoneller bir teknoloji ekibini beklemeyi bırakıp kendi işlerinin ihtiyaç duyduğu araçları oluşturduğunda nelerin mümkün olabileceğine dair bir bakış."
+    "purpose_origin_body": "SiteShrimp, yapay zeka ile günlük düşünme ortağı olarak çalışan, mühendis olmayan bir kişi tarafından inşa edildi; aynı zamanda gerçek bir inşaat sahasında da ayakta durması gereken kişisel bir öğrenme projesi. Bu, hem bar mahkeme tarafından savunulabilir bir kusur kaydı (demo değil) olduğunda, yapay zeka destekli geliştirmenin neler üretebileceğine dair cesur bir test, hem de sıradan profesyoneller bir teknoloji ekibini beklemeyi bırakıp kendi işlerinin ihtiyaç duyduğu araçları oluşturduğunda nelerin mümkün olabileceğine dair bir bakış.",
+    "tabs_fit_title": "Sekmeler birbirine nasıl uyar?",
+    "tabs_fit_spine_title": "Omurga: GÜNLÜK → RAPOR",
+    "tabs_fit_spine_body": "LOG'da bir fotoğraf çekin. AI formu doldurur. Otomatik olarak kaydeder. İşiniz bittiğinde müşteriye CSV, PDF, e-posta veya paylaşılabilir HTML göndermek için RAPOR'a gidin. Bu iki sekme minimum yolculuğu kapsar; yakalama, yönetme.",
+    "tabs_fit_tag_title": "TAG, kendi çizimleriniz olduğunda işe yarar",
+    "tabs_fit_tag_body": "Kat planları, M&E planları, yapısal çizimler; bunları yükleyin ve her kusuru tam yerine sabitleyin. Çizimleriniz yoksa fotoğraflarınız yine de bir GPS haritasına otomatik olarak sabitlenir ve bu zaten raporlarınızda yer alır.",
+    "tabs_fit_review_title": "İNCELEME, işin ömrü olduğunda uygundur",
+    "tabs_fit_review_body": "Durum değişiklikleri (Devam Ediyor / Bitti / Doğrulandı / Kapalı), yorumlar, oturum kapatmalar, doğrulamalar. Tek seferde yalnızca oturum açıyor ve dışa aktarıyorsanız buna ihtiyacınız olmayacak. Destekçiler üzerinde çalışırken aynı kusurlar haftalarca açık kalırsa, burası sizin triyaj iş istasyonunuzdur.",
+    "tabs_fit_dashboard_title": "Kontrol paneli bir bakışta",
+    "tabs_fit_dashboard_body": "Sayımlar, şiddetler, son etkinlikler. Neyin biriktiğini bilmek istediğinizde, etrafa tıklamadan açın."
   },
   "about": {
     "title": "Hakkında",

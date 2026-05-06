@@ -8,6 +8,16 @@
     "main_nav": "Navegación principal",
     "close": "Cerca"
   },
+  "tagline": {
+    "text": "Capturar. Gestionar. Un lugar."
+  },
+  "empty_state": {
+    "log": "Tome una foto de cualquier defecto. La IA completa el título, la gravedad y la descripción. Se guarda automáticamente.",
+    "tag": "Cargue sus propios planos de planta o dibujos aquí y luego señale los defectos para ubicarlos con precisión. Se empareja con la fijación automática de GPS que ya está en sus informes.",
+    "review": "Realice un seguimiento del estado de los defectos a medida que se resuelve el trabajo: en curso, terminado, verificado, cerrado. Útil cuando necesita un flujo de trabajo de estado además de la captura.",
+    "report": "Extrae todo lo que has INICIADO en un CSV, PDF, correo electrónico o HTML compartible para el cliente. No hay nada que enviar todavía: comience en LOG.",
+    "dashboard": "Descripción general del estado de sus defectos: recuentos, gravedad, actividad reciente. Nada aquí todavía; vaya a INICIAR SESIÓN para comenzar."
+  },
   "banner": {
     "server_down": "SiteShrimp está en pausa para una actualización; volverá pronto. El trabajo existente es seguro."
   },
@@ -1131,7 +1141,16 @@
     "workflow_offline": "Sin conexión en el sitio",
     "workflow_offline_desc": "Las capturas siguen funcionando sin señal: las entradas se ponen en cola en IndexedDB y se sincronizan automáticamente cuando vuelve a estar en línea. Mire la insignia de cola en el encabezado.",
     "purpose_origin_title": "Origen",
-    "purpose_origin_body": "SiteShrimp fue creado por una persona que no es ingeniero y trabaja con IA como socio de pensamiento diario: un proyecto de aprendizaje personal que también debe desarrollarse en un sitio de construcción real. Es a la vez una prueba audaz de lo que el desarrollo asistido por IA puede producir cuando la barra es un registro de defectos defendible ante los tribunales (no una demostración), y un vistazo de lo que se vuelve posible cuando los profesionales comunes y corrientes dejan de esperar por un equipo tecnológico y construyen las herramientas que su propio trabajo necesita."
+    "purpose_origin_body": "SiteShrimp fue creado por una persona que no es ingeniero y trabaja con IA como socio de pensamiento diario: un proyecto de aprendizaje personal que también debe desarrollarse en un sitio de construcción real. Es a la vez una prueba audaz de lo que el desarrollo asistido por IA puede producir cuando la barra es un registro de defectos defendible ante los tribunales (no una demostración), y un vistazo de lo que se vuelve posible cuando los profesionales comunes y corrientes dejan de esperar por un equipo tecnológico y construyen las herramientas que su propio trabajo necesita.",
+    "tabs_fit_title": "Cómo encajan las pestañas",
+    "tabs_fit_spine_title": "La columna vertebral: REGISTRO → INFORME",
+    "tabs_fit_spine_body": "Tome una foto en LOG. La IA llena el formulario. Se guarda automáticamente. Cuando haya terminado, diríjase a INFORME para enviar un CSV, PDF, correo electrónico o HTML para compartir al cliente. Estas dos pestañas cubren el recorrido mínimo: capturar entrada, gestionar salida.",
+    "tabs_fit_tag_title": "TAG encaja cuando tienes tus propios dibujos",
+    "tabs_fit_tag_body": "Planos de planta, diseños de M&E, dibujos estructurales: cárguelos y fije cada defecto en el lugar exacto. Si no tienes dibujos, tus fotos aún se fijan automáticamente en un mapa GPS y eso ya está en tus informes.",
+    "tabs_fit_review_title": "REVIEW encaja cuando el trabajo tiene una vida útil",
+    "tabs_fit_review_body": "Cambios de estado (En curso / Listo / Verificado / Cerrado), comentarios, aprobaciones, verificaciones. Si solo estás registrando y exportando de una sola vez, no necesitarás esto. Si los mismos defectos permanecen abiertos durante semanas mientras los submarinos trabajan en ellos, esta es su estación de trabajo de clasificación.",
+    "tabs_fit_dashboard_title": "El panel es de un vistazo",
+    "tabs_fit_dashboard_body": "Recuentos, gravedades, actividad reciente. Ábrelo cuando quieras saber qué se ha acumulado sin tener que hacer clic."
   },
   "about": {
     "title": "Acerca de",

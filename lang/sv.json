@@ -8,6 +8,16 @@
     "main_nav": "Huvudnavigering",
     "close": "Nära"
   },
+  "tagline": {
+    "text": "Fånga in. Hantera ut. Ett ställe."
+  },
+  "empty_state": {
+    "log": "Ta ett foto av eventuella defekter. AI fyller i titel, svårighetsgrad, beskrivning. Den sparas automatiskt.",
+    "tag": "Ladda upp dina egna planritningar eller ritningar här, fäst sedan defekter på dem för exakt plats. Paras ihop med GPS-automatiken som redan finns i dina rapporter.",
+    "review": "Spåra defektstatus när arbetet löses — Pågår, Klar, Verifierad, Stängd. Användbart när du behöver ett statusarbetsflöde utöver inspelning.",
+    "report": "Hämtar allt du har loggat in i en CSV, PDF, e-post eller delbar HTML för klienten. Inget att skicka ännu — börja i LOGG.",
+    "dashboard": "Statusöversikt över dina defekter – antal, allvarlighetsgrad, senaste aktivitet. Inget här ännu; gå till LOGG för att komma igång."
+  },
   "banner": {
     "server_down": "SiteShrimp är pausad för en uppgradering — tillbaka snart. Allt befintligt arbete är säkert."
   },
@@ -1131,7 +1141,16 @@
     "workflow_offline": "Offline på plats",
     "workflow_offline_desc": "Infångningar fortsätter att fungera utan signal – inträdeskön i IndexedDB och automatisk synkronisering när du är online igen. Se kömärket i rubriken.",
     "purpose_origin_title": "Ursprung",
-    "purpose_origin_body": "SiteShrimp är byggt av en icke-ingenjör som arbetar med AI som en daglig tänkande partner - ett personligt lärandeprojekt som också måste stå upp på en riktig byggarbetsplats. Det är både ett vågat test på vad AI-assisterad utveckling kan producera när ribban är en domstolsförsvarbar defektpost (inte en demo), och en glimt av vad som blir möjligt när vanliga proffs slutar vänta på ett techteam och bygger de verktyg som deras eget arbete behöver."
+    "purpose_origin_body": "SiteShrimp är byggt av en icke-ingenjör som arbetar med AI som en daglig tänkande partner - ett personligt lärandeprojekt som också måste stå upp på en riktig byggarbetsplats. Det är både ett vågat test på vad AI-assisterad utveckling kan producera när ribban är en domstolsförsvarbar defektpost (inte en demo), och en glimt av vad som blir möjligt när vanliga proffs slutar vänta på ett techteam och bygger de verktyg som deras eget arbete behöver.",
+    "tabs_fit_title": "Hur flikarna passar ihop",
+    "tabs_fit_spine_title": "Ryggraden: LOGG → RAPPORT",
+    "tabs_fit_spine_body": "Ta ett foto i LOG. AI fyller i formuläret. Den sparas automatiskt. När du är klar, gå till RAPPORTERA för att skicka en CSV, PDF, e-post eller delbar HTML till klienten. Dessa två flikar täcker den minsta resan – fånga in, hantera ut.",
+    "tabs_fit_tag_title": "TAG passar in när du har egna ritningar",
+    "tabs_fit_tag_body": "Planritningar, M&E-layouter, strukturritningar – ladda upp dem och fäst varje defekt på exakt plats. Om du inte har ritningar är dina foton fortfarande automatiskt fästa på en GPS-karta och det finns redan i dina rapporter.",
+    "tabs_fit_review_title": "REVISION passar in när arbetet har livslängd",
+    "tabs_fit_review_body": "Statusändringar (Pågående / Klar / Verifierad / Stängd), kommentarer, sign-offs, verifieringar. Om du bara loggar-och-exporterar på en gång, behöver du inte detta. Om samma defekter är öppna i veckor medan subs arbetar på dem, är detta din triage-arbetsstation.",
+    "tabs_fit_dashboard_title": "Dashboard är en överblick",
+    "tabs_fit_dashboard_body": "Antal, svårighetsgrad, senaste aktivitet. Öppna den när du vill veta vad som ligger på hög utan att klicka runt."
   },
   "about": {
     "title": "Om",

@@ -8,6 +8,16 @@
     "main_nav": "Main navigation",
     "close": "Close"
   },
+  "tagline": {
+    "text": "Capture in. Manage out. One place."
+  },
+  "empty_state": {
+    "log": "Take a photo of any defect. AI fills in title, severity, description. It saves automatically.",
+    "tag": "Upload your own floor plans or drawings here, then pin defects on them for precise location. Pairs with the GPS auto-pinning that's already in your reports.",
+    "review": "Track defect status as work gets resolved — In Progress, Done, Verified, Closed. Useful when you need a status workflow on top of capture.",
+    "report": "Pulls everything you've LOGGED into a CSV, PDF, email, or shareable HTML for the client. Nothing to send yet — start in LOG.",
+    "dashboard": "Status overview of your defects — counts, severities, recent activity. Nothing here yet; go to LOG to get started."
+  },
   "banner": {
     "server_down": "SiteShrimp is paused for an upgrade — back soon. All existing work is safe."
   },
@@ -1131,7 +1141,16 @@
     "workflow_offline": "Offline on-site",
     "workflow_offline_desc": "Captures keep working with no signal — entries queue in IndexedDB and auto-sync when you're back online. Watch the queue badge in the header.",
     "purpose_origin_title": "Origin",
-    "purpose_origin_body": "SiteShrimp is built by a non-engineer working with AI as a daily thinking partner — a personal learning project that also has to stand up on a real construction site. It is both a daring test of what AI-assisted development can produce when the bar is a court-defensible defect record (not a demo), and a glimpse of what becomes possible when ordinary professionals stop waiting for a tech team and build the tools their own work needs."
+    "purpose_origin_body": "SiteShrimp is built by a non-engineer working with AI as a daily thinking partner — a personal learning project that also has to stand up on a real construction site. It is both a daring test of what AI-assisted development can produce when the bar is a court-defensible defect record (not a demo), and a glimpse of what becomes possible when ordinary professionals stop waiting for a tech team and build the tools their own work needs.",
+    "tabs_fit_title": "How the tabs fit together",
+    "tabs_fit_spine_title": "The spine: LOG → REPORT",
+    "tabs_fit_spine_body": "Take a photo in LOG. AI fills the form. It saves automatically. When you're done, head to REPORT to send a CSV, PDF, email, or shareable HTML to the client. These two tabs cover the minimum journey — capture in, manage out.",
+    "tabs_fit_tag_title": "TAG fits in when you have your own drawings",
+    "tabs_fit_tag_body": "Floor plans, M&E layouts, structural drawings — upload them and pin each defect on the exact spot. If you don't have drawings, your photos are still auto-pinned on a GPS map and that's already in your reports.",
+    "tabs_fit_review_title": "REVIEW fits in when work has lifespan",
+    "tabs_fit_review_body": "Status changes (In Progress / Done / Verified / Closed), comments, sign-offs, verifications. If you're just logging-and-exporting in one go, you won't need this. If the same defects sit open for weeks while subs work on them, this is your triage workstation.",
+    "tabs_fit_dashboard_title": "Dashboard is the at-a-glance",
+    "tabs_fit_dashboard_body": "Counts, severities, recent activity. Open it when you want to know what's piled up without clicking around."
   },
   "about": {
     "title": "About",

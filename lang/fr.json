@@ -8,6 +8,16 @@
     "main_nav": "Navigation principale",
     "close": "Fermer"
   },
+  "tagline": {
+    "text": "Capturez. Gérez. Un seul endroit."
+  },
+  "empty_state": {
+    "log": "Prenez une photo de tout défaut. L'IA remplit le titre, la gravité et la description. Il enregistre automatiquement.",
+    "tag": "Téléchargez ici vos propres plans ou dessins d'étage, puis épinglez les défauts dessus pour un emplacement précis. S'associe à l'épinglage automatique GPS déjà présent dans vos rapports.",
+    "review": "Suivez l'état des défauts à mesure que le travail est résolu : en cours, terminé, vérifié, fermé. Utile lorsque vous avez besoin d'un flux de travail de statut en plus de la capture.",
+    "report": "Extrait tout ce que vous avez CONNECTÉ dans un fichier CSV, PDF, e-mail ou HTML partageable pour le client. Rien à envoyer pour l'instant - démarrez dans LOG.",
+    "dashboard": "Aperçu de l'état de vos défauts : nombre, gravité, activité récente. Rien ici pour l'instant ; allez dans LOG pour commencer."
+  },
   "banner": {
     "server_down": "SiteShrimp est suspendu pour une mise à niveau – de retour bientôt. Les travaux existants sont sécuritaires."
   },
@@ -1131,7 +1141,16 @@
     "workflow_offline": "Hors ligne sur site",
     "workflow_offline_desc": "Les captures continuent de fonctionner sans signal : les entrées sont mises en file d'attente dans IndexedDB et se synchronisent automatiquement lorsque vous êtes de nouveau en ligne. Regardez le badge de file d'attente dans l'en-tête.",
     "purpose_origin_title": "Origine",
-    "purpose_origin_body": "SiteShrimp est construit par un non-ingénieur travaillant avec l'IA comme partenaire de réflexion quotidien – un projet d'apprentissage personnel qui doit également résister sur un véritable chantier de construction. Il s'agit à la fois d'un test audacieux de ce que le développement assisté par l'IA peut produire lorsque la barre est un dossier de défauts défendable devant un tribunal (et non une démonstration), et d'un aperçu de ce qui devient possible lorsque les professionnels ordinaires cessent d'attendre une équipe technique et construisent les outils dont ils ont besoin pour leur propre travail."
+    "purpose_origin_body": "SiteShrimp est construit par un non-ingénieur travaillant avec l'IA comme partenaire de réflexion quotidien – un projet d'apprentissage personnel qui doit également résister sur un véritable chantier de construction. Il s'agit à la fois d'un test audacieux de ce que le développement assisté par l'IA peut produire lorsque la barre est un dossier de défauts défendable devant un tribunal (et non une démonstration), et d'un aperçu de ce qui devient possible lorsque les professionnels ordinaires cessent d'attendre une équipe technique et construisent les outils dont ils ont besoin pour leur propre travail.",
+    "tabs_fit_title": "Comment les onglets s'emboîtent",
+    "tabs_fit_spine_title": "La colonne vertébrale : LOG → RAPPORT",
+    "tabs_fit_spine_body": "Prenez une photo dans LOG. L'IA remplit le formulaire. Il enregistre automatiquement. Lorsque vous avez terminé, accédez à REPORT pour envoyer un CSV, un PDF, un e-mail ou un code HTML partageable au client. Ces deux onglets couvrent le parcours minimum : capturer, gérer.",
+    "tabs_fit_tag_title": "TAG s'intègre lorsque vous avez vos propres dessins",
+    "tabs_fit_tag_body": "Plans d'étage, schémas de M&E, dessins structurels : téléchargez-les et épinglez chaque défaut à l'endroit exact. Si vous n'avez pas de dessins, vos photos sont toujours automatiquement épinglées sur une carte GPS et cela figure déjà dans vos rapports.",
+    "tabs_fit_review_title": "REVIEW s'intègre lorsque le travail a une durée de vie",
+    "tabs_fit_review_body": "Changements de statut (En cours / Terminé / Vérifié / Fermé), commentaires, approbations, vérifications. Si vous enregistrez et exportez simplement en une seule fois, vous n’en aurez pas besoin. Si les mêmes défauts restent ouverts pendant des semaines pendant que les sous-traitants y travaillent, c'est votre poste de travail de triage.",
+    "tabs_fit_dashboard_title": "Le tableau de bord est un aperçu",
+    "tabs_fit_dashboard_body": "Comptes, gravités, activité récente. Ouvrez-le lorsque vous voulez savoir ce qui est entassé sans cliquer."
   },
   "about": {
     "title": "À propos",

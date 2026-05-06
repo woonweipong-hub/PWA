@@ -8,6 +8,16 @@
     "main_nav": "Hovednavigation",
     "close": "Tæt"
   },
+  "tagline": {
+    "text": "Fang ind. Administrer ud. Ét sted."
+  },
+  "empty_state": {
+    "log": "Tag et billede af enhver defekt. AI udfylder titel, sværhedsgrad, beskrivelse. Den gemmer automatisk.",
+    "tag": "Upload dine egne plantegninger eller tegninger her, og sæt derefter defekter på dem for præcis placering. Parrer med den automatiske GPS-fastgørelse, der allerede er i dine rapporter.",
+    "review": "Spor defektstatus, efterhånden som arbejdet bliver løst — Igangværende, Udført, Verificeret, Lukket. Nyttigt, når du har brug for en status workflow oven i capture.",
+    "report": "Trækker alt, hvad du har LOGGET ind i en CSV, PDF, e-mail eller delbar HTML til klienten. Intet at sende endnu - start i LOG.",
+    "dashboard": "Statusoversigt over dine defekter - antal, alvor, seneste aktivitet. Intet her endnu; gå til LOG for at komme i gang."
+  },
   "banner": {
     "server_down": "SiteShrimp er sat på pause for en opgradering - tilbage snart. Alt eksisterende arbejde er sikkert."
   },
@@ -1131,7 +1141,16 @@
     "workflow_offline": "Offline på stedet",
     "workflow_offline_desc": "Optagelser fortsætter med at arbejde uden signal – indgangskøen i IndexedDB og auto-synkroniseres, når du er online igen. Se kømærket i overskriften.",
     "purpose_origin_title": "Oprindelse",
-    "purpose_origin_body": "SiteShrimp er bygget af en ikke-ingeniør, der arbejder med AI som en daglig tænkende partner - et personligt læringsprojekt, der også skal stå op på en rigtig byggeplads. Det er både en vovet test af, hvad AI-assisteret udvikling kan frembringe, når baren er en domstolsforsvarlig defekt-rekord (ikke en demo), og et glimt af, hvad der bliver muligt, når almindelige fagfolk holder op med at vente på et tech-team og bygger de værktøjer, deres eget arbejde har brug for."
+    "purpose_origin_body": "SiteShrimp er bygget af en ikke-ingeniør, der arbejder med AI som en daglig tænkende partner - et personligt læringsprojekt, der også skal stå op på en rigtig byggeplads. Det er både en vovet test af, hvad AI-assisteret udvikling kan frembringe, når baren er en domstolsforsvarlig defekt-rekord (ikke en demo), og et glimt af, hvad der bliver muligt, når almindelige fagfolk holder op med at vente på et tech-team og bygger de værktøjer, deres eget arbejde har brug for.",
+    "tabs_fit_title": "Hvordan fanerne passer sammen",
+    "tabs_fit_spine_title": "Rygsøjlen: LOG → RAPPORT",
+    "tabs_fit_spine_body": "Tag et billede i LOG. AI udfylder formularen. Den gemmer automatisk. Når du er færdig, skal du gå til RAPPORT for at sende en CSV, PDF, e-mail eller delbar HTML til klienten. Disse to faner dækker minimumsrejsen - indfang, administrer ud.",
+    "tabs_fit_tag_title": "TAG passer ind, når du har dine egne tegninger",
+    "tabs_fit_tag_body": "Plantegninger, M&E-layouts, strukturelle tegninger - upload dem og fastgør hver defekt på det nøjagtige sted. Hvis du ikke har tegninger, er dine billeder stadig automatisk fastgjort på et GPS-kort, og det er allerede i dine rapporter.",
+    "tabs_fit_review_title": "ANMELDELSE passer ind, når arbejdet har levetid",
+    "tabs_fit_review_body": "Statusændringer (I gang / Udført / Verificeret / Lukket), kommentarer, afmeldinger, verifikationer. Hvis du bare logger-og-eksporterer på én gang, har du ikke brug for dette. Hvis de samme defekter står åbne i ugevis, mens subs arbejder på dem, er dette din triage-arbejdsstation.",
+    "tabs_fit_dashboard_title": "Dashboard er overblikket",
+    "tabs_fit_dashboard_body": "Antal, sværhedsgrader, seneste aktivitet. Åbn den, når du vil vide, hvad der er hobet op uden at klikke rundt."
   },
   "about": {
     "title": "Om",
