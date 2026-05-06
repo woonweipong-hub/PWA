@@ -4773,7 +4773,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
   const aiReady=isAiConfigured();
   const assignees=members.length>0?members.map(m=>m.name):["Site Manager","Engineer","Contractor","QC Inspector","Safety Officer"];
-  const MAX_PHOTOS=10;
+  const MAX_PHOTOS=999;
 
   const handlePhoto=e=>{
     const files=Array.from(e.target.files||[]);
@@ -5050,11 +5050,11 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:20}}>📁 {currentProject?.name||"—"} · {t("log.photo_speak_type")}</div>
 
       {/* ── 0. WORK CATEGORY — sets AI variant context; pick before capturing ── */}
-      <ComboField label={t("fields.work_category")} value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")} displayFn={workcatDisplayFn}/>
+      <ComboField label={t("fields.work_category")+" "+t("log.step_1_scope")} value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")} displayFn={workcatDisplayFn}/>
 
       {/* ── 1. TAKE PHOTO — big prominent capture ── */}
       <div style={{marginBottom:16}}>
-        <label style={lbl()}>{t("log.photos_count")} ({form.photos.length}/{MAX_PHOTOS})</label>
+        <label style={lbl()}>{t("log.photos_count")} {t("log.step_2_capture")}{form.photos.length>0?` (${form.photos.length})`:""}</label>
         <input type="file" accept="image/*" capture="environment" multiple ref={fileRef} onChange={handlePhoto} style={{display:"none"}}/>
         {form.photos.length===0?(
           <button onClick={()=>fileRef.current.click()} style={{width:"100%",height:64,background:"#fff",border:"2px dashed rgba(0,0,0,0.18)",borderRadius:14,color:"rgba(0,0,0,0.5)",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
@@ -5109,17 +5109,17 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       )}
 
       {/* ── 3. TITLE ── */}
-      <VoiceField label={t("fields.title")} value={form.title} onChange={v=>set("title",v)} placeholder={t("fields.title_placeholder")}/>
+      <VoiceField label={t("fields.title")+" "+t("log.step_3_title")} value={form.title} onChange={v=>set("title",v)} placeholder={t("fields.title_placeholder")}/>
 
       {/* ── 4. WHAT HAPPENED ── */}
-      <VoiceField label={t("fields.what_happened")} value={form.description} onChange={v=>set("description",v)} placeholder={t("fields.description_placeholder")} multiline/>
+      <VoiceField label={t("fields.what_happened")+" "+t("log.step_4_describe")} value={form.description} onChange={v=>set("description",v)} placeholder={t("fields.description_placeholder")} multiline/>
 
       {/* ── 5. SEVERITY ── */}
-      <ComboField label={t("fields.severity")} value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder={t("fields.severity_placeholder")} displayFn={sevDisplayFn}/>
+      <ComboField label={t("fields.severity")+" "+t("log.step_5_severity")} value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder={t("fields.severity_placeholder")} displayFn={sevDisplayFn}/>
 
       {/* ── MORE DETAILS accordion ── */}
       <button onClick={()=>setShowMoreDetails(!showMoreDetails)} style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:12,padding:"14px 16px",marginBottom:showMoreDetails?16:0,display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}}>
-        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"rgba(0,0,0,0.55)",letterSpacing:"0.06em"}}>{t("log.more_details")}</span>
+        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"rgba(0,0,0,0.55)",letterSpacing:"0.06em"}}>{t("log.more_details")} {t("log.step_6_details")}</span>
         <span style={{fontSize:12,color:"rgba(0,0,0,0.35)",transition:"transform 0.2s",transform:showMoreDetails?"rotate(180deg)":"rotate(0deg)"}}>▼</span>
       </button>
 
