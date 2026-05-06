@@ -11373,36 +11373,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       </div>
       <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:20}}>📁 {currentProject?.name||"—"} · {t("log.photo_speak_type")}</div>
 
-      {/* ── CONQUAS Check entry (Phase 3.1) — only when project is CONQUAS-enabled ── */}
-      {currentProject?.ontology_edition&&onStartConquas&&(
-        <button onClick={onStartConquas} style={{width:"100%",padding:"12px 14px",marginBottom:16,background:"rgba(88,86,214,0.08)",border:"1.5px solid rgba(88,86,214,0.3)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-          <span style={{fontSize:16}}>📋</span>
-          <span>{t("conquas.start_button")}</span>
-        </button>
-      )}
-      {/* TOP Inspection wizard launcher — appears when the work category
-          is set to TOP Inspection. Walks through 37 verbatim BCA NC items
-          (LPS / Headroom / Stairs / Falling barriers / Accessibility /
-          Storey Shelter / Env. Sustainability / Fixed Installations /
-          etc.) with pass/fail/NA per item; on Fail, captures a photo +
-          notes and creates a defect with TOP variant fields populated. */}
-      {form.workCategory==="TOP Inspection"&&onStartTopWizard&&(
-        <button onClick={onStartTopWizard} style={{width:"100%",padding:"12px 14px",marginBottom:16,background:"rgba(255,107,0,0.08)",border:"1.5px solid rgba(255,107,0,0.35)",borderRadius:12,color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-          <span style={{fontSize:16}}>🏛</span>
-          <span>{t("top.start_button")||"START TOP READINESS SELF-AUDIT"}</span>
-        </button>
-      )}
-      {/* When CONQUAS is OFF for this project, show a one-tap helper that
-          jumps to project settings — otherwise users hit the LOG screen,
-          notice the CONQUAS button is gone, and have no idea where to
-          re-enable it. Hidden if onOpenProjects isn't supplied. */}
-      {currentProject&&!currentProject.ontology_edition&&onOpenProjects&&(
-        <button onClick={onOpenProjects} style={{width:"100%",padding:"10px 14px",marginBottom:16,background:"rgba(88,86,214,0.04)",border:"1px dashed rgba(88,86,214,0.35)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11.5,cursor:"pointer",display:"flex",alignItems:"flex-start",gap:8,textAlign:"left",lineHeight:1.4}}>
-          <span style={{fontSize:14,flexShrink:0}}>💡</span>
-          <span style={{flex:1}}>Need <b>structured CONQUAS inspection</b>? Enable CONQUAS edition for this project — tap to open <u>Settings → Projects</u>.</span>
-          <span style={{fontSize:14,flexShrink:0,opacity:0.5}}>›</span>
-        </button>
-      )}
+      {/* CONQUAS / TOP wizard launchers moved up under WORK CATEGORY block */}
       {/* Custom Quality Check entry — visible when the project has a
           custom checklist defined (project.quality_checklist non-empty).
           Independent of CONQUAS — both can co-exist on the same project. */}
@@ -11490,6 +11461,30 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           {v.addendum}
         </div>
       );})()}
+
+      {/* ── Wizard launchers parked under WORK CATEGORY ──
+          Each wizard is bound to a specific category and only renders
+          when that scope is picked. Keeps the LOG form focused — no
+          stray launchers when the category doesn't match. */}
+      {form.workCategory==="CONQUAS"&&currentProject?.ontology_edition&&onStartConquas&&(
+        <button onClick={onStartConquas} style={{width:"100%",padding:"12px 14px",marginBottom:16,background:"rgba(88,86,214,0.08)",border:"1.5px solid rgba(88,86,214,0.3)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <span style={{fontSize:16}}>📋</span>
+          <span>{t("conquas.start_button")}</span>
+        </button>
+      )}
+      {form.workCategory==="CONQUAS"&&currentProject&&!currentProject.ontology_edition&&onOpenProjects&&(
+        <button onClick={onOpenProjects} style={{width:"100%",padding:"10px 14px",marginBottom:16,background:"rgba(88,86,214,0.04)",border:"1px dashed rgba(88,86,214,0.35)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11.5,cursor:"pointer",display:"flex",alignItems:"flex-start",gap:8,textAlign:"left",lineHeight:1.4}}>
+          <span style={{fontSize:14,flexShrink:0}}>💡</span>
+          <span style={{flex:1}}>Need <b>structured CONQUAS inspection</b>? Enable CONQUAS edition for this project — tap to open <u>Settings → Projects</u>.</span>
+          <span style={{fontSize:14,flexShrink:0,opacity:0.5}}>›</span>
+        </button>
+      )}
+      {form.workCategory==="TOP Inspection"&&onStartTopWizard&&(
+        <button onClick={onStartTopWizard} style={{width:"100%",padding:"12px 14px",marginBottom:16,background:"rgba(255,107,0,0.08)",border:"1.5px solid rgba(255,107,0,0.35)",borderRadius:12,color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <span style={{fontSize:16}}>🏛</span>
+          <span>{t("top.start_button")||"START TOP READINESS SELF-AUDIT"}</span>
+        </button>
+      )}
 
       {/* ── 1. TAKE PHOTO — big prominent capture ── */}
       <div style={{marginBottom:16}}>
