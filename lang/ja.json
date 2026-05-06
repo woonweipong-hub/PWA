@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "ステータス更新",
+    "confirm_save_status": "✓ 保存 — ステータスを {status} に設定します",
     "description": "説明",
     "timeline": "タイムライン",
     "assigned": "担当者"

@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "PERBARUI STATUS",
+    "confirm_save_status": "✓ SIMPAN — setel status ke {status}",
     "description": "DESKRIPSI",
     "timeline": "KRONOLOGI",
     "assigned": "Ditugaskan"

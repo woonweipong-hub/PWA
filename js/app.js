@@ -12007,6 +12007,16 @@ function DefectsMapView({defects,allDefects,onView,onUpdate,selectMode,selectedI
   const pinned=src.map(d=>({d,c:parseDefectCoords(d),inFilter:filteredIds.has(d.id)})).filter(x=>x.c);
   const focused=pinned.find(x=>x.d.id===focusId);
   const showDetail=!!focused&&!selectMode;
+  // Auto-scroll the embedded DefectDetail into view when a pin is tapped.
+  // Contractor feedback 2026-05-06: tapping a pin opened the detail in
+  // place but below the map, so users thought "nothing happened" without
+  // realising they needed to scroll. Smooth-scroll fixes that surprise.
+  const detailRef=useRef(null);
+  useEffect(()=>{
+    if(showDetail&&detailRef.current){
+      try{detailRef.current.scrollIntoView({behavior:"smooth",block:"start"});}catch{}
+    }
+  },[showDetail,focusId]);
 
   // Build a pin icon. Selected entries get a filled-severity look so batch
   // selection is legible at a glance; focused pin is slightly larger;
@@ -12153,9 +12163,12 @@ function DefectsMapView({defects,allDefects,onView,onUpdate,selectMode,selectedI
       </div>
 
       {/* Embedded detail — replaces the master map in place. DefectDetail
-          renders inline (embedded=true) and closes back to the map view. */}
+          renders inline (embedded=true) and closes back to the map view.
+          detailRef anchors the auto-scroll-into-view effect. */}
       {showDetail&&(
-        <DefectDetail defect={focused.d} embedded={true} onClose={()=>setFocusId(null)} onUpdate={onUpdate||(()=>{})} member={member} company={company} members={members||[]} allDefects={allDefects||defects||[]}/>
+        <div ref={detailRef}>
+          <DefectDetail defect={focused.d} embedded={true} onClose={()=>setFocusId(null)} onUpdate={onUpdate||(()=>{})} member={member} company={company} members={members||[]} allDefects={allDefects||defects||[]}/>
+        </div>
       )}
 
       {/* Pin chip strip — horizontal list of every pin on the current map,
@@ -13632,6 +13645,14 @@ function parseDefectCoords(d){
   // Range sanity — anything outside real lat/lng bounds is a parse
   // artefact, not a location.
   if(lat<-90||lat>90||lng<-180||lng>180)return null;
+  // Null-island reject — (0,0) is almost always polluted data (default
+  // values written by an old auto-persist hook, or zeroed lat/lng in
+  // Telegram-bridged rows where GPS wasn't captured). The Gulf of Guinea
+  // is not a building-defect location. Tolerance ~100 m so coordinates
+  // legitimately near (0,0) (e.g. equator islands) are rejected too —
+  // SiteShrimp's TAM doesn't include those, so the false-positive
+  // tradeoff is fine.
+  if(Math.abs(lat)<0.001&&Math.abs(lng)<0.001)return null;
   return{lat,lng};
 }
 
@@ -13941,6 +13962,12 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
   const[showSignPad,setShowSignPad]=useState(false);
   // Pending verify status (stored when user picks photo before confirming)
   const[pendingVerifyStatus,setPendingVerifyStatus]=useState(null);
+  // Status-change staging — contractor feedback 2026-05-06: a tap on a
+  // status chip used to commit immediately, which led to wrong-status
+  // saves. Now a tap STAGES the new status and a SAVE button commits it.
+  // Verified / Closed still flow through pendingVerifyStatus + photo
+  // capture path, but only after the user confirms via SAVE.
+  const[pendingStatus,setPendingStatus]=useState(null);
 
   // Capture photo for comment
   const handleCommentPhoto=e=>{
@@ -14251,10 +14278,33 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
           <div style={{marginBottom:14}}>
             <div style={lbl()}>{t("detail.update_status")}</div>
             <div style={{display:"flex",gap:8}}>
-              {STATUS.map(s=>(
-                <button key={s} onClick={()=>updateStatus(s)} style={{flex:1,padding:"10px 4px",borderRadius:10,border:`2px solid ${status===s?STATUS_COLOR[s]:"rgba(0,0,0,0.1)"}`,background:status===s?STATUS_COLOR[s]+"20":"#fff",color:status===s?STATUS_COLOR[s]:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{(STATUS_I18N[s]?t(STATUS_I18N[s]):s).toUpperCase()}</button>
-              ))}
+              {STATUS.map(s=>{
+                // Tapping a chip STAGES the change. Active chip = staged
+                // pending status if any, else the committed status. Tapping
+                // the already-committed status while a stage is pending
+                // discards the stage.
+                const staged=pendingStatus!=null;
+                const active=staged?pendingStatus===s:status===s;
+                const isStagedDiff=staged&&pendingStatus===s&&pendingStatus!==status;
+                const onChip=()=>{
+                  if(s===status){setPendingStatus(null);return;}
+                  setPendingStatus(s);
+                };
+                const ringColor=isStagedDiff?"#ff6b00":STATUS_COLOR[s];
+                return(
+                  <button key={s} onClick={onChip} style={{flex:1,padding:"10px 4px",borderRadius:10,border:`2px ${isStagedDiff?"dashed":"solid"} ${active?ringColor:"rgba(0,0,0,0.1)"}`,background:active?(isStagedDiff?"rgba(255,107,0,0.1)":STATUS_COLOR[s]+"20"):"#fff",color:active?ringColor:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{(STATUS_I18N[s]?t(STATUS_I18N[s]):s).toUpperCase()}</button>
+                );
+              })}
             </div>
+            {/* Pending-save banner — appears when a chip is staged but not
+                yet committed. Confirms the change explicitly so a stray
+                thumb-tap can't move work to Verified / Closed silently. */}
+            {pendingStatus&&pendingStatus!==status&&(
+              <div style={{display:"flex",gap:8,marginTop:10}}>
+                <button onClick={async()=>{const next=pendingStatus;setPendingStatus(null);await updateStatus(next);}} style={{flex:2,background:"#ff6b00",border:"none",borderRadius:10,padding:"11px 12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",letterSpacing:"0.04em"}}>{t("detail.confirm_save_status").replace("{status}",(STATUS_I18N[pendingStatus]?t(STATUS_I18N[pendingStatus]):pendingStatus).toUpperCase())}</button>
+                <button onClick={()=>setPendingStatus(null)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:10,padding:"11px 14px",color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")}</button>
+              </div>
+            )}
             {/* Handover sign-off — captures a signature with name + role and
                 pushes a kind:"signature" entry into comments so it shows on
                 the timeline + flows into PDF export. Useful at handover or
@@ -16831,6 +16881,17 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
   // a pan helper that the chip strip + marker taps can call. Placed here
   // so mapDefects is already in scope.
   const focusedDefect=mapDefects.find(d=>d.id===focusedDefectId)||null;
+  // Auto-scroll the slide-up preview card into view when a pin is tapped.
+  // On phones the map fills most of the viewport — without scroll, the
+  // user taps a pin, the InfoWindow opens, but the EDIT / PIN AGAIN /
+  // UNPIN actions in the slide-up below are out of sight. Smooth-scroll
+  // the card into view so the user always sees the actions.
+  const focusedPreviewRef=useRef(null);
+  useEffect(()=>{
+    if(focusedDefect&&focusedPreviewRef.current){
+      try{focusedPreviewRef.current.scrollIntoView({behavior:"smooth",block:"nearest"});}catch{}
+    }
+  },[focusedDefectId]);
   const focusOnDefect=(d)=>{
     if(!d||!mapObj.current)return;
     if(providerRef.current==="gmaps"){mapObj.current.setCenter({lat:d.lat,lng:d.lng});if((mapObj.current.getZoom()||0)<18)mapObj.current.setZoom(19);}
@@ -18397,7 +18458,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
       )}
       {/* Slide-up preview card — appears when a chip or marker is tapped. */}
       {focusedDefect&&(
-        <div style={{marginTop:8,background:"#fff",borderRadius:12,border:`2px solid ${SEV_COLOR[focusedDefect.severity]||"#ff6b00"}`,padding:"12px 14px",boxShadow:"0 2px 12px rgba(0,0,0,0.1)",animation:"fadeIn 0.15s ease"}}>
+        <div ref={focusedPreviewRef} style={{marginTop:8,background:"#fff",borderRadius:12,border:`2px solid ${SEV_COLOR[focusedDefect.severity]||"#ff6b00"}`,padding:"12px 14px",boxShadow:"0 2px 12px rgba(0,0,0,0.1)",animation:"fadeIn 0.15s ease"}}>
           <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
             <span style={{width:10,height:10,borderRadius:"50%",background:SEV_COLOR[focusedDefect.severity]||"#8e8e93",flexShrink:0,marginTop:5}}/>
             <div style={{flex:1,minWidth:0}}>

@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "更新狀態",
+    "confirm_save_status": "✓ 儲存 — 將狀態設為 {status}",
     "description": "描述",
     "timeline": "時間軸",
     "assigned": "負責人"

@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "STATUS AKTUALISIEREN",
+    "confirm_save_status": "✓ SPEICHERN – Status auf {status} setzen",
     "description": "BESCHREIBUNG",
     "timeline": "ZEITVERLAUF",
     "assigned": "Zugewiesen"

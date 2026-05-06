@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "நிலையைப் புதுப்பிக்கவும்",
+    "confirm_save_status": "✓ சேமி — நிலையை {status} ஆக அமைக்கவும்",
     "description": "விவரம்",
     "timeline": "காலவரிசை",
     "assigned": "ஒதுக்கப்பட்டது"

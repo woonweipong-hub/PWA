@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "อัปเดตสถานะ",
+    "confirm_save_status": "✓ บันทึก — ตั้งค่าสถานะเป็น {status}",
     "description": "รายละเอียด",
     "timeline": "ไทม์ไลน์",
     "assigned": "มอบหมายให้"

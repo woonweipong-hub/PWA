@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "স্ট্যাটাস আপডেট করুন",
+    "confirm_save_status": "✓ সেভ করুন — স্থিতি সেট করুন {status}",
     "description": "বিবরণ",
     "timeline": "টাইমলাইন",
     "assigned": "নির্ধারিত"

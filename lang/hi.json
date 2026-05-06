@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "स्थिति अपडेट करें",
+    "confirm_save_status": "✓ सहेजें - स्थिति को {status} पर सेट करें",
     "description": "विवरण",
     "timeline": "समयरेखा",
     "assigned": "सौंपा गया"

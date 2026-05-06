@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "OPPDATER STATUS",
+    "confirm_save_status": "✓ LAGRE — sett status til {status}",
     "description": "BESKRIVELSE",
     "timeline": "TIDSLINJE",
     "assigned": "Tildelt"

@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "UPDATE STATUS",
+    "confirm_save_status": "✓ SAVE — set status to {status}",
     "description": "DESCRIPTION",
     "timeline": "TIMELINE",
     "assigned": "Assigned"

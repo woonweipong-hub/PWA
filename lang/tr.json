@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "DURUMU GÜNCELLE",
+    "confirm_save_status": "✓ KAYDET — durumu {status} olarak ayarlayın",
     "description": "AÇIKLAMA",
     "timeline": "ZAMAN ÇİZELGESİ",
     "assigned": "Atanan"

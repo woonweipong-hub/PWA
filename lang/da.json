@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "OPDATER STATUS",
+    "confirm_save_status": "✓ GEM — indstil status til {status}",
     "description": "BESKRIVELSE",
     "timeline": "TIDSLINJE",
     "assigned": "Tildelt"

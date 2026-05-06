@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "更新状态",
+    "confirm_save_status": "✓ 保存 — 将状态设置为 {status}",
     "description": "描述",
     "timeline": "时间轴",
     "assigned": "负责人"

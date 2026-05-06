@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "အခြေအနေကို အပ်ဒိတ်လုပ်ပါ။",
+    "confirm_save_status": "✓ သိမ်းဆည်းပါ — အခြေအနေကို {status} သို့ သတ်မှတ်ပါ",
     "description": "ဖော်ပြချက်",
     "timeline": "အချိန်ဇယား",
     "assigned": "တာဝန်ပေးထားသည်။"

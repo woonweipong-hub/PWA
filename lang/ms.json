@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "KEMASKINI STATUS",
+    "confirm_save_status": "✓ SIMPAN — tetapkan status kepada {status}",
     "description": "PENERANGAN",
     "timeline": "GARIS MASA",
     "assigned": "Ditugaskan"

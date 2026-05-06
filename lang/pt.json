@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "ATUALIZAR STATUS",
+    "confirm_save_status": "✓ SALVAR — defina o status como {status}",
     "description": "DESCRIÇÃO",
     "timeline": "CRONOLOGIA",
     "assigned": "Atribuído"

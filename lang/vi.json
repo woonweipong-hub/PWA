@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "CẬP NHẬT TRẠNG THÁI",
+    "confirm_save_status": "✓ LƯU - đặt trạng thái thành {status}",
     "description": "MÔ TẢ",
     "timeline": "DÒNG THỜI GIAN",
     "assigned": "Phụ trách"

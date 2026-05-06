@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "PÄIVITÄ TILA",
+    "confirm_save_status": "✓ SAVE — aseta tilaksi {status}",
     "description": "KUVAUS",
     "timeline": "AIKAJANA",
     "assigned": "Vastuuhenkilö"

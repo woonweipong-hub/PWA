@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "METTRE À JOUR LE STATUT",
+    "confirm_save_status": "✓ SAVE – définissez le statut sur {status}",
     "description": "DESCRIPTION",
     "timeline": "CHRONOLOGIE",
     "assigned": "Assigné"

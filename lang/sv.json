@@ -344,6 +344,7 @@
   },
   "detail": {
     "update_status": "UPPDATERA STATUS",
+    "confirm_save_status": "✓ SPARA — ställ in status till {status}",
     "description": "BESKRIVNING",
     "timeline": "TIDSLINJE",
     "assigned": "Tilldelad"
