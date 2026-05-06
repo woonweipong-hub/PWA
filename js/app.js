@@ -13389,11 +13389,25 @@ function parseDefectCoords(d){
   let lat=typeof d?.lat==="number"?d.lat:null;
   let lng=typeof d?.lng==="number"?d.lng:null;
   if(lat==null||lng==null){
-    const src=(d?.location||"")+" "+(d?.description||"");
-    const m=src.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
+    // Only accept the two explicit forms the app actually generates.
+    // The previous bare-decimal-pair fallback (`/(-?\d+\.\d+),\s*(-?\d+\.\d+)/`)
+    // false-matched dimensional text in defect descriptions like
+    // "crack 0.5 mm wide, 1.2 m long" → phantom pin near (0.5, 1.2)
+    // i.e. Gulf of Guinea / West Africa. Restricting to the bracketed
+    // `[lat, lng]` tag (location, generated on auto-pin ~line 17334)
+    // and the `Pinned on map at lat, lng` prefix (description, LOG
+    // flow ~line 17819) eliminates the false positives without losing
+    // any legitimate coords the app has ever written itself.
+    const loc=d?.location||"";
+    const desc=d?.description||"";
+    let m=loc.match(/\[\s*(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)\s*\]/);
+    if(!m)m=desc.match(/Pinned on map at\s+(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/i);
     if(m){lat=parseFloat(m[1]);lng=parseFloat(m[2]);}
   }
   if(lat==null||lng==null||isNaN(lat)||isNaN(lng))return null;
+  // Range sanity — anything outside real lat/lng bounds is a parse
+  // artefact, not a location.
+  if(lat<-90||lat>90||lng<-180||lng>180)return null;
   return{lat,lng};
 }
 
