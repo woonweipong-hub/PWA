@@ -25161,15 +25161,6 @@ function App(){
         </div>
       </div>
 
-      {/* Persistent tagline under the top bar — every tab. Names the spine
-          (LOG → REPORT) so a first-time user immediately knows what the
-          app's two main verbs are. Tester feedback 2026-05-06: "don't
-          know the actual main use" / "after going to any tab i don't
-          know what to do". One line, muted, never grabs primary focus. */}
-      <div style={{background:"#1a1a1a",padding:"0 14px 8px",display:"flex",justifyContent:"center"}}>
-        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,color:"rgba(255,255,255,0.55)",letterSpacing:"0.06em",textAlign:"center"}}>{t("tagline.text")}</div>
-      </div>
-
       {/* AI Query bar — shown on Report tab (merged in from former Dashboard) */}
       {tab==="report"&&(
         <div style={{background:"#1a1a1a",padding:"0 12px 10px"}}>
