@@ -11909,7 +11909,7 @@ function DefectsMapView({defects,allDefects,onView,onUpdate,selectMode,selectedI
   };
   const unpinDefect=async(d)=>{
     if(!confirm("Remove this entry's map pin?\n(The entry itself will stay — only its GPS location is cleared.)"))return;
-    try{await DB.defects.update(d.id,{lat:null,lng:null,mapZoom:null});}catch(e){alert("Failed to remove pin: "+e.message);}
+    try{await DB.defects.update(d.id,{lat:null,lng:null,mapZoom:null,...stripDefectCoordTags(d)});}catch(e){alert("Failed to remove pin: "+e.message);}
   };
   // Parity with Tag on Map — every GPS-pinned entry in the project appears,
   // even if the Review filters/search would otherwise hide it. Out-of-filter
@@ -12084,7 +12084,7 @@ function DefectsMapView({defects,allDefects,onView,onUpdate,selectMode,selectedI
                   const ids=Array.from(selectedIds);
                   if(!confirm(`Unpin ${ids.length} selected entr${ids.length===1?"y":"ies"}?\n(Entries stay — only their GPS locations are cleared.)`))return;
                   const failures=[];
-                  for(const id of ids){try{await DB.defects.update(id,{lat:null,lng:null,mapZoom:null});}catch(e){console.warn("unpin failed",id,e);failures.push(id);}}
+                  for(const id of ids){try{const _d=pinned.find(p=>p.d.id===id)?.d||{};await DB.defects.update(id,{lat:null,lng:null,mapZoom:null,...stripDefectCoordTags(_d)});}catch(e){console.warn("unpin failed",id,e);failures.push(id);}}
                   // Clear selection via parent's toggle so bulk panel closes cleanly
                   ids.forEach(id=>{if(selectedIds.has(id))toggleId&&toggleId(id);});
                   if(failures.length)alert(`Unpinned ${ids.length-failures.length}/${ids.length}. ${failures.length} failed — check connection and retry.`);
@@ -12119,7 +12119,7 @@ function DefectsMapView({defects,allDefects,onView,onUpdate,selectMode,selectedI
             <div style={{display:"flex",gap:8,marginTop:8,paddingTop:8,borderTop:"1px solid rgba(0,0,0,0.07)"}}>
               <button onClick={async()=>{
                 if(!confirm("Remove this entry's map pin?\n(The entry itself will stay — only its GPS location is cleared.)"))return;
-                try{await DB.defects.update(fp.d.id,{lat:null,lng:null,mapZoom:null});setFocusId(null);}catch(e){alert("Failed: "+e.message);}
+                try{await DB.defects.update(fp.d.id,{lat:null,lng:null,mapZoom:null,...stripDefectCoordTags(fp.d)});setFocusId(null);}catch(e){alert("Failed: "+e.message);}
               }} style={{flex:1,padding:"9px 10px",borderRadius:8,border:"1px solid rgba(255,59,48,0.3)",background:"rgba(255,59,48,0.07)",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>✕ UNPIN</button>
             </div>
           );
@@ -13395,6 +13395,23 @@ function parseDefectCoords(d){
   }
   if(lat==null||lng==null||isNaN(lat)||isNaN(lng))return null;
   return{lat,lng};
+}
+
+// Strip the coord patterns parseDefectCoords falls back to. Called on
+// UNPIN so a nulled lat/lng can't be resurrected from `[1.23, 103.45]`
+// in the location text or `Pinned on map at 1.23, 103.45` in the
+// description (auto-generated when an entry was first map-pinned —
+// see the LOG flow ~line 17819). Returns a partial patch — only fields
+// that actually changed, so callers can spread it into their update.
+function stripDefectCoordTags(d){
+  const out={};
+  const loc=d?.location||"";
+  const desc=d?.description||"";
+  const cleanLoc=loc.replace(/\s*\[?-?\d+\.\d+\s*,\s*-?\d+\.\d+\]?\s*/g," ").replace(/\s+/g," ").trim();
+  const cleanDesc=desc.replace(/\s*Pinned on map at\s+-?\d+\.\d+\s*,\s*-?\d+\.\d+\.?/gi,"").replace(/\s+/g," ").trim();
+  if(cleanLoc!==loc)out.location=cleanLoc;
+  if(cleanDesc!==desc)out.description=cleanDesc;
+  return out;
 }
 
 // Live mini-map in the entry detail — shows this pin prominently plus
@@ -17350,7 +17367,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
         return;
       }
       if(!confirm("Remove this entry's map pin?\n(The entry itself will stay — only its GPS location is cleared.)"))return;
-      try{await DB.defects.update(d.id,{lat:null,lng:null,mapZoom:null});}catch(e){alert("Failed to remove pin: "+e.message);}
+      try{await DB.defects.update(d.id,{lat:null,lng:null,mapZoom:null,...stripDefectCoordTags(d)});}catch(e){alert("Failed to remove pin: "+e.message);}
     };
     // Shared number-in-ring SVG for both providers — parity with REVIEW > MAP
     // so chip numbers match the numbers shown on map markers. Focused pins grow
@@ -17917,11 +17934,11 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
               for(const id of ids){
                 try{
                   const d=mapDefects.find(x=>x.id===id)||{};
-                  const cleanLoc=(d.location||"").replace(/\s*\[?-?\d+\.\d+\s*,\s*-?\d+\.\d+\]?\s*/g,"").trim();
-                  const payload={lat:null,lng:null,mapZoom:null,location:cleanLoc};
+                  const stripped=stripDefectCoordTags(d);
+                  const payload={lat:null,lng:null,mapZoom:null,...stripped};
                   const result=await DB.defects.update(id,payload);
                   if(typeof onPatchDefectLocal==="function"){
-                    onPatchDefectLocal({...d,...(result||{}),lat:null,lng:null,mapZoom:null,location:cleanLoc});
+                    onPatchDefectLocal({...d,...(result||{}),lat:null,lng:null,mapZoom:null,...stripped});
                   }
                 }
                 catch(e){console.warn("unpin failed",id,e);failures.push(id);}
@@ -18121,7 +18138,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
                 try{await DB.mapPins.delete(focusedDefect._mapPinId);}catch(e){alert("Failed to remove location: "+e.message);return;}
               }else{
                 if(!confirm("Remove GPS pin from this entry?"))return;
-                await DB.defects.update(focusedDefect.id,{lat:null,lng:null,mapZoom:null});
+                await DB.defects.update(focusedDefect.id,{lat:null,lng:null,mapZoom:null,...stripDefectCoordTags(focusedDefect)});
               }
               setFocusedDefectId(null);
             }} style={{flex:1,padding:"9px 10px",borderRadius:8,border:"1px solid rgba(255,59,48,0.3)",background:"rgba(255,59,48,0.07)",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>✕ UNPIN</button>
@@ -23879,6 +23896,22 @@ function App(){
     const fresh=[];
     let maxAt=since;
     defects.forEach(d=>{
+      // Creation-time Critical alert. Mirrors the empty-state copy
+      // "when severity escalates to Critical" — which today only fired on
+      // transition events but never on initial creation, so a defect logged
+      // as Critical from the start (the common case) was silently dropped.
+      // Project-wide (no iAmInvolved gate) per the wording; self-authored
+      // is skipped because you don't notify yourself of your own action.
+      const createdAt=d.created?new Date(d.created).getTime():0;
+      const dLoggedBy=(d.loggedBy||"").trim();
+      if(createdAt>since&&d.severity==="Critical"&&dLoggedBy!==me){
+        if(createdAt>maxAt)maxAt=createdAt;
+        fresh.push({
+          id:(typeof crypto!=="undefined"&&crypto.randomUUID)?crypto.randomUUID():`${createdAt}-${Math.random().toString(36).slice(2,8)}`,
+          type:"severity",defectId:d.id,defectTitle:d.title||"Untitled",
+          from:"",to:"Critical",by:dLoggedBy,at:createdAt,read:false
+        });
+      }
       (d.comments||[]).forEach(c=>{
         if(!c.at||c.at<=since)return;
         if(c.at>maxAt)maxAt=c.at;
@@ -23891,7 +23924,10 @@ function App(){
           let relevant=false;
           if(c.type==="assignee"&&(c.to||"").trim()===me)relevant=true;
           else if(c.type==="status"&&iAmInvolved)relevant=true;
-          else if(c.type==="severity"&&iAmInvolved&&c.to==="Critical")relevant=true;
+          // Critical escalations are project-wide per the empty-state copy
+          // ("when severity escalates to Critical" — no "your entries"
+          // qualifier). Other severity moves stay involvement-gated.
+          else if(c.type==="severity"&&c.to==="Critical")relevant=true;
           else if(c.type==="dueDate"&&iAmInvolved)relevant=true;
           if(!relevant)return;
           fresh.push({
