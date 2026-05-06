@@ -11619,6 +11619,19 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         </div>
       )}
 
+      {/* ── WORK CATEGORY ── (moved above TITLE — always visible because it
+          decides the variant schema and the AI prompt addendum that
+          drive every pre-filled field downstream. Hiding it under MORE
+          DETAILS sent users into the form with the wrong AI scope and
+          generic output.) */}
+      <ComboField label={<>{t("fields.work_category")}<span style={{fontSize:10,fontWeight:600,color:"rgba(88,86,214,0.85)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("fields.work_category_hint")||"(Select relevant scope for AI-assisted output)"}</span></>} value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")} displayFn={workcatDisplayFn}/>
+      {(()=>{const v=_getAiVariant(form.workCategory);if(!v||!v.addendum)return null;return(
+        <div style={{marginTop:-10,marginBottom:12,padding:"8px 12px",borderRadius:8,background:"rgba(88,86,214,0.06)",borderLeft:"3px solid #5856d6",fontSize:11,color:"rgba(0,0,0,0.65)",fontFamily:"'Barlow Condensed',sans-serif",lineHeight:1.4}}>
+          <div style={{fontWeight:800,color:"#5856d6",letterSpacing:"0.06em",fontSize:9,marginBottom:3}}>{t("log.variant_hint_label")}</div>
+          {v.addendum}
+        </div>
+      );})()}
+
       {/* ── 3. TITLE ── */}
       <VoiceField label={<>{t("fields.title")}<ProvChip prov={form.fieldProvenance?.title}/></>} value={form.title} onChange={v=>set("title",v)} placeholder={t("fields.title_placeholder")}/>
 
@@ -11636,15 +11649,6 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
 
       {showMoreDetails&&(
         <div style={{animation:"fadeIn 0.2s ease",marginTop:showMoreDetails?0:0}}>
-          {/* Work Category */}
-          <ComboField label={t("fields.work_category")} value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")} displayFn={workcatDisplayFn}/>
-          {(()=>{const v=_getAiVariant(form.workCategory);if(!v||!v.addendum)return null;return(
-            <div style={{marginTop:-10,marginBottom:12,padding:"8px 12px",borderRadius:8,background:"rgba(88,86,214,0.06)",borderLeft:"3px solid #5856d6",fontSize:11,color:"rgba(0,0,0,0.65)",fontFamily:"'Barlow Condensed',sans-serif",lineHeight:1.4}}>
-              <div style={{fontWeight:800,color:"#5856d6",letterSpacing:"0.06em",fontSize:9,marginBottom:3}}>{t("log.variant_hint_label")}</div>
-              {v.addendum}
-            </div>
-          );})()}
-
           {/* Entry Type */}
           <ComboField label={<>{t("fields.entry_type")}<ProvChip prov={form.fieldProvenance?.entryType}/></>} value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder={t("fields.entry_type_placeholder")} displayFn={tOpt}/>
           <div style={{marginTop:-10,marginBottom:12}}><button onClick={()=>setShowTypeManager(true)} style={{background:"none",border:"none",fontSize:11,color:"rgba(255,107,0,0.7)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:0}}>⚙ Manage custom types</button></div>

@@ -152,6 +152,7 @@
     "severity": "SAFETY SEVERITY",
     "severity_placeholder": "Select safety severity...",
     "work_category": "WORK CATEGORY",
+    "work_category_hint": "(Select relevant scope for AI-assisted output)",
     "work_category_placeholder": "Select work category...",
     "entry_type": "ENTRY TYPE",
     "entry_type_placeholder": "Select entry type...",
