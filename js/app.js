@@ -13102,7 +13102,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
                 </div>
                 <div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginBottom:6}}>{d.severity} · {d.status}{d.assignee?` · ${d.assignee}`:""}</div>
               </>):(<div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginBottom:6}}>Entry not found</div>)}
-              {canPin&&<button onClick={e=>{e.stopPropagation();deletePin(p.id);setActivePin(null);}} style={{width:"100%",background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:6,padding:"6px 10px",color:"#ff6b6b",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>REMOVE PIN</button>}
+              {canPin&&<button onClick={e=>{e.stopPropagation();if(!confirm("Remove this pin from the drawing?\n(The entry itself stays — only the pin is deleted.)"))return;deletePin(p.id);setActivePin(null);}} style={{width:"100%",background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:6,padding:"6px 10px",color:"#ff6b6b",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>REMOVE PIN</button>}
             </div>
           )}
         </div>
@@ -13369,7 +13369,7 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
                     {item.kind==="note"?`By ${item.detail||"Unknown"} · (${Math.round(item.x)}%, ${Math.round(item.y)}%)`:item.kind==="markup"?`${item.status} · ${item.detail}`:`${item.severity} · ${item.status}${item.detail?` · ${item.detail}`:""}`}
                   </div>
                 </div>
-                {item.kind==="pin"&&canPin&&<button onClick={()=>deletePin(item.id)} style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:7,padding:"4px 8px",color:"#ff8f8f",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>REMOVE</button>}
+                {item.kind==="pin"&&canPin&&<button onClick={()=>{if(confirm("Remove this pin from the drawing?\n(The entry itself stays — only the pin is deleted.)"))deletePin(item.id);}} style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:7,padding:"4px 8px",color:"#ff8f8f",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>REMOVE</button>}
                 {item.kind==="note"&&canPin&&<button onClick={()=>deleteNote(item.id)} style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:7,padding:"4px 8px",color:"#ff8f8f",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.delete")}</button>}
               </div>
             ))}
