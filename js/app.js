@@ -12509,6 +12509,12 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
   const[showArchive,setShowArchive]=useState(false);
   const[archiveSelIds,setArchiveSelIds]=useState(()=>new Set());
   const[filter,setFilter]=useState("All");const[sevF,setSevF]=useState("All");const[typeF,setTypeF]=useState("All");const[orgF,setOrgF]=useState("All");
+  // Work-category filter — surfaces the AI-routing context as a top-of-
+  // page chip strip so users can pivot between TOP Inspection / CONQUAS
+  // / Building Defects / etc. with one tap. Default "All" = no filter.
+  // Only renders when the project has 2+ work categories present, since
+  // a single-category project doesn't need the chips.
+  const[wcF,setWcF]=useState("All");
   // Date-range filter — compares against d.createdAt / timestamp_utc / created.
   // YYYY-MM-DD strings (native <input type="date">) lexically compare against
   // the ISO date prefix, so no Date object math is required. R suffix avoids
@@ -12820,6 +12826,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
     if(sevF!=="All"&&d.severity!==sevF)return false;
     if(typeF!=="All"&&d.entryType!==typeF)return false;
     if(orgF!=="All"&&(d.assignee_org||"")!==orgF)return false;
+    if(wcF!=="All"&&(d.workCategory||"")!==wcF)return false;
     if(overdueOnly&&!_isOverdue(d))return false;
     if(dateFromR||dateToR){
       // Take the ISO date prefix from whichever timestamp the record carries.
@@ -12839,8 +12846,8 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
     }
     return true;
   });
-  const activeFilters=(filter!=="All"?1:0)+(sevF!=="All"?1:0)+(typeF!=="All"?1:0)+(orgF!=="All"?1:0)+(dateFromR?1:0)+(dateToR?1:0)+(overdueOnly?1:0);
-  const clearAll=()=>{setFilter("All");setSevF("All");setTypeF("All");setOrgF("All");setSearch("");setDateFromR("");setDateToR("");setOverdueOnly(false);if(onClearNl)onClearNl();};
+  const activeFilters=(filter!=="All"?1:0)+(sevF!=="All"?1:0)+(typeF!=="All"?1:0)+(orgF!=="All"?1:0)+(wcF!=="All"?1:0)+(dateFromR?1:0)+(dateToR?1:0)+(overdueOnly?1:0);
+  const clearAll=()=>{setFilter("All");setSevF("All");setTypeF("All");setOrgF("All");setWcF("All");setSearch("");setDateFromR("");setDateToR("");setOverdueOnly(false);if(onClearNl)onClearNl();};
   // Overdue tally for header pill — counts ALL eligible entries, not just
   // the currently-filtered subset, so the badge is the same regardless of
   // which other filters are toggled. Lets the user see total work past due
@@ -13386,6 +13393,37 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
           appears only when at least one entry has GPS coords. Gallery-style
           GRID gives QA reviewers a fast visual scan across photos for
           duplicate / wrong-trade / mis-categorised captures. */}
+      {/* Work-category filter chip strip — surfaces the AI-routing context
+          as top-of-page chips. Only renders when the project has 2+ work
+          categories present (single-category projects don't need them).
+          Active chip = filled background; ALL clears. Counts mirror the
+          orgF chip-strip pattern. Contractor feedback 2026-05-06: "which
+          category selected? not shown in item cards" — making the active
+          filter highly visible at the top resolves the ambiguity. */}
+      {(()=>{
+        // Count defects per work category from the unfiltered set so the
+        // user always sees the project's category landscape, not just
+        // what the current filter narrowed to. Sorted by count descending.
+        const wcCounts={};
+        defects.forEach(d=>{const wc=d.workCategory||"";if(wc)wcCounts[wc]=(wcCounts[wc]||0)+1;});
+        const wcs=Object.keys(wcCounts).sort((a,b)=>wcCounts[b]-wcCounts[a]);
+        if(wcs.length<2)return null;
+        const total=defects.length;
+        return(
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+            <button onClick={()=>setWcF("All")} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:20,border:`1.5px solid ${wcF==="All"?"#1a1a1a":"rgba(0,0,0,0.12)"}`,background:wcF==="All"?"#1a1a1a":"#fff",color:wcF==="All"?"#fff":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",letterSpacing:"0.04em"}}>ALL <span style={{opacity:0.7}}>· {total}</span></button>
+            {wcs.map(wc=>{
+              const meta=WORK_CATEGORIES[wc];
+              const ico=meta?meta.icon:"📋";
+              const short=wc.replace(/\s*\(.*?\)\s*/g,"").replace(/^Test &amp; Commission$/i,"T&C").replace(/^M&E Inspection$/i,"M&E").replace(/^TOP Inspection$/i,"TOP").replace(/^Handover Walkthrough$/i,"Handover").replace(/^Building Defects$/i,wc.includes("Landed")?"Landed":"Highrise");
+              const active=wcF===wc;
+              return(
+                <button key={wc} onClick={()=>setWcF(active?"All":wc)} title={`Filter: ${wc}`} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:20,border:`1.5px solid ${active?"#5856d6":"rgba(88,86,214,0.25)"}`,background:active?"rgba(88,86,214,0.18)":"#fff",color:active?"#3a39a6":"rgba(0,0,0,0.65)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:active?800:700,fontSize:11,cursor:"pointer",letterSpacing:"0.04em"}}>{ico} {short.toUpperCase()} <span style={{opacity:0.7,fontWeight:600}}>· {wcCounts[wc]}</span></button>
+              );
+            })}
+          </div>
+        );
+      })()}
       {(()=>{
         const pinnable=filtered.filter(d=>parseDefectCoords(d));
         const photoCount=filtered.filter(d=>d.photo||(d.extraPhotos&&d.extraPhotos.length)).length;
@@ -13545,9 +13583,14 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
             <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${checked?"#ff6b00":"rgba(0,0,0,0.2)"}`,background:checked?"#ff6b00":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2,color:"#fff",fontSize:13,fontWeight:800}}>{checked?"✓":""}</div>
           )}
           <div style={{flex:1,minWidth:0}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+            {/* alignItems:flex-start so the StatusChip keeps its native pill
+                height even when the title wraps to multiple lines. Without
+                this, the flex default (stretch) vertically pulls the chip
+                into a tall oval whenever a title is long enough to wrap —
+                visually inconsistent across cards. */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,color:"#1a1a1a",flex:1,paddingRight:8}}><Highlight text={dv.title} query={q}/>{wasTranslated&&<span title="AI-translated to your UI language. Tap 'Show original' below to see what was typed." style={{fontSize:9,color:"#5856d6",marginLeft:6,padding:"1px 4px",background:"rgba(88,86,214,0.1)",borderRadius:3,fontWeight:700,verticalAlign:"1px"}}>🌐</span>}</div>
-              <StatusChip s={d.status}/>
+              <span style={{flexShrink:0}}><StatusChip s={d.status}/></span>
             </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:4}}>
               {d.entryType&&<span style={{fontSize:10,fontWeight:700,color:typeColor(d.entryType),background:typeBg(d.entryType),padding:"2px 8px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif"}}>{typeIcon(d.entryType)} {tOpt(d.entryType).toUpperCase()}</span>}
