@@ -9625,7 +9625,266 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
 }
 
 // ── Log Entry (with AI + Batch + Multi-photo) ────────────────────
-function LogDefect({member,company,currentProject,members,onSave,existingDefects=[],onViewEntry,onTagDrawing,onStartConquas,onStartQualityCheck,onOpenProjects,pendingBatchTrigger,onBatchHandled}){
+// ── TOP Inspection Wizard ────────────────────────────────────────
+// BCA Temporary Occupation Permit pre-inspection self-audit. Walks the
+// user through ~37 verbatim NC items grouped under 16 categories. Each
+// item: Pass / Fail / NA / Pending. On Fail, a photo + notes are
+// captured and a defect record is emitted with the TOP variant fields
+// auto-populated from the checklist row (top_nc_category, top_clause_ref,
+// top_threshold_breached, top_readiness_gate, top_phase).
+//
+// Phase 2A — purely client-side. Doesn't depend on backend ontology /
+// new collections. Sources: BCA BPTOP industry sharing 2026 (items 1-3),
+// CSCTOP Form Companion v1.0 29 Apr 2026, Approved Document Ver 7.08
+// (1 Oct 2025), user's top_checklist_package.md JSONL package.
+//
+// Live readiness gauge: counts gate-blocking items passed vs fails open.
+// Persists in-progress state to localStorage so a user can resume mid-
+// audit without losing context.
+function TopCheckWizard({currentProject,company,member,onSave,onClose}){
+  const projectKey=currentProject?.id||"default";
+  const stateKey=`${TOP_WIZARD_KEY}:${projectKey}`;
+  const[results,setResults]=useState(()=>{
+    try{return local.get(stateKey)||{};}catch{return{};}
+  });
+  const[expanded,setExpanded]=useState(()=>new Set());
+  const[failModal,setFailModal]=useState(null); // {item, photoData?, notes}
+  const[saving,setSaving]=useState(false);
+  const fileRef=useRef();
+
+  // Persist wizard state on every change so a half-finished audit isn't
+  // lost when the user closes and reopens the wizard.
+  useEffect(()=>{
+    try{local.set(stateKey,results);}catch{}
+  },[results,stateKey]);
+
+  const itemsByCat=cat=>TOP_CHECKLIST.filter(i=>i.category===cat);
+
+  // Aggregate readiness summary. Gate items (item.gate=true) are the
+  // TOP-blocking ones — surface them as the primary metric. Non-gate
+  // items still count in the totals but won't fail TOP if open.
+  const summary=useMemo(()=>{
+    let pass=0,fail=0,na=0,pending=0,gatePass=0,gateFail=0,gateTotal=0;
+    TOP_CHECKLIST.forEach(item=>{
+      const r=results[item.id]?.status||"pending";
+      if(item.gate)gateTotal++;
+      if(r==="pass"){pass++;if(item.gate)gatePass++;}
+      else if(r==="fail"){fail++;if(item.gate)gateFail++;}
+      else if(r==="na")na++;
+      else pending++;
+    });
+    const ready=gateFail===0&&pending===0;
+    return{pass,fail,na,pending,gatePass,gateFail,gateTotal,ready,total:TOP_CHECKLIST.length};
+  },[results]);
+
+  const catSummary=cat=>{
+    const items=itemsByCat(cat);
+    let p=0,f=0,n=0,d=0;
+    items.forEach(i=>{
+      const s=results[i.id]?.status||"pending";
+      if(s==="pass")p++;else if(s==="fail")f++;else if(s==="na")n++;else d++;
+    });
+    return{pass:p,fail:f,na:n,pending:d,total:items.length};
+  };
+
+  const toggleCat=cat=>{
+    setExpanded(prev=>{
+      const next=new Set(prev);
+      next.has(cat)?next.delete(cat):next.add(cat);
+      return next;
+    });
+  };
+
+  const markStatus=(item,status)=>{
+    if(status==="fail"){
+      setFailModal({item,photoData:null,notes:""});
+      return;
+    }
+    setResults(prev=>({...prev,[item.id]:{status,at:Date.now()}}));
+  };
+
+  const onFailPhoto=e=>{
+    const file=e.target.files?.[0];
+    if(!file)return;
+    const r=new FileReader();
+    r.onload=()=>setFailModal(m=>m?{...m,photoData:r.result}:m);
+    r.readAsDataURL(file);
+    if(fileRef.current)fileRef.current.value="";
+  };
+
+  const saveFail=async()=>{
+    if(!failModal)return;
+    const{item,photoData,notes}=failModal;
+    setSaving(true);
+    try{
+      const defectPayload={
+        title:`[TOP] ${item.title}`,
+        description:[item.requirement,item.threshold?`Threshold: ${item.threshold}`:"",notes||""].filter(Boolean).join("\n\n"),
+        severity:item.severity||"Major",
+        status:"Open",
+        workCategory:"TOP Inspection",
+        component:item.category,
+        issue:item.title,
+        // TOP variant fields — populated from the checklist row so the
+        // emitted defect carries the verbatim BCA citation for QP
+        // traceability and downstream readiness aggregation.
+        top_nc_category:item.category,
+        top_clause_ref:item.clauseRef,
+        top_threshold_breached:item.threshold||"",
+        top_readiness_gate:!!item.gate,
+        top_phase:"Pre-TOP self-audit",
+        loggedBy:member?.name||"",
+        loggedByRole:member?.role||"",
+        projectId:currentProject?.id||"default",
+        projectName:currentProject?.name||"",
+        companyId:company?.companyId||"",
+        photos:photoData?[photoData]:[],
+        photo:photoData||null,
+      };
+      await onSave(defectPayload);
+      setResults(prev=>({...prev,[item.id]:{status:"fail",at:Date.now(),hasPhoto:!!photoData}}));
+      setFailModal(null);
+    }catch(err){
+      alert("Could not save TOP NC: "+(err.message||err));
+    }finally{
+      setSaving(false);
+    }
+  };
+
+  const SEV_BG={Critical:"#ff3b30",Major:"#ff9500",Minor:"#ffcc00",Observation:"#34aadc"};
+  const STATUS_BTN=(label,color,bg,onClick,active)=>(
+    <button onClick={onClick} style={{flex:1,minWidth:60,padding:"6px 8px",borderRadius:6,border:`1.5px solid ${active?color:"rgba(0,0,0,0.12)"}`,background:active?bg:"#fff",color:active?color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:active?800:700,fontSize:11,cursor:"pointer",letterSpacing:"0.04em"}}>{label}</button>
+  );
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:300,display:"flex",flexDirection:"column"}}>
+      {/* Header — title, close, readiness gauge */}
+      <div style={{background:"#1a1a1a",padding:"14px 16px 12px",flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+          <button onClick={onClose} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>← {t("actions.back")||"BACK"}</button>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",letterSpacing:"0.04em"}}>🏛 {t("top.wizard_title")||"TOP READINESS SELF-AUDIT"}</div>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.55)",marginTop:1}}>{currentProject?.name||""}</div>
+          </div>
+        </div>
+        {/* Readiness gauge */}
+        <div style={{background:"rgba(255,255,255,0.05)",border:`1.5px solid ${summary.ready?"rgba(48,209,88,0.4)":summary.gateFail>0?"rgba(255,59,48,0.4)":"rgba(255,149,0,0.35)"}`,borderRadius:10,padding:"9px 12px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+          <div style={{flex:"1 1 180px",minWidth:0}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:summary.ready?"#30d158":summary.gateFail>0?"#ff6b6b":"#ff9500",letterSpacing:"0.06em"}}>
+              {summary.ready?(t("top.ready")||"READY FOR TOP"):summary.gateFail>0?(t("top.gate_fails")||`${summary.gateFail} GATE FAIL${summary.gateFail===1?"":"S"} OPEN`).replace("{n}",summary.gateFail):(t("top.in_progress")||"AUDIT IN PROGRESS")}
+            </div>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.6)",marginTop:2}}>{t("top.gates_passed")||"Readiness gates"}: <span style={{color:"#30d158",fontWeight:700}}>{summary.gatePass}</span> / {summary.gateTotal}</div>
+          </div>
+          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+            <span style={{padding:"3px 7px",borderRadius:10,background:"rgba(48,209,88,0.15)",color:"#30d158",fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>✓ {summary.pass}</span>
+            <span style={{padding:"3px 7px",borderRadius:10,background:"rgba(255,59,48,0.15)",color:"#ff6b6b",fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>✕ {summary.fail}</span>
+            <span style={{padding:"3px 7px",borderRadius:10,background:"rgba(255,255,255,0.06)",color:"rgba(255,255,255,0.55)",fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>– {summary.na}</span>
+            <span style={{padding:"3px 7px",borderRadius:10,background:"rgba(255,149,0,0.15)",color:"#ff9500",fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>○ {summary.pending}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Body — categories collapsed list */}
+      <div style={{flex:1,overflowY:"auto",padding:"14px 12px 80px"}}>
+        {TOP_CATEGORIES.map(cat=>{
+          const items=itemsByCat(cat);
+          if(items.length===0)return null;
+          const cs=catSummary(cat);
+          const isOpen=expanded.has(cat);
+          const hasGateFail=items.some(i=>i.gate&&results[i.id]?.status==="fail");
+          const allDone=cs.pending===0;
+          return(
+            <div key={cat} style={{background:"#fff",borderRadius:12,marginBottom:10,border:`1px solid ${hasGateFail?"rgba(255,59,48,0.35)":allDone?"rgba(48,209,88,0.3)":"rgba(0,0,0,0.06)"}`,overflow:"hidden"}}>
+              <button onClick={()=>toggleCat(cat)} style={{width:"100%",padding:"12px 14px",background:hasGateFail?"rgba(255,59,48,0.04)":allDone?"rgba(48,209,88,0.04)":"#fff",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:10,textAlign:"left"}}>
+                <span style={{fontSize:13,color:"rgba(0,0,0,0.4)"}}>{isOpen?"▼":"▸"}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#1a1a1a",letterSpacing:"0.02em"}}>{cat}</div>
+                  <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",marginTop:2}}>
+                    {cs.total} {t("top.items")||"items"} · ✓ {cs.pass} ✕ {cs.fail} – {cs.na} ○ {cs.pending}
+                  </div>
+                </div>
+                {hasGateFail&&<span style={{fontSize:10,fontWeight:800,color:"#fff",background:"#ff3b30",padding:"2px 7px",borderRadius:8,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>GATE FAIL</span>}
+                {allDone&&!hasGateFail&&<span style={{fontSize:10,fontWeight:800,color:"#fff",background:"#30d158",padding:"2px 7px",borderRadius:8,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>DONE</span>}
+              </button>
+              {isOpen&&(
+                <div style={{borderTop:"1px solid rgba(0,0,0,0.06)"}}>
+                  {items.map(item=>{
+                    const r=results[item.id]?.status||"pending";
+                    return(
+                      <div key={item.id} style={{padding:"12px 14px",borderTop:"1px solid rgba(0,0,0,0.04)",background:r==="fail"?"rgba(255,59,48,0.03)":r==="pass"?"rgba(48,209,88,0.03)":"#fff"}}>
+                        <div style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:8}}>
+                          <span style={{fontSize:9,fontWeight:800,color:"#fff",background:SEV_BG[item.severity]||"#8e8e93",padding:"2px 6px",borderRadius:6,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em",flexShrink:0,marginTop:2}}>{(item.severity||"Major").slice(0,4).toUpperCase()}</span>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:"#1a1a1a",lineHeight:1.3}}>
+                              {item.title}
+                              {item.gate&&<span title="Readiness gate — blocks TOP if open" style={{fontSize:9,fontWeight:800,color:"#ff3b30",marginLeft:6,letterSpacing:"0.06em"}}>· GATE</span>}
+                            </div>
+                            <div style={{fontSize:10,color:"rgba(0,0,0,0.55)",marginTop:3,lineHeight:1.4}}>{item.requirement}</div>
+                            {item.threshold&&<div style={{fontSize:9,color:"rgba(0,0,0,0.6)",marginTop:3,fontFamily:"monospace"}}>↳ {item.threshold}</div>}
+                            <div style={{fontSize:9,color:"rgba(88,86,214,0.85)",marginTop:3,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>📜 {item.clauseRef}</div>
+                            {item.guidance&&<div style={{fontSize:9,color:"rgba(0,0,0,0.4)",marginTop:3,fontStyle:"italic",lineHeight:1.4}}>💡 {item.guidance}</div>}
+                          </div>
+                        </div>
+                        <div style={{display:"flex",gap:6}}>
+                          {STATUS_BTN(t("top.pass")||"✓ PASS","#30d158","rgba(48,209,88,0.1)",()=>markStatus(item,"pass"),r==="pass")}
+                          {STATUS_BTN(t("top.fail")||"✕ FAIL","#ff3b30","rgba(255,59,48,0.1)",()=>markStatus(item,"fail"),r==="fail")}
+                          {STATUS_BTN(t("top.na")||"– NA","rgba(0,0,0,0.5)","rgba(0,0,0,0.04)",()=>markStatus(item,"na"),r==="na")}
+                          {STATUS_BTN(t("top.pending")||"○ PENDING","#ff9500","rgba(255,149,0,0.1)",()=>markStatus(item,"pending"),r==="pending")}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Fail capture modal — photo + notes */}
+      {failModal&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:400,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+          <div style={{background:"#fff",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:480,maxHeight:"86vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+            <div style={{padding:"14px 16px",borderBottom:"1px solid rgba(0,0,0,0.07)",display:"flex",alignItems:"center",gap:10}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ff3b30",letterSpacing:"0.04em"}}>✕ {t("top.record_fail")||"RECORD NC"}</div>
+                <div style={{fontSize:11,color:"rgba(0,0,0,0.55)",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{failModal.item.title}</div>
+              </div>
+              <button onClick={()=>setFailModal(null)} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"6px 10px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{t("actions.cancel")||"CANCEL"}</button>
+            </div>
+            <div style={{flex:1,overflowY:"auto",padding:"14px 16px"}}>
+              <div style={{fontSize:11,color:"rgba(0,0,0,0.55)",marginBottom:10,lineHeight:1.5}}>{failModal.item.requirement}</div>
+              <div style={{fontSize:10,color:"rgba(88,86,214,0.85)",marginBottom:10,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>📜 {failModal.item.clauseRef}{failModal.item.threshold?` · ${failModal.item.threshold}`:""}</div>
+              {/* Photo */}
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.45)",marginBottom:5,letterSpacing:"0.06em",fontFamily:"'Barlow Condensed',sans-serif"}}>📷 {t("top.evidence_photo")||"EVIDENCE PHOTO"}</div>
+                {failModal.photoData?(
+                  <div style={{position:"relative"}}>
+                    <img src={failModal.photoData} alt="" style={{width:"100%",maxHeight:280,objectFit:"contain",borderRadius:8,background:"#f8f8f6"}}/>
+                    <button onClick={()=>setFailModal(m=>m?{...m,photoData:null}:m)} style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,0.7)",border:"none",borderRadius:"50%",color:"#fff",width:26,height:26,cursor:"pointer"}}>×</button>
+                  </div>
+                ):(
+                  <button onClick={()=>fileRef.current?.click()} style={{width:"100%",padding:"22px 14px",background:"rgba(255,107,0,0.06)",border:"1.5px dashed rgba(255,107,0,0.4)",borderRadius:10,color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",letterSpacing:"0.06em"}}>📷 {t("top.capture_photo")||"CAPTURE PHOTO"}</button>
+                )}
+                <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onFailPhoto} style={{display:"none"}}/>
+              </div>
+              {/* Notes */}
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.45)",marginBottom:5,letterSpacing:"0.06em",fontFamily:"'Barlow Condensed',sans-serif"}}>📝 {t("top.notes")||"OBSERVATION NOTES (OPTIONAL)"}</div>
+                <textarea value={failModal.notes} onChange={e=>setFailModal(m=>m?{...m,notes:e.target.value}:m)} placeholder={t("top.notes_placeholder")||"e.g. measured 945 mm, narrowest at L1-L2 turn"} rows={3} style={{width:"100%",padding:"9px 10px",border:"1px solid rgba(0,0,0,0.15)",borderRadius:8,fontSize:12,resize:"vertical",lineHeight:1.4,background:"#fff",fontFamily:"'Barlow',sans-serif",boxSizing:"border-box"}}/>
+              </div>
+            </div>
+            <div style={{padding:"12px 16px",borderTop:"1px solid rgba(0,0,0,0.07)",background:"rgba(0,0,0,0.02)"}}>
+              <button onClick={saveFail} disabled={saving} style={{width:"100%",padding:"11px",background:saving?"rgba(255,59,48,0.55)":"#ff3b30",border:"none",borderRadius:10,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:saving?"wait":"pointer",letterSpacing:"0.06em"}}>{saving?(t("messages.saving")||"SAVING…"):(t("top.save_nc")||"✕ SAVE NC + CREATE DEFECT")}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LogDefect({member,company,currentProject,members,onSave,existingDefects=[],onViewEntry,onTagDrawing,onStartConquas,onStartQualityCheck,onStartTopWizard,onOpenProjects,pendingBatchTrigger,onBatchHandled}){
   const savedWorkCat=local.get(WORK_CATEGORY_KEY)||"Building Defects (Landed)";
   const blank={title:"",location:"",severity:"Major",description:"",assignee:member?.name||"",photos:[],
     component:"",issue:"",locationLevel:"",locationZone:"",locationSubzone:"",locationGrid:"",
@@ -11118,6 +11377,18 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         <button onClick={onStartConquas} style={{width:"100%",padding:"12px 14px",marginBottom:16,background:"rgba(88,86,214,0.08)",border:"1.5px solid rgba(88,86,214,0.3)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
           <span style={{fontSize:16}}>📋</span>
           <span>{t("conquas.start_button")}</span>
+        </button>
+      )}
+      {/* TOP Inspection wizard launcher — appears when the work category
+          is set to TOP Inspection. Walks through 37 verbatim BCA NC items
+          (LPS / Headroom / Stairs / Falling barriers / Accessibility /
+          Storey Shelter / Env. Sustainability / Fixed Installations /
+          etc.) with pass/fail/NA per item; on Fail, captures a photo +
+          notes and creates a defect with TOP variant fields populated. */}
+      {form.workCategory==="TOP Inspection"&&onStartTopWizard&&(
+        <button onClick={onStartTopWizard} style={{width:"100%",padding:"12px 14px",marginBottom:16,background:"rgba(255,107,0,0.08)",border:"1.5px solid rgba(255,107,0,0.35)",borderRadius:12,color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <span style={{fontSize:16}}>🏛</span>
+          <span>{t("top.start_button")||"START TOP READINESS SELF-AUDIT"}</span>
         </button>
       )}
       {/* When CONQUAS is OFF for this project, show a one-tap helper that
@@ -23132,6 +23403,12 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     const isCritical=d?.severity==="Critical";
     const isOpen=d?.status==="Open";
     const onPinPointerDown=e=>{
+      // Pointer-down on a child button (EDIT ENTRY / DUPLICATE / DELETE in
+      // the pin tooltip) MUST pass through to the button's onClick. Without
+      // this guard, the pin's drag-handler stopPropagation+preventDefault
+      // eats the click and the buttons appear dead. Contractor feedback
+      // 2026-05-06: "delete pin or edit pin is not working in Drawings".
+      if(e.target&&e.target.closest&&e.target.closest("button"))return;
       if(!canPin||viewMode)return;
       const target=isImage?imgRef.current:canvasRef.current;
       if(!target)return;
@@ -24131,6 +24408,7 @@ function App(){
   const inboxLastScanRef=useRef(0);
   const[showAiSearch,setShowAiSearch]=useState(false);
   const[showConquas,setShowConquas]=useState(false);
+  const[showTopWizard,setShowTopWizard]=useState(false);
   const[showQualityCheck,setShowQualityCheck]=useState(false);
   // CONQUAS-batch handshake — true for one render cycle after the user taps
   // [BATCH PROCESS FOLDER] in the wizard. LogDefect's effect picks it up,
@@ -25185,7 +25463,7 @@ function App(){
 
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:"calc(100px + env(safe-area-inset-bottom,0px))"}}>
-        {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")} onStartConquas={()=>setShowConquas(true)} onStartQualityCheck={()=>setShowQualityCheck(true)} onOpenProjects={()=>setShowProjects(true)} pendingBatchTrigger={pendingConquasBatch} onBatchHandled={()=>setPendingConquasBatch(false)}/>}
+        {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")} onStartConquas={()=>setShowConquas(true)} onStartQualityCheck={()=>setShowQualityCheck(true)} onStartTopWizard={()=>setShowTopWizard(true)} onOpenProjects={()=>setShowProjects(true)} pendingBatchTrigger={pendingConquasBatch} onBatchHandled={()=>setPendingConquasBatch(false)}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} onPatchDefectLocal={updated=>setDefects(prev=>prev.map(d=>d.id===updated.id?updated:d))} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onViewEntry={setViewing}/>}
         {tab==="defects"&&<DefectsList defects={defects} archivedDefects={archivedDefects} onView={setViewing} onUpdate={updateDefect} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onRestore={restoreDefects} onHardDelete={hardDeleteDefects} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")} onOpenInReview={(payload)=>setReviewModal(payload)} queueCount={queueCount} syncing2={syncing2} onSyncQueue={syncQueue}/>}
@@ -25211,6 +25489,7 @@ function App(){
       {reviewModal?.type==="comparison"&&<DrawingsPanel onClose={()=>setReviewModal(null)} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} initialCompare={reviewModal.comparison}/>}
       {showAiSearch&&<AiSearch defects={defects} onClose={()=>setShowAiSearch(false)} onApplyFilters={f=>{setNlFilters(f);setTab("defects");}}/>}
       {showConquas&&<ConquasCheckWizard currentProject={currentProject} company={company} member={member} onSave={addDefect} onClose={()=>setShowConquas(false)} onStartBatch={()=>{setShowConquas(false);setTab("log");setPendingConquasBatch(true);}}/>}
+      {showTopWizard&&<TopCheckWizard currentProject={currentProject} company={company} member={member} onSave={addDefect} onClose={()=>setShowTopWizard(false)}/>}
       {showQualityCheck&&<QualityCheckWizard currentProject={currentProject} member={member} onSave={addDefect} onClose={()=>setShowQualityCheck(false)}/>}
       {viewing&&<DefectDetail defect={viewing} onClose={()=>setViewing(null)} onUpdate={updateDefect} onDelete={(id)=>setDefects(prev=>prev.filter(d=>d.id!==id))} member={member} company={company} members={members} allDefects={defects}/>}
       {showHelp&&(

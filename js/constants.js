@@ -385,6 +385,136 @@ const WORK_CATEGORIES = {
 };
 const WORK_CATEGORY_KEY = "sdt-work-category-v1";
 
+// ── BCA TOP Inspection checklist ─────────────────────────────────
+// Verbatim BCA Temporary Occupation Permit NC categories + checklist
+// items, transcribed from the user's `top_checklist_package.md` JSONL
+// package (BCA-aligned) plus gaps identified from the BCA BPTOP 2026
+// industry sharing decks (items 1, 2, 3) and the CSCTOP Form Companion
+// v1.0 (29 Apr 2026). Used by the TopCheckWizard component to drive a
+// pre-TOP self-audit. Each item carries a verbatim Approved Document /
+// COA / TRSS / ES Code clause reference for QP traceability.
+//
+// Schema:
+//   id          — stable item identifier (e.g. "STA-002")
+//   category    — top-level NC grouping (matches the top_nc_category
+//                 enum in schema/entries/top/v1.json)
+//   title       — short label shown in the wizard
+//   requirement — verbatim or near-verbatim BCA rule text
+//   clauseRef   — verbatim BCA clause notation (AD §C cl. C.3.2.1 etc.)
+//   threshold   — numeric or descriptive threshold (mm, m, ratio, etc.)
+//   gate        — true if NC blocks TOP (must rectify before inspection);
+//                 false for advisory NCs that won't fail TOP
+//   severity    — default severity if the user marks fail
+//                 (Critical | Major | Minor | Observation)
+//   guidance    — short hint shown to the field user
+//
+// When the wizard records a fail, a defect is auto-created with the
+// TOP variant fields populated from this row (top_nc_category =
+// item.category, top_clause_ref = item.clauseRef, top_readiness_gate =
+// item.gate, severity = item.severity, etc.).
+const TOP_CHECKLIST = [
+  // 1. Documentation
+  { id:"DOC-001", category:"Site Readiness", title:"Required TOP documents available", requirement:"All required forms, certificates, as-built plans, test reports and clearances applicable to the TOP scope shall be available and consistent with the built work.", clauseRef:"BCA TOP/CSC application requirements", threshold:"All required documents present", gate:true, severity:"Critical", guidance:"Show only applicable documents by project profile and phase." },
+  { id:"DOC-002", category:"Site Readiness", title:"Built works consistent with approved / as-built plans", requirement:"The built layout, key dimensions and provided elements within the TOP scope shall be generally consistent with approved and as-built plans, without unauthorised deviations affecting compliance.", clauseRef:"BCA TOP/CSC technical clearance flow", threshold:"No unauthorised deviations from approved plan", gate:true, severity:"Critical", guidance:"Use this as a global plan-consistency gate before detailed checks." },
+
+  // 2. Site Readiness
+  { id:"SITE-001", category:"Site Readiness", title:"Site is in move-in condition", requirement:"The TOP scope shall be completed, clean, not occupied, with site office removed and materials/equipment cleared from occupied areas.", clauseRef:"BCA site-condition circular", threshold:"Site clear of construction materials and equipment", gate:true, severity:"Critical", guidance:"Capture panoramic photos for common areas and site frontage." },
+  { id:"SITE-002", category:"Site Readiness", title:"Safe and proper access to and within development", requirement:"Safe and proper access shall be available to and within the development, free of unsafe obstructions, incomplete surfaces or dangerous temporary conditions.", clauseRef:"BCA site-condition circular", threshold:"All routes safe + clear", gate:true, severity:"Critical", guidance:"Apply to public approach, internal access routes and routes serving the TOP phase." },
+  { id:"SITE-003", category:"Site Readiness", title:"TOP phase segregated from construction zones", requirement:"For phased TOP, occupied areas shall be robustly separated from active construction zones, with separate public and construction access where applicable.", clauseRef:"BCA site-condition circular", threshold:"Segregation in place if phased TOP", gate:true, severity:"Critical", guidance:"NA for non-phased TOP." },
+  { id:"SITE-004", category:"Site Readiness", title:"Driveways, footpaths and drop-off complete", requirement:"Driveways, footpaths, drop-off points and circulation surfaces serving the TOP scope shall be completed and safe for use.", clauseRef:"BCA TOP/CSC site-condition expectations", threshold:"External works complete for TOP scope", gate:true, severity:"Major", guidance:"Include drop-off, public walkways, ramps and interfaces to entrances." },
+
+  // 3. Headroom & Ceiling Height
+  { id:"GEN-001", category:"Headroom & Ceiling Height", title:"Headroom along access routes complies", requirement:"Headroom along access routes and circulation spaces shall be measured from finished floor level to the underside of obstruction and meet the minimum acceptable solution.", clauseRef:"AD §C cl. C.3.2.1", threshold:"≥ 2000 mm", gate:true, severity:"Major", guidance:"Measure at the lowest obstruction point (beam, duct, fixture, openable window)." },
+  { id:"GEN-002", category:"Headroom & Ceiling Height", title:"Ceiling height in rooms complies", requirement:"Ceiling height in rooms and spaces shall meet minimum requirements in the acceptable solution, subject to stated exemptions.", clauseRef:"AD §C cl. C.3.3", threshold:"per room profile", gate:false, severity:"Major", guidance:"Use room classification to evaluate threshold; permit NA where exempted spaces apply." },
+
+  // 4. Staircases
+  { id:"STA-001", category:"Staircase", title:"No projections into staircase space below 2.0 m", requirement:"No projection other than handrails is allowed into the staircase space within a height of 2.0 m from the landing or pitch line.", clauseRef:"AD §E cl. E.3.2.1", threshold:"No projection below 2000 mm", gate:true, severity:"Critical", guidance:"Capture photo and measurement where overhead projection is present." },
+  { id:"STA-002", category:"Staircase", title:"Stair clear width complies", requirement:"Clear width of staircase shall meet the minimum required width measured in accordance with the approved method, accounting for handrail and balustrade projections.", clauseRef:"AD §E cl. E.3.3.1", threshold:"≥ 1000 mm (per stair profile)", gate:true, severity:"Critical", guidance:"Capture measurement at narrowest point with tape visible." },
+  { id:"STA-003", category:"Staircase", title:"Risers and treads uniform within tolerance", requirement:"Riser heights and tread widths shall comply with the applicable acceptable solution and be consistent within the stair flight (≤5 mm tolerance between consecutive steps).", clauseRef:"AD §E cl. E.3.4.4", threshold:"Tolerance ≤ 5 mm between consecutive steps", gate:true, severity:"Critical", guidance:"Store separate measured fields for riser and tread; apply 225 / 250 / 275 mm tread rule by profile." },
+  { id:"STA-004", category:"Staircase", title:"Landings comply", requirement:"Landing width and configuration shall comply with the acceptable solution, including minimum clearance and absence of steps/drops except where specifically permitted.", clauseRef:"AD §E cl. E.3.5", threshold:"≥ 1000 mm + no unauthorised step/drop", gate:true, severity:"Major", guidance:"Record whether step/drop exists at landing and whether allowed by dwelling-unit exception." },
+  { id:"STA-005", category:"Staircase", title:"Handrails provided and compliant", requirement:"Handrails shall be provided to staircases with more than 5 steps and comply with height, continuity, gripping surface and clearance requirements.", clauseRef:"AD §E cl. E.3.6", threshold:"800–1000 mm height; continuous; both sides where required", gate:true, severity:"Critical", guidance:"Capture handrail height and continuity; note both sides where applicable." },
+  { id:"STA-006", category:"Staircase", title:"Non-slip nosing strips with permanent contrasting colour", requirement:"All steps must be fitted with non-slip nosing strips between 50 mm and 65 mm in width with permanent contrasting colours. Tape is not an acceptable solution.", clauseRef:"COA 4.11.2", threshold:"50–65 mm permanent contrasting nosing; tape NOT acceptable", gate:true, severity:"Critical", guidance:"Verify nosing material is permanent (paint or moulded); reject tape applications." },
+
+  // 5. Accessibility
+  { id:"ACC-001", category:"Accessible Route Provision", title:"Continuous accessible route provided", requirement:"An accessible route shall be provided from designated arrival points to key facilities within the TOP scope, with required ramps, doors, lifts and surfaces completed.", clauseRef:"COA cl. 2.1.1", threshold:"Continuous route present", gate:true, severity:"Critical", guidance:"Apply along the full route rather than isolated spot checks." },
+  { id:"ACC-002", category:"Accessible Route Width", title:"Accessible route width complies", requirement:"Width of accessible routes, corridors and paths shall meet the minimum required by Table 3 of the Code on Accessibility.", clauseRef:"COA cl. 4.2.1 (Table 3)", threshold:"1500 mm (residential / office / hotel) or 1800 mm (other)", gate:true, severity:"Major", guidance:"Reduce to 1200 mm clear ramp width acceptable only where alternative stepped approach is provided AND total rise ≤ 1200 mm." },
+  { id:"ACC-003", category:"Accessible Washrooms / Doorways / Ramps", title:"Accessible washroom items complete", requirement:"Accessible washrooms shall include all required items: hooks, mirror, bidet spray, call bell, horizontal bar on door, with at least 300 mm space on push side of door.", clauseRef:"COA cl. 4.5.2, 5.2.1", threshold:"All items present + ≥ 300 mm push-side space", gate:true, severity:"Major", guidance:"Common omissions: hooks, mirror, bidet spray, call bell, horizontal bar on door." },
+  { id:"ACC-004", category:"Accessible Washrooms / Doorways / Ramps", title:"Accessible doorway and route levelled, no large gaps", requirement:"Accessible route doorway must be levelled. Gratings and gaps along accessible route must be ≤ 12 mm. Coloured bands to be provided at vertical rises.", clauseRef:"COA cl. 4.1.1.1, 4.5.2", threshold:"Route levelled; gaps ≤ 12 mm", gate:true, severity:"Major", guidance:"Inspect drainage gratings, expansion joints, threshold drops along the accessible route." },
+
+  // 6. Lighting
+  { id:"LGT-001", category:"Other", title:"Natural lighting to rooms complies", requirement:"Rooms intended to be naturally lit shall have windows or openings sized and located to satisfy the acceptable solution for natural lighting.", clauseRef:"AD §F cl. F.3.2", threshold:"Per room profile + opening size", gate:false, severity:"Major", guidance:"Capture window/opening reference and any obstruction by unauthorised partitioning." },
+
+  // 7. Ventilation
+  { id:"VEN-001", category:"Mode of Ventilation", title:"Natural ventilation to rooms complies", requirement:"Windows and openings intended for natural ventilation shall open to the exterior, compliant airwells or recesses and meet the acceptable solution for ventilation. Natural ventilation cannot be provided to areas > 12 m from window/opening.", clauseRef:"AD §G cl. G.3.2.1, G.3.2.2, G.3.2.3", threshold:"≤ 12 m from window/opening", gate:false, severity:"Major", guidance:"Recirculating fans are NOT an acceptable solution. NV space with mechanical assistance + CFD reports per SS 553 may be considered as alternative." },
+  { id:"VEN-002", category:"Mode of Ventilation", title:"Mechanically ventilated spaces completed where required", requirement:"Rooms or spaces relying on mechanical ventilation under the approved design shall have the required vents, grilles and systems installed. Fresh air vents must be provided to all air-conditioned areas.", clauseRef:"AD §G cl. G.2.4", threshold:"All required vents/grilles installed; fresh-air intake to AC areas", gate:false, severity:"Major", guidance:"Basic / Standard AC units do NOT cater for fresh-air intake — verify dedicated fresh-air provision." },
+
+  // 8. Safety from Falling
+  { id:"BAR-001", category:"Safety from Falling — barriers", title:"Safety barriers present at all required drops", requirement:"Safety barriers or parapets shall be installed at all locations with fall risk requiring protection within the TOP scope.", clauseRef:"AD §H cl. H.2, H.3", threshold:"Barrier present at every required edge", gate:true, severity:"Critical", guidance:"First gate before detailed barrier measurements." },
+  { id:"BAR-002", category:"Safety from Falling — barriers", title:"Barrier height complies", requirement:"Barrier height shall meet or exceed the minimum required height, including higher measurement basis where climbable toeholds are present.", clauseRef:"AD §H cl. H.3.2.1, H.3.4A.1", threshold:"≥ 1000 mm; ≥ 850 mm from last climbable toehold", gate:true, severity:"Critical", guidance:"Record whether measurement is from floor level or last climbable toehold (foothold = ≥ 150 × 150 mm AND < 45° gradient)." },
+  { id:"BAR-003", category:"Safety from Falling — gaps", title:"Barrier base gap complies", requirement:"There shall be no gap at the lowest part of a barrier larger than permitted within the lowest 75 mm zone.", clauseRef:"AD §H cl. H.3.4.1", threshold:"≤ 75 mm at lowest part", gate:true, severity:"Critical", guidance:"Measure from finished floor to underside / lowest gap at barrier base." },
+  { id:"BAR-004", category:"Safety from Falling — gaps", title:"Barrier openings comply", requirement:"The size of any opening or gap in a barrier shall not permit the passage of a sphere larger than allowed for the relevant building type.", clauseRef:"AD §H cl. H.3.4.3a", threshold:"≤ 100 mm sphere (non-industrial); ≤ 150 mm (industrial); ≤ 500 mm (maintenance only)", gate:true, severity:"Critical", guidance:"Store building classification and area type before evaluating the result." },
+  { id:"BAR-005", category:"Safety from Falling — barriers", title:"Barrier not easily climbable", requirement:"Barrier shall not include climbable toeholds within the prohibited vertical zone and shall satisfy the climbability provisions where applicable.", clauseRef:"AD §H cl. H.3.4A", threshold:"No climbable toeholds in prohibited zone", gate:true, severity:"Major", guidance:"Record presence of perforations, kerbs or protrusions that function as toeholds." },
+  { id:"BAR-006", category:"Glass safety barrier", title:"Glass barriers use compliant glass", requirement:"Where glass is used as part or whole of a barrier, the glass type and installation shall comply with the acceptable solution for glass barriers.", clauseRef:"AD §H cl. H.3.5", threshold:"Compliant glass type + installation", gate:false, severity:"Major", guidance:"Record glass barrier presence and supporting listing/details where applicable." },
+
+  // 9. Facade
+  { id:"FCD-001", category:"Site Readiness", title:"No incomplete facade affecting TOP scope", requirement:"Facade elements near areas intended for occupation or public use shall be complete and safe, with no loose or partially installed elements that present risk.", clauseRef:"BCA TOP/CSC site-condition expectations", threshold:"Facade complete + safe in TOP scope", gate:true, severity:"Critical", guidance:"Focus on falling-object risk and visibly incomplete envelope works." },
+
+  // 10. Units & Common Facilities
+  { id:"UNT-001", category:"Site Readiness", title:"Units within TOP scope complete for occupancy", requirement:"Units included in the TOP scope shall have basic finishing works and fittings completed such that compliance-relevant measurements and safe occupation are possible.", clauseRef:"BCA TOP/CSC site-condition expectations", threshold:"Units complete in TOP scope", gate:true, severity:"Critical", guidance:"Apply to residential or occupiable units within the TOP phase." },
+  { id:"COM-001", category:"Site Readiness", title:"Common facilities in TOP scope complete or isolated", requirement:"Common facilities (roofs, sky terraces, pool decks, courts) shall either be complete and safe or securely isolated from occupants.", clauseRef:"BCA TOP/CSC site-condition expectations", threshold:"Complete OR isolated", gate:true, severity:"Critical", guidance:"Mark NA for facilities outside the TOP phase and verify segregation if excluded." },
+
+  // 11. Lifts & Fixed Installations
+  { id:"LFT-001", category:"Fixed Installations (Lifts / Escalators / MCPS)", title:"Required lift provision available for TOP scope", requirement:"Required lifts serving the TOP scope shall be installed and accessible per the approved design and acceptable solution where applicable.", clauseRef:"AD §K cl. K.2.1, K.3 + BC (FI) Regs 2025 (SS 550:2020 / EN 81-41:2024)", threshold:"Lift present + accessible + per FI plan", gate:true, severity:"Critical", guidance:"Focus on presence, access and document consistency rather than specialist lift testing." },
+  { id:"FI-001", category:"Fixed Installations (Lifts / Escalators / MCPS)", title:"Sheltered passageway to motor room", requirement:"Lift motor room shall be provided with a sheltered passageway of at least 1.0 m clear width and 2.0 m clear height.", clauseRef:"BC (FI) Regs 2025 — Approved Document for Fixed Installations", threshold:"≥ 1.0 m × 2.0 m clear", gate:true, severity:"Major", guidance:"Capture passageway with tape visible at narrowest / lowest point." },
+  { id:"FI-002", category:"Fixed Installations (Lifts / Escalators / MCPS)", title:"Lift refuge spaces in headroom + lift pit", requirement:"Lift shaft shall provide minimum 2 refuge spaces (same type) in headroom AND lift pit, complying with Type 1 (upright 0.4×0.5×2.0 m) / Type 2 (crouching 0.5×0.7×1.0 m) / Type 3 (laying 0.7×1.0×0.5 m).", clauseRef:"BC (FI) Regs 2025 — Approved Document Table 3", threshold:"2 refuge spaces of same type per location", gate:true, severity:"Critical", guidance:"Photograph car-top + lift-pit refuge labels with measurements." },
+
+  // 12. Lightning Protection
+  { id:"LPS-001", category:"Lightning Protection System", title:"LPS complete and per SS 555", requirement:"Lightning protection system shall be present and generally consistent with the approved design and SS 555 (Class III minimum), with supporting certificate where required.", clauseRef:"AD §L cl. 3.1 + SS 555 Parts 1, 2, 3", threshold:"Class III minimum; LPS tape ≤ 100 mm from parapet edge; complete", gate:true, severity:"Critical", guidance:"Capture down conductors / air terminals; check tape distance from parapet, corner protection, bi-metallic connectors. Reject copper tape embedded in concrete only when contrary to design." },
+  { id:"LPS-002", category:"Lightning Protection System", title:"LPS warning sign at habitable / non-habitable entrances", requirement:"LPS warning sign provided at entrances to habitable & non-habitable spaces.", clauseRef:"AD §L cl. 3.1 + SS 555", threshold:"Warning sign at every required entrance", gate:false, severity:"Minor", guidance:"Capture sign location relative to entrance." },
+
+  // 13. Storey Shelter
+  { id:"TRSS-001", category:"Storey Shelter (S/C SS)", title:"No openings in S/C SS compartment except 2 vent sleeves + MV", requirement:"No other openings shall be permitted in each S/C SS compartment except for the two ventilation sleeves (in closed position) and the required MV opening.", clauseRef:"TRSS cl. 2.12.1(e)", threshold:"Only 2 vent sleeves + 1 MV opening", gate:true, severity:"Critical", guidance:"MV must be located OUTSIDE SS wall (not within). Capture compartment plan/elevation." },
+  { id:"TRSS-002", category:"Storey Shelter (S/C SS)", title:"Fire door at SS entrance opens correctly per level", requirement:"At fire discharge level, fire door at SS entrance must open AWAY from staircase (in direction of exit travel). At typical level, fire door can open INTO staircase.", clauseRef:"TRSS cl. 2.12.2", threshold:"Discharge level: door opens away from staircase", gate:true, severity:"Critical", guidance:"Document the door swing direction at the fire discharge level — relocating later requires abortive works." },
+
+  // 14. Environmental Sustainability
+  { id:"ENV-001", category:"Env. Sustainability — NRB02 (door / vestibule)", title:"Self-closing / automated doors at exterior; vestibules at high-traffic doorways", requirement:"Building entrances and door openings to building exterior or non-air-conditioned spaces shall be equipped with automated technology or self-closing devices, AND vestibules for high-traffic doorways (e.g. main entrances, doorways to transport nodes / commercial buildings).", clauseRef:"ES Code 4th ed. NRB02-2 (a)+(b)", threshold:"Self-closing/automated + vestibule (or air-curtain ≥ 2.0 m/s per ANSI/AMCA 220)", gate:false, severity:"Major", guidance:"Roller shutters left open during AC operation = common finding. Acceptable solution: notification system (audible alarm / warning light)." },
+  { id:"ENV-002", category:"Env. Sustainability — NRB06 (chiller / pump / cooling tower / AHU)", title:"Chiller clearance ≥ 1.5 m above for maintenance", requirement:"Clearance of 1.5 m or more above the chiller shall be provided to facilitate maintenance, overhaul or replacement.", clauseRef:"ES Code 4th ed. NRB06-1", threshold:"≥ 1.5 m above chiller", gate:false, severity:"Major", guidance:"Capture height with tape visible from chiller top to ceiling / overhead obstruction." },
+  { id:"ENV-003", category:"Env. Sustainability — NRB06 (chiller / pump / cooling tower / AHU)", title:"AHU > 35 kW floor-mounted per SS 553", requirement:"Air handling units (AHUs) of cooling capacity greater than 35 kW shall be floor mounted as stipulated in SS 553. AHUs deemed floor-mounted if on platform with clear path accessible by lift or staircase.", clauseRef:"ES Code 4th ed. NRB06-4(a) + SS 553", threshold:"AHU > 35 kW: floor mount OR maintenance platform with lifting points", gate:false, severity:"Major", guidance:"Acceptable: AHU maintenance platform installed; lifting points (chain blocks) for transport of AHU fan/motor." },
+  { id:"ENV-004", category:"Env. Sustainability — NRB06 (chiller / pump / cooling tower / AHU)", title:"Pump and cooling tower maintenance clearances", requirement:"Pump systems: minimum 0.6 m perimeter clearance + 1 m overhead. Cooling towers: 600 mm wide platforms with handrails + 2 m clearance from cooling tower top to trellis.", clauseRef:"ES Code 4th ed. NRB06-2 + NRB06-3", threshold:"Pump: 0.6 m perimeter + 1 m overhead. Cooling tower: 600 mm platform + 2 m to trellis", gate:false, severity:"Major", guidance:"Capture maintenance access points with tape visible." },
+
+  // 15. Windows & Vehicular
+  { id:"WND-001", category:"Other", title:"Windows comply with safety provisions", requirement:"Windows and associated fixings shall be installed consistently with the approved design and safety provisions for windows.", clauseRef:"AD §M cl. M.2, M.3", threshold:"Per approved design + safety provision", gate:false, severity:"Major", guidance:"Use for visible compliance and installation completeness rather than laboratory proof." },
+  { id:"VEH-001", category:"Other", title:"Vehicular barriers provided where required", requirement:"Vehicular barriers shall be provided and generally complete where there is risk of vehicles impacting edges or drops in buildings.", clauseRef:"AD §O cl. O.2, O.3", threshold:"Barrier present at every required vehicular edge", gate:false, severity:"Major", guidance:"Apply to ramps, podium edges and carparks where vehicular impact risk exists." },
+
+  // 16. Post-Inspection Admin
+  { id:"ADM-001", category:"Other", title:"Written advice items tracked to closure", requirement:"Any written advice, comments or follow-up items arising from inspection shall be clearly tracked, assigned and closed before final acceptance of TOP readiness.", clauseRef:"BCA TOP/CSC re-inspection process", threshold:"All open items closed if applicable", gate:true, severity:"Major", guidance:"Useful for re-inspection and close-out workflows." },
+];
+
+// Top-level NC categories for TOP wizard grouping. Order matches the
+// suggested walk-through sequence (site-readiness gate first, then
+// architectural / accessibility / safety, then services, then admin).
+const TOP_CATEGORIES = [
+  "Site Readiness",
+  "Headroom & Ceiling Height",
+  "Staircase",
+  "Accessible Route Provision",
+  "Accessible Route Width",
+  "Accessible Washrooms / Doorways / Ramps",
+  "Mode of Ventilation",
+  "Safety from Falling — barriers",
+  "Safety from Falling — gaps",
+  "Glass safety barrier",
+  "Lightning Protection System",
+  "Storey Shelter (S/C SS)",
+  "Env. Sustainability — NRB02 (door / vestibule)",
+  "Env. Sustainability — NRB06 (chiller / pump / cooling tower / AHU)",
+  "Fixed Installations (Lifts / Escalators / MCPS)",
+  "Other",
+];
+
+// Storage key for in-progress TOP wizard state (per project).
+const TOP_WIZARD_KEY = "sdt-top-wizard-v1";
+
 // ── Photo-entry export base column order ────────────────────────
 // Single source of truth for the Entries-sheet headers in the photo
 // ZIP export. The drift guard at tools/schema-check.js asserts every

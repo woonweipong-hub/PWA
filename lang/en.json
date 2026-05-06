@@ -11,6 +11,25 @@
   "tagline": {
     "text": "Capture in. Manage out. One place."
   },
+  "top": {
+    "start_button": "START TOP READINESS SELF-AUDIT",
+    "wizard_title": "TOP READINESS SELF-AUDIT",
+    "ready": "READY FOR TOP",
+    "gate_fails": "{n} GATE FAILS OPEN",
+    "in_progress": "AUDIT IN PROGRESS",
+    "gates_passed": "Readiness gates",
+    "items": "items",
+    "pass": "✓ PASS",
+    "fail": "✕ FAIL",
+    "na": "– NA",
+    "pending": "○ PENDING",
+    "record_fail": "RECORD NC",
+    "evidence_photo": "EVIDENCE PHOTO",
+    "capture_photo": "CAPTURE PHOTO",
+    "notes": "OBSERVATION NOTES (OPTIONAL)",
+    "notes_placeholder": "e.g. measured 945 mm, narrowest at L1-L2 turn",
+    "save_nc": "✕ SAVE NC + CREATE DEFECT"
+  },
   "empty_state": {
     "log": "Take a photo of any defect. AI fills in title, severity, description. It saves automatically.",
     "tag": "Upload your own floor plans or drawings here, then pin defects on them for precise location. Pairs with the GPS auto-pinning that's already in your reports.",
