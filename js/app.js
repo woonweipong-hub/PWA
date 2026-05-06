@@ -7760,6 +7760,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
   const photoInputRef=useRef(null);
   const provider=providerRef.current;
   const canEdit=member?.role!=="viewer";
+  const canArchive=["Admin","Manager"].includes(member?.role);
 
   // Filter defects that have GPS coords for current project
   // Tolerant of string-number round-trip from PocketBase FormData uploads —
@@ -8488,6 +8489,26 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
     const saveDefectMove=async(d,newLat,newLng)=>{
       try{await DB.defects.update(d.id,{lat:newLat,lng:newLng});}catch(e){console.warn("pin move save failed",e);}
     };
+    // Soft-archive a defect from the map popup. Same path REVIEW uses
+    // (archivedAt + archivedBy). Acts as a working delete-from-map even if
+    // the lat/lng-clearing unpin path has issues. Eagerly removes the marker
+    // so the user sees the pin disappear immediately.
+    const archiveDefect=async(d,marker)=>{
+      if(!canArchive){alert("Only Admins and Managers can delete entries.");return;}
+      if(!confirm("Delete this entry?\n(Soft-archived for 7 days — recoverable from REVIEW > Archived during that window. Map pin disappears.)"))return;
+      try{
+        const now=new Date().toISOString();
+        const by=member?.name||"";
+        await DB.defects.update(d.id,{archivedAt:now,archivedBy:by});
+        try{
+          if(marker&&clusterRef.current){
+            if(typeof clusterRef.current.removeLayer==="function")clusterRef.current.removeLayer(marker);
+            else if(typeof clusterRef.current.removeMarker==="function")clusterRef.current.removeMarker(marker);
+          }
+          if(marker){if(marker.setMap)marker.setMap(null);else if(marker.remove)marker.remove();}
+        }catch(eVis){console.warn("archive: eager visual removal failed",eVis);}
+      }catch(e){console.error("archiveDefect: update failed",d.id,e);alert("Failed to delete entry: "+e.message);}
+    };
     // Permanent-delete a defect's GPS location (unpins from map, entry stays).
     // Caller passes the marker so we can eagerly remove it from the cluster
     // without waiting for the subscription to refresh — fixes a UX issue where
@@ -8541,7 +8562,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
         });
         m._defect=d;
         const safeTitle=(d.title||"Entry").replace(/</g,"&lt;");
-        const iw=new g.InfoWindow({content:`<div style="font-family:'Barlow Condensed',sans-serif;padding:4px 6px;min-width:140px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${canEdit?`<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div><button id="mm-del-${d.id}" style="margin-top:6px;width:100%;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);border-radius:6px;padding:4px 8px;color:#cc0000;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;cursor:pointer">REMOVE PIN</button>`:""}</div>`});
+        const iw=new g.InfoWindow({content:`<div style="font-family:'Barlow Condensed',sans-serif;padding:4px 6px;min-width:140px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${canEdit?`<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div><button id="mm-del-${d.id}" style="margin-top:6px;width:100%;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);border-radius:6px;padding:4px 8px;color:#cc0000;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;cursor:pointer">REMOVE PIN</button>`:""}${canArchive?`<button id="mm-arch-${d.id}" style="margin-top:4px;width:100%;background:rgba(255,59,48,0.18);border:1px solid rgba(255,59,48,0.45);border-radius:6px;padding:4px 8px;color:#990000;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:10px;cursor:pointer">DELETE ENTRY</button>`:""}</div>`});
         m.addListener("click",(e)=>{
           // Multi-select path: shift/ctrl/cmd-click OR additive-mode toggle.
           // Google Maps MouseEvent wraps the native DOM event as `domEvent`.
@@ -8550,7 +8571,10 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
           if(additive&&canEdit){togglePinSelection(d.id);return;}
           // Plain click: show info window (existing behaviour)
           iw.open({anchor:m,map:mapObj.current});
-          if(canEdit){setTimeout(()=>{const b=document.getElementById("mm-del-"+d.id);if(b)b.onclick=()=>{iw.close();unpinDefect(d,m);};},30);}
+          setTimeout(()=>{
+            if(canEdit){const bd=document.getElementById("mm-del-"+d.id);if(bd)bd.onclick=()=>{iw.close();unpinDefect(d,m);};}
+            if(canArchive){const ba=document.getElementById("mm-arch-"+d.id);if(ba)ba.onclick=()=>{iw.close();archiveDefect(d,m);};}
+          },30);
         });
         if(canEdit)m.addListener("dragend",e=>saveDefectMove(d,e.latLng.lat(),e.latLng.lng()));
         return m;
@@ -8584,7 +8608,7 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
         const m=L.marker([d.lat,d.lng],{icon,draggable:canEdit,title:canEdit?(d.title||"Entry")+" — drag to move":(d.title||"Entry")});
         m._defect=d;
         const safeTitle=(d.title||"Entry").replace(/</g,"&lt;");
-        m.bindPopup(`<div style="font-family:'Barlow Condensed',sans-serif;padding:2px 4px;min-width:140px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${canEdit?`<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div><button id="mm-del-${d.id}" style="margin-top:6px;width:100%;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);border-radius:6px;padding:4px 8px;color:#cc0000;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;cursor:pointer">REMOVE PIN</button>`:""}</div>`);
+        m.bindPopup(`<div style="font-family:'Barlow Condensed',sans-serif;padding:2px 4px;min-width:140px"><div style="font-weight:800;font-size:13px;color:#1a1a1a">${safeTitle}</div><div style="font-size:11px;color:${color};font-weight:700;margin-top:2px">${d.severity||""}${d.status?" · "+d.status:""}</div>${canEdit?`<div style="font-size:10px;color:rgba(0,0,0,0.45);margin-top:4px">Drag to move</div><button id="mm-del-${d.id}" style="margin-top:6px;width:100%;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);border-radius:6px;padding:4px 8px;color:#cc0000;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;cursor:pointer">REMOVE PIN</button>`:""}${canArchive?`<button id="mm-arch-${d.id}" style="margin-top:4px;width:100%;background:rgba(255,59,48,0.18);border:1px solid rgba(255,59,48,0.45);border-radius:6px;padding:4px 8px;color:#990000;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:10px;cursor:pointer">DELETE ENTRY</button>`:""}</div>`);
         if(canEdit){
           // Multi-select path: shift/ctrl/cmd-click OR additive-mode toggle.
           // Leaflet: `click` event's `originalEvent` holds the DOM MouseEvent.
@@ -8597,7 +8621,10 @@ function MapPanel({currentProject,member,defects,onSaveEntry,company,onSnapped})
               togglePinSelection(d.id);
             }
           });
-          m.on("popupopen",()=>{setTimeout(()=>{const b=document.getElementById("mm-del-"+d.id);if(b)b.onclick=()=>{m.closePopup();unpinDefect(d,m);};},30);});
+          m.on("popupopen",()=>{setTimeout(()=>{
+            const bd=document.getElementById("mm-del-"+d.id);if(bd)bd.onclick=()=>{m.closePopup();unpinDefect(d,m);};
+            const ba=document.getElementById("mm-arch-"+d.id);if(ba)ba.onclick=()=>{m.closePopup();archiveDefect(d,m);};
+          },30);});
           m.on("dragend",e=>{const p=e.target.getLatLng();saveDefectMove(d,p.lat,p.lng);});
         }
         return m;
