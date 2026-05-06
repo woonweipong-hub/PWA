@@ -108,6 +108,10 @@
     "facilities": "시설 관리",
     "infrastructure": "인프라 공사",
     "conquas": "콘콰스",
+    "handover": "핸드오버 연습",
+    "tnc": "테스트 및 커미션(T&C)",
+    "me": "M&E 검사",
+    "top": "TOP 검사",
     "others": "기타"
   },
   "roles": {

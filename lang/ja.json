@@ -108,6 +108,10 @@
     "facilities": "施設管理",
     "infrastructure": "インフラ工事",
     "conquas": "コンクアス",
+    "handover": "ハンドオーバーのウォークスルー",
+    "tnc": "テストとコミッション (T&C)",
+    "me": "M&E検査",
+    "top": "TOP 検査",
     "others": "その他"
   },
   "roles": {

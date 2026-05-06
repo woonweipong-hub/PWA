@@ -108,6 +108,10 @@
     "facilities": "Kiinteistöhallinta",
     "infrastructure": "Infrastruktuurirakentaminen",
     "conquas": "CONQUAS",
+    "handover": "Luovutuksen esittely",
+    "tnc": "Test & Commission (T&C)",
+    "me": "M&E-tarkastus",
+    "top": "TOP tarkastus",
     "others": "Muut"
   },
   "roles": {

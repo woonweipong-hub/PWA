@@ -108,6 +108,10 @@
     "facilities": "Gestão de Instalações",
     "infrastructure": "Obras de Infraestrutura",
     "conquas": "CONQUAS",
+    "handover": "Passo a passo da transferência",
+    "tnc": "Teste e Comissão (T&C)",
+    "me": "Inspeção de M&A",
+    "top": "Inspeção SUPERIOR",
     "others": "Outros"
   },
   "roles": {

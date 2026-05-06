@@ -108,6 +108,10 @@
     "facilities": "Gebäudemanagement",
     "infrastructure": "Infrastrukturarbeiten",
     "conquas": "CONQUAS",
+    "handover": "Komplettlösung zur Übergabe",
+    "tnc": "Test & Inbetriebnahme (AGB)",
+    "me": "M&E-Inspektion",
+    "top": "TOP Inspektion",
     "others": "Sonstige"
   },
   "roles": {

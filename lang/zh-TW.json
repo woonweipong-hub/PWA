@@ -108,6 +108,10 @@
     "facilities": "設施管理",
     "infrastructure": "基礎設施工程",
     "conquas": "康誇斯",
+    "handover": "移交演練",
+    "tnc": "測試與調試（T&C）",
+    "me": "機電檢驗",
+    "top": "頂部檢驗",
     "others": "其他"
   },
   "roles": {

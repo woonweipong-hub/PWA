@@ -108,6 +108,10 @@
     "facilities": "Gestion des Installations",
     "infrastructure": "Travaux d'Infrastructure",
     "conquas": "CONQUAS",
+    "handover": "Procédure pas à pas de transfert",
+    "tnc": "Test et mise en service (T&C)",
+    "me": "Inspection S&E",
+    "top": "HAUT Inspection",
     "others": "Autres"
   },
   "roles": {

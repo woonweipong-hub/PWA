@@ -108,6 +108,10 @@
     "facilities": "Pengurusan Fasiliti",
     "infrastructure": "Kerja Infrastruktur",
     "conquas": "CONQUAS",
+    "handover": "Panduan Penyerahan",
+    "tnc": "Ujian & Komisen (T&C)",
+    "me": "Pemeriksaan M&E",
+    "top": "Pemeriksaan TOP",
     "others": "Lain-lain"
   },
   "roles": {

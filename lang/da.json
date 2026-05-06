@@ -108,6 +108,10 @@
     "facilities": "Ejendomsforvaltning",
     "infrastructure": "Infrastrukturarbejde",
     "conquas": "CONQUAS",
+    "handover": "Overdragelsesgennemgang",
+    "tnc": "Test og provision (T&C)",
+    "me": "M&E inspektion",
+    "top": "TOP Eftersyn",
     "others": "Andet"
   },
   "roles": {

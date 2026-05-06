@@ -108,6 +108,10 @@
     "facilities": "Gestione Strutture",
     "infrastructure": "Opere Infrastrutturali",
     "conquas": "CONQUA",
+    "handover": "Procedura dettagliata per la consegna",
+    "tnc": "Test e Commissione (T&C)",
+    "me": "Ispezione M&E",
+    "top": "TOP Ispezione",
     "others": "Altri"
   },
   "roles": {

@@ -108,6 +108,10 @@
     "facilities": "设施管理",
     "infrastructure": "基础设施工程",
     "conquas": "康夸斯",
+    "handover": "移交演练",
+    "tnc": "测试与调试（T&C）",
+    "me": "机电检验",
+    "top": "顶部检验",
     "others": "其他"
   },
   "roles": {

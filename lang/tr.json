@@ -108,6 +108,10 @@
     "facilities": "Tesis Yönetimi",
     "infrastructure": "Altyapı İşleri",
     "conquas": "CONQUAS",
+    "handover": "Devir Teslim Yolu",
+    "tnc": "Test ve Devreye Alma (Şart ve Koşullar)",
+    "me": "İ&D Denetimi",
+    "top": "ÜST Denetim",
     "others": "Diğer"
   },
   "roles": {

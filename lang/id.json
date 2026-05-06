@@ -108,6 +108,10 @@
     "facilities": "Manajemen Fasilitas",
     "infrastructure": "Pekerjaan Infrastruktur",
     "conquas": "PENAKLUKAN",
+    "handover": "Panduan Serah Terima",
+    "tnc": "Tes & Komisi (S&K)",
+    "me": "Inspeksi M&E",
+    "top": "Inspeksi ATAS",
     "others": "Lainnya"
   },
   "roles": {

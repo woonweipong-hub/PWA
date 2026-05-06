@@ -108,6 +108,10 @@
     "facilities": "Gestión de Instalaciones",
     "infrastructure": "Obras de Infraestructura",
     "conquas": "CONQUÁS",
+    "handover": "Tutorial de entrega",
+    "tnc": "Prueba y Comisión (T&C)",
+    "me": "Inspección de seguimiento y evaluación",
+    "top": "Inspección superior",
     "others": "Otros"
   },
   "roles": {

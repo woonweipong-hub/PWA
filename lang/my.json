@@ -108,6 +108,10 @@
     "facilities": "Facilities Management",
     "infrastructure": "အခြေခံအဆောက်အအုံဆိုင်ရာလုပ်ငန်းများ",
     "conquas": "CONQUAS",
+    "handover": "လက်ဆင့်ကမ်း လေ့ကျင့်မှု",
+    "tnc": "စမ်းသပ်မှုနှင့် ကော်မရှင် (T&C)",
+    "me": "M&E စစ်ဆေးရေး",
+    "top": "ထိပ်တန်းစစ်ဆေးရေး",
     "others": "တခြားသူတွေ"
   },
   "roles": {
