@@ -418,6 +418,24 @@ var AI_VARIANT_TABLE = {
       { property: "chainage_km",     type: "number" },
       { property: "structure_id",    type: "string" }
     ]
+  },
+  // BCA Temporary Occupation Permit readiness — verbatim NC categories +
+  // Approved Document / COA / TRSS clause references for QP traceability.
+  // Sources: BCA BPTOP industry sharing 2026 items 1-5 (Audit & Inspection
+  // Group), CSCTOP Form Companion v1.0 29 Apr 2026, Approved Document
+  // Ver 7.08 effective 1 Oct 2025. Variant schema lives at
+  // /schema/entries/top/v1.json. Severity is reinterpreted as TOP impact:
+  // Critical = blocks TOP, Major = NC requiring rectification, Minor =
+  // advisory, Observation = informational.
+  "TOP Inspection": {
+    addendum: "TOP Inspection mode: BCA Temporary Occupation Permit readiness check, NOT contractual-defect grading. Reinterpret severity as TOP impact — Critical = blocks TOP (rectify before BCA inspection), Major = NC requiring rectification, Minor = advisory, Observation = informational. Always emit top_nc_category VERBATIM from the listed enum. Emit top_clause_ref using verbatim BCA clause notation: AD §C cl. C.3.2.1 (headroom >=2.0 m); AD §E cl. E.3.4.4 + COA 4.11.2 (staircase uniform within 5 mm, non-slip nosing 50-65 mm permanent contrasting, tape NOT acceptable); AD §H cl. H.3.2.1 / H.3.4A.1 (barrier >=1 m, >=850 mm from last toehold); AD §H cl. H.3.4.1, H.3.4.3a (gap >=75 mm at lowest part, opening must not pass 100 mm sphere non-industrial); AD §L cl. 3.1 (LPS per SS 555); COA cl. 2.1.1, 4.2.1, 4.5.2, 5.2.1 (accessibility); TRSS 2.12.1(e), 2.12.2 (storey shelter — no openings except 2 vent sleeves + MV; fire door opens away from staircase at fire discharge level); ES Code 4th ed. NRB02-2 (self-closing doors / vestibules / ANSI-AMCA 220 air-curtain >=2.0 m/s); NRB06-1 (chiller >=1.5 m), NRB06-4 (AHU >35 kW floor mount per SS 553); BC (FI) Regs 2025 (sheltered passage 1.0 x 2.0 m, lift refuge spaces). Emit top_threshold_breached when a measurement is visible (e.g. 'headroom 1850 mm < 2000 mm', 'barrier gap 95 mm > 75 mm'). Set top_readiness_gate=true when the NC is a TOP blocker; false for advisory NCs.",
+    fields: [
+      { property: "top_nc_category",       type: "string", enum: ["Lightning Protection System","Headroom & Ceiling Height","Safety from Falling — barriers","Safety from Falling — gaps","Staircase","Accessible Washrooms / Doorways / Ramps","Accessible Route Provision","Accessible Route Width","Mode of Ventilation","Env. Sustainability — NRB02 (door / vestibule)","Env. Sustainability — NRB06 (chiller / pump / cooling tower / AHU)","Storey Shelter (S/C SS)","Fixed Installations (Lifts / Escalators / MCPS)","Glass safety barrier","Site Readiness","Other"] },
+      { property: "top_clause_ref",        type: "string" },
+      { property: "top_threshold_breached", type: "string" },
+      { property: "top_readiness_gate",    type: "boolean" },
+      { property: "top_phase",             type: "string", enum: ["TOP","CSC","Pre-TOP self-audit","Phased TOP","Re-inspection"] }
+    ]
   }
 };
 

@@ -362,6 +362,20 @@ const WORK_CATEGORIES = {
     desc: "Mechanical, electrical, plumbing, ACMV, fire — services-focused inspection",
     groups: ["M&E – Plumbing","M&E – Electrical","M&E – ACMV","M&E – Fire","M&E – Lift","General"],
   },
+  // BCA Temporary Occupation Permit (TOP) readiness inspection. Variant
+  // schema lives at schema/entries/top/v1.json; AI prompt addendum sits in
+  // AI_VARIANT_TABLE in deploy/pocketbase/pb_hooks/main.pb.js. Sources:
+  // BCA BPTOP industry sharing 2026 items 1-5; CSCTOP Form Companion
+  // v1.0 29 Apr 2026; Approved Document Ver 7.08 effective 1 Oct 2025.
+  // Component groups span the full BCA TOP scope — accessibility (COA),
+  // structural (AD §B), staircase (AD §E), barriers (AD §H), lifts
+  // (AD §K + BC FI Regs 2025), LPS (AD §L), env. sustainability (ES Code
+  // 4th ed.), storey shelter (TRSS).
+  "TOP Inspection": {
+    icon: "\u{1F3DB}️", // 🏛
+    desc: "BCA Temporary Occupation Permit readiness — verbatim NC categories with Approved Document / COA / TRSS clause references",
+    groups: ["Architectural","Structural","Finishes","M&E – Plumbing","M&E – Electrical","M&E – ACMV","M&E – Fire","M&E – Lift","Sanitary","External/Landscape","Site & Safety","General"],
+  },
   "Others": {
     icon: "\u{1F4CB}", // 📋
     desc: "Custom — all components available, free-text allowed",

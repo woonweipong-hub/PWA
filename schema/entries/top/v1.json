@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://siteshrimp.org/schema/entries/top/v1.json",
+  "title": "SiteShrimp Photo Entry — TOP Inspection variant",
+  "version": "1.0.0",
+  "description": "BCA TOP (Temporary Occupation Permit) inspection-readiness variant. Aligned to the BCA Audit & Inspection Group's 2025 common Non-Compliance categories (Lightning Protection / Headroom / Safety from Falling barriers and gaps / Staircase / Accessibility / Env. Sustainability NRB02 + NRB06 / Storey Shelter / Fixed Installations) plus BP-stage common NCs (Accessible Route Provision and Width / Mode of Ventilation). Each defect carries a verbatim Approved Document or Code on Accessibility clause reference and a readiness-gate flag. Severity is reinterpreted as TOP-readiness impact: Critical = blocks TOP (rectify before inspection), Major = NC requiring rectification, Minor = advisory, Observation = informational. Sources: BCA BPTOP industry sharing 2026 items 1-5; CSCTOP Form Companion v1.0 29 Apr 2026; Approved Document Ver 7.08 effective 1 Oct 2025.",
+  "x-csv-header-convention": "Each property maps 1:1 to a column in the Entries sheet. The 'x-csv-header' field is the exact column header string. Variant columns are appended after the base columns when the project's workCategory is 'TOP Inspection'.",
+  "x-work-category": "TOP Inspection",
+  "x-extends": "https://siteshrimp.org/schema/entries/v1.json",
+  "allOf": [
+    { "$ref": "https://siteshrimp.org/schema/entries/v1.json" },
+    {
+      "type": "object",
+      "required": ["top_nc_category"],
+      "properties": {
+        "top_nc_category": {
+          "type": "string",
+          "x-csv-header": "TOP NC Category",
+          "enum": [
+            "Lightning Protection System",
+            "Headroom & Ceiling Height",
+            "Safety from Falling — barriers",
+            "Safety from Falling — gaps",
+            "Staircase",
+            "Accessible Washrooms / Doorways / Ramps",
+            "Accessible Route Provision",
+            "Accessible Route Width",
+            "Mode of Ventilation",
+            "Env. Sustainability — NRB02 (door / vestibule)",
+            "Env. Sustainability — NRB06 (chiller / pump / cooling tower / AHU)",
+            "Storey Shelter (S/C SS)",
+            "Fixed Installations (Lifts / Escalators / MCPS)",
+            "Glass safety barrier",
+            "Site Readiness",
+            "Other"
+          ],
+          "description": "BCA TOP NC category. Verbatim names from the BCA Audit & Inspection Group's 2025 industry sharing deck and 2024+2025 BP submission data. Used for contractual citation in QP-facing reports and for TOP-readiness aggregation in REPORT exports."
+        },
+        "top_clause_ref": {
+          "type": "string",
+          "x-csv-header": "Clause Reference",
+          "description": "Verbatim Approved Document, Code on Accessibility, or Technical Requirements for Storey Shelters clause reference (e.g. 'AD §C cl. C.3.2.1', 'COA cl. 4.2.1', 'TRSS 2.12.2', 'AD §H cl. H.3.4.1'). Pinned to the contractual citation for QP traceability and BCA written-direction response."
+        },
+        "top_threshold_breached": {
+          "type": "string",
+          "x-csv-header": "Threshold Breached",
+          "description": "Optional verbatim description of the threshold the photo evidence breaches (e.g. 'headroom 1850 mm < 2000 mm', 'barrier gap 95 mm > 75 mm', 'chiller clearance 1.2 m < 1.5 m', 'staircase nosing missing contrasting colour'). Copy whatever's measurable from the photo or visible from context."
+        },
+        "top_readiness_gate": {
+          "type": "boolean",
+          "x-csv-header": "Readiness Gate",
+          "description": "True when the NC is a TOP blocker (must be rectified before BCA inspection or it will fail). False for advisory NCs that won't fail TOP but should be tracked. Maps to the readiness_gate flag in the BCA-aligned checklist taxonomy."
+        },
+        "top_phase": {
+          "type": "string",
+          "x-csv-header": "TOP Phase",
+          "enum": ["TOP", "CSC", "Pre-TOP self-audit", "Phased TOP", "Re-inspection"],
+          "description": "Which TOP/CSC milestone this defect was captured against. Pre-TOP self-audit = team self-walk before scheduling BCA inspection. Phased TOP = block-by-block sequential TOP. Re-inspection = after a BCA written direction has been issued."
+        }
+      }
+    }
+  ]
+}

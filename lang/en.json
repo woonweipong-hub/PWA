@@ -108,6 +108,10 @@
     "facilities": "Facilities Management",
     "infrastructure": "Infrastructure Works",
     "conquas": "CONQUAS",
+    "handover": "Handover Walkthrough",
+    "tnc": "Test & Commission (T&C)",
+    "me": "M&E Inspection",
+    "top": "TOP Inspection",
     "others": "Others"
   },
   "roles": {

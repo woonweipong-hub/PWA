@@ -5802,7 +5802,7 @@ function HandsFreeListeningBar({listening,onStop}){
 }
 
 const SEV_I18N={"Critical":"severity.critical","Major":"severity.major","Minor":"severity.minor","Observation":"severity.observation"};
-const WORKCAT_I18N={"Building Defects (Landed)":"work_categories.landed","Building Defects (Highrise)":"work_categories.highrise","Construction Site":"work_categories.construction","Interior Works":"work_categories.interior","Facilities Management":"work_categories.facilities","Infrastructure Works":"work_categories.infrastructure","CONQUAS":"work_categories.conquas","Others":"work_categories.others"};
+const WORKCAT_I18N={"Building Defects (Landed)":"work_categories.landed","Building Defects (Highrise)":"work_categories.highrise","Construction Site":"work_categories.construction","Interior Works":"work_categories.interior","Facilities Management":"work_categories.facilities","Infrastructure Works":"work_categories.infrastructure","CONQUAS":"work_categories.conquas","Handover Walkthrough":"work_categories.handover","Test & Commission (T&C)":"work_categories.tnc","M&E Inspection":"work_categories.me","TOP Inspection":"work_categories.top","Others":"work_categories.others"};
 const sevDisplayFn=v=>SEV_I18N[v]?t(SEV_I18N[v]):v;
 const workcatDisplayFn=v=>WORKCAT_I18N[v]?t(WORKCAT_I18N[v]):v;
 const SevChip=({s})=><span style={{display:"inline-flex",alignItems:"center",padding:"3px 9px",borderRadius:20,fontSize:11,fontWeight:600,fontFamily:"'Barlow Condensed',sans-serif",color:SEV_COLOR[s],background:SEV_BG[s]}}>{(SEV_I18N[s]?t(SEV_I18N[s]):s).toUpperCase()}</span>;
@@ -22306,9 +22306,21 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     setPlacing(true);
   };
 
-  // Delete pin (subscription auto-updates pins list)
+  // Delete pin. Optimistic local removal (so the user sees the pin disappear
+  // immediately even on a slow network) plus error handling that re-adds the
+  // row + alerts on failure. Without these, an RBAC-rejected or network-failed
+  // delete left the pin visible with no feedback — exactly the symptom
+  // contractor users reported on TAG > Drawings (orphan pins where the
+  // underlying entry was archived couldn't be cleaned up).
   const deletePin=async id=>{
-    await DB.pins.delete(id);
+    const removed=pins.find(p=>p.id===id);
+    setPins(prev=>prev.filter(p=>p.id!==id));
+    try{
+      await DB.pins.delete(id);
+    }catch(e){
+      if(removed)setPins(prev=>[...prev,removed]);
+      alert("Could not remove pin: "+(e.message||e));
+    }
   };
 
   // Move pin — persist new x/y percentages
