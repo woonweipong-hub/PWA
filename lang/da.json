@@ -420,7 +420,8 @@
     "label_due": "To datoer",
     "label_mention": "Nævnte dig",
     "mark_all_read": "MÆRK ALLE LÆST",
-    "clear": "KLAR"
+    "clear": "KLAR",
+    "toast_critical": "NY KRITISK"
   },
   "diag": {
     "tab": "Diagnostik",

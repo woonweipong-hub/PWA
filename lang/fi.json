@@ -420,7 +420,8 @@
     "label_due": "Kaksi päivämäärää",
     "label_mention": "Mainitsi sinut",
     "mark_all_read": "MERKITSE KAIKKI LUETUKSEEN",
-    "clear": "TYHJENNÄ"
+    "clear": "TYHJENNÄ",
+    "toast_critical": "NEW CRITICAL"
   },
   "diag": {
     "tab": "Diagnostiikka",
