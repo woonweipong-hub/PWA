@@ -5693,9 +5693,11 @@ function useVoice(){
   const[listening,setListening]=useState(false);
   const[supported]=useState(()=>"webkitSpeechRecognition" in window||"SpeechRecognition" in window);
   const[lastError,setLastError]=useState("");
+  const[lastResult,setLastResult]=useState("");
   const recRef=useRef(null);
   const wantOnRef=useRef(false);   // user intent — keep listening until explicit stop
   const onResultRef=useRef(null);  // latest callback (so closures don't capture stale state)
+  const interimRef=useRef("");     // buffer the latest interim transcript so we can commit it on stop/end if no final ever fired (some Chrome Android builds in continuous mode never finalise)
   const _build=useCallback(()=>{
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
     const rec=new SR();
@@ -5715,6 +5717,15 @@ function useVoice(){
       }
     };
     rec.onend=()=>{
+      // If the user stopped without any final result, commit the latest
+      // interim transcript so the field still updates. Without this, mobile
+      // browsers that never set isFinal=true would leave the field empty
+      // even though the speech was captured.
+      if(!wantOnRef.current&&interimRef.current&&onResultRef.current){
+        const tx=interimRef.current.trim();
+        if(tx){onResultRef.current(tx);setLastResult(tx);}
+        interimRef.current="";
+      }
       if(wantOnRef.current){
         try{rec.start();}catch{wantOnRef.current=false;setListening(false);}
       }else{
@@ -5724,9 +5735,16 @@ function useVoice(){
     rec.onresult=(e)=>{
       for(let i=e.resultIndex;i<e.results.length;i++){
         const r=e.results[i];
-        if(!r||!r.isFinal)continue;
+        if(!r)continue;
         const tx=((r[0]&&r[0].transcript)||"").trim();
-        if(tx&&onResultRef.current)onResultRef.current(tx);
+        if(!tx)continue;
+        if(r.isFinal){
+          if(onResultRef.current)onResultRef.current(tx);
+          setLastResult(tx);
+          interimRef.current="";
+        }else{
+          interimRef.current=tx;
+        }
       }
     };
     return rec;
@@ -5757,7 +5775,7 @@ function useVoice(){
     wantOnRef.current=false;
     try{recRef.current&&recRef.current.stop();}catch{}
   },[]);
-  return{listening,supported,lastError,toggle,start,stop};
+  return{listening,supported,lastError,lastResult,toggle,start,stop};
 }
 
 // Per-field mic toggle. The inner callback now reads currentValue from a
@@ -11345,9 +11363,19 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
 
   const handleSpeakIssue=()=>{
     speakVoice.toggle(transcript=>{
-      setSpeakTranscript(transcript);
-      if(!form.title.trim())set("title",transcript.split(/\s+/).slice(0,10).join(" "));
-      if(!form.description.trim())set("description",transcript);
+      // Use functional setForm so the closure-captured form value can't
+      // hide later state — multiple final results in one session would
+      // otherwise keep seeing the empty-title check pass and overwrite
+      // each other. Title takes the first ~10 words of the first
+      // utterance only; subsequent utterances append to description so
+      // hands-free dictation accumulates instead of replacing.
+      setSpeakTranscript(prev=>prev?prev+" "+transcript:transcript);
+      setForm(f=>{
+        const next={...f};
+        if(!f.title.trim())next.title=transcript.split(/\s+/).slice(0,10).join(" ");
+        next.description=f.description&&f.description.trim()?f.description.trimEnd()+" "+transcript:transcript;
+        return next;
+      });
     });
   };
 
