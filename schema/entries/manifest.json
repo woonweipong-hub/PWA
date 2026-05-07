@@ -175,8 +175,10 @@
       "version": "1.0.0",
       "description": "BCA Buildable Design Score (B-Score) site-observation variant per Code of Practice on Buildability, 1 May 2022 ed. Captures structural / wall / DfMA evidence visible in a photo so the project's B-Score calculator (Manpower Allocation × Point Allocation per Block × Min B-Score per project category) has documented site evidence. Severity is reinterpreted as buildability impact: Critical = below MIN B-SCORE gate, Major = significant labour penalty / wet-trade where prefab specified, Minor = inefficient detail, Observation = informational. Sources: BCA COP on Buildability (1 May 2022 ed.), Buildable Design Score Calculator BS-01 BIP.",
       "extra_columns": [
+        { "header": "Project Category", "property": "project_category", "required": false },
         { "header": "Structural System", "property": "structural_system", "required": false },
         { "header": "Wall System", "property": "wall_system", "required": false },
+        { "header": "MEP System", "property": "mep_system", "required": false },
         { "header": "Prefab Evidence", "property": "prefab_evidence", "required": false },
         { "header": "DfMA Indicator", "property": "dfma_indicator", "required": false },
         { "header": "Buildability Concern", "property": "buildability_concern", "required": false }
@@ -195,7 +197,9 @@
         { "header": "QM Defect Category", "property": "qm_defect_category", "required": true },
         { "header": "Major Defect", "property": "qm_major_defect", "required": false },
         { "header": "QM Inspection Type", "property": "qm_inspection_type", "required": false },
-        { "header": "CONQUAS Edition", "property": "qm_conquas_edition", "required": false }
+        { "header": "CONQUAS Edition", "property": "qm_conquas_edition", "required": false },
+        { "header": "Dwelling Unit No", "property": "qm_dwelling_unit_no", "required": false },
+        { "header": "Household Shelter", "property": "qm_household_shelter", "required": false }
       ],
       "ai_prompt_hint": "Quality Mark Assessment mode: BCA Quality Mark for Good Workmanship per Guide on QM Scheme (Rev 22 May 2025) — internal-finish quality assessment of private residential, not defect-liability grading. Reinterpret severity as QM impact — Critical = major defect (per QM Guide §2.9: missing/broken accessories, cracked/chipped/broken glass items, visibly cracked tiles/timber/ceiling/painted walls, functionally deficient doors / windows / wardrobes / cabinets / taps / WC / switches, fan-coil leaking, water seepage, misaligned door frame >3mm verticality), Major = scoring defect, Minor = scoring defect of lesser weightage, Observation = passes. Always emit qm_arch_item VERBATIM from {Floor / Internal Wall / Ceiling / Door / Window / Component / M&E Fittings}. Always emit qm_defect_category VERBATIM from {Finishing / Alignment & Evenness / Crack & Damages / Hollowness / Jointing / Roughness / Joints & Gap / Material & Damages / Functionality / Accessories Defects} — Hollowness applies only to Floor / Internal Wall, Roughness only to Ceiling, Jointing only to Floor / Internal Wall / Ceiling, and Joints & Gap / Material & Damages / Functionality / Accessories Defects only to Door / Window / Component / M&E Fittings. Set qm_major_defect=true when the issue matches any QM Guide §2.9 example. Emit qm_inspection_type from {Internal Finish / Waterponding - Bathroom / Waterponding - Roof / Planter / Space-above-bedroom / Window Watertightness / In-Process - Waterproofing / In-Process - Stone Tiling / In-Process - Timber Flooring / In-Process - Window Installation}. Emit qm_conquas_edition from {CONQUAS 9th Edition / CONQUAS 2019 / CONQUAS 2022}; CONQUAS 2022 applies to construction tenders called from 1 June 2022."
     }

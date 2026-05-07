@@ -12,6 +12,20 @@
     {
       "type": "object",
       "properties": {
+        "project_category": {
+          "type": "string",
+          "x-csv-header": "Project Category",
+          "enum": [
+            "Residential (Landed)",
+            "Private Residential (Non-Landed)",
+            "Public Residential (Non-Landed)",
+            "Industrial",
+            "Commercial",
+            "Institutional, School & Others",
+            "MRT Station"
+          ],
+          "description": "BCA COP 2022 Manpower Allocation table — verbatim project-category names. Drives which weightage column applies in the Point Allocation matrix. PPVC scores 35 pts for Private Residential (Non-Landed) but 45 for Public Residential, 50 for MRT/Industrial, and 35 for Commercial / School / Institutional / Others. Ideally captured at project level (single value per project), not per-photo — surfaced here so the AI can preserve it on every photo until a project-level field exists."
+        },
         "structural_system": {
           "type": "string",
           "x-csv-header": "Structural System",
@@ -33,14 +47,37 @@
           "type": "string",
           "x-csv-header": "Wall System",
           "enum": [
-            "ALC Panel",
-            "Drywall",
-            "Precast Concrete",
-            "Cast-in-situ Brick / Block",
-            "Lightweight Panel",
-            "Other"
+            "PPVC",
+            "Prefabricated and prefinished wall with MEP services",
+            "Prefabricated Bathroom Unit (PBU)",
+            "Prefabricated and prefinished wall",
+            "Precast wall off-form",
+            "Drywall partition",
+            "Curtain wall / Full height glass partition",
+            "Precast wall",
+            "Lightweight concrete panel",
+            "Cast in-situ wall",
+            "Precision blockwall",
+            "Brickwall / blockwall"
           ],
-          "description": "Section B (Wall System) of the COP 2022 buildability matrix. Used to score the wall component of the Buildable Design Score."
+          "description": "BCA COP 2022 Section B Architectural System (Wall) — verbatim system names from the BS-01 BIP point matrix. Each system has a distinct point band per project category. Drywall partition for party-wall vs other-area distinction (4.1a vs 4.1b in the matrix) is tender-document level and not enforced here; the assessor records whichever the design specifies."
+        },
+        "mep_system": {
+          "type": "string",
+          "x-csv-header": "MEP System",
+          "enum": [
+            "PPVC",
+            "Prefabricated MEP modules integrated with structural",
+            "Prefabricated MEP vertical modules",
+            "Prefabricated MEP horizontal modules",
+            "Prefabricated MEP plant module",
+            "Flexible sprinkler dropper",
+            "Flexible water pipes",
+            "Common M&E bracket",
+            "Pre-insulated mechanical piping",
+            "Cast in-situ MEP services"
+          ],
+          "description": "BCA COP 2022 Section C MEP System — verbatim names from the BS-01 BIP point matrix. Captures the M&E productivity component of the Buildable Design Score (chilled water, sprinkler, water pipes, MEP modules, etc.)."
         },
         "prefab_evidence": {
           "type": "boolean",

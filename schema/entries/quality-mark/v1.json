@@ -73,6 +73,16 @@
             "CONQUAS 2022"
           ],
           "description": "Which CONQUAS edition the QM weightage table follows for this project. CONQUAS 2022 applies to construction tenders called from 1 June 2022. Earlier projects use the CONQUAS 9th Edition / 2019 weightage. QM threshold is 85 for projects with tender from 1 Jun 2020, otherwise 80."
+        },
+        "qm_dwelling_unit_no": {
+          "type": "string",
+          "x-csv-header": "Dwelling Unit No",
+          "description": "Identifier of the dwelling unit the photo was taken in (block + unit number, e.g. 'Blk 12 #08-103' or '#08-103'). The QM threshold (85 / 80) and Tiered Rating Avg QM Unit Score are computed per dwelling unit, so unit-level tagging is required for any aggregation. When unit number is not yet allocated (mock-up unit / construction phase), use the project-internal designation visible in the photo."
+        },
+        "qm_household_shelter": {
+          "type": "boolean",
+          "x-csv-header": "Household Shelter",
+          "description": "Flagged true when the photo is taken inside a household shelter (HS). The QM Internal Finish Assessment explicitly EXCLUDES household shelters per QM Guide §2.4(1) — flagged photos must be excluded from scoring even though they may carry valid defects. Defaults to false."
         }
       }
     }
