@@ -1896,9 +1896,33 @@ function PhotoMarkup({src,onSave,onCancel}){
           </>
         )}
         <div style={{flex:1}}/>
-        {selectedIdx!=null&&tool==="select"&&(
-          <button onClick={deleteSelected} style={{background:"rgba(255,59,48,0.25)",border:"1px solid rgba(255,59,48,0.45)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{t("actions.delete")}</button>
-        )}
+        {selectedIdx!=null&&tool==="select"&&(()=>{
+          // Show an EDIT button alongside DELETE when the selected
+          // stroke carries editable text — text annotations and
+          // callout / leader notes. Routes into the same modal each
+          // type already uses for creation, with the editing-idx
+          // state set so the modal renders in update mode (Cancel /
+          // Delete / Update buttons + pre-filled value). User-
+          // requested: previously the only way to edit a label was
+          // to switch to its specific tool and tap on it; this
+          // surfaces the action right where the stroke is selected.
+          const s=strokes[selectedIdx];
+          const isText=s&&s.type==="text";
+          const isCallout=s&&s.type==="callout";
+          const editable=isText||isCallout;
+          const openEdit=()=>{
+            if(isText){setEditingTextIdx(selectedIdx);setTextInput(s.pos);}
+            else if(isCallout){setEditingCalloutIdx(selectedIdx);setCalloutTextInput(s);}
+          };
+          return(
+            <>
+              {editable&&(
+                <button onClick={openEdit} style={{background:"rgba(255,107,0,0.25)",border:"1px solid rgba(255,107,0,0.45)",borderRadius:8,padding:"6px 10px",color:"#ffb784",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{t("actions.edit")}</button>
+              )}
+              <button onClick={deleteSelected} style={{background:"rgba(255,59,48,0.25)",border:"1px solid rgba(255,59,48,0.45)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{t("actions.delete")}</button>
+            </>
+          );
+        })()}
         <button onClick={undo} disabled={strokes.length===0} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"7px 12px",color:strokes.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.undo")}</button>
         <button onClick={redo} disabled={redoStack.length===0} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:"7px 12px",color:redoStack.length?"#fff":"rgba(255,255,255,0.3)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.redo")}</button>
       </div>
