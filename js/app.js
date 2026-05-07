@@ -1370,12 +1370,25 @@ function MarkupToolButton({id,title,active,accent="#5856d6",onClick}){
 }
 
 // ── Photo Markup Editor ──────────────────────────────────────────
-function PhotoMarkup({src,onSave,onCancel}){
+// PhotoMarkup — non-destructive markup editor.
+//
+// Save semantics: when SAVE is tapped, onSave is called with an object
+// {dataUrl, strokes}. The dataUrl is the flattened JPEG (used for
+// display + export). The strokes array is the raw vector data for each
+// annotation, so the parent can persist it alongside the photo and
+// pre-load it on re-open via the initialStrokes prop. This lets users
+// edit / move / delete individual labels and shapes after a previous
+// save instead of treating them as locked-in pixels.
+//
+// Older callers that destructure the dataUrl as the first argument
+// (LOG legacy path) are still supported via a back-compat shim — see
+// the call site in onSave below.
+function PhotoMarkup({src,onSave,onCancel,initialStrokes}){
   const canvasRef=useRef();const overlayRef=useRef();
   const[tool,setTool]=useState("arrow"); // arrow, circle, rect, line, dimension, freehand, text, cloud, callout, highlight, polyline, stamp
   const[color,setColor]=useState("#ff3b30");
   const[lineStyle,setLineStyle]=useState("solid");
-  const[strokes,setStrokes]=useState([]);
+  const[strokes,setStrokes]=useState(()=>Array.isArray(initialStrokes)?initialStrokes.slice():[]);
   const[redoStack,setRedoStack]=useState([]);
   const[current,setCurrent]=useState(null);
   const[imgLoaded,setImgLoaded]=useState(false);
@@ -1818,7 +1831,10 @@ function PhotoMarkup({src,onSave,onCancel}){
         alert("Markup save failed: exported image is empty.");
         return;
       }
-      onSave(dataUrl);
+      // Pass both the flattened JPEG (for display / export) and the raw
+      // strokes array (for re-edit on next open). Strokes are JSON-
+      // serialisable — the parent stores them in markupStrokes.
+      onSave({dataUrl,strokes:strokes.slice()});
     }catch(e){
       alert("Markup save failed: "+(e?.message||e));
     }
@@ -12095,7 +12111,21 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       {/* Photo Markup Editor */}
       {markupIdx!==null&&form.photos[markupIdx]&&(
         <PhotoMarkup src={form.photos[markupIdx]}
-          onSave={dataUrl=>{setForm(f=>({...f,photos:f.photos.map((p,i)=>i===markupIdx?dataUrl:p)}));setMarkupIdx(null);}}
+          // LOG carries strokes per photo in form.photoStrokes — a
+          // parallel array indexed alongside form.photos. When the
+          // entry is later saved, the strokes are serialised into
+          // markupStrokes JSON so REVIEW > MARKUP can re-edit them.
+          initialStrokes={(form.photoStrokes||[])[markupIdx]||[]}
+          onSave={({dataUrl,strokes})=>{
+            setForm(f=>{
+              const ps=f.photos.map((p,i)=>i===markupIdx?dataUrl:p);
+              const baseStrokes=Array.isArray(f.photoStrokes)?f.photoStrokes.slice():[];
+              while(baseStrokes.length<ps.length)baseStrokes.push([]);
+              baseStrokes[markupIdx]=Array.isArray(strokes)?strokes:[];
+              return{...f,photos:ps,photoStrokes:baseStrokes};
+            });
+            setMarkupIdx(null);
+          }}
           onCancel={()=>setMarkupIdx(null)}/>
       )}
       {showWebcam&&(
@@ -14487,17 +14517,23 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
   // Before/After photo markup state
   const[markupBA,setMarkupBA]=useState(null); // "before" | "after" | null
   // Full-screen photo viewer state. When opening, the caller may also
-  // hand over a save callback (viewerSaveRef) so MARKUP from the viewer
-  // can persist back to the right place — main photo, an extra-photo
-  // index, or a comment photo. When viewerSaveRef.current is null, no
-  // MARKUP button is rendered.
+  // hand over a save callback (viewerSaveRef), an alternate edit-time
+  // source (viewerEditSrcRef — typically photoOriginal if preserved
+  // so re-edits start from clean bytes), and the strokes to pre-load
+  // (viewerEditStrokesRef) so PhotoMarkup launches in editable state.
+  // When viewerSaveRef.current is null, no MARKUP button renders.
   const[viewerPhoto,setViewerPhoto]=useState(null);
   const viewerSaveRef=useRef(null);
+  const viewerEditSrcRef=useRef(null);
+  const viewerEditStrokesRef=useRef([]);
   const[markupFromViewer,setMarkupFromViewer]=useState(false);
-  // Open the viewer with an optional save callback. Centralised so each
-  // <img onClick={...}> stays a one-liner.
-  const openViewer=useCallback((src,onSave)=>{
+  // Open the viewer with an optional save callback + non-destructive
+  // edit metadata. Centralised so each <img onClick={...}> stays a
+  // one-liner.
+  const openViewer=useCallback((src,onSave,editSrc,editStrokes)=>{
     viewerSaveRef.current=onSave||null;
+    viewerEditSrcRef.current=editSrc||null;
+    viewerEditStrokesRef.current=Array.isArray(editStrokes)?editStrokes:[];
     setViewerPhoto(src);
   },[]);
   const[showSignPad,setShowSignPad]=useState(false);
@@ -14605,11 +14641,18 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
     setEditingCommentIdx(null);setEditingCommentText("");
   };
 
-  // Save markup on a comment photo
-  const saveCommentMarkup=async(dataUrl)=>{
+  // Save markup on a comment photo (per-comment ✏ MARKUP button path).
+  // Payload shape: { dataUrl, strokes }. Comment carries photoOriginal
+  // (set on first edit) + markupStrokes for non-destructive re-edit.
+  const saveCommentMarkup=async(payload)=>{
     if(markupCommentIdx===null)return;
+    const dataUrl=typeof payload==="string"?payload:payload?.dataUrl;
+    const strokes=Array.isArray(payload?.strokes)?payload.strokes:[];
+    if(!dataUrl){setMarkupCommentIdx(null);return;}
     const comments=[...(latestRef.current.comments||[])];
-    comments[markupCommentIdx]={...comments[markupCommentIdx],photo:dataUrl,editedAt:Date.now()};
+    const c=comments[markupCommentIdx]||{};
+    const photoOriginal=c.photoOriginal||c.photo;
+    comments[markupCommentIdx]={...c,photo:dataUrl,photoOriginal,markupStrokes:strokes,editedAt:Date.now()};
     try{
       await DB.defects.update(defect.id,{comments});
       latestRef.current={...latestRef.current,comments};
@@ -14618,72 +14661,142 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
     setMarkupCommentIdx(null);
   };
 
-  // Save markup on before/after photos
-  const saveBAMarkup=async(dataUrl)=>{
+  // Save markup on before/after photos. "before" routes to the main
+  // photo (multipart PATCH via saveMainPhotoMarkup so photoOriginal +
+  // markupStrokes are preserved); "after" routes to the verification
+  // comment's photo (JSON update with photoOriginal + markupStrokes
+  // attached to the comment object). Payload shape: {dataUrl, strokes}.
+  const saveBAMarkup=async(payload)=>{
     if(!markupBA)return;
     try{
       if(markupBA==="before"){
-        // Update the original photo
-        const photos=Array.isArray(latestRef.current.photo)?[...latestRef.current.photo]:[latestRef.current.photo];
-        photos[0]=dataUrl;
-        await DB.defects.update(defect.id,{photo:photos.length===1?photos[0]:photos});
-        latestRef.current={...latestRef.current,photo:photos.length===1?photos[0]:photos};
+        await saveMainPhotoMarkup(payload,0);
       }else{
-        // Update the verification comment photo (after)
+        const dataUrl=typeof payload==="string"?payload:payload?.dataUrl;
+        const strokes=Array.isArray(payload?.strokes)?payload.strokes:[];
+        if(!dataUrl)throw new Error("No image data to save");
         const comments=[...(latestRef.current.comments||[])];
         const idx=comments.findIndex(c=>c.text?.startsWith("✅")&&c.photo);
-        if(idx>=0){comments[idx]={...comments[idx],photo:dataUrl,editedAt:Date.now()};
+        if(idx>=0){
+          const c=comments[idx];
+          const photoOriginal=c.photoOriginal||c.photo;
+          comments[idx]={...c,photo:dataUrl,photoOriginal,markupStrokes:strokes,editedAt:Date.now()};
           await DB.defects.update(defect.id,{comments});
           latestRef.current={...latestRef.current,comments};
+          onUpdate({...latestRef.current});
         }
       }
-      onUpdate({...latestRef.current});
     }catch(e){alert("Failed to save markup: "+e.message);}
     setMarkupBA(null);
   };
 
-  // Save markup on the main photo. defect.photo is a PocketBase
-  // multi-file field — its values come back as URL strings of the form
-  // .../api/files/defects/{recordId}/{filename}. To replace just one
-  // entry we extract the filename from the URL and PATCH via multipart
-  // (deleting the old filename + uploading the new annotated blob in
-  // one round-trip). After the server replies, re-derive the display
-  // URLs for the new file list and propagate via onUpdate so the
-  // lightbox immediately shows the saved version.
-  const saveMainPhotoMarkup=useCallback(async(dataUrl,idx)=>{
+  // Save markup on the main photo — non-destructive: the un-marked
+  // photo is preserved under photoOriginal on first edit so future
+  // re-edits start from the clean source rather than re-flattening
+  // a flattened version (avoiding JPEG compounding) and so the
+  // strokes drawn this session are stored as JSON in markupStrokes
+  // for editable re-open.
+  //
+  // Payload shape: { dataUrl, strokes } where dataUrl is the flat
+  // JPEG and strokes is the editable vector array. Backwards-
+  // compatible: a string positional arg is treated as just dataUrl
+  // (legacy), with strokes empty.
+  //
+  // photoOriginal preservation: only fires on the very first markup
+  // edit of a photo. After that, photoOriginal stays untouched so
+  // subsequent re-edits read from the same clean source.
+  //
+  // markupStrokes structure: an object keyed by photo index — e.g.
+  // { "0": [...], "2": [...] } — so a multi-photo defect can carry
+  // independent strokes for each photo without index-shift bugs.
+  const saveMainPhotoMarkup=useCallback(async(payload,idx)=>{
     try{
+      const dataUrl=typeof payload==="string"?payload:payload?.dataUrl;
+      const strokes=Array.isArray(payload?.strokes)?payload.strokes:[];
+      if(!dataUrl)throw new Error("No image data to save");
       const cur=latestRef.current.photo;
       const targetIdx=idx==null?0:idx;
       const oldUrl=Array.isArray(cur)?cur[targetIdx]:cur;
       // URL form: .../api/files/{collection}/{recordId}/{filename}
-      const m=typeof oldUrl==="string"?oldUrl.match(/\/api\/files\/[^/]+\/[^/]+\/([^/?#]+)/):null;
-      const oldFilename=m?decodeURIComponent(m[1]):null;
-      // If the existing value isn't a remote file URL (e.g. data URL
-      // for an offline-queued entry), no delete is needed — just
-      // upload as the new file.
-      const updated=await DB.defects.updateReplaceFile(defect.id,"photo",dataUrl,oldFilename,`markup_${Date.now()}.jpg`);
-      // Re-derive display URLs from the returned record's photo field
-      // (which is back to filenames after PB persists).
+      const extractFilename=(url)=>{
+        const m=typeof url==="string"?url.match(/\/api\/files\/[^/]+\/[^/]+\/([^/?#]+)/):null;
+        return m?decodeURIComponent(m[1]):null;
+      };
+      const oldFilename=extractFilename(oldUrl);
+
+      // Determine whether the original needs to be preserved this
+      // round. photoOriginal isn't part of the normalised defect
+      // shape (raw record only), so we read it via the latest fetch
+      // helper. If the field is empty / not yet a record array, this
+      // is the first markup edit on this photo — copy the current
+      // pre-flatten bytes to photoOriginal before we overwrite photo.
+      let preserveOriginal=null;
+      try{
+        const raw=await DB.defects.get(defect.id);
+        const poList=raw&&raw.photoOriginal;
+        const hasOriginal=Array.isArray(poList)?poList[targetIdx]:poList;
+        if(!hasOriginal&&typeof oldUrl==="string"&&oldUrl){
+          // Fetch the pre-edit photo bytes and feed them through PB
+          // as photoOriginal[targetIdx] in the same multipart PATCH.
+          const r=await fetch(oldUrl,{mode:"cors",credentials:"omit"});
+          if(r.ok){
+            const blob=await r.blob();
+            preserveOriginal={blob,name:`original_${Date.now()}.jpg`};
+          }
+        }
+      }catch{}
+
+      // Build multipart PATCH: replace photo[targetIdx], optionally
+      // append to photoOriginal, and store strokes JSON (keyed map
+      // so multiple photos can each carry their own stroke list).
+      const fd=new FormData();
+      const flatBlob=DB.defects._b64toBlob(dataUrl);
+      if(!flatBlob)throw new Error("Could not decode flat image data URL");
+      if(oldFilename)fd.append("photo-",oldFilename);
+      fd.append("photo",flatBlob,`markup_${Date.now()}.jpg`);
+      if(preserveOriginal){
+        fd.append("photoOriginal",preserveOriginal.blob,preserveOriginal.name);
+      }
+      // Merge strokes into existing markupStrokes object
+      const existingStrokes=(latestRef.current&&typeof latestRef.current.markupStrokes==="object"&&latestRef.current.markupStrokes)||{};
+      const nextStrokes={...existingStrokes,[String(targetIdx)]:strokes};
+      fd.append("markupStrokes",JSON.stringify(nextStrokes));
+
+      const updated=await DB.defects.rawPatch(defect.id,fd);
+
+      // Re-derive display URLs from returned record's photo field.
       let nextPhoto=updated?.photo;
       if(Array.isArray(nextPhoto)&&nextPhoto.length>0){
         nextPhoto=nextPhoto.map(f=>DB.fileUrl("defects",updated.id,f));
       }else if(typeof nextPhoto==="string"&&nextPhoto){
         nextPhoto=DB.fileUrl("defects",updated.id,nextPhoto);
       }
-      latestRef.current={...latestRef.current,photo:nextPhoto};
+      latestRef.current={...latestRef.current,photo:nextPhoto,markupStrokes:nextStrokes,photoOriginal:updated?.photoOriginal};
       onUpdate({...latestRef.current});
     }catch(e){alert("Failed to save markup: "+(e?.message||e));}
   },[defect?.id,onUpdate]);
 
-  // Save markup on a specific comment photo by index. Comments may also
-  // get updated by saveCommentMarkup (the existing per-comment ✏ MARKUP
-  // button) — this version is for the lightbox path where we know the
-  // comment index from the click that opened the viewer.
-  const saveCommentPhotoMarkupAt=useCallback(async(dataUrl,idx)=>{
+  // Save markup on a specific comment photo by index. Comments are
+  // stored in the JSON `comments` field on the defect, so each
+  // comment can carry its own photoOriginal data URL + markupStrokes
+  // array inline — no separate file fields needed (data URLs in JSON
+  // aren't ideal at scale, but the comment-photo flow already used
+  // data URLs before this change, so we just attach the editable
+  // metadata alongside).
+  //
+  // Payload shape: { dataUrl, strokes }. Backwards-compatible with a
+  // bare string positional arg.
+  const saveCommentPhotoMarkupAt=useCallback(async(payload,idx)=>{
     try{
+      const dataUrl=typeof payload==="string"?payload:payload?.dataUrl;
+      const strokes=Array.isArray(payload?.strokes)?payload.strokes:[];
+      if(!dataUrl)throw new Error("No image data to save");
       const comments=[...(latestRef.current.comments||[])];
       if(!comments[idx])return;
-      comments[idx]={...comments[idx],photo:dataUrl,editedAt:Date.now()};
+      const c=comments[idx];
+      // Preserve original on first markup edit
+      const photoOriginal=c.photoOriginal||c.photo;
+      comments[idx]={...c,photo:dataUrl,photoOriginal,markupStrokes:strokes,editedAt:Date.now()};
       await DB.defects.update(defect.id,{comments});
       latestRef.current={...latestRef.current,comments};
       onUpdate({...latestRef.current});
@@ -14855,10 +14968,18 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
           return afterPhoto&&origPhoto?(
             <BeforeAfter before={origPhoto} after={afterPhoto} onMarkup={canUpdate?(which=>setMarkupBA(which)):null}/>
           ):typeof defect.photo==="string"
-            ?<img src={defect.photo} alt="" onClick={()=>openViewer(defect.photo,canUpdate?(d=>saveMainPhotoMarkup(d)):null)} style={{maxWidth:"100%",borderRadius:12,maxHeight:350,objectFit:"contain",display:"block",marginBottom:14,background:"#f8f8f6",cursor:"pointer"}} title="Tap to view full screen"/>
+            ?<img src={defect.photo} alt="" onClick={()=>{
+                const editSrc=(typeof defect.photoOriginal==="string"&&defect.photoOriginal)||(Array.isArray(defect.photoOriginal)&&defect.photoOriginal[0])||defect.photo;
+                const editStrokes=(defect.markupStrokes&&defect.markupStrokes["0"])||[];
+                openViewer(defect.photo,canUpdate?(p=>saveMainPhotoMarkup(p,0)):null,editSrc,editStrokes);
+              }} style={{maxWidth:"100%",borderRadius:12,maxHeight:350,objectFit:"contain",display:"block",marginBottom:14,background:"#f8f8f6",cursor:"pointer"}} title="Tap to view full screen"/>
             :Array.isArray(defect.photo)&&defect.photo.length>0
               ?<div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8,marginBottom:14}}>
-                {defect.photo.map((p,i)=><img key={i} src={p} alt="" onClick={()=>openViewer(p,canUpdate?(d=>saveMainPhotoMarkup(d,i)):null)} style={{height:180,borderRadius:12,objectFit:"cover",flexShrink:0,cursor:"pointer"}} title="Tap to view full screen"/>)}
+                {defect.photo.map((p,i)=><img key={i} src={p} alt="" onClick={()=>{
+                  const editSrc=(Array.isArray(defect.photoOriginal)&&defect.photoOriginal[i])||p;
+                  const editStrokes=(defect.markupStrokes&&defect.markupStrokes[String(i)])||[];
+                  openViewer(p,canUpdate?(payload=>saveMainPhotoMarkup(payload,i)):null,editSrc,editStrokes);
+                }} style={{height:180,borderRadius:12,objectFit:"cover",flexShrink:0,cursor:"pointer"}} title="Tap to view full screen"/>)}
               </div>
               :null;
         })()}
@@ -15133,16 +15254,34 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
           )}
         </div>
       </div>
-      {/* Comment photo markup modal */}
-      {markupCommentIdx!==null&&(latestRef.current.comments||[])[markupCommentIdx]?.photo&&(
-        <PhotoMarkup src={(latestRef.current.comments||[])[markupCommentIdx].photo} onSave={saveCommentMarkup} onCancel={()=>setMarkupCommentIdx(null)}/>
-      )}
-      {/* Before/After photo markup modal */}
+      {/* Comment photo markup modal — non-destructive: edits start
+          from the preserved comment.photoOriginal (set on first edit)
+          and pre-load comment.markupStrokes so previously-drawn
+          annotations are individually editable on re-open. */}
+      {markupCommentIdx!==null&&(latestRef.current.comments||[])[markupCommentIdx]?.photo&&(()=>{
+        const c=(latestRef.current.comments||[])[markupCommentIdx];
+        const editSrc=c.photoOriginal||c.photo;
+        const editStrokes=Array.isArray(c.markupStrokes)?c.markupStrokes:[];
+        return <PhotoMarkup src={editSrc} initialStrokes={editStrokes} onSave={saveCommentMarkup} onCancel={()=>setMarkupCommentIdx(null)}/>;
+      })()}
+      {/* Before/After photo markup modal — same non-destructive
+          model. "before" routes through the main-photo path with
+          photoOriginal + markupStrokes["0"]; "after" reads the
+          verification comment's photoOriginal + markupStrokes. */}
       {markupBA&&(()=>{
         const origPhoto=typeof latestRef.current.photo==="string"?latestRef.current.photo:Array.isArray(latestRef.current.photo)&&latestRef.current.photo[0]?latestRef.current.photo[0]:null;
         const verifyComment=(latestRef.current.comments||[]).find(c=>c.text?.startsWith("✅")&&c.photo);
-        const src=markupBA==="before"?origPhoto:verifyComment?.photo;
-        return src?<PhotoMarkup src={src} onSave={saveBAMarkup} onCancel={()=>setMarkupBA(null)}/>:null;
+        if(markupBA==="before"){
+          if(!origPhoto)return null;
+          const editSrc=(typeof latestRef.current.photoOriginal==="string"&&latestRef.current.photoOriginal)||(Array.isArray(latestRef.current.photoOriginal)&&latestRef.current.photoOriginal[0])||origPhoto;
+          const editStrokes=(latestRef.current.markupStrokes&&latestRef.current.markupStrokes["0"])||[];
+          return <PhotoMarkup src={editSrc} initialStrokes={editStrokes} onSave={saveBAMarkup} onCancel={()=>setMarkupBA(null)}/>;
+        }
+        const c=verifyComment;
+        if(!c)return null;
+        const editSrc=c.photoOriginal||c.photo;
+        const editStrokes=Array.isArray(c.markupStrokes)?c.markupStrokes:[];
+        return <PhotoMarkup src={editSrc} initialStrokes={editStrokes} onSave={saveBAMarkup} onCancel={()=>setMarkupBA(null)}/>;
       })()}
       {/* Full-screen photo viewer modal */}
       {/* Lightbox + markup are mutually exclusive: PhotoMarkup uses
@@ -15154,20 +15293,26 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
           cancel — viewerPhoto is unchanged on cancel). */}
       {viewerPhoto&&!markupFromViewer&&<PhotoViewer src={viewerPhoto} onClose={()=>{setViewerPhoto(null);viewerSaveRef.current=null;}} onMarkup={viewerSaveRef.current?(()=>setMarkupFromViewer(true)):undefined}/>}
       {markupFromViewer&&viewerPhoto&&viewerSaveRef.current&&(
-        <PhotoMarkup src={viewerPhoto}
-          onSave={(dataUrl)=>{
+        <PhotoMarkup
+          // Source for editing: prefer the preserved original (so
+          // re-edits don't compound JPEG compression on the flat
+          // version); fall back to the displayed photo when no
+          // original is preserved yet (first-edit / legacy entries).
+          src={viewerEditSrcRef.current||viewerPhoto}
+          initialStrokes={viewerEditStrokesRef.current}
+          onSave={(payload)=>{
             // Optimistic UI: close the markup overlay and reopen the
             // viewer with the annotated image immediately so the SAVE
-            // tap is visibly responsive. The DB.defects.update call
-            // (via viewerSaveRef.current) runs in the background; if
-            // it fails the user sees an alert but the local view is
-            // already updated. Without this, a slow / failed network
-            // write made SAVE look broken — user-reported.
+            // tap is visibly responsive. The DB.defects update (via
+            // viewerSaveRef.current) runs in the background; if it
+            // fails the user sees an alert but the local view is
+            // already updated.
             const persist=viewerSaveRef.current;
+            const dataUrl=payload?.dataUrl;
             setMarkupFromViewer(false);
             setViewerPhoto(dataUrl);
             if(typeof persist==="function"){
-              Promise.resolve().then(()=>persist(dataUrl)).catch(e=>{
+              Promise.resolve().then(()=>persist(payload)).catch(e=>{
                 alert("Failed to save markup to server: "+(e?.message||e)+"\n\nThe annotated photo is shown locally but may not be persisted on reload.");
               });
             }
@@ -24908,7 +25053,16 @@ function App(){
         }else if(typeof photo==="string"&&photo){
           photo=DB.fileUrl("defects",d.id,photo);
         }
-        return{...d,photo};
+        // Same expansion for photoOriginal — preserved un-marked
+        // photos used by PhotoMarkup re-edit so subsequent edits
+        // start from the clean source rather than re-flattening.
+        let photoOriginal=d.photoOriginal;
+        if(Array.isArray(photoOriginal)&&photoOriginal.length>0){
+          photoOriginal=photoOriginal.map(f=>DB.fileUrl("defects",d.id,f));
+        }else if(typeof photoOriginal==="string"&&photoOriginal){
+          photoOriginal=DB.fileUrl("defects",d.id,photoOriginal);
+        }
+        return{...d,photo,photoOriginal};
       });
       // Split active vs archived — anything with a non-empty archivedAt is
       // soft-deleted and hidden from the main views.

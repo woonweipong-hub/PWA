@@ -2280,6 +2280,16 @@
       },
       {
         "hidden": false,
+        "id": "json2825371108",
+        "maxSize": 0,
+        "name": "markupStrokes",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "json"
+      },
+      {
+        "hidden": false,
         "id": "file3321035723",
         "maxSelect": 0,
         "maxSize": 0,

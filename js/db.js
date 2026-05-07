@@ -233,6 +233,27 @@ const DB = (() => {
         return apiJson(`/api/collections/${collection}/records/${id}`, 'PATCH', data);
       },
 
+      // Convert a base64 data URL into a Blob — used by markup save
+      // paths so the caller can build FormData with the resulting Blob.
+      // Returns null when the input isn't a data URL.
+      _b64toBlob(dataUrl) {
+        const parts = String(dataUrl || '').split(',');
+        if (parts.length !== 2) return null;
+        const mime = parts[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+        const bytes = atob(parts[1]);
+        const arr = new Uint8Array(bytes.length);
+        for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+        return new Blob([arr], { type: mime });
+      },
+
+      // Raw multipart PATCH against a record. Caller builds FormData
+      // with whatever combination of file fields + JSON fields it
+      // needs. Used by markup save paths that want to update photo +
+      // photoOriginal + markupStrokes in a single round-trip.
+      async rawPatch(id, formData) {
+        return api(`/api/collections/${collection}/records/${id}`, { method: 'PATCH', body: formData });
+      },
+
       // Replace a single file in a multi-file PocketBase field via
       // multipart PATCH. Used by REVIEW > MARKUP to write an annotated
       // version of an existing saved photo back to the same record.
