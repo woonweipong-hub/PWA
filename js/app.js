@@ -11492,7 +11492,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       })()}
 
       {/* ── 0. WORK CATEGORY — Step 1; sets AI variant context; pick before capturing ── */}
-      <ComboField label={<>{t("fields.work_category")}<span style={{fontSize:10,fontWeight:800,color:"rgba(88,86,214,0.85)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_1_scope")}</span></>} value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")} displayFn={workcatDisplayFn}/>
+      <ComboField label={<>{t("fields.work_category")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_1_scope")}</span></>} value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")} displayFn={workcatDisplayFn}/>
       {(()=>{const v=_getAiVariant(form.workCategory);if(!v||!v.addendum)return null;return(
         <div style={{marginTop:-10,marginBottom:12,padding:"8px 12px",borderRadius:8,background:"rgba(88,86,214,0.06)",borderLeft:"3px solid #5856d6",fontSize:11,color:"rgba(0,0,0,0.65)",fontFamily:"'Barlow Condensed',sans-serif",lineHeight:1.4}}>
           <div style={{fontWeight:800,color:"#5856d6",letterSpacing:"0.06em",fontSize:9,marginBottom:3}}>{t("log.variant_hint_label")}</div>
@@ -11526,7 +11526,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
 
       {/* ── 1. TAKE PHOTO — big prominent capture ── */}
       <div style={{marginBottom:16}}>
-        <label style={lbl()}>{t("log.photos_count")} <span style={{fontSize:10,fontWeight:800,color:"rgba(88,86,214,0.85)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_2_capture")}</span>{form.photos.length>0?` (${form.photos.length})`:""}</label>
+        <label style={lbl()}>{t("log.photos_count")} <span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_2_capture")}</span>{form.photos.length>0?` (${form.photos.length})`:""}</label>
         <input type="file" accept="image/*" capture="environment" multiple ref={fileRef} onChange={handlePhoto} style={{display:"none"}}/>
         {/* Folder / multi-file picker for bulk import — webkitdirectory lets
             the user pick an entire folder on laptop + Android; iOS falls
@@ -11666,17 +11666,17 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       )}
 
       {/* ── 3. TITLE ── */}
-      <VoiceField label={<>{t("fields.title")}<span style={{fontSize:10,fontWeight:800,color:"rgba(88,86,214,0.85)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_3_title")}</span><ProvChip prov={form.fieldProvenance?.title}/></>} value={form.title} onChange={v=>set("title",v)} placeholder={t("fields.title_placeholder")}/>
+      <VoiceField label={<>{t("fields.title")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_3_title")}</span><ProvChip prov={form.fieldProvenance?.title}/></>} value={form.title} onChange={v=>set("title",v)} placeholder={t("fields.title_placeholder")}/>
 
       {/* ── 4. WHAT HAPPENED ── */}
-      <VoiceField label={<>{t("fields.what_happened")}<span style={{fontSize:10,fontWeight:800,color:"rgba(88,86,214,0.85)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_4_describe")}</span><ProvChip prov={form.fieldProvenance?.description}/></>} value={form.description} onChange={v=>set("description",v)} placeholder={t("fields.description_placeholder")} multiline/>
+      <VoiceField label={<>{t("fields.what_happened")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_4_describe")}</span><ProvChip prov={form.fieldProvenance?.description}/></>} value={form.description} onChange={v=>set("description",v)} placeholder={t("fields.description_placeholder")} multiline/>
 
       {/* ── 5. SEVERITY ── */}
-      <ComboField label={<>{t("fields.severity")}<span style={{fontSize:10,fontWeight:800,color:"rgba(88,86,214,0.85)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_5_severity")}</span><ProvChip prov={form.fieldProvenance?.severity}/></>} value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder={t("fields.severity_placeholder")} displayFn={sevDisplayFn}/>
+      <ComboField label={<>{t("fields.severity")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_5_severity")}</span><ProvChip prov={form.fieldProvenance?.severity}/></>} value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder={t("fields.severity_placeholder")} displayFn={sevDisplayFn}/>
 
       {/* ── MORE DETAILS accordion ── */}
       <button onClick={()=>setShowMoreDetails(!showMoreDetails)} style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:12,padding:"14px 16px",marginBottom:showMoreDetails?16:0,display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}}>
-        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"rgba(0,0,0,0.55)",letterSpacing:"0.06em"}}>{t("log.more_details")}<span style={{fontSize:10,fontWeight:800,color:"rgba(88,86,214,0.85)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_6_details")}</span></span>
+        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"rgba(0,0,0,0.55)",letterSpacing:"0.06em"}}>{t("log.more_details")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_6_details")}</span></span>
         <span style={{fontSize:12,color:"rgba(0,0,0,0.35)",transition:"transform 0.2s",transform:showMoreDetails?"rotate(180deg)":"rotate(0deg)"}}>▼</span>
       </button>
 
