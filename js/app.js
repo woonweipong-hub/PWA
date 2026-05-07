@@ -1393,11 +1393,42 @@ function PhotoMarkup({src,onSave,onCancel}){
   const undo=()=>{setStrokes(s=>{if(!s.length)return s;setRedoStack(r=>[...r,s[s.length-1]]);return s.slice(0,-1);});};
   const redo=()=>{setRedoStack(r=>{if(!r.length)return r;const item=r[r.length-1];setStrokes(s=>[...s,item]);return r.slice(0,-1);});};
 
-  // Load image
+  // Load image — but first untaint any cross-origin source so
+  // <canvas>.toDataURL() won't fail on save. PocketBase file URLs
+  // (api.siteshrimp.org/api/files/...) display fine via <img>, but
+  // drawing them into a canvas marks the canvas as tainted, which
+  // blocks export. We fetch the bytes and convert to a same-origin
+  // data URL before handing to the Image, so the canvas stays
+  // exportable. Data URLs and blob URLs are already same-origin
+  // and skip the fetch step.
   useEffect(()=>{
+    let cancelled=false;
     const img=imgRef.current;
-    img.onload=()=>{setImgLoaded(true);};
-    img.src=src;
+    img.onload=()=>{if(!cancelled)setImgLoaded(true);};
+    img.crossOrigin="anonymous"; // belt-and-braces — covers servers that DO send CORS
+    const isInline=typeof src==="string"&&(/^data:|^blob:/.test(src));
+    if(isInline){
+      img.src=src;
+    }else{
+      fetch(src,{mode:"cors",credentials:"omit"})
+        .then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.blob();})
+        .then(blob=>new Promise((resolve,reject)=>{
+          const fr=new FileReader();
+          fr.onload=()=>resolve(fr.result);
+          fr.onerror=()=>reject(new Error("FileReader failed"));
+          fr.readAsDataURL(blob);
+        }))
+        .then(dataUrl=>{if(!cancelled)img.src=dataUrl;})
+        .catch(err=>{
+          // Server doesn't allow CORS — fall back to direct src so
+          // the markup view still renders; the canvas will be
+          // tainted and SAVE will surface the explicit "tainted"
+          // alert from save() below.
+          try{console.warn("[PhotoMarkup] CORS fetch failed, falling back to direct src — markup save may fail",err);}catch{}
+          if(!cancelled)img.src=src;
+        });
+    }
+    return ()=>{cancelled=true;};
   },[src]);
 
   // Render all strokes
