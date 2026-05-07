@@ -14979,10 +14979,22 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
       {viewerPhoto&&!markupFromViewer&&<PhotoViewer src={viewerPhoto} onClose={()=>{setViewerPhoto(null);viewerSaveRef.current=null;}} onMarkup={viewerSaveRef.current?(()=>setMarkupFromViewer(true)):undefined}/>}
       {markupFromViewer&&viewerPhoto&&viewerSaveRef.current&&(
         <PhotoMarkup src={viewerPhoto}
-          onSave={async(dataUrl)=>{
-            try{await viewerSaveRef.current(dataUrl);}catch(e){alert("Failed to save markup: "+(e?.message||e));}
+          onSave={(dataUrl)=>{
+            // Optimistic UI: close the markup overlay and reopen the
+            // viewer with the annotated image immediately so the SAVE
+            // tap is visibly responsive. The DB.defects.update call
+            // (via viewerSaveRef.current) runs in the background; if
+            // it fails the user sees an alert but the local view is
+            // already updated. Without this, a slow / failed network
+            // write made SAVE look broken — user-reported.
+            const persist=viewerSaveRef.current;
             setMarkupFromViewer(false);
             setViewerPhoto(dataUrl);
+            if(typeof persist==="function"){
+              Promise.resolve().then(()=>persist(dataUrl)).catch(e=>{
+                alert("Failed to save markup to server: "+(e?.message||e)+"\n\nThe annotated photo is shown locally but may not be persisted on reload.");
+              });
+            }
           }}
           onCancel={()=>setMarkupFromViewer(false)}/>
       )}
