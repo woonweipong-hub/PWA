@@ -13023,10 +13023,9 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
           })}
         </div>
       )}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,gap:8}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4,gap:8}}>
         <div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>REVIEW <span style={{color:"rgba(0,0,0,0.3)",fontSize:18}}>({filtered.length})</span></div>
-          <div style={{fontSize:11,color:selectMode?"rgba(0,0,0,0.4)":"#5856d6",marginTop:1,fontFamily:"'Barlow',sans-serif"}}>{selectMode?`${selectedIds.size} ${t("review.selected_tip")}`:t("review.triage_desc")}</div>
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
           {(activeFilters>0||q)&&!selectMode&&<button onClick={clearAll} style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:20,padding:"4px 10px",color:"#ff3b30",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.clear")} ({activeFilters+(q?1:0)})</button>}
@@ -13080,6 +13079,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
           })()}
         </div>
       </div>
+      <div style={{fontSize:11,color:selectMode?"rgba(0,0,0,0.4)":"#5856d6",marginTop:1,marginBottom:12,fontFamily:"'Barlow',sans-serif"}}>{selectMode?`${selectedIds.size} ${t("review.selected_tip")}`:t("review.triage_desc")}</div>
 
       {/* Offline queue badge — visible so users know when entries are
           sitting in IndexedDB waiting for reconnect. Tap to manual-sync.
