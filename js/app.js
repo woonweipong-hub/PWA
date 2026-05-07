@@ -14947,11 +14947,14 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
         return src?<PhotoMarkup src={src} onSave={saveBAMarkup} onCancel={()=>setMarkupBA(null)}/>:null;
       })()}
       {/* Full-screen photo viewer modal */}
-      {viewerPhoto&&<PhotoViewer src={viewerPhoto} onClose={()=>{setViewerPhoto(null);viewerSaveRef.current=null;}} onMarkup={viewerSaveRef.current?(()=>setMarkupFromViewer(true)):undefined}/>}
-      {/* Markup overlay launched from the lightbox. The save callback was
-          captured by openViewer() at the moment the user tapped the photo,
-          so we know which photo to write back regardless of which photo
-          path was used (main / extra / comment). */}
+      {/* Lightbox + markup are mutually exclusive: PhotoMarkup uses
+          zIndex 300 while PhotoViewer uses 9999, so stacking them would
+          hide the markup editor behind the viewer. Render the viewer
+          ONLY when markup isn't active; render markup as a standalone
+          overlay when it is. After save / cancel the viewer reopens
+          (with the annotated dataUrl on save, or the original src on
+          cancel — viewerPhoto is unchanged on cancel). */}
+      {viewerPhoto&&!markupFromViewer&&<PhotoViewer src={viewerPhoto} onClose={()=>{setViewerPhoto(null);viewerSaveRef.current=null;}} onMarkup={viewerSaveRef.current?(()=>setMarkupFromViewer(true)):undefined}/>}
       {markupFromViewer&&viewerPhoto&&viewerSaveRef.current&&(
         <PhotoMarkup src={viewerPhoto}
           onSave={async(dataUrl)=>{
