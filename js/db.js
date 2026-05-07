@@ -233,6 +233,33 @@ const DB = (() => {
         return apiJson(`/api/collections/${collection}/records/${id}`, 'PATCH', data);
       },
 
+      // Replace a single file in a multi-file PocketBase field via
+      // multipart PATCH. Used by REVIEW > MARKUP to write an annotated
+      // version of an existing saved photo back to the same record.
+      // dataUrl: "data:image/jpeg;base64,..." — the marked-up image.
+      // fileField: e.g. "photo" — the multi-file field on the collection.
+      // oldFilename: the file to delete (extracted from existing URL).
+      // newName: optional filename for the new upload.
+      // Returns the updated record (raw from PB; caller normalizes URLs).
+      async updateReplaceFile(id, fileField, dataUrl, oldFilename, newName) {
+        // Convert data URL to a Blob (mirrors b64toBlob in defects.create)
+        const parts = String(dataUrl || '').split(',');
+        if (parts.length !== 2) throw new Error('Invalid data URL — cannot replace file');
+        const mime = parts[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+        const bytes = atob(parts[1]);
+        const arr = new Uint8Array(bytes.length);
+        for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+        const blob = new Blob([arr], { type: mime });
+
+        const fd = new FormData();
+        // PocketBase multipart syntax: `<field>-` (with trailing dash)
+        // marks named files for deletion; `<field>` uploads new files.
+        // Both can coexist in the same PATCH, so this is one round-trip.
+        if (oldFilename) fd.append(`${fileField}-`, oldFilename);
+        fd.append(fileField, blob, newName || `markup_${Date.now()}.jpg`);
+        return api(`/api/collections/${collection}/records/${id}`, { method: 'PATCH', body: fd });
+      },
+
       async delete(id) {
         return api(`/api/collections/${collection}/records/${id}`, { method: 'DELETE' });
       },

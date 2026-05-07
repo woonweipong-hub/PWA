@@ -2462,11 +2462,21 @@ const saveCommentEdit=async idx=>{if(!editingCommentText.trim())return;const com
 const saveCommentMarkup=async dataUrl=>{if(markupCommentIdx===null)return;const comments=[...(latestRef.current.comments||[])];comments[markupCommentIdx]={...comments[markupCommentIdx],photo:dataUrl,editedAt:Date.now()};try{await DB.defects.update(defect.id,{comments});latestRef.current={...latestRef.current,comments};onUpdate({...latestRef.current});}catch(e){alert("Failed to save markup: "+e.message);}setMarkupCommentIdx(null);};// Save markup on before/after photos
 const saveBAMarkup=async dataUrl=>{if(!markupBA)return;try{if(markupBA==="before"){// Update the original photo
 const photos=Array.isArray(latestRef.current.photo)?[...latestRef.current.photo]:[latestRef.current.photo];photos[0]=dataUrl;await DB.defects.update(defect.id,{photo:photos.length===1?photos[0]:photos});latestRef.current={...latestRef.current,photo:photos.length===1?photos[0]:photos};}else{// Update the verification comment photo (after)
-const comments=[...(latestRef.current.comments||[])];const idx=comments.findIndex(c=>c.text?.startsWith("✅")&&c.photo);if(idx>=0){comments[idx]={...comments[idx],photo:dataUrl,editedAt:Date.now()};await DB.defects.update(defect.id,{comments});latestRef.current={...latestRef.current,comments};}}onUpdate({...latestRef.current});}catch(e){alert("Failed to save markup: "+e.message);}setMarkupBA(null);};// Save markup on the main photo, treated as a single string OR an
-// array — the LOG path persists either shape, so we mirror that here
-// and keep whichever the original was. Index defaults to 0 for the
-// single-photo case.
-const saveMainPhotoMarkup=useCallback(async(dataUrl,idx)=>{try{const cur=latestRef.current.photo;let next;if(Array.isArray(cur)){const arr=[...cur];arr[idx==null?0:idx]=dataUrl;next=arr;}else{next=dataUrl;}await DB.defects.update(defect.id,{photo:next});latestRef.current={...latestRef.current,photo:next};onUpdate({...latestRef.current});}catch(e){alert("Failed to save markup: "+e.message);}},[defect?.id,onUpdate]);// Save markup on a specific comment photo by index. Comments may also
+const comments=[...(latestRef.current.comments||[])];const idx=comments.findIndex(c=>c.text?.startsWith("✅")&&c.photo);if(idx>=0){comments[idx]={...comments[idx],photo:dataUrl,editedAt:Date.now()};await DB.defects.update(defect.id,{comments});latestRef.current={...latestRef.current,comments};}}onUpdate({...latestRef.current});}catch(e){alert("Failed to save markup: "+e.message);}setMarkupBA(null);};// Save markup on the main photo. defect.photo is a PocketBase
+// multi-file field — its values come back as URL strings of the form
+// .../api/files/defects/{recordId}/{filename}. To replace just one
+// entry we extract the filename from the URL and PATCH via multipart
+// (deleting the old filename + uploading the new annotated blob in
+// one round-trip). After the server replies, re-derive the display
+// URLs for the new file list and propagate via onUpdate so the
+// lightbox immediately shows the saved version.
+const saveMainPhotoMarkup=useCallback(async(dataUrl,idx)=>{try{const cur=latestRef.current.photo;const targetIdx=idx==null?0:idx;const oldUrl=Array.isArray(cur)?cur[targetIdx]:cur;// URL form: .../api/files/{collection}/{recordId}/{filename}
+const m=typeof oldUrl==="string"?oldUrl.match(/\/api\/files\/[^/]+\/[^/]+\/([^/?#]+)/):null;const oldFilename=m?decodeURIComponent(m[1]):null;// If the existing value isn't a remote file URL (e.g. data URL
+// for an offline-queued entry), no delete is needed — just
+// upload as the new file.
+const updated=await DB.defects.updateReplaceFile(defect.id,"photo",dataUrl,oldFilename,`markup_${Date.now()}.jpg`);// Re-derive display URLs from the returned record's photo field
+// (which is back to filenames after PB persists).
+let nextPhoto=updated?.photo;if(Array.isArray(nextPhoto)&&nextPhoto.length>0){nextPhoto=nextPhoto.map(f=>DB.fileUrl("defects",updated.id,f));}else if(typeof nextPhoto==="string"&&nextPhoto){nextPhoto=DB.fileUrl("defects",updated.id,nextPhoto);}latestRef.current={...latestRef.current,photo:nextPhoto};onUpdate({...latestRef.current});}catch(e){alert("Failed to save markup: "+(e?.message||e));}},[defect?.id,onUpdate]);// Save markup on a specific comment photo by index. Comments may also
 // get updated by saveCommentMarkup (the existing per-comment ✏ MARKUP
 // button) — this version is for the lightbox path where we know the
 // comment index from the click that opened the viewer.
