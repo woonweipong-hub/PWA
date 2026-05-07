@@ -309,7 +309,7 @@
     "manual_mode_title": "MANUAALINEN KÄVELY",
     "manual_mode_desc": "Kävele jokainen tarkistuspiste itse. Paras offline-käyttöön tai silloin, kun tekoäly ei ole käytettävissä.",
     "ai_waiting_photo": "Ota tai valitse yksi tai useampi selkeä valokuva tarkastettavasta elementistä.",
-    "take_photo": "SELECT PHOTO(S)",
+    "take_photo": "VALITSE KUVAT",
     "ask_ai_button": "KYSY AI – KÄSITTELY KUVAT",
     "ai_analyzing": "ANALYSOINTI AI:lla...",
     "ai_analyzing_sub": "Tyypillisesti 2-3 sekuntia",
@@ -605,7 +605,7 @@
   "drawings": {
     "title": "Piirustukset",
     "tag_compare": "MERKITSE JA VERTAILE",
-    "tag_compare_subtitle": "Lataa, muunna, lisää nastat, peitä kuvia ja vertaile tarvittaessa.",
+    "tag_compare_subtitle": "Lataa, muunna, lisää PIN-koodi ja vertaa tarvittaessa.",
     "drawing_annotations": "PIIRUSTUSMERKINNÄT",
     "upload_plans": "Lataa pohjapiirrokset (JPG, PNG, TIF, PDF)",
     "pin_track": "Kiinnitä ja seuraa ongelmia suoraan pohjapiirroksiin.",

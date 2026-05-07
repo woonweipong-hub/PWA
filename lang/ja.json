@@ -267,7 +267,7 @@
   "conquas": {
     "start_button": "コンクアスチェックを開始",
     "wizard_title": "コンクアスチェック",
-    "loading": "Loading CONQUAS ontology...",
+    "loading": "CONQUAS オントロジーをロードしています...",
     "not_available": "CONQUAS オントロジーはこのサーバーではまだ利用できません。 シード データをインポートするように管理者に依頼します。",
     "close": "近い",
     "pick_element": "ピック要素",
@@ -605,7 +605,7 @@
   "drawings": {
     "title": "図面",
     "tag_compare": "タグ＆比較",
-    "tag_compare_subtitle": "必要に応じて、アップロード、変換、ピンの追加、写真のオーバーレイ、比較を行います。",
+    "tag_compare_subtitle": "必要に応じてアップロード、変換、ピンの追加、比較を行います。",
     "drawing_annotations": "図面注釈",
     "upload_plans": "フロアプランをアップロード（JPG、PNG、TIF、PDF）",
     "pin_track": "フロアプラン上で直接問題をピン留め・追跡。",

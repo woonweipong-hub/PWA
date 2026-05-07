@@ -605,7 +605,7 @@
   "drawings": {
     "title": "Ritningar",
     "tag_compare": "TAGGA & JÄMFÖR",
-    "tag_compare_subtitle": "Ladda upp, konvertera, lägg till nål, överlägg bilder och jämför där det behövs.",
+    "tag_compare_subtitle": "Ladda upp, konvertera, lägg till pin och jämför där det behövs.",
     "drawing_annotations": "RITNING AV ANNOTER",
     "upload_plans": "Ladda upp planritningar (JPG, PNG, TIF, PDF)",
     "pin_track": "Fäst och spåra problem direkt på planritningar.",

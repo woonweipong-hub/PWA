@@ -605,7 +605,7 @@
   "drawings": {
     "title": "Tegninger",
     "tag_compare": "TAGG OG SAMMENLIGN",
-    "tag_compare_subtitle": "Last opp, konverter, legg til pin, overlegg bilder og sammenlign der det er nødvendig.",
+    "tag_compare_subtitle": "Last opp, konverter, legg til pin og sammenlign der det er nødvendig.",
     "drawing_annotations": "TEGNING ANNOTASJONER",
     "upload_plans": "Last opp plantegninger (JPG, PNG, TIF, PDF)",
     "pin_track": "Fest og spor problemer direkte på plantegninger.",

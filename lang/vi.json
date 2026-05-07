@@ -605,7 +605,7 @@
   "drawings": {
     "title": "Bản vẽ",
     "tag_compare": "GẮN THẺ & SO SÁNH",
-    "tag_compare_subtitle": "Tải lên, chuyển đổi, thêm ghim, phủ ảnh và so sánh nếu cần.",
+    "tag_compare_subtitle": "Tải lên, chuyển đổi, thêm mã pin và so sánh khi cần thiết.",
     "drawing_annotations": "CHÚ THÍCH BẢN VẼ",
     "upload_plans": "Tải lên mặt bằng (JPG, PNG, TIF, PDF)",
     "pin_track": "Ghim và theo dõi vấn đề trực tiếp trên mặt bằng.",

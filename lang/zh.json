@@ -605,7 +605,7 @@
   "drawings": {
     "title": "图纸",
     "tag_compare": "标记和比较",
-    "tag_compare_subtitle": "上传、转换、添加图钉、叠加照片并在需要时进行比较。",
+    "tag_compare_subtitle": "上传、转换、添加 pin 并在需要时进行比较。",
     "drawing_annotations": "图纸标注",
     "upload_plans": "上传平面图（JPG、PNG、TIF、PDF）",
     "pin_track": "直接在平面图上固定和跟踪问题。",

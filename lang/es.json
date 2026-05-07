@@ -605,7 +605,7 @@
   "drawings": {
     "title": "Planos",
     "tag_compare": "ETIQUETAR Y COMPARAR",
-    "tag_compare_subtitle": "Cargue, convierta, agregue pines, superponga fotos y compare cuando sea necesario.",
+    "tag_compare_subtitle": "Cargue, convierta, agregue pin y compare cuando sea necesario.",
     "drawing_annotations": "ANOTACIONES DE PLANOS",
     "upload_plans": "Cargar planos de planta (JPG, PNG, TIF, PDF)",
     "pin_track": "Fije y realice un seguimiento de los problemas directamente en los planos de planta.",
@@ -834,7 +834,7 @@
     "alerts": "Alertas de Telegrama",
     "connected": "✓ ¡Conectado! Consulta tu grupo de Telegram.",
     "failed": "✗ Fallido. Verifique el token y el ID de chat.",
-    "bot_token_placeholder": "123456789:AAFxxxx...",
+    "bot_token_placeholder": "123456789:AAAFxxxx...",
     "chat_id_placeholder": "-1001234567890",
     "step1": "Abra Telegram → busque @BotFather → escriba /newbot → siga los pasos → copie el Bot Token",
     "step2": "Crea un grupo → agrega tu bot como miembro → promuévelo a administrador",

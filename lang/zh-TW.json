@@ -605,7 +605,7 @@
   "drawings": {
     "title": "圖紙",
     "tag_compare": "標記和比較",
-    "tag_compare_subtitle": "上傳、轉換、添加圖釘、疊加照片並在需要時進行比較。",
+    "tag_compare_subtitle": "上傳、轉換、新增 pin 並在需要時進行比較。",
     "drawing_annotations": "圖紙標註",
     "upload_plans": "上傳平面圖（JPG、PNG、TIF、PDF）",
     "pin_track": "直接在平面圖上釘選和追蹤問題。",

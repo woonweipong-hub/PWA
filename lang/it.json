@@ -280,7 +280,7 @@
     "pass_criteria": "CRITERI DI SUPERAMENTO",
     "take_fail_photo": "SCATTARE LA FOTO DEL FALLIMENTO",
     "photo_required": "Foto richiesta in caso di FAIL",
-    "note_placeholder": "Optional note...",
+    "note_placeholder": "Nota facoltativa...",
     "next": "PROSSIMA",
     "back": "INDIETRO",
     "summary_title": "RIEPILOGO",
@@ -505,7 +505,7 @@
     "filter_loc_placeholder": "filtrare il testo della posizione",
     "photos": "foto",
     "no_photo": "NESSUNA FOTO",
-    "domain_fields": "DOMAIN FIELDS",
+    "domain_fields": "CAMPI DI DOMINIO",
     "free_badge": "GRATUITO · 23 LINGUE"
   },
   "report": {
@@ -605,7 +605,7 @@
   "drawings": {
     "title": "Disegni",
     "tag_compare": "TAGGA E CONFRONTA",
-    "tag_compare_subtitle": "Carica, converti, aggiungi pin, sovrapponi foto e confronta dove necessario.",
+    "tag_compare_subtitle": "Carica, converti, aggiungi pin e confronta dove necessario.",
     "drawing_annotations": "ANNOTAZIONI DISEGNO",
     "upload_plans": "Carica planimetrie (JPG, PNG, TIF, PDF)",
     "pin_track": "Appunta e monitora i problemi direttamente sulle planimetrie.",
