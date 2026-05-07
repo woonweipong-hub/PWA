@@ -11381,30 +11381,32 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
 
   return(
     <div style={{padding:"20px 16px 120px",animation:"fadeIn 0.25s ease"}}>
-      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4,flexWrap:"wrap"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:4,flexWrap:"wrap"}}>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>{t("log.log_entry")}</div>
-        {count>0&&<div style={{fontSize:10,fontWeight:700,color:"#30d158",background:"rgba(48,209,88,0.1)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>{count} {t("log.logged")}</div>}
-        <div style={{fontSize:10,fontWeight:700,color:"#ff6b00",background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("log.quick_capture")}</div>
-        {/* Auto-save mode chip — tappable to cycle: review-first (every
-            save manual) → review-then-auto (first 10 manual, then auto) →
-            always-auto (zero-tap). Default is review-then-auto so users
-            see AI output before it commits, with speed kicking in once
-            they've built trust. Only shown when AI is configured. */}
-        {aiReady&&(()=>{
-          const m=autoSaveMode;
-          const label=m==="review-first"?"✎ REVIEW EVERY"
-            :m==="review-then-auto"?`✎ REVIEW ${Math.min(count,AUTO_SAVE_REVIEW_THRESHOLD)}/${AUTO_SAVE_REVIEW_THRESHOLD}`
-            :"⚡ AUTO-SAVE";
-          const tip=m==="review-first"?"Every save requires a SAVE tap. Tap to switch to review-first-then-auto (current default)."
-            :m==="review-then-auto"?`First ${AUTO_SAVE_REVIEW_THRESHOLD} saves of this session are manual, then AI auto-commits. Tap to switch to always-auto.`
-            :"AI auto-commits every save (zero-tap). Tap to switch back to always-review.";
-          const bg=m==="always-auto"?"rgba(88,86,214,0.1)":"rgba(0,0,0,0.05)";
-          const border=m==="always-auto"?"1px solid rgba(88,86,214,0.25)":"1px solid rgba(0,0,0,0.12)";
-          const fg=m==="always-auto"?"#5856d6":"rgba(0,0,0,0.55)";
-          return(
-            <button onClick={cycleAutoSaveMode} title={tip} style={{fontSize:10,fontWeight:700,color:fg,background:bg,border,borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",letterSpacing:"0.02em"}}>{label}</button>
-          );
-        })()}
+        <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap",justifyContent:"flex-end"}}>
+          {count>0&&<div style={{fontSize:10,fontWeight:700,color:"#30d158",background:"rgba(48,209,88,0.1)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:20,padding:"4px 10px",minHeight:22,boxSizing:"border-box",display:"flex",alignItems:"center",fontFamily:"'Barlow Condensed',sans-serif"}}>{count} {t("log.logged")}</div>}
+          <div style={{fontSize:10,fontWeight:700,color:"#ff6b00",background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:20,padding:"4px 10px",minHeight:22,boxSizing:"border-box",display:"flex",alignItems:"center",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("log.quick_capture")}</div>
+          {/* Auto-save mode chip — tappable to cycle: review-first (every
+              save manual) → review-then-auto (first 10 manual, then auto) →
+              always-auto (zero-tap). Default is review-then-auto so users
+              see AI output before it commits, with speed kicking in once
+              they've built trust. Only shown when AI is configured. */}
+          {aiReady&&(()=>{
+            const m=autoSaveMode;
+            const label=m==="review-first"?"✎ REVIEW EVERY"
+              :m==="review-then-auto"?`✎ REVIEW ${Math.min(count,AUTO_SAVE_REVIEW_THRESHOLD)}/${AUTO_SAVE_REVIEW_THRESHOLD}`
+              :"⚡ AUTO-SAVE";
+            const tip=m==="review-first"?"Every save requires a SAVE tap. Tap to switch to review-first-then-auto (current default)."
+              :m==="review-then-auto"?`First ${AUTO_SAVE_REVIEW_THRESHOLD} saves of this session are manual, then AI auto-commits. Tap to switch to always-auto.`
+              :"AI auto-commits every save (zero-tap). Tap to switch back to always-review.";
+            const bg=m==="always-auto"?"rgba(88,86,214,0.1)":"rgba(0,0,0,0.05)";
+            const border=m==="always-auto"?"1px solid rgba(88,86,214,0.25)":"1px solid rgba(0,0,0,0.12)";
+            const fg=m==="always-auto"?"#5856d6":"rgba(0,0,0,0.55)";
+            return(
+              <button onClick={cycleAutoSaveMode} title={tip} style={{fontSize:10,fontWeight:700,color:fg,background:bg,border,borderRadius:20,padding:"4px 10px",minHeight:22,boxSizing:"border-box",display:"flex",alignItems:"center",fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",letterSpacing:"0.02em"}}>{label}</button>
+            );
+          })()}
+        </div>
       </div>
       <div style={{fontSize:11,fontWeight:700,color:"#5856d6",marginTop:1,marginBottom:4,fontFamily:"'Barlow',sans-serif"}}>{t("empty_state.log")}</div>
       <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:20}}>📁 {currentProject?.name||"—"} · {t("log.photo_speak_type")}</div>
