@@ -1602,6 +1602,23 @@ function PhotoMarkup({src,onSave,onCancel}){
   };
 
   const[editingTextIdx,setEditingTextIdx]=useState(null);
+  const[editingCalloutIdx,setEditingCalloutIdx]=useState(null);
+
+  // Hit-test only callout strokes — tap on the leader-line bounding box
+  // or the text box opens edit. Mirrors the hit-test logic in
+  // hitTestStroke for callouts but limited to that one type so the
+  // callout tool's edit gesture doesn't accidentally fire on adjacent
+  // shapes (arrows / lines drawn nearby).
+  const hitTestCallout=(p)=>{
+    const canvas=canvasRef.current;if(!canvas)return -1;
+    for(let i=strokes.length-1;i>=0;i--){
+      const s=strokes[i];
+      if(s.type!=="callout"||!s.start||!s.end)continue;
+      const cx=(s.start.x+s.end.x)/2,cy=(s.start.y+s.end.y)/2;
+      if(Math.abs(p.x-cx)<Math.abs(s.end.x-s.start.x)/2+15&&Math.abs(p.y-cy)<Math.abs(s.end.y-s.start.y)/2+15)return i;
+    }
+    return -1;
+  };
 
   const hitTestText=(p)=>{
     // Check if tap is on an existing text annotation (search in reverse for top-most)
@@ -1658,6 +1675,16 @@ function PhotoMarkup({src,onSave,onCancel}){
       const hitIdx=hitTestText(p);
       if(hitIdx>=0){setEditingTextIdx(hitIdx);setTextInput(strokes[hitIdx].pos);return;}
       setTextInput(p);return;
+    }
+    if(tool==="callout"){
+      // Tap an existing callout to edit its label; otherwise fall
+      // through and start drawing a new leader line.
+      const hitIdx=hitTestCallout(p);
+      if(hitIdx>=0){
+        setEditingCalloutIdx(hitIdx);
+        setCalloutTextInput(strokes[hitIdx]);
+        return;
+      }
     }
     if(tool==="polyline"){
       setPolylinePoints(prev=>[...prev,p]);
@@ -1904,19 +1931,55 @@ function PhotoMarkup({src,onSave,onCancel}){
       )}
 
       {/* Callout text modal */}
-      {calloutTextInput&&(
-        <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.85)",zIndex:310,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-          <div style={{background:"#1a1a1a",borderRadius:16,padding:20,width:"100%",maxWidth:360}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",marginBottom:12}}>CALLOUT LABEL</div>
-            <input autoFocus type="text" placeholder={t("markup.enter_callout")} onKeyDown={e=>{if(e.key==="Enter"){const t=e.target.value.trim();addStroke({...calloutTextInput,text:t,textSize});setCalloutTextInput(null);}}}
-              style={{width:"100%",padding:12,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
-            <div style={{display:"flex",gap:8,marginTop:12}}>
-              <button onClick={()=>{addStroke({...calloutTextInput,text:""});setCalloutTextInput(null);}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.skip")}</button>
-              <button onClick={e=>{const inp=e.target.closest("div").parentElement.querySelector("input");addStroke({...calloutTextInput,text:(inp.value||"").trim(),textSize});setCalloutTextInput(null);}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.add")}</button>
+      {calloutTextInput&&(()=>{
+        // Submit handler reused by Enter key + Update/Add button. When
+        // editingCalloutIdx is set we patch the stroke in place; else
+        // we add a new one. Cancel restores everything to the previous
+        // state without changing strokes.
+        const isEditing=editingCalloutIdx!==null;
+        const submitCallout=(rawText)=>{
+          const text=(rawText||"").trim();
+          if(isEditing){
+            setStrokes(s=>s.map((st,i)=>i===editingCalloutIdx?{...st,text,textSize:textSize||st.textSize}:st));
+          }else{
+            addStroke({...calloutTextInput,text,textSize});
+          }
+          setEditingCalloutIdx(null);
+          setCalloutTextInput(null);
+        };
+        const closeWithoutSaving=()=>{
+          setEditingCalloutIdx(null);
+          setCalloutTextInput(null);
+        };
+        const deleteCallout=()=>{
+          if(!isEditing)return;
+          setStrokes(s=>s.filter((_,i)=>i!==editingCalloutIdx));
+          setEditingCalloutIdx(null);
+          setCalloutTextInput(null);
+        };
+        return(
+          <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.85)",zIndex:310,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+            <div style={{background:"#1a1a1a",borderRadius:16,padding:20,width:"100%",maxWidth:360}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",marginBottom:12}}>{isEditing?"EDIT CALLOUT LABEL":"CALLOUT LABEL"}</div>
+              <input autoFocus type="text" placeholder={t("markup.enter_callout")} defaultValue={isEditing?(calloutTextInput.text||""):""} onKeyDown={e=>{if(e.key==="Enter")submitCallout(e.target.value);}}
+                style={{width:"100%",padding:12,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
+              <div style={{display:"flex",gap:8,marginTop:12}}>
+                {isEditing
+                  ?<>
+                    <button onClick={closeWithoutSaving} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.cancel")}</button>
+                    <button onClick={deleteCallout} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff3b30",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.delete")}</button>
+                    <button onClick={e=>{const inp=e.target.closest("div").parentElement.querySelector("input");submitCallout(inp.value);}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.update")}</button>
+                  </>
+                  :<>
+                    <button onClick={()=>submitCallout("")} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.skip")}</button>
+                    <button onClick={e=>{const inp=e.target.closest("div").parentElement.querySelector("input");submitCallout(inp.value);}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.add")}</button>
+                  </>
+                }
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
