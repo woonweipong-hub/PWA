@@ -1698,26 +1698,72 @@ function PhotoMarkup({src,onSave,onCancel}){
   };
 
   const save=()=>{
-    if(!canvasRef.current)return;
-    // Render at full resolution for quality
-    const img=imgRef.current;
-    const fc=document.createElement("canvas");
-    fc.width=img.width;fc.height=img.height;
-    const fctx=fc.getContext("2d");
-    fctx.drawImage(img,0,0);
-    // Scale strokes to full resolution
-    const sx=img.width/sizeRef.current.w,sy=img.height/sizeRef.current.h;
-    const scaleStroke=s=>{
-      if((s.type==="freehand"||s.type==="highlight"||s.type==="polyline")&&s.points)return{...s,points:s.points.map(p=>({x:p.x*sx,y:p.y*sy}))};
-      if(s.type==="text"||s.type==="stamp")return{...s,pos:{x:s.pos.x*sx,y:s.pos.y*sy}};
-      if(s.type==="callout")return{...s,start:{x:s.start.x*sx,y:s.start.y*sy},end:{x:s.end.x*sx,y:s.end.y*sy}};
-      return{...s,start:{x:s.start.x*sx,y:s.start.y*sy},end:{x:s.end.x*sx,y:s.end.y*sy}};
-    };
-    strokes.forEach(s=>{
-      const scaled=scaleStroke(s);
-      drawStroke(fctx,scaled,sx);
-    });
-    onSave(fc.toDataURL("image/jpeg",0.92));
+    // Defensive save with user-visible diagnostics — phone users have no
+    // console, so any silent failure (canvas not bound, image not yet
+    // sized, toDataURL throwing under tainted-canvas) used to make SAVE
+    // look broken with no clue why. Each guard now alerts so the user
+    // can report the exact reason.
+    try{
+      if(!canvasRef.current){
+        alert("Markup save failed: canvas not ready. Wait for the photo to finish loading and try again.");
+        return;
+      }
+      const img=imgRef.current;
+      // Prefer naturalWidth/Height — img.width is 0 on some mobile
+      // browsers when the Image was created via `new Image()` without
+      // attaching to the DOM. naturalWidth reads the actual decoded
+      // dimension once the image has loaded.
+      const iw=img.naturalWidth||img.width||0;
+      const ih=img.naturalHeight||img.height||0;
+      if(!iw||!ih){
+        alert("Markup save failed: image dimensions are 0. The photo may still be decoding — wait a moment and try again, or CANCEL and reopen the markup editor.");
+        return;
+      }
+      // Render at full resolution for quality
+      const fc=document.createElement("canvas");
+      fc.width=iw;fc.height=ih;
+      const fctx=fc.getContext("2d");
+      if(!fctx){
+        alert("Markup save failed: could not create 2D drawing context for export canvas.");
+        return;
+      }
+      fctx.drawImage(img,0,0,iw,ih);
+      // Scale strokes from display dims to natural dims
+      const sw=sizeRef.current.w||iw,sh=sizeRef.current.h||ih;
+      const sx=iw/sw,sy=ih/sh;
+      const scaleStroke=s=>{
+        if((s.type==="freehand"||s.type==="highlight"||s.type==="polyline")&&s.points)return{...s,points:s.points.map(p=>({x:p.x*sx,y:p.y*sy}))};
+        if(s.type==="text"||s.type==="stamp")return{...s,pos:{x:s.pos.x*sx,y:s.pos.y*sy}};
+        if(s.type==="callout")return{...s,start:{x:s.start.x*sx,y:s.start.y*sy},end:{x:s.end.x*sx,y:s.end.y*sy}};
+        return{...s,start:{x:s.start.x*sx,y:s.start.y*sy},end:{x:s.end.x*sx,y:s.end.y*sy}};
+      };
+      strokes.forEach(s=>{
+        try{
+          const scaled=scaleStroke(s);
+          drawStroke(fctx,scaled,sx);
+        }catch(strokeErr){
+          // One bad stroke shouldn't kill the whole save — log and skip
+          try{console.error("[PhotoMarkup] failed to render stroke",s,strokeErr);}catch{}
+        }
+      });
+      let dataUrl;
+      try{
+        dataUrl=fc.toDataURL("image/jpeg",0.92);
+      }catch(canvasErr){
+        // Tainted-canvas export error — happens if the image src is a
+        // cross-origin URL without CORS headers. Data URLs and same-
+        // origin blob URLs don't taint, so this is rare in our flow.
+        alert("Markup save failed: could not export canvas — "+(canvasErr?.message||canvasErr));
+        return;
+      }
+      if(!dataUrl||dataUrl==="data:,"){
+        alert("Markup save failed: exported image is empty.");
+        return;
+      }
+      onSave(dataUrl);
+    }catch(e){
+      alert("Markup save failed: "+(e?.message||e));
+    }
   };
 
   const[textSize,setTextSize]=useState(16);
