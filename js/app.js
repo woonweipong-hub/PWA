@@ -14401,6 +14401,32 @@ function EntryLocations({defect}){
   );
 }
 
+// Look up the preserved photoOriginal for a given photo index. New
+// uploads encode the index in the filename (`original_idx_<i>_<ts>.jpg`)
+// so non-sequential markup edits (photo[0] then photo[2] skipping
+// photo[1]) don't shuffle the array's positional mapping. Falls back
+// to positional indexing only when the array is purely-legacy (no
+// encoded entries at all) so legacy data still loads. Mixed arrays
+// (legacy + new) prefer encoded matches; queries for non-edited
+// indices return null rather than risk loading another photo's
+// pre-edit pixels under the wrong index.
+//
+// Accepts either filenames or full URLs — regex anchors at start of
+// string or after a slash.
+function findPhotoOriginalForIndex(photoOriginal,photoIdx){
+  if(!photoOriginal)return null;
+  if(typeof photoOriginal==="string")return photoIdx===0?photoOriginal:null;
+  if(!Array.isArray(photoOriginal))return null;
+  for(const entry of photoOriginal){
+    const m=String(entry||"").match(/(?:^|\/)original_idx_(\d+)_/);
+    if(m&&parseInt(m[1],10)===photoIdx)return entry;
+  }
+  // Pure-legacy array (no encoded entries) → positional fallback safe
+  const anyEncoded=photoOriginal.some(u=>/(?:^|\/)original_idx_\d+_/.test(String(u||"")));
+  if(!anyEncoded)return photoOriginal[photoIdx]||null;
+  return null;
+}
+
 function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[],allDefects=[],embedded=false}){
   const[status,setStatus]=useState(defect.status);
   const[comment,setComment]=useState("");const[saving,setSaving]=useState(false);const[deleting,setDeleting]=useState(false);
@@ -14734,14 +14760,19 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
       try{
         const raw=await DB.defects.get(defect.id);
         const poList=raw&&raw.photoOriginal;
-        const hasOriginal=Array.isArray(poList)?poList[targetIdx]:poList;
+        // Look up by encoded index (new format) with positional
+        // fallback for legacy entries — see findPhotoOriginalForIndex
+        // for the precise matching rule.
+        const hasOriginal=findPhotoOriginalForIndex(poList,targetIdx);
         if(!hasOriginal&&typeof oldUrl==="string"&&oldUrl){
           // Fetch the pre-edit photo bytes and feed them through PB
-          // as photoOriginal[targetIdx] in the same multipart PATCH.
+          // as photoOriginal in the same multipart PATCH. Filename
+          // encodes targetIdx so non-sequential edits don't break
+          // positional reads (photo[0] then photo[2] etc.).
           const r=await fetch(oldUrl,{mode:"cors",credentials:"omit"});
           if(r.ok){
             const blob=await r.blob();
-            preserveOriginal={blob,name:`original_${Date.now()}.jpg`};
+            preserveOriginal={blob,name:`original_idx_${targetIdx}_${Date.now()}.jpg`};
           }
         }
       }catch{}
@@ -14980,14 +15011,14 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
             <BeforeAfter before={origPhoto} after={afterPhoto} onMarkup={canUpdate?(which=>setMarkupBA(which)):null}/>
           ):typeof defect.photo==="string"
             ?<img src={defect.photo} alt="" onClick={()=>{
-                const editSrc=(typeof defect.photoOriginal==="string"&&defect.photoOriginal)||(Array.isArray(defect.photoOriginal)&&defect.photoOriginal[0])||defect.photo;
+                const editSrc=findPhotoOriginalForIndex(defect.photoOriginal,0)||defect.photo;
                 const editStrokes=(defect.markupStrokes&&defect.markupStrokes["0"])||[];
                 openViewer(defect.photo,canUpdate?(p=>saveMainPhotoMarkup(p,0)):null,editSrc,editStrokes);
               }} style={{maxWidth:"100%",borderRadius:12,maxHeight:350,objectFit:"contain",display:"block",marginBottom:14,background:"#f8f8f6",cursor:"pointer"}} title="Tap to view full screen"/>
             :Array.isArray(defect.photo)&&defect.photo.length>0
               ?<div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8,marginBottom:14}}>
                 {defect.photo.map((p,i)=><img key={i} src={p} alt="" onClick={()=>{
-                  const editSrc=(Array.isArray(defect.photoOriginal)&&defect.photoOriginal[i])||p;
+                  const editSrc=findPhotoOriginalForIndex(defect.photoOriginal,i)||p;
                   const editStrokes=(defect.markupStrokes&&defect.markupStrokes[String(i)])||[];
                   openViewer(p,canUpdate?(payload=>saveMainPhotoMarkup(payload,i)):null,editSrc,editStrokes);
                 }} style={{height:180,borderRadius:12,objectFit:"cover",flexShrink:0,cursor:"pointer"}} title="Tap to view full screen"/>)}
@@ -15284,7 +15315,7 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
         const verifyComment=(latestRef.current.comments||[]).find(c=>c.text?.startsWith("✅")&&c.photo);
         if(markupBA==="before"){
           if(!origPhoto)return null;
-          const editSrc=(typeof latestRef.current.photoOriginal==="string"&&latestRef.current.photoOriginal)||(Array.isArray(latestRef.current.photoOriginal)&&latestRef.current.photoOriginal[0])||origPhoto;
+          const editSrc=findPhotoOriginalForIndex(latestRef.current.photoOriginal,0)||origPhoto;
           const editStrokes=(latestRef.current.markupStrokes&&latestRef.current.markupStrokes["0"])||[];
           return <PhotoMarkup src={editSrc} initialStrokes={editStrokes} onSave={saveBAMarkup} onCancel={()=>setMarkupBA(null)}/>;
         }
