@@ -14765,13 +14765,24 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
       const updated=await DB.defects.rawPatch(defect.id,fd);
 
       // Re-derive display URLs from returned record's photo field.
+      // Same expansion for photoOriginal — PB returns bare filenames in
+      // file fields; without URL-ifying, a second MARKUP open would
+      // hand PhotoMarkup a raw filename as `src` and the load fetch
+      // would 404 against siteshrimp.org root, leaving the canvas
+      // stuck on the loading spinner.
       let nextPhoto=updated?.photo;
       if(Array.isArray(nextPhoto)&&nextPhoto.length>0){
         nextPhoto=nextPhoto.map(f=>DB.fileUrl("defects",updated.id,f));
       }else if(typeof nextPhoto==="string"&&nextPhoto){
         nextPhoto=DB.fileUrl("defects",updated.id,nextPhoto);
       }
-      latestRef.current={...latestRef.current,photo:nextPhoto,markupStrokes:nextStrokes,photoOriginal:updated?.photoOriginal};
+      let nextPhotoOriginal=updated?.photoOriginal;
+      if(Array.isArray(nextPhotoOriginal)&&nextPhotoOriginal.length>0){
+        nextPhotoOriginal=nextPhotoOriginal.map(f=>DB.fileUrl("defects",updated.id,f));
+      }else if(typeof nextPhotoOriginal==="string"&&nextPhotoOriginal){
+        nextPhotoOriginal=DB.fileUrl("defects",updated.id,nextPhotoOriginal);
+      }
+      latestRef.current={...latestRef.current,photo:nextPhoto,markupStrokes:nextStrokes,photoOriginal:nextPhotoOriginal};
       onUpdate({...latestRef.current});
     }catch(e){alert("Failed to save markup: "+(e?.message||e));}
   },[defect?.id,onUpdate]);
