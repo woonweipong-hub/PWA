@@ -2925,8 +2925,11 @@ const hasAutoFitRef=useRef(false);const fitToAllPins=()=>{if(!mapObj.current)ret
 // included in the fit bounds — otherwise "FIT" would miss extra locations.
 const pts=mapDefects.map(d=>{const lat=typeof d.lat==="number"?d.lat:parseFloat(d.lat);const lng=typeof d.lng==="number"?d.lng:parseFloat(d.lng);return Number.isFinite(lat)&&Number.isFinite(lng)?{lat,lng}:null;}).filter(Boolean);if(pts.length===0)return;if(provider==="gmaps"&&window.google?.maps){const g=window.google.maps;if(pts.length===1){mapObj.current.setCenter({lat:pts[0].lat,lng:pts[0].lng});mapObj.current.setZoom(18);}else{const b=new g.LatLngBounds();pts.forEach(d=>b.extend({lat:d.lat,lng:d.lng}));mapObj.current.fitBounds(b,60);}}else if(provider==="osm"&&window.L){if(pts.length===1)mapObj.current.setView([pts[0].lat,pts[0].lng],18);else mapObj.current.fitBounds(pts.map(d=>[d.lat,d.lng]),{padding:[40,40]});}};// ── Render existing defect pins (both providers) ───────────────
 useEffect(()=>{if(status!=="ready"||!mapObj.current)return;// Clear previous markers AND any active cluster layer (so we can rebuild
-// with current defects — both arrays and clusters).
-markersRef.current.existing.forEach(m=>{if(m.setMap)m.setMap(null);else if(m.remove)m.remove();});if(clusterRef.current){try{if(clusterRef.current.clearMarkers)clusterRef.current.clearMarkers();// gmaps MarkerClusterer
+// with current defects — both arrays and clusters). Per-marker try/catch
+// so one bad marker (e.g. already detached, or a provider quirk on a
+// stale instance) doesn't break the rebuild and leave the rest of the
+// old markers stranded on the map.
+markersRef.current.existing.forEach(m=>{try{if(m.setMap)m.setMap(null);else if(m.remove)m.remove();}catch(e){try{console.warn("MapPanel: marker cleanup failed",e);}catch{}}});if(clusterRef.current){try{if(clusterRef.current.clearMarkers)clusterRef.current.clearMarkers();// gmaps MarkerClusterer
 if(clusterRef.current.clearLayers)clusterRef.current.clearLayers();// leaflet cluster group
 if(clusterRef.current.remove&&provider==="osm")clusterRef.current.remove();}catch{}clusterRef.current=null;}// Persist a defect's new coords after it's dragged on the map. Writes
 // the coordinates into both the native lat/lng columns AND the location
