@@ -13916,7 +13916,11 @@ function BeforeAfter({before,after,onMarkup}){
 }
 
 // ── Full-screen Photo Viewer with zoom/pan ──────────────────────
-function PhotoViewer({src,onClose}){
+// onMarkup is optional. When provided (and the user has edit permission),
+// a "✏ MARKUP" button appears in the top bar; tapping it lets the parent
+// hand off to PhotoMarkup with the appropriate save callback for whichever
+// photo is being viewed (main / extra-photo / comment-photo).
+function PhotoViewer({src,onClose,onMarkup}){
   const[scale,setScale]=useState(1);
   const[pan,setPan]=useState({x:0,y:0});
   const[dragging,setDragging]=useState(false);
@@ -13943,7 +13947,10 @@ function PhotoViewer({src,onClose}){
           <button onClick={resetZoom} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"8px 12px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,minWidth:50}}>{Math.round(scale*100)}%</button>
           <button onClick={zoomIn} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:8,padding:"8px 14px",color:"#fff",fontSize:16,cursor:"pointer",fontWeight:700}}>+</button>
         </div>
-        <button onClick={onClose} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:10,padding:"8px 16px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>✕ CLOSE</button>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          {onMarkup&&<button onClick={onMarkup} style={{background:"#ff6b00",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",letterSpacing:"0.04em"}}>✏ MARKUP</button>}
+          <button onClick={onClose} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:10,padding:"8px 16px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>✕ CLOSE</button>
+        </div>
       </div>
       {/* Photo area */}
       <div style={{flex:1,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",touchAction:"none",cursor:dragging?"grabbing":"grab"}}
@@ -14293,8 +14300,20 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
   const[markupCommentIdx,setMarkupCommentIdx]=useState(null);
   // Before/After photo markup state
   const[markupBA,setMarkupBA]=useState(null); // "before" | "after" | null
-  // Full-screen photo viewer state
+  // Full-screen photo viewer state. When opening, the caller may also
+  // hand over a save callback (viewerSaveRef) so MARKUP from the viewer
+  // can persist back to the right place — main photo, an extra-photo
+  // index, or a comment photo. When viewerSaveRef.current is null, no
+  // MARKUP button is rendered.
   const[viewerPhoto,setViewerPhoto]=useState(null);
+  const viewerSaveRef=useRef(null);
+  const[markupFromViewer,setMarkupFromViewer]=useState(false);
+  // Open the viewer with an optional save callback. Centralised so each
+  // <img onClick={...}> stays a one-liner.
+  const openViewer=useCallback((src,onSave)=>{
+    viewerSaveRef.current=onSave||null;
+    setViewerPhoto(src);
+  },[]);
   const[showSignPad,setShowSignPad]=useState(false);
   // Pending verify status (stored when user picks photo before confirming)
   const[pendingVerifyStatus,setPendingVerifyStatus]=useState(null);
@@ -14436,6 +14455,42 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
     }catch(e){alert("Failed to save markup: "+e.message);}
     setMarkupBA(null);
   };
+
+  // Save markup on the main photo, treated as a single string OR an
+  // array — the LOG path persists either shape, so we mirror that here
+  // and keep whichever the original was. Index defaults to 0 for the
+  // single-photo case.
+  const saveMainPhotoMarkup=useCallback(async(dataUrl,idx)=>{
+    try{
+      const cur=latestRef.current.photo;
+      let next;
+      if(Array.isArray(cur)){
+        const arr=[...cur];
+        arr[idx==null?0:idx]=dataUrl;
+        next=arr;
+      }else{
+        next=dataUrl;
+      }
+      await DB.defects.update(defect.id,{photo:next});
+      latestRef.current={...latestRef.current,photo:next};
+      onUpdate({...latestRef.current});
+    }catch(e){alert("Failed to save markup: "+e.message);}
+  },[defect?.id,onUpdate]);
+
+  // Save markup on a specific comment photo by index. Comments may also
+  // get updated by saveCommentMarkup (the existing per-comment ✏ MARKUP
+  // button) — this version is for the lightbox path where we know the
+  // comment index from the click that opened the viewer.
+  const saveCommentPhotoMarkupAt=useCallback(async(dataUrl,idx)=>{
+    try{
+      const comments=[...(latestRef.current.comments||[])];
+      if(!comments[idx])return;
+      comments[idx]={...comments[idx],photo:dataUrl,editedAt:Date.now()};
+      await DB.defects.update(defect.id,{comments});
+      latestRef.current={...latestRef.current,comments};
+      onUpdate({...latestRef.current});
+    }catch(e){alert("Failed to save markup: "+e.message);}
+  },[defect?.id,onUpdate]);
 
   const deleteDefect=async()=>{
     if(!canDelete||!confirm("Delete this entry?\n\nMoved to Archive — retrievable within 7 days, then auto-deleted. Admins can permanently delete from Archive."))return;
@@ -14602,10 +14657,10 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
           return afterPhoto&&origPhoto?(
             <BeforeAfter before={origPhoto} after={afterPhoto} onMarkup={canUpdate?(which=>setMarkupBA(which)):null}/>
           ):typeof defect.photo==="string"
-            ?<img src={defect.photo} alt="" onClick={()=>setViewerPhoto(defect.photo)} style={{maxWidth:"100%",borderRadius:12,maxHeight:350,objectFit:"contain",display:"block",marginBottom:14,background:"#f8f8f6",cursor:"pointer"}} title="Tap to view full screen"/>
+            ?<img src={defect.photo} alt="" onClick={()=>openViewer(defect.photo,canUpdate?(d=>saveMainPhotoMarkup(d)):null)} style={{maxWidth:"100%",borderRadius:12,maxHeight:350,objectFit:"contain",display:"block",marginBottom:14,background:"#f8f8f6",cursor:"pointer"}} title="Tap to view full screen"/>
             :Array.isArray(defect.photo)&&defect.photo.length>0
               ?<div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8,marginBottom:14}}>
-                {defect.photo.map((p,i)=><img key={i} src={p} alt="" onClick={()=>setViewerPhoto(p)} style={{height:180,borderRadius:12,objectFit:"cover",flexShrink:0,cursor:"pointer"}} title="Tap to view full screen"/>)}
+                {defect.photo.map((p,i)=><img key={i} src={p} alt="" onClick={()=>openViewer(p,canUpdate?(d=>saveMainPhotoMarkup(d,i)):null)} style={{height:180,borderRadius:12,objectFit:"cover",flexShrink:0,cursor:"pointer"}} title="Tap to view full screen"/>)}
               </div>
               :null;
         })()}
@@ -14673,7 +14728,7 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
           <div style={{background:"rgba(48,209,88,0.06)",border:"1.5px solid rgba(48,209,88,0.25)",borderRadius:14,padding:14,marginBottom:14}}>
             <div style={lbl("#30d158")}>VERIFICATION PHOTO — {pendingVerifyStatus.toUpperCase()}</div>
             <div style={{position:"relative",marginBottom:10}}>
-              <img src={verifyPhoto} alt="" onClick={()=>setViewerPhoto(verifyPhoto)} style={{width:"100%",maxHeight:280,objectFit:"contain",borderRadius:10,background:"#f8f8f6",cursor:"pointer"}} title="Tap to view full screen"/>
+              <img src={verifyPhoto} alt="" onClick={()=>openViewer(verifyPhoto)} style={{width:"100%",maxHeight:280,objectFit:"contain",borderRadius:10,background:"#f8f8f6",cursor:"pointer"}} title="Tap to view full screen"/>
               <button onClick={()=>{setVerifyPhoto(null);setPendingVerifyStatus(null);}} aria-label={t("nav.close")} style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,0.7)",border:"none",borderRadius:"50%",color:"#fff",width:26,height:26,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><span aria-hidden="true">×</span></button>
             </div>
             <div style={{display:"flex",gap:8}}>
@@ -14836,9 +14891,9 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
                   )}
                   {c.photo&&(
                     <div style={{position:"relative",marginTop:6}}>
-                      <img src={c.photo} alt="" onClick={()=>setViewerPhoto(c.photo)} style={{width:"100%",maxHeight:280,objectFit:"contain",borderRadius:8,background:"#f8f8f6",cursor:"pointer"}} title="Tap to view full screen"/>
+                      <img src={c.photo} alt="" onClick={()=>openViewer(c.photo,canUpdate?(d=>saveCommentPhotoMarkupAt(d,i)):null)} style={{width:"100%",maxHeight:280,objectFit:"contain",borderRadius:8,background:"#f8f8f6",cursor:"pointer"}} title="Tap to view full screen"/>
                       <div style={{position:"absolute",bottom:6,right:6,display:"flex",gap:4}}>
-                        <button onClick={()=>setViewerPhoto(c.photo)} style={{background:"rgba(0,0,0,0.6)",border:"none",borderRadius:6,padding:"3px 8px",fontSize:10,color:"#fff",fontWeight:700,cursor:"pointer"}}>🔍 VIEW</button>
+                        <button onClick={()=>openViewer(c.photo,canUpdate?(d=>saveCommentPhotoMarkupAt(d,i)):null)} style={{background:"rgba(0,0,0,0.6)",border:"none",borderRadius:6,padding:"3px 8px",fontSize:10,color:"#fff",fontWeight:700,cursor:"pointer"}}>🔍 VIEW</button>
                         {canUpdate&&<button onClick={()=>setMarkupCommentIdx(i)} style={{background:"rgba(0,0,0,0.6)",border:"none",borderRadius:6,padding:"3px 8px",fontSize:10,color:"#fff",fontWeight:700,cursor:"pointer"}}>✏ MARKUP</button>}
                       </div>
                     </div>
@@ -14892,7 +14947,20 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
         return src?<PhotoMarkup src={src} onSave={saveBAMarkup} onCancel={()=>setMarkupBA(null)}/>:null;
       })()}
       {/* Full-screen photo viewer modal */}
-      {viewerPhoto&&<PhotoViewer src={viewerPhoto} onClose={()=>setViewerPhoto(null)}/>}
+      {viewerPhoto&&<PhotoViewer src={viewerPhoto} onClose={()=>{setViewerPhoto(null);viewerSaveRef.current=null;}} onMarkup={viewerSaveRef.current?(()=>setMarkupFromViewer(true)):undefined}/>}
+      {/* Markup overlay launched from the lightbox. The save callback was
+          captured by openViewer() at the moment the user tapped the photo,
+          so we know which photo to write back regardless of which photo
+          path was used (main / extra / comment). */}
+      {markupFromViewer&&viewerPhoto&&viewerSaveRef.current&&(
+        <PhotoMarkup src={viewerPhoto}
+          onSave={async(dataUrl)=>{
+            try{await viewerSaveRef.current(dataUrl);}catch(e){alert("Failed to save markup: "+(e?.message||e));}
+            setMarkupFromViewer(false);
+            setViewerPhoto(dataUrl);
+          }}
+          onCancel={()=>setMarkupFromViewer(false)}/>
+      )}
     </div>
   );
 }
