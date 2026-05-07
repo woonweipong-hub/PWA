@@ -6168,13 +6168,35 @@ function ComboField({label,value,onChange,options,placeholder,grouped,displayFn}
   const[open,setOpen]=useState(false);
   const[search,setSearch]=useState("");
 
+  // Snap a free-text voice transcript to the closest enum option so
+  // saying "main contractor" lands as "Main Contractor" (canonical)
+  // rather than as raw lowercased text that doesn't match the enum
+  // and renders as a paraphrased / contractually-wrong value. Falls
+  // back to the raw transcript when nothing is a reasonable match.
+  // For grouped options (COMPONENT_GROUPS, etc.), flatten across all
+  // groups so voice can reach any item without first picking a group.
+  const _matchVoice=(tx)=>{
+    const t=(tx||"").trim();
+    if(!t)return t;
+    const flat=grouped?Object.values(grouped).flat():(Array.isArray(options)?options:[]);
+    if(!flat.length)return t;
+    const lower=t.toLowerCase();
+    const exact=flat.find(o=>String(o).toLowerCase()===lower);
+    if(exact)return exact;
+    const starts=flat.find(o=>{const ol=String(o).toLowerCase();return ol.startsWith(lower)||lower.startsWith(ol);});
+    if(starts)return starts;
+    const contains=flat.find(o=>{const ol=String(o).toLowerCase();return ol.includes(lower)||lower.includes(ol);});
+    if(contains)return contains;
+    return t;
+  };
+
   // Default state — text input + voice mic + LIST button
   if(!open)return(
     <div style={{marginBottom:16}}>
       <label style={lbl()}>{label}</label>
       <div style={{display:"flex",gap:8,alignItems:"center",minWidth:0}}>
         <input value={_d(value)} onChange={e=>onChange(e.target.value)} placeholder={placeholder||"Type or tap LIST..."} style={{...inp,flex:1,minWidth:0}} readOnly={!!displayFn}/>
-        <MicBtn onResult={t=>onChange(t)} currentValue={value}/>
+        <MicBtn onResult={t=>onChange(_matchVoice(t))} currentValue={value}/>
         <button onClick={()=>{setSearch("");setOpen(true);}} style={{background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,padding:"8px 10px",fontSize:11,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,flexShrink:0}}>{t("actions.list")}</button>
       </div>
     </div>
