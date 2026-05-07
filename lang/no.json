@@ -130,7 +130,8 @@
     "tnc": "Test og provisjon (T&C)",
     "me": "M&E inspeksjon",
     "top": "TOP Inspeksjon",
-    "buildability": "Byggbarhetspoeng",
+    "buildability": "Byggbarhetsvurdering",
+    "quality_mark": "Kvalitetsmerkevurdering",
     "others": "Annet"
   },
   "roles": {

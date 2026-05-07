@@ -130,7 +130,8 @@
     "tnc": "Test e Commissione (T&C)",
     "me": "Ispezione M&E",
     "top": "TOP Ispezione",
-    "buildability": "Punteggio di edificabilità",
+    "buildability": "Valutazione della costruibilità",
+    "quality_mark": "Valutazione del marchio di qualità",
     "others": "Altri"
   },
   "roles": {

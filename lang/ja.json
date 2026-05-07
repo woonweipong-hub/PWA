@@ -130,7 +130,8 @@
     "tnc": "テストとコミッション (T&C)",
     "me": "M&E検査",
     "top": "TOP 検査",
-    "buildability": "構築性スコア",
+    "buildability": "構築性の評価",
+    "quality_mark": "品質マークの評価",
     "others": "その他"
   },
   "roles": {

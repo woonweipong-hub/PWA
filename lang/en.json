@@ -130,7 +130,8 @@
     "tnc": "Test & Commission (T&C)",
     "me": "M&E Inspection",
     "top": "TOP Inspection",
-    "buildability": "Buildability Score",
+    "buildability": "Buildability Assessment",
+    "quality_mark": "Quality Mark Assessment",
     "others": "Others"
   },
   "roles": {

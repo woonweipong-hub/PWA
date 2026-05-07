@@ -130,7 +130,8 @@
     "tnc": "Tes & Komisi (S&K)",
     "me": "Inspeksi M&E",
     "top": "Inspeksi ATAS",
-    "buildability": "Skor Kemampuan Membangun",
+    "buildability": "Penilaian Kemampuan Bangunan",
+    "quality_mark": "Penilaian Tanda Mutu",
     "others": "Lainnya"
   },
   "roles": {

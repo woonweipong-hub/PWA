@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://siteshrimp.org/schema/entries/quality-mark/v1.json",
+  "title": "SiteShrimp Photo Entry — Quality Mark Assessment variant",
+  "version": "1.0.0",
+  "description": "BCA Quality Mark for Good Workmanship variant per Guide on QM Scheme (Rev 22 May 2025). Internal-finish quality assessment of private residential dwellings. Threshold 85 (tender from 1 Jun 2020) / 80 (before). Tiered Rating: Star 92+, Excellent 90 to <92, Merit 85 to <90 — gated on waterponding pass-rate and window watertightness pass-rate. Severity is reinterpreted as QM impact: Critical = major defect (per QM Guide §2.9), Major = scoring defect, Minor = scoring defect of lesser weightage, Observation = passes assessment. Source: BCA Guide on Quality Mark Scheme, Rev Date 22 May 2025.",
+  "x-csv-header-convention": "Each property maps 1:1 to a column in the Entries sheet. The 'x-csv-header' field is the exact column header string. Variant columns are appended after the base columns when the project's workCategory is 'Quality Mark Assessment'.",
+  "x-work-category": "Quality Mark Assessment",
+  "x-extends": "https://siteshrimp.org/schema/entries/v1.json",
+  "allOf": [
+    { "$ref": "https://siteshrimp.org/schema/entries/v1.json" },
+    {
+      "type": "object",
+      "required": ["qm_arch_item", "qm_defect_category"],
+      "properties": {
+        "qm_arch_item": {
+          "type": "string",
+          "x-csv-header": "QM Architectural Item",
+          "enum": [
+            "Floor",
+            "Internal Wall",
+            "Ceiling",
+            "Door",
+            "Window",
+            "Component",
+            "M&E Fittings"
+          ],
+          "description": "Verbatim QM Architectural Item from the QM Guide weightage table. The seven items carry edition-dependent weightages — CONQUAS 9th / 2019: Floor 24%, Internal Wall 15%, Ceiling 15%, Door 12%, Window 12%, Component 11%, M&E Fittings 11%. CONQUAS 2022: Floor 20%, Internal Wall 13%, Ceiling 7%, Door 18%, Window 13%, Component 20%, M&E Fittings 9%."
+        },
+        "qm_defect_category": {
+          "type": "string",
+          "x-csv-header": "QM Defect Category",
+          "enum": [
+            "Finishing",
+            "Alignment & Evenness",
+            "Crack & Damages",
+            "Hollowness",
+            "Jointing",
+            "Roughness",
+            "Joints & Gap",
+            "Material & Damages",
+            "Functionality",
+            "Accessories Defects"
+          ],
+          "description": "Verbatim QM Defect Category from the QM Guide weightage table. Hollowness applies only to Floor / Internal Wall. Roughness applies only to Ceiling. Jointing applies only to Floor / Internal Wall / Ceiling. Joints & Gap / Material & Damages / Functionality / Accessories Defects apply only to Door / Window / Component / M&E Fittings."
+        },
+        "qm_major_defect": {
+          "type": "boolean",
+          "x-csv-header": "Major Defect",
+          "description": "Flagged true when the defect matches any of the six QM Major Defect examples per QM Guide §2.9: (a) missing/broken accessories for assessed architectural items, (b) cracked/chipped/broken window panes, shower screens, mirrors, glass items, (c) visibly cracked tiles/stones/timber doors/timber flooring/ceiling boards/painted-wall cracks, (d) functionally deficient doors / windows / wardrobes / cabinets / taps / water closets / switches, (e) fan-coil unit leakage, water seepage through walls or windows, (f) misaligned door frame with verticality tolerance > 3 mm per door frame height. Used to drive the QM Tiered Rating downgrade rule and to surface major defects on REPORT exports."
+        },
+        "qm_inspection_type": {
+          "type": "string",
+          "x-csv-header": "QM Inspection Type",
+          "enum": [
+            "Internal Finish",
+            "Waterponding - Bathroom",
+            "Waterponding - Roof / Planter / Space-above-bedroom",
+            "Window Watertightness",
+            "In-Process - Waterproofing",
+            "In-Process - Stone Tiling",
+            "In-Process - Timber Flooring",
+            "In-Process - Window Installation"
+          ],
+          "description": "QM assessment type the photo evidence belongs to. The QM Guide specifies four In-Process inspections (waterproofing to bathrooms, stone/tiling, timber flooring, window installation), two waterponding tests (bathrooms 25mm × 24h finished flooring, and roofs/planter boxes/spaces above living-bedrooms 24h on finished flooring), Internal Finish Assessment (covers all locations except household shelters), and the CONQUAS-sampling Window Watertightness retest path."
+        },
+        "qm_conquas_edition": {
+          "type": "string",
+          "x-csv-header": "CONQUAS Edition",
+          "enum": [
+            "CONQUAS 9th Edition",
+            "CONQUAS 2019",
+            "CONQUAS 2022"
+          ],
+          "description": "Which CONQUAS edition the QM weightage table follows for this project. CONQUAS 2022 applies to construction tenders called from 1 June 2022. Earlier projects use the CONQUAS 9th Edition / 2019 weightage. QM threshold is 85 for projects with tender from 1 Jun 2020, otherwise 80."
+        }
+      }
+    }
+  ]
+}

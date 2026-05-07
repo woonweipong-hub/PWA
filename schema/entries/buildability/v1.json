@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "description": "BCA Buildable Design Score (B-Score) site-observation variant per Code of Practice on Buildability, 1 May 2022 edition. Captures structural / wall / DfMA evidence visible in a photo so the project's B-Score calculator (Manpower Allocation × Point Allocation per Block × Min B-Score per project category) has documented site evidence. Severity is reinterpreted as buildability impact: Critical = below MIN B-SCORE gate for project category, Major = significant labour penalty or wet-trade where prefab specified, Minor = inefficient detail or coordination clash, Observation = informational. Sources: BCA COP on Buildability (1 May 2022 ed.), Buildable Design Score Calculator BS-01 BIP.",
   "x-csv-header-convention": "Each property maps 1:1 to a column in the Entries sheet. The 'x-csv-header' field is the exact column header string. Variant columns are appended after the base columns when the project's workCategory is 'Buildability Score'.",
-  "x-work-category": "Buildability Score",
+  "x-work-category": "Buildability Assessment",
   "x-extends": "https://siteshrimp.org/schema/entries/v1.json",
   "allOf": [
     { "$ref": "https://siteshrimp.org/schema/entries/v1.json" },

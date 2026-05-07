@@ -380,11 +380,25 @@ const WORK_CATEGORIES = {
   // relate to buildability concerns (PPVC / MET / prefab / DfMA usage,
   // wet-trade vs precast trade-off, labour-saving system choice). This
   // is a labelling category for now; a separate B-Score calculator
-  // (per the COP 2022 matrix) is planned at the project level.
-  "Buildability Score": {
+  // (per the COP 2022 matrix) is planned at the project level. The
+  // BCA-verbatim term for the activity is "buildability assessment".
+  "Buildability Assessment": {
     icon: "\u{1F9F1}", // 🧱
     desc: "BCA Buildable Design Score (B-Score) — buildability / constructability observations on structural, wall, archi, M&E systems",
     groups: ["Structural","Architectural","Finishes","M&E – Plumbing","M&E – Electrical","M&E – ACMV","General"],
+  },
+  // BCA Quality Mark for Good Workmanship — Guide on Quality Mark
+  // Scheme (Rev 22 May 2025). Internal-finish quality assessment of
+  // private residential dwellings. Threshold 85 (tender from 1 Jun
+  // 2020) / 80 (before). Tiered Rating: Star 92+, Excellent 90 to <92,
+  // Merit 85 to <90 — gated additionally on waterponding pass-rate and
+  // window watertightness pass-rate. Component groups span the seven
+  // QM Architectural Items: Floor, Internal Wall, Ceiling, Door,
+  // Window, Component, M&E Fittings.
+  "Quality Mark Assessment": {
+    icon: "\u{2705}", // ✅
+    desc: "BCA Quality Mark — internal-finish quality assessment of private residential per Guide on QM Scheme (22 May 2025)",
+    groups: ["Architectural","Finishes","Carpentry","Sanitary","M&E – Plumbing","M&E – Electrical","M&E – ACMV","General"],
   },
   "Others": {
     icon: "\u{1F4CB}", // 📋

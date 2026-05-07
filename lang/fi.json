@@ -130,7 +130,8 @@
     "tnc": "Test & Commission (T&C)",
     "me": "M&E-tarkastus",
     "top": "TOP tarkastus",
-    "buildability": "Rakennettavuuspisteet",
+    "buildability": "Rakennettavuuden arviointi",
+    "quality_mark": "Laatumerkin arviointi",
     "others": "Muut"
   },
   "roles": {

@@ -130,7 +130,8 @@
     "tnc": "测试与调试（T&C）",
     "me": "机电检验",
     "top": "顶部检验",
-    "buildability": "可建造性得分",
+    "buildability": "可建性评估",
+    "quality_mark": "质量分数评估",
     "others": "其他"
   },
   "roles": {
