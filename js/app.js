@@ -25177,7 +25177,41 @@ function App(){
       });
     }
   },[defects,authUser?.id,member?.name]);
-  const inboxUnread=inboxEvents.filter(e=>!e.read).length;
+  // Standing alerts — surface state-based signals (not just
+  // transition events) so the bell mirrors REPORT's "X CRITICAL
+  // UNRESOLVED" banner. A Critical defect that was created in a
+  // previous session sits below the inboxEvents watcher's lastScanAt
+  // threshold and would otherwise stay invisible. Each Critical
+  // defect in active state (Open / In Progress) becomes one standing
+  // entry; resolving the defect removes it from the bell on the next
+  // render. Standing entries don't have a persisted read-state — they
+  // are always live until the underlying state changes.
+  const standingAlerts=useMemo(()=>{
+    if(!Array.isArray(defects))return [];
+    const out=[];
+    defects.forEach(d=>{
+      if(d.severity!=="Critical")return;
+      const status=String(d.status||"").trim();
+      if(status==="Done"||status==="Verified"||status==="Closed")return;
+      out.push({
+        id:`standing-critical-${d.id}`,
+        type:"severity",
+        defectId:d.id,
+        defectTitle:d.title||"Untitled",
+        from:"",
+        to:"Critical",
+        by:d.loggedBy||"",
+        at:d.created?new Date(d.created).getTime():Date.now(),
+        read:false,
+        standing:true,
+        statusLabel:status||"Open"
+      });
+    });
+    out.sort((a,b)=>b.at-a.at);
+    return out;
+  },[defects]);
+  const allInboxItems=useMemo(()=>[...standingAlerts,...inboxEvents],[standingAlerts,inboxEvents]);
+  const inboxUnread=allInboxItems.filter(e=>!e.read).length;
   const markInboxRead=()=>{
     setInboxEvents(prev=>{
       const updated=prev.map(e=>({...e,read:true}));
@@ -25784,9 +25818,9 @@ function App(){
                   <button onClick={()=>setShowInbox(false)} aria-label={t("nav.close")} style={{background:"rgba(255,255,255,0.08)",border:"none",borderRadius:6,padding:"4px 8px",color:"rgba(255,255,255,0.7)",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}><span aria-hidden="true">×</span></button>
                 </div>
                 <div style={{flex:1,overflowY:"auto",padding:"4px 0"}}>
-                  {inboxEvents.length===0?(
+                  {allInboxItems.length===0?(
                     <div style={{padding:"32px 20px",textAlign:"center",color:"rgba(255,255,255,0.4)",fontSize:12}}>{t("inbox.empty")}</div>
-                  ):inboxEvents.map(ev=>{
+                  ):allInboxItems.map(ev=>{
                     const ICON={status:"🔄",severity:"⚡",assignee:"👤",dueDate:"📅",mention:"💬"};
                     const LABEL={
                       status:t("inbox.label_status"),
@@ -25815,7 +25849,7 @@ function App(){
                     );
                   })}
                 </div>
-                {inboxEvents.length>0&&(
+                {allInboxItems.length>0&&(
                   <div style={{display:"flex",borderTop:"1px solid rgba(255,255,255,0.06)",background:"rgba(0,0,0,0.2)"}}>
                     <button onClick={markInboxRead} disabled={inboxUnread===0} style={{flex:1,background:"none",border:"none",padding:"10px",color:inboxUnread===0?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.7)",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:inboxUnread===0?"default":"pointer",letterSpacing:"0.06em"}}>{t("inbox.mark_all_read")}</button>
                     <button onClick={clearInbox} style={{flex:1,background:"none",border:"none",borderLeft:"1px solid rgba(255,255,255,0.06)",padding:"10px",color:"rgba(255,143,143,0.85)",fontSize:11,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",letterSpacing:"0.06em"}}>{t("inbox.clear")}</button>
