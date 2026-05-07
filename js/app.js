@@ -18409,8 +18409,14 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
   useEffect(()=>{
     if(status!=="ready"||!mapObj.current)return;
     // Clear previous markers AND any active cluster layer (so we can rebuild
-    // with current defects — both arrays and clusters).
-    markersRef.current.existing.forEach(m=>{if(m.setMap)m.setMap(null);else if(m.remove)m.remove();});
+    // with current defects — both arrays and clusters). Per-marker try/catch
+    // so one bad marker (e.g. already detached, or a provider quirk on a
+    // stale instance) doesn't break the rebuild and leave the rest of the
+    // old markers stranded on the map.
+    markersRef.current.existing.forEach(m=>{
+      try{if(m.setMap)m.setMap(null);else if(m.remove)m.remove();}
+      catch(e){try{console.warn("MapPanel: marker cleanup failed",e);}catch{}}
+    });
     if(clusterRef.current){
       try{
         if(clusterRef.current.clearMarkers)clusterRef.current.clearMarkers(); // gmaps MarkerClusterer
