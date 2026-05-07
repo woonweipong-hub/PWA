@@ -420,7 +420,8 @@
     "label_due": "Due Date",
     "label_mention": "Ti ho menzionato",
     "mark_all_read": "SEGNA TUTTO LETTO",
-    "clear": "CHIARA"
+    "clear": "CHIARA",
+    "toast_critical": "NUOVA CRITICA"
   },
   "diag": {
     "tab": "Diagnostica",

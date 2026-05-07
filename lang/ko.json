@@ -420,7 +420,8 @@
     "label_due": "두 개의 날짜",
     "label_mention": "당신을 언급함",
     "mark_all_read": "모두 읽은 것으로 표시",
-    "clear": "분명한"
+    "clear": "분명한",
+    "toast_critical": "새로운 중요"
   },
   "diag": {
     "tab": "진단",

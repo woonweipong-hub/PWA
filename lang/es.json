@@ -420,7 +420,8 @@
     "label_due": "dos citas",
     "label_mention": "Te mencioné",
     "mark_all_read": "MARCAR TODO LEIDO",
-    "clear": "CLARA"
+    "clear": "CLARA",
+    "toast_critical": "NUEVO CRÍTICO"
   },
   "diag": {
     "tab": "Diagnóstica",

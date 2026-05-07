@@ -25192,6 +25192,13 @@ function App(){
   // re-escalation later starts fresh and pings again.
   const[ackedStandings,setAckedStandings]=useState(()=>new Set());
   const[hiddenStandings,setHiddenStandings]=useState(()=>new Set());
+  // Real-time toast for fresh Critical defects. Tracked separately
+  // from the bell so users get a 5-second visual cue when a new
+  // Critical lands via SSE (or local create) without having to open
+  // the bell. The seen-IDs ref is local-only (not persisted) — toast
+  // is a transient cue, not a record.
+  const[criticalToast,setCriticalToast]=useState(null); // {defectId, title, by} | null
+  const _toastSeenRef=useRef(null); // Set<defectId>, lazily initialised
   // Hydrate ack + hide sets per user (lazy — runs after authUser
   // settles).
   useEffect(()=>{
@@ -25235,6 +25242,24 @@ function App(){
       }catch{}
     }
   },[standingAlertsRaw,authUser?.id]);
+  // Toast watcher — detect new Critical defects and surface a top
+  // banner. The first time the user sees the standings list, all
+  // entries are seeded into _toastSeenRef without firing the toast,
+  // so historical Criticals don't re-pop on every reload.
+  useEffect(()=>{
+    if(!standingAlertsRaw)return;
+    if(_toastSeenRef.current==null){
+      _toastSeenRef.current=new Set(standingAlertsRaw.map(s=>s.defectId));
+      return;
+    }
+    const fresh=standingAlertsRaw.find(s=>!_toastSeenRef.current.has(s.defectId));
+    if(fresh){
+      _toastSeenRef.current.add(fresh.defectId);
+      setCriticalToast({defectId:fresh.defectId,title:fresh.defectTitle,by:fresh.by});
+      const t=setTimeout(()=>setCriticalToast(null),5000);
+      return ()=>clearTimeout(t);
+    }
+  },[standingAlertsRaw]);
   const standingAlerts=useMemo(()=>{
     return standingAlertsRaw
       .filter(s=>!hiddenStandings.has(s.defectId))
@@ -25852,6 +25877,15 @@ function App(){
     <div style={{width:"100%",maxWidth:430,margin:"0 auto",height:"100dvh",background:"#f0ede8",display:"flex",flexDirection:"column",overflow:"hidden"}}>
       {/* Server-down banner — shows when the backend is unreachable (e.g. kill
           switch fired or VM upgrading). Auto-hides on the next good response. */}
+      {criticalToast&&(
+        <button type="button" role="alert" aria-live="assertive" onClick={()=>{const d=defects.find(x=>x.id===criticalToast.defectId);if(d){setViewing(d);setTab("defects");}setCriticalToast(null);}} style={{background:"#ff3b30",color:"#fff",padding:"10px 14px",fontSize:13,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",textAlign:"left",lineHeight:1.35,letterSpacing:"0.02em",flexShrink:0,border:"none",cursor:"pointer",width:"100%",display:"flex",alignItems:"center",gap:8}}>
+          <span aria-hidden="true" style={{fontSize:16}}>⚡</span>
+          <span style={{flex:1,minWidth:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+            <span style={{fontWeight:800,letterSpacing:"0.06em",marginRight:8}}>{t("inbox.toast_critical")}</span>
+            <span style={{fontWeight:600,opacity:0.95}}>{criticalToast.title}</span>
+          </span>
+        </button>
+      )}
       {serverDown&&(
         <div role="status" aria-live="polite" style={{background:"#ff9500",color:"#1a1a1a",padding:"10px 14px",fontSize:13,fontWeight:600,fontFamily:"'Barlow Condensed',sans-serif",textAlign:"center",lineHeight:1.35,letterSpacing:"0.01em",flexShrink:0}}>
           <span style={{marginRight:6}}>⚠️</span>{t("banner.server_down")}

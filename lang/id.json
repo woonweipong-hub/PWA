@@ -420,7 +420,8 @@
     "label_due": "Dua Tanggal",
     "label_mention": "Menyebutkanmu",
     "mark_all_read": "TANDAI SEMUA BACA",
-    "clear": "JERNIH"
+    "clear": "JERNIH",
+    "toast_critical": "KRITIS BARU"
   },
   "diag": {
     "tab": "Diagnostik",

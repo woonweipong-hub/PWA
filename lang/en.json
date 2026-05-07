@@ -420,7 +420,8 @@
     "label_due": "Due Date",
     "label_mention": "Mentioned you",
     "mark_all_read": "MARK ALL READ",
-    "clear": "CLEAR"
+    "clear": "CLEAR",
+    "toast_critical": "NEW CRITICAL"
   },
   "diag": {
     "tab": "Diagnostics",

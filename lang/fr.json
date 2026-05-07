@@ -420,7 +420,8 @@
     "label_due": "Deux rendez-vous",
     "label_mention": "Je vous ai mentionné",
     "mark_all_read": "MARQUER TOUT LU",
-    "clear": "CLAIRE"
+    "clear": "CLAIRE",
+    "toast_critical": "NOUVEAU CRITIQUE"
   },
   "diag": {
     "tab": "Diagnostic",

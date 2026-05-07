@@ -420,7 +420,8 @@
     "label_due": "दो तिथियाँ",
     "label_mention": "तुम्हारा जिक्र किया",
     "mark_all_read": "सभी को पढ़ा दिखाएं",
-    "clear": "स्पष्ट"
+    "clear": "स्पष्ट",
+    "toast_critical": "नया गंभीर"
   },
   "diag": {
     "tab": "निदान",

@@ -420,7 +420,8 @@
     "label_due": "Dua Kurma",
     "label_mention": "Sebut awak",
     "mark_all_read": "TANDAKAN SEMUA BACA",
-    "clear": "JELAS"
+    "clear": "JELAS",
+    "toast_critical": "KRITIKAL BARU"
   },
   "diag": {
     "tab": "Diagnostik",

@@ -420,7 +420,8 @@
     "label_due": "两个日期",
     "label_mention": "提到过你",
     "mark_all_read": "标记全部已读",
-    "clear": "清除"
+    "clear": "清除",
+    "toast_critical": "新批评"
   },
   "diag": {
     "tab": "诊断",

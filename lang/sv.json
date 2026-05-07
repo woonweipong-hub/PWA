@@ -420,7 +420,8 @@
     "label_due": "Två datum",
     "label_mention": "Nämnde dig",
     "mark_all_read": "MARKERA ALLA LÄSTA",
-    "clear": "RENSA"
+    "clear": "RENSA",
+    "toast_critical": "NY KRITISK"
   },
   "diag": {
     "tab": "Diagnostik",

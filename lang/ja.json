@@ -420,7 +420,8 @@
     "label_due": "2 つの日付",
     "label_mention": "あなたについて言及しました",
     "mark_all_read": "すべて既読としてマーク",
-    "clear": "クリア"
+    "clear": "クリア",
+    "toast_critical": "新しいクリティカル"
   },
   "diag": {
     "tab": "診断",

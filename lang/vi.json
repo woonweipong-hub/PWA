@@ -420,7 +420,8 @@
     "label_due": "Hai ngày",
     "label_mention": "Đã đề cập đến bạn",
     "mark_all_read": "ĐÁNH DẤU TẤT CẢ ĐÃ ĐỌC",
-    "clear": "THÔNG THOÁNG"
+    "clear": "THÔNG THOÁNG",
+    "toast_critical": "TIÊU CHUẨN MỚI"
   },
   "diag": {
     "tab": "Chẩn đoán",

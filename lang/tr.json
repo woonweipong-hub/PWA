@@ -420,7 +420,8 @@
     "label_due": "İki Tarih",
     "label_mention": "Senden bahsettim",
     "mark_all_read": "HEPSİNİ OKUDU İŞARETLEYİN",
-    "clear": "TEMİZLEMEK"
+    "clear": "TEMİZLEMEK",
+    "toast_critical": "YENİ KRİTİK"
   },
   "diag": {
     "tab": "Teşhis",

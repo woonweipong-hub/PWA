@@ -420,7 +420,8 @@
     "label_due": "Zwei Termine",
     "label_mention": "Habe Dich erwähnt",
     "mark_all_read": "Alles als gelesen markieren",
-    "clear": "KLAR"
+    "clear": "KLAR",
+    "toast_critical": "NEUES KRITISCHES"
   },
   "diag": {
     "tab": "Diagnose",
