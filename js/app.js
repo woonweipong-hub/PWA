@@ -11366,7 +11366,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           );
         })()}
       </div>
-      <div style={{fontSize:11,color:"#5856d6",marginTop:1,marginBottom:4,fontFamily:"'Barlow',sans-serif"}}>{t("empty_state.log")}</div>
+      <div style={{fontSize:11,fontWeight:700,color:"#5856d6",marginTop:1,marginBottom:4,fontFamily:"'Barlow',sans-serif"}}>{t("empty_state.log")}</div>
       <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:20}}>📁 {currentProject?.name||"—"} · {t("log.photo_speak_type")}</div>
 
       {/* CONQUAS / TOP wizard launchers moved up under WORK CATEGORY block */}
@@ -13079,7 +13079,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
           })()}
         </div>
       </div>
-      <div style={{fontSize:11,color:selectMode?"rgba(0,0,0,0.4)":"#5856d6",marginTop:1,marginBottom:12,fontFamily:"'Barlow',sans-serif"}}>{selectMode?`${selectedIds.size} ${t("review.selected_tip")}`:t("review.triage_desc")}</div>
+      <div style={{fontSize:11,fontWeight:700,color:selectMode?"rgba(0,0,0,0.4)":"#5856d6",marginTop:1,marginBottom:12,fontFamily:"'Barlow',sans-serif"}}>{selectMode?`${selectedIds.size} ${t("review.selected_tip")}`:t("review.triage_desc")}</div>
 
       {/* Offline queue badge — visible so users know when entries are
           sitting in IndexedDB waiting for reconnect. Tap to manual-sync.
@@ -15868,7 +15868,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,flexWrap:"wrap",gap:8}}>
         <div style={{minWidth:0,flex:"1 1 180px"}}>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",marginBottom:2}}>{t("report.site_report")}</div>
-          <div style={{fontSize:11,color:"#5856d6",marginTop:1,marginBottom:2,fontFamily:"'Barlow',sans-serif"}}>{t("empty_state.report")}</div>
+          <div style={{fontSize:11,fontWeight:700,color:"#5856d6",marginTop:1,marginBottom:2,fontFamily:"'Barlow',sans-serif"}}>{t("empty_state.report")}</div>
           <div style={{fontSize:12,color:"rgba(0,0,0,0.4)"}}>{currentProject?.name||""} · {new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}</div>
         </div>
         <div style={{display:"flex",gap:5,flexWrap:"wrap",justifyContent:"flex-end"}}>
@@ -21305,7 +21305,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       <div style={{padding:20}}>
         {embedded&&<>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>{t("drawings.tag_compare")}</div>
-          <div style={{fontSize:11,color:"#5856d6",marginTop:1,marginBottom:14,fontFamily:"'Barlow',sans-serif"}}>{t("drawings.tag_compare_subtitle")}</div>
+          <div style={{fontSize:11,fontWeight:700,color:"#5856d6",marginTop:1,marginBottom:14,fontFamily:"'Barlow',sans-serif"}}>{t("drawings.tag_compare_subtitle")}</div>
         </>}
         {embedded&&drawings.length===0&&(defects||[]).length===0&&(
           <div style={{background:"rgba(255,107,0,0.06)",border:"1px solid rgba(255,107,0,0.18)",borderRadius:10,padding:"10px 12px",marginBottom:14,fontSize:12,color:"rgba(0,0,0,0.65)",lineHeight:1.5,fontFamily:"'Barlow',sans-serif"}}>
