@@ -47,3 +47,15 @@ contracts/SIA/**
 # (Autodesk Revit rac_basic_sample, unknown-provenance PDFs, test screenshots)
 sample_drwgs/archived/
 sample_drwgs/*.jpg
+sample_drwgs/*.pdf
+sample_drwgs/CONQUAS/
+sample_drwgs/Jpg/
+
+# Local exports (CSV / PDF / HTML reports written by the in-app exporter)
+output/
+
+# Working / scratch process diagrams (not deployed)
+workflow/
+
+# Session backups of lang/en.json — emergency restore copies
+*tmp_en_old*.json
