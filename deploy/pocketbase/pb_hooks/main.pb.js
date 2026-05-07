@@ -436,6 +436,23 @@ var AI_VARIANT_TABLE = {
       { property: "top_readiness_gate",    type: "boolean" },
       { property: "top_phase",             type: "string", enum: ["TOP","CSC","Pre-TOP self-audit","Phased TOP","Re-inspection"] }
     ]
+  },
+  // BCA Buildable Design Score (B-Score) per COP 2022. Picking this work
+  // category puts the AI in design / system-observation mode, NOT defect
+  // grading. Source: BCA Code of Practice on Buildability, 1 May 2022 ed.
+  // Variant schema: /schema/entries/buildability/v1.json. The B-Score
+  // calculator (Manpower Allocation × Point Allocation per Block × Min
+  // B-Score per project category) lives at the project level — not here.
+  // This variant captures site-observation evidence the calculator needs.
+  "Buildability Score": {
+    addendum: "Buildability Score mode: BCA Buildable Design Score (B-Score) per COP 2022 — design / system-observation, NOT contractual-defect grading. Reinterpret severity as buildability impact — Critical = below MIN B-SCORE gate for the project category (project cannot be approved without redesign), Major = significant labour penalty / wet-trade where prefab specified, Minor = inefficient detail or coordination clash, Observation = informational. From the photo, identify structural_system from {PPVC, MET / Hybrid MET, Structural Steel / Hybrid, APCS - Advanced Precast Concrete System, Prefab Slab+Column+Wall, Prefab Column/Wall+Beam, Prefab Column/Wall only, Prefab Slab only, Flat Plate / Flat Slab, Beam-Slab} — verbatim COP 2022 Point Allocation Section A names. Identify wall_system from {ALC Panel, Drywall, Precast Concrete, Cast-in-situ Brick / Block, Lightweight Panel, Other} — Section B. Set prefab_evidence=true when off-site / modular construction is visible (lifting hooks, shear keys, joint grouting, factory-finished surfaces). Identify dfma_indicator from {Volumetric module, Panellised, Hybrid, Mostly cast-in-situ, Unclear}. Emit buildability_concern as free text when a wet-trade is being used where prefab/DfMA was specified or could substitute (e.g. 'cast-in-situ wall on a project that should be PPVC per B-Score gate', 'wet plastering visible on ALC panel — defeats prefab labour saving'). Severity / title / description still emitted as base.",
+    fields: [
+      { property: "structural_system",  type: "string", enum: ["PPVC","MET / Hybrid MET","Structural Steel / Hybrid","APCS - Advanced Precast Concrete System","Prefab Slab+Column+Wall","Prefab Column/Wall+Beam","Prefab Column/Wall only","Prefab Slab only","Flat Plate / Flat Slab","Beam-Slab"] },
+      { property: "wall_system",        type: "string", enum: ["ALC Panel","Drywall","Precast Concrete","Cast-in-situ Brick / Block","Lightweight Panel","Other"] },
+      { property: "prefab_evidence",    type: "boolean" },
+      { property: "dfma_indicator",     type: "string", enum: ["Volumetric module","Panellised","Hybrid","Mostly cast-in-situ","Unclear"] },
+      { property: "buildability_concern", type: "string" }
+    ]
   }
 };
 

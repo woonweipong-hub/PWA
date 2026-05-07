@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://siteshrimp.org/schema/entries/buildability/v1.json",
+  "title": "SiteShrimp Photo Entry — Buildability Score variant",
+  "version": "1.0.0",
+  "description": "BCA Buildable Design Score (B-Score) site-observation variant per Code of Practice on Buildability, 1 May 2022 edition. Captures structural / wall / DfMA evidence visible in a photo so the project's B-Score calculator (Manpower Allocation × Point Allocation per Block × Min B-Score per project category) has documented site evidence. Severity is reinterpreted as buildability impact: Critical = below MIN B-SCORE gate for project category, Major = significant labour penalty or wet-trade where prefab specified, Minor = inefficient detail or coordination clash, Observation = informational. Sources: BCA COP on Buildability (1 May 2022 ed.), Buildable Design Score Calculator BS-01 BIP.",
+  "x-csv-header-convention": "Each property maps 1:1 to a column in the Entries sheet. The 'x-csv-header' field is the exact column header string. Variant columns are appended after the base columns when the project's workCategory is 'Buildability Score'.",
+  "x-work-category": "Buildability Score",
+  "x-extends": "https://siteshrimp.org/schema/entries/v1.json",
+  "allOf": [
+    { "$ref": "https://siteshrimp.org/schema/entries/v1.json" },
+    {
+      "type": "object",
+      "properties": {
+        "structural_system": {
+          "type": "string",
+          "x-csv-header": "Structural System",
+          "enum": [
+            "PPVC",
+            "MET / Hybrid MET",
+            "Structural Steel / Hybrid",
+            "APCS - Advanced Precast Concrete System",
+            "Prefab Slab+Column+Wall",
+            "Prefab Column/Wall+Beam",
+            "Prefab Column/Wall only",
+            "Prefab Slab only",
+            "Flat Plate / Flat Slab",
+            "Beam-Slab"
+          ],
+          "description": "BCA COP 2022 Buildable Design Score Point Allocation — Section A. Verbatim system names from the BS-01 BIP point matrix. The point allocation for each system varies by project category (Residential / Industrial / Commercial / Institutional / MRT) per the COP 2022 Point Allocation sheet."
+        },
+        "wall_system": {
+          "type": "string",
+          "x-csv-header": "Wall System",
+          "enum": [
+            "ALC Panel",
+            "Drywall",
+            "Precast Concrete",
+            "Cast-in-situ Brick / Block",
+            "Lightweight Panel",
+            "Other"
+          ],
+          "description": "Section B (Wall System) of the COP 2022 buildability matrix. Used to score the wall component of the Buildable Design Score."
+        },
+        "prefab_evidence": {
+          "type": "boolean",
+          "x-csv-header": "Prefab Evidence",
+          "description": "Set true when off-site / modular construction is visibly evident in the photo — lifting hooks, shear keys, joint grouting, factory-finished surfaces, gantry / crane lift in progress. Used to validate the structural_system / wall_system claim against site reality."
+        },
+        "dfma_indicator": {
+          "type": "string",
+          "x-csv-header": "DfMA Indicator",
+          "enum": [
+            "Volumetric module",
+            "Panellised",
+            "Hybrid",
+            "Mostly cast-in-situ",
+            "Unclear"
+          ],
+          "description": "Design for Manufacturing and Assembly classification visible in the photo. Volumetric = whole rooms / pods (e.g. PPVC). Panellised = flat-pack walls / floors / facades. Hybrid = mix of prefab and cast-in-situ. Mostly cast-in-situ = traditional wet-trade. Used as an at-a-glance flag for site B-Score reviewers."
+        },
+        "buildability_concern": {
+          "type": "string",
+          "x-csv-header": "Buildability Concern",
+          "description": "Free-text observation of a buildability issue — wet trade where prefab specified, missed DfMA opportunity, coordination clash undermining prefab labour saving (e.g. 'wet plastering visible on ALC panel — defeats prefab labour saving', 'cast-in-situ wall on a project that should be PPVC per B-Score gate'). Optional; only emit when a real concern is visible."
+        }
+      }
+    }
+  ]
+}

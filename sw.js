@@ -4,7 +4,7 @@
 // drives both the AI prompt (different fields per work category) and
 // the photo-ZIP export. The activate handler below deletes every cache
 // whose name doesn't equal CACHE.
-const CACHE = 'siteshrimp-v112';
+const CACHE = 'siteshrimp-v113';
 const ASSETS = [
   '/',
   '/index.html',
@@ -54,7 +54,8 @@ const ASSETS = [
   '/schema/entries/handover/v1.json',
   '/schema/entries/tnc/v1.json',
   '/schema/entries/me/v1.json',
-  '/schema/entries/top/v1.json'
+  '/schema/entries/top/v1.json',
+  '/schema/entries/buildability/v1.json'
 ];
 
 // ── Install: pre-cache app shell, then warm Requirements Advisor corpus ──
