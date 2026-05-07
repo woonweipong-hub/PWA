@@ -11385,7 +11385,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>{t("log.log_entry")}</div>
         <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap",justifyContent:"flex-end"}}>
           {count>0&&<div style={{fontSize:10,fontWeight:700,color:"#30d158",background:"rgba(48,209,88,0.1)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:20,padding:"4px 10px",minHeight:22,boxSizing:"border-box",display:"flex",alignItems:"center",fontFamily:"'Barlow Condensed',sans-serif"}}>{count} {t("log.logged")}</div>}
-          <div style={{fontSize:10,fontWeight:700,color:"#ff6b00",background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:20,padding:"4px 10px",minHeight:22,boxSizing:"border-box",display:"flex",alignItems:"center",gap:5,fontFamily:"'Barlow Condensed',sans-serif"}}><span style={{fontSize:11,lineHeight:1}} aria-hidden="true">📸</span>{t("log.quick_capture")}</div>
+          <div style={{fontSize:10,fontWeight:700,color:"#ff6b00",background:"rgba(255,107,0,0.1)",border:"1px solid rgba(255,107,0,0.2)",borderRadius:20,padding:"4px 10px",minHeight:22,boxSizing:"border-box",display:"flex",alignItems:"center",gap:5,lineHeight:1,fontFamily:"'Barlow Condensed',sans-serif"}}><span style={{fontSize:11,display:"inline-flex",alignItems:"center"}} aria-hidden="true">📸</span><span>{t("log.quick_capture")}</span></div>
           {/* Auto-save mode chip — tappable to cycle: review-first (every
               save manual) → review-then-auto (first 10 manual, then auto) →
               always-auto (zero-tap). Default is review-then-auto so users
