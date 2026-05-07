@@ -130,6 +130,7 @@
     "tnc": "테스트 및 커미션(T&C)",
     "me": "M&E 검사",
     "top": "TOP 검사",
+    "buildability": "구축 가능성 점수",
     "others": "기타"
   },
   "roles": {

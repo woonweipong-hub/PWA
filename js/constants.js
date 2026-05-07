@@ -376,6 +376,16 @@ const WORK_CATEGORIES = {
     desc: "BCA Temporary Occupation Permit readiness — verbatim NC categories with Approved Document / COA / TRSS clause references",
     groups: ["Architectural","Structural","Finishes","M&E – Plumbing","M&E – Electrical","M&E – ACMV","M&E – Fire","M&E – Lift","Sanitary","External/Landscape","Site & Safety","General"],
   },
+  // BCA Buildable Design Score (B-Score) — COP 2022. Tag entries that
+  // relate to buildability concerns (PPVC / MET / prefab / DfMA usage,
+  // wet-trade vs precast trade-off, labour-saving system choice). This
+  // is a labelling category for now; a separate B-Score calculator
+  // (per the COP 2022 matrix) is planned at the project level.
+  "Buildability Score": {
+    icon: "\u{1F9F1}", // 🧱
+    desc: "BCA Buildable Design Score (B-Score) — buildability / constructability observations on structural, wall, archi, M&E systems",
+    groups: ["Structural","Architectural","Finishes","M&E – Plumbing","M&E – Electrical","M&E – ACMV","General"],
+  },
   "Others": {
     icon: "\u{1F4CB}", // 📋
     desc: "Custom — all components available, free-text allowed",

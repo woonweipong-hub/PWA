@@ -130,6 +130,7 @@
     "tnc": "Test et mise en service (T&C)",
     "me": "Inspection S&E",
     "top": "HAUT Inspection",
+    "buildability": "Score de constructibilité",
     "others": "Autres"
   },
   "roles": {

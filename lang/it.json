@@ -130,6 +130,7 @@
     "tnc": "Test e Commissione (T&C)",
     "me": "Ispezione M&E",
     "top": "TOP Ispezione",
+    "buildability": "Punteggio di edificabilità",
     "others": "Altri"
   },
   "roles": {

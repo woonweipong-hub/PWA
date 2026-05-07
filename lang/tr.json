@@ -130,6 +130,7 @@
     "tnc": "Test ve Devreye Alma (Şart ve Koşullar)",
     "me": "İ&D Denetimi",
     "top": "ÜST Denetim",
+    "buildability": "İnşa Edilebilirlik Puanı",
     "others": "Diğer"
   },
   "roles": {

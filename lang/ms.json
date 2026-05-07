@@ -130,6 +130,7 @@
     "tnc": "Ujian & Komisen (T&C)",
     "me": "Pemeriksaan M&E",
     "top": "Pemeriksaan TOP",
+    "buildability": "Skor Kebolehbinaan",
     "others": "Lain-lain"
   },
   "roles": {

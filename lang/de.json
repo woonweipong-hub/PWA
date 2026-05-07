@@ -130,6 +130,7 @@
     "tnc": "Test & Inbetriebnahme (AGB)",
     "me": "M&E-Inspektion",
     "top": "TOP Inspektion",
+    "buildability": "Buildability-Score",
     "others": "Sonstige"
   },
   "roles": {

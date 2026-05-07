@@ -130,6 +130,7 @@
     "tnc": "Test og provision (T&C)",
     "me": "M&E inspektion",
     "top": "TOP Eftersyn",
+    "buildability": "Score for byggeevne",
     "others": "Andet"
   },
   "roles": {

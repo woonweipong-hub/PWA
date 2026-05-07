@@ -130,6 +130,7 @@
     "tnc": "Teste e Comissão (T&C)",
     "me": "Inspeção de M&A",
     "top": "Inspeção SUPERIOR",
+    "buildability": "Pontuação de capacidade de construção",
     "others": "Outros"
   },
   "roles": {

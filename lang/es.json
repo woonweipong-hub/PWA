@@ -130,6 +130,7 @@
     "tnc": "Prueba y Comisión (T&C)",
     "me": "Inspección de seguimiento y evaluación",
     "top": "Inspección superior",
+    "buildability": "Puntuación de edificabilidad",
     "others": "Otros"
   },
   "roles": {
