@@ -3646,12 +3646,16 @@ const isArchived=d=>!!(d.archivedAt&&String(d.archivedAt).length>0);setDefects(w
 useEffect(()=>{if(!authUser?.id){setInboxEvents([]);inboxLastScanRef.current=0;return;}const all=local.get(INBOX_KEY)||{};const mine=all[authUser.id];if(mine){setInboxEvents(Array.isArray(mine.events)?mine.events:[]);inboxLastScanRef.current=mine.lastScanAt||Date.now();}else{// First-time roll-out: seed lastScanAt to NOW so historical events
 // don't flood the inbox on first load. Persist immediately.
 const now=Date.now();inboxLastScanRef.current=now;setInboxEvents([]);try{local.set(INBOX_KEY,{...all,[authUser.id]:{events:[],lastScanAt:now}});}catch{}}},[authUser?.id]);useEffect(()=>{if(!authUser?.id||!member?.name)return;const me=String(member.name).trim();if(!me)return;const since=inboxLastScanRef.current;const fresh=[];let maxAt=since;defects.forEach(d=>{// Creation-time Critical alert. Mirrors the empty-state copy
-// "when severity escalates to Critical" — which today only fired on
-// transition events but never on initial creation, so a defect logged
-// as Critical from the start (the common case) was silently dropped.
-// Project-wide (no iAmInvolved gate) per the wording; self-authored
-// is skipped because you don't notify yourself of your own action.
-const createdAt=d.created?new Date(d.created).getTime():0;const dLoggedBy=(d.loggedBy||"").trim();if(createdAt>since&&d.severity==="Critical"&&dLoggedBy!==me){if(createdAt>maxAt)maxAt=createdAt;fresh.push({id:typeof crypto!=="undefined"&&crypto.randomUUID?crypto.randomUUID():`${createdAt}-${Math.random().toString(36).slice(2,8)}`,type:"severity",defectId:d.id,defectTitle:d.title||"Untitled",from:"",to:"Critical",by:dLoggedBy,at:createdAt,read:false});}(d.comments||[]).forEach(c=>{if(!c.at||c.at<=since)return;if(c.at>maxAt)maxAt=c.at;if((c.by||"").trim()===me)return;// Auto-event branch (status/severity/assignee/dueDate)
+// "when severity escalates to Critical". Project-wide AND
+// self-included — Critical is treated as an audit-trail signal
+// ("a Critical defect now exists in this project") rather than
+// a per-actor notification, so even your own log of a Critical
+// defect surfaces in your inbox. Avoids the surprise of solo
+// testing where every Critical action is silently filtered.
+const createdAt=d.created?new Date(d.created).getTime():0;const dLoggedBy=(d.loggedBy||"").trim();if(createdAt>since&&d.severity==="Critical"){if(createdAt>maxAt)maxAt=createdAt;fresh.push({id:typeof crypto!=="undefined"&&crypto.randomUUID?crypto.randomUUID():`${createdAt}-${Math.random().toString(36).slice(2,8)}`,type:"severity",defectId:d.id,defectTitle:d.title||"Untitled",from:"",to:"Critical",by:dLoggedBy,at:createdAt,read:false});}(d.comments||[]).forEach(c=>{if(!c.at||c.at<=since)return;if(c.at>maxAt)maxAt=c.at;const isSelf=(c.by||"").trim()===me;// Self-authored severity-to-Critical events are still audit-
+// trail-worthy (you escalated something for the team to see),
+// so they reach the inbox. All other event types skip self.
+const isSelfCriticalEscalation=isSelf&&c.kind==="event"&&c.type==="severity"&&c.to==="Critical";if(isSelf&&!isSelfCriticalEscalation)return;// Auto-event branch (status/severity/assignee/dueDate)
 if(c.kind==="event"){const assignee=(d.assignee||"").trim();const loggedBy=(d.loggedBy||"").trim();const iAmInvolved=assignee===me||loggedBy===me;let relevant=false;if(c.type==="assignee"&&(c.to||"").trim()===me)relevant=true;else if(c.type==="status"&&iAmInvolved)relevant=true;// Critical escalations are project-wide per the empty-state copy
 // ("when severity escalates to Critical" — no "your entries"
 // qualifier). Other severity moves stay involvement-gated.

@@ -25102,14 +25102,15 @@ function App(){
     let maxAt=since;
     defects.forEach(d=>{
       // Creation-time Critical alert. Mirrors the empty-state copy
-      // "when severity escalates to Critical" — which today only fired on
-      // transition events but never on initial creation, so a defect logged
-      // as Critical from the start (the common case) was silently dropped.
-      // Project-wide (no iAmInvolved gate) per the wording; self-authored
-      // is skipped because you don't notify yourself of your own action.
+      // "when severity escalates to Critical". Project-wide AND
+      // self-included — Critical is treated as an audit-trail signal
+      // ("a Critical defect now exists in this project") rather than
+      // a per-actor notification, so even your own log of a Critical
+      // defect surfaces in your inbox. Avoids the surprise of solo
+      // testing where every Critical action is silently filtered.
       const createdAt=d.created?new Date(d.created).getTime():0;
       const dLoggedBy=(d.loggedBy||"").trim();
-      if(createdAt>since&&d.severity==="Critical"&&dLoggedBy!==me){
+      if(createdAt>since&&d.severity==="Critical"){
         if(createdAt>maxAt)maxAt=createdAt;
         fresh.push({
           id:(typeof crypto!=="undefined"&&crypto.randomUUID)?crypto.randomUUID():`${createdAt}-${Math.random().toString(36).slice(2,8)}`,
@@ -25120,7 +25121,12 @@ function App(){
       (d.comments||[]).forEach(c=>{
         if(!c.at||c.at<=since)return;
         if(c.at>maxAt)maxAt=c.at;
-        if((c.by||"").trim()===me)return;
+        const isSelf=(c.by||"").trim()===me;
+        // Self-authored severity-to-Critical events are still audit-
+        // trail-worthy (you escalated something for the team to see),
+        // so they reach the inbox. All other event types skip self.
+        const isSelfCriticalEscalation=isSelf&&c.kind==="event"&&c.type==="severity"&&c.to==="Critical";
+        if(isSelf&&!isSelfCriticalEscalation)return;
         // Auto-event branch (status/severity/assignee/dueDate)
         if(c.kind==="event"){
           const assignee=(d.assignee||"").trim();
