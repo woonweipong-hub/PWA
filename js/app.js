@@ -11341,11 +11341,6 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
 
   return(
     <div style={{padding:"20px 16px 120px",animation:"fadeIn 0.25s ease"}}>
-      {existingDefects.length===0&&(
-        <div style={{background:"rgba(255,107,0,0.06)",border:"1px solid rgba(255,107,0,0.18)",borderRadius:10,padding:"10px 12px",marginBottom:14,fontSize:12,color:"rgba(0,0,0,0.65)",lineHeight:1.5,fontFamily:"'Barlow',sans-serif"}}>
-          {t("empty_state.log")}
-        </div>
-      )}
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4,flexWrap:"wrap"}}>
         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>{t("log.log_entry")}</div>
         {count>0&&<div style={{fontSize:10,fontWeight:700,color:"#30d158",background:"rgba(48,209,88,0.1)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:20,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>{count} {t("log.logged")}</div>}
@@ -11371,6 +11366,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           );
         })()}
       </div>
+      <div style={{fontSize:11,color:"#ff6b00",marginTop:1,marginBottom:4,fontFamily:"'Barlow',sans-serif"}}>{t("empty_state.log")}</div>
       <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginBottom:20}}>📁 {currentProject?.name||"—"} · {t("log.photo_speak_type")}</div>
 
       {/* CONQUAS / TOP wizard launchers moved up under WORK CATEGORY block */}
@@ -13030,7 +13026,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,gap:8}}>
         <div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>REVIEW <span style={{color:"rgba(0,0,0,0.3)",fontSize:18}}>({filtered.length})</span></div>
-          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",marginTop:1}}>{selectMode?`${selectedIds.size} ${t("review.selected_tip")}`:t("review.triage_desc")}</div>
+          <div style={{fontSize:11,color:selectMode?"rgba(0,0,0,0.4)":"#ff6b00",marginTop:1,fontFamily:"'Barlow',sans-serif"}}>{selectMode?`${selectedIds.size} ${t("review.selected_tip")}`:t("review.triage_desc")}</div>
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
           {(activeFilters>0||q)&&!selectMode&&<button onClick={clearAll} style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.2)",borderRadius:20,padding:"4px 10px",color:"#ff3b30",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.clear")} ({activeFilters+(q?1:0)})</button>}
@@ -13409,7 +13405,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
           title, so they're not silently hidden. */}
       {showGridView&&(
         filtered.length===0
-          ?<div style={{textAlign:"center",color:"rgba(0,0,0,0.45)",padding:"40px 24px",fontSize:13,lineHeight:1.55,maxWidth:520,margin:"0 auto"}}>{(defects||[]).length===0?t("empty_state.review"):(q?t("review.no_matching")+" \""+search+"\"":t("review.no_entries"))}</div>
+          ?<div style={{textAlign:"center",color:"rgba(0,0,0,0.45)",padding:"40px 24px",fontSize:13,lineHeight:1.55,maxWidth:520,margin:"0 auto"}}>{q?t("review.no_matching")+" \""+search+"\"":t("review.no_entries")}</div>
           :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(106px,1fr))",gap:8,marginBottom:16}}>
             {filtered.map(d=>{
               const _photo=Array.isArray(d.photo)?d.photo[0]:d.photo;
@@ -13442,7 +13438,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
             })}
           </div>
       )}
-      {!showMapView&&!showGridView&&filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.45)",padding:"40px 24px",fontSize:13,lineHeight:1.55,maxWidth:520,margin:"0 auto"}}>{(defects||[]).length===0?t("empty_state.review"):(q?t("review.no_matching")+" \""+search+"\"":t("review.no_entries"))}</div>}
+      {!showMapView&&!showGridView&&filtered.length===0&&<div style={{textAlign:"center",color:"rgba(0,0,0,0.45)",padding:"40px 24px",fontSize:13,lineHeight:1.55,maxWidth:520,margin:"0 auto"}}>{q?t("review.no_matching")+" \""+search+"\"":t("review.no_entries")}</div>}
       {/* CONQUAS / batch grouping — interleaves section headers with card
           rows. Batch grouping takes precedence when both toggles are on
           because each wizard run is tied to a single CONQUAS element, so
@@ -15865,11 +15861,6 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
 
   return(
     <div style={{padding:"20px 16px",animation:"fadeIn 0.25s ease"}}>
-      {(defects||[]).length===0&&(
-        <div style={{background:"rgba(255,107,0,0.06)",border:"1px solid rgba(255,107,0,0.18)",borderRadius:10,padding:"10px 12px",marginBottom:14,fontSize:12,color:"rgba(0,0,0,0.65)",lineHeight:1.5,fontFamily:"'Barlow',sans-serif"}}>
-          {t("empty_state.report")}
-        </div>
-      )}
       {/* Merged from former Dashboard tab: title + status dots + status
           cards + critical banner + offline queue sync. Gives the report
           surface a glanceable landing, same info at-a-glance that used to
@@ -15877,6 +15868,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,flexWrap:"wrap",gap:8}}>
         <div style={{minWidth:0,flex:"1 1 180px"}}>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",marginBottom:2}}>{t("report.site_report")}</div>
+          <div style={{fontSize:11,color:"#ff6b00",marginTop:1,marginBottom:2,fontFamily:"'Barlow',sans-serif"}}>{t("empty_state.report")}</div>
           <div style={{fontSize:12,color:"rgba(0,0,0,0.4)"}}>{currentProject?.name||""} · {new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}</div>
         </div>
         <div style={{display:"flex",gap:5,flexWrap:"wrap",justifyContent:"flex-end"}}>
@@ -21313,7 +21305,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       <div style={{padding:20}}>
         {embedded&&<div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:14}}>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>{t("drawings.tag_compare")}</div>
-          <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>Upload, pin, overlay photos and compare</div>
+          <div style={{fontSize:11,color:"#ff6b00",fontFamily:"'Barlow',sans-serif"}}>{t("drawings.tag_compare_subtitle")}</div>
         </div>}
         {embedded&&drawings.length===0&&(defects||[]).length===0&&(
           <div style={{background:"rgba(255,107,0,0.06)",border:"1px solid rgba(255,107,0,0.18)",borderRadius:10,padding:"10px 12px",marginBottom:14,fontSize:12,color:"rgba(0,0,0,0.65)",lineHeight:1.5,fontFamily:"'Barlow',sans-serif"}}>

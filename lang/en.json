@@ -31,10 +31,9 @@
     "save_nc": "✕ SAVE NC + CREATE DEFECT"
   },
   "empty_state": {
-    "log": "Take a photo of any defect. AI fills in title, severity, description. It saves automatically.",
+    "log": "Snap a defect; AI auto-fills and saves. Edit via + LOG or ☰ REVIEW.",
     "tag": "Upload your own floor plans or drawings here, then pin defects on them for precise location. Pairs with the GPS auto-pinning that's already in your reports.",
-    "review": "Track defect status as work gets resolved — In Progress, Done, Verified, Closed. Useful when you need a status workflow on top of capture.",
-    "report": "Pulls everything you've LOGGED into a CSV, PDF, email, or shareable HTML for the client. Nothing to send yet — start in LOG.",
+    "report": "Export logs to CSV, PDF, or HTML reports. Start in + LOG.",
     "dashboard": "Status overview of your defects — counts, severities, recent activity. Nothing here yet; go to LOG to get started."
   },
   "banner": {
@@ -336,7 +335,7 @@
     "no_matching": "No entries matching",
     "search_placeholder": "Search title, description, assignee...",
     "filter_by": "Filter by severity / status / assignee / date",
-    "triage_desc": "Triage, update status, verify and close entries",
+    "triage_desc": "Track progress, update status, verify, and close entries.",
     "selected_tip": "selected · tap rows to select",
     "filters": "FILTERS",
     "select": "✓ SELECT",
@@ -606,6 +605,7 @@
   "drawings": {
     "title": "Drawings",
     "tag_compare": "TAG & COMPARE",
+    "tag_compare_subtitle": "Upload, convert, add pin, overlay photos and compare where needed.",
     "drawing_annotations": "DRAWING ANNOTATIONS",
     "upload_plans": "Upload floor plans (JPG, PNG, TIF, PDF)",
     "pin_track": "Pin and track issues directly on floor plans.",
