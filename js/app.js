@@ -5692,6 +5692,7 @@ function generateComparisonsEmailHTML(comparisons){
 function useVoice(){
   const[listening,setListening]=useState(false);
   const[supported]=useState(()=>"webkitSpeechRecognition" in window||"SpeechRecognition" in window);
+  const[lastError,setLastError]=useState("");
   const recRef=useRef(null);
   const wantOnRef=useRef(false);   // user intent — keep listening until explicit stop
   const onResultRef=useRef(null);  // latest callback (so closures don't capture stale state)
@@ -5701,12 +5702,13 @@ function useVoice(){
     rec.lang="en-US";
     rec.continuous=true;
     rec.interimResults=true;
-    rec.onstart=()=>setListening(true);
+    rec.onstart=()=>{setListening(true);setLastError("");};
     rec.onerror=(e)=>{
       // not-allowed / service-not-allowed = user revoked or browser blocked.
       // Other errors (no-speech / audio-capture / network) are transient — let
       // onend restart. Setting wantOnRef=false here would silently kill it.
       const k=e&&e.error;
+      setLastError(k||"unknown");
       if(k==="not-allowed"||k==="service-not-allowed"){
         wantOnRef.current=false;
         setListening(false);
@@ -5730,13 +5732,14 @@ function useVoice(){
     return rec;
   },[]);
   const start=useCallback(onResult=>{
-    if(!supported)return;
+    if(!supported){setLastError("not-supported");return;}
     onResultRef.current=onResult;
     if(wantOnRef.current)return; // already on; just refresh callback
     wantOnRef.current=true;
+    setLastError("");
     const rec=_build();
     recRef.current=rec;
-    try{rec.start();}catch{wantOnRef.current=false;setListening(false);}
+    try{rec.start();}catch(e){wantOnRef.current=false;setListening(false);setLastError("start-failed: "+(e?.message||e));}
   },[supported,_build]);
   const stop=useCallback(()=>{
     wantOnRef.current=false;
@@ -5754,16 +5757,25 @@ function useVoice(){
     wantOnRef.current=false;
     try{recRef.current&&recRef.current.stop();}catch{}
   },[]);
-  return{listening,supported,toggle,start,stop};
+  return{listening,supported,lastError,toggle,start,stop};
 }
 
 // Per-field mic toggle. The inner callback now reads currentValue from a
 // ref so each finalised utterance appends to whatever the field looks
 // like NOW — not the stale value captured when the user first tapped.
 function MicBtn({onResult,currentValue,append}){
-  const{listening,supported,toggle,stop}=useVoice();
+  const{listening,supported,lastError,toggle,stop}=useVoice();
   const valRef=useRef(currentValue);
   useEffect(()=>{valRef.current=currentValue;},[currentValue]);
+  // Surface voice errors to the user once. Mobile users can't see the
+  // browser console, so without this an unsupported / not-allowed mic
+  // looks identical to a working button that does nothing.
+  useEffect(()=>{
+    if(lastError&&!listening&&lastError!=="no-speech"){
+      const detail=lastError==="not-allowed"?"Mic permission denied. Allow microphone in browser/site settings.":lastError==="audio-capture"?"No microphone hardware found.":lastError==="network"?"Web Speech needs internet (Google's server).":lastError==="not-supported"?"This browser does not expose SpeechRecognition.":lastError;
+      try{alert("Voice: "+detail);}catch{}
+    }
+  },[lastError,listening]);
   if(!supported)return null;
   return(
     <>
@@ -11617,6 +11629,9 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           {speakTranscript&&(
             <div style={{marginTop:6,background:"rgba(255,107,0,0.05)",border:"1px solid rgba(255,107,0,0.15)",borderRadius:8,padding:"8px 10px",fontSize:12,color:"rgba(0,0,0,0.55)",fontStyle:"italic"}}>"{speakTranscript}"</div>
           )}
+          {speakVoice.lastError&&!speakVoice.listening&&(
+            <div style={{marginTop:6,background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.25)",borderRadius:8,padding:"8px 10px",fontSize:11,color:"#ff3b30",fontFamily:"'Barlow',sans-serif"}}>Voice error: <b>{speakVoice.lastError}</b>{speakVoice.lastError==="not-allowed"?" — mic permission was denied. Check browser/Android site settings and allow microphone.":speakVoice.lastError==="no-speech"?" — no speech detected. Try speaking louder.":speakVoice.lastError==="audio-capture"?" — no microphone hardware found.":speakVoice.lastError==="network"?" — Web Speech needs internet (Google's server). Check connection.":speakVoice.lastError==="not-supported"?" — this browser does not expose SpeechRecognition.":""}</div>
+          )}
         </div>
       )}
 
@@ -15865,12 +15880,8 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
           cards + critical banner + offline queue sync. Gives the report
           surface a glanceable landing, same info at-a-glance that used to
           live on Dashboard. */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,flexWrap:"wrap",gap:8}}>
-        <div style={{minWidth:0,flex:"1 1 180px"}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a",marginBottom:2}}>{t("report.site_report")}</div>
-          <div style={{fontSize:11,fontWeight:700,color:"#5856d6",marginTop:1,marginBottom:2,fontFamily:"'Barlow',sans-serif"}}>{t("empty_state.report")}</div>
-          <div style={{fontSize:12,color:"rgba(0,0,0,0.4)"}}>{currentProject?.name||""} · {new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}</div>
-        </div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:2,flexWrap:"wrap",gap:8}}>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:"#1a1a1a"}}>{t("report.site_report")}</div>
         <div style={{display:"flex",gap:5,flexWrap:"wrap",justifyContent:"flex-end"}}>
           {syncing
             ?<div style={{display:"flex",alignItems:"center",gap:5,background:"rgba(255,149,0,0.1)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:20,padding:"4px 10px"}}><Spin size={8}/><span style={{fontSize:10,fontWeight:700,color:"#ff9500",fontFamily:"'Barlow Condensed',sans-serif",marginLeft:4}}>SYNC</span></div>
@@ -15880,6 +15891,8 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
           {aiEnabled&&<div style={{background:"rgba(88,86,214,0.1)",border:"1px solid rgba(88,86,214,0.25)",borderRadius:20,padding:"4px 8px"}}><span style={{fontSize:10,fontWeight:700,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif"}}>AI</span></div>}
         </div>
       </div>
+      <div style={{fontSize:11,fontWeight:700,color:"#5856d6",marginTop:1,marginBottom:2,fontFamily:"'Barlow',sans-serif"}}>{t("empty_state.report")}</div>
+      <div style={{fontSize:12,color:"rgba(0,0,0,0.4)",marginBottom:10}}>{currentProject?.name||""} · {new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}</div>
 
       <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
         <StatusCard label={t("status.open_short")} value={open} color="#ff3b30"/>
