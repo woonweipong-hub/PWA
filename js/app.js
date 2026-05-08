@@ -26083,14 +26083,14 @@ function App(){
               return(
               <div className="dd-panel" onMouseEnter={()=>clearTimeout(settingsMenuTimer.current)} onMouseLeave={()=>{settingsMenuTimer.current=setTimeout(()=>setShowSettingsMenu(false),250);}} style={{position:"absolute",top:"100%",right:-80,marginTop:8,background:"linear-gradient(180deg,#2e2e32 0%,#1f1f22 100%)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,overflow:"hidden",zIndex:1200,minWidth:278,boxShadow:"0 16px 48px rgba(0,0,0,0.55),0 2px 10px rgba(0,0,0,0.35)"}}>
                 {/* Header */}
-                <div style={{padding:"13px 16px 12px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"linear-gradient(180deg,rgba(255,107,0,0.06),rgba(255,107,0,0))"}}>
+                <div style={{padding:"9px 16px 8px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"linear-gradient(180deg,rgba(255,107,0,0.06),rgba(255,107,0,0))"}}>
                   <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:"0.14em",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("settings.title")}</div>
-                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff",marginTop:2,lineHeight:1}}>{setupComplete?t("settings.all_set"):t("settings.title")}</div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#fff",marginTop:1,lineHeight:1}}>{setupComplete?t("settings.all_set"):t("settings.title")}</div>
                 </div>
                 {/* Rows */}
-                <div style={{padding:"6px 0 8px"}}>
+                <div style={{padding:"3px 0 4px"}}>
                   {items.map((it,i)=>it.section?(
-                    <div key={`s${i}`} style={{padding:"10px 16px 4px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.35)",letterSpacing:"0.14em",fontFamily:"'Barlow Condensed',sans-serif"}}>{it.section}</div>
+                    <div key={`s${i}`} style={{padding:"5px 16px 2px",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.35)",letterSpacing:"0.14em",fontFamily:"'Barlow Condensed',sans-serif"}}>{it.section}</div>
                   ):(
                     <button key={it.label} className="dd-row" onClick={it.onClick}>
                       <div className="dd-ico"><DdIcon name={it.icon}/></div>
