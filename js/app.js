@@ -26511,6 +26511,14 @@ function App(){
                       [t("help.set_maps"),t("help.set_maps_desc")],
                       [t("help.set_language"),t("help.set_language_desc")],
                     ]],
+                    [t("help.sysreq_title"),[
+                      [t("help.sysreq_android_title"),t("help.sysreq_android_desc")],
+                      [t("help.sysreq_ios_title"),t("help.sysreq_ios_desc")],
+                      [t("help.sysreq_desktop_title"),t("help.sysreq_desktop_desc")],
+                      [t("help.sysreq_storage_title"),t("help.sysreq_storage_desc")],
+                      [t("help.sysreq_install_title"),t("help.sysreq_install_desc")],
+                      [t("help.sysreq_perms_title"),t("help.sysreq_perms_desc")],
+                    ]],
                     ["Standards & frameworks",[
                       ["Embedded with ontology — CONQUAS (Private Residential) R1","Components, defect types, checkpoints, and 1X / 2X / 3X tier weightings seeded in the database. Live weighted NC rate (IF × 0.4 + FT × 0.4 + EF × 0.2), Band 1–6 projection, AI-assisted checkpoint wizard, observation audit trail. R1 (20 Apr 2026) adds Water Flow Test."],
                       ["Bundled as reference document — CONQUAS 2022 R2 V5","Non-residential manual. Reference text pre-extracted; Requirements Advisor can cite it. Ontology not yet seeded for 2022."],
