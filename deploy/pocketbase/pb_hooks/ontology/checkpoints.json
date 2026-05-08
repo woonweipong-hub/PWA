@@ -37,7 +37,8 @@
     { "id": "chk_flr_4", "component_id": "if_floor", "tier": "1X", "description": "Damages - Scratches, dent, chip", "pass_criteria": "Visual — no surface damage on finished floor", "related_defect_type_ids": ["flr_1x_damages_finish"] },
     { "id": "chk_flr_5", "component_id": "if_floor", "tier": "1X", "description": "Unevenness (> 6mm/1.2m)", "pass_criteria": "Measured — deviation ≤ 6mm over 1.2m straightedge", "related_defect_type_ids": ["flr_2x_unevenness"] },
     { "id": "chk_flr_6", "component_id": "if_floor", "tier": "2X", "description": "Hollowness (for tiled floor as long as it is hollow)", "pass_criteria": "Tap test — no hollow sound on any tile", "related_defect_type_ids": ["flr_2x_hollowness"] },
-    { "id": "chk_flr_7", "component_id": "if_floor", "tier": "3X", "description": "Damages - Cracks, Open veins felt with hand (>0.5mm width and >100mm length), Chipped timber", "pass_criteria": "Visual + feel — no cracks or open veins >0.5mm wide AND >100mm long; no chipped timber; no warpage for timber", "related_defect_type_ids": ["flr_3x_cracks_veins", "flr_3x_chipped_timber"] },
+    { "id": "chk_flr_7", "component_id": "if_floor", "tier": "3X", "description": "Damages - Cracks, Open veins felt with hand (>0.5mm width and >100mm length)", "pass_criteria": "Visual + feel — no cracks or open veins >0.5mm wide AND >100mm long", "related_defect_type_ids": ["flr_3x_cracks_veins"] },
+    { "id": "chk_flr_8", "component_id": "if_floor", "tier": "3X", "description": "Chipped timber", "pass_criteria": "Visual — no chipped timber anywhere on floor; no warpage for timber", "related_defect_type_ids": ["flr_3x_chipped_timber"] },
     { "id": "chk_flr_9", "component_id": "if_floor", "tier": "3X", "description": "Delamination (≥1 spot on timber flooring)", "pass_criteria": "Visual — zero delamination spots on timber flooring", "related_defect_type_ids": ["flr_3x_delamination_timber"] },
     { "id": "chk_flr_10", "component_id": "if_floor", "tier": "3X", "description": "Lippage for tiled floors (felt by touch)", "pass_criteria": "Visual + feel — tile edges flush with neighbours", "related_defect_type_ids": ["flr_3x_lippage_tiled"] },
 
@@ -80,7 +81,6 @@
     { "id": "chk_cmp_7", "component_id": "if_component", "tier": "3X", "description": "Damages - Cracked WC, cracked/chipped/broken shower screen, mirror and any glass items", "pass_criteria": "Visual — no cracks, chips, breaks", "related_defect_type_ids": ["cmp_3x_cracked_sanitary_glass"] },
     { "id": "chk_cmp_8", "component_id": "if_component", "tier": "3X", "description": "Accessories Defects - Missing/broken/improper fixing of accessories, corroded accessories etc", "pass_criteria": "Visual + function — present, secure, corrosion-free, no visible damages", "related_defect_type_ids": ["cmp_3x_accessories"] },
 
-    { "id": "chk_mep_1", "component_id": "if_me_fittings", "tier": "1X", "description": "Inconsistent joints/gaps", "pass_criteria": "Visual — consistent joint width, neat, no visible gap", "related_defect_type_ids": ["mep_1x_joints_gaps"] },
     { "id": "chk_mep_2", "component_id": "if_me_fittings", "tier": "1X", "description": "Unevenness", "pass_criteria": "Visual — leveled and straight; pipes aligned horizontally / vertically and parallel to building surface; floor trap top lower than surrounding floor", "related_defect_type_ids": ["mep_1x_unevenness"] },
     { "id": "chk_mep_3", "component_id": "if_me_fittings", "tier": "1X", "description": "Misalignment", "pass_criteria": "Visual — aligned as designed", "related_defect_type_ids": ["mep_1x_misalignment"] },
     { "id": "chk_mep_4", "component_id": "if_me_fittings", "tier": "1X", "description": "Damages - Scratches, Dents", "pass_criteria": "Visual — clean cover plates and fixtures", "related_defect_type_ids": ["mep_1x_damages_finish"] },
@@ -90,6 +90,6 @@
   ],
   "changelog": [
     { "version": "0.1.0-draft", "date": "2026-04-21", "summary": "Initial set — ~47 checkpoints covering 7 IF elements across 1X/2X/3X tiers, derived from Table 3 defect list." },
-    { "version": "0.2.0-draft", "date": "2026-05-08", "summary": "Descriptions updated to verbatim defect-condition wording per project reference table; pass_criteria preserved as inspection-method copy. Tier reassignments: chk_flr_5 / chk_wal_6 / chk_wal_7 (2X→1X), chk_dor_4 (3X→2X)." }
+    { "version": "0.2.0-draft", "date": "2026-05-08", "summary": "Descriptions updated to verbatim defect-condition wording per project reference table; pass_criteria preserved as inspection-method copy. Tier reassignments: chk_flr_5 / chk_wal_6 / chk_wal_7 (2X→1X), chk_dor_4 (3X→2X). Removed chk_mep_1 (M&E aesthetic joints/gaps — not tracked per project reference); total now 50 (was 51). Floor 3X retains separate Cracks/Open veins (chk_flr_7) and Chipped timber (chk_flr_8) — not merged." }
   ]
 }
