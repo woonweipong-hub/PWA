@@ -17,9 +17,13 @@
       "authority": "BCA",
       "document_id": "BCA-CIRC-CPQ-QCD-C20251113",
       "document_url": "https://www1.bca.gov.sg/buildsg/quality/conquas",
+      "circular_pdf_url": "https://www.ies.org.sg/wp-content/uploads/BCA-Circular-on-Launch-of-CONQUAS-Private-Residential.pdf",
+      "circular_pdf_url_note": "Hosted by IES (Institution of Engineers Singapore) as a member-access mirror — BCA's own direct-PDF URL for this circular is not currently published on bca.gov.sg.",
+      "manual_pdf_url": "https://isomer-user-content.by.gov.sg/338/e4bbe202-d7f6-4458-b265-01d6fc91e783/CONQUAS%20(Private%20Residential)%20manual%20(R1).pdf",
+      "manual_pdf_url_note": "Singapore government Isomer (GovTech CDN) — BCA-managed asset linked from the CONQUAS landing page. Effective 20 April 2026.",
       "document_date": "2025-11-13",
       "section_ref": "Annex Table 3 — verbatim defect-condition wording per project reference",
-      "derivation_note": "Checkpoint descriptions match the project reference table 2026-05-08 verbatim (defect-condition phrasing, not pass-criteria). pass_criteria stays as inspection-method copy. Tier assignments updated 2026-05-08: Floor levelness, Wall plumbness/squareness 2X→1X; Door alignment 3X→2X."
+      "derivation_note": "Checkpoint descriptions match the project reference table 2026-05-08 verbatim (defect-condition phrasing, not pass-criteria). pass_criteria stays as inspection-method copy. Tier assignments updated 2026-05-08: Floor levelness, Wall plumbness/squareness 2X→1X; Door alignment 3X→2X. Removed chk_mep_1 (M&E joints/gaps — aesthetic only, not tracked per project reference); total now 50."
     },
     "review": {
       "review_status": "needs_customer_validation",
