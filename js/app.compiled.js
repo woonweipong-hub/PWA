@@ -2737,8 +2737,15 @@ await loadExportProfiles();const _pid=getActiveProfileId(currentProject,company?
 // applicable) × 100% — NOT tier-weighted, direct count per R1 §3.3. When
 // both IF and FT exist the card shows a re-normalised projected rate;
 // full Project Band still needs EF (Phase 3.7).
-const CONQUAS_TIER_WEIGHT={"1X":1,"2X":2,"3X":3};const conquasStats=(()=>{const conquasDefects=filtered.filter(d=>d.entryType==="CONQUAS Check"&&d.nc_tier);if(!conquasDefects.length)return null;const batches=new Map();// batch_id -> {weightedApplicable, totalChecks, component}
-for(const d of conquasDefects){if(!d.observation_batch_id)continue;if(!batches.has(d.observation_batch_id)){batches.set(d.observation_batch_id,{weightedApplicable:Number(d.batch_weighted_applicable)||0,totalChecks:Number(d.batch_total_checks)||0,component:d.component||"(unspecified)",componentId:d.component_id||""});}}const totalWeightedApplicable=Array.from(batches.values()).reduce((s,b)=>s+b.weightedApplicable,0);const totalChecks=Array.from(batches.values()).reduce((s,b)=>s+b.totalChecks,0);// Per-photo merge means one defect can cover multiple failed checkpoints,
+const CONQUAS_TIER_WEIGHT={"1X":1,"2X":2,"3X":3};const conquasStats=(()=>{const conquasDefects=filtered.filter(d=>d.entryType==="CONQUAS Check"&&d.nc_tier);// Build batch denominators from conquas_observations FIRST so an all-pass
+// walk still produces a card (rate = 0%, Band 1). Defects are only saved
+// for failures, so relying on defects alone hides the very best outcome.
+// Observations are saved for every checkpoint (pass/fail/uncertain).
+const batches=new Map();// batch_id -> {weightedApplicable, totalChecks, component}
+if(Array.isArray(conquasObs)){for(const o of conquasObs){if(!o.observation_batch_id)continue;if(!batches.has(o.observation_batch_id)){batches.set(o.observation_batch_id,{weightedApplicable:0,totalChecks:0,component:o.component_name||"(unspecified)",componentId:o.component_id||""});}const b=batches.get(o.observation_batch_id);b.weightedApplicable+=CONQUAS_TIER_WEIGHT[o.nc_tier]||0;b.totalChecks+=1;}}// Augment from defects on legacy instances that don't have an observations
+// collection populated, or batches the user filtered the defect rows out of.
+for(const d of conquasDefects){if(!d.observation_batch_id)continue;if(!batches.has(d.observation_batch_id)){batches.set(d.observation_batch_id,{weightedApplicable:Number(d.batch_weighted_applicable)||0,totalChecks:Number(d.batch_total_checks)||0,component:d.component||"(unspecified)",componentId:d.component_id||""});}}// No CONQUAS data at all → nothing to render.
+if(batches.size===0)return null;const totalWeightedApplicable=Array.from(batches.values()).reduce((s,b)=>s+b.weightedApplicable,0);const totalChecks=Array.from(batches.values()).reduce((s,b)=>s+b.totalChecks,0);// Per-photo merge means one defect can cover multiple failed checkpoints,
 // so summing tier weight per defect under-counts the numerator. Prefer
 // the conquas_observations table (unchanged — still per-checkpoint) when
 // it has rows for the same batches; fall back to per-defect counting on
