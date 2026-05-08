@@ -8958,10 +8958,10 @@ function QualityCheckWizard({onClose,onSave,currentProject,member}){
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontSize:13,color:"#1a1a1a",fontWeight:600,lineHeight:1.4,marginBottom:6}}>{it.text}</div>
                       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                        <button onClick={()=>setOne(it.id,{verdict:v==="pass"?"":"pass"})} disabled={saving} style={{padding:"5px 12px",borderRadius:14,border:`1.5px solid ${v==="pass"?"#30d158":"rgba(0,0,0,0.12)"}`,background:v==="pass"?"rgba(48,209,88,0.1)":"#fff",color:v==="pass"?"#1a7a35":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:saving?"not-allowed":"pointer",letterSpacing:"0.04em"}}>✓ PASS</button>
-                        <button onClick={()=>setOne(it.id,{verdict:v==="fail"?"":"fail"})} disabled={saving} style={{padding:"5px 12px",borderRadius:14,border:`1.5px solid ${v==="fail"?"#ff3b30":"rgba(0,0,0,0.12)"}`,background:v==="fail"?"rgba(255,59,48,0.08)":"#fff",color:v==="fail"?"#cc0000":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:saving?"not-allowed":"pointer",letterSpacing:"0.04em"}}>✗ FAIL</button>
-                        <button onClick={()=>{setPhotoTargetId(it.id);fileRef.current?.click();}} disabled={saving} style={{padding:"5px 10px",borderRadius:14,border:`1.5px solid ${it.photo?"#5856d6":"rgba(0,0,0,0.12)"}`,background:it.photo?"rgba(88,86,214,0.08)":"#fff",color:it.photo?"#5856d6":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:saving?"not-allowed":"pointer",letterSpacing:"0.04em"}}>📷 {it.photo?"PHOTO ✓":"ADD PHOTO"}</button>
-                        {it.photo&&<button onClick={()=>setOne(it.id,{photo:""})} disabled={saving} style={{padding:"5px 8px",borderRadius:14,border:"1px solid rgba(255,59,48,0.25)",background:"rgba(255,59,48,0.05)",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,cursor:"pointer"}}>✕</button>}
+                        <button onClick={()=>setOne(it.id,{verdict:v==="pass"?"":"pass"})} disabled={saving} aria-label={`Mark pass${v==="pass"?" (selected)":""}`} style={{padding:"10px 14px",minHeight:44,borderRadius:14,border:`1.5px solid ${v==="pass"?"#30d158":"rgba(0,0,0,0.12)"}`,background:v==="pass"?"rgba(48,209,88,0.1)":"#fff",color:v==="pass"?"#1a7a35":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:saving?"not-allowed":"pointer",letterSpacing:"0.04em"}}>✓ PASS</button>
+                        <button onClick={()=>setOne(it.id,{verdict:v==="fail"?"":"fail"})} disabled={saving} aria-label={`Mark fail${v==="fail"?" (selected)":""}`} style={{padding:"10px 14px",minHeight:44,borderRadius:14,border:`1.5px solid ${v==="fail"?"#ff3b30":"rgba(0,0,0,0.12)"}`,background:v==="fail"?"rgba(255,59,48,0.08)":"#fff",color:v==="fail"?"#cc0000":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:saving?"not-allowed":"pointer",letterSpacing:"0.04em"}}>✗ FAIL</button>
+                        <button onClick={()=>{setPhotoTargetId(it.id);fileRef.current?.click();}} disabled={saving} aria-label={it.photo?"Replace photo":"Add photo"} style={{padding:"10px 12px",minHeight:44,borderRadius:14,border:`1.5px solid ${it.photo?"#5856d6":"rgba(0,0,0,0.12)"}`,background:it.photo?"rgba(88,86,214,0.08)":"#fff",color:it.photo?"#5856d6":"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:saving?"not-allowed":"pointer",letterSpacing:"0.04em"}}>📷 {it.photo?"PHOTO ✓":"ADD PHOTO"}</button>
+                        {it.photo&&<button onClick={()=>setOne(it.id,{photo:""})} disabled={saving} aria-label="Remove photo" style={{padding:"10px 12px",minHeight:44,minWidth:44,borderRadius:14,border:"1px solid rgba(255,59,48,0.25)",background:"rgba(255,59,48,0.05)",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>✕</button>}
                       </div>
                       {(v==="fail"||(v==="pass"&&it.comment))&&<input type="text" value={it.comment} onChange={e=>setOne(it.id,{comment:e.target.value})} placeholder={v==="fail"?"What's wrong? (optional)":"Note (optional)"} disabled={saving} style={{marginTop:6,width:"100%",padding:"6px 9px",border:"1px solid rgba(0,0,0,0.12)",borderRadius:6,fontSize:12}}/>}
                     </div>
@@ -9308,7 +9308,7 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
     // R1 §3.3 denominator: sum of tier weights across all checkpoints that
     // were attempted in this batch.
     const batchWeightedApplicable=activeCheckpoints.reduce((sum,cp)=>sum+(tierWeight[cp.tier]||0),0);
-    let defectsSaved=0,observationsSaved=0;
+    let defectsSaved=0,observationsSaved=0,observationsFailed=0;
     const failResults=results.filter(r=>r.status==="fail");
     const failCount=failResults.length;
 
@@ -9346,7 +9346,7 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
           });
           observationsSaved++;
         }
-      }catch(err){console.warn("observation save failed for checkpoint "+cp.itemId,err);}
+      }catch(err){observationsFailed++;console.error("[CONQUAS] observation save failed for checkpoint "+cp.itemId,err);}
     }
 
     // Pass 2 — defect rows are merged per-photo so a single AI-mode shot
@@ -9457,7 +9457,11 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
       const parts=[];
       if(failCount>0)parts.push(`${defectsSaved} defect(s) covering ${failCount} non-conformance(s)`);
       if(observationsSaved>0)parts.push(observationsSaved+" observation(s)");
-      alert(parts.length?"Saved "+parts.join(" + ")+".":"Saved.");
+      // Surface observation save failures explicitly — silently dropping them
+      // breaks the weighted NC-rate math (R1 §3.3) and the audit trail. User
+      // sees the count and can decide to re-run when network returns.
+      const tail=observationsFailed>0?`\n\n⚠ ${observationsFailed} observation(s) failed to upload (likely offline/network). Defects above were saved; rerun the wizard when online to capture the dropped observations.`:"";
+      alert((parts.length?"Saved "+parts.join(" + ")+".":"Saved.")+tail);
     }catch(_){}
     onClose();
   };
@@ -9985,7 +9989,7 @@ function TopCheckWizard({currentProject,company,member,onSave,onClose}){
 
   const SEV_BG={Critical:"#ff3b30",Major:"#ff9500",Minor:"#ffcc00",Observation:"#34aadc"};
   const STATUS_BTN=(label,color,bg,onClick,active)=>(
-    <button onClick={onClick} style={{flex:1,minWidth:60,padding:"6px 8px",borderRadius:6,border:`1.5px solid ${active?color:"rgba(0,0,0,0.12)"}`,background:active?bg:"#fff",color:active?color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:active?800:700,fontSize:11,cursor:"pointer",letterSpacing:"0.04em"}}>{label}</button>
+    <button onClick={onClick} aria-label={`Set status ${label}${active?" (selected)":""}`} aria-pressed={!!active} style={{flex:1,minWidth:60,minHeight:44,padding:"10px 12px",borderRadius:6,border:`1.5px solid ${active?color:"rgba(0,0,0,0.12)"}`,background:active?bg:"#fff",color:active?color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:active?800:700,fontSize:12,cursor:"pointer",letterSpacing:"0.04em"}}>{label}</button>
   );
 
   return(
