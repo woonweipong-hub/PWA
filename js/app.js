@@ -8403,14 +8403,17 @@ function PhotoStampToggle(){
 }
 
 function StorageSettings({onClose,companyId}){
-  const storageCfg=local.get(STORAGE_KEY)||{mode:"pocketbase",localPath:"",gdriveClientId:""};
+  const storageCfg=local.get(STORAGE_KEY)||{mode:"pocketbase",localPath:"",gdriveClientId:"",gdriveApiKey:""};
   const[mode,setMode]=useState(storageCfg.mode||"pocketbase");
   const[localPath,setLocalPath]=useState(storageCfg.localPath||"");
   const[gClientId,setGClientId]=useState(storageCfg.gdriveClientId||"");
+  const[gApiKey,setGApiKey]=useState(storageCfg.gdriveApiKey||"");
   const[saved,setSaved]=useState(false);
   const[gdriveUser,setGdriveUser]=useState(null);
   const[gdriveConnecting,setGdriveConnecting]=useState(false);
   const[gdriveError,setGdriveError]=useState("");
+  const[gdriveFolder,setGdriveFolder]=useState(null); // {id, name} or null
+  const[gdrivePicking,setGdrivePicking]=useState(false);
   const[testingLocal,setTestingLocal]=useState(false);
   const[localTestRes,setLocalTestRes]=useState(null);
 
@@ -8420,16 +8423,40 @@ function StorageSettings({onClose,companyId}){
       GDrive.init(storageCfg.gdriveClientId);
       if(GDrive.isConnected()){
         GDrive.getUserInfo().then(u=>setGdriveUser(u)).catch(()=>{});
+        const cf=GDrive.getCustomFolder&&GDrive.getCustomFolder();
+        if(cf)setGdriveFolder(cf);
       }
     }
   },[]);
 
   const save=()=>{
-    const cfg={mode,localPath:localPath.trim(),gdriveClientId:gClientId.trim()};
+    const cfg={mode,localPath:localPath.trim(),gdriveClientId:gClientId.trim(),gdriveApiKey:gApiKey.trim()};
+    // Preserve any user-picked folder choice across SAVE — setCustomFolder
+    // already persists those keys, so we merge the existing values back in.
+    const existing=local.get(STORAGE_KEY)||{};
+    if(existing.gdriveFolderId){cfg.gdriveFolderId=existing.gdriveFolderId;cfg.gdriveFolderName=existing.gdriveFolderName||"";}
     local.set(STORAGE_KEY,cfg);
     if(cfg.gdriveClientId)GDrive.init(cfg.gdriveClientId);
     setSaved(true);
     setTimeout(()=>setSaved(false),2000);
+  };
+
+  const chooseFolder=async()=>{
+    if(!gApiKey.trim()){setGdriveError("Enter a Google API Key first — required for the folder picker (different from the Client ID).");return;}
+    setGdrivePicking(true);setGdriveError("");
+    try{
+      const folder=await GDrive.pickFolder(gApiKey.trim());
+      setGdriveFolder(folder);
+    }catch(e){
+      const msg=String(e?.message||e);
+      // Cancellation is not an error condition for the user — silent return.
+      if(!/cancel/i.test(msg))setGdriveError(msg);
+    }
+    setGdrivePicking(false);
+  };
+  const resetFolder=()=>{
+    if(GDrive.clearCustomFolder)GDrive.clearCustomFolder();
+    setGdriveFolder(null);
   };
 
   const connectGDrive=async()=>{
@@ -8453,6 +8480,7 @@ function StorageSettings({onClose,companyId}){
   const disconnectGDrive=()=>{
     GDrive.disconnect();
     setGdriveUser(null);
+    setGdriveFolder(null);
     if(mode==="gdrive"){setMode("pocketbase");local.set(STORAGE_KEY,{...local.get(STORAGE_KEY),mode:"pocketbase"});}
   };
 
@@ -8645,6 +8673,12 @@ function StorageSettings({onClose,companyId}){
             </div>
             <label style={lbl()}>GOOGLE CLIENT ID</label>
             <input value={gClientId} onChange={e=>setGClientId(e.target.value)} placeholder="123456789.apps.googleusercontent.com" style={{...inp,width:"100%",flex:"unset",marginBottom:10,fontSize:12}}/>
+            {/* API key — only required for the folder Picker. Generate one in
+                the same Cloud project as the Client ID (Credentials → Create
+                Credentials → API key). Photos still upload via OAuth (the
+                Client ID); the API key just unlocks the Picker UI. */}
+            <label style={lbl()}>GOOGLE API KEY <span style={{fontWeight:400,color:"rgba(0,0,0,0.4)"}}>· optional, only for folder picker</span></label>
+            <input value={gApiKey} onChange={e=>setGApiKey(e.target.value)} placeholder="AIzaSy..." style={{...inp,width:"100%",flex:"unset",marginBottom:10,fontSize:12}}/>
 
             {/* Connected state */}
             {gdriveUser&&(
@@ -8667,9 +8701,33 @@ function StorageSettings({onClose,companyId}){
               </button>
             )}
 
-            <div style={{marginTop:12,fontSize:11,color:"rgba(0,0,0,0.3)",lineHeight:1.5}}>
-              Photos will be saved in a "SiteShrimp Photos" folder in your Google Drive. Only you can access them unless you share the folder.
-            </div>
+            {/* Folder picker — Option B. Only shown when connected. Lets the
+                user choose any folder in their Drive (including a Shared Drive
+                folder they have access to). drive.file scope keeps the app's
+                visibility scoped to files it creates + folders explicitly
+                opened via the Picker, so privacy stays narrow. */}
+            {gdriveUser&&(
+              <div style={{marginTop:14,padding:"12px 14px",background:"rgba(66,133,244,0.06)",border:"1px solid rgba(66,133,244,0.2)",borderRadius:10}}>
+                <div style={{fontSize:10,fontWeight:800,color:"#1a4d99",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>STORING PHOTOS IN</div>
+                <div style={{fontSize:13,color:"#1a1a1a",fontWeight:600,marginBottom:8,wordBreak:"break-word"}}>
+                  📁 {gdriveFolder?gdriveFolder.name:"SiteShrimp Photos (auto-created)"}
+                </div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  <button onClick={chooseFolder} disabled={gdrivePicking} style={{flex:"1 1 auto",minHeight:44,background:gdrivePicking?"rgba(0,0,0,0.05)":"#4285f4",border:"none",borderRadius:8,padding:"10px 14px",color:gdrivePicking?"rgba(0,0,0,0.4)":"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:gdrivePicking?"not-allowed":"pointer",letterSpacing:"0.04em"}}>
+                    {gdrivePicking?"OPENING PICKER…":(gdriveFolder?"CHANGE FOLDER":"CHOOSE FOLDER…")}
+                  </button>
+                  {gdriveFolder&&(
+                    <button onClick={resetFolder} style={{minHeight:44,background:"transparent",border:"1px solid rgba(0,0,0,0.15)",borderRadius:8,padding:"10px 14px",color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",letterSpacing:"0.04em"}}>RESET TO DEFAULT</button>
+                  )}
+                </div>
+                <div style={{marginTop:8,fontSize:10,color:"rgba(0,0,0,0.45)",lineHeight:1.4}}>
+                  {gdriveFolder
+                    ?"Photos and CONQUAS subfolders nest inside the folder you picked. Reset to revert to auto-created \"SiteShrimp Photos\"."
+                    :"Default: photos save into a \"SiteShrimp Photos\" folder at your Drive root. Tap CHOOSE FOLDER to pick any folder you own or have edit access to (Shared Drive folders supported)."
+                  }
+                </div>
+              </div>
+            )}
           </div>
         )}
 

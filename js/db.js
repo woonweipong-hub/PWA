@@ -503,6 +503,13 @@ const GDrive = (() => {
   // lazily by _ensureSubfolder; reset on disconnect() so a re-auth with a
   // different account re-resolves IDs.
   let _subfolderIds = {};
+  // User-picked custom folder (Option B — Google Picker). When set, photos
+  // upload into THIS folder instead of the auto-created "SiteShrimp Photos".
+  // CONQUAS subfolders still nest inside it. Stored in STORAGE_KEY config so
+  // the choice persists across reloads alongside the OAuth client ID.
+  let _customFolderId = '';
+  let _customFolderName = '';
+  let _pickerLoaded = false;
 
   function init(clientId) {
     _clientId = clientId;
@@ -512,6 +519,13 @@ const GDrive = (() => {
       if (saved?.token && saved?.expiry > Date.now()) {
         _accessToken = saved.token;
         _tokenExpiry = saved.expiry;
+      }
+      // Restore user-picked folder choice (Option B) so uploads continue to
+      // land where the user previously selected after a reload / re-auth.
+      const stor = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      if (stor && stor.gdriveFolderId) {
+        _customFolderId = stor.gdriveFolderId;
+        _customFolderName = stor.gdriveFolderName || 'Selected folder';
       }
     } catch {}
   }
@@ -569,7 +583,117 @@ const GDrive = (() => {
     _tokenExpiry = 0;
     _folderId = '';
     _subfolderIds = {};
+    // Also clear the user-picked folder choice — re-auth with a different
+    // Google account would otherwise try to upload into a folder ID the new
+    // account can't access. User can re-pick after reconnecting.
+    _customFolderId = '';
+    _customFolderName = '';
+    try {
+      const stor = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      delete stor.gdriveFolderId;
+      delete stor.gdriveFolderName;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stor));
+    } catch {}
     localStorage.removeItem(GDRIVE_KEY);
+  }
+
+  // User-picked folder accessors. Updates persist to STORAGE_KEY so the choice
+  // survives reload. Resetting clears the resolved-folder caches so subsequent
+  // uploads re-resolve subfolders inside the new parent.
+  function getCustomFolder() {
+    return _customFolderId ? { id: _customFolderId, name: _customFolderName } : null;
+  }
+  function setCustomFolder({ id, name }) {
+    _customFolderId = id || '';
+    _customFolderName = name || '';
+    _folderId = '';
+    _subfolderIds = {};
+    try {
+      const stor = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      if (id) {
+        stor.gdriveFolderId = id;
+        stor.gdriveFolderName = name || '';
+      } else {
+        delete stor.gdriveFolderId;
+        delete stor.gdriveFolderName;
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stor));
+    } catch {}
+  }
+  function clearCustomFolder() { setCustomFolder({ id: '', name: '' }); }
+
+  // Lazy-load the Google Picker library. Loads apis.google.com/js/api.js if
+  // gapi isn't already on the page (e.g., from Google Sheets integration),
+  // then loads the 'picker' module. Resolves once google.picker is callable.
+  function _loadPicker() {
+    return new Promise((resolve, reject) => {
+      if (_pickerLoaded && typeof window !== 'undefined' && window.google && window.google.picker) {
+        return resolve();
+      }
+      const onApiReady = () => {
+        if (!window.gapi || typeof window.gapi.load !== 'function') {
+          return reject(new Error('Google API loader not available'));
+        }
+        window.gapi.load('picker', {
+          callback: () => { _pickerLoaded = true; resolve(); },
+          onerror: () => reject(new Error('Failed to load Google Picker module')),
+          timeout: 15000,
+          ontimeout: () => reject(new Error('Google Picker load timed out')),
+        });
+      };
+      if (typeof window === 'undefined') return reject(new Error('Window not available'));
+      if (window.gapi) return onApiReady();
+      const script = document.createElement('script');
+      script.src = 'https://apis.google.com/js/api.js';
+      script.async = true;
+      script.defer = true;
+      script.onload = onApiReady;
+      script.onerror = () => reject(new Error('Failed to load Google API loader (apis.google.com)'));
+      document.head.appendChild(script);
+    });
+  }
+
+  // Open the Google Picker so the user can choose any folder in their Drive.
+  // drive.file scope only sees files the app has created OR files explicitly
+  // opened via the Picker — selecting a folder here grants access to it for
+  // the current OAuth session, so subsequent uploads can write into it.
+  // apiKey: Google API Key (browser key, from same GCP project as Client ID).
+  // Resolves with { id, name } on pick; rejects on cancel / error.
+  async function pickFolder(apiKey) {
+    if (!isConnected()) throw new Error('Not connected to Google Drive');
+    if (!apiKey) throw new Error('Google API Key required for the folder picker — generate one in the same Google Cloud project as your Client ID.');
+    await _loadPicker();
+    return new Promise((resolve, reject) => {
+      try {
+        const view = new window.google.picker.DocsView(window.google.picker.ViewId.FOLDERS)
+          .setSelectFolderEnabled(true)
+          .setIncludeFolders(true)
+          .setMimeTypes('application/vnd.google-apps.folder');
+        const picker = new window.google.picker.PickerBuilder()
+          .setOAuthToken(_accessToken)
+          .setDeveloperKey(apiKey)
+          .addView(view)
+          .setTitle('Choose a folder in your Google Drive')
+          .setCallback((data) => {
+            const A = window.google.picker.Action;
+            if (data.action === A.PICKED) {
+              const folder = data.docs && data.docs[0];
+              if (folder && folder.id) {
+                setCustomFolder({ id: folder.id, name: folder.name || 'Selected folder' });
+                resolve({ id: folder.id, name: folder.name });
+              } else {
+                reject(new Error('No folder selected'));
+              }
+            } else if (data.action === A.CANCEL) {
+              reject(new Error('Folder pick cancelled'));
+            }
+          })
+          .build();
+        picker.setVisible(true);
+      } catch (e) {
+        reject(e);
+      }
+    });
   }
 
   async function _apiGet(path) {
@@ -580,8 +704,11 @@ const GDrive = (() => {
     return resp.json();
   }
 
-  // Find or create the SiteShrimp Photos folder
+  // Resolve the parent folder ID for uploads. If the user has chosen a custom
+  // folder via the Picker (Option B), use that directly; otherwise fall back
+  // to the auto-created "SiteShrimp Photos" at Drive root.
   async function _ensureFolder() {
+    if (_customFolderId) return _customFolderId;
     if (_folderId) return _folderId;
     // Search for existing folder
     const q = encodeURIComponent(`name='${FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
@@ -703,7 +830,7 @@ const GDrive = (() => {
     } catch { return null; }
   }
 
-  return { init, authorize, disconnect, isConnected, uploadPhoto, fileUrl, testConnection, getUserInfo };
+  return { init, authorize, disconnect, isConnected, uploadPhoto, fileUrl, testConnection, getUserInfo, pickFolder, getCustomFolder, setCustomFolder, clearCustomFolder };
 })();
 
 // ── Offline Queue (IndexedDB) ─────────────────────────────────────
