@@ -730,6 +730,11 @@ const AI_CACHE_PREFIX = `sdt-ai-cache-v${AI_CACHE_VERSION}-`;
 const AI_CACHE_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days
 const ONBOARDING_KEY = "sdt-onboarded";
 const DEFAULT_TAB_KEY = "sdt-default-tab-v1";
+// Per-project CONQUAS sampling basis (units, buildings, windows-per-unit,
+// bathrooms-per-unit, WFT locations, External Works samples). Used to derive
+// FT/EF total checks per R1 §2.3 sampling rules. Keyed by project id; stored
+// per-device only — collaboration parity needs PB schema (deferred).
+const SAMPLING_BASIS_KEY = "sdt-sampling-basis-v1";
 const STORAGE_KEY = "sdt-storage-v1";
 const GDRIVE_KEY = "sdt-gdrive-v1";
 const AI_PROVIDER_KEY = "sdt-ai-provider-v1";

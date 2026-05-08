@@ -513,6 +513,15 @@
   },
   "report": {
     "title": "Rapportere",
+    "sampling_basis_title": "PROSJEKTPRØVETAGNING (R1 §2.3)",
+    "sampling_basis_desc": "Skriv inn én gang per prosjekt for å automatisk utlede totalsjekker for WTT/WPT/EF per CONQUAS prøvetakingsregler. Lagret kun på denne enheten.",
+    "sampling_basis_units": "Totalt boenheter",
+    "sampling_basis_buildings": "Bygninger på stedet",
+    "sampling_basis_windows": "Vinduer per enhet (gjennomsnitt)",
+    "sampling_basis_bathrooms": "Bad per enhet (gjennomsnitt)",
+    "sampling_basis_wft": "Fellesområde WFT-plasseringer",
+    "sampling_basis_extworks": "Eksterne arbeider prøver",
+    "sampling_basis_apply": "BRUK R1 PRØVETAKINGSSTANDARDIGHETER TIL TOTALER",
     "weekly_off_label": "+ UKE-RAPPORT",
     "weekly_button_title": "Konfigurer en ukentlig e-postoppsummering for dette prosjektet – sammendrag på serversiden av åpne/kritiske/endrede oppføringer sendt til mottakerne du velger.",
     "weekly_enabled": "Aktiver ukentlig sammendrag via e-post",
@@ -1277,7 +1286,7 @@
     "select": "Velg startskjermen din",
     "option_log": "LOGG · Fangst feil",
     "option_drawings": "TAG · Tegninger og markeringer",
-    "option_defects": "REVIEW · Entries",
+    "option_defects": "ANMELDELSE · Oppføringer",
     "option_report": "RAPPORT · Eksporter og forespørsler"
   },
   "opt": {

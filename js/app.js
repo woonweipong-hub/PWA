@@ -15838,6 +15838,63 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   useEffect(()=>{setFtDraft(_makeFtEfDraft(currentProject));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[currentProject?.id,currentProject?.ft_wtt_applicable,currentProject?.ft_wtt_fails,currentProject?.ft_wpt_applicable,currentProject?.ft_wpt_fails,currentProject?.ft_wft_applicable,currentProject?.ft_wft_fails,currentProject?.ft_pull_off_status,currentProject?.ft_heat_soak_status,currentProject?.ft_wtt_self_test_status,currentProject?.ft_wpt_self_test_status,currentProject?.ef_roof_applicable,currentProject?.ef_roof_fails,currentProject?.ef_wall_applicable,currentProject?.ef_wall_fails,currentProject?.ef_works_applicable,currentProject?.ef_works_fails]);
+  // Per-project sampling basis (R1 §2.3). Stored in localStorage keyed by
+  // project id — per-device only. Collaboration parity needs a PB schema
+  // change (deferred behind ask-first-on-schema rule). Empty strings keep
+  // the inputs uncontrolled-feeling for users who haven't entered values yet.
+  const _samplingBasisDefaults={unitCount:"",buildingCount:"",windowsPerUnit:"",bathroomsPerUnit:"",wftLocations:"",externalWorksSamples:""};
+  const[samplingBasis,setSamplingBasis]=useState({..._samplingBasisDefaults});
+  useEffect(()=>{
+    if(!currentProject?.id){setSamplingBasis({..._samplingBasisDefaults});return;}
+    const all=local.get(SAMPLING_BASIS_KEY)||{};
+    setSamplingBasis({..._samplingBasisDefaults,...(all[currentProject.id]||{})});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[currentProject?.id]);
+  const updateSamplingBasis=(patch)=>{
+    setSamplingBasis(prev=>{
+      const next={...prev,...patch};
+      if(currentProject?.id){
+        const all=local.get(SAMPLING_BASIS_KEY)||{};
+        all[currentProject.id]=next;
+        try{local.set(SAMPLING_BASIS_KEY,all);}catch{}
+      }
+      return next;
+    });
+  };
+  // Derive R1 §2.3 sampling totals from the basis inputs. Empty input → empty
+  // derivation (don't fabricate numbers). Returns the same field-name shape
+  // ftDraft uses, so applyR1Defaults can spread it directly.
+  const _deriveR1Totals=(basis)=>{
+    const u=Number(basis.unitCount)||0;
+    const b=Number(basis.buildingCount)||0;
+    const w=Number(basis.windowsPerUnit)||0;
+    const ba=Number(basis.bathroomsPerUnit)||0;
+    const wft=Number(basis.wftLocations)||0;
+    const ew=Number(basis.externalWorksSamples)||0;
+    return{
+      // WTT — 10% of total window panels (R1 Appendix 3 §5b sampling rate).
+      ft_wtt_applicable:(u&&w)?Math.max(1,Math.ceil(u*w*0.10)):"",
+      // WPT — 50% Sampling of all bathrooms/toilets (R1 §6a).
+      ft_wpt_applicable:(u&&ba)?Math.max(1,Math.ceil(u*ba*0.50)):"",
+      // WFT — direct count of common-area locations (no sampling rule).
+      ft_wft_applicable:wft||"",
+      // Roof — minimum 50% of buildings (R1 §3.3 c).
+      ef_roof_applicable:b?Math.max(1,Math.ceil(b*0.50)):"",
+      // External Wall — 100% of buildings × 4 walls each (R1 §3.3 c).
+      ef_wall_applicable:b?b*4:"",
+      // External Works — direct count (linkways/aprons/drains; project-specific layout).
+      ef_works_applicable:ew||""
+    };
+  };
+  const applyR1Defaults=()=>{
+    const derived=_deriveR1Totals(samplingBasis);
+    const filled=Object.fromEntries(Object.entries(derived).filter(([,v])=>v!==""&&v!==0));
+    if(Object.keys(filled).length===0){
+      alert("Enter sampling basis above first (units, buildings, windows-per-unit, etc.) to derive totals.");
+      return;
+    }
+    setFtDraft(prev=>({...prev,...filled}));
+  };
   const saveFt=async()=>{
     if(!currentProject?.id)return;
     setFtSaving(true);
@@ -16839,6 +16896,25 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
             )}
             {ftEditOpen&&(
               <div style={{marginTop:8,background:"#fff",border:"1px solid rgba(52,170,220,0.25)",borderRadius:8,padding:"10px 12px"}}>
+                {/* PROJECT SAMPLING BASIS (R1 §2.3). One-time-per-project entry
+                    that drives auto-derivation of FT/EF total checks via the
+                    sampling rules. Stored per-device in localStorage. */}
+                <div style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.55)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:4}}>{t("report.sampling_basis_title")||"PROJECT SAMPLING BASIS (R1 §2.3)"}</div>
+                <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",lineHeight:1.4,marginBottom:8}}>{t("report.sampling_basis_desc")||"Enter once per project to auto-derive total checks for WTT/WPT/EF per CONQUAS sampling rules. Stored on this device only."}</div>
+                {[
+                  ["unitCount",t("report.sampling_basis_units")||"Total dwelling units"],
+                  ["buildingCount",t("report.sampling_basis_buildings")||"Buildings on site"],
+                  ["windowsPerUnit",t("report.sampling_basis_windows")||"Windows per unit (avg)"],
+                  ["bathroomsPerUnit",t("report.sampling_basis_bathrooms")||"Bathrooms per unit (avg)"],
+                  ["wftLocations",t("report.sampling_basis_wft")||"Common-area WFT locations"],
+                  ["externalWorksSamples",t("report.sampling_basis_extworks")||"External Works samples"]
+                ].map(([key,label])=>(
+                  <div key={key} style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}>
+                    <span style={{flex:1,fontSize:11,color:"#1a1a1a"}}>{label}</span>
+                    <input type="number" min={0} value={samplingBasis[key]} onChange={e=>updateSamplingBasis({[key]:e.target.value})} placeholder="0" style={{width:80,padding:"4px 6px",borderRadius:6,border:"1px solid rgba(0,0,0,0.15)",fontSize:11,textAlign:"right"}}/>
+                  </div>
+                ))}
+                <button onClick={applyR1Defaults} style={{width:"100%",marginTop:6,marginBottom:12,background:"rgba(52,170,220,0.1)",border:"1px solid rgba(52,170,220,0.4)",borderRadius:8,padding:"10px",minHeight:44,color:"#1d6b8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer",letterSpacing:"0.04em"}}>⚡ {t("report.sampling_basis_apply")||"APPLY R1 SAMPLING DEFAULTS TO TOTALS"}</button>
                 <div style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.55)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>COUNTED NC TESTS (R1 §3.3)</div>
                 {[["ft_wtt","WTT — Window water-tightness"],["ft_wpt","WPT — Wet area water-tightness"],["ft_wft","WFT — Water flow (common areas)"]].map(([pfx,label])=>(
                   <div key={pfx} style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
