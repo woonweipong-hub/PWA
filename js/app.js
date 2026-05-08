@@ -26684,7 +26684,7 @@ function App(){
                   <div style={{borderTop:"1px solid rgba(255,255,255,0.1)",paddingTop:14,marginTop:22}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#ff6b00",letterSpacing:"0.05em",marginBottom:8}}>AUTHORSHIP & ACKNOWLEDGEMENTS</div>
                     <div style={{color:"rgba(255,255,255,0.72)"}}>
-                      Designed and directed by <b>Mr. PONG Woon Wei</b>, built through AI-assisted vibe coding as a learning exploration of what one designer + state-of-the-art AI tools can ship together. Comments and feedback from <b>Ar. William Lau, SIA-DTC</b>, <b>Dr. TAN Kee Wee, BCA</b>, <b>Mr. GAN Chee Meng, MCC Singapore</b>, and <b>Mr. TEE Jia Hen, GovTech</b>.
+                      Designed and directed by <b>Mr. PONG Woon Wei</b>, built through AI-assisted vibe coding as a learning exploration of what one designer + state-of-the-art AI tools can ship together. Comments and feedback from <b>Ar. William Lau, SIA-DTC</b>, <b>Dr. TAN Kee Wee, BCA</b>, <b>Mr. GAN Chee Meng, MCC Singapore</b>, <b>Mr. Alvin FONG Yew Chung, Kimly Construction</b>, and <b>Mr. TEE Jia Hen, GovTech</b>.
                     </div>
                   </div>
                 </div>
