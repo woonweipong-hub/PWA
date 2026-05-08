@@ -5285,7 +5285,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     doc.setFontSize(9);doc.setFont(undefined,"normal");doc.setTextColor(0);
     doc.text(`Projected NC rate: ${cs.projectedRate.toFixed(1)}%  (${cs.projectedBasis})`,margin,y);y+=5;
     doc.text(`Projected Band: ${cs.projectedBand}  (CONQUAS Private Residential R1 §3.3)`,margin,y);y+=5;
-    doc.text(`Internal Finishes (IF): ${cs.rate.toFixed(1)}% — ${cs.totalWeightedNCs} weighted NC(s) of ${cs.totalWeightedApplicable} applicable; ${cs.failCount} non-conformance(s) in ${cs.defectCount||cs.failCount} defect record(s) across ${cs.batchCount} assessment(s); ${cs.totalChecks} checkpoint(s) assessed.`,margin,y);y+=5;
+    doc.text(`Internal Finishes (IF): ${cs.rate.toFixed(1)}% — ${cs.failCount} non-conformance(s) of ${cs.applicableCount} applicable check(s); ${cs.defectCount||cs.failCount} defect record(s) across ${cs.batchCount} assessment(s); ${cs.totalChecks} checkpoint(s) walked. (Direct count per CONQUAS Private Residential R1 §3.3)`,margin,y);y+=5;
     if(cs.ftRate!==null){
       doc.text(`Functional Tests (FT): ${cs.ftRate.toFixed(1)}% — ${cs.ftFails} fail(s) of ${cs.ftApplicable} applicable across WTT/WPT/WFT.`,margin,y);y+=5;
       doc.text(`FT breakdown: WTT ${cs.ftRows[0].fails}/${cs.ftRows[0].applicable}  ·  WPT ${cs.ftRows[1].fails}/${cs.ftRows[1].applicable}  ·  WFT ${cs.ftRows[2].fails}/${cs.ftRows[2].applicable}`,margin,y);y+=5;
@@ -5307,13 +5307,12 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
         r.name,
         String(r.totalChecks||0),
         String(r.failCount),
-        String(r.weightedNCs),
-        r.weightedApplicable?String(r.weightedApplicable):"—",
-        r.weightedApplicable?r.rate.toFixed(1)+"%":"—"
+        r.applicable?String(r.applicable):"—",
+        r.applicable?r.rate.toFixed(1)+"%":"—"
       ]);
       doc.autoTable({
         startY:y,margin:{left:margin,right:margin},
-        head:[["Element","Checks","NCs","Wt NC","Wt Applic.","Rate"]],
+        head:[["Element","Walked","NCs","Applicable","Rate"]],
         body,theme:"striped",styles:{fontSize:8,cellPadding:2},
         headStyles:{fillColor:[88,86,214],textColor:255}
       });
@@ -16087,45 +16086,56 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   const bySev=SEVERITY.map(s=>({s,count:filtered.filter(d=>d.severity===s).length}));
   const byAssignee=allAssignees.map(t=>({t,open:filtered.filter(d=>d.assignee===t&&d.status==="Open").length,total:filtered.filter(d=>d.assignee===t).length})).filter(x=>x.total>0);
 
-  // CONQUAS weighted NC-rate stats (per R1 §3.3). Internal Finishes numerator
-  // = Σ tier-weight of every CONQUAS Check defect; denominator = Σ
-  // batch_weighted_applicable across distinct observation batches (dedupe by
-  // batch_id). Functional Tests NC rate = (WTT+WPT+WFT fails) / (WTT+WPT+WFT
-  // applicable) × 100% — NOT tier-weighted, direct count per R1 §3.3. When
-  // both IF and FT exist the card shows a re-normalised projected rate;
-  // full Project Band still needs EF (Phase 3.7).
-  const CONQUAS_TIER_WEIGHT={"1X":1,"2X":2,"3X":3};
+  // CONQUAS NC-rate stats — direct count per CONQUAS (Private Residential)
+  // R1 §3.3 verbatim:
+  //   IF NC rate = (Total no. of X for Floor, Wall, Ceiling, Door, Window,
+  //                 Component, M&E / Total applicable no. of NCs for all
+  //                 these assessment items) × 100%
+  // Each X counts equally — the 1X / 2X / 3X categorisation drives §3.4
+  // rectification rules and §3.6 band moderation, NOT the rate formula. The
+  // wizard's "uncertain" verdict maps to R1's "blank" (N/A) and is excluded
+  // from the denominator. Functional Tests and External Finishes use the same
+  // direct-count rule per R1 §3.3 b/c. When both IF and FT exist the card
+  // shows a re-normalised projected rate; full Project Band needs all three.
   const conquasStats=(()=>{
     const conquasDefects=filtered.filter(d=>d.entryType==="CONQUAS Check"&&d.nc_tier);
     // Build batch denominators from conquas_observations FIRST so an all-pass
     // walk still produces a card (rate = 0%, Band 1). Defects are only saved
     // for failures, so relying on defects alone hides the very best outcome.
     // Observations are saved for every checkpoint (pass/fail/uncertain).
-    const batches=new Map(); // batch_id -> {weightedApplicable, totalChecks, component}
+    const batches=new Map(); // batch_id -> {applicable, fails, totalChecks, component}
     if(Array.isArray(conquasObs)){
       for(const o of conquasObs){
         if(!o.observation_batch_id)continue;
         if(!batches.has(o.observation_batch_id)){
           batches.set(o.observation_batch_id,{
-            weightedApplicable:0,
+            applicable:0,
+            fails:0,
             totalChecks:0,
             component:o.component_name||"(unspecified)",
             componentId:o.component_id||""
           });
         }
         const b=batches.get(o.observation_batch_id);
-        b.weightedApplicable+=CONQUAS_TIER_WEIGHT[o.nc_tier]||0;
         b.totalChecks+=1;
+        // R1 "applicable" = pass + fail. Uncertain ↔ blank ↔ N/A → excluded.
+        if(o.verdict==="pass"||o.verdict==="fail")b.applicable+=1;
+        if(o.verdict==="fail")b.fails+=1;
       }
     }
     // Augment from defects on legacy instances that don't have an observations
-    // collection populated, or batches the user filtered the defect rows out of.
+    // collection populated. batch_total_checks is the count of attempted
+    // checkpoints; without observation rows we can't separate uncertain from
+    // pass/fail, so we treat batch_total_checks as the applicable count for
+    // legacy data (best available approximation).
     for(const d of conquasDefects){
       if(!d.observation_batch_id)continue;
       if(!batches.has(d.observation_batch_id)){
+        const total=Number(d.batch_total_checks)||0;
         batches.set(d.observation_batch_id,{
-          weightedApplicable:Number(d.batch_weighted_applicable)||0,
-          totalChecks:Number(d.batch_total_checks)||0,
+          applicable:total,
+          fails:0,
+          totalChecks:total,
           component:d.component||"(unspecified)",
           componentId:d.component_id||""
         });
@@ -16133,69 +16143,59 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
     }
     // No CONQUAS data at all → nothing to render.
     if(batches.size===0)return null;
-    const totalWeightedApplicable=Array.from(batches.values()).reduce((s,b)=>s+b.weightedApplicable,0);
+    const applicableCount=Array.from(batches.values()).reduce((s,b)=>s+b.applicable,0);
     const totalChecks=Array.from(batches.values()).reduce((s,b)=>s+b.totalChecks,0);
-    // Per-photo merge means one defect can cover multiple failed checkpoints,
-    // so summing tier weight per defect under-counts the numerator. Prefer
-    // the conquas_observations table (unchanged — still per-checkpoint) when
-    // it has rows for the same batches; fall back to per-defect counting on
-    // legacy PB instances that don't have the observations collection.
+    // Numerator: # fails. Prefer the conquas_observations table (per-checkpoint
+    // accuracy) when observations exist for any of the in-scope batches; fall
+    // back to per-defect counting only on legacy data without observations.
     const filteredBatchIds=new Set(Array.from(batches.keys()));
-    const failObsInScope=Array.isArray(conquasObs)
-      ? conquasObs.filter(o=>o.verdict==="fail"&&o.nc_tier&&(filteredBatchIds.size===0||filteredBatchIds.has(o.observation_batch_id)))
+    const obsInScope=Array.isArray(conquasObs)
+      ? conquasObs.filter(o=>filteredBatchIds.has(o.observation_batch_id))
       : [];
-    const useObs=failObsInScope.length>0;
-    const totalWeightedNCs=useObs
-      ? failObsInScope.reduce((s,o)=>s+(CONQUAS_TIER_WEIGHT[o.nc_tier]||0),0)
-      : conquasDefects.reduce((s,d)=>s+(CONQUAS_TIER_WEIGHT[d.nc_tier]||0),0);
-    // failCount reports non-conformances (per checkpoint) when observations
-    // are available so the user sees the real volume; the defect tally is
-    // exposed separately as defectCount for the punchlist view.
+    const failObsInScope=obsInScope.filter(o=>o.verdict==="fail"&&o.nc_tier);
+    const useObs=obsInScope.length>0;
     const failCount=useObs?failObsInScope.length:conquasDefects.length;
     const defectCount=conquasDefects.length;
-    const rate=totalWeightedApplicable>0?(totalWeightedNCs/totalWeightedApplicable*100):0;
-    // R1 §3.3 banding thresholds applied to IF-only projection
+    const rate=applicableCount>0?(failCount/applicableCount*100):0;
+    // R1 §3.3 banding thresholds (verbatim from "Criteria to Determine Project
+    // Band" table). Lower NC rate → better band. Band 1 also requires full
+    // functional-test compliance (no NC) — reflected in the QP-status chips
+    // surfaced separately in the card.
     let band=6;
     if(rate<6)band=1;
     else if(rate<10)band=2;
     else if(rate<15)band=3;
     else if(rate<20)band=4;
     else if(rate<25)band=5;
-    // Per element — use observations when available so per-checkpoint
-    // accuracy is preserved; otherwise fall back to per-defect counting.
+    // Per element — accumulate fails by component (direct count, not weighted).
     const byComponent=new Map();
     if(useObs){
       for(const o of failObsInScope){
         const key=o.component_name||"(unspecified)";
-        if(!byComponent.has(key))byComponent.set(key,{name:key,failCount:0,weightedNCs:0,weightedApplicable:0,totalChecks:0,componentId:o.component_id||""});
-        const row=byComponent.get(key);
-        row.failCount+=1;
-        row.weightedNCs+=CONQUAS_TIER_WEIGHT[o.nc_tier]||0;
+        if(!byComponent.has(key))byComponent.set(key,{name:key,failCount:0,applicable:0,totalChecks:0,componentId:o.component_id||""});
+        byComponent.get(key).failCount+=1;
       }
     }else{
       for(const d of conquasDefects){
         const key=d.component||"(unspecified)";
-        if(!byComponent.has(key))byComponent.set(key,{name:key,failCount:0,weightedNCs:0,weightedApplicable:0,totalChecks:0,componentId:d.component_id||""});
-        const row=byComponent.get(key);
-        row.failCount+=1;
-        row.weightedNCs+=CONQUAS_TIER_WEIGHT[d.nc_tier]||0;
+        if(!byComponent.has(key))byComponent.set(key,{name:key,failCount:0,applicable:0,totalChecks:0,componentId:d.component_id||""});
+        byComponent.get(key).failCount+=1;
       }
     }
     // Component-level denominator from batches
     for(const b of batches.values()){
       const key=b.component;
-      if(!byComponent.has(key))byComponent.set(key,{name:key,failCount:0,weightedNCs:0,weightedApplicable:0,totalChecks:0,componentId:b.componentId||""});
+      if(!byComponent.has(key))byComponent.set(key,{name:key,failCount:0,applicable:0,totalChecks:0,componentId:b.componentId||""});
       const row=byComponent.get(key);
-      row.weightedApplicable+=b.weightedApplicable;
+      row.applicable+=b.applicable;
       row.totalChecks+=b.totalChecks;
     }
-    // Compute per-component rate
+    // Per-component rate (direct count per R1 §3.3)
     const componentRows=Array.from(byComponent.values()).map(r=>({
-      ...r,rate:r.weightedApplicable>0?(r.weightedNCs/r.weightedApplicable*100):0
+      ...r,rate:r.applicable>0?(r.failCount/r.applicable*100):0
     })).sort((a,b)=>b.rate-a.rate);
-    // By tier — observations table preserves the per-checkpoint tier mix;
-    // a merged defect only stores the worst tier so per-defect counts are
-    // misleading. Mirror the same fallback as above.
+    // By tier — failure breakdown for §3.4 rectification decisions and §3.6
+    // moderation diagnostics. Does NOT factor into the rate formula above.
     const byTier={"1X":0,"2X":0,"3X":0};
     if(useObs){
       for(const o of failObsInScope)if(byTier[o.nc_tier]!==undefined)byTier[o.nc_tier]+=1;
@@ -16262,7 +16262,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
     else if(projectedRate<25)projectedBand=5;
     else projectedBand=6;
 
-    return{failCount,defectCount,totalChecks,totalWeightedNCs,totalWeightedApplicable,rate,band,componentRows,byTier,batchCount:batches.size,
+    return{failCount,defectCount,totalChecks,applicableCount,rate,band,componentRows,byTier,batchCount:batches.size,
       ftRate,ftFails,ftApplicable,ftRows,qpStatuses,
       efRate,efFails,efApplicable,efRows,
       projectedRate,projectedBand,projectedBasis,isFullBand};
@@ -16759,7 +16759,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
               <div style={{background:conquasStats.projectedRate>=25?"#ff3b30":conquasStats.projectedRate>=15?"#ff9500":conquasStats.projectedRate>=10?"#5856d6":"#30d158",height:"100%",width:`${Math.min(100,conquasStats.projectedRate)}%`,borderRadius:4,transition:"width 0.3s ease"}}/>
             </div>
             <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",marginTop:6,lineHeight:1.4}}>
-              <b>IF:</b> {conquasStats.rate.toFixed(1)}% ({conquasStats.totalWeightedNCs} weighted of {conquasStats.totalWeightedApplicable} applicable; {conquasStats.failCount} non-conformance{conquasStats.failCount!==1?"s":""} in {conquasStats.defectCount} defect record{conquasStats.defectCount!==1?"s":""} across {conquasStats.batchCount} assessment{conquasStats.batchCount!==1?"s":""})
+              <b>IF:</b> {conquasStats.rate.toFixed(1)}% ({conquasStats.failCount} non-conformance{conquasStats.failCount!==1?"s":""} of {conquasStats.applicableCount} applicable check{conquasStats.applicableCount!==1?"s":""}; {conquasStats.defectCount} defect record{conquasStats.defectCount!==1?"s":""} across {conquasStats.batchCount} assessment{conquasStats.batchCount!==1?"s":""})
               {conquasStats.ftRate!==null&&<> · <b>FT:</b> {conquasStats.ftRate.toFixed(1)}% ({conquasStats.ftFails}/{conquasStats.ftApplicable})</>}
               {conquasStats.efRate!==null&&<> · <b>EF:</b> {conquasStats.efRate.toFixed(1)}% ({conquasStats.efFails}/{conquasStats.efApplicable})</>}
             </div>
@@ -16861,10 +16861,10 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
               <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"5px 0",borderBottom:i<conquasStats.componentRows.length-1?"1px solid rgba(0,0,0,0.05)":"none"}}>
                 <span style={{fontSize:12,color:"#1a1a1a",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis"}}>{r.name}</span>
                 <span style={{fontSize:10,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,minWidth:88,textAlign:"right"}}>
-                  {r.failCount} NC · wt {r.weightedNCs}/{r.weightedApplicable||"—"}
+                  {r.failCount}/{r.applicable||"—"} NC
                 </span>
                 <span style={{fontSize:12,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",minWidth:48,textAlign:"right",color:r.rate>=25?"#ff3b30":r.rate>=15?"#ff9500":r.rate>=10?"#5856d6":"#30d158"}}>
-                  {r.weightedApplicable>0?r.rate.toFixed(1)+"%":"—"}
+                  {r.applicable>0?r.rate.toFixed(1)+"%":"—"}
                 </span>
               </div>
             ))}
