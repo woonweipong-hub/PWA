@@ -796,7 +796,7 @@
     "status": "AI Status",
     "analyzing": "AI ANALYZING...",
     "query_enabled": "AI QUERY — ask in plain English…",
-    "query_disabled": "AI QUERY — configure AI in Settings",
+    "query_disabled": "AI QUERY — configure AI setup",
     "report": "AI REPORT",
     "report_draft": "AI REPORT DRAFT",
     "report_locked": "AI REPORT LOCKED",

@@ -26009,6 +26009,8 @@ function App(){
           {/* Settings dropdown — all one-time setup in one place */}
           <div style={{position:"relative"}} onMouseEnter={()=>{clearTimeout(settingsMenuTimer.current);setShowSettingsMenu(true);}} onMouseLeave={()=>{settingsMenuTimer.current=setTimeout(()=>setShowSettingsMenu(false),250);}}>
             <button onClick={()=>setShowSettingsMenu(v=>!v)} title={t("settings.title")} aria-label={t("settings.title")} aria-haspopup="menu" aria-expanded={showSettingsMenu} style={{position:"relative",width:34,height:34,borderRadius:9,background:showSettingsMenu?"rgba(255,107,0,0.2)":"rgba(255,255,255,0.07)",border:`1px solid ${showSettingsMenu?"rgba(255,107,0,0.4)":"rgba(255,255,255,0.1)"}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:17,color:showSettingsMenu?"#ff6b00":"rgba(255,255,255,0.75)",flexShrink:0}}><span aria-hidden="true">⚙</span>
+              {/* AI status dot — green when configured, amber when pending. Anchored top-right of the gear so a quick glance tells the user whether AI features are live. */}
+              <span aria-hidden="true" style={{position:"absolute",top:-2,right:-2,width:9,height:9,borderRadius:"50%",background:aiEnabled?"#34c759":"#ff9500",border:"1.5px solid #1a1a1a",pointerEvents:"none"}}/>
             </button>
             {showSettingsMenu&&(()=>{
               const donePill={background:"rgba(48,209,88,0.15)",color:"#30d158",border:"1px solid rgba(48,209,88,0.3)"};
@@ -26157,17 +26159,6 @@ function App(){
         </div>
       </div>
 
-      {/* AI Query bar — shown on Report tab (merged in from former Dashboard) */}
-      {tab==="report"&&(
-        <div style={{background:"#1a1a1a",padding:"0 12px 10px"}}>
-          <button onClick={()=>{if(aiEnabled)setShowAiSearch(true);}} title={aiEnabled?"AI natural-language query across your entries":"Configure AI in Settings to enable"} style={{width:"100%",display:"flex",alignItems:"center",gap:10,background:aiEnabled?"rgba(255,255,255,0.07)":"rgba(255,255,255,0.04)",border:`1px solid ${aiEnabled?"rgba(255,107,0,0.35)":"rgba(255,255,255,0.08)"}`,borderRadius:10,padding:"9px 12px",cursor:aiEnabled?"pointer":"not-allowed",textAlign:"left"}}>
-            <span style={{fontSize:14,color:aiEnabled?"#ff6b00":"rgba(255,255,255,0.3)"}}>💬</span>
-            <span style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:aiEnabled?"rgba(255,255,255,0.75)":"rgba(255,255,255,0.35)",letterSpacing:"0.04em"}}>{aiEnabled?t("ai.query_enabled"):t("ai.query_disabled")}</span>
-            {aiEnabled&&<span style={{fontSize:10,fontWeight:800,color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",background:"rgba(255,107,0,0.12)",border:"1px solid rgba(255,107,0,0.3)",borderRadius:8,padding:"2px 7px"}}>ASK</span>}
-          </button>
-        </div>
-      )}
-
       {/* Profile panel */}
       {showProfile&&<ProfilePanel member={member} authUser={authUser} company={company} onClose={()=>setShowProfile(false)} onSignOut={signOut} onCompanyUpdate={(name)=>setCompany(prev=>{
         // Persist to localStorage too — not just React state — otherwise the
@@ -26180,7 +26171,7 @@ function App(){
       })}/>}
 
       {/* Main content */}
-      <div style={{flex:1,overflowY:"auto",paddingBottom:"calc(100px + env(safe-area-inset-bottom,0px))"}}>
+      <div style={{flex:1,overflowY:"auto",paddingBottom:tab==="report"?"calc(160px + env(safe-area-inset-bottom,0px))":"calc(100px + env(safe-area-inset-bottom,0px))"}}>
         {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")} onStartConquas={()=>setShowConquas(true)} onStartQualityCheck={()=>setShowQualityCheck(true)} onStartTopWizard={()=>setShowTopWizard(true)} onOpenProjects={()=>setShowProjects(true)} pendingBatchTrigger={pendingConquasBatch} onBatchHandled={()=>setPendingConquasBatch(false)}/>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} onPatchDefectLocal={updated=>setDefects(prev=>prev.map(d=>d.id===updated.id?updated:d))} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onViewEntry={setViewing}/>}
@@ -26188,15 +26179,28 @@ function App(){
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} member={member} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
       </div>
 
-      {/* Bottom Nav */}
-      <nav aria-label={t("nav.main_nav")} style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:"#1a1a1a",borderTop:"1px solid rgba(255,255,255,0.06)",display:"flex",padding:"10px 0 max(14px, env(safe-area-inset-bottom))",zIndex:50}}>
-        {navItems.map(n=>(
-          <button key={n.id} onClick={()=>setTab(n.id)} aria-label={t(n.labelKey)} aria-current={tab===n.id?"page":undefined} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"4px 0"}}>
-            <div aria-hidden="true" style={{height:26,display:"flex",alignItems:"center",justifyContent:"center",fontSize:n.id==="log"?28:22,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.55)",fontWeight:700,lineHeight:1,fontFamily:n.id==="log"?"'Barlow Condensed',sans-serif":"inherit"}}>{n.icon}</div>
-            <div style={{fontSize:11,fontWeight:700,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",lineHeight:1}}>{t(n.labelKey).toUpperCase()}</div>
-          </button>
-        ))}
-      </nav>
+      {/* Bottom anchor — AI Query bar (REPORT tab only) sits above the tab Nav so the
+          top of every page stays consistent across tab switches and the query input
+          is in thumb reach. */}
+      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,zIndex:50}}>
+        {tab==="report"&&(
+          <div style={{background:"#1a1a1a",padding:"10px 12px",borderTop:"1px solid rgba(255,255,255,0.06)"}}>
+            <button onClick={()=>{if(aiEnabled)setShowAiSearch(true);}} title={aiEnabled?"AI natural-language query across your entries":"Configure AI setup to enable"} style={{width:"100%",display:"flex",alignItems:"center",gap:10,background:aiEnabled?"rgba(255,255,255,0.07)":"rgba(255,255,255,0.04)",border:`1px solid ${aiEnabled?"rgba(255,107,0,0.35)":"rgba(255,255,255,0.08)"}`,borderRadius:10,padding:"9px 12px",cursor:aiEnabled?"pointer":"not-allowed",textAlign:"left"}}>
+              <span style={{fontSize:14,color:aiEnabled?"#ff6b00":"rgba(255,255,255,0.3)"}}>💬</span>
+              <span style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:aiEnabled?"rgba(255,255,255,0.75)":"rgba(255,255,255,0.35)",letterSpacing:"0.04em"}}>{aiEnabled?t("ai.query_enabled"):t("ai.query_disabled")}</span>
+              {aiEnabled&&<span style={{fontSize:10,fontWeight:800,color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",background:"rgba(255,107,0,0.12)",border:"1px solid rgba(255,107,0,0.3)",borderRadius:8,padding:"2px 7px"}}>ASK</span>}
+            </button>
+          </div>
+        )}
+        <nav aria-label={t("nav.main_nav")} style={{background:"#1a1a1a",borderTop:"1px solid rgba(255,255,255,0.06)",display:"flex",padding:"10px 0 max(14px, env(safe-area-inset-bottom))"}}>
+          {navItems.map(n=>(
+            <button key={n.id} onClick={()=>setTab(n.id)} aria-label={t(n.labelKey)} aria-current={tab===n.id?"page":undefined} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"4px 0"}}>
+              <div aria-hidden="true" style={{height:26,display:"flex",alignItems:"center",justifyContent:"center",fontSize:n.id==="log"?28:22,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.55)",fontWeight:700,lineHeight:1,fontFamily:n.id==="log"?"'Barlow Condensed',sans-serif":"inherit"}}>{n.icon}</div>
+              <div style={{fontSize:11,fontWeight:700,color:tab===n.id?"#ff6b00":"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.08em",lineHeight:1}}>{t(n.labelKey).toUpperCase()}</div>
+            </button>
+          ))}
+        </nav>
+      </div>
 
       {/* Overlays */}
       {/* Inline DRAWING / COMPARISON viewer launched from REVIEW. Keeps users
