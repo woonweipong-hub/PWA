@@ -16396,11 +16396,27 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
     else if(projectedRate<20)projectedBand=4;
     else if(projectedRate<25)projectedBand=5;
     else projectedBand=6;
+    // R1 §3.3 page 17 — Band 6 hard gates beyond the rate threshold. Any of
+    // these forces Band 6 regardless of the otherwise-projected band:
+    //   • WTT NC rate ≥ 10%
+    //   • WPT NC rate ≥ 2%
+    //   • Any QP-declared test status = "fail" (Pull-Off / Heat Soak +
+    //     3-yr warranty / WTT self-test / WPT self-test)
+    // The rate-only projection ignored these — a 3% IF rate with a failed
+    // Heat Soak test would have shown Band 1 when R1 actually mandates Band 6.
+    const wttGateRate=wttA>0?(wttF/wttA*100):0;
+    const wptGateRate=wptA>0?(wptF/wptA*100):0;
+    const qpAnyFail=Object.values(qpStatuses).some(s=>s==="fail");
+    let band6ForcedReason=null;
+    if(qpAnyFail)band6ForcedReason="QP-declared test failure";
+    else if(wttGateRate>=10)band6ForcedReason="WTT NC rate ≥ 10%";
+    else if(wptGateRate>=2)band6ForcedReason="WPT NC rate ≥ 2%";
+    if(band6ForcedReason)projectedBand=6;
 
     return{failCount,defectCount,totalChecks,applicableCount,rate,band,componentRows,byTier,batchCount:batches.size,
       ftRate,ftFails,ftApplicable,ftRows,qpStatuses,
       efRate,efFails,efApplicable,efRows,
-      projectedRate,projectedBand,projectedBasis,isFullBand};
+      projectedRate,projectedBand,projectedBasis,isFullBand,band6ForcedReason};
   })();
 
   const runContractAdvisor=async()=>{
@@ -17043,7 +17059,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
           </div>
           {/* Disclaimer — reflects which components are captured vs missing */}
           <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",lineHeight:1.5,background:conquasStats.isFullBand?"rgba(48,209,88,0.06)":"rgba(255,149,0,0.06)",border:conquasStats.isFullBand?"1px solid rgba(48,209,88,0.18)":"1px solid rgba(255,149,0,0.18)",borderRadius:8,padding:"8px 10px"}}>
-            <b>{conquasStats.isFullBand?"Full Project NC rate":"Projection only — not official CONQUAS Band"}.</b> 0% = all pass, 100% = all fail; lower is better. Per CONQUAS (Private Residential) R1 §3.3: Project NC rate = IF × 0.4 + FT × 0.4 + EF × 0.2. {conquasStats.isFullBand?"All three components captured — showing the full formula.":conquasStats.projectedBasis.includes("IF + FT + EF")?"":conquasStats.ftRate!==null&&conquasStats.efRate===null?"This shows IF + FT re-normalised over 0.8 (EF pending).":conquasStats.efRate!==null&&conquasStats.ftRate===null?"This shows IF + EF re-normalised over 0.6 (FT pending).":"This shows IF only (FT + EF pending)."} Project band is the AI app's best projection — official banding requires accredited assessor sign-off, QP declarations (Pull-Off · Heat Soak · WTT/WPT self-tests), and complete sampling per R1. Final accountability rests with the accredited checker, QP, or assessor — not this app.
+            <b>{conquasStats.isFullBand?"Full Project NC rate":"Projection only — not official CONQUAS Band"}.</b> 0% = all pass, 100% = all fail; lower is better. Per CONQUAS (Private Residential) R1 §3.3: Project NC rate = IF × 0.4 + FT × 0.4 + EF × 0.2. {conquasStats.isFullBand?"All three components captured — showing the full formula.":conquasStats.projectedBasis.includes("IF + FT + EF")?"":conquasStats.ftRate!==null&&conquasStats.efRate===null?"This shows IF + FT re-normalised over 0.8 (EF pending).":conquasStats.efRate!==null&&conquasStats.ftRate===null?"This shows IF + EF re-normalised over 0.6 (FT pending).":"This shows IF only (FT + EF pending)."} {conquasStats.band6ForcedReason&&<span style={{color:"#cc0000",fontWeight:700}}>⚠ Band 6 forced by R1 §3.3 page 17 gate: {conquasStats.band6ForcedReason}. </span>}Project band is the AI app's best projection — official banding requires accredited assessor sign-off, QP declarations (Pull-Off · Heat Soak · WTT/WPT self-tests), and complete sampling per R1. Final accountability rests with the accredited checker, QP, or assessor — not this app.
           </div>
         </div>
       )}
