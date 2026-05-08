@@ -9128,11 +9128,13 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
   const failCount=results.filter(r=>r.status==="fail").length;
   const passCount=results.filter(r=>r.status==="pass").length;
   const tierSev={"1X":"Minor","2X":"Major","3X":"Critical"};
-  // CONQUAS R1 §3.2(a): 1X/2X/3X are "NC weightages". The banding table
-  // column header (§3.3) explicitly labels the rate "Project weighted NC
-  // rate" — so each non-compliance contributes its tier number to both the
-  // numerator and (via batch_weighted_applicable) the denominator.
-  const tierWeight={"1X":1,"2X":2,"3X":3};
+  // CONQUAS R1 §3.3 IF NC rate is direct count (# X / # applicable × 100%).
+  // The "weighted" in R1's "Project weighted NC rate" refers to component
+  // weighting (IF × 0.4 + FT × 0.4 + EF × 0.2), NOT tier weighting. Each
+  // non-conformance contributes 1 to the numerator regardless of 1X/2X/3X.
+  // The 1X/2X/3X labels still drive §3.4 rectification rules and §3.6
+  // moderation — they're surfaced in the BY NC WEIGHTAGE breakdown card,
+  // not folded into the rate.
 
   const pickElement=(itemId)=>{
     setPickedId(itemId);setIdx(0);setResults([]);
@@ -9362,9 +9364,6 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
       ? crypto.randomUUID()
       : "batch_"+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
     const batchTotalChecks=activeCheckpoints.length;
-    // R1 §3.3 denominator: sum of tier weights across all checkpoints that
-    // were attempted in this batch.
-    const batchWeightedApplicable=activeCheckpoints.reduce((sum,cp)=>sum+(tierWeight[cp.tier]||0),0);
     let defectsSaved=0,observationsSaved=0,observationsFailed=0;
     const failResults=results.filter(r=>r.status==="fail");
     const failCount=failResults.length;
@@ -9494,7 +9493,6 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
           nc_tier:worstTier,
           observation_batch_id:batchId,
           batch_total_checks:batchTotalChecks,
-          batch_weighted_applicable:batchWeightedApplicable,
           entryType:"CONQUAS Check",
           photo:compressed,extraPhotos:extraCompressed,
           projectId:currentProject?.id||"default",
@@ -10234,10 +10232,10 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // Why a dedicated state instead of pre-tagging entryType="CONQUAS Check":
   // (a) entryType="CONQUAS Check" is reserved for the per-element wizard's
   //     structured audits (records carrying nc_tier, observation_batch_id,
-  //     batch_weighted_applicable, component_id, checkpoint_id). The
-  //     CONQUAS NC-rate report at line ~12010 filters on those structured
-  //     fields, so batch entries pretending to be CONQUAS Check entries
-  //     would show up incomplete and break the calculation.
+  //     batch_total_checks, component_id, checkpoint_id). The CONQUAS
+  //     NC-rate report filters on those structured fields, so batch entries
+  //     pretending to be CONQUAS Check entries would show up incomplete and
+  //     break the calculation.
   // (b) form gets reset to `blank` after every auto-save (line ~8246), so
   //     a one-shot setForm(entryType:"CONQUAS Check") would only tag the
   //     first photo of an N-photo batch — the rest would auto-stamp as
