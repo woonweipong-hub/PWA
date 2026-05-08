@@ -722,8 +722,11 @@
     "maps_desc": "Google 地圖位置固定",
     "language": "語言",
     "language_desc": "選擇您的語言",
+    "default_tab": "預設登陸選項卡",
+    "default_tab_desc": "啟動應用程式時開啟的選項卡",
     "section_project": "專案",
     "section_enhance": "增強",
+    "section_preferences": "偏好",
     "section_app": "應用程式",
     "clear_cache": "清除快取並重新載入",
     "clear_cache_desc": "透過重新整理所有快取檔案來修復載入問題",
@@ -1268,6 +1271,14 @@
     "title": "🌐 語言",
     "select": "選擇語言",
     "current": "目前語言"
+  },
+  "default_tab": {
+    "title": "預設登陸選項卡",
+    "select": "選擇您的起始畫面",
+    "option_log": "日誌 · 捕捉缺陷",
+    "option_drawings": "標籤·圖紙和標記",
+    "option_defects": "評論·參賽作品",
+    "option_report": "報告·匯出和查詢"
   },
   "opt": {
     "Structural": "結構",

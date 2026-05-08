@@ -722,8 +722,11 @@
     "maps_desc": "Google Maps অবস্থান পিন করা",
     "language": "ভাষা",
     "language_desc": "আপনার ভাষা নির্বাচন",
+    "default_tab": "ডিফল্ট ল্যান্ডিং ট্যাব",
+    "default_tab_desc": "আপনি অ্যাপ চালু করার সময় খুলতে ট্যাব",
     "section_project": "প্রকল্প",
     "section_enhance": "উন্নতি",
+    "section_preferences": "পছন্দসমূহ",
     "section_app": "অ্যাপ",
     "clear_cache": "ক্যাশ পরিষ্কার করে রিলোড করুন",
     "clear_cache_desc": "সমস্ত ক্যাশ করা ফাইল রিফ্রেশ করে লোডিং সমস্যা ঠিক করুন",
@@ -1268,6 +1271,14 @@
     "title": "🌐 ভাষা",
     "select": "ভাষা নির্বাচন",
     "current": "বর্তমান ভাষা"
+  },
+  "default_tab": {
+    "title": "ডিফল্ট ল্যান্ডিং ট্যাব",
+    "select": "আপনার শুরু পর্দা চয়ন করুন",
+    "option_log": "LOG · ক্যাপচার ত্রুটি",
+    "option_drawings": "TAG · অঙ্কন এবং মার্কআপ",
+    "option_defects": "পর্যালোচনা · এন্ট্রি",
+    "option_report": "রিপোর্ট · রপ্তানি এবং প্রশ্ন"
   },
   "opt": {
     "Structural": "কাঠামোগত",

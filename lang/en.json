@@ -722,8 +722,11 @@
     "maps_desc": "Google Maps location pinning",
     "language": "Language",
     "language_desc": "Choose your language",
+    "default_tab": "Default Landing Tab",
+    "default_tab_desc": "Tab to open when you launch the app",
     "section_project": "PROJECT",
     "section_enhance": "ENHANCE",
+    "section_preferences": "PREFERENCES",
     "section_app": "APP",
     "clear_cache": "Clear All App Data",
     "clear_cache_desc": "Sign out, wipe local history and cached files, re-fetch a fresh app. Unsynced offline entries will be lost.",
@@ -1268,6 +1271,14 @@
     "title": "🌐 LANGUAGE",
     "select": "Select language",
     "current": "Current language"
+  },
+  "default_tab": {
+    "title": "DEFAULT LANDING TAB",
+    "select": "Choose your starting screen",
+    "option_log": "LOG · Capture defects",
+    "option_drawings": "TAG · Drawings & markup",
+    "option_defects": "REVIEW · Entries",
+    "option_report": "REPORT · Exports & queries"
   },
   "opt": {
     "Structural": "Structural",

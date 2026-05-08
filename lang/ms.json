@@ -722,8 +722,11 @@
     "maps_desc": "Penyematan lokasi Peta Google",
     "language": "Bahasa",
     "language_desc": "Pilih bahasa anda",
+    "default_tab": "Tab Pendaratan Lalai",
+    "default_tab_desc": "Tab untuk dibuka apabila anda melancarkan apl",
     "section_project": "PROJEK",
     "section_enhance": "TINGKATKAN",
+    "section_preferences": "KEUTAMAAN",
     "section_app": "APLIKASI",
     "clear_cache": "Kosongkan Cache & Muat Semula",
     "clear_cache_desc": "Selesaikan masalah pemuatan dengan menyegarkan semua fail yang dicache",
@@ -1268,6 +1271,14 @@
     "title": "🌐 BAHASA",
     "select": "Pilih bahasa",
     "current": "Bahasa semasa"
+  },
+  "default_tab": {
+    "title": "TAB PENDARATAN LALAI",
+    "select": "Pilih skrin permulaan anda",
+    "option_log": "LOG · Tangkap kecacatan",
+    "option_drawings": "TAG · Lukisan & penanda",
+    "option_defects": "SEMAKAN · Penyertaan",
+    "option_report": "LAPORAN · Eksport & pertanyaan"
   },
   "opt": {
     "Structural": "Struktur",

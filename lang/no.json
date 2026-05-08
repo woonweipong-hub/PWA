@@ -722,8 +722,11 @@
     "maps_desc": "Google Maps posisjonsfesting",
     "language": "Språk",
     "language_desc": "Velg språket ditt",
+    "default_tab": "Standard landingsfane",
+    "default_tab_desc": "Tab for å åpne når du starter appen",
     "section_project": "PROSJEKT",
     "section_enhance": "FORBEDRE",
+    "section_preferences": "PREFERANSER",
     "section_app": "APP",
     "clear_cache": "Tøm hurtigbuffer og last på nytt",
     "clear_cache_desc": "Løs innlastingsproblemer ved å oppdatere alle hurtigbufrede filer",
@@ -1268,6 +1271,14 @@
     "title": "🌐 SPRÅK",
     "select": "Velg språk",
     "current": "Nåværende språk"
+  },
+  "default_tab": {
+    "title": "STANDARD LANDINGSTABEN",
+    "select": "Velg startskjermen din",
+    "option_log": "LOGG · Fangst feil",
+    "option_drawings": "TAG · Tegninger og markeringer",
+    "option_defects": "REVIEW · Entries",
+    "option_report": "RAPPORT · Eksporter og forespørsler"
   },
   "opt": {
     "Structural": "Bæresystem",

@@ -722,8 +722,11 @@
     "maps_desc": "Google 地图位置固定",
     "language": "语言",
     "language_desc": "选择您的语言",
+    "default_tab": "默认登陆选项卡",
+    "default_tab_desc": "启动应用程序时打开的选项卡",
     "section_project": "项目",
     "section_enhance": "增强",
+    "section_preferences": "偏好",
     "section_app": "应用",
     "clear_cache": "清除缓存并重新加载",
     "clear_cache_desc": "通过刷新所有缓存文件来修复加载问题",
@@ -1268,6 +1271,14 @@
     "title": "🌐 语言",
     "select": "选择语言",
     "current": "当前语言"
+  },
+  "default_tab": {
+    "title": "默认登陆选项卡",
+    "select": "选择您的起始屏幕",
+    "option_log": "日志 · 捕捉缺陷",
+    "option_drawings": "标签·图纸和标记",
+    "option_defects": "评论·参赛作品",
+    "option_report": "报告·导出和查询"
   },
   "opt": {
     "Structural": "结构",

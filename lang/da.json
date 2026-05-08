@@ -722,8 +722,11 @@
     "maps_desc": "Google Maps fastgørelse af placering",
     "language": "Sprog",
     "language_desc": "Vælg dit sprog",
+    "default_tab": "Standard landingsfane",
+    "default_tab_desc": "Tab for at åbne, når du starter appen",
     "section_project": "PROJEKT",
     "section_enhance": "FORBEDRE",
+    "section_preferences": "PRÆFERENCER",
     "section_app": "APP",
     "clear_cache": "Ryd cache og genindlæs",
     "clear_cache_desc": "Løs indlæsningsproblemer ved at opdatere alle cachelagrede filer",
@@ -1268,6 +1271,14 @@
     "title": "🌐 SPROG",
     "select": "Vælg sprog",
     "current": "Nuværende sprog"
+  },
+  "default_tab": {
+    "title": "STANDARD LANDINGSFANEN",
+    "select": "Vælg din startskærm",
+    "option_log": "LOG · Fangst fejl",
+    "option_drawings": "TAG · Tegninger & opmærkning",
+    "option_defects": "ANMELDELSE · Indlæg",
+    "option_report": "RAPPORT · Eksport & forespørgsler"
   },
   "opt": {
     "Structural": "Bærende",

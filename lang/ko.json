@@ -722,8 +722,11 @@
     "maps_desc": "Google 지도 위치 고정",
     "language": "언어",
     "language_desc": "언어 선택",
+    "default_tab": "기본 랜딩 탭",
+    "default_tab_desc": "앱을 시작할 때 열리는 탭",
     "section_project": "프로젝트",
     "section_enhance": "향상",
+    "section_preferences": "환경설정",
     "section_app": "앱",
     "clear_cache": "캐시 지우기 및 새로고침",
     "clear_cache_desc": "캐시된 모든 파일을 새로 고쳐 로딩 문제를 해결합니다",
@@ -1268,6 +1271,14 @@
     "title": "🌐 언어",
     "select": "언어 선택",
     "current": "현재 언어"
+  },
+  "default_tab": {
+    "title": "기본 랜딩 탭",
+    "select": "시작 화면을 선택하세요",
+    "option_log": "LOG · 불량캡처",
+    "option_drawings": "TAG · 도면 및 마크업",
+    "option_defects": "리뷰 · 출품작",
+    "option_report": "REPORT · 내보내기 및 쿼리"
   },
   "opt": {
     "Structural": "구조",

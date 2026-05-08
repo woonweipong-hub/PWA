@@ -722,8 +722,11 @@
     "maps_desc": "การปักหมุดตำแหน่งของ Google Maps",
     "language": "ภาษา",
     "language_desc": "เลือกภาษาของคุณ",
+    "default_tab": "แท็บ Landing เริ่มต้น",
+    "default_tab_desc": "แท็บที่จะเปิดเมื่อคุณเปิดแอป",
     "section_project": "โปรเจกต์",
     "section_enhance": "ปรับปรุง",
+    "section_preferences": "การตั้งค่า",
     "section_app": "แอป",
     "clear_cache": "ล้างแคชและโหลดใหม่",
     "clear_cache_desc": "แก้ไขปัญหาการโหลดโดยรีเฟรชไฟล์แคชทั้งหมด",
@@ -1268,6 +1271,14 @@
     "title": "🌐 ภาษา",
     "select": "เลือกภาษา",
     "current": "ภาษาปัจจุบัน"
+  },
+  "default_tab": {
+    "title": "แท็บ Landing เริ่มต้น",
+    "select": "เลือกหน้าจอเริ่มต้นของคุณ",
+    "option_log": "LOG · จับข้อบกพร่อง",
+    "option_drawings": "TAG · ภาพวาดและมาร์กอัป",
+    "option_defects": "บทวิจารณ์ · รายการ",
+    "option_report": "รายงาน · ส่งออกและสอบถาม"
   },
   "opt": {
     "Structural": "โครงสร้าง",

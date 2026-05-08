@@ -24911,6 +24911,7 @@ const DdIcon=({name,size=16})=>{
     case"server":return <svg {...p}><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><circle cx="7" cy="7" r="0.7" fill="currentColor"/><circle cx="7" cy="17" r="0.7" fill="currentColor"/></svg>;
     case"mail":return <svg {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>;
     case"code":return <svg {...p}><path d="M8 6l-5 6 5 6"/><path d="M16 6l5 6-5 6"/><path d="M14 4l-4 16"/></svg>;
+    case"home":return <svg {...p}><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>;
     default:return null;
   }
 };
@@ -24957,7 +24958,11 @@ function App(){
   // permanent delete.
   const[archivedDefects,setArchivedDefects]=useState([]);
   const[syncing,setSyncing]=useState(true);
-  const[tab,setTab]=useState("report");
+  // Default landing tab is user-customisable in Settings → Preferences. Falls back
+  // to "log" so first-time users (and most field walkers) land on capture, which
+  // is the dominant on-site intent.
+  const[tab,setTab]=useState(()=>local.get(DEFAULT_TAB_KEY)||"log");
+  const[showDefaultTabPicker,setShowDefaultTabPicker]=useState(false);
   const[viewing,setViewing]=useState(null);
   const[showTg,setShowTg]=useState(false);
   const[showEmail,setShowEmail]=useState(false);
@@ -26048,7 +26053,8 @@ function App(){
                 {label:t("settings.email")||"Email Setup",desc:t("settings.email_desc")||"SMTP for report emails",icon:"mail",optional:true,onClick:()=>{setShowEmail(true);setShowSettingsMenu(false);}},
                 {label:t("settings.maps"),desc:t("settings.maps_desc"),icon:"pin",optional:true,onClick:()=>{setShowMaps(true);setShowSettingsMenu(false);}},
                 {label:t("settings.api"),desc:t("settings.api_desc"),icon:"code",optional:true,onClick:()=>{setShowApi(true);setShowSettingsMenu(false);}},
-                {section:t("language.title")},
+                {section:t("settings.section_preferences")},
+                {label:t("settings.default_tab"),desc:t(`default_tab.option_${local.get(DEFAULT_TAB_KEY)||"log"}`)||t("default_tab.option_log"),icon:"home",optional:true,onClick:()=>{setShowDefaultTabPicker(true);setShowSettingsMenu(false);}},
                 {label:t("settings.language"),desc:(languages.find(l=>l.code===lang)||{}).name||"English",icon:"globe",optional:true,onClick:()=>{setShowLangPicker(true);setShowSettingsMenu(false);}},
                 {section:t("settings.section_app")},
                 {label:t("settings.clear_cache"),desc:t("settings.clear_cache_desc"),icon:"refresh",optional:true,onClick:async()=>{
@@ -26795,6 +26801,33 @@ function App(){
           </div>
         </div>
       )}
+      {showDefaultTabPicker&&(()=>{
+        const current=local.get(DEFAULT_TAB_KEY)||"log";
+        const opts=[
+          {id:"log",label:t("default_tab.option_log")},
+          {id:"drawings",label:t("default_tab.option_drawings")},
+          {id:"defects",label:t("default_tab.option_defects")},
+          {id:"report",label:t("default_tab.option_report")},
+        ];
+        return (
+        <div style={{position:"fixed",inset:0,zIndex:500,background:"#1a1a1a",overflowY:"auto",animation:"slideUp 0.25s ease"}}>
+          <div style={{maxWidth:430,margin:"0 auto"}}>
+            <SettingsBack onClose={()=>setShowDefaultTabPicker(false)} title={t("default_tab.title")}/>
+            <div style={{padding:"16px"}}>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.1em",marginBottom:12}}>{t("default_tab.select").toUpperCase()}</div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {opts.map(o=>(
+                  <button key={o.id} onClick={()=>{local.set(DEFAULT_TAB_KEY,o.id);setShowDefaultTabPicker(false);}} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",background:current===o.id?"rgba(255,107,0,0.12)":"rgba(255,255,255,0.04)",border:current===o.id?"1px solid rgba(255,107,0,0.4)":"1px solid rgba(255,255,255,0.08)",borderRadius:10,cursor:"pointer",textAlign:"left"}}>
+                    <div style={{flex:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:current===o.id?"#ff6b00":"#fff"}}>{o.label}</div>
+                    {current===o.id&&<span style={{color:"#ff6b00",fontSize:16,fontWeight:800}}>✓</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
     </div>
   );
 }

@@ -722,8 +722,11 @@
     "maps_desc": "Google マップの場所の固定",
     "language": "言語",
     "language_desc": "言語を選択",
+    "default_tab": "デフォルトのランディングタブ",
+    "default_tab_desc": "アプリ起動時に開くタブ",
     "section_project": "プロジェクト",
     "section_enhance": "強化",
+    "section_preferences": "設定",
     "section_app": "アプリ",
     "clear_cache": "キャッシュをクリアして再読み込み",
     "clear_cache_desc": "キャッシュされたファイルを更新して読み込みの問題を修正します",
@@ -1268,6 +1271,14 @@
     "title": "🌐 言語",
     "select": "言語を選択",
     "current": "現在の言語"
+  },
+  "default_tab": {
+    "title": "デフォルトのランディングタブ",
+    "select": "開始画面を選択してください",
+    "option_log": "LOG · 欠陥のキャプチャ",
+    "option_drawings": "タグ · 図面とマークアップ",
+    "option_defects": "レビュー · エントリー",
+    "option_report": "REPORT · エクスポートとクエリ"
   },
   "opt": {
     "Structural": "構造",

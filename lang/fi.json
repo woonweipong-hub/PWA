@@ -722,8 +722,11 @@
     "maps_desc": "Google Maps -sijainnin kiinnitys",
     "language": "Kieli",
     "language_desc": "Valitse kielesi",
+    "default_tab": "Oletusaloitusvälilehti",
+    "default_tab_desc": "Välilehti avautuu, kun käynnistät sovelluksen",
     "section_project": "PROJEKTI",
     "section_enhance": "PARANTAA",
+    "section_preferences": "ASETUKSET",
     "section_app": "SOVELLUS",
     "clear_cache": "Tyhjennä välimuisti ja lataa uudelleen",
     "clear_cache_desc": "Korjaa latausongelmat päivittämällä kaikki välimuistissa olevat tiedostot",
@@ -1268,6 +1271,14 @@
     "title": "🌐 KIELI",
     "select": "Valitse kieli",
     "current": "Nykyinen kieli"
+  },
+  "default_tab": {
+    "title": "OLETUSLASKUVÄLI",
+    "select": "Valitse aloitusnäyttösi",
+    "option_log": "LOG · Tallenna viat",
+    "option_drawings": "TAG · Piirustukset ja merkinnät",
+    "option_defects": "TARKASTELU · Merkinnät",
+    "option_report": "RAPORTTI · Vienti ja kyselyt"
   },
   "opt": {
     "Structural": "Rakenne",

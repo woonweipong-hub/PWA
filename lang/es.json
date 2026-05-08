@@ -722,8 +722,11 @@
     "maps_desc": "Fijar ubicación en Google Maps",
     "language": "Idioma",
     "language_desc": "Elige tu idioma",
+    "default_tab": "Pestaña de inicio predeterminada",
+    "default_tab_desc": "Pestaña que se abrirá al iniciar la aplicación",
     "section_project": "PROYECTO",
     "section_enhance": "MEJORAR",
+    "section_preferences": "PREFERENCIAS",
     "section_app": "APLICACIÓN",
     "clear_cache": "Borrar caché y recargar",
     "clear_cache_desc": "Soluciona problemas de carga actualizando todos los archivos en caché",
@@ -1268,6 +1271,14 @@
     "title": "🌐 IDIOMA",
     "select": "Seleccionar idioma",
     "current": "Idioma actual"
+  },
+  "default_tab": {
+    "title": "PESTAÑA DE ATERRIZAJE PREDETERMINADA",
+    "select": "Elige tu pantalla de inicio",
+    "option_log": "LOG · Capturar defectos",
+    "option_drawings": "TAG · Dibujos y marcado",
+    "option_defects": "RESEÑA · Entradas",
+    "option_report": "INFORME · Exportaciones y consultas"
   },
   "opt": {
     "Structural": "Estructural",

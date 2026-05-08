@@ -722,8 +722,11 @@
     "maps_desc": "Fixação de localização do Google Maps",
     "language": "Idioma",
     "language_desc": "Escolha seu idioma",
+    "default_tab": "Guia de destino padrão",
+    "default_tab_desc": "Guia para abrir quando você inicia o aplicativo",
     "section_project": "PROJETO",
     "section_enhance": "MELHORAR",
+    "section_preferences": "PREFERÊNCIAS",
     "section_app": "APLICATIVA",
     "clear_cache": "Limpar cache e recarregar",
     "clear_cache_desc": "Corrija problemas de carregamento atualizando todos os arquivos em cache",
@@ -1268,6 +1271,14 @@
     "title": "🌐 IDIOMA",
     "select": "Selecionar idioma",
     "current": "Idioma atual"
+  },
+  "default_tab": {
+    "title": "GUIA DE ATERRAGEM PADRÃO",
+    "select": "Escolha sua tela inicial",
+    "option_log": "LOG · Capturar defeitos",
+    "option_drawings": "TAG · Desenhos e marcações",
+    "option_defects": "REVISÃO · Inscrições",
+    "option_report": "RELATÓRIO · Exportações e consultas"
   },
   "opt": {
     "Structural": "Estrutural",

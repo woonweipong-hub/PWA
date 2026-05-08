@@ -722,8 +722,11 @@
     "maps_desc": "Épinglage de localisation sur Google Maps",
     "language": "Langue",
     "language_desc": "Choisir votre langue",
+    "default_tab": "Onglet d'arrivée par défaut",
+    "default_tab_desc": "Onglet à ouvrir au lancement de l'application",
     "section_project": "PROJET",
     "section_enhance": "AMÉLIORER",
+    "section_preferences": "PRÉFÉRENCES",
     "section_app": "APPLICATION",
     "clear_cache": "Vider le cache et recharger",
     "clear_cache_desc": "Résoudre les problèmes de chargement en actualisant tous les fichiers mis en cache",
@@ -1268,6 +1271,14 @@
     "title": "🌐 LANGUE",
     "select": "Sélectionner la langue",
     "current": "Langue actuelle"
+  },
+  "default_tab": {
+    "title": "ONGLET D'ATTERRISSAGE PAR DÉFAUT",
+    "select": "Choisissez votre écran de démarrage",
+    "option_log": "JOURNAL · Capturer les défauts",
+    "option_drawings": "TAG · Dessins et balisages",
+    "option_defects": "REVUE · Entrées",
+    "option_report": "RAPPORT · Exports & requêtes"
   },
   "opt": {
     "Structural": "Structure",

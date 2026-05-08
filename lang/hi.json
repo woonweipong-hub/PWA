@@ -722,8 +722,11 @@
     "maps_desc": "Google मानचित्र स्थान पिन करना",
     "language": "भाषा",
     "language_desc": "अपनी भाषा चुनें",
+    "default_tab": "डिफ़ॉल्ट लैंडिंग टैब",
+    "default_tab_desc": "जब आप ऐप लॉन्च करेंगे तो टैब खुलेगा",
     "section_project": "प्रोजेक्ट",
     "section_enhance": "बढ़ाएं",
+    "section_preferences": "प्राथमिकताएँ",
     "section_app": "ऐप",
     "clear_cache": "कैश साफ़ करें और रीलोड करें",
     "clear_cache_desc": "सभी कैश्ड फ़ाइलों को रीफ्रेश करके लोडिंग समस्याओं को ठीक करें",
@@ -1268,6 +1271,14 @@
     "title": "🌐 भाषा",
     "select": "भाषा चुनें",
     "current": "वर्तमान भाषा"
+  },
+  "default_tab": {
+    "title": "डिफ़ॉल्ट लैंडिंग टैब",
+    "select": "अपनी आरंभिक स्क्रीन चुनें",
+    "option_log": "लॉग · दोषों को कैप्चर करें",
+    "option_drawings": "टैग · चित्र और मार्कअप",
+    "option_defects": "समीक्षा · प्रविष्टियाँ",
+    "option_report": "रिपोर्ट · निर्यात और प्रश्न"
   },
   "opt": {
     "Structural": "संरचनात्मक",

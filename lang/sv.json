@@ -722,8 +722,11 @@
     "maps_desc": "Google Maps platsfäste",
     "language": "Språk",
     "language_desc": "Välj ditt språk",
+    "default_tab": "Standard landningsflik",
+    "default_tab_desc": "Tab för att öppna när du startar appen",
     "section_project": "PROJEKT",
     "section_enhance": "ÖKA",
+    "section_preferences": "PREFERENSER",
     "section_app": "APP",
     "clear_cache": "Rensa cache och ladda om",
     "clear_cache_desc": "Åtgärda laddningsproblem genom att uppdatera alla cachade filer",
@@ -1268,6 +1271,14 @@
     "title": "🌐 SPRÅK",
     "select": "Välj språk",
     "current": "Nuvarande språk"
+  },
+  "default_tab": {
+    "title": "STANDARD LANDNINGSFLIKEN",
+    "select": "Välj din startskärm",
+    "option_log": "LOGG · Fånga defekter",
+    "option_drawings": "TAGG · Ritningar & uppmärkning",
+    "option_defects": "RECENSION · Inlägg",
+    "option_report": "RAPPORT · Exporter & frågor"
   },
   "opt": {
     "Structural": "Stomme",

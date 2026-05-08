@@ -729,6 +729,7 @@ const AI_CACHE_VERSION = 1;
 const AI_CACHE_PREFIX = `sdt-ai-cache-v${AI_CACHE_VERSION}-`;
 const AI_CACHE_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days
 const ONBOARDING_KEY = "sdt-onboarded";
+const DEFAULT_TAB_KEY = "sdt-default-tab-v1";
 const STORAGE_KEY = "sdt-storage-v1";
 const GDRIVE_KEY = "sdt-gdrive-v1";
 const AI_PROVIDER_KEY = "sdt-ai-provider-v1";

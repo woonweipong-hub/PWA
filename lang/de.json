@@ -722,8 +722,11 @@
     "maps_desc": "Standortfixierung in Google Maps",
     "language": "Sprache",
     "language_desc": "Sprache wählen",
+    "default_tab": "Standard-Landing-Tab",
+    "default_tab_desc": "Tab, der beim Starten der App geöffnet wird",
     "section_project": "PROJEKT",
     "section_enhance": "ERWEITERT",
+    "section_preferences": "EINSTELLUNGEN",
     "section_app": "APP",
     "clear_cache": "Cache leeren & neu laden",
     "clear_cache_desc": "Ladeprobleme durch Aktualisierung aller zwischengespeicherten Dateien beheben",
@@ -1268,6 +1271,14 @@
     "title": "🌐 SPRACHE",
     "select": "Sprache wählen",
     "current": "Aktuelle Sprache"
+  },
+  "default_tab": {
+    "title": "STANDARD-LANDING-TAB",
+    "select": "Wählen Sie Ihren Startbildschirm",
+    "option_log": "LOG · Fehler erfassen",
+    "option_drawings": "TAG · Zeichnungen und Markierungen",
+    "option_defects": "REVIEW · Einträge",
+    "option_report": "BERICHT · Exporte und Abfragen"
   },
   "opt": {
     "Structural": "Tragwerk",

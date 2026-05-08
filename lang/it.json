@@ -722,8 +722,11 @@
     "maps_desc": "Blocco della posizione di Google Maps",
     "language": "Lingua",
     "language_desc": "Scegli la tua lingua",
+    "default_tab": "Scheda di destinazione predefinita",
+    "default_tab_desc": "Scheda da aprire all'avvio dell'app",
     "section_project": "PROGETTO",
     "section_enhance": "MIGLIORARE",
+    "section_preferences": "PREFERENZE",
     "section_app": "APP",
     "clear_cache": "Svuota cache e ricarica",
     "clear_cache_desc": "Risolvi i problemi di caricamento aggiornando tutti i file memorizzati nella cache",
@@ -1268,6 +1271,14 @@
     "title": "🌐 LINGUA",
     "select": "Seleziona lingua",
     "current": "Lingua corrente"
+  },
+  "default_tab": {
+    "title": "TAB ATTERRAGGIO PREDEFINITO",
+    "select": "Scegli la schermata iniziale",
+    "option_log": "LOG · Cattura i difetti",
+    "option_drawings": "TAG · Disegni e markup",
+    "option_defects": "RECENSIONE · Voci",
+    "option_report": "RAPPORTO · Esportazioni e query"
   },
   "opt": {
     "Structural": "Strutturale",

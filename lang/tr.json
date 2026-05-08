@@ -527,7 +527,7 @@
     "weekly_dow_sun": "S",
     "weekly_dow_mon": "M",
     "weekly_dow_tue": "T",
-    "weekly_dow_wed": "W",
+    "weekly_dow_wed": "K",
     "weekly_dow_thu": "T",
     "weekly_dow_fri": "F",
     "weekly_dow_sat": "S",
@@ -722,8 +722,11 @@
     "maps_desc": "Google Haritalar konum sabitleme",
     "language": "Dil",
     "language_desc": "Dilinizi seçin",
+    "default_tab": "Varsayılan Açılış Sekmesi",
+    "default_tab_desc": "Uygulamayı başlattığınızda açılacak sekme",
     "section_project": "PROJE",
     "section_enhance": "GENİŞLETMEK",
+    "section_preferences": "TERCİHLER",
     "section_app": "UYGULAMA",
     "clear_cache": "Önbelleği Temizle ve Yeniden Yükle",
     "clear_cache_desc": "Önbelleğe alınmış tüm dosyaları yenileyerek yükleme sorunlarını düzeltin",
@@ -1268,6 +1271,14 @@
     "title": "🌐 DİL",
     "select": "Dil seçin",
     "current": "Mevcut dil"
+  },
+  "default_tab": {
+    "title": "VARSAYILAN AÇILIŞ SEKMESİ",
+    "select": "Başlangıç ​​ekranınızı seçin",
+    "option_log": "GÜNLÜK · Kusurları yakalama",
+    "option_drawings": "ETİKET · Çizimler ve işaretleme",
+    "option_defects": "İNCELE · Girişler",
+    "option_report": "RAPOR · Dışa aktarmalar ve sorgular"
   },
   "opt": {
     "Structural": "Yapısal",

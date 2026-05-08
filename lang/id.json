@@ -722,8 +722,11 @@
     "maps_desc": "Penyematan lokasi Google Maps",
     "language": "Bahasa",
     "language_desc": "Pilih bahasa Anda",
+    "default_tab": "Tab Pendaratan Default",
+    "default_tab_desc": "Tab untuk dibuka saat Anda meluncurkan aplikasi",
     "section_project": "PROYEK",
     "section_enhance": "TINGKATKAN",
+    "section_preferences": "PREFERENSI",
     "section_app": "APLIKASI",
     "clear_cache": "Hapus Cache & Muat Ulang",
     "clear_cache_desc": "Perbaiki masalah pemuatan dengan menyegarkan semua file yang di-cache",
@@ -1268,6 +1271,14 @@
     "title": "🌐 BAHASA",
     "select": "Pilih bahasa",
     "current": "Bahasa saat ini"
+  },
+  "default_tab": {
+    "title": "TAB LANDING DEFAULT",
+    "select": "Pilih layar awal Anda",
+    "option_log": "LOG · Menangkap cacat",
+    "option_drawings": "TAG · Gambar & markup",
+    "option_defects": "TINJAUAN · Entri",
+    "option_report": "LAPORAN · Ekspor & pertanyaan"
   },
   "opt": {
     "Structural": "Struktural",
