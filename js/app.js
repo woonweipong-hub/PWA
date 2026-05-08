@@ -19346,13 +19346,20 @@ function MapPanel({currentProject,member,defects,onSaveEntry,onPatchDefectLocal,
           pick an existing entry or create a new one. Create-new flips to
           the inline Quick Log form below. */}
       {pendingPin&&!mapQuickCreate&&(()=>{
+        // Day-bucketed sort: today's entries first (newest calendar-day on top),
+        // and within each day Critical → Major → Minor → Observation, then newest-
+        // first as a tiebreaker. Mirrors the DrawingViewer pin picker so the two
+        // pickers behave identically. (Contractor feedback 2026-05-06 + 2026-05-08
+        // follow-up.)
+        const _dayKeyMap=ts=>{const d=new Date(ts);return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();};
         const projDefects=(defects||[]).filter(d=>!currentProject||d.projectId===currentProject.id||d.projectId==="default")
-          // Latest-first ordering so a freshly-logged defect sits at the top
-          // of the picker, not buried at the bottom (contractor feedback
-          // 2026-05-06).
           .slice().sort((a,b)=>{
             const ta=a.created?new Date(a.created).getTime():0;
             const tb=b.created?new Date(b.created).getTime():0;
+            const da=ta?_dayKeyMap(ta):0;const db=tb?_dayKeyMap(tb):0;
+            if(db!==da)return db-da;
+            const sa=SEV_RANK[a.severity]||0;const sb=SEV_RANK[b.severity]||0;
+            if(sb!==sa)return sb-sa;
             return tb-ta;
           });
         // Count map_pins per entry so the badge reflects total GPS locations.
@@ -24462,12 +24469,21 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
         // Helps users spot entries already pinned multiple times here.
         const pinCountByEntry={};
         pins.forEach(pp=>{pinCountByEntry[pp.entryId]=(pinCountByEntry[pp.entryId]||0)+1;});
-        // Latest-first ordering — contractor feedback 2026-05-06: a freshly-
-        // logged defect should be at the TOP of this picker, not buried at
-        // the bottom of a chronological scroll.
+        // Day-bucketed sort: today's entries first (newest calendar-day on top),
+        // and within each day Critical → Major → Minor → Observation, then newest-
+        // first as a tiebreaker. Keeps freshly-logged defects at the top while
+        // surfacing the day's most urgent items above its routine ones, so a
+        // user pinning right after a site walk doesn't scroll past old criticals
+        // to find what they just captured. (Contractor feedback 2026-05-06 +
+        // 2026-05-08 follow-up.)
+        const _dayKey=ts=>{const d=new Date(ts);return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();};
         const sortedDefects=[...defects].sort((a,b)=>{
           const ta=a.created?new Date(a.created).getTime():0;
           const tb=b.created?new Date(b.created).getTime():0;
+          const da=ta?_dayKey(ta):0;const db=tb?_dayKey(tb):0;
+          if(db!==da)return db-da;
+          const sa=SEV_RANK[a.severity]||0;const sb=SEV_RANK[b.severity]||0;
+          if(sb!==sa)return sb-sa;
           return tb-ta;
         });
         const q=pickerSearch.trim().toLowerCase();

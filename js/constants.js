@@ -16,6 +16,8 @@ const CUSTOM_TYPES_KEY = "sdt-custom-types-v1";
 const SEVERITY = ["Critical", "Major", "Minor", "Observation"];
 const SEV_COLOR = { Critical: "#ff3b30", Major: "#ff9500", Minor: "#e6b800", Observation: "#34aadc" };
 const SEV_BG = { Critical: "rgba(255,59,48,0.12)", Major: "rgba(255,149,0,0.12)", Minor: "rgba(230,184,0,0.12)", Observation: "rgba(52,170,220,0.12)" };
+// Numeric rank for sort comparators — higher = more urgent.
+const SEV_RANK = { Critical: 4, Major: 3, Minor: 2, Observation: 1 };
 
 // ── Status Workflow: Open → In Progress → Done → Verified → Closed
 const STATUS = ["Open", "In Progress", "Done", "Verified", "Closed"];
