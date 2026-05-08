@@ -16707,7 +16707,13 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
         })()}
       </div>
 
-      {incDefects&&<>
+      {/* QUALITY CHECK card — CONQUAS NC-rate calculator (R1 §3.3). This is a
+          stat dashboard, not export content, so it renders whenever CONQUAS
+          entries exist regardless of the incDefects/incDrawings/incComparisons
+          export toggles. Previously gated on incDefects, which made the
+          calculator vanish when users unticked defect-export to share only
+          drawings — confusing because the rate is independent of what gets
+          exported. */}
       {conquasStats&&(
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,border:"1px solid rgba(88,86,214,0.2)"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,gap:8}}>
@@ -16864,6 +16870,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
           </div>
         </div>
       )}
+      {incDefects&&<>
       {/* Phase 3.8B — full CONQUAS audit trail. Shows every checkpoint the
           inspector walked (pass + fail + uncertain) with photo evidence,
           grouped by observation_batch_id so each wizard run is a clear unit. */}
