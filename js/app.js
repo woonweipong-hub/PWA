@@ -15799,6 +15799,28 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
     })();
     return()=>{cancelled=true;};
   },[currentProject?.id]);
+  // HITL inline edit on the CONQUAS audit trail. Tap an observation's verdict
+  // glyph to cycle pass → fail → uncertain → pass. Optimistic local update so
+  // the calculator (which aggregates from observations) recomputes live; on PB
+  // save failure we revert + surface the error. AI's first-pass verdicts stay
+  // as the default; the human reviewer corrects without re-walking the wizard.
+  const cycleObsVerdict=async(obs)=>{
+    if(!obs||!obs.id)return;
+    if(!DB.conquasObservations||typeof DB.conquasObservations.update!=="function"){
+      alert("Verdict edit unavailable — observations API not loaded.");return;
+    }
+    const order=["pass","fail","uncertain"];
+    const cur=order.indexOf(obs.verdict);
+    const next=order[(cur+1)%order.length]||"pass";
+    const original=obs.verdict;
+    setConquasObs(prev=>prev.map(o=>o.id===obs.id?{...o,verdict:next}:o));
+    try{
+      await DB.conquasObservations.update(obs.id,{verdict:next});
+    }catch(err){
+      setConquasObs(prev=>prev.map(o=>o.id===obs.id?{...o,verdict:original}:o));
+      alert("Failed to update verdict: "+(err?.message||err));
+    }
+  };
   const[ftSaving,setFtSaving]=useState(false);
   // Combined FT + EF editor draft. All are project-level direct counts
   // (R1 §3.3). FT = WTT/WPT/WFT + 4 QP-declared flags. EF = Roof, External
@@ -16965,7 +16987,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
                                 {o.note&&<div style={{fontSize:10,color:"rgba(0,0,0,0.5)",fontStyle:"italic",marginTop:1}}>{o.note}</div>}
                               </div>
                               <span style={{fontSize:9,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,marginLeft:4}}>{o.nc_tier||""}</span>
-                              <div style={{width:22,height:22,borderRadius:"50%",background:vcol,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,flexShrink:0}}>{vglyph}</div>
+                              <button onClick={()=>cycleObsVerdict(o)} aria-label={`Verdict ${o.verdict||"pending"} — tap to cycle pass / fail / uncertain`} title="Tap to change verdict (pass → fail → uncertain)" style={{width:32,height:32,borderRadius:"50%",background:vcol,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,flexShrink:0,border:"none",cursor:"pointer",padding:0,transition:"transform 0.1s ease"}} onMouseDown={e=>e.currentTarget.style.transform="scale(0.92)"} onMouseUp={e=>e.currentTarget.style.transform="scale(1)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"} onTouchStart={e=>e.currentTarget.style.transform="scale(0.92)"} onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}>{vglyph}</button>
                             </div>
                           );
                         })}
