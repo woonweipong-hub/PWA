@@ -7058,29 +7058,6 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
   },[company?.companyId]);
   const displayProjects=(projects&&projects.length>0)?projects:fallbackProjects;
   const canManage=["Admin","Manager"].includes(member?.role);
-  // Custom Quality Checklist — free-text, one checkpoint per line. Stored
-  // as project.quality_checklist. Uses the same optimistic-override pattern
-  // as the weekly subscription state below so the inline textarea reflects
-  // the latest save without needing a project list refetch.
-  const[checklistOverrides,setChecklistOverrides]=useState({});
-  const[checklistBusy,setChecklistBusy]=useState(null);
-  const[checklistEditing,setChecklistEditing]=useState(null); // projectId being edited
-  const[checklistDraft,setChecklistDraft]=useState("");
-  const checklistOf=(p)=>{
-    if(Object.prototype.hasOwnProperty.call(checklistOverrides,p.id))return checklistOverrides[p.id];
-    return p.quality_checklist||"";
-  };
-  const saveChecklistFor=async(id,text)=>{
-    if(checklistBusy)return;
-    setChecklistBusy(id);
-    try{
-      await DB.projects.update(id,{quality_checklist:text||""});
-      setChecklistOverrides(prev=>({...prev,[id]:text||""}));
-      if(currentProject?.id===id)onSelect({...currentProject,id,name:currentProject.name,quality_checklist:text||""});
-    }catch(e){alert("Could not save checklist: "+(e?.message||e));}
-    setChecklistBusy(null);
-    setChecklistEditing(null);
-  };
 
   // ── Weekly summary subscription (commercial-gap #3) ──
   // Per-project opt-in: user picks recipients + day-of-week + hour (SGT),
@@ -7124,48 +7101,6 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
       alert("Could not save weekly subscription: "+(e?.message||e)+"\n\nIf this is the first time you've enabled this, the PocketBase schema may need to be re-imported with the new weekly_report_* fields. Ask your admin.");
     }
     setWeeklyBusy(null);
-  };
-
-  // ── Project Profiles — Phase 1 feature flag + picker (off by default) ──
-  // Feature flag lives in localStorage per (companyId, projectId) so turning
-  // it on for one project does NOT affect other projects or other users'
-  // devices until they also opt in. Picker writes profileId to DB first,
-  // falls back to localStorage on write-failure so the feature works even
-  // when pb_schema.json's exportProfileId field hasn't been imported yet.
-  const[availableProfiles,setAvailableProfiles]=useState([]);
-  const[profileBumper,setProfileBumper]=useState(0); // re-render trigger
-  const[profileBusy,setProfileBusy]=useState(null);
-  useEffect(()=>{
-    loadExportProfiles().then(d=>{
-      setAvailableProfiles(Array.isArray(d.profiles)?d.profiles:[]);
-    });
-  },[]);
-  const profileEnabledOn=(pid)=>isCustomTemplateEnabled(company?.companyId,pid);
-  const profileIdFor=(p)=>p.exportProfileId||getLocalProfileId(company?.companyId,p.id)||"default";
-  const toggleProfileFlag=(pid)=>{
-    const next=!isCustomTemplateEnabled(company?.companyId,pid);
-    setCustomTemplateEnabled(company?.companyId,pid,next);
-    setProfileBumper(b=>b+1);
-  };
-  const setProfileFor=async(id,profileId)=>{
-    if(profileBusy)return;
-    setProfileBusy(id);
-    // Always write the localStorage fallback first so the UI stays
-    // responsive even if the server doesn't accept the field yet.
-    setLocalProfileId(company?.companyId,id,profileId);
-    try{
-      await DB.projects.update(id,{exportProfileId:profileId||""});
-      if(currentProject?.id===id){
-        onSelect({...currentProject,id,name:currentProject.name,exportProfileId:profileId||""});
-      }
-    }catch(e){
-      // Strict-schema rejection is expected when the PB admin hasn't
-      // imported pb_schema.json yet. Localstorage already captured it;
-      // warn but don't fail the action.
-      console.warn("[ExportProfile] DB write failed, using localStorage fallback:",e?.message||e);
-    }
-    setProfileBumper(b=>b+1);
-    setProfileBusy(null);
   };
 
   // Project sort order is persisted per-company in localStorage. No schema
@@ -7312,75 +7247,11 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
                 <div style={{minWidth:0,flex:1}}>
                   <div style={{fontWeight:700,fontSize:14,color:currentProject?.id===p.id?"#fff":"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis"}}>{p.name}</div>
                   {currentProject?.id===p.id&&<div style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginTop:2}}>Currently active</div>}
-                  {/* Custom Quality Checklist — alternative to CONQUAS for
-                      projects that need their own pass/fail walk (HDB QM,
-                      internal SOPs, etc.). Free-text, one checkpoint per
-                      line. When non-empty, a 'START QUALITY CHECK' button
-                      appears on LOG. */}
-                  {canManage&&(()=>{
-                    const txt=checklistOf(p);
-                    const has=!!(txt||"").trim();
-                    const editing=checklistEditing===p.id;
-                    const active=currentProject?.id===p.id;
-                    const busy=checklistBusy===p.id;
-                    const bg=has?(active?"rgba(255,255,255,0.2)":"rgba(48,209,88,0.12)"):(active?"rgba(255,255,255,0.15)":"rgba(0,0,0,0.05)");
-                    const fg=has?(active?"#fff":"#1a7a35"):(active?"rgba(255,255,255,0.85)":"rgba(0,0,0,0.5)");
-                    const border=has?(active?"1px solid rgba(255,255,255,0.35)":"1px solid rgba(48,209,88,0.3)"):(active?"1px solid rgba(255,255,255,0.25)":"1px solid rgba(0,0,0,0.1)");
-                    const lineCount=has?(txt.split(/\n/).filter(l=>l.trim()).length):0;
-                    return(
-                      <span onClick={e=>e.stopPropagation()} style={{display:"inline-block",marginTop:5,marginLeft:6}}>
-                        <button onClick={()=>{setChecklistEditing(editing?null:p.id);setChecklistDraft(txt);}} style={{background:bg,border,borderRadius:6,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,letterSpacing:"0.04em",color:fg,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}} title={has?`${lineCount} checkpoint${lineCount===1?"":"s"}. Tap to view / edit.`:"Tap to define a custom pass/fail checklist for this project."}>
-                          {has?`📋 CHECKLIST · ${lineCount}`:"+ CHECKLIST"}
-                        </button>
-                        {editing&&(
-                          <div style={{marginTop:8,padding:10,background:active?"rgba(0,0,0,0.15)":"rgba(0,0,0,0.04)",borderRadius:8}}>
-                            <div style={{fontSize:10,color:active?"rgba(255,255,255,0.7)":"rgba(0,0,0,0.55)",marginBottom:6,lineHeight:1.4}}>One checkpoint per line. Lines starting with <b>#</b> become section headers. Empty lines are ignored.</div>
-                            <textarea value={checklistDraft} onChange={e=>setChecklistDraft(e.target.value)} placeholder={"# Floor\nLevelness within tolerance\nNo cracks visible\n\n# Wall\nPlumb within 5mm\nSmooth finish"} rows={6} style={{width:"100%",padding:"8px 10px",border:"1px solid rgba(0,0,0,0.15)",borderRadius:8,fontFamily:"'Courier New',monospace",fontSize:11.5,resize:"vertical",lineHeight:1.5,background:"#fff"}}/>
-                            <div style={{display:"flex",gap:6,marginTop:6}}>
-                              <button onClick={()=>saveChecklistFor(p.id,checklistDraft)} disabled={busy} style={{flex:1,background:"#30d158",border:"none",borderRadius:6,padding:"6px 10px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,letterSpacing:"0.04em",cursor:busy?"wait":"pointer"}}>{busy?"SAVING…":"SAVE CHECKLIST"}</button>
-                              <button onClick={()=>setChecklistEditing(null)} style={{background:"rgba(0,0,0,0.08)",border:"none",borderRadius:6,padding:"6px 10px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>CANCEL</button>
-                              {has&&<button onClick={()=>{if(confirm("Clear this project's checklist?"))saveChecklistFor(p.id,"");}} disabled={busy} style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:6,padding:"6px 10px",color:"#cc0000",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:busy?"wait":"pointer"}}>CLEAR</button>}
-                            </div>
-                          </div>
-                        )}
-                      </span>
-                    );
-                  })()}
-                  {/* Project Profile (Phase 1, feature-flagged). OFF by
-                      default per project: a firm opts in by tapping
-                      "+ CUSTOM TEMPLATE (BETA)". When ON, a picker appears
-                      with built-in profiles that flex the PDF cover, CSV
-                      headers, and email subject for this project's exports.
-                      Capture flow is unchanged regardless of the flag. */}
-                  {canManage&&availableProfiles.length>0&&(()=>{
-                    const _=profileBumper; // force re-render after flag toggle
-                    const flagOn=profileEnabledOn(p.id);
-                    const active=currentProject?.id===p.id;
-                    const busy=profileBusy===p.id;
-                    const pid=profileIdFor(p);
-                    const bg=flagOn?(active?"rgba(255,255,255,0.18)":"rgba(88,86,214,0.1)"):(active?"rgba(255,255,255,0.12)":"rgba(0,0,0,0.04)");
-                    const color=active?"#fff":(flagOn?"#5856d6":"rgba(0,0,0,0.55)");
-                    const border=flagOn?"1px solid rgba(88,86,214,0.3)":(active?"1px solid rgba(255,255,255,0.2)":"1px solid rgba(0,0,0,0.1)");
-                    if(!flagOn){
-                      return(
-                        <button onClick={e=>{e.stopPropagation();toggleProfileFlag(p.id);}} style={{marginTop:5,background:bg,border:border,borderRadius:6,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,letterSpacing:"0.04em",color,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}} title="Beta — enable a firm-specific report format (CONQUAS, HDB BTO, Simple A4, or leave on Default). Changes PDF cover / CSV headers / email subject for THIS project only. Capture form is unchanged. Toggleable per project, off on all others by default.">
-                          + CUSTOM TEMPLATE (BETA)
-                        </button>
-                      );
-                    }
-                    return(
-                      <div onClick={e=>e.stopPropagation()} style={{marginTop:5,display:"inline-flex",alignItems:"center",gap:5,background:bg,border:border,borderRadius:6,padding:"3px 6px"}}>
-                        <span style={{fontSize:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:active?"rgba(255,255,255,0.85)":"#5856d6",letterSpacing:"0.04em"}}>REPORT:</span>
-                        <select value={pid} disabled={busy} onChange={e=>setProfileFor(p.id,e.target.value)} style={{background:"transparent",border:"none",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,color:active?"#fff":"#5856d6",cursor:busy?"wait":"pointer",letterSpacing:"0.02em",maxWidth:170,outline:"none"}} title="Pick a template for exports from this project.">
-                          {availableProfiles.map(prof=>(
-                            <option key={prof.id} value={prof.id}>{prof.name}</option>
-                          ))}
-                        </select>
-                        {busy&&<Spin size={10}/>}
-                        <button onClick={()=>toggleProfileFlag(p.id)} style={{background:"transparent",border:"none",color:active?"rgba(255,255,255,0.5)":"rgba(88,86,214,0.5)",fontSize:12,cursor:"pointer",padding:"0 2px",lineHeight:1}} title="Turn off custom template — revert to default export format.">×</button>
-                      </div>
-                    );
-                  })()}
+                  {/* Checklist + Custom Template moved to REPORT > PROJECT
+                      SETUP (where exports actually consume them). The toggles
+                      previously parked here were a discoverability anti-pattern;
+                      ProjectManagement now focuses on project lifecycle only
+                      (create / rename / archive / weekly subscription). */}
                   {/* Weekly summary subscription chip (commercial-gap #3).
                       Tap to open an inline panel with toggle + recipients +
                       day + hour pickers. Server-side cron in pb_hooks reads
@@ -8946,7 +8817,7 @@ function QualityCheckWizard({onClose,onSave,currentProject,member}){
       <div style={{position:"fixed",inset:0,background:"#f0ede8",zIndex:500,padding:20,overflowY:"auto"}}>
         <SettingsBack onClose={onClose} title="Quality Check"/>
         <div style={{maxWidth:430,margin:"40px auto",padding:20,background:"#fff",borderRadius:14,textAlign:"center"}}>
-          <div style={{fontSize:14,color:"rgba(0,0,0,0.6)",lineHeight:1.5}}>This project has no checklist defined. Open Settings → Projects → tap your project → <b>+ CHECKLIST</b> to add one (one checkpoint per line).</div>
+          <div style={{fontSize:14,color:"rgba(0,0,0,0.6)",lineHeight:1.5}}>This project has no checklist defined. Open the <b>REPORT</b> tab → <b>PROJECT SETUP</b> → tap <b>+ ADD</b> next to <i>Custom Quality Checklist</i> (one checkpoint per line).</div>
         </div>
       </div>
     );
@@ -15779,7 +15650,121 @@ function ProfilePanel({member,authUser,company,onClose,onSignOut,onCompanyUpdate
   );
 }
 
-function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled,syncing,member,queueCount,onSyncQueue,syncing2}){
+// ── Project setup panel ─────────────────────────────────────────
+// Per-project setup controls that affect what REPORT produces, parked on
+// the REPORT page where users actually see the effect. Previously buried
+// under Settings → Projects → tap project → + CHECKLIST / + CUSTOM
+// TEMPLATE, which was a discoverability anti-pattern. Self-contained:
+// owns its own editing state + writes via DB.projects.update + propagates
+// updates through onProjectUpdate so LOG and other consumers pick up the
+// new values without a page reload.
+function ProjectSetupPanel({currentProject,member,company,onProjectUpdate}){
+  const canManage=["Admin","Manager"].includes(member?.role);
+  const[editingChecklist,setEditingChecklist]=useState(false);
+  const[checklistDraft,setChecklistDraft]=useState("");
+  const[checklistBusy,setChecklistBusy]=useState(false);
+  const[profiles,setProfiles]=useState([]);
+  const[profileBusy,setProfileBusy]=useState(false);
+  const[profileBumper,setProfileBumper]=useState(0); // re-render trigger after flag toggle
+  useEffect(()=>{
+    loadExportProfiles().then(d=>setProfiles(Array.isArray(d.profiles)?d.profiles:[])).catch(()=>{});
+  },[]);
+  if(!currentProject||!canManage)return null;
+  const checklistText=currentProject.quality_checklist||"";
+  const checklistLines=checklistText.split(/\n/).filter(l=>l.trim()&&!l.trim().startsWith("#")).length;
+  const hasChecklist=!!checklistText.trim();
+  const saveChecklist=async(text)=>{
+    if(checklistBusy)return;
+    setChecklistBusy(true);
+    try{
+      await DB.projects.update(currentProject.id,{quality_checklist:text||""});
+      if(onProjectUpdate)onProjectUpdate({...currentProject,quality_checklist:text||""});
+      setEditingChecklist(false);
+    }catch(e){alert("Could not save checklist: "+(e?.message||e));}
+    setChecklistBusy(false);
+  };
+  const _=profileBumper; // ensure re-render reads the latest localStorage flag
+  const templateEnabled=profiles.length>0?isCustomTemplateEnabled(company?.companyId,currentProject.id):false;
+  const currentProfileId=currentProject.exportProfileId||getLocalProfileId(company?.companyId,currentProject.id)||"default";
+  const toggleTemplate=()=>{
+    setCustomTemplateEnabled(company?.companyId,currentProject.id,!templateEnabled);
+    setProfileBumper(b=>b+1);
+  };
+  const setProfile=async(profileId)=>{
+    if(profileBusy)return;
+    setProfileBusy(true);
+    setLocalProfileId(company?.companyId,currentProject.id,profileId);
+    try{
+      await DB.projects.update(currentProject.id,{exportProfileId:profileId||""});
+      if(onProjectUpdate)onProjectUpdate({...currentProject,exportProfileId:profileId||""});
+    }catch(e){
+      // Strict-schema rejection is expected when PB admin hasn't imported
+      // pb_schema.json yet. localStorage already captured the choice.
+      console.warn("[ExportProfile] DB write failed, using localStorage fallback:",e?.message||e);
+    }
+    setProfileBumper(b=>b+1);
+    setProfileBusy(false);
+  };
+  return(
+    <div style={{background:"#fff",borderRadius:14,padding:14,marginBottom:14,border:"1px solid rgba(0,0,0,0.06)"}}>
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,letterSpacing:"0.06em",color:"rgba(0,0,0,0.55)",marginBottom:10}}>
+        ⚙️ PROJECT SETUP
+      </div>
+      {/* Custom Quality Checklist */}
+      <div style={{marginBottom:profiles.length>0?12:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:14,flexShrink:0}}>📋</span>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:"#1a1a1a",letterSpacing:"0.03em"}}>CUSTOM QUALITY CHECKLIST</div>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.55)",marginTop:2,lineHeight:1.35}}>
+              {hasChecklist?`${checklistLines} checkpoint${checklistLines===1?"":"s"} defined — START QUALITY CHECK button appears on LOG`:"Define a custom pass/fail walk for LOG (alternative to CONQUAS)."}
+            </div>
+          </div>
+          <button onClick={()=>{setEditingChecklist(!editingChecklist);setChecklistDraft(checklistText);}} style={{background:hasChecklist?"rgba(48,209,88,0.12)":"rgba(0,0,0,0.05)",border:hasChecklist?"1px solid rgba(48,209,88,0.3)":"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"7px 12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,letterSpacing:"0.04em",color:hasChecklist?"#1a7a35":"rgba(0,0,0,0.6)",cursor:"pointer",flexShrink:0,minHeight:34}}>
+            {editingChecklist?"CLOSE":(hasChecklist?"EDIT":"+ ADD")}
+          </button>
+        </div>
+        {editingChecklist&&(
+          <div style={{marginTop:8,padding:10,background:"rgba(0,0,0,0.03)",borderRadius:8}}>
+            <div style={{fontSize:10,color:"rgba(0,0,0,0.55)",marginBottom:6,lineHeight:1.4}}>One checkpoint per line. Lines starting with <b>#</b> become section headers. Empty lines ignored.</div>
+            <textarea value={checklistDraft} onChange={e=>setChecklistDraft(e.target.value)} placeholder={"# Floor\nLevelness within tolerance\nNo cracks visible\n\n# Wall\nPlumb within 5mm\nSmooth finish"} rows={6} style={{width:"100%",padding:"8px 10px",border:"1px solid rgba(0,0,0,0.15)",borderRadius:8,fontFamily:"'Courier New',monospace",fontSize:11.5,resize:"vertical",lineHeight:1.5,background:"#fff",boxSizing:"border-box"}}/>
+            <div style={{display:"flex",gap:6,marginTop:6}}>
+              <button onClick={()=>saveChecklist(checklistDraft)} disabled={checklistBusy} style={{flex:1,background:"#30d158",border:"none",borderRadius:6,padding:"8px 10px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,letterSpacing:"0.04em",cursor:checklistBusy?"wait":"pointer",minHeight:36}}>{checklistBusy?"SAVING…":"SAVE CHECKLIST"}</button>
+              {hasChecklist&&<button onClick={()=>{if(confirm("Clear this project's checklist?"))saveChecklist("");}} disabled={checklistBusy} style={{background:"rgba(255,59,48,0.1)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:6,padding:"8px 10px",color:"#cc0000",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:checklistBusy?"wait":"pointer",minHeight:36}}>CLEAR</button>}
+            </div>
+          </div>
+        )}
+      </div>
+      {/* Custom Report Template */}
+      {profiles.length>0&&(
+        <div style={{borderTop:"1px solid rgba(0,0,0,0.06)",paddingTop:12}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:14,flexShrink:0}}>📄</span>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:"#1a1a1a",letterSpacing:"0.03em"}}>CUSTOM REPORT TEMPLATE <span style={{fontSize:9,color:"rgba(0,0,0,0.4)",marginLeft:4}}>BETA</span></div>
+              <div style={{fontSize:11,color:"rgba(0,0,0,0.55)",marginTop:2,lineHeight:1.35}}>
+                {templateEnabled?`Active for exports: ${profiles.find(p=>p.id===currentProfileId)?.name||"Default"}`:"Switch PDF cover / CSV headers / email subject to a firm-specific format."}
+              </div>
+            </div>
+            {!templateEnabled?(
+              <button onClick={toggleTemplate} style={{background:"rgba(0,0,0,0.05)",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8,padding:"7px 12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,letterSpacing:"0.04em",color:"rgba(0,0,0,0.6)",cursor:"pointer",flexShrink:0,minHeight:34}}>+ ENABLE</button>
+            ):(
+              <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                <select value={currentProfileId} disabled={profileBusy} onChange={e=>setProfile(e.target.value)} style={{background:"#fff",border:"1px solid rgba(88,86,214,0.3)",borderRadius:8,padding:"7px 8px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,color:"#5856d6",cursor:profileBusy?"wait":"pointer",letterSpacing:"0.02em",outline:"none",minHeight:34}}>
+                  {profiles.map(prof=>(<option key={prof.id} value={prof.id}>{prof.name}</option>))}
+                </select>
+                {profileBusy&&<Spin size={10}/>}
+                <button onClick={toggleTemplate} aria-label="Disable custom template" title="Disable custom template — revert to default." style={{background:"transparent",border:"none",color:"rgba(88,86,214,0.6)",fontSize:16,cursor:"pointer",padding:"2px 6px",lineHeight:1,minWidth:28,minHeight:34}}>×</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled,syncing,member,queueCount,onSyncQueue,syncing2,onProjectUpdate}){
   // Merged-from-Dashboard status block (lives at the top of Report now).
   const open=defects.filter(d=>d.status==="Open").length;
   const inprog=defects.filter(d=>d.status==="In Progress").length;
@@ -16970,6 +16955,11 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
           );
         })()}
       </div>
+
+      {/* Project setup — Custom Checklist + Custom Template controls.
+          Lives here (not in ProjectManagement) so users find them where they
+          actually affect output. Manager+ only; hidden for Inspectors/Viewers. */}
+      <ProjectSetupPanel currentProject={currentProject} member={member} company={company} onProjectUpdate={onProjectUpdate}/>
 
       {/* QUALITY CHECK card — CONQUAS NC-rate calculator (R1 §3.3). This is a
           stat dashboard, not export content, so it renders whenever CONQUAS
@@ -26492,7 +26482,7 @@ function App(){
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} onPatchDefectLocal={updated=>setDefects(prev=>prev.map(d=>d.id===updated.id?updated:d))} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onViewEntry={setViewing}/>}
         {tab==="defects"&&<DefectsList defects={defects} archivedDefects={archivedDefects} onView={setViewing} onUpdate={updateDefect} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onRestore={restoreDefects} onHardDelete={hardDeleteDefects} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")} onOpenInReview={(payload)=>setReviewModal(payload)} queueCount={queueCount} syncing2={syncing2} onSyncQueue={syncQueue}/>}
-        {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} member={member} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2}/>}
+        {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} member={member} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2} onProjectUpdate={selectProject}/>}
       </div>
 
       {/* Bottom anchor — AI Query bar (REPORT tab only) sits above the tab Nav so the
