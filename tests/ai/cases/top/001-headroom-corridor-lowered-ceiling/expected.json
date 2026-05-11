@@ -1,0 +1,29 @@
+{
+  "_meta": {
+    "case_id": "001-headroom-corridor-lowered-ceiling",
+    "workCategory": "TOP Inspection",
+    "description": "Common corridor headroom restricted by lowered drop-ceiling housing M&E services; measured clearance 1850 mm vs required 2000 mm",
+    "labeler": "manual",
+    "notes_file": "notes.md",
+    "reference": {
+      "verbatim_source": "BCA Approved Document Ver 7.08 §C cl. C.3.2.1 — minimum 2000 mm headroom in habitable rooms / common circulation",
+      "audit_source": "BCA BPTOP industry sharing 2026 item 2 — Headroom & Ceiling Height (one of the top recurring NCs)"
+    }
+  },
+  "category": "Ceiling",
+  "defect_type": "Headroom below required clearance",
+  "severity": "Critical",
+  "trade": "General",
+  "location": "Common corridor, drop-ceiling section housing AHU ductwork / sprinkler main",
+  "description": "Measured headroom of approximately 1850 mm below the lowered drop-ceiling section, against the 2000 mm minimum required for common circulation routes under Approved Document §C. The restriction is caused by the M&E plenum depth above the suspended ceiling. Affects fire-egress assumption for the corridor.",
+  "conquas_tier": null,
+  "checkpoint_match": null,
+  "title": "Low headroom, common corridor",
+  "assessment_zone": "Architectural",
+  "confidence": 0.9,
+  "top_nc_category": "Headroom & Ceiling Height",
+  "top_clause_ref": "AD §C cl. C.3.2.1 (headroom >=2.0 m)",
+  "top_threshold_breached": "headroom 1850 mm < 2000 mm",
+  "top_readiness_gate": true,
+  "top_phase": "Pre-TOP self-audit"
+}

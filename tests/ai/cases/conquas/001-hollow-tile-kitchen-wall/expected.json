@@ -1,0 +1,25 @@
+{
+  "_meta": {
+    "case_id": "001-hollow-tile-kitchen-wall",
+    "workCategory": "CONQUAS",
+    "description": "Hollow sound on tap test, ceramic tile on kitchen wall above counter near plumbing chase",
+    "labeler": "manual",
+    "notes_file": "notes.md",
+    "reference": {
+      "verbatim_source": "BCA CONQUAS (Private Residential) R1 §3.2(a) Appendix 1 — Wall element, 2X tier",
+      "gip_source": "BCA GIP — Ceramic Tiling (hollowness definition + tap-test method)"
+    }
+  },
+  "category": "Wall",
+  "defect_type": "Hollowness",
+  "severity": "Major",
+  "trade": "Tiling",
+  "location": "Kitchen, ceramic-tile wall above counter, adjacent to plumbing chase",
+  "description": "Multiple adjacent tiles produce hollow sound on tap-test, indicating loss of bond between tile and substrate adhesive. ~3-4 tiles affected in a row near the wet area; risk of progressive de-bonding under thermal cycling.",
+  "conquas_tier": "2X",
+  "checkpoint_match": "Hollowness (for tiled wall as long as it is hollow)",
+  "title": "Hollow tile, kitchen wall",
+  "assessment_zone": "Architectural",
+  "confidence": 0.9,
+  "inspection_lot": null
+}

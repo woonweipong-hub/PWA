@@ -59,3 +59,11 @@ workflow/
 
 # Session backups of lang/en.json — emergency restore copies
 *tmp_en_old*.json
+
+# AI eval run logs (artifacts) + site photos for labeled test cases
+# (photos may contain site context / faces / addresses — keep local)
+tests/ai/runs/
+tests/ai/cases/**/photo.jpg
+
+# Local PocketBase snapshot scaffold (gcloud-scp'd from prod for migration dry-runs)
+local-pb-test/
