@@ -2508,10 +2508,13 @@ async function analyzeWithOllama(cfg,base64Image,prompt){
     const b64=base64Image.split(",")[1];
     const url=(cfg.url||"http://localhost:11434").replace(/\/+$/,"");
     const model=cfg.model||"llava";
+    // 90s timeout — local Ollama vision models (llava etc.) commonly take
+    // 10–60s per image on consumer hardware; the prior 30s timeout dropped
+    // most photos in multi-photo CONQUAS walks before the model even started.
     const res=await fetchWithTimeout(url+"/api/generate",{
       method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({model,prompt:prompt||getAIPrompt(),images:[b64],stream:false,format:"json"})
-    },30000);
+    },90000);
     if(!res.ok){
       const errText=await res.text().catch(()=>"");
       const msg=`Ollama HTTP ${res.status} — ${errText.slice(0,200)||"no body"}`;
@@ -9137,15 +9140,30 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
   const runAiAnalysisMulti=async(photos)=>{
     setAiBusy(true);setAiErrorMsg("");
     setAiAnalysisProgress({done:0,total:photos.length});
-    // Bounded concurrency + per-photo retry. Was Promise.all of N photos —
-    // for N>=6, bursts past Gemini free-tier RPM (15) and provider concurrent-
-    // connection limits, so most calls silently 429/503/timeout. 1 of 12
-    // succeeding = textbook burst-rate symptom. Concurrency 3 paces the load
-    // and the retry-on-transient absorbs the occasional 429/5xx.
-    const MAX_CONCURRENCY=3;
+    // Bounded concurrency + per-photo retry. Was Promise.all of N photos
+    // which (a) bursts past cloud-provider RPM / concurrent limits, and
+    // (b) queues at Ollama's HTTP layer where default num_parallel=1 means
+    // requests 2..N time out before processing starts. 1 of 12 succeeding
+    // = textbook either-case symptom. Provider-aware concurrency: Ollama
+    // (local, serial) -> 1; cloud (Gemini/OpenAI/Groq/etc.) -> 3. Retry
+    // covers both "transient cloud 429/5xx" AND "parse" (which is what
+    // Ollama timeout-to-null surfaces as via analyzePhoto -> {error:"parse"}).
+    const provider=(local.get(AI_PROVIDER_KEY)||"gemini").toLowerCase();
+    const MAX_CONCURRENCY=provider==="ollama"?1:3;
     const MAX_RETRIES=2;
-    const isTransient=res=>res&&res.error==="network"&&
-      /HTTP\s?429|HTTP\s?5\d\d|UNAVAILABLE|abort|timeout|rate.?limit|high demand/i.test(String(res.detail||""));
+    const isRetriable=res=>{
+      if(!res||!res.error)return false;
+      // no_ai / no_photo are hard failures — retrying won't help.
+      if(res.error==="no_ai"||res.error==="no_photo")return false;
+      // parse covers Ollama timeout-to-null AND genuine malformed JSON;
+      // either way retrying is cheap and often clears.
+      if(res.error==="parse")return true;
+      // network errors: only retry the transient family.
+      if(res.error==="network"){
+        return /HTTP\s?429|HTTP\s?5\d\d|UNAVAILABLE|abort|timeout|rate.?limit|high demand|Failed to fetch/i.test(String(res.detail||""));
+      }
+      return false;
+    };
     const results=new Array(photos.length);
     let nextIdx=0,done=0;
     const worker=async()=>{
@@ -9156,10 +9174,10 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
         if(i>=photos.length)break;
         let res=await analyzeCONQUASPhoto(photos[i],pickedComponent?pickedComponent.name:"",activeCheckpoints);
         let attempt=0;
-        while(isTransient(res)&&attempt<MAX_RETRIES){
+        while(isRetriable(res)&&attempt<MAX_RETRIES){
           attempt++;
           // Exponential backoff (500ms, 1500ms) gives the provider time to
-          // recover from a rate-burst before we re-try.
+          // recover from a rate-burst or model load before we re-try.
           await new Promise(r=>setTimeout(r,500*Math.pow(3,attempt-1)));
           res=await analyzeCONQUASPhoto(photos[i],pickedComponent?pickedComponent.name:"",activeCheckpoints);
         }
@@ -9244,13 +9262,29 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
     // as primary evidence. Single-photo flow falls through cleanly — sources
     // map empty → photoIdx 0 → aiPhoto.
     const allPhotos=[aiPhoto,...aiAdditionalPhotos];
+    const usedIdxs=new Set();
     const newResults=activeCheckpoints.map(cp=>{
       const v=finalVerdict(cp.itemId);
       if(v==="p")return{checkpointId:cp.itemId,status:"pass"};
       const idx=aiPhotoSources[cp.itemId]||0;
+      usedIdxs.add(idx);
       const photoForFail=allPhotos[idx]||aiPhoto;
       return{checkpointId:cp.itemId,status:"fail",photo:photoForFail,note:aiReasons[cp.itemId]||""};
     });
+    // Preserve every uploaded photo: any photo that didn't flag a fail still
+    // belongs to this CONQUAS walk and should be retrievable in REVIEW /
+    // REPORT / TAG. Attach to the first non-pass observation's extraPhotos
+    // so saveAll's compress + burn + save pipeline picks them up. If every
+    // checkpoint passed (no fail-row to host extras), fall back to the first
+    // row — saveAll iterates all results regardless of status.
+    const unusedPhotos=allPhotos.filter((p,i)=>p&&!usedIdxs.has(i));
+    if(newResults.length&&unusedPhotos.length){
+      let target=newResults.findIndex(r=>r.status!=="pass");
+      if(target<0)target=0;
+      const t={...newResults[target]};
+      t.extraPhotos=[...(t.extraPhotos||[]),...unusedPhotos];
+      newResults[target]=t;
+    }
     setResults(newResults);
     // Go to summary, which already has saveAll wired up.
     setStep("summary");
