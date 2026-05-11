@@ -7054,33 +7054,11 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
       .catch(()=>setFetchState("ready"));
   },[company?.companyId]);
   const displayProjects=(projects&&projects.length>0)?projects:fallbackProjects;
-  // Optimistic local overrides for ontology_edition so the chip reflects
-  // the user's last action without waiting for a parent re-fetch. Shape:
-  // { [projectId]: editionString | "" }. Merged with projects[i].ontology_edition
-  // at render time; empty-string means "explicitly disabled".
-  const[editionOverrides,setEditionOverrides]=useState({});
-  const[editionBusy,setEditionBusy]=useState(null); // projectId currently saving
   const canManage=["Admin","Manager"].includes(member?.role);
-  const editionOf=(p)=>{
-    if(Object.prototype.hasOwnProperty.call(editionOverrides,p.id))return editionOverrides[p.id];
-    return p.ontology_edition||"";
-  };
-  const setEditionFor=async(id,edition)=>{
-    if(editionBusy)return;
-    setEditionBusy(id);
-    try{
-      await DB.projects.update(id,{ontology_edition:edition||""});
-      setEditionOverrides(prev=>({...prev,[id]:edition||""}));
-      // If this is the current project, propagate so the wizard button + REPORT
-      // card pick up the change without requiring a project re-select.
-      if(currentProject?.id===id)onSelect({...currentProject,id,name:currentProject.name,ontology_edition:edition||""});
-    }catch(e){alert("Could not update framework: "+(e?.message||e));}
-    setEditionBusy(null);
-  };
   // Custom Quality Checklist — free-text, one checkpoint per line. Stored
-  // as project.quality_checklist. Same optimistic-override pattern as
-  // editionOf so the inline textarea reflects the latest save without
-  // needing a project list refetch.
+  // as project.quality_checklist. Uses the same optimistic-override pattern
+  // as the weekly subscription state below so the inline textarea reflects
+  // the latest save without needing a project list refetch.
   const[checklistOverrides,setChecklistOverrides]=useState({});
   const[checklistBusy,setChecklistBusy]=useState(null);
   const[checklistEditing,setChecklistEditing]=useState(null); // projectId being edited
@@ -7331,22 +7309,6 @@ function ProjectManagement({onClose,company,member,projects,currentProject,onSel
                 <div style={{minWidth:0,flex:1}}>
                   <div style={{fontWeight:700,fontSize:14,color:currentProject?.id===p.id?"#fff":"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis"}}>{p.name}</div>
                   {currentProject?.id===p.id&&<div style={{fontSize:11,color:"rgba(255,255,255,0.7)",marginTop:2}}>Currently active</div>}
-                  {/* CONQUAS framework toggle. Tap to enable if not set;
-                      tap to disable if set. Busy-state disables re-entry. */}
-                  {canManage&&(()=>{
-                    const ed=editionOf(p);
-                    const active=currentProject?.id===p.id;
-                    const on=!!ed;
-                    const busy=editionBusy===p.id;
-                    const bg=on?(active?"rgba(255,255,255,0.2)":"rgba(88,86,214,0.12)"):(active?"rgba(255,255,255,0.15)":"rgba(0,0,0,0.05)");
-                    const fg=on?(active?"#fff":"#5856d6"):(active?"rgba(255,255,255,0.85)":"rgba(0,0,0,0.5)");
-                    const border=on?(active?"1px solid rgba(255,255,255,0.35)":"1px solid rgba(88,86,214,0.3)"):(active?"1px solid rgba(255,255,255,0.25)":"1px solid rgba(0,0,0,0.1)");
-                    return(
-                      <button onClick={e=>{e.stopPropagation();setEditionFor(p.id,on?"":DEFAULT_ONTOLOGY_EDITION);}} disabled={busy} style={{marginTop:5,background:bg,border:border,borderRadius:6,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,letterSpacing:"0.04em",color:fg,cursor:busy?"wait":"pointer",display:"inline-flex",alignItems:"center",gap:5}} title={on?`CONQUAS framework enabled (${ed}). Tap to disable.`:"Tap to enable the CONQUAS wizard + Quality Check card on this project."}>
-                        {busy?<Spin size={10}/>:<span>{on?"⚖️ CONQUAS ✓":"+ ENABLE CONQUAS"}</span>}
-                      </button>
-                    );
-                  })()}
                   {/* Custom Quality Checklist — alternative to CONQUAS for
                       projects that need their own pass/fail walk (HDB QM,
                       internal SOPs, etc.). Free-text, one checkpoint per
@@ -9042,8 +9004,8 @@ function QualityCheckWizard({onClose,onSave,currentProject,member}){
 
 // ── CONQUAS Check Wizard (Phase 3.1 + 3.2a AI mode) ──────────────
 // Guided pass/fail walkthrough for CONQUAS (Private Residential) 2025.
-// Opt-in per project: only shown when currentProject.ontology_edition is set
-// and the server has the ontology_* collections seeded (Phase 2).
+// Surfaced from LOG when defect.workCategory === "CONQUAS"; edition defaults
+// to DEFAULT_ONTOLOGY_EDITION unless the project pins a specific edition.
 //
 // Flows:
 //   AI MODE (default when AI is configured):
@@ -9098,10 +9060,12 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
   const askAiRef=useRef();
   const[showWebcam,setShowWebcam]=useState(null); // null | "ai" | "askai"
 
-  // Fetch ontology once on open. Edition pin comes from the current project.
+  // Fetch ontology once on open. Edition defaults to DEFAULT_ONTOLOGY_EDITION
+  // when the project hasn't been explicitly pinned to a specific edition,
+  // so every project supports the wizard the moment user picks CONQUAS
+  // workCategory — no per-project enable toggle required.
   useEffect(()=>{
-    const edition=currentProject?.ontology_edition;
-    if(!edition){setError("not_available");setLoading(false);return;}
+    const edition=currentProject?.ontology_edition||DEFAULT_ONTOLOGY_EDITION;
     const f=`edition = "${edition}"`;
     Promise.all([
       DB.ontologyComponents.list(f,"phase,itemId"),
@@ -11765,17 +11729,10 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           Each wizard is bound to a specific category and only renders
           when that scope is picked. Keeps the LOG form focused — no
           stray launchers when the category doesn't match. */}
-      {form.workCategory==="CONQUAS"&&currentProject?.ontology_edition&&onStartConquas&&(
+      {form.workCategory==="CONQUAS"&&onStartConquas&&(
         <button onClick={onStartConquas} style={{width:"100%",padding:"12px 14px",marginBottom:16,background:"rgba(88,86,214,0.08)",border:"1.5px solid rgba(88,86,214,0.3)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
           <span style={{fontSize:16}}>📋</span>
           <span>{t("conquas.start_button")}</span>
-        </button>
-      )}
-      {form.workCategory==="CONQUAS"&&currentProject&&!currentProject.ontology_edition&&onOpenProjects&&(
-        <button onClick={onOpenProjects} style={{width:"100%",padding:"10px 14px",marginBottom:16,background:"rgba(88,86,214,0.04)",border:"1px dashed rgba(88,86,214,0.35)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11.5,cursor:"pointer",display:"flex",alignItems:"flex-start",gap:8,textAlign:"left",lineHeight:1.4}}>
-          <span style={{fontSize:14,flexShrink:0}}>💡</span>
-          <span style={{flex:1}}>Need <b>structured CONQUAS inspection</b>? Enable CONQUAS edition for this project — tap to open <u>Settings → Projects</u>.</span>
-          <span style={{fontSize:14,flexShrink:0,opacity:0.5}}>›</span>
         </button>
       )}
       {form.workCategory==="TOP Inspection"&&onStartTopWizard&&(
