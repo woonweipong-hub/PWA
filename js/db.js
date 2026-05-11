@@ -381,8 +381,13 @@ const DB = (() => {
         companyId: comp.id, userId, name: userName, email: userEmail,
         role: 'Admin', jobTitle, joinedAt: new Date().toISOString()
       });
+      // Match DEFAULT_ONTOLOGY_EDITION in app.js — auto-created Default Project
+      // must inherit the same CONQUAS-on default as user-created projects,
+      // otherwise the QUALITY CHECK wizard + REPORT card stay hidden until the
+      // user finds the per-project "ENABLE CONQUAS" toggle.
       const proj = await projects.create({
         companyId: comp.id, name: 'Default Project',
+        ontology_edition: 'bca-conquas-pr-2025',
         createdBy: userId, createdAt: new Date().toISOString()
       });
       return { company: comp, project: proj };
