@@ -9137,14 +9137,48 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
   const runAiAnalysisMulti=async(photos)=>{
     setAiBusy(true);setAiErrorMsg("");
     setAiAnalysisProgress({done:0,total:photos.length});
-    // Analyse every photo in parallel; track progress per completion so
-    // the user sees the count tick up rather than a frozen spinner.
-    const results=await Promise.all(photos.map(async(photo,i)=>{
-      const res=await analyzeCONQUASPhoto(photo,pickedComponent?pickedComponent.name:"",activeCheckpoints);
-      setAiAnalysisProgress(p=>({...p,done:p.done+1}));
-      return{photoIdx:i,res};
-    }));
+    // Bounded concurrency + per-photo retry. Was Promise.all of N photos —
+    // for N>=6, bursts past Gemini free-tier RPM (15) and provider concurrent-
+    // connection limits, so most calls silently 429/503/timeout. 1 of 12
+    // succeeding = textbook burst-rate symptom. Concurrency 3 paces the load
+    // and the retry-on-transient absorbs the occasional 429/5xx.
+    const MAX_CONCURRENCY=3;
+    const MAX_RETRIES=2;
+    const isTransient=res=>res&&res.error==="network"&&
+      /HTTP\s?429|HTTP\s?5\d\d|UNAVAILABLE|abort|timeout|rate.?limit|high demand/i.test(String(res.detail||""));
+    const results=new Array(photos.length);
+    let nextIdx=0,done=0;
+    const worker=async()=>{
+      // Each worker pulls the next unprocessed index, runs the AI call with
+      // retry, then loops until the queue is drained.
+      while(true){
+        const i=nextIdx++;
+        if(i>=photos.length)break;
+        let res=await analyzeCONQUASPhoto(photos[i],pickedComponent?pickedComponent.name:"",activeCheckpoints);
+        let attempt=0;
+        while(isTransient(res)&&attempt<MAX_RETRIES){
+          attempt++;
+          // Exponential backoff (500ms, 1500ms) gives the provider time to
+          // recover from a rate-burst before we re-try.
+          await new Promise(r=>setTimeout(r,500*Math.pow(3,attempt-1)));
+          res=await analyzeCONQUASPhoto(photos[i],pickedComponent?pickedComponent.name:"",activeCheckpoints);
+        }
+        results[i]={photoIdx:i,res};
+        done++;
+        setAiAnalysisProgress({done,total:photos.length});
+      }
+    };
+    const workers=[];
+    for(let w=0;w<Math.min(MAX_CONCURRENCY,photos.length);w++)workers.push(worker());
+    await Promise.all(workers);
     setAiBusy(false);
+    // Surface partial-failure count so the user knows not every photo
+    // contributed. Was silent: merge would just pick best from survivors and
+    // the user couldn't tell N of M photos errored.
+    const failCount=results.filter(r=>r&&r.res&&r.res.error).length;
+    if(failCount>0&&failCount<photos.length){
+      console.warn(`[CONQUAS AI] ${failCount} of ${photos.length} photos failed; merged verdicts reflect only the ${photos.length-failCount} that succeeded.`);
+    }
     // If every photo errored, surface the first error and bail.
     const allErrored=results.every(({res})=>res&&res.error);
     if(allErrored){
