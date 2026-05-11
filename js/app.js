@@ -9062,6 +9062,44 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
   const aiFileRef=useRef();
   const askAiRef=useRef();
   const[showWebcam,setShowWebcam]=useState(null); // null | "ai" | "askai"
+  // Minimize-to-badge so user can use other tabs while AI processes. The
+  // component stays mounted — only the visible UI collapses to a small
+  // floating chip. Photos, verdicts, and in-flight Promises all survive.
+  const[minimized,setMinimized]=useState(false);
+  // Wake Lock: keep the screen on while AI is running. Without this, mobile
+  // browsers can lock the screen → JS throttled → fetches stall → "12
+  // uploaded, only 1 processed" reappears. Released on aiBusy=false.
+  const wakeLockRef=useRef(null);
+  useEffect(()=>{
+    let cancelled=false;
+    if(aiBusy&&typeof navigator!=="undefined"&&"wakeLock" in navigator){
+      navigator.wakeLock.request("screen").then(lock=>{
+        if(cancelled){lock.release().catch(()=>{});return;}
+        wakeLockRef.current=lock;
+      }).catch(err=>console.warn("[CONQUAS] wake lock unavailable:",err?.message||err));
+    }
+    return()=>{
+      cancelled=true;
+      if(wakeLockRef.current){
+        wakeLockRef.current.release().catch(()=>{});
+        wakeLockRef.current=null;
+      }
+    };
+  },[aiBusy]);
+  // Visibility logging — if the user genuinely backgrounds the page mid-
+  // processing, mobile browsers throttle JS aggressively and fetches may
+  // stall. We can't prevent that, but we can warn so the user understands
+  // the cause if photos drop.
+  useEffect(()=>{
+    if(!aiBusy)return;
+    const onVis=()=>{
+      if(document.visibilityState==="hidden"){
+        console.warn("[CONQUAS] Tab backgrounded while AI is processing — mobile browsers may throttle in-flight requests. Use MINIMIZE instead to stay in-app.");
+      }
+    };
+    document.addEventListener("visibilitychange",onVis);
+    return()=>document.removeEventListener("visibilitychange",onVis);
+  },[aiBusy]);
 
   // Fetch ontology once on open. Edition defaults to DEFAULT_ONTOLOGY_EDITION
   // when the project hasn't been explicitly pinned to a specific edition,
@@ -9558,6 +9596,24 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
   const topBar={position:"sticky",top:0,background:"#1a1a1a",padding:"12px 16px",display:"flex",alignItems:"center",gap:10,zIndex:1,borderBottom:"1px solid rgba(255,255,255,0.06)"};
   const topBarBtn={background:"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"};
 
+  // Minimized: collapse to a small floating badge so the bottom nav is
+  // tappable and the user can use other tabs while processing continues.
+  // The wizard component stays mounted, so aiBusy / aiAnalysisProgress /
+  // aiVerdicts / aiPhotoSources all keep updating in the background.
+  if(minimized){
+    const showProgress=aiBusy&&aiAnalysisProgress.total>0;
+    const showReadyDot=!aiBusy&&(step==="aiReview"||step==="summary");
+    return(
+      <button onClick={()=>setMinimized(false)} aria-label="Restore CONQUAS wizard" style={{position:"fixed",bottom:"calc(82px + env(safe-area-inset-bottom,0px))",right:12,zIndex:401,background:"#1a1a1a",color:"#fff",borderRadius:24,padding:"10px 14px",display:"flex",alignItems:"center",gap:8,boxShadow:"0 6px 20px rgba(0,0,0,0.35)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,letterSpacing:"0.06em",border:`1.5px solid ${showReadyDot?"rgba(48,209,88,0.6)":"rgba(88,86,214,0.55)"}`,minHeight:44}}>
+        <span style={{fontSize:14}}>📋</span>
+        <span>CONQUAS{showProgress?` · ${aiAnalysisProgress.done}/${aiAnalysisProgress.total}`:showReadyDot?" · READY":""}</span>
+        {aiBusy&&<Spin size={11}/>}
+        {showReadyDot&&<span style={{width:8,height:8,borderRadius:"50%",background:"#30d158",boxShadow:"0 0 0 2px rgba(48,209,88,0.25)"}}/>}
+        <span style={{fontSize:13,opacity:0.7,marginLeft:2}}>▴</span>
+      </button>
+    );
+  }
+
   if(loading){
     return(
       <div style={overlay}>
@@ -9835,7 +9891,13 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
     return(
       <div style={overlay}>
         <div style={topBar}>
-          <div style={{color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,letterSpacing:"0.08em"}}>{t("conquas.wizard_title")}</div>
+          <div style={{color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,letterSpacing:"0.08em",flex:1}}>{t("conquas.wizard_title")}</div>
+          {/* Minimize so the user can use other tabs while AI processes —
+              the component stays mounted so verdicts keep accumulating. */}
+          <button onClick={()=>setMinimized(true)} aria-label="Minimize to badge" style={{...topBarBtn,padding:"7px 12px",display:"flex",alignItems:"center",gap:6}}>
+            <span style={{fontSize:12}}>▾</span>
+            <span>MINIMIZE</span>
+          </button>
         </div>
         <div style={{padding:"40px 16px",textAlign:"center"}}>
           {/* Show primary thumbnail; if multi, show count badge so the user
@@ -9848,7 +9910,10 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
           )}
           <Spin size={24}/>
           <div style={{marginTop:16,fontSize:14,color:"rgba(0,0,0,0.7)",fontWeight:600,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>{t("conquas.ai_analyzing")}{progressLabel}</div>
-          <div style={{marginTop:6,fontSize:11,color:"rgba(0,0,0,0.4)"}}>{isMulti?`Analysing ${aiAnalysisProgress.total} photos in parallel — verdicts merge worst-case-wins (fail beats pass beats uncertain)`:t("conquas.ai_analyzing_sub")}</div>
+          <div style={{marginTop:6,fontSize:11,color:"rgba(0,0,0,0.4)"}}>{isMulti?`Analysing ${aiAnalysisProgress.total} photo${aiAnalysisProgress.total===1?"":"s"} — verdicts merge worst-case-wins (fail beats pass beats uncertain)`:t("conquas.ai_analyzing_sub")}</div>
+          <div style={{marginTop:18,maxWidth:340,marginInline:"auto",padding:"10px 12px",background:"rgba(255,149,0,0.08)",border:"1px solid rgba(255,149,0,0.25)",borderRadius:10,fontSize:11,lineHeight:1.45,color:"rgba(0,0,0,0.65)",textAlign:"left"}}>
+            <b>Tip:</b> tap <b>MINIMIZE</b> above to keep AI running while you use other tabs. Leaving the app entirely (switching to another app or locking the phone) may pause processing — Wake Lock is requested to help, but mobile browsers can still throttle background tabs.
+          </div>
         </div>
       </div>
     );
