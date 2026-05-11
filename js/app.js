@@ -8876,161 +8876,6 @@ function QualityCheckWizard({onClose,onSave,currentProject,member}){
   );
 }
 
-// ── CONQUAS AI job — module-scope so processing survives wizard unmount ──
-// Without this, when the user closes the wizard (X), switches to another tab
-// from somewhere that the overlay didn't cover, or otherwise unmounts the
-// ConquasCheckWizard component mid-processing, the in-flight worker pool's
-// setState calls become no-ops and verdicts are silently discarded. The
-// minimize-to-badge pattern keeps the component mounted, but only if the
-// user remembers to tap MINIMIZE. Hoisting the worker pool here makes
-// processing tab-agnostic and unmount-safe: the worker writes verdicts into
-// a module-scope state object, the component subscribes on mount, and a
-// global indicator chip shows that a job is running across the whole app.
-const _conquasJob = {
-  status: "idle",           // 'idle' | 'running' | 'done'
-  jobId: null,              // stable id; workers exit early if jobId changes
-  photos: [],               // base64 dataURLs
-  componentId: "",
-  componentName: "",
-  checkpoints: [],
-  primaryPhoto: null,
-  results: [],              // {photoIdx, res} per photo
-  progress: { done: 0, total: 0 },
-  errorMsg: "",
-  // Merged verdicts written once the worker pool finishes — drives the
-  // wizard's aiReview step without re-running the merge if the user
-  // closed and re-opened the wizard between completion and review.
-  merged: null,             // { verdicts, reasons, sources }
-  listeners: new Set(),
-};
-
-function _notifyConquasJob() {
-  for (const fn of _conquasJob.listeners) {
-    try { fn(_conquasJob); } catch (_) {}
-  }
-}
-
-function _resetConquasJob() {
-  // Invalidate workers (they check jobId on every iteration) and clear state.
-  _conquasJob.status = "idle";
-  _conquasJob.jobId = null;
-  _conquasJob.photos = [];
-  _conquasJob.componentId = "";
-  _conquasJob.componentName = "";
-  _conquasJob.checkpoints = [];
-  _conquasJob.primaryPhoto = null;
-  _conquasJob.results = [];
-  _conquasJob.progress = { done: 0, total: 0 };
-  _conquasJob.errorMsg = "";
-  _conquasJob.merged = null;
-  _notifyConquasJob();
-}
-
-function _isConquasJobRetriable(res) {
-  if (!res || !res.error) return false;
-  if (res.error === "no_ai" || res.error === "no_photo") return false;
-  if (res.error === "parse") return true;
-  if (res.error === "network") {
-    return /HTTP\s?429|HTTP\s?5\d\d|UNAVAILABLE|abort|timeout|rate.?limit|high demand|Failed to fetch/i.test(String(res.detail || ""));
-  }
-  return false;
-}
-
-async function _startConquasJob({ photos, componentId, componentName, checkpoints, primaryPhoto }) {
-  // Single active job. If one is already running, refuse to start a new one
-  // (caller should either wait or reset). Returns the new jobId on success,
-  // null otherwise.
-  if (_conquasJob.status === "running") return null;
-  const jobId = (typeof crypto !== "undefined" && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : "conquas_job_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
-  Object.assign(_conquasJob, {
-    status: "running",
-    jobId,
-    photos,
-    componentId: componentId || "",
-    componentName: componentName || "",
-    checkpoints,
-    primaryPhoto: primaryPhoto || photos[0] || null,
-    results: new Array(photos.length),
-    progress: { done: 0, total: photos.length },
-    errorMsg: "",
-    merged: null,
-  });
-  _notifyConquasJob();
-
-  const provider = (local.get(AI_PROVIDER_KEY) || "gemini").toLowerCase();
-  const MAX_CONCURRENCY = provider === "ollama" ? 1 : 3;
-  const MAX_RETRIES = 2;
-  let nextIdx = 0;
-
-  const worker = async () => {
-    while (true) {
-      if (_conquasJob.jobId !== jobId) return; // job reset by user
-      const i = nextIdx++;
-      if (i >= photos.length) break;
-      let res = await analyzeCONQUASPhoto(photos[i], componentName, checkpoints);
-      let attempt = 0;
-      while (_isConquasJobRetriable(res) && attempt < MAX_RETRIES) {
-        attempt++;
-        await new Promise(r => setTimeout(r, 500 * Math.pow(3, attempt - 1)));
-        if (_conquasJob.jobId !== jobId) return;
-        res = await analyzeCONQUASPhoto(photos[i], componentName, checkpoints);
-      }
-      if (_conquasJob.jobId !== jobId) return;
-      _conquasJob.results[i] = { photoIdx: i, res };
-      _conquasJob.progress = { done: _conquasJob.progress.done + 1, total: photos.length };
-      _notifyConquasJob();
-    }
-  };
-
-  const workers = [];
-  for (let w = 0; w < Math.min(MAX_CONCURRENCY, photos.length); w++) {
-    workers.push(worker());
-  }
-  Promise.all(workers).then(() => {
-    if (_conquasJob.jobId !== jobId) return;
-    // Merge verdicts once, worst-case-wins (fail > pass > uncertain). Stored
-    // on the job so a wizard remount after completion can hydrate aiReview
-    // without redoing the merge.
-    const score = v => v === "f" ? 3 : v === "p" ? 2 : v === "u" ? 1 : 0;
-    const merged = {};
-    const reasons = {};
-    const sources = {};
-    (checkpoints || []).forEach(cp => {
-      const cpId = cp.itemId;
-      let bestVerdict = "u", bestReason = "", bestPhotoIdx = 0, bestScore = 0;
-      for (const r of _conquasJob.results) {
-        if (!r || !r.res || r.res.error || !r.res.verdicts) continue;
-        const v = String(r.res.verdicts[cpId] || "").toLowerCase();
-        const reason = String((r.res.reasons || {})[cpId] || "").trim();
-        const s = score(v);
-        if (s > bestScore || (s === bestScore && reason && !bestReason)) {
-          bestVerdict = v || "u"; bestReason = reason; bestPhotoIdx = r.photoIdx; bestScore = s;
-        }
-      }
-      if (bestVerdict) merged[cpId] = bestVerdict;
-      if (bestReason) reasons[cpId] = bestReason;
-      sources[cpId] = bestPhotoIdx;
-    });
-    _conquasJob.merged = { verdicts: merged, reasons, sources };
-    _conquasJob.status = "done";
-    _notifyConquasJob();
-  }).catch(err => {
-    if (_conquasJob.jobId !== jobId) return;
-    _conquasJob.status = "done";
-    _conquasJob.errorMsg = String(err && err.message || err);
-    _notifyConquasJob();
-  });
-
-  return jobId;
-}
-
-function _subscribeConquasJob(fn) {
-  _conquasJob.listeners.add(fn);
-  return () => _conquasJob.listeners.delete(fn);
-}
-
 // ── CONQUAS Check Wizard (Phase 3.1 + 3.2a AI mode) ──────────────
 // Guided pass/fail walkthrough for CONQUAS (Private Residential) 2025.
 // Surfaced from LOG when defect.workCategory === "CONQUAS"; edition defaults
@@ -9171,10 +9016,6 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
     setPickedId(itemId);setIdx(0);setResults([]);
     setFailPhoto(null);setFailNote("");
     setAiPhoto(null);setAiVerdicts({});setAiReasons({});setAiOverrides({});setAiErrorMsg("");
-    // New walk starts → any prior module-scope AI job is abandoned. The
-    // worker pool checks jobId every iteration and exits when it sees a
-    // mismatch, so this also cancels an in-flight run.
-    _resetConquasJob();
     // AI-mode default when configured, else go straight to manual walk
     setStep(isAiConfigured()?"modeChoice":"walk");
   };
@@ -9185,12 +9026,6 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
   // remembers WHICH photo flagged it so saveAllFromAi attaches the right
   // evidence. Single-photo flow (webcam capture, single gallery pick) is
   // preserved transparently — the array path collapses to length=1.
-  // Photo upload + start a module-scope job. The worker pool runs in
-  // _startConquasJob (defined at module scope) so it keeps running even if
-  // the user closes the wizard, navigates to REVIEW, or backgrounds the
-  // page entirely. The useEffect below subscribes to _conquasJob updates
-  // and mirrors progress + transitions into the wizard's local React
-  // state.
   const aiHandlePhoto=(e)=>{
     const files=Array.from(e.target.files||[]);
     if(!files.length)return;
@@ -9200,21 +9035,10 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
       r.onerror=rej;
       r.readAsDataURL(f);
     }))).then(photos=>{
-      // Reset any previous job (e.g. user re-uploaded after a prior walk).
-      _resetConquasJob();
       setAiPhoto(photos[0]);
       setAiAdditionalPhotos(photos.slice(1));
-      setAiBusy(true);
-      setAiErrorMsg("");
-      setAiAnalysisProgress({done:0,total:photos.length});
       setStep("aiAnalyzing");
-      _startConquasJob({
-        photos,
-        componentId:pickedId||"",
-        componentName:pickedComponent?pickedComponent.name:"",
-        checkpoints:activeCheckpoints,
-        primaryPhoto:photos[0]||null,
-      });
+      runAiAnalysisMulti(photos);
     }).catch(err=>{
       console.error("photo read failed",err);
       setAiErrorMsg("Could not read selected photo(s).");
@@ -9222,83 +9046,110 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
     });
     if(aiFileRef.current)aiFileRef.current.value="";
   };
-  // Backward-compat single-photo entry point (retry flows etc.).
-  const runAiAnalysis=(photoData)=>{
-    _resetConquasJob();
-    setAiPhoto(photoData);
-    setAiAdditionalPhotos([]);
-    setAiBusy(true);
-    setAiErrorMsg("");
-    setAiAnalysisProgress({done:0,total:1});
-    setStep("aiAnalyzing");
-    _startConquasJob({
-      photos:[photoData],
-      componentId:pickedId||"",
-      componentName:pickedComponent?pickedComponent.name:"",
-      checkpoints:activeCheckpoints,
-      primaryPhoto:photoData,
-    });
-  };
-  // Subscribe to the module-scope job. On mount we hydrate from the job's
-  // current snapshot (so re-opening the wizard mid-walk resumes the UI),
-  // and on every update we mirror progress / transition to aiReview /
-  // aiError as the worker pool decides. The subscription releases on
-  // unmount but the job keeps running — that's the whole point of the
-  // hoist.
-  useEffect(()=>{
-    const applyDone=(job)=>{
-      setAiBusy(false);
-      setAiAnalysisProgress(job.progress);
-      if(job.errorMsg){setAiErrorMsg(job.errorMsg);setStep("aiError");return;}
-      const allErrored=job.results.length&&job.results.every(r=>r&&r.res&&r.res.error);
-      if(allErrored){
-        const first=job.results.find(r=>r&&r.res&&r.res.error);
-        setAiErrorMsg(first?.res?.detail||first?.res?.error||"AI analysis failed for every photo.");
-        setStep("aiError");
-        return;
+  const runAiAnalysisMulti=async(photos)=>{
+    setAiBusy(true);setAiErrorMsg("");
+    setAiAnalysisProgress({done:0,total:photos.length});
+    // Bounded concurrency + per-photo retry. Was Promise.all of N photos
+    // which (a) bursts past cloud-provider RPM / concurrent limits, and
+    // (b) queues at Ollama's HTTP layer where default num_parallel=1 means
+    // requests 2..N time out before processing starts. 1 of 12 succeeding
+    // = textbook either-case symptom. Provider-aware concurrency: Ollama
+    // (local, serial) -> 1; cloud (Gemini/OpenAI/Groq/etc.) -> 3. Retry
+    // covers both "transient cloud 429/5xx" AND "parse" (which is what
+    // Ollama timeout-to-null surfaces as via analyzePhoto -> {error:"parse"}).
+    const provider=(local.get(AI_PROVIDER_KEY)||"gemini").toLowerCase();
+    const MAX_CONCURRENCY=provider==="ollama"?1:3;
+    const MAX_RETRIES=2;
+    const isRetriable=res=>{
+      if(!res||!res.error)return false;
+      // no_ai / no_photo are hard failures — retrying won't help.
+      if(res.error==="no_ai"||res.error==="no_photo")return false;
+      // parse covers Ollama timeout-to-null AND genuine malformed JSON;
+      // either way retrying is cheap and often clears.
+      if(res.error==="parse")return true;
+      // network errors: only retry the transient family.
+      if(res.error==="network"){
+        return /HTTP\s?429|HTTP\s?5\d\d|UNAVAILABLE|abort|timeout|rate.?limit|high demand|Failed to fetch/i.test(String(res.detail||""));
       }
-      const failCount=job.results.filter(r=>r&&r.res&&r.res.error).length;
-      if(failCount>0&&failCount<job.results.length){
-        console.warn(`[CONQUAS AI] ${failCount} of ${job.results.length} photos failed; merged verdicts reflect only the ${job.results.length-failCount} that succeeded.`);
-      }
-      const merged=job.merged||{verdicts:{},reasons:{},sources:{}};
-      const firstOk=job.results.find(r=>r&&r.res&&!r.res.error&&r.res.rawPhoto);
-      if(firstOk&&firstOk.res.rawPhoto&&firstOk.photoIdx===0)setAiPhoto(firstOk.res.rawPhoto);
-      setAiVerdicts(merged.verdicts);
-      setAiReasons(merged.reasons);
-      setAiPhotoSources(merged.sources);
-      setAiOverrides({});
-      setStep("aiReview");
+      return false;
     };
-    // Initial hydration: if the user re-opened the wizard mid-job (after a
-    // close), restore the wizard's visible state from whatever the worker
-    // pool has accumulated so far.
-    const job=_conquasJob;
-    if(job.status==="running"){
-      setAiPhoto(prev=>prev||job.primaryPhoto);
-      setAiAdditionalPhotos(prev=>prev.length?prev:job.photos.slice(1));
-      setAiAnalysisProgress(job.progress);
-      setAiBusy(true);
-      setStep("aiAnalyzing");
-      if(job.componentId)setPickedId(prev=>prev||job.componentId);
-    } else if(job.status==="done"){
-      // Job finished while wizard was closed — jump straight to review.
-      if(job.componentId)setPickedId(prev=>prev||job.componentId);
-      setAiPhoto(prev=>prev||job.primaryPhoto);
-      setAiAdditionalPhotos(prev=>prev.length?prev:job.photos.slice(1));
-      applyDone(job);
-    }
-    // Stream updates while mounted.
-    const unsub=_subscribeConquasJob(updated=>{
-      if(updated.status==="running"){
-        setAiAnalysisProgress(updated.progress);
-      } else if(updated.status==="done"){
-        applyDone(updated);
+    const results=new Array(photos.length);
+    let nextIdx=0,done=0;
+    const worker=async()=>{
+      // Each worker pulls the next unprocessed index, runs the AI call with
+      // retry, then loops until the queue is drained.
+      while(true){
+        const i=nextIdx++;
+        if(i>=photos.length)break;
+        let res=await analyzeCONQUASPhoto(photos[i],pickedComponent?pickedComponent.name:"",activeCheckpoints);
+        let attempt=0;
+        while(isRetriable(res)&&attempt<MAX_RETRIES){
+          attempt++;
+          // Exponential backoff (500ms, 1500ms) gives the provider time to
+          // recover from a rate-burst or model load before we re-try.
+          await new Promise(r=>setTimeout(r,500*Math.pow(3,attempt-1)));
+          res=await analyzeCONQUASPhoto(photos[i],pickedComponent?pickedComponent.name:"",activeCheckpoints);
+        }
+        results[i]={photoIdx:i,res};
+        done++;
+        setAiAnalysisProgress({done,total:photos.length});
       }
+    };
+    const workers=[];
+    for(let w=0;w<Math.min(MAX_CONCURRENCY,photos.length);w++)workers.push(worker());
+    await Promise.all(workers);
+    setAiBusy(false);
+    // Surface partial-failure count so the user knows not every photo
+    // contributed. Was silent: merge would just pick best from survivors and
+    // the user couldn't tell N of M photos errored.
+    const failCount=results.filter(r=>r&&r.res&&r.res.error).length;
+    if(failCount>0&&failCount<photos.length){
+      console.warn(`[CONQUAS AI] ${failCount} of ${photos.length} photos failed; merged verdicts reflect only the ${photos.length-failCount} that succeeded.`);
+    }
+    // If every photo errored, surface the first error and bail.
+    const allErrored=results.every(({res})=>res&&res.error);
+    if(allErrored){
+      const first=results.find(({res})=>res&&res.error);
+      setAiErrorMsg(first?.res?.detail||first?.res?.error||"AI analysis failed for every photo.");
+      setStep("aiError");
+      return;
+    }
+    // Merge verdicts: fail > pass > uncertain. When multiple photos agree,
+    // remember the photo with a non-empty reason so the user sees the
+    // most-actionable explanation. photoSources[cpId] = the photoIdx whose
+    // verdict won, used at save time to attach the right evidence photo.
+    const score=v=>v==="f"?3:v==="p"?2:v==="u"?1:0;
+    const merged={};const reasons={};const sources={};
+    activeCheckpoints.forEach(cp=>{
+      const cpId=cp.itemId;
+      let bestVerdict="u";let bestReason="";let bestPhotoIdx=0;let bestScore=0;
+      for(const{photoIdx,res} of results){
+        if(!res||res.error||!res.verdicts)continue;
+        const v=String(res.verdicts[cpId]||"").toLowerCase();
+        const reason=String((res.reasons||{})[cpId]||"").trim();
+        const s=score(v);
+        // Stricter wins; tie + new has reason wins; tie + neither has reason → first wins
+        if(s>bestScore||(s===bestScore&&reason&&!bestReason)){
+          bestVerdict=v||"u";bestReason=reason;bestPhotoIdx=photoIdx;bestScore=s;
+        }
+      }
+      if(bestVerdict)merged[cpId]=bestVerdict;
+      if(bestReason)reasons[cpId]=bestReason;
+      sources[cpId]=bestPhotoIdx;
     });
-    return unsub;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[]);
+    // Compressed primary photo from the first successful result (mirror the
+    // legacy single-photo behaviour where rawPhoto was the canonical thumb).
+    const firstOk=results.find(({res})=>res&&!res.error&&res.rawPhoto);
+    if(firstOk&&firstOk.res.rawPhoto&&firstOk.photoIdx===0)setAiPhoto(firstOk.res.rawPhoto);
+    setAiVerdicts(merged);
+    setAiReasons(reasons);
+    setAiPhotoSources(sources);
+    setAiOverrides({});
+    setStep("aiReview");
+  };
+  // Backward-compat single-photo entry point (kept for callers that
+  // explicitly pass one base64 string, e.g. retry flows).
+  const runAiAnalysis=(photoData)=>runAiAnalysisMulti([photoData]);
   const finalVerdict=(cpId)=>aiOverrides[cpId]||aiVerdicts[cpId]||"u";
   const cycleVerdict=(cpId)=>{
     // p → f → u → p
@@ -9608,9 +9459,6 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
       const tail=observationsFailed>0?`\n\n⚠ ${observationsFailed} observation(s) failed to upload (likely offline/network). Defects above were saved; rerun the wizard when online to capture the dropped observations.`:"";
       alert((parts.length?"Saved "+parts.join(" + ")+".":"Saved.")+tail);
     }catch(_){}
-    // Walk complete + persisted → clear the module-scope job so the next
-    // walk starts fresh (and no stale "READY" badge lingers).
-    _resetConquasJob();
     onClose();
   };
 
