@@ -10525,16 +10525,15 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   useEffect(()=>{if(!form.photos.length&&!form.title&&!form.description)_gpsTriedRef.current=false;},[form.photos.length,form.title,form.description]);
 
   // Auto-open the CONQUAS wizard the moment workCategory becomes CONQUAS
-  // — saves the extra tap on "START CONQUAS CHECK". Officer mode is
-  // deliberately excluded: an Officer is verifying the contractor's work,
-  // not producing a structured QP score, so the element-by-element
-  // wizard isn't the right shape there. Ref-gated so the wizard only
-  // fires once per selection: if the user dismisses it and stays in
-  // CONQUAS, the button below acts as the re-open path; if they switch
-  // away and back, the ref resets so the next selection re-fires.
+  // or CONQUAS Officer — selecting either category already signals intent
+  // to run the structured walk, so a separate "START CONQUAS CHECK"
+  // gateway tap is redundant. Ref-gated so the wizard only fires once
+  // per selection: if the user dismisses it, switching workCategory
+  // away and back re-fires the next selection.
   const _autoConquasFiredRef=useRef(false);
   useEffect(()=>{
-    if(form.workCategory!=="CONQUAS"){_autoConquasFiredRef.current=false;return;}
+    const isConquas=form.workCategory==="CONQUAS"||form.workCategory==="CONQUAS Officer";
+    if(!isConquas){_autoConquasFiredRef.current=false;return;}
     if(_autoConquasFiredRef.current)return;
     if(typeof onStartConquas!=="function")return;
     _autoConquasFiredRef.current=true;
@@ -11958,19 +11957,12 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       {/* ── Wizard launchers parked under WORK CATEGORY ──
           Each wizard is bound to a specific category and only renders
           when that scope is picked. Keeps the LOG form focused — no
-          stray launchers when the category doesn't match. */}
-      {/* START CONQUAS CHECK — visible for both CONQUAS and CONQUAS
-          Officer so either role can launch the structured wizard on
-          demand. CONQUAS also auto-opens the wizard via the effect
-          above (saves a tap for the QP scoring path). Officer doesn't
-          auto-open (Officer's default flow is generic LOG capture);
-          the button stays as a manual entry point. */}
-      {(form.workCategory==="CONQUAS"||form.workCategory==="CONQUAS Officer")&&onStartConquas&&(
-        <button onClick={onStartConquas} style={{width:"100%",padding:"12px 14px",marginBottom:16,background:"rgba(88,86,214,0.08)",border:"1.5px solid rgba(88,86,214,0.3)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-          <span style={{fontSize:16}}>📋</span>
-          <span>{t("conquas.start_button")}</span>
-        </button>
-      )}
+          stray launchers when the category doesn't match.
+
+          NOTE: CONQUAS / CONQUAS Officer no longer have a launcher
+          button — auto-open (see effect above) fires the wizard the
+          moment the category is picked. To re-open after dismissal,
+          toggle workCategory away and back. */}
       {form.workCategory==="TOP Inspection"&&onStartTopWizard&&(
         <button onClick={onStartTopWizard} style={{width:"100%",padding:"12px 14px",marginBottom:16,background:"rgba(255,107,0,0.08)",border:"1.5px solid rgba(255,107,0,0.35)",borderRadius:12,color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
           <span style={{fontSize:16}}>🏛</span>
