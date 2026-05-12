@@ -2413,7 +2413,12 @@ const _statusAgeColor=(d,days)=>{if(["Verified","Closed"].includes(d.status))ret
 const ts=d.createdAt||d.timestamp_utc||d.created;const ds=ts?String(ts).slice(0,10):"";if(dateFromR&&(!ds||ds<dateFromR))return false;if(dateToR&&(!ds||ds>dateToR))return false;}if(q){// Includes original_filename and iso_filename so users can search
 // by source phone-gallery name (e.g. 'IMG_2391') OR by the ISO 19650
 // storage name (e.g. 'WL_HOLLOW' for all wall hollowness entries).
-const hay=[d.title,d.description,d.component,d.issue,d.assignee,d.assignee_org,d.assignee_org_contact,d.location,d.loggedBy,d.entryType,d.defect_id,d.original_filename,d.iso_filename].filter(Boolean).join(" ").toLowerCase();if(!hay.includes(q))return false;}return true;});const activeFilters=(filter!=="All"?1:0)+(sevF!=="All"?1:0)+(typeF!=="All"?1:0)+(orgF!=="All"?1:0)+(wcF!=="All"?1:0)+(dateFromR?1:0)+(dateToR?1:0)+(overdueOnly?1:0);const clearAll=()=>{setFilter("All");setSevF("All");setTypeF("All");setOrgF("All");setWcF("All");setSearch("");setDateFromR("");setDateToR("");setOverdueOnly(false);if(onClearNl)onClearNl();};// Overdue tally for header pill — counts ALL eligible entries, not just
+const hay=[d.title,d.description,d.component,d.issue,d.assignee,d.assignee_org,d.assignee_org_contact,d.location,d.loggedBy,d.entryType,d.defect_id,d.original_filename,d.iso_filename].filter(Boolean).join(" ").toLowerCase();if(!hay.includes(q))return false;}return true;}).sort((a,b)=>{// Severity-first ordering for REVIEW > ENTRIES so reviewers see the
+// worst (Critical) on top in both LIST and GRID; newest-first within
+// the same severity tier so the prior default still resolves ties.
+// groupByBatch / groupByConquas iterate this same array so items
+// inside each group also surface Critical first.
+const sa=SEV_RANK[a.severity]||0;const sb=SEV_RANK[b.severity]||0;if(sb!==sa)return sb-sa;const ta=a.createdAt||a.timestamp_utc||a.created||"";const tb=b.createdAt||b.timestamp_utc||b.created||"";return String(tb).localeCompare(String(ta));});const activeFilters=(filter!=="All"?1:0)+(sevF!=="All"?1:0)+(typeF!=="All"?1:0)+(orgF!=="All"?1:0)+(wcF!=="All"?1:0)+(dateFromR?1:0)+(dateToR?1:0)+(overdueOnly?1:0);const clearAll=()=>{setFilter("All");setSevF("All");setTypeF("All");setOrgF("All");setWcF("All");setSearch("");setDateFromR("");setDateToR("");setOverdueOnly(false);if(onClearNl)onClearNl();};// Overdue tally for header pill — counts ALL eligible entries, not just
 // the currently-filtered subset, so the badge is the same regardless of
 // which other filters are toggled. Lets the user see total work past due
 // before they even open the panel.

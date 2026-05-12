@@ -13357,6 +13357,18 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
       if(!hay.includes(q))return false;
     }
     return true;
+  }).sort((a,b)=>{
+    // Severity-first ordering for REVIEW > ENTRIES so reviewers see the
+    // worst (Critical) on top in both LIST and GRID; newest-first within
+    // the same severity tier so the prior default still resolves ties.
+    // groupByBatch / groupByConquas iterate this same array so items
+    // inside each group also surface Critical first.
+    const sa=SEV_RANK[a.severity]||0;
+    const sb=SEV_RANK[b.severity]||0;
+    if(sb!==sa)return sb-sa;
+    const ta=a.createdAt||a.timestamp_utc||a.created||"";
+    const tb=b.createdAt||b.timestamp_utc||b.created||"";
+    return String(tb).localeCompare(String(ta));
   });
   const activeFilters=(filter!=="All"?1:0)+(sevF!=="All"?1:0)+(typeF!=="All"?1:0)+(orgF!=="All"?1:0)+(wcF!=="All"?1:0)+(dateFromR?1:0)+(dateToR?1:0)+(overdueOnly?1:0);
   const clearAll=()=>{setFilter("All");setSevF("All");setTypeF("All");setOrgF("All");setWcF("All");setSearch("");setDateFromR("");setDateToR("");setOverdueOnly(false);if(onClearNl)onClearNl();};
