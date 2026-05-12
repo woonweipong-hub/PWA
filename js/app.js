@@ -23631,6 +23631,16 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   // this entryId (same defect at another location) — bypasses the entry picker.
   // Entered via long-press on an existing pin OR via the picker search dropdown.
   const[rePinEntryId,setRePinEntryId]=useState(null);
+  // Phase 3.1 — AI pin suggestion from a defect photo, gated on the drawing
+  // being a brochure with extracted room layout. Captures a photo, sends it
+  // to the AI alongside the brochureMeta rooms[], and the AI picks the room
+  // whose context best matches the defect photo + returns approximate
+  // x_pct/y_pct of that room's centre. Opens the quick-create form
+  // pre-filled with the photo and pin coordinates; the user can drag the
+  // pin afterwards if the AI mis-located it.
+  const aiPinRef=useRef();
+  const[aiPinning,setAiPinning]=useState(false);
+  const[aiPinError,setAiPinError]=useState("");
   const[pickerSearch,setPickerSearch]=useState("");
   const[qTitle,setQTitle]=useState("");const[qSev,setQSev]=useState("Major");const[qSaving,setQSaving]=useState(false);
   const qPhotoRef=useRef();const[qPhoto,setQPhoto]=useState(null);
@@ -23828,6 +23838,52 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
     }
     setLinkEntry({x,y,pageNum:currentPage});
     setPlacing(false);
+  };
+
+  // Phase 3.1 — AI pin suggestion from a defect photo on a brochure.
+  // Reads the picked file, builds a prompt that embeds the brochureMeta
+  // rooms list, sends it to analyzePhoto(), and converts the AI's room
+  // pick into pin coordinates. Then opens the existing quick-create
+  // entry form pre-filled with the photo and AI-suggested x/y. The user
+  // can still drag the pin or override location afterwards.
+  const handleAiPinFromPhoto=async(e)=>{
+    const file=e.target.files?.[0];
+    if(aiPinRef.current)aiPinRef.current.value="";
+    if(!file)return;
+    if(!isAiConfigured()){setAiPinError(t("drawings.ai_pin_no_ai"));return;}
+    const meta=drawing.brochureMeta;
+    if(!meta||!Array.isArray(meta.rooms)||!meta.rooms.length){setAiPinError(t("drawings.ai_pin_no_rooms"));return;}
+    setAiPinning(true);setAiPinError("");
+    try{
+      const dataUrl=await new Promise((res,rej)=>{
+        const r=new FileReader();
+        r.onload=()=>res(r.result);
+        r.onerror=()=>rej(new Error("read failed"));
+        r.readAsDataURL(file);
+      });
+      const roomsJson=JSON.stringify(meta.rooms.map(r=>({name:r.name,x_pct:r.x_pct,y_pct:r.y_pct})));
+      const prompt=`You are looking at a construction defect photo. The defect lives on a floor plan whose rooms have already been mapped. Pick the room from the layout below that best matches the defect photo, based on visual cues (fixtures, finishes, signage, lighting type, room shape, etc.).
+
+Rooms (JSON, each with the centre as a percentage of the floor-plan image):
+${roomsJson}
+
+Respond in valid JSON only with these exact keys:
+{"room_name": "...", "x_pct": 0-100, "y_pct": 0-100, "confidence": 0.0-1.0, "reasoning": "1-2 sentences"}
+
+If you cannot confidently match the defect to any room, pick the closest one and return a low confidence (<0.3). If the photo is unreadable, return {"room_name":"","x_pct":50,"y_pct":50,"confidence":0,"reasoning":"unreadable"}.`;
+      const result=await analyzePhoto(dataUrl,prompt);
+      if(!result||typeof result!=="object"){setAiPinError(t("drawings.ai_pin_no_response"));setAiPinning(false);return;}
+      // Clamp coords to [0..100] in case the model returns out-of-range values.
+      const x=Math.max(0,Math.min(100,Number(result.x_pct)||50));
+      const y=Math.max(0,Math.min(100,Number(result.y_pct)||50));
+      setQPhoto(dataUrl);
+      if(result.room_name)setQTitle(result.room_name);
+      setLinkEntry({x,y,pageNum:currentPage});
+      setQuickCreate(true);
+    }catch(err){
+      setAiPinError(err?.message||String(err));
+    }
+    setAiPinning(false);
   };
 
   // Save pin linked to entry (subscription auto-updates pins list)
@@ -24795,6 +24851,17 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
             {placing?t("actions.tap_to_place"):"📌 ADD PIN"}
           </button>
         )}
+        {/* Phase 3.1 — AI pin from photo. Visible only when the drawing
+            is a brochure with AI-extracted rooms. Hidden file input fires
+            the camera/library picker; handler runs the AI suggestion and
+            opens the quick-create form pre-filled with the photo and the
+            suggested coordinates. */}
+        {canPin&&!markupMode&&!viewMode&&drawing.kind==="brochure"&&Array.isArray(drawing.brochureMeta?.rooms)&&drawing.brochureMeta.rooms.length>0&&(
+          <button onClick={()=>aiPinRef.current?.click()} disabled={aiPinning} title={t("drawings.ai_pin_button_title")} style={{background:aiPinning?"rgba(88,86,214,0.4)":"rgba(88,86,214,0.3)",border:"1px solid rgba(88,86,214,0.55)",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:aiPinning?"wait":"pointer",display:"flex",alignItems:"center",gap:6}}>
+            {aiPinning?<><Spin size={12}/>{t("drawings.ai_pin_busy")}</>:<>📷 {t("drawings.ai_pin_button")}</>}
+          </button>
+        )}
+        <input ref={aiPinRef} type="file" accept="image/*" capture="environment" onChange={handleAiPinFromPhoto} style={{display:"none"}}/>
         {canPin&&!placing&&!viewMode&&(
           <button onClick={()=>{setMarkupMode(!markupMode);setViewMode(false);}} style={{background:markupMode?"#5856d6":"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>
             {markupMode?"DONE":"✏ MARKUP"}
@@ -24805,6 +24872,14 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
         </button>
       </div>
 
+      {/* Phase 3.1 — AI pin error banner. Tap-to-dismiss; non-blocking
+          so the user keeps the rest of DrawingViewer accessible. */}
+      {aiPinError&&(
+        <div onClick={()=>setAiPinError("")} style={{background:"rgba(255,59,48,0.18)",color:"#ffb4ad",padding:"8px 14px",fontSize:12,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",borderBottom:"1px solid rgba(255,59,48,0.3)",display:"flex",alignItems:"center",gap:8}}>
+          <span>⚠ {aiPinError}</span>
+          <span style={{marginLeft:"auto",fontSize:10,opacity:0.7}}>tap to dismiss</span>
+        </div>
+      )}
       {/* Placing mode indicator */}
       {placing&&!viewMode&&(()=>{
         const rpDefect=rePinEntryId?defects.find(d=>d.id===rePinEntryId):null;

@@ -669,7 +669,13 @@
     "notes": "Notes",
     "pinned_on": "Pinned on: ",
     "uploaded_drawings": "UPLOADED DRAWINGS",
-    "saved_markup_drawings": "SAVED MARKUP DRAWINGS"
+    "saved_markup_drawings": "SAVED MARKUP DRAWINGS",
+    "ai_pin_button": "AI PIN",
+    "ai_pin_button_title": "Take a defect photo; AI suggests which room on this brochure to pin it to. Pre-fills the entry form with the photo and the suggested location — you can drag the pin after.",
+    "ai_pin_busy": "AI is picking the room…",
+    "ai_pin_no_ai": "AI is not configured. Open Settings → AI to set it up.",
+    "ai_pin_no_rooms": "This brochure has no AI-extracted rooms yet. Re-upload the brochure so the AI can extract its layout.",
+    "ai_pin_no_response": "AI did not return a usable response. Try a clearer photo."
   },
   "markup": {
     "select": "Select / Move",
