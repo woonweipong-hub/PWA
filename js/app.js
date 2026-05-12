@@ -10524,6 +10524,23 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // next capture re-fires geolocation instead of being silently skipped.
   useEffect(()=>{if(!form.photos.length&&!form.title&&!form.description)_gpsTriedRef.current=false;},[form.photos.length,form.title,form.description]);
 
+  // Auto-open the CONQUAS wizard the moment workCategory becomes CONQUAS
+  // or CONQUAS Officer — saves the extra tap on the "START CONQUAS CHECK"
+  // button. Ref-gated so the wizard only fires once per selection: if the
+  // user dismisses the wizard and stays in the same mode, the button
+  // below acts as the re-open path; if they switch away and back, the
+  // ref resets so the next selection re-fires.
+  const _autoConquasFiredRef=useRef(false);
+  useEffect(()=>{
+    const isConquasFamily=form.workCategory==="CONQUAS"||form.workCategory==="CONQUAS Officer";
+    if(!isConquasFamily){_autoConquasFiredRef.current=false;return;}
+    if(_autoConquasFiredRef.current)return;
+    if(typeof onStartConquas!=="function")return;
+    _autoConquasFiredRef.current=true;
+    onStartConquas();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[form.workCategory]);
+
   // CONQUAS Officer auto-fill: when an active location context exists and
   // the location hierarchy is still empty (fresh form / post-save reset),
   // pre-fill from the captured signboard so each entry inherits Block /
@@ -11941,7 +11958,12 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           Each wizard is bound to a specific category and only renders
           when that scope is picked. Keeps the LOG form focused — no
           stray launchers when the category doesn't match. */}
-      {form.workCategory==="CONQUAS"&&onStartConquas&&(
+      {/* Re-open path. The wizard auto-opens on workCategory selection
+          via the effect above; this button is kept so a user who
+          dismissed the wizard can re-enter without flipping
+          workCategory off-and-on. Visible for both CONQUAS and
+          CONQUAS Officer. */}
+      {(form.workCategory==="CONQUAS"||form.workCategory==="CONQUAS Officer")&&onStartConquas&&(
         <button onClick={onStartConquas} style={{width:"100%",padding:"12px 14px",marginBottom:16,background:"rgba(88,86,214,0.08)",border:"1.5px solid rgba(88,86,214,0.3)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
           <span style={{fontSize:16}}>📋</span>
           <span>{t("conquas.start_button")}</span>
