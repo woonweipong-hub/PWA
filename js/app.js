@@ -11992,7 +11992,15 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
             <button onClick={()=>fileRef.current.click()} style={{width:"100%",height:64,background:"#fff",border:"2px dashed rgba(0,0,0,0.18)",borderRadius:14,color:"rgba(0,0,0,0.5)",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
               <span style={{fontSize:24}}>📷</span> {t("log.take_photo")}{aiReady?` · ${t("log.ai_auto_analyze")}`:""}
             </button>
-            {aiReady&&(
+            {aiReady&&form.workCategory!=="CONQUAS"&&form.workCategory!=="CONQUAS Officer"&&(
+              // AI batch cluster (PICK FOLDER / USE WEBCAM / REVIEW BEFORE SAVE)
+              // is hidden in CONQUAS modes — the wizard's PROCESS FOLDER step
+              // owns batch in those modes, and it tags every entry with the
+              // CONQUAS audit fields (entryType="CONQUAS Check", nc_tier,
+              // observation_batch_id, component_id, checkpoint_id) that the
+              // NC-rate report and CONQUAS exports rely on. Going through
+              // this top-level path would scatter untagged Defect entries
+              // alongside tagged CONQUAS Check ones in the same walk.
               <>
               <button onClick={()=>folderRef.current.click()} style={{width:"100%",padding:"10px 14px",background:"rgba(88,86,214,0.06)",border:"1.5px dashed rgba(88,86,214,0.4)",borderRadius:12,color:"#5856d6",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.03em"}}>
                 <span style={{fontSize:16}}>📁</span> PICK FOLDER OR MULTIPLE PHOTOS · AI PRE-FILLS EACH
