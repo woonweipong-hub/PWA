@@ -12141,18 +12141,11 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         <span style={{fontSize:12,color:"rgba(0,0,0,0.35)",transition:"transform 0.2s",transform:showMoreDetails?"rotate(180deg)":"rotate(0deg)"}}>▼</span>
       </button>
 
-      {showMoreDetails&&(()=>{
-        const isOfficer=form.workCategory==="CONQUAS Officer";
-        return(
+      {showMoreDetails&&(
         <div style={{animation:"fadeIn 0.2s ease",marginTop:showMoreDetails?0:0}}>
-          {/* Entry Type — hidden for CONQUAS Officer (assessor scope is
-              a single defect class). */}
-          {!isOfficer&&(
-            <>
-              <ComboField label={<>{t("fields.entry_type")}<ProvChip prov={form.fieldProvenance?.entryType}/></>} value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder={t("fields.entry_type_placeholder")} displayFn={tOpt}/>
-              <div style={{marginTop:-10,marginBottom:12}}><button onClick={()=>setShowTypeManager(true)} style={{background:"none",border:"none",fontSize:11,color:"rgba(255,107,0,0.7)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:0}}>⚙ Manage custom types</button></div>
-            </>
-          )}
+          {/* Entry Type */}
+          <ComboField label={<>{t("fields.entry_type")}<ProvChip prov={form.fieldProvenance?.entryType}/></>} value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder={t("fields.entry_type_placeholder")} displayFn={tOpt}/>
+          <div style={{marginTop:-10,marginBottom:12}}><button onClick={()=>setShowTypeManager(true)} style={{background:"none",border:"none",fontSize:11,color:"rgba(255,107,0,0.7)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:0}}>⚙ Manage custom types</button></div>
 
           {/* Item / Part (was Component) */}
           <ComboField label={<>{t("fields.item_part")}<ProvChip prov={form.fieldProvenance?.component}/></>} value={form.component} onChange={v=>{set("component",v);set("issue","");}} grouped={activeComponentGroups} placeholder={t("fields.item_part_placeholder")} displayFn={tOpt}/>
@@ -12162,54 +12155,39 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
             <ComboField label={<>{t("fields.issue")}<ProvChip prov={form.fieldProvenance?.issue}/></>} value={form.issue} onChange={v=>{set("issue",v);if(!form.title)set("title",form.component+" — "+v);}} options={COMPONENT_ISSUES[form.component]||COMPONENT_ISSUES["General"]} placeholder={t("fields.issue_placeholder")} displayFn={tOpt}/>
           )}
 
-          {/* Location hierarchy. Zone + Grid Ref hidden for CONQUAS Officer
-              (assessor cares about block / unit / room, which come from the
-              project-level signboard context — Zone and grid-ref are layout
-              metadata that belongs to the contractor view). */}
+          {/* Location hierarchy */}
           <ComboField label={<>{t("fields.level_floor")}<ProvChip prov={form.fieldProvenance?.locationLevel}/></>} value={form.locationLevel} onChange={v=>set("locationLevel",v)} options={DEFAULT_LEVELS} placeholder={t("fields.level_floor_placeholder")} displayFn={tOpt}/>
-          {!isOfficer&&(
-            <ComboField label={<>{t("fields.zone")}<ProvChip prov={form.fieldProvenance?.locationZone}/></>} value={form.locationZone} onChange={v=>set("locationZone",v)} options={DEFAULT_ZONES} placeholder={t("fields.zone_placeholder")} displayFn={tOpt}/>
-          )}
+          <ComboField label={<>{t("fields.zone")}<ProvChip prov={form.fieldProvenance?.locationZone}/></>} value={form.locationZone} onChange={v=>set("locationZone",v)} options={DEFAULT_ZONES} placeholder={t("fields.zone_placeholder")} displayFn={tOpt}/>
           <ComboField label={<>{t("fields.room_area")}<ProvChip prov={form.fieldProvenance?.locationSubzone}/></>} value={form.locationSubzone} onChange={v=>set("locationSubzone",v)} options={DEFAULT_SUBZONES} placeholder={t("fields.room_area_placeholder")} displayFn={tOpt}/>
-          {!isOfficer&&(
-            <VoiceField label={t("fields.grid_ref")} value={form.locationGrid} onChange={v=>set("locationGrid",v)} placeholder={t("fields.grid_ref_placeholder")}/>
-          )}
+          <VoiceField label={t("fields.grid_ref")} value={form.locationGrid} onChange={v=>set("locationGrid",v)} placeholder={t("fields.grid_ref_placeholder")}/>
 
-          {/* Assignee + sub-contractor org + contact — hidden for CONQUAS
-              Officer; the assessor records findings, not work assignments. */}
-          {!isOfficer&&(
-            <>
-              <ComboField label={<>{t("fields.assign_to")}<ProvChip prov={form.fieldProvenance?.assignee}/></>} value={form.assignee} onChange={v=>set("assignee",v)} options={assignees} placeholder={t("fields.assign_to_placeholder")}/>
-              <VoiceField label={t("fields.assignee_org")} value={form.assignee_org} onChange={v=>set("assignee_org",v)} placeholder={t("fields.assignee_org_placeholder")}/>
-              <VoiceField label={t("fields.assignee_org_contact")} value={form.assignee_org_contact} onChange={v=>set("assignee_org_contact",v)} placeholder={t("fields.assignee_org_contact_placeholder")}/>
-            </>
-          )}
+          {/* Assignee */}
+          <ComboField label={<>{t("fields.assign_to")}<ProvChip prov={form.fieldProvenance?.assignee}/></>} value={form.assignee} onChange={v=>set("assignee",v)} options={assignees} placeholder={t("fields.assign_to_placeholder")}/>
 
-          {/* Cost & Time — Cost Change (and its children) hidden for CONQUAS
-              Officer; assessor scope is non-contractual. Due-date + time-
-              needed stay so an assessor can still flag remedial timelines. */}
+          {/* Subcontractor / vendor org (gap #1 v1) — beside the in-company
+              Assignee. Both optional; the "send to plumber sub" workflow
+              uses these to route the issue to an external trade. */}
+          <VoiceField label={t("fields.assignee_org")} value={form.assignee_org} onChange={v=>set("assignee_org",v)} placeholder={t("fields.assignee_org_placeholder")}/>
+          <VoiceField label={t("fields.assignee_org_contact")} value={form.assignee_org_contact} onChange={v=>set("assignee_org_contact",v)} placeholder={t("fields.assignee_org_contact_placeholder")}/>
+
+          {/* Cost & Time */}
           <div style={{background:"rgba(0,0,0,0.02)",borderRadius:12,padding:14,marginBottom:16,border:"1px solid rgba(0,0,0,0.06)"}}>
             <div style={{marginBottom:12}}>
               <label style={lbl()}>{t("log.due_date")}<ProvChip prov={form.fieldProvenance?.dueDate}/></label>
               <input type="date" value={form.dueDate} onChange={e=>set("dueDate",e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
             </div>
             <ComboField label={<>{t("fields.time_needed")}<ProvChip prov={form.fieldProvenance?.duration}/></>} value={form.duration} onChange={v=>set("duration",v)} options={DURATION_OPTIONS} placeholder={t("fields.time_needed_placeholder")} displayFn={tOpt}/>
-            {!isOfficer&&(
+            <ComboField label={<>{t("fields.cost_change")}<ProvChip prov={form.fieldProvenance?.costImpact}/></>} value={form.costImpact} onChange={v=>set("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder={t("fields.cost_change_placeholder")} displayFn={tOpt}/>
+            {form.costImpact&&form.costImpact!=="No change"&&form.costImpact!=="To be confirmed by QS"&&(
               <>
-                <ComboField label={<>{t("fields.cost_change")}<ProvChip prov={form.fieldProvenance?.costImpact}/></>} value={form.costImpact} onChange={v=>set("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder={t("fields.cost_change_placeholder")} displayFn={tOpt}/>
-                {form.costImpact&&form.costImpact!=="No change"&&form.costImpact!=="To be confirmed by QS"&&(
-                  <>
-                    <VoiceField label={t("fields.cost_amount")} value={form.costAmount} onChange={v=>set("costAmount",v)} placeholder={t("fields.cost_amount_placeholder")} inputMode="decimal"/>
-                    <ComboField label={t("fields.cost_responsible")} value={form.costResponsible} onChange={v=>set("costResponsible",v)} options={COST_RESPONSIBLE_OPTIONS} placeholder={t("fields.cost_responsible_placeholder")} displayFn={tOpt}/>
-                    <VoiceField label={t("fields.cost_remarks")} value={form.costRemarks} onChange={v=>set("costRemarks",v)} placeholder={t("fields.cost_remarks_placeholder")} multiline/>
-                  </>
-                )}
+                <VoiceField label={t("fields.cost_amount")} value={form.costAmount} onChange={v=>set("costAmount",v)} placeholder={t("fields.cost_amount_placeholder")} inputMode="decimal"/>
+                <ComboField label={t("fields.cost_responsible")} value={form.costResponsible} onChange={v=>set("costResponsible",v)} options={COST_RESPONSIBLE_OPTIONS} placeholder={t("fields.cost_responsible_placeholder")} displayFn={tOpt}/>
+                <VoiceField label={t("fields.cost_remarks")} value={form.costRemarks} onChange={v=>set("costRemarks",v)} placeholder={t("fields.cost_remarks_placeholder")} multiline/>
               </>
             )}
           </div>
         </div>
-        );
-      })()}
+      )}
 
       {/* ── 6. STICKY BOTTOM ACTION BAR ── */}
       {(()=>{
