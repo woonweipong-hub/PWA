@@ -10143,6 +10143,128 @@ function TopCheckWizard({currentProject,company,member,onSave,onClose}){
   );
 }
 
+// ── SetLocationSheet ──────────────────────────────────────────────
+// Bottom-sheet capture for the CONQUAS Officer session-level location
+// context. Three input paths converge on the same four-field state
+// (Block / Level / Unit / Location):
+//   1. 📷 SCAN SIGNBOARD — camera photo of a unit / floor marker; the
+//      photo is sent to the same analyzePhoto() pipeline as defect
+//      analysis but with a focused prompt that returns only the
+//      location fields. Pre-fills the form so the assessor can
+//      review + correct before saving.
+//   2. 🎙 Voice — every text field is a VoiceField, so voice input
+//      lands directly into the right slot without parsing.
+//   3. ⌨ Keyboard — fall-through manual entry on any field.
+// Saving writes the four fields plus capturedAt / source to the
+// caller's onSave, which persists into localStorage and triggers the
+// auto-fill effect in LogDefect.
+const SIGNBOARD_PROMPT=`Examine this photo and decide whether it shows a location signboard, unit-number plate, floor marker, or similar way-finding indicator inside a building/construction project.
+
+If YES, extract whatever is visible. Each field is optional — leave it as an empty string if not present:
+- block: the building / block / tower identifier (e.g. "Block 5", "Tower A", "Building C2")
+- unit: the unit / apartment number (e.g. "#03-12", "Unit 312", "Apt 7A")
+- level: the floor / level (e.g. "Level 3", "3rd Floor", "L3", "Basement 1")
+- location_name: a specific room or area name (e.g. "Lobby A", "Master Bedroom", "Common Corridor", "Roof Garden")
+
+Respond in valid JSON only with these exact keys:
+{"is_signboard": true|false, "block": "...", "unit": "...", "level": "...", "location_name": "...", "confidence": 0.0}
+
+If the photo is clearly NOT a signboard (a defect photo, a person, a tool, etc.), set "is_signboard": false and leave the string fields empty.`;
+
+// CONQUAS Officer Phase 3 — brochure / floor-plan layout extraction.
+// Run once when the user uploads a brochure-kind drawing. The result is
+// persisted on the drawings record as `brochureMeta` so downstream
+// features (drawing-context display, future pin-suggestion) can read
+// the spatial layout without re-asking the model. Positions are given as
+// percentages of the image so they survive viewer-scale changes.
+const BROCHURE_PROMPT=`Examine this floor plan / brochure / unit-layout image. Extract whatever spatial information is clearly visible. Every field is optional — leave it empty / omit if not present.
+
+Return:
+- block: building / block / tower this plan belongs to ("Block 5", "Tower A", or "")
+- level: floor / level ("Level 3", "3rd Floor", "L3", or "")
+- rooms: array of rooms / labelled spaces. Each: { "name": "...", "x_pct": 0-100, "y_pct": 0-100 } where x_pct/y_pct are the approximate centre of the room as a percentage of the image width/height (0,0 = top-left). Leave the array empty if you can't read room labels reliably.
+- grid_refs: array of visible grid markings (e.g. ["A","B","C","1","2","3"]). Leave empty if not visible.
+- notes: short free-text note about anything else relevant (1-2 sentences max).
+
+Respond in valid JSON only:
+{"block": "...", "level": "...", "rooms": [{"name":"...","x_pct":0,"y_pct":0}], "grid_refs": ["..."], "notes": "..."}`;
+function SetLocationSheet({initialCtx,onClose,onSave}){
+  const[ctx,setCtx]=useState(initialCtx||{block:"",unit:"",level:"",locationName:""});
+  const[scanning,setScanning]=useState(false);
+  const[scanError,setScanError]=useState("");
+  const[scanInfo,setScanInfo]=useState("");
+  const scanRef=useRef();
+  const aiReady=isAiConfigured();
+  const handleScan=e=>{
+    const file=e.target.files?.[0];
+    if(scanRef.current)scanRef.current.value="";
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=async()=>{
+      setScanning(true);setScanError("");setScanInfo("");
+      try{
+        const result=await analyzePhoto(reader.result,SIGNBOARD_PROMPT);
+        if(result&&typeof result==="object"){
+          if(result.is_signboard===false){
+            setScanError(t("log.signboard_not_detected"));
+          }else{
+            const got={
+              block:result.block||"",
+              unit:result.unit||"",
+              level:result.level||"",
+              locationName:result.location_name||"",
+            };
+            const any=got.block||got.unit||got.level||got.locationName;
+            if(!any){
+              setScanError(t("log.signboard_scan_no_data"));
+            }else{
+              setCtx(prev=>({
+                block:got.block||prev.block,
+                unit:got.unit||prev.unit,
+                level:got.level||prev.level,
+                locationName:got.locationName||prev.locationName,
+                source:"signboard",
+              }));
+              setScanInfo(t("log.signboard_scan_ok"));
+            }
+          }
+        }else{
+          setScanError(t("log.signboard_scan_no_data"));
+        }
+      }catch(err){
+        setScanError(err?.message||String(err));
+      }
+      setScanning(false);
+    };
+    reader.readAsDataURL(file);
+  };
+  const canSave=!!(ctx.block||ctx.unit||ctx.level||ctx.locationName);
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:600,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",background:"#f0ede8",borderTopLeftRadius:18,borderTopRightRadius:18,padding:"16px 16px max(16px, env(safe-area-inset-bottom))"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+          <div style={{fontSize:16,fontWeight:800,color:"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",flex:1}}>📍 {t("log.set_location_sheet_title")}</div>
+          <button onClick={onClose} style={{background:"transparent",border:"none",fontSize:22,color:"rgba(0,0,0,0.5)",cursor:"pointer",padding:"0 4px"}}>×</button>
+        </div>
+        <input type="file" accept="image/*" capture="environment" ref={scanRef} onChange={handleScan} style={{display:"none"}}/>
+        <button onClick={()=>scanRef.current?.click()} disabled={scanning||!aiReady} style={{width:"100%",padding:"14px 16px",marginBottom:scanError||scanInfo?6:14,background:scanning?"rgba(88,86,214,0.05)":"rgba(88,86,214,0.08)",border:"1.5px dashed rgba(88,86,214,0.4)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:aiReady&&!scanning?"pointer":"not-allowed",letterSpacing:"0.06em",display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:aiReady?1:0.6}}>
+          {scanning?<><Spin size={14}/><span>{t("log.signboard_scanning")}</span></>:<><span style={{fontSize:16}}>📷</span><span>{aiReady?t("log.signboard_scan_button"):t("log.signboard_scan_disabled")}</span></>}
+        </button>
+        {scanError&&<div style={{marginBottom:10,padding:"8px 10px",background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.25)",borderRadius:8,fontSize:11,color:"#cc0000"}}>{scanError}</div>}
+        {scanInfo&&!scanError&&<div style={{marginBottom:10,padding:"8px 10px",background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.25)",borderRadius:8,fontSize:11,color:"#1a7a35"}}>{scanInfo}</div>}
+        <VoiceField label={t("log.field_block")} value={ctx.block} onChange={v=>setCtx(c=>({...c,block:v}))} placeholder={t("log.field_block_placeholder")}/>
+        <VoiceField label={t("log.field_level")} value={ctx.level} onChange={v=>setCtx(c=>({...c,level:v}))} placeholder={t("log.field_level_placeholder")}/>
+        <VoiceField label={t("log.field_unit")} value={ctx.unit} onChange={v=>setCtx(c=>({...c,unit:v}))} placeholder={t("log.field_unit_placeholder")}/>
+        <VoiceField label={t("log.field_location_name")} value={ctx.locationName} onChange={v=>setCtx(c=>({...c,locationName:v}))} placeholder={t("log.field_location_name_placeholder")}/>
+        <div style={{display:"flex",gap:8,marginTop:14}}>
+          <button onClick={onClose} style={{flex:1,minHeight:46,background:"rgba(0,0,0,0.05)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:12,color:"#3a3a3a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,letterSpacing:"0.04em",cursor:"pointer"}}>{t("log.cancel")}</button>
+          <button onClick={()=>{onSave({...ctx,capturedAt:new Date().toISOString(),source:ctx.source||"manual"});onClose();}} disabled={!canSave} style={{flex:2,minHeight:46,background:canSave?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:14,color:canSave?"#fff":"rgba(0,0,0,0.3)",fontSize:15,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",cursor:canSave?"pointer":"not-allowed"}}>{t("log.save_location")}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LogDefect({member,company,currentProject,members,onSave,existingDefects=[],onViewEntry,onTagDrawing,onStartConquas,onStartQualityCheck,onStartTopWizard,onOpenProjects,pendingBatchTrigger,onBatchHandled}){
   const savedWorkCat=local.get(WORK_CATEGORY_KEY)||"Building Defects (Landed)";
   const blank={title:"",location:"",severity:"Major",description:"",assignee:member?.name||"",photos:[],
@@ -10211,6 +10333,19 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // The clean fix: keep entryType="Defect", inject source_type explicitly
   // at save time, persist the marker for the whole batch lifetime.
   const[batchSourceType,setBatchSourceType]=useState(null);
+
+  // CONQUAS Officer session-level location context (Block / Unit / Level /
+  // Room). Hydrated from localStorage at mount; updated via the Set
+  // Location sheet (camera AI / voice / keyboard). Auto-fills the location
+  // hierarchy of new defect entries so an assessor doesn't re-type the
+  // same Block-7 / #03-12 / Lobby for every defect in the same unit.
+  const[locationCtx,setLocationCtx]=useState(()=>local.get(LOCATION_CONTEXT_KEY)||null);
+  const[showSetLocation,setShowSetLocation]=useState(false);
+  const persistLocationCtx=(ctx)=>{
+    setLocationCtx(ctx);
+    if(!ctx)local.del(LOCATION_CONTEXT_KEY);
+    else local.set(LOCATION_CONTEXT_KEY,ctx);
+  };
 
   // CONQUAS-batch entry point handshake. When the user taps
   // [BATCH PROCESS FOLDER] inside the CONQUAS wizard, the wizard
@@ -10388,6 +10523,32 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // Reset the GPS-tried gate when the form is cleared (post-save) so the
   // next capture re-fires geolocation instead of being silently skipped.
   useEffect(()=>{if(!form.photos.length&&!form.title&&!form.description)_gpsTriedRef.current=false;},[form.photos.length,form.title,form.description]);
+
+  // CONQUAS Officer auto-fill: when an active location context exists and
+  // the location hierarchy is still empty (fresh form / post-save reset),
+  // pre-fill from the captured signboard so each entry inherits Block /
+  // Unit / Level / Room without retyping. Only fires when workCategory
+  // is CONQUAS Officer; other modes are unaffected.
+  //
+  // Mapping uses the existing location hierarchy slots:
+  //   locationLevel    ← ctx.level    ("Level 3")
+  //   locationZone     ← ctx.block    ("Block 5")          [hidden field, still saved]
+  //   locationSubzone  ← ctx.unit + locationName           ("#03-12 — Lobby A")
+  // This way the existing locationDisplay join at submit
+  // ("Level 3 > Block 5 > #03-12 — Lobby A") works without schema changes.
+  useEffect(()=>{
+    if(form.workCategory!=="CONQUAS Officer")return;
+    if(!locationCtx)return;
+    if(form.locationLevel||form.locationZone||form.locationSubzone)return;
+    const subzone=[locationCtx.unit,locationCtx.locationName].filter(Boolean).join(" — ");
+    setForm(f=>({
+      ...f,
+      locationLevel:f.locationLevel||locationCtx.level||"",
+      locationZone:f.locationZone||locationCtx.block||"",
+      locationSubzone:f.locationSubzone||subzone||"",
+    }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[locationCtx,form.workCategory,form.locationLevel,form.locationZone,form.locationSubzone]);
 
   const handlePhoto=e=>{
     // Strict filter matching the PocketBase schema (JPEG/PNG/WebP only).
@@ -11722,6 +11883,53 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
 
       {/* ── 0. WORK CATEGORY — Step 1; sets AI variant context; pick before capturing ── */}
       <ComboField label={<>{t("fields.work_category")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_1_scope")}</span></>} value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")} displayFn={workcatDisplayFn}/>
+
+      {/* CONQUAS Officer locked project context. Project ID + Project Name
+          are project-level fields edited in REPORT → Project Setup; here
+          they are read-only so assessors don't accidentally rewrite them
+          per entry. */}
+      {form.workCategory==="CONQUAS Officer"&&(
+        <div style={{marginBottom:14,padding:"10px 12px",background:"rgba(88,86,214,0.05)",border:"1px solid rgba(88,86,214,0.18)",borderRadius:12}}>
+          <div style={{fontSize:9,fontWeight:800,color:"#5856d6",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>{t("log.project_context")}</div>
+          <div style={{display:"flex",flexDirection:"column",gap:4}}>
+            <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+              <span style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em",minWidth:78}}>{t("fields.project_id")}</span>
+              <span style={{fontSize:13,fontWeight:800,color:currentProject?.projectRef?"#1a1a1a":"rgba(255,59,48,0.85)",fontFamily:"'Barlow',sans-serif"}}>{currentProject?.projectRef||t("log.project_id_missing")}</span>
+            </div>
+            <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+              <span style={{fontSize:10,fontWeight:700,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em",minWidth:78}}>{t("fields.project_name_label")}</span>
+              <span style={{fontSize:13,fontWeight:800,color:"#1a1a1a",fontFamily:"'Barlow',sans-serif"}}>{currentProject?.name||"—"}</span>
+            </div>
+          </div>
+          <div style={{fontSize:10,color:"rgba(0,0,0,0.45)",marginTop:6,fontStyle:"italic"}}>{t("log.project_context_edit_hint")}</div>
+
+          {/* Active session location context. Auto-fills the location
+              hierarchy on every new defect entry; persists in localStorage
+              so the walk survives reload / browser background. */}
+          <div style={{marginTop:10,paddingTop:10,borderTop:"1px dashed rgba(88,86,214,0.25)"}}>
+            <div style={{fontSize:9,fontWeight:800,color:"#5856d6",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>{t("log.location_context")}</div>
+            {locationCtx?(
+              <>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
+                  {locationCtx.block&&<span style={{fontSize:11,fontWeight:700,background:"rgba(88,86,214,0.12)",color:"#5856d6",padding:"3px 9px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.03em"}}>🏢 {locationCtx.block}</span>}
+                  {locationCtx.level&&<span style={{fontSize:11,fontWeight:700,background:"rgba(48,209,88,0.12)",color:"#1a7a35",padding:"3px 9px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.03em"}}>📶 {locationCtx.level}</span>}
+                  {locationCtx.unit&&<span style={{fontSize:11,fontWeight:700,background:"rgba(255,107,0,0.12)",color:"#ff6b00",padding:"3px 9px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.03em"}}>🚪 {locationCtx.unit}</span>}
+                  {locationCtx.locationName&&<span style={{fontSize:11,fontWeight:700,background:"rgba(0,0,0,0.06)",color:"rgba(0,0,0,0.7)",padding:"3px 9px",borderRadius:10,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.03em"}}>📍 {locationCtx.locationName}</span>}
+                </div>
+                <div style={{display:"flex",gap:6}}>
+                  <button onClick={()=>setShowSetLocation(true)} style={{flex:1,background:"rgba(88,86,214,0.08)",border:"1.5px solid rgba(88,86,214,0.3)",borderRadius:10,padding:"8px 10px",color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",letterSpacing:"0.04em"}}>📍 {t("log.update_location")}</button>
+                  <button onClick={()=>{if(confirm(t("log.clear_location_confirm")))persistLocationCtx(null);}} style={{background:"rgba(255,59,48,0.08)",border:"1.5px solid rgba(255,59,48,0.3)",borderRadius:10,padding:"8px 10px",color:"#ff3b30",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer",letterSpacing:"0.04em"}}>✕</button>
+                </div>
+              </>
+            ):(
+              <button onClick={()=>setShowSetLocation(true)} style={{width:"100%",background:"rgba(88,86,214,0.08)",border:"1.5px dashed rgba(88,86,214,0.4)",borderRadius:10,padding:"10px",color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer",letterSpacing:"0.06em",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                📍 {t("log.set_location_button")}
+              </button>
+            )}
+            <div style={{fontSize:10,color:"rgba(0,0,0,0.45)",marginTop:6,fontStyle:"italic"}}>{t("log.location_context_hint")}</div>
+          </div>
+        </div>
+      )}
       {(()=>{const v=_getAiVariant(form.workCategory);if(!v||!v.addendum)return null;return(
         <div style={{marginTop:-10,marginBottom:12,padding:"8px 12px",borderRadius:8,background:"rgba(88,86,214,0.06)",borderLeft:"3px solid #5856d6",fontSize:11,color:"rgba(0,0,0,0.65)",fontFamily:"'Barlow Condensed',sans-serif",lineHeight:1.4}}>
           <div style={{fontWeight:800,color:"#5856d6",letterSpacing:"0.06em",fontSize:9,marginBottom:3}}>{t("log.variant_hint_label")}</div>
@@ -11863,7 +12071,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
                   {aiResult.entry_type&&aiResult.entry_type!=="Defect"&&<span style={{fontSize:10,fontWeight:700,background:"rgba(52,170,220,0.12)",color:"#34aadc",padding:"2px 8px",borderRadius:10}}>{aiResult.entry_type}</span>}
                   {aiResult.location_area&&<span style={{fontSize:10,fontWeight:700,background:"rgba(48,209,88,0.1)",color:"#1a7a35",padding:"2px 8px",borderRadius:10}}>📍 {aiResult.location_area}</span>}
                   {aiResult.suggested_assignee&&<span style={{fontSize:10,fontWeight:700,background:"rgba(255,107,0,0.1)",color:"#ff6b00",padding:"2px 8px",borderRadius:10}}>👤 → {aiResult.suggested_assignee}</span>}
-                  {aiResult.safety_risk&&aiResult.safety_risk>=3&&<span style={{fontSize:10,fontWeight:700,background:aiResult.safety_risk>=4?"rgba(255,59,48,0.15)":"rgba(255,149,0,0.15)",color:aiResult.safety_risk>=4?"#ff3b30":"#ff9500",padding:"2px 8px",borderRadius:10}}>⚠️ Safety {aiResult.safety_risk}/5</span>}
+                  {aiResult.safety_risk&&aiResult.safety_risk>=3&&form.workCategory!=="CONQUAS Officer"&&<span style={{fontSize:10,fontWeight:700,background:aiResult.safety_risk>=4?"rgba(255,59,48,0.15)":"rgba(255,149,0,0.15)",color:aiResult.safety_risk>=4?"#ff3b30":"#ff9500",padding:"2px 8px",borderRadius:10}}>⚠️ Safety {aiResult.safety_risk}/5</span>}
                 </div>
               </div>
             )}
@@ -11887,14 +12095,23 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         </div>
       )}
 
-      {/* ── 3. TITLE ── */}
-      <VoiceField label={<>{t("fields.title")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_3_title")}</span><ProvChip prov={form.fieldProvenance?.title}/></>} value={form.title} onChange={v=>set("title",v)} placeholder={t("fields.title_placeholder")}/>
+      {/* ── 3. TITLE — hidden in CONQUAS Officer mode (project name is the
+              locked project-level context above; per-entry title is auto-
+              derived from component/issue or description at save time). ── */}
+      {form.workCategory!=="CONQUAS Officer"&&(
+        <VoiceField label={<>{t("fields.title")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_3_title")}</span><ProvChip prov={form.fieldProvenance?.title}/></>} value={form.title} onChange={v=>set("title",v)} placeholder={t("fields.title_placeholder")}/>
+      )}
 
       {/* ── 4. WHAT HAPPENED ── */}
       <VoiceField label={<>{t("fields.what_happened")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_4_describe")}</span><ProvChip prov={form.fieldProvenance?.description}/></>} value={form.description} onChange={v=>set("description",v)} placeholder={t("fields.description_placeholder")} multiline/>
 
-      {/* ── 5. SEVERITY ── */}
-      <ComboField label={<>{t("fields.severity")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_5_severity")}</span><ProvChip prov={form.fieldProvenance?.severity}/></>} value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder={t("fields.severity_placeholder")} displayFn={sevDisplayFn}/>
+      {/* ── 5. SEVERITY — hidden for CONQUAS Officer (BCA scoring is
+              pass/fail with deduction, not safety-severity tiered). The
+              underlying severity field stays in the data model with the
+              existing default so existing exports/filters keep working. ── */}
+      {form.workCategory!=="CONQUAS Officer"&&(
+        <ComboField label={<>{t("fields.severity")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_5_severity")}</span><ProvChip prov={form.fieldProvenance?.severity}/></>} value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder={t("fields.severity_placeholder")} displayFn={sevDisplayFn}/>
+      )}
 
       {/* ── MORE DETAILS accordion ── */}
       <button onClick={()=>setShowMoreDetails(!showMoreDetails)} style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:12,padding:"14px 16px",marginBottom:showMoreDetails?16:0,display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}}>
@@ -11902,11 +12119,18 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         <span style={{fontSize:12,color:"rgba(0,0,0,0.35)",transition:"transform 0.2s",transform:showMoreDetails?"rotate(180deg)":"rotate(0deg)"}}>▼</span>
       </button>
 
-      {showMoreDetails&&(
+      {showMoreDetails&&(()=>{
+        const isOfficer=form.workCategory==="CONQUAS Officer";
+        return(
         <div style={{animation:"fadeIn 0.2s ease",marginTop:showMoreDetails?0:0}}>
-          {/* Entry Type */}
-          <ComboField label={<>{t("fields.entry_type")}<ProvChip prov={form.fieldProvenance?.entryType}/></>} value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder={t("fields.entry_type_placeholder")} displayFn={tOpt}/>
-          <div style={{marginTop:-10,marginBottom:12}}><button onClick={()=>setShowTypeManager(true)} style={{background:"none",border:"none",fontSize:11,color:"rgba(255,107,0,0.7)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:0}}>⚙ Manage custom types</button></div>
+          {/* Entry Type — hidden for CONQUAS Officer (assessor scope is
+              a single defect class). */}
+          {!isOfficer&&(
+            <>
+              <ComboField label={<>{t("fields.entry_type")}<ProvChip prov={form.fieldProvenance?.entryType}/></>} value={form.entryType} onChange={v=>set("entryType",v)} options={getAllEntryTypes()} placeholder={t("fields.entry_type_placeholder")} displayFn={tOpt}/>
+              <div style={{marginTop:-10,marginBottom:12}}><button onClick={()=>setShowTypeManager(true)} style={{background:"none",border:"none",fontSize:11,color:"rgba(255,107,0,0.7)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,padding:0}}>⚙ Manage custom types</button></div>
+            </>
+          )}
 
           {/* Item / Part (was Component) */}
           <ComboField label={<>{t("fields.item_part")}<ProvChip prov={form.fieldProvenance?.component}/></>} value={form.component} onChange={v=>{set("component",v);set("issue","");}} grouped={activeComponentGroups} placeholder={t("fields.item_part_placeholder")} displayFn={tOpt}/>
@@ -11916,39 +12140,54 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
             <ComboField label={<>{t("fields.issue")}<ProvChip prov={form.fieldProvenance?.issue}/></>} value={form.issue} onChange={v=>{set("issue",v);if(!form.title)set("title",form.component+" — "+v);}} options={COMPONENT_ISSUES[form.component]||COMPONENT_ISSUES["General"]} placeholder={t("fields.issue_placeholder")} displayFn={tOpt}/>
           )}
 
-          {/* Location hierarchy */}
+          {/* Location hierarchy. Zone + Grid Ref hidden for CONQUAS Officer
+              (assessor cares about block / unit / room, which come from the
+              project-level signboard context — Zone and grid-ref are layout
+              metadata that belongs to the contractor view). */}
           <ComboField label={<>{t("fields.level_floor")}<ProvChip prov={form.fieldProvenance?.locationLevel}/></>} value={form.locationLevel} onChange={v=>set("locationLevel",v)} options={DEFAULT_LEVELS} placeholder={t("fields.level_floor_placeholder")} displayFn={tOpt}/>
-          <ComboField label={<>{t("fields.zone")}<ProvChip prov={form.fieldProvenance?.locationZone}/></>} value={form.locationZone} onChange={v=>set("locationZone",v)} options={DEFAULT_ZONES} placeholder={t("fields.zone_placeholder")} displayFn={tOpt}/>
+          {!isOfficer&&(
+            <ComboField label={<>{t("fields.zone")}<ProvChip prov={form.fieldProvenance?.locationZone}/></>} value={form.locationZone} onChange={v=>set("locationZone",v)} options={DEFAULT_ZONES} placeholder={t("fields.zone_placeholder")} displayFn={tOpt}/>
+          )}
           <ComboField label={<>{t("fields.room_area")}<ProvChip prov={form.fieldProvenance?.locationSubzone}/></>} value={form.locationSubzone} onChange={v=>set("locationSubzone",v)} options={DEFAULT_SUBZONES} placeholder={t("fields.room_area_placeholder")} displayFn={tOpt}/>
-          <VoiceField label={t("fields.grid_ref")} value={form.locationGrid} onChange={v=>set("locationGrid",v)} placeholder={t("fields.grid_ref_placeholder")}/>
+          {!isOfficer&&(
+            <VoiceField label={t("fields.grid_ref")} value={form.locationGrid} onChange={v=>set("locationGrid",v)} placeholder={t("fields.grid_ref_placeholder")}/>
+          )}
 
-          {/* Assignee */}
-          <ComboField label={<>{t("fields.assign_to")}<ProvChip prov={form.fieldProvenance?.assignee}/></>} value={form.assignee} onChange={v=>set("assignee",v)} options={assignees} placeholder={t("fields.assign_to_placeholder")}/>
+          {/* Assignee + sub-contractor org + contact — hidden for CONQUAS
+              Officer; the assessor records findings, not work assignments. */}
+          {!isOfficer&&(
+            <>
+              <ComboField label={<>{t("fields.assign_to")}<ProvChip prov={form.fieldProvenance?.assignee}/></>} value={form.assignee} onChange={v=>set("assignee",v)} options={assignees} placeholder={t("fields.assign_to_placeholder")}/>
+              <VoiceField label={t("fields.assignee_org")} value={form.assignee_org} onChange={v=>set("assignee_org",v)} placeholder={t("fields.assignee_org_placeholder")}/>
+              <VoiceField label={t("fields.assignee_org_contact")} value={form.assignee_org_contact} onChange={v=>set("assignee_org_contact",v)} placeholder={t("fields.assignee_org_contact_placeholder")}/>
+            </>
+          )}
 
-          {/* Subcontractor / vendor org (gap #1 v1) — beside the in-company
-              Assignee. Both optional; the "send to plumber sub" workflow
-              uses these to route the issue to an external trade. */}
-          <VoiceField label={t("fields.assignee_org")} value={form.assignee_org} onChange={v=>set("assignee_org",v)} placeholder={t("fields.assignee_org_placeholder")}/>
-          <VoiceField label={t("fields.assignee_org_contact")} value={form.assignee_org_contact} onChange={v=>set("assignee_org_contact",v)} placeholder={t("fields.assignee_org_contact_placeholder")}/>
-
-          {/* Cost & Time */}
+          {/* Cost & Time — Cost Change (and its children) hidden for CONQUAS
+              Officer; assessor scope is non-contractual. Due-date + time-
+              needed stay so an assessor can still flag remedial timelines. */}
           <div style={{background:"rgba(0,0,0,0.02)",borderRadius:12,padding:14,marginBottom:16,border:"1px solid rgba(0,0,0,0.06)"}}>
             <div style={{marginBottom:12}}>
               <label style={lbl()}>{t("log.due_date")}<ProvChip prov={form.fieldProvenance?.dueDate}/></label>
               <input type="date" value={form.dueDate} onChange={e=>set("dueDate",e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
             </div>
             <ComboField label={<>{t("fields.time_needed")}<ProvChip prov={form.fieldProvenance?.duration}/></>} value={form.duration} onChange={v=>set("duration",v)} options={DURATION_OPTIONS} placeholder={t("fields.time_needed_placeholder")} displayFn={tOpt}/>
-            <ComboField label={<>{t("fields.cost_change")}<ProvChip prov={form.fieldProvenance?.costImpact}/></>} value={form.costImpact} onChange={v=>set("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder={t("fields.cost_change_placeholder")} displayFn={tOpt}/>
-            {form.costImpact&&form.costImpact!=="No change"&&form.costImpact!=="To be confirmed by QS"&&(
+            {!isOfficer&&(
               <>
-                <VoiceField label={t("fields.cost_amount")} value={form.costAmount} onChange={v=>set("costAmount",v)} placeholder={t("fields.cost_amount_placeholder")} inputMode="decimal"/>
-                <ComboField label={t("fields.cost_responsible")} value={form.costResponsible} onChange={v=>set("costResponsible",v)} options={COST_RESPONSIBLE_OPTIONS} placeholder={t("fields.cost_responsible_placeholder")} displayFn={tOpt}/>
-                <VoiceField label={t("fields.cost_remarks")} value={form.costRemarks} onChange={v=>set("costRemarks",v)} placeholder={t("fields.cost_remarks_placeholder")} multiline/>
+                <ComboField label={<>{t("fields.cost_change")}<ProvChip prov={form.fieldProvenance?.costImpact}/></>} value={form.costImpact} onChange={v=>set("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder={t("fields.cost_change_placeholder")} displayFn={tOpt}/>
+                {form.costImpact&&form.costImpact!=="No change"&&form.costImpact!=="To be confirmed by QS"&&(
+                  <>
+                    <VoiceField label={t("fields.cost_amount")} value={form.costAmount} onChange={v=>set("costAmount",v)} placeholder={t("fields.cost_amount_placeholder")} inputMode="decimal"/>
+                    <ComboField label={t("fields.cost_responsible")} value={form.costResponsible} onChange={v=>set("costResponsible",v)} options={COST_RESPONSIBLE_OPTIONS} placeholder={t("fields.cost_responsible_placeholder")} displayFn={tOpt}/>
+                    <VoiceField label={t("fields.cost_remarks")} value={form.costRemarks} onChange={v=>set("costRemarks",v)} placeholder={t("fields.cost_remarks_placeholder")} multiline/>
+                  </>
+                )}
               </>
             )}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ── 6. STICKY BOTTOM ACTION BAR ── */}
       {(()=>{
@@ -12152,6 +12391,12 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         <WebcamCapture
           onPhoto={file=>{setShowWebcam(false);handlePhoto({target:{files:[file]}});}}
           onClose={()=>setShowWebcam(false)}/>
+      )}
+      {showSetLocation&&(
+        <SetLocationSheet
+          initialCtx={locationCtx}
+          onClose={()=>setShowSetLocation(false)}
+          onSave={ctx=>persistLocationCtx(ctx)}/>
       )}
     </div>
   );
@@ -15666,10 +15911,26 @@ function ProjectSetupPanel({currentProject,member,company,onProjectUpdate}){
   const[profiles,setProfiles]=useState([]);
   const[profileBusy,setProfileBusy]=useState(false);
   const[profileBumper,setProfileBumper]=useState(0); // re-render trigger after flag toggle
+  const[projectRefDraft,setProjectRefDraft]=useState(currentProject?.projectRef||"");
+  const[projectRefBusy,setProjectRefBusy]=useState(false);
+  useEffect(()=>{ setProjectRefDraft(currentProject?.projectRef||""); },[currentProject?.id,currentProject?.projectRef]);
   useEffect(()=>{
     loadExportProfiles().then(d=>setProfiles(Array.isArray(d.profiles)?d.profiles:[])).catch(()=>{});
   },[]);
   if(!currentProject||!canManage)return null;
+  const saveProjectRef=async()=>{
+    const next=(projectRefDraft||"").trim();
+    if(next===(currentProject.projectRef||""))return;
+    // 7-digit numeric is the CONQUAS Officer convention; warn but don't
+    // block other formats so non-CONQUAS projects can use the same field.
+    if(next&&!/^\d{7}$/.test(next)&&!confirm(t("project_setup.project_id_non_standard")))return;
+    setProjectRefBusy(true);
+    try{
+      await DB.projects.update(currentProject.id,{projectRef:next});
+      if(onProjectUpdate)onProjectUpdate({...currentProject,projectRef:next});
+    }catch(e){alert("Could not save Project ID: "+(e?.message||e));}
+    setProjectRefBusy(false);
+  };
   const checklistText=currentProject.quality_checklist||"";
   const checklistLines=checklistText.split(/\n/).filter(l=>l.trim()&&!l.trim().startsWith("#")).length;
   const hasChecklist=!!checklistText.trim();
@@ -15709,6 +15970,26 @@ function ProjectSetupPanel({currentProject,member,company,onProjectUpdate}){
     <div style={{background:"#fff",borderRadius:14,padding:14,marginBottom:14,border:"1px solid rgba(0,0,0,0.06)"}}>
       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,letterSpacing:"0.06em",color:"rgba(0,0,0,0.55)",marginBottom:10}}>
         ⚙️ PROJECT SETUP
+      </div>
+      {/* Project ID — drives the locked context shown at the top of LOG
+          when workCategory === "CONQUAS Officer". 7-digit numeric is the
+          CONQUAS convention but the field accepts any reference so other
+          modes can use it too. */}
+      <div style={{marginBottom:12,paddingBottom:12,borderBottom:"1px solid rgba(0,0,0,0.06)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:14,flexShrink:0}}>🆔</span>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:"#1a1a1a",letterSpacing:"0.03em"}}>{t("project_setup.project_id_label")}</div>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.55)",marginTop:2,lineHeight:1.35}}>{t("project_setup.project_id_desc")}</div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:6,marginTop:8}}>
+          <input type="text" inputMode="numeric" maxLength={12} value={projectRefDraft} onChange={e=>setProjectRefDraft(e.target.value.replace(/[^0-9A-Za-z\-_]/g,""))} placeholder={t("project_setup.project_id_placeholder")} style={{flex:1,padding:"9px 12px",border:`1px solid ${projectRefDraft&&!/^\d{7}$/.test(projectRefDraft)?"rgba(255,149,0,0.4)":"rgba(0,0,0,0.15)"}`,borderRadius:8,fontFamily:"'Barlow',sans-serif",fontSize:13,fontWeight:700,background:"#fff",boxSizing:"border-box",letterSpacing:"0.04em"}}/>
+          <button onClick={saveProjectRef} disabled={projectRefBusy||projectRefDraft===(currentProject.projectRef||"")} style={{background:projectRefBusy?"rgba(0,0,0,0.1)":"#ff6b00",border:"none",borderRadius:8,padding:"9px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,letterSpacing:"0.04em",cursor:projectRefBusy?"wait":"pointer",minHeight:36,opacity:projectRefDraft===(currentProject.projectRef||"")?0.4:1}}>{projectRefBusy?"SAVING…":"SAVE"}</button>
+        </div>
+        {projectRefDraft&&!/^\d{7}$/.test(projectRefDraft)&&(
+          <div style={{fontSize:10,color:"#ff9500",marginTop:6,lineHeight:1.4}}>{t("project_setup.project_id_format_hint")}</div>
+        )}
       </div>
       {/* Custom Quality Checklist */}
       <div style={{marginBottom:profiles.length>0?12:0}}>
@@ -19800,6 +20081,8 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[viewingSaved,setViewingSaved]=useState(null);
   const fileRef=useRef();
   const convertRef=useRef();
+  const brochureRef=useRef();
+  const[brochureBusyId,setBrochureBusyId]=useState(null);
   const[converting,setConverting]=useState(false);
   // {label, pct (0..100), stage, totalFiles, fileIdx}  — null when idle.
   const[convertProgress,setConvertProgress]=useState(null);
@@ -19927,6 +20210,66 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     }catch(err){alert("Upload failed: "+err.message);}
     setUploading(false);
     if(fileRef.current)fileRef.current.value="";
+  };
+
+  // Brochure upload (CONQUAS Officer Phase 3). Same upload path as a
+  // normal drawing, but tagged kind="brochure" and immediately handed to
+  // the AI for layout extraction. AI failure is non-fatal — the brochure
+  // still saves; the user can edit the metadata via the inline form on
+  // the brochure tile.
+  const uploadBrochure=async e=>{
+    const file=e.target.files?.[0];
+    if(brochureRef.current)brochureRef.current.value="";
+    if(!file)return;
+    setUploading(true);
+    let rec=null;
+    try{
+      rec=await DB.drawings.createWithFile({
+        companyId:company.companyId,
+        projectId:currentProject.id,
+        name:file.name.replace(/\.[^.]+$/,""),
+        uploadedBy:member?.name||"",
+        uploadedAt:new Date().toISOString(),
+        kind:"brochure"
+      },"file",file,file.name);
+      setDrawings(prev=>[{...rec,kind:"brochure"},...prev]);
+    }catch(err){
+      alert(t("log.brochure_upload_failed")+" "+err.message);
+      setUploading(false);
+      return;
+    }
+    setUploading(false);
+    // Fire-and-forget AI extraction so the spinner doesn't block the
+    // drawing list re-render. Per-record spinner state via brochureBusyId.
+    if(rec&&isAiConfigured()&&/^image\//i.test(file.type||"")){
+      setBrochureBusyId(rec.id);
+      try{
+        const dataUrl=await new Promise((res,rej)=>{
+          const r=new FileReader();
+          r.onload=()=>res(r.result);
+          r.onerror=()=>rej(new Error("read failed"));
+          r.readAsDataURL(file);
+        });
+        const result=await analyzePhoto(dataUrl,BROCHURE_PROMPT);
+        if(result&&typeof result==="object"){
+          const meta={
+            block:result.block||"",
+            level:result.level||"",
+            rooms:Array.isArray(result.rooms)?result.rooms:[],
+            grid_refs:Array.isArray(result.grid_refs)?result.grid_refs:[],
+            notes:result.notes||"",
+            extracted_at:new Date().toISOString()
+          };
+          try{
+            await DB.drawings.update(rec.id,{brochureMeta:meta});
+            setDrawings(prev=>prev.map(d=>d.id===rec.id?{...d,brochureMeta:meta}:d));
+          }catch(updErr){console.warn("[Brochure] meta save failed:",updErr?.message||updErr);}
+        }
+      }catch(extractErr){
+        console.warn("[Brochure] AI extract failed:",extractErr?.message||extractErr);
+      }
+      setBrochureBusyId(null);
+    }
   };
 
   // Raster-to-vector: trace one JPG/PNG sketch into a single-page vector PDF.
@@ -22138,6 +22481,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
         ):(<>
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/tiff,application/pdf,.pdf,.tif,.tiff" onChange={uploadDrawing} style={{display:"none"}}/>
         <input ref={convertRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf" multiple onChange={convertJpgsToPdf} style={{display:"none"}}/>
+        <input ref={brochureRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadBrochure} style={{display:"none"}}/>
         {converting&&convertProgress&&(
           <div style={{background:"rgba(52,199,89,0.12)",border:"1px solid rgba(52,199,89,0.35)",borderRadius:10,padding:"10px 12px",marginBottom:12,fontFamily:"'Barlow Condensed',sans-serif"}}>
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,fontSize:12,color:"#1a6a33",fontWeight:700}}>
@@ -22155,13 +22499,20 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           </div>
         )}
 
-        {/* Action bar — four equal-width buttons, spread across the row so
-            labels breathe and the right edge stays inside the viewport on
-            narrow phones. */}
+        {/* Action bar — Upload / Brochure / Convert / Compare / Download.
+            Equal-width buttons, spread across the row so labels breathe
+            and the right edge stays inside the viewport on narrow phones.
+            Brochure is a JPG/PNG/WebP-only upload that flags kind="brochure"
+            and runs AI extraction on the layout. */}
         <div style={{display:"flex",alignItems:"stretch",gap:6,marginBottom:16}}>
           {canUpload&&(
             <button onClick={()=>fileRef.current?.click()} disabled={uploading} title="Upload a drawing — JPG, PNG, PDF or TIFF stored as-is. View, pin defects, and use PDFs in Compare." style={{flex:1,minWidth:0,borderRadius:10,background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.12)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 10px",gap:5}}>
               {uploading?<Spin size={16}/>:<><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 16V3m0 0L7 8m5-5l5 5" stroke="rgba(0,0,0,0.55)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="rgba(0,0,0,0.55)" strokeWidth="1.8" strokeLinecap="round"/></svg><span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(0,0,0,0.55)"}}>Upload</span></>}
+            </button>
+          )}
+          {canUpload&&(
+            <button onClick={()=>brochureRef.current?.click()} disabled={uploading} title={t("log.brochure_button_title")} style={{flex:1,minWidth:0,borderRadius:10,background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.3)",cursor:uploading?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px 10px",gap:5}}>
+              <span style={{fontSize:14}}>📋</span><span style={{fontSize:12,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",color:"rgba(88,86,214,0.9)"}}>{t("log.brochure_button")}</span>
             </button>
           )}
           {canUpload&&(
@@ -22396,11 +22747,25 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
               </div>
               <div style={{padding:"12px 14px"}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                  <div>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a"}}>{d.name}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,color:"#1a1a1a"}}>{d.name}</div>
+                      {d.kind==="brochure"&&<span style={{fontSize:9,fontWeight:800,color:"#5856d6",background:"rgba(88,86,214,0.12)",border:"1px solid rgba(88,86,214,0.3)",borderRadius:8,padding:"1px 6px",letterSpacing:"0.06em",fontFamily:"'Barlow Condensed',sans-serif"}}>📋 {t("log.brochure_badge")}</span>}
+                      {brochureBusyId===d.id&&<span style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:9,fontWeight:700,color:"#5856d6"}}><Spin size={10}/>{t("log.brochure_reading")}</span>}
+                    </div>
                     <div style={{fontSize:11,color:"rgba(0,0,0,0.4)"}}>By {d.uploadedBy||"—"} · {d.uploadedAt?new Date(d.uploadedAt).toLocaleDateString():""}</div>
+                    {d.kind==="brochure"&&d.brochureMeta&&(()=>{
+                      const m=d.brochureMeta;
+                      const parts=[];
+                      if(m.block)parts.push(`🏢 ${m.block}`);
+                      if(m.level)parts.push(`📶 ${m.level}`);
+                      if(Array.isArray(m.rooms)&&m.rooms.length)parts.push(`📍 ${m.rooms.length} ${t(m.rooms.length>1?"log.brochure_rooms_plural":"log.brochure_rooms_singular")}`);
+                      if(Array.isArray(m.grid_refs)&&m.grid_refs.length)parts.push(`▦ ${m.grid_refs.length} ${t(m.grid_refs.length>1?"log.brochure_grid_refs_plural":"log.brochure_grid_refs_singular")}`);
+                      if(!parts.length)return null;
+                      return <div style={{fontSize:10,color:"rgba(88,86,214,0.85)",marginTop:3,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.03em"}}>{parts.join(" · ")}</div>;
+                    })()}
                   </div>
-                  {!selectMode&&member?.role==="Admin"&&<button onClick={e=>{e.stopPropagation();deleteDrawing(d.id);}} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:"#ff3b30",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.delete")}</button>}
+                  {!selectMode&&member?.role==="Admin"&&<button onClick={e=>{e.stopPropagation();deleteDrawing(d.id);}} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:"#ff3b30",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",flexShrink:0,marginLeft:8}}>{t("actions.delete")}</button>}
                 </div>
                 {(drawingPins.length>0||drawingNotes.length>0||drawingMarkup.length>0)&&(
                   <div style={{display:"flex",alignItems:"center",gap:6,marginTop:8,flexWrap:"wrap"}}>

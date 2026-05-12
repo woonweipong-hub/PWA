@@ -349,6 +349,16 @@ const WORK_CATEGORIES = {
     desc: "CONQUAS-scored handover — Internal Finishes assessment",
     groups: ["Architectural","Finishes","Carpentry","Sanitary","M&E – Plumbing","M&E – Electrical","M&E – ACMV","General"],
   },
+  // Stripped-down assessor scope: hides per-entry meta (assignment / cost /
+  // grid / zone / entry type / safety severity) and replaces the per-entry
+  // title with project-level locked context (Project ID + Project Name).
+  // Photos auto-inherit a session-level location context captured from a
+  // signboard photo or the Set Location button.
+  "CONQUAS Officer": {
+    icon: "\u{1F3DB}️",
+    desc: "CONQUAS assessor scope — minimal meta, project-locked context, AI auto-fill from signboard photos",
+    groups: ["Architectural","Finishes","Carpentry","Sanitary","M&E – Plumbing","M&E – Electrical","M&E – ACMV","General"],
+  },
   "Handover Walkthrough": {
     icon: "\u{1F511}", // 🔑
     desc: "Pre-handover snag list — finishes, sanitary, fixtures, doors/windows, electrical points",
@@ -410,6 +420,15 @@ const WORK_CATEGORIES = {
   },
 };
 const WORK_CATEGORY_KEY = "sdt-work-category-v1";
+
+// CONQUAS Officer session-level location context. Captured from a
+// signboard photo (AI extracted) or manual / voice entry; auto-fills the
+// location hierarchy on subsequent LOG entries so an assessor doesn't
+// re-type block / unit / level / room for every defect in the same unit.
+// Persists in localStorage so it survives a page reload or app reopen —
+// the assessor walks for hours and we don't want a context to evaporate
+// when the screen times out or the browser is backgrounded.
+const LOCATION_CONTEXT_KEY = "sdt-location-context-v1";
 
 // ── BCA TOP Inspection checklist ─────────────────────────────────
 // Verbatim BCA Temporary Occupation Permit NC categories + checklist
