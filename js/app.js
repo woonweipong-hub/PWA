@@ -16894,8 +16894,9 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
     // these forces Band 6 regardless of the otherwise-projected band:
     //   • WTT NC rate ≥ 10%
     //   • WPT NC rate ≥ 2%
-    //   • Any QP-declared test status = "fail" (Pull-Off / Heat Soak +
-    //     3-yr warranty / WTT self-test / WPT self-test)
+    //   • Any QP-declared test status = "fail" ("Failure to complete
+    //     requirements" — Pull-Off / Heat Soak + 3-yr warranty / WTT
+    //     self-test / WPT self-test)
     // The rate-only projection ignored these — a 3% IF rate with a failed
     // Heat Soak test would have shown Band 1 when R1 actually mandates Band 6.
     const wttGateRate=wttA>0?(wttF/wttA*100):0;
@@ -16907,10 +16908,32 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
     else if(wptGateRate>=2)band6ForcedReason="WPT NC rate ≥ 2%";
     if(band6ForcedReason)projectedBand=6;
 
+    // R1 §3.3 page 17 — Band 1 / 2 require ALL of:
+    //   • Project weighted NC rate < 10%, AND
+    //   • WTT NC count ≤ 1, AND
+    //   • WPT NC count ≤ 1, AND
+    //   • Status of functional tests = "Completion of requirements with
+    //     full compliance i.e. no NC"
+    // If any of the count gates trip OR any QP test reports NCs (qpStatus
+    // === "nc" — "Completion of requirements but with NCs"), the project
+    // cannot be Band 1 or 2 even when the rate would otherwise put it
+    // there. Escalate to a minimum of Band 3. (Band 6 hard-gate above
+    // wins if it also fires.)
+    const wttCountFloor=wttF>1;
+    const wptCountFloor=wptF>1;
+    const qpAnyNC=Object.values(qpStatuses).some(s=>s==="nc");
+    let band1FloorReason=null;
+    if(!band6ForcedReason&&projectedBand<3){
+      if(wttCountFloor)band1FloorReason="WTT NC count > 1";
+      else if(wptCountFloor)band1FloorReason="WPT NC count > 1";
+      else if(qpAnyNC)band1FloorReason="QP-declared test reported NCs";
+      if(band1FloorReason)projectedBand=3;
+    }
+
     return{failCount,defectCount,totalChecks,applicableCount,rate,band,componentRows,byTier,batchCount:batches.size,
       ftRate,ftFails,ftApplicable,ftRows,qpStatuses,
       efRate,efFails,efApplicable,efRows,
-      projectedRate,projectedBand,projectedBasis,isFullBand,band6ForcedReason};
+      projectedRate,projectedBand,projectedBasis,isFullBand,band6ForcedReason,band1FloorReason};
   })();
 
   const runContractAdvisor=async()=>{
@@ -17510,8 +17533,9 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
                     <span style={{flex:1,fontSize:11,color:"#1a1a1a"}}>{label}</span>
                     <select value={ftDraft[k]} onChange={e=>setFtDraft(d=>({...d,[k]:e.target.value}))} style={{padding:"4px 6px",borderRadius:6,border:"1px solid rgba(0,0,0,0.15)",fontSize:11,background:"#fff"}}>
                       <option value="">— pending</option>
-                      <option value="pass">Pass</option>
-                      <option value="fail">Fail</option>
+                      <option value="pass">Pass (no NC)</option>
+                      <option value="nc">Complete with NCs</option>
+                      <option value="fail">Fail (incomplete)</option>
                       <option value="na">N/A</option>
                     </select>
                   </div>
@@ -17558,7 +17582,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
           </div>
           {/* Disclaimer — reflects which components are captured vs missing */}
           <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",lineHeight:1.5,background:conquasStats.isFullBand?"rgba(48,209,88,0.06)":"rgba(255,149,0,0.06)",border:conquasStats.isFullBand?"1px solid rgba(48,209,88,0.18)":"1px solid rgba(255,149,0,0.18)",borderRadius:8,padding:"8px 10px"}}>
-            <b>{conquasStats.isFullBand?"Full Project NC rate":"Projection only — not official CONQUAS Band"}.</b> 0% = all pass, 100% = all fail; lower is better. Per CONQUAS (Private Residential) R1 §3.3: Project NC rate = IF × 0.4 + FT × 0.4 + EF × 0.2. {conquasStats.isFullBand?"All three components captured — showing the full formula.":conquasStats.projectedBasis.includes("IF + FT + EF")?"":conquasStats.ftRate!==null&&conquasStats.efRate===null?"This shows IF + FT re-normalised over 0.8 (EF pending).":conquasStats.efRate!==null&&conquasStats.ftRate===null?"This shows IF + EF re-normalised over 0.6 (FT pending).":"This shows IF only (FT + EF pending)."} {conquasStats.band6ForcedReason&&<span style={{color:"#cc0000",fontWeight:700}}>⚠ Band 6 forced by R1 §3.3 page 17 gate: {conquasStats.band6ForcedReason}. </span>}Project band is the AI app's best projection — official banding requires accredited assessor sign-off, QP declarations (Pull-Off · Heat Soak · WTT/WPT self-tests), and complete sampling per R1. Final accountability rests with the accredited checker, QP, or assessor — not this app.
+            <b>{conquasStats.isFullBand?"Full Project NC rate":"Projection only — not official CONQUAS Band"}.</b> 0% = all pass, 100% = all fail; lower is better. Per CONQUAS (Private Residential) R1 §3.3: Project NC rate = IF × 0.4 + FT × 0.4 + EF × 0.2. {conquasStats.isFullBand?"All three components captured — showing the full formula.":conquasStats.projectedBasis.includes("IF + FT + EF")?"":conquasStats.ftRate!==null&&conquasStats.efRate===null?"This shows IF + FT re-normalised over 0.8 (EF pending).":conquasStats.efRate!==null&&conquasStats.ftRate===null?"This shows IF + EF re-normalised over 0.6 (FT pending).":"This shows IF only (FT + EF pending)."} {conquasStats.band6ForcedReason&&<span style={{color:"#cc0000",fontWeight:700}}>⚠ Band 6 forced by R1 §3.3 page 17 gate: {conquasStats.band6ForcedReason}. </span>}{conquasStats.band1FloorReason&&<span style={{color:"#b46700",fontWeight:700}}>⚠ Band escalated to minimum 3 per R1 §3.3 page 17: {conquasStats.band1FloorReason}. </span>}Project band is the AI app's best projection — official banding requires accredited assessor sign-off, QP declarations (Pull-Off · Heat Soak · WTT/WPT self-tests), and complete sampling per R1. Final accountability rests with the accredited checker, QP, or assessor — not this app.
           </div>
         </div>
       )}
