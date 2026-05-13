@@ -11970,16 +11970,10 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           when that scope is picked. Keeps the LOG form focused — no
           stray launchers when the category doesn't match.
 
-          CONQUAS / CONQUAS Officer: auto-open (see effect above) fires
-          the wizard the moment the user picks the category. The link
-          below is the small manual re-entry path used after dismissal
-          or on a fresh page load (where auto-open is suppressed). It's
-          intentionally low-visual-weight — not a required gateway. */}
-      {(form.workCategory==="CONQUAS"||form.workCategory==="CONQUAS Officer")&&onStartConquas&&(
-        <button onClick={onStartConquas} style={{background:"none",border:"none",padding:"6px 0",marginBottom:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,letterSpacing:"0.06em",cursor:"pointer",textDecoration:"underline",textUnderlineOffset:3,alignSelf:"flex-start"}}>
-          📋 {t("conquas.start_button")}
-        </button>
-      )}
+          CONQUAS / CONQUAS Officer: no launcher here — the TAKE PHOTO
+          slot in the PHOTOS section below is swapped for the START
+          CONQUAS CHECK button in those modes (the wizard owns photo
+          capture), and auto-open fires it on category selection. */}
       {form.workCategory==="TOP Inspection"&&onStartTopWizard&&(
         <button onClick={onStartTopWizard} style={{width:"100%",padding:"12px 14px",marginBottom:16,background:"rgba(255,107,0,0.08)",border:"1.5px solid rgba(255,107,0,0.35)",borderRadius:12,color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
           <span style={{fontSize:16}}>🏛</span>
@@ -11998,9 +11992,22 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         <input type="file" accept="image/*" multiple ref={folderRef} onChange={handlePhoto} style={{display:"none"}} webkitdirectory="" directory=""/>
         {form.photos.length===0?(
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            <button onClick={()=>fileRef.current.click()} style={{width:"100%",height:64,background:"#fff",border:"2px dashed rgba(0,0,0,0.18)",borderRadius:14,color:"rgba(0,0,0,0.5)",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
-              <span style={{fontSize:24}}>📷</span> {t("log.take_photo")}{aiReady?` · ${t("log.ai_auto_analyze")}`:""}
-            </button>
+            {(form.workCategory==="CONQUAS"||form.workCategory==="CONQUAS Officer")&&onStartConquas?(
+              // CONQUAS modes route photo capture through the wizard — the
+              // wizard owns the per-element photo batch and tags entries
+              // with the audit fields (entryType="CONQUAS Check", nc_tier,
+              // observation_batch_id, component_id, checkpoint_id) the
+              // NC-rate report and CONQUAS exports rely on. A bare TAKE
+              // PHOTO button here would create untagged Defect entries
+              // alongside tagged ones in the same walk.
+              <button onClick={onStartConquas} style={{width:"100%",height:64,background:"rgba(88,86,214,0.08)",border:"2px solid rgba(88,86,214,0.35)",borderRadius:14,color:"#5856d6",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,letterSpacing:"0.04em"}}>
+                <span style={{fontSize:24}}>📋</span> {t("conquas.start_button")}
+              </button>
+            ):(
+              <button onClick={()=>fileRef.current.click()} style={{width:"100%",height:64,background:"#fff",border:"2px dashed rgba(0,0,0,0.18)",borderRadius:14,color:"rgba(0,0,0,0.5)",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
+                <span style={{fontSize:24}}>📷</span> {t("log.take_photo")}{aiReady?` · ${t("log.ai_auto_analyze")}`:""}
+              </button>
+            )}
             {aiReady&&form.workCategory!=="CONQUAS"&&form.workCategory!=="CONQUAS Officer"&&(
               // AI batch cluster (PICK FOLDER / USE WEBCAM / REVIEW BEFORE SAVE)
               // is hidden in CONQUAS modes — the wizard's PROCESS FOLDER step
