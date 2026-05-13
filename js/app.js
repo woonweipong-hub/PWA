@@ -10524,27 +10524,28 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // next capture re-fires geolocation instead of being silently skipped.
   useEffect(()=>{if(!form.photos.length&&!form.title&&!form.description)_gpsTriedRef.current=false;},[form.photos.length,form.title,form.description]);
 
-  // Auto-open the CONQUAS wizard the moment workCategory becomes CONQUAS
-  // or CONQUAS Officer — selecting either category already signals intent
-  // to run the structured walk. CRITICAL: the first-mount run is
-  // deliberately skipped so that hydrating workCategory from localStorage
-  // on page load does NOT pop the wizard (2026-05-13 incident — opening
-  // siteshrimp.org auto-fired the wizard because the saved category was
-  // CONQUAS Officer). Auto-open is a response to a USER selection, not a
-  // state restore. Subsequent toggles within the session fire normally.
+  // Auto-open the CONQUAS wizard the moment workCategory becomes CONQUAS.
+  // CONQUAS Officer is deliberately EXCLUDED: Officer mode has a Project
+  // (LOCKED) + LOCATION (this walk) preamble that must be set first so
+  // each saved entry inherits Block/Level/Unit; auto-popping the wizard
+  // covers that preamble and forces officers to dismiss-then-set-then-
+  // reopen (2026-05-13 user report). Officer mode uses the prominent
+  // START CONQUAS CHECK button in the PHOTOS slot as the deliberate tap.
+  //
+  // The first-mount run is also skipped for CONQUAS so that hydrating
+  // workCategory from localStorage on page load does NOT pop the wizard
+  // (2026-05-13 page-load incident). Auto-open is a response to a USER
+  // selection, not a state restore.
   const _autoConquasFiredRef=useRef(false);
   const _didMountConquasAutoRef=useRef(false);
   useEffect(()=>{
-    const isConquas=form.workCategory==="CONQUAS"||form.workCategory==="CONQUAS Officer";
+    const isAutoConquas=form.workCategory==="CONQUAS";
     if(!_didMountConquasAutoRef.current){
       _didMountConquasAutoRef.current=true;
-      // Pre-arm the fired ref if we mount into a CONQUAS category so a
-      // later non-category re-render (form reset, etc.) doesn't trip an
-      // auto-fire. User must explicitly toggle category to retrigger.
-      if(isConquas)_autoConquasFiredRef.current=true;
+      if(isAutoConquas)_autoConquasFiredRef.current=true;
       return;
     }
-    if(!isConquas){_autoConquasFiredRef.current=false;return;}
+    if(!isAutoConquas){_autoConquasFiredRef.current=false;return;}
     if(_autoConquasFiredRef.current)return;
     if(typeof onStartConquas!=="function")return;
     _autoConquasFiredRef.current=true;
