@@ -151,7 +151,9 @@
     "description": "Kuvaus",
     "description_placeholder": "Kuvaile mitä näet...",
     "severity": "VAKAVUUS",
+    "severity_conquas": "VIAN VAKAVUUS",
     "severity_placeholder": "Valitse vakavuus...",
+    "severity_conquas_placeholder": "Valitse vikojen vakavuus...",
     "work_category": "TYÖLUOKKA",
     "work_category_hint": "(Valitse tarvittava laajuus tekoälyavusteiselle lähdölle)",
     "work_category_placeholder": "Valitse työluokka...",
@@ -246,6 +248,7 @@
     "step_3_title": "[Vaihe 3 - Lisää lyhyt otsikko]",
     "step_4_describe": "[Vaihe 4 - Kuvaile näkemääsi]",
     "step_5_severity": "[Vaihe 5 - Aseta turvallisuuden vakavuus]",
+    "step_5_severity_conquas": "[Vaihe 5 - Aseta vikojen vakavuus]",
     "step_6_details": "[Vaihe 6 – valinnaiset tiedot]",
     "take_photo": "OTA KUVA",
     "ai_auto_analyze": "AI itseanalyysi",
@@ -669,7 +672,13 @@
     "notes": "Huomautuksia",
     "pinned_on": "Kiinnitetty:",
     "uploaded_drawings": "LADATUT PIIRUSTUKSET",
-    "saved_markup_drawings": "TALLENNETUT MERKINTÄPIIRUSTUKSET"
+    "saved_markup_drawings": "TALLENNETUT MERKINTÄPIIRUSTUKSET",
+    "ai_pin_button": "AI PIN",
+    "ai_pin_button_title": "Ota viallinen valokuva; Tekoäly ehdottaa, mihin tämän esitteen huoneeseen se kiinnitetään. Esitäyttää ilmoittautumislomakkeen valokuvalla ja ehdotetulla sijainnilla – voit vetää neulan perään.",
+    "ai_pin_busy": "Tekoäly valitsee huoneen…",
+    "ai_pin_no_ai": "AI ei ole määritetty. Avaa Asetukset → AI määrittääksesi sen.",
+    "ai_pin_no_rooms": "Tässä esitteessä ei ole vielä tekoälyllä erotettuja huoneita. Lataa esite uudelleen, jotta tekoäly voi poimia sen asettelun.",
+    "ai_pin_no_response": "AI ei palauttanut käyttökelpoista vastausta. Kokeile selkeämpää kuvaa."
   },
   "markup": {
     "select": "Valitse / Siirrä",

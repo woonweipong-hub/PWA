@@ -151,7 +151,9 @@
     "description": "Beschreibung",
     "description_placeholder": "Beschreiben Sie, was Sie sehen...",
     "severity": "SCHWEREGRAD",
+    "severity_conquas": "Schweregrad der Mängel",
     "severity_placeholder": "Schweregrad wählen...",
+    "severity_conquas_placeholder": "Wählen Sie den Schweregrad des Fehlers aus...",
     "work_category": "ARBEITSKATEGORIE",
     "work_category_hint": "(Wählen Sie den relevanten Bereich für die KI-gestützte Ausgabe aus)",
     "work_category_placeholder": "Arbeitskategorie wählen...",
@@ -246,6 +248,7 @@
     "step_3_title": "[Schritt 3 – Kurztitel hinzufügen]",
     "step_4_describe": "[Schritt 4 – Beschreiben Sie, was Sie sehen]",
     "step_5_severity": "[Schritt 5 – Sicherheitsschweregrad festlegen]",
+    "step_5_severity_conquas": "[Schritt 5 – Schweregrad der Fehler festlegen]",
     "step_6_details": "[Schritt 6 – Optionale Details]",
     "take_photo": "Machen Sie ein Foto",
     "ai_auto_analyze": "KI-Selbstanalyse",
@@ -669,7 +672,13 @@
     "notes": "Notizen",
     "pinned_on": "Angeheftet an: ",
     "uploaded_drawings": "HOCHGELADENE ZEICHNUNGEN",
-    "saved_markup_drawings": "GESPEICHERTE MARKUP-ZEICHNUNGEN"
+    "saved_markup_drawings": "GESPEICHERTE MARKUP-ZEICHNUNGEN",
+    "ai_pin_button": "AI-PIN",
+    "ai_pin_button_title": "Machen Sie ein Defektfoto; AI schlägt vor, an welchen Raum auf dieser Broschüre es angeheftet werden soll. Füllt das Anmeldeformular vorab mit dem Foto und dem vorgeschlagenen Ort aus – Sie können die Stecknadel anschließend ziehen.",
+    "ai_pin_busy": "KI sucht sich den Raum aus …",
+    "ai_pin_no_ai": "AI ist nicht konfiguriert. Öffnen Sie Einstellungen → AI, um es einzurichten.",
+    "ai_pin_no_rooms": "Diese Broschüre enthält noch keine KI-extrahierten Räume. Laden Sie die Broschüre erneut hoch, damit die KI ihr Layout extrahieren kann.",
+    "ai_pin_no_response": "Die KI hat keine brauchbare Antwort zurückgegeben. Versuchen Sie es mit einem klareren Foto."
   },
   "markup": {
     "select": "Auswählen / Verschieben",

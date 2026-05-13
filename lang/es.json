@@ -151,7 +151,9 @@
     "description": "Descripción",
     "description_placeholder": "Describe lo que ves...",
     "severity": "SEVERIDAD",
+    "severity_conquas": "SEVERIDAD DE LOS DEFECTOS",
     "severity_placeholder": "Seleccione la gravedad...",
+    "severity_conquas_placeholder": "Seleccione la gravedad de los defectos...",
     "work_category": "CATEGORÍA DE TRABAJO",
     "work_category_hint": "(Seleccione el alcance relevante para la producción asistida por IA)",
     "work_category_placeholder": "Seleccione categoría de trabajo...",
@@ -246,6 +248,7 @@
     "step_3_title": "[Paso 3: agrega un título breve]",
     "step_4_describe": "[Paso 4: describe lo que ves]",
     "step_5_severity": "[Paso 5: Establecer la gravedad de la seguridad]",
+    "step_5_severity_conquas": "[Paso 5: Establecer la gravedad de los defectos]",
     "step_6_details": "[Paso 6 - Detalles opcionales]",
     "take_photo": "TOMAR FOTO",
     "ai_auto_analyze": "Autoanálisis de IA",
@@ -669,7 +672,13 @@
     "notes": "Notas",
     "pinned_on": "Fijado en: ",
     "uploaded_drawings": "DIBUJOS SUBIDOS",
-    "saved_markup_drawings": "DIBUJOS DE MARCACIONES GUARDADOS"
+    "saved_markup_drawings": "DIBUJOS DE MARCACIONES GUARDADOS",
+    "ai_pin_button": "PIN de IA",
+    "ai_pin_button_title": "Tome una foto del defecto; AI sugiere en qué sala de este folleto fijarlo. Complete previamente el formulario de inscripción con la foto y la ubicación sugerida; luego puede arrastrar el marcador.",
+    "ai_pin_busy": "La IA está escogiendo la habitación...",
+    "ai_pin_no_ai": "La IA no está configurada. Abra Configuración → AI para configurarlo.",
+    "ai_pin_no_rooms": "Este folleto aún no tiene salas extraídas con IA. Vuelva a cargar el folleto para que la IA pueda extraer su diseño.",
+    "ai_pin_no_response": "La IA no arrojó una respuesta utilizable. Prueba con una foto más clara."
   },
   "markup": {
     "select": "Seleccionar / Mover",

@@ -151,7 +151,9 @@
     "description": "Beskrivelse",
     "description_placeholder": "Beskriv hva du ser...",
     "severity": "ALVARLIGHET",
+    "severity_conquas": "DEFEKTENS ALVARLIGHET",
     "severity_placeholder": "Velg alvorlighetsgrad...",
+    "severity_conquas_placeholder": "Velg defektens alvorlighetsgrad...",
     "work_category": "ARBEIDSKATEGORI",
     "work_category_hint": "(Velg relevant omfang for AI-assistert utgang)",
     "work_category_placeholder": "Velg arbeidskategori...",
@@ -246,6 +248,7 @@
     "step_3_title": "[Trinn 3 – Legg til en kort tittel]",
     "step_4_describe": "[Trinn 4 – Beskriv hva du ser]",
     "step_5_severity": "[Trinn 5 – Angi sikkerhetsgrad]",
+    "step_5_severity_conquas": "[Trinn 5 – Angi alvorlighetsgrad for defekter]",
     "step_6_details": "[Trinn 6 – Valgfrie detaljer]",
     "take_photo": "TA BILDE",
     "ai_auto_analyze": "AI selvanalyse",
@@ -669,7 +672,13 @@
     "notes": "Notater",
     "pinned_on": "Festet på:",
     "uploaded_drawings": "LASTEDE TEGNINGER",
-    "saved_markup_drawings": "LAGREDE MARKETEGNINGER"
+    "saved_markup_drawings": "LAGREDE MARKETEGNINGER",
+    "ai_pin_button": "AI PIN",
+    "ai_pin_button_title": "Ta et defekt bilde; AI foreslår hvilket rom i denne brosjyren den skal festes til. Fyller ut påmeldingsskjemaet på forhånd med bildet og den foreslåtte plasseringen - du kan dra nålen etter.",
+    "ai_pin_busy": "AI velger rommet...",
+    "ai_pin_no_ai": "AI er ikke konfigurert. Åpne Innstillinger → AI for å sette den opp.",
+    "ai_pin_no_rooms": "Denne brosjyren har ingen AI-ekstraherte rom ennå. Last opp brosjyren på nytt slik at AI kan trekke ut layouten.",
+    "ai_pin_no_response": "AI returnerte ikke et brukbart svar. Prøv et klarere bilde."
   },
   "markup": {
     "select": "Velg / Flytt",

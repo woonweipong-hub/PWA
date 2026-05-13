@@ -12217,13 +12217,16 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       {/* ── 4. WHAT HAPPENED ── */}
       <VoiceField label={<>{t("fields.what_happened")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_4_describe")}</span><ProvChip prov={form.fieldProvenance?.description}/></>} value={form.description} onChange={v=>set("description",v)} placeholder={t("fields.description_placeholder")} multiline/>
 
-      {/* ── 5. SEVERITY — hidden for CONQUAS Officer (BCA scoring is
-              pass/fail with deduction, not safety-severity tiered). The
-              underlying severity field stays in the data model with the
-              existing default so existing exports/filters keep working. ── */}
-      {form.workCategory!=="CONQUAS Officer"&&(
-        <ComboField label={<>{t("fields.severity")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_5_severity")}</span><ProvChip prov={form.fieldProvenance?.severity}/></>} value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder={t("fields.severity_placeholder")} displayFn={sevDisplayFn}/>
-      )}
+      {/* ── 5. SEVERITY — shown for every mode, but CONQUAS / CONQUAS Officer
+              get a "DEFECTS SEVERITY" label (BCA scoring auto-classifies via
+              1X/2X/3X tier multipliers per checkpoint, so the user-facing
+              field is really about defect severity, not safety risk). ── */}
+      {(()=>{
+        const isConquasMode=form.workCategory==="CONQUAS"||form.workCategory==="CONQUAS Officer";
+        return(
+          <ComboField label={<>{isConquasMode?t("fields.severity_conquas"):t("fields.severity")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{isConquasMode?t("log.step_5_severity_conquas"):t("log.step_5_severity")}</span><ProvChip prov={form.fieldProvenance?.severity}/></>} value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder={isConquasMode?t("fields.severity_conquas_placeholder"):t("fields.severity_placeholder")} displayFn={sevDisplayFn}/>
+        );
+      })()}
 
       {/* ── MORE DETAILS accordion ── */}
       <button onClick={()=>setShowMoreDetails(!showMoreDetails)} style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:12,padding:"14px 16px",marginBottom:showMoreDetails?16:0,display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}}>
@@ -12239,6 +12242,10 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         // Level, Room, Due Date, and Time Needed stay so the Officer can
         // still describe the defect precisely.
         const isOfficer=form.workCategory==="CONQUAS Officer";
+        // CONQUAS (non-Officer) also drops GRID REF / ZONE / COST CHANGE —
+        // contractor-side audit context the BCA tier multiplier already
+        // handles; surfacing those fields would only confuse the form.
+        const isConquas=isOfficer||form.workCategory==="CONQUAS";
         return(
         <div style={{animation:"fadeIn 0.2s ease",marginTop:showMoreDetails?0:0}}>
           {/* Entry Type */}
@@ -12257,15 +12264,16 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
             <ComboField label={<>{t("fields.issue")}<ProvChip prov={form.fieldProvenance?.issue}/></>} value={form.issue} onChange={v=>{set("issue",v);if(!form.title)set("title",form.component+" — "+v);}} options={COMPONENT_ISSUES[form.component]||COMPONENT_ISSUES["General"]} placeholder={t("fields.issue_placeholder")} displayFn={tOpt}/>
           )}
 
-          {/* Location hierarchy — Zone + Grid Ref hidden for Officer
-              (layout metadata that belongs to the contractor view; Officer
-              gets Block / Unit / Room from the locked signboard context). */}
+          {/* Location hierarchy — Zone + Grid Ref hidden for any CONQUAS
+              mode (BCA scoring is per Block/Level/Unit/Room; ZONE and
+              GRID REF are contractor layout metadata that don't apply to
+              the CONQUAS audit register). */}
           <ComboField label={<>{t("fields.level_floor")}<ProvChip prov={form.fieldProvenance?.locationLevel}/></>} value={form.locationLevel} onChange={v=>set("locationLevel",v)} options={DEFAULT_LEVELS} placeholder={t("fields.level_floor_placeholder")} displayFn={tOpt}/>
-          {!isOfficer&&(
+          {!isConquas&&(
             <ComboField label={<>{t("fields.zone")}<ProvChip prov={form.fieldProvenance?.locationZone}/></>} value={form.locationZone} onChange={v=>set("locationZone",v)} options={DEFAULT_ZONES} placeholder={t("fields.zone_placeholder")} displayFn={tOpt}/>
           )}
           <ComboField label={<>{t("fields.room_area")}<ProvChip prov={form.fieldProvenance?.locationSubzone}/></>} value={form.locationSubzone} onChange={v=>set("locationSubzone",v)} options={DEFAULT_SUBZONES} placeholder={t("fields.room_area_placeholder")} displayFn={tOpt}/>
-          {!isOfficer&&(
+          {!isConquas&&(
             <VoiceField label={t("fields.grid_ref")} value={form.locationGrid} onChange={v=>set("locationGrid",v)} placeholder={t("fields.grid_ref_placeholder")}/>
           )}
 
@@ -12279,16 +12287,17 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
             </>
           )}
 
-          {/* Cost & Time — Cost Change (and children) hidden for Officer;
-              assessor scope is non-contractual. Due Date + Time Needed
-              stay so an Officer can still flag remedial timelines. */}
+          {/* Cost & Time — COST CHANGE (and children) hidden for any
+              CONQUAS mode (audit scope is non-contractual; cost decisions
+              belong on the QP/contractor side). Due Date + Time Needed
+              stay so the user can still flag remedial timelines. */}
           <div style={{background:"rgba(0,0,0,0.02)",borderRadius:12,padding:14,marginBottom:16,border:"1px solid rgba(0,0,0,0.06)"}}>
             <div style={{marginBottom:12}}>
               <label style={lbl()}>{t("log.due_date")}<ProvChip prov={form.fieldProvenance?.dueDate}/></label>
               <input type="date" value={form.dueDate} onChange={e=>set("dueDate",e.target.value)} style={{...inp,width:"100%",flex:"unset"}}/>
             </div>
             <ComboField label={<>{t("fields.time_needed")}<ProvChip prov={form.fieldProvenance?.duration}/></>} value={form.duration} onChange={v=>set("duration",v)} options={DURATION_OPTIONS} placeholder={t("fields.time_needed_placeholder")} displayFn={tOpt}/>
-            {!isOfficer&&(
+            {!isConquas&&(
               <>
                 <ComboField label={<>{t("fields.cost_change")}<ProvChip prov={form.fieldProvenance?.costImpact}/></>} value={form.costImpact} onChange={v=>set("costImpact",v)} options={COST_IMPACT_OPTIONS} placeholder={t("fields.cost_change_placeholder")} displayFn={tOpt}/>
                 {form.costImpact&&form.costImpact!=="No change"&&form.costImpact!=="To be confirmed by QS"&&(

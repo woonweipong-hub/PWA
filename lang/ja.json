@@ -151,7 +151,9 @@
     "description": "説明",
     "description_placeholder": "見たものを説明してください...",
     "severity": "重要度",
+    "severity_conquas": "欠陥の重大度",
     "severity_placeholder": "重要度を選択...",
+    "severity_conquas_placeholder": "欠陥の重大度を選択してください...",
     "work_category": "作業カテゴリ",
     "work_category_hint": "(AI 支援出力に関連する範囲を選択します)",
     "work_category_placeholder": "作業カテゴリを選択...",
@@ -246,6 +248,7 @@
     "step_3_title": "[ステップ 3 - 短いタイトルを追加する]",
     "step_4_describe": "[ステップ 4 - 表示されている内容を説明する]",
     "step_5_severity": "[ステップ 5 - 安全性の重大度を設定する]",
+    "step_5_severity_conquas": "[ステップ 5 - 欠陥の重大度を設定する]",
     "step_6_details": "[ステップ 6 - オプションの詳細]",
     "take_photo": "写真を撮る",
     "ai_auto_analyze": "AIによる自己分析",
@@ -669,7 +672,13 @@
     "notes": "ノート",
     "pinned_on": "ピン留め先：",
     "uploaded_drawings": "アップロードされた図面",
-    "saved_markup_drawings": "保存されたマークアップ図面"
+    "saved_markup_drawings": "保存されたマークアップ図面",
+    "ai_pin_button": "AIピン",
+    "ai_pin_button_title": "欠陥の写真を撮ります。 AI がこのパンフレットのどの部屋にピン留めするかを提案します。 入力フォームに写真と提案された場所を事前に入力します。後でピンをドラッグできます。",
+    "ai_pin_busy": "AIが部屋を選んでいます…",
+    "ai_pin_no_ai": "AIが設定されていません。 「設定」→「AI」を開いて設定します。",
+    "ai_pin_no_rooms": "このパンフレットにはまだ AI で抽出された部屋がありません。 AI がパンフレットのレイアウトを抽出できるように、パンフレットを再アップロードします。",
+    "ai_pin_no_response": "AI は使用可能な応答を返しませんでした。 より鮮明な写真を試してください。"
   },
   "markup": {
     "select": "選択 / 移動",

@@ -151,7 +151,9 @@
     "description": "Description",
     "description_placeholder": "Décrivez ce que vous voyez...",
     "severity": "GRAVITÉ",
+    "severity_conquas": "GRAVITÉ DES DÉFAUTS",
     "severity_placeholder": "Sélectionner la gravité...",
+    "severity_conquas_placeholder": "Sélectionnez la gravité des défauts...",
     "work_category": "CATÉGORIE DE TRAVAIL",
     "work_category_hint": "(Sélectionnez la portée appropriée pour la sortie assistée par l'IA)",
     "work_category_placeholder": "Sélectionner la catégorie...",
@@ -246,6 +248,7 @@
     "step_3_title": "[Étape 3 - Ajouter un titre court]",
     "step_4_describe": "[Étape 4 - Décrivez ce que vous voyez]",
     "step_5_severity": "[Étape 5 – Définir la gravité de la sécurité]",
+    "step_5_severity_conquas": "[Étape 5 – Définir la gravité des défauts]",
     "step_6_details": "[Étape 6 – Détails facultatifs]",
     "take_photo": "PRENDRE UNE PHOTO",
     "ai_auto_analyze": "Auto-analyse de l'IA",
@@ -669,7 +672,13 @@
     "notes": "Remarques",
     "pinned_on": "Épinglé sur : ",
     "uploaded_drawings": "DESSINS TÉLÉCHARGÉS",
-    "saved_markup_drawings": "DESSINS DE MARQUAGE ENREGISTRÉS"
+    "saved_markup_drawings": "DESSINS DE MARQUAGE ENREGISTRÉS",
+    "ai_pin_button": "AI PIN",
+    "ai_pin_button_title": "Prenez une photo du défaut ; L'IA suggère à quelle pièce de cette brochure l'épingler. Pré-remplit le formulaire d'inscription avec la photo et l'emplacement suggéré — vous pouvez faire glisser l'épingle après.",
+    "ai_pin_busy": "L’IA choisit la pièce…",
+    "ai_pin_no_ai": "L'IA n'est pas configurée. Ouvrez Paramètres → AI pour le configurer.",
+    "ai_pin_no_rooms": "Cette brochure ne contient pas encore de salles extraites par l’IA. Téléchargez à nouveau la brochure afin que l'IA puisse en extraire la mise en page.",
+    "ai_pin_no_response": "L'IA n'a pas renvoyé de réponse utilisable. Essayez une photo plus claire."
   },
   "markup": {
     "select": "Sélectionner / Déplacer",

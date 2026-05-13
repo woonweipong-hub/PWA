@@ -151,7 +151,9 @@
     "description": "描述",
     "description_placeholder": "描述您看到的情况...",
     "severity": "严重程度",
+    "severity_conquas": "缺陷严重程度",
     "severity_placeholder": "选择严重程度...",
+    "severity_conquas_placeholder": "选择缺陷严重程度...",
     "work_category": "工作类别",
     "work_category_hint": "（选择AI辅助输出的相关范围）",
     "work_category_placeholder": "选择工作类别...",
@@ -246,6 +248,7 @@
     "step_3_title": "[第 3 步 - 添加短标题]",
     "step_4_describe": "[第 4 步 - 描述你所看到的]",
     "step_5_severity": "[第 5 步 - 设置安全严重程度]",
+    "step_5_severity_conquas": "[第 5 步 - 设置缺陷严重程度]",
     "step_6_details": "[第 6 步 - 可选详细信息]",
     "take_photo": "拍照",
     "ai_auto_analyze": "AI自我分析",
@@ -669,7 +672,13 @@
     "notes": "备注",
     "pinned_on": "固定在：",
     "uploaded_drawings": "上传的图纸",
-    "saved_markup_drawings": "保存的标记绘图"
+    "saved_markup_drawings": "保存的标记绘图",
+    "ai_pin_button": "人工智能密码",
+    "ai_pin_button_title": "拍摄缺陷照片； 人工智能会建议将其固定在本手册的哪个房间。 用照片和建议的位置预先填写报名表 - 您可以在之后拖动图钉。",
+    "ai_pin_busy": "AI正在挑选房间……",
+    "ai_pin_no_ai": "AI未配置。 打开设置 → AI 进行设置。",
+    "ai_pin_no_rooms": "本手册还没有人工智能提取的房间。 重新上传手册，以便人工智能可以提取其布局。",
+    "ai_pin_no_response": "AI 没有返回可用的响应。 尝试更清晰的照片。"
   },
   "markup": {
     "select": "选择 / 移动",

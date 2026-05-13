@@ -151,7 +151,9 @@
     "description": "Mô tả",
     "description_placeholder": "Mô tả những gì bạn thấy...",
     "severity": "MỨC ĐỘ",
+    "severity_conquas": "LỖI NGHIÊM TRỌNG",
     "severity_placeholder": "Chọn mức độ...",
+    "severity_conquas_placeholder": "Chọn mức độ nghiêm trọng của lỗi...",
     "work_category": "DANH MỤC CÔNG VIỆC",
     "work_category_hint": "(Chọn phạm vi phù hợp cho đầu ra được AI hỗ trợ)",
     "work_category_placeholder": "Chọn danh mục công việc...",
@@ -246,6 +248,7 @@
     "step_3_title": "[Bước 3 - Thêm tiêu đề ngắn]",
     "step_4_describe": "[Bước 4 - Mô tả những gì bạn nhìn thấy]",
     "step_5_severity": "[Bước 5 - Đặt mức độ an toàn]",
+    "step_5_severity_conquas": "[Bước 5 - Đặt mức độ nghiêm trọng của lỗi]",
     "step_6_details": "[Bước 6 - Chi tiết tùy chọn]",
     "take_photo": "CHỤP ẢNH",
     "ai_auto_analyze": "AI tự phân tích",
@@ -669,7 +672,13 @@
     "notes": "Ghi chú",
     "pinned_on": "Ghim trên: ",
     "uploaded_drawings": "BẢN VẼ TẢI LÊN",
-    "saved_markup_drawings": "BẢN VẼ ĐÁNH DẤU ĐÃ LƯU"
+    "saved_markup_drawings": "BẢN VẼ ĐÁNH DẤU ĐÃ LƯU",
+    "ai_pin_button": "Mã PIN AI",
+    "ai_pin_button_title": "Chụp ảnh khiếm khuyết; AI gợi ý phòng nào trên tập tài liệu này để ghim nó vào. Điền trước ảnh và vị trí được đề xuất vào biểu mẫu nhập — bạn có thể kéo ghim sau đó.",
+    "ai_pin_busy": "AI đang chọn phòng…",
+    "ai_pin_no_ai": "AI không được cấu hình. Mở Cài đặt → AI để thiết lập.",
+    "ai_pin_no_rooms": "Tài liệu này chưa có phòng trích xuất AI. Tải lại tài liệu quảng cáo lên để AI có thể trích xuất bố cục của nó.",
+    "ai_pin_no_response": "AI đã không trả lại phản hồi có thể sử dụng được. Hãy thử một bức ảnh rõ ràng hơn."
   },
   "markup": {
     "select": "Chọn / Di chuyển",

@@ -151,7 +151,9 @@
     "description": "Penerangan",
     "description_placeholder": "Terangkan apa yang anda lihat...",
     "severity": "KETERUKAN",
+    "severity_conquas": "KECACATAN SEVERITY",
     "severity_placeholder": "Pilih keterukan...",
+    "severity_conquas_placeholder": "Pilih tahap kecacatan...",
     "work_category": "KATEGORI KERJA",
     "work_category_hint": "(Pilih skop yang berkaitan untuk output berbantukan AI)",
     "work_category_placeholder": "Pilih kategori kerja...",
@@ -246,6 +248,7 @@
     "step_3_title": "[Langkah 3 - Tambah tajuk pendek]",
     "step_4_describe": "[Langkah 4 - Terangkan perkara yang anda lihat]",
     "step_5_severity": "[Langkah 5 - Tetapkan tahap keselamatan]",
+    "step_5_severity_conquas": "[Langkah 5 - Tetapkan keterukan kecacatan]",
     "step_6_details": "[Langkah 6 - Butiran pilihan]",
     "take_photo": "AMBIL FOTO",
     "ai_auto_analyze": "AI menganalisis diri",
@@ -669,7 +672,13 @@
     "notes": "Nota",
     "pinned_on": "Dipin pada: ",
     "uploaded_drawings": "LUKISAN YANG DIMUAT NAIK",
-    "saved_markup_drawings": "LUKISAN MARKUP YANG DISIMPAN"
+    "saved_markup_drawings": "LUKISAN MARKUP YANG DISIMPAN",
+    "ai_pin_button": "PIN AI",
+    "ai_pin_button_title": "Ambil gambar kecacatan; AI mencadangkan bilik pada brosur ini untuk disematkan. Praisi borang penyertaan dengan foto dan lokasi yang dicadangkan — anda boleh menyeret pin selepas itu.",
+    "ai_pin_busy": "AI sedang memilih bilik…",
+    "ai_pin_no_ai": "AI tidak dikonfigurasikan. Buka Tetapan → AI untuk menyediakannya.",
+    "ai_pin_no_rooms": "Risalah ini belum mempunyai bilik yang diekstrak AI. Muat naik semula brosur supaya AI boleh mengekstrak reka letaknya.",
+    "ai_pin_no_response": "AI tidak mengembalikan respons yang boleh digunakan. Cuba foto yang lebih jelas."
   },
   "markup": {
     "select": "Pilih / Alih",

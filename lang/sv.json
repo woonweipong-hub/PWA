@@ -151,7 +151,9 @@
     "description": "Beskrivning",
     "description_placeholder": "Beskriv vad du ser...",
     "severity": "STRÄNGHET",
+    "severity_conquas": "DEFEKTENS ALVARLIGHET",
     "severity_placeholder": "Välj svårighetsgrad...",
+    "severity_conquas_placeholder": "Välj defekternas svårighetsgrad...",
     "work_category": "ARBETSKATEGORI",
     "work_category_hint": "(Välj relevant omfattning för AI-assisterad utdata)",
     "work_category_placeholder": "Välj arbetskategori...",
@@ -246,6 +248,7 @@
     "step_3_title": "[Steg 3 - Lägg till en kort titel]",
     "step_4_describe": "[Steg 4 – Beskriv vad du ser]",
     "step_5_severity": "[Steg 5 – Ställ in säkerhetsgrad]",
+    "step_5_severity_conquas": "[Steg 5 - Ställ in defekternas svårighetsgrad]",
     "step_6_details": "[Steg 6 - Valfria detaljer]",
     "take_photo": "TA FOTO",
     "ai_auto_analyze": "AI självanalys",
@@ -669,7 +672,13 @@
     "notes": "Anteckningar",
     "pinned_on": "Fäst på:",
     "uploaded_drawings": "UPPLADADE RITNINGAR",
-    "saved_markup_drawings": "SPARADE MARKUPSRITNINGAR"
+    "saved_markup_drawings": "SPARADE MARKUPSRITNINGAR",
+    "ai_pin_button": "AI PIN",
+    "ai_pin_button_title": "Ta ett defekt foto; AI föreslår vilket rum i den här broschyren den ska fästas vid. Fyller i anmälningsformuläret i förväg med fotot och den föreslagna platsen - du kan dra nålen efter.",
+    "ai_pin_busy": "AI väljer rummet...",
+    "ai_pin_no_ai": "AI är inte konfigurerad. Öppna Inställningar → AI för att ställa in det.",
+    "ai_pin_no_rooms": "Den här broschyren har inga AI-extraherade rum ännu. Ladda upp broschyren igen så att AI kan extrahera dess layout.",
+    "ai_pin_no_response": "AI returnerade inte ett användbart svar. Försök med ett tydligare foto."
   },
   "markup": {
     "select": "Välj / Flytta",

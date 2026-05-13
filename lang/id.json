@@ -151,7 +151,9 @@
     "description": "Deskripsi",
     "description_placeholder": "Jelaskan apa yang Anda lihat...",
     "severity": "TINGKAT KEPARAHAN",
+    "severity_conquas": "KEKERASAN CACAT",
     "severity_placeholder": "Pilih tingkat keparahan...",
+    "severity_conquas_placeholder": "Pilih tingkat keparahan cacat...",
     "work_category": "KATEGORI PEKERJAAN",
     "work_category_hint": "(Pilih cakupan yang relevan untuk keluaran yang dibantu AI)",
     "work_category_placeholder": "Pilih kategori pekerjaan...",
@@ -246,6 +248,7 @@
     "step_3_title": "[Langkah 3 - Tambahkan judul pendek]",
     "step_4_describe": "[Langkah 4 - Jelaskan apa yang Anda lihat]",
     "step_5_severity": "[Langkah 5 - Tetapkan tingkat keamanan]",
+    "step_5_severity_conquas": "[Langkah 5 - Tetapkan tingkat kerusakan]",
     "step_6_details": "[Langkah 6 - Detail opsional]",
     "take_photo": "AMBIL FOTO",
     "ai_auto_analyze": "AI menganalisis diri sendiri",
@@ -669,7 +672,13 @@
     "notes": "Catatan",
     "pinned_on": "Dipin pada: ",
     "uploaded_drawings": "GAMBAR YANG DIUPLOAD",
-    "saved_markup_drawings": "GAMBAR MARKUP YANG DISIMPAN"
+    "saved_markup_drawings": "GAMBAR MARKUP YANG DISIMPAN",
+    "ai_pin_button": "PIN AI",
+    "ai_pin_button_title": "Ambil foto cacat; AI menyarankan ruangan mana di brosur ini yang akan ditempel. Isi formulir entri terlebih dahulu dengan foto dan lokasi yang disarankan — Anda dapat menyeret pin setelahnya.",
+    "ai_pin_busy": "AI sedang memilih ruangan…",
+    "ai_pin_no_ai": "AI tidak dikonfigurasi. Buka Pengaturan → AI untuk mengaturnya.",
+    "ai_pin_no_rooms": "Brosur ini belum memiliki ruangan yang diekstraksi AI. Unggah ulang brosur agar AI dapat mengekstrak tata letaknya.",
+    "ai_pin_no_response": "AI tidak memberikan respons yang dapat digunakan. Coba foto yang lebih jelas."
   },
   "markup": {
     "select": "Pilih / Pindahkan",

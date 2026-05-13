@@ -151,7 +151,9 @@
     "description": "描述",
     "description_placeholder": "描述您看到的情況...",
     "severity": "嚴重程度",
+    "severity_conquas": "缺陷嚴重程度",
     "severity_placeholder": "選擇嚴重程度...",
+    "severity_conquas_placeholder": "選擇缺陷嚴重程度...",
     "work_category": "工作類別",
     "work_category_hint": "（選擇AI輔助輸出的相關範圍）",
     "work_category_placeholder": "選擇工作類別...",
@@ -246,6 +248,7 @@
     "step_3_title": "[第 3 步 - 新增短標題]",
     "step_4_describe": "[第 4 步 - 描述你所看到的]",
     "step_5_severity": "[第 5 步 - 設定安全嚴重程度]",
+    "step_5_severity_conquas": "[第 5 步 - 設定缺陷嚴重程度]",
     "step_6_details": "[第 6 步 - 可選詳細資訊]",
     "take_photo": "拍照",
     "ai_auto_analyze": "AI自我分析",
@@ -669,7 +672,13 @@
     "notes": "備註",
     "pinned_on": "釘選在：",
     "uploaded_drawings": "上傳的圖紙",
-    "saved_markup_drawings": "儲存的標記繪圖"
+    "saved_markup_drawings": "儲存的標記繪圖",
+    "ai_pin_button": "人工智慧密碼",
+    "ai_pin_button_title": "拍攝缺陷照片；人工智慧會建議將其固定在本手冊的哪個房間。 用照片和建議的位置預先填寫報名表 - 您可以在之後拖曳圖釘。",
+    "ai_pin_busy": "AI正在挑選房間…",
+    "ai_pin_no_ai": "AI未配置。 開啟設定 → AI 進行設定。",
+    "ai_pin_no_rooms": "本手冊還沒有人工智慧提取的房間。 重新上傳手冊，以便人工智慧可以提取其佈局。",
+    "ai_pin_no_response": "AI 沒有傳回可用的回應。 嘗試更清晰的照片。"
   },
   "markup": {
     "select": "選擇 / 移動",

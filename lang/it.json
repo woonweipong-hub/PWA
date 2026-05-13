@@ -151,7 +151,9 @@
     "description": "Descrizione",
     "description_placeholder": "Descrivi quello che vedi...",
     "severity": "GRAVITÀ",
+    "severity_conquas": "SEVERITÀ DEI DIFETTI",
     "severity_placeholder": "Seleziona gravità...",
+    "severity_conquas_placeholder": "Seleziona la gravità dei difetti...",
     "work_category": "CATEGORIA DI LAVORO",
     "work_category_hint": "(Seleziona l'ambito pertinente per l'output assistito dall'intelligenza artificiale)",
     "work_category_placeholder": "Seleziona la categoria di lavoro...",
@@ -246,6 +248,7 @@
     "step_3_title": "[Passaggio 3: aggiungi un breve titolo]",
     "step_4_describe": "[Passaggio 4: descrivi ciò che vedi]",
     "step_5_severity": "[Passaggio 5: impostazione del livello di sicurezza]",
+    "step_5_severity_conquas": "[Passaggio 5: impostazione della gravità dei difetti]",
     "step_6_details": "[Passaggio 6 - Dettagli facoltativi]",
     "take_photo": "SCATTARE UNA FOTO",
     "ai_auto_analyze": "L'intelligenza artificiale si autoanalizza",
@@ -669,7 +672,13 @@
     "notes": "Note",
     "pinned_on": "Appuntato su:",
     "uploaded_drawings": "DISEGNI CARICATI",
-    "saved_markup_drawings": "DISEGNI DI MARKUP SALVATI"
+    "saved_markup_drawings": "DISEGNI DI MARKUP SALVATI",
+    "ai_pin_button": "PIN dell'IA",
+    "ai_pin_button_title": "Scatta una foto del difetto; L'intelligenza artificiale suggerisce a quale stanza di questa brochure appuntarla. Precompila il modulo di iscrizione con la foto e la posizione suggerita: puoi trascinare il segnaposto dopo.",
+    "ai_pin_busy": "L’intelligenza artificiale sta scegliendo la stanza…",
+    "ai_pin_no_ai": "L'intelligenza artificiale non è configurata. Apri Impostazioni → AI per configurarlo.",
+    "ai_pin_no_rooms": "In questa brochure non sono ancora presenti stanze estratte dall'intelligenza artificiale. Ricarica la brochure in modo che l'intelligenza artificiale possa estrarne il layout.",
+    "ai_pin_no_response": "L'intelligenza artificiale non ha restituito una risposta utilizzabile. Prova una foto più chiara."
   },
   "markup": {
     "select": "Seleziona / Sposta",

@@ -151,7 +151,9 @@
     "description": "Beskrivelse",
     "description_placeholder": "Beskriv hvad du ser...",
     "severity": "ALVARLIGHED",
+    "severity_conquas": "DEFEKTERS ALVARLIGHED",
     "severity_placeholder": "Vælg sværhedsgrad...",
+    "severity_conquas_placeholder": "Vælg defekters sværhedsgrad...",
     "work_category": "ARBEJDSKATEGORI",
     "work_category_hint": "(Vælg relevant omfang for AI-assisteret output)",
     "work_category_placeholder": "Vælg arbejdskategori...",
@@ -246,6 +248,7 @@
     "step_3_title": "[Trin 3 - Tilføj en kort titel]",
     "step_4_describe": "[Trin 4 - Beskriv, hvad du ser]",
     "step_5_severity": "[Trin 5 - Indstil sikkerhedsgrad]",
+    "step_5_severity_conquas": "[Trin 5 - Indstil defekters sværhedsgrad]",
     "step_6_details": "[Trin 6 - Valgfri detaljer]",
     "take_photo": "TAG FOTO",
     "ai_auto_analyze": "AI selvanalyse",
@@ -669,7 +672,13 @@
     "notes": "Noter",
     "pinned_on": "Fastgjort på:",
     "uploaded_drawings": "UPLOADDE TEGNINGER",
-    "saved_markup_drawings": "GEMTE MARKUP TEGNINGER"
+    "saved_markup_drawings": "GEMTE MARKUP TEGNINGER",
+    "ai_pin_button": "AI PIN",
+    "ai_pin_button_title": "Tag et defekt billede; AI foreslår, hvilket rum i denne brochure den skal fastgøres til. Forudfylder tilmeldingsformularen med billedet og den foreslåede placering - du kan trække knappenålen efter.",
+    "ai_pin_busy": "AI vælger rummet...",
+    "ai_pin_no_ai": "AI er ikke konfigureret. Åbn Indstillinger → AI for at konfigurere det.",
+    "ai_pin_no_rooms": "Denne brochure har endnu ingen AI-ekstraherede lokaler. Genupload brochuren, så AI kan udtrække dens layout.",
+    "ai_pin_no_response": "AI returnerede ikke et brugbart svar. Prøv et klarere billede."
   },
   "markup": {
     "select": "Vælg / Flyt",

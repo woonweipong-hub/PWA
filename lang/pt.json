@@ -151,7 +151,9 @@
     "description": "Descrição",
     "description_placeholder": "Descreva o que você vê...",
     "severity": "GRAVIDADE",
+    "severity_conquas": "GRAVIDADE DOS DEFEITOS",
     "severity_placeholder": "Selecione a gravidade...",
+    "severity_conquas_placeholder": "Selecione a gravidade dos defeitos...",
     "work_category": "CATEGORIA DE TRABALHO",
     "work_category_hint": "(Selecione o escopo relevante para resultados assistidos por IA)",
     "work_category_placeholder": "Selecione a categoria de trabalho...",
@@ -246,6 +248,7 @@
     "step_3_title": "[Etapa 3 - Adicione um título curto]",
     "step_4_describe": "[Etapa 4 - Descreva o que você vê]",
     "step_5_severity": "[Etapa 5 - Definir severidade de segurança]",
+    "step_5_severity_conquas": "[Etapa 5 – Definir a gravidade dos defeitos]",
     "step_6_details": "[Etapa 6 – Detalhes opcionais]",
     "take_photo": "TIRAR FOTO",
     "ai_auto_analyze": "Autoanálise de IA",
@@ -669,7 +672,13 @@
     "notes": "Notas",
     "pinned_on": "Fixado em:",
     "uploaded_drawings": "DESENHOS CARREGADOS",
-    "saved_markup_drawings": "DESENHOS DE MARCAÇÃO SALVOS"
+    "saved_markup_drawings": "DESENHOS DE MARCAÇÃO SALVOS",
+    "ai_pin_button": "PIN de IA",
+    "ai_pin_button_title": "Tire uma foto do defeito; A IA sugere em qual sala deste folheto fixá-lo. Preenche previamente o formulário de inscrição com a foto e o local sugerido – você pode arrastar o alfinete depois.",
+    "ai_pin_busy": "A IA está escolhendo a sala…",
+    "ai_pin_no_ai": "A IA não está configurada. Abra Configurações → AI para configurá-lo.",
+    "ai_pin_no_rooms": "Este folheto ainda não possui salas extraídas de IA. Faça upload novamente do folheto para que a IA possa extrair seu layout.",
+    "ai_pin_no_response": "AI não retornou uma resposta utilizável. Experimente uma foto mais nítida."
   },
   "markup": {
     "select": "Selecionar / Mover",

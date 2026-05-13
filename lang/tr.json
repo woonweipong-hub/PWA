@@ -151,7 +151,9 @@
     "description": "Tanım",
     "description_placeholder": "Gördüğünüzü anlatın...",
     "severity": "ŞİDDET",
+    "severity_conquas": "KUSURLARIN ŞİDDETİ",
     "severity_placeholder": "Önem derecesini seçin...",
+    "severity_conquas_placeholder": "Kusurların ciddiyetini seçin...",
     "work_category": "İŞ KATEGORİSİ",
     "work_category_hint": "(Yapay zeka destekli çıktı için ilgili kapsamı seçin)",
     "work_category_placeholder": "İş kategorisini seçin...",
@@ -246,6 +248,7 @@
     "step_3_title": "[3. Adım - Kısa bir başlık ekleyin]",
     "step_4_describe": "[Adım 4 - Ne gördüğünüzü açıklayın]",
     "step_5_severity": "[Adım 5 - Güvenliğin önem derecesini ayarlayın]",
+    "step_5_severity_conquas": "[5. Adım - Kusurların ciddiyetini ayarlayın]",
     "step_6_details": "[Adım 6 - İsteğe bağlı ayrıntılar]",
     "take_photo": "FOTOĞRAF ÇEK",
     "ai_auto_analyze": "Yapay zeka kendi kendini analiz ediyor",
@@ -669,7 +672,13 @@
     "notes": "Notlar",
     "pinned_on": "Sabitlendi:",
     "uploaded_drawings": "YÜKLENEN ÇİZİMLER",
-    "saved_markup_drawings": "KAYITLI İŞARETLEYİCİ ÇİZİMLER"
+    "saved_markup_drawings": "KAYITLI İŞARETLEYİCİ ÇİZİMLER",
+    "ai_pin_button": "AI PIN'i",
+    "ai_pin_button_title": "Kusurlu bir fotoğraf çekin; Yapay zeka, bu broşürün hangi odaya sabitleneceğini öneriyor. Giriş formunu fotoğraf ve önerilen konumla önceden doldurur; raptiyeyi daha sonra sürükleyebilirsiniz.",
+    "ai_pin_busy": "AI odayı seçiyor…",
+    "ai_pin_no_ai": "AI yapılandırılmamış. Ayarlamak için Ayarlar → AI'yı açın.",
+    "ai_pin_no_rooms": "Bu broşürde henüz yapay zekadan çıkarılan oda bulunmamaktadır. Yapay zekanın düzenini çıkarabilmesi için broşürü yeniden yükleyin.",
+    "ai_pin_no_response": "Yapay zeka kullanılabilir bir yanıt vermedi. Daha net bir fotoğraf deneyin."
   },
   "markup": {
     "select": "Seç / Taşı",
