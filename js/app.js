@@ -17532,11 +17532,11 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
                   <div key={k} style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}>
                     <span style={{flex:1,fontSize:11,color:"#1a1a1a"}}>{label}</span>
                     <select value={ftDraft[k]} onChange={e=>setFtDraft(d=>({...d,[k]:e.target.value}))} style={{padding:"4px 6px",borderRadius:6,border:"1px solid rgba(0,0,0,0.15)",fontSize:11,background:"#fff"}}>
-                      <option value="">— pending</option>
+                      <option value="">Awaiting QP submission</option>
                       <option value="pass">Pass (no NC)</option>
                       <option value="nc">Complete with NCs</option>
                       <option value="fail">Fail (incomplete)</option>
-                      <option value="na">N/A</option>
+                      <option value="na">N/A — not applicable</option>
                     </select>
                   </div>
                 ))}
@@ -17582,7 +17582,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
           </div>
           {/* Disclaimer — reflects which components are captured vs missing */}
           <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",lineHeight:1.5,background:conquasStats.isFullBand?"rgba(48,209,88,0.06)":"rgba(255,149,0,0.06)",border:conquasStats.isFullBand?"1px solid rgba(48,209,88,0.18)":"1px solid rgba(255,149,0,0.18)",borderRadius:8,padding:"8px 10px"}}>
-            <b>{conquasStats.isFullBand?"Full Project NC rate":"Projection only — not official CONQUAS Band"}.</b> 0% = all pass, 100% = all fail; lower is better. Per CONQUAS (Private Residential) R1 §3.3: Project NC rate = IF × 0.4 + FT × 0.4 + EF × 0.2. {conquasStats.isFullBand?"All three components captured — showing the full formula.":conquasStats.projectedBasis.includes("IF + FT + EF")?"":conquasStats.ftRate!==null&&conquasStats.efRate===null?"This shows IF + FT re-normalised over 0.8 (EF pending).":conquasStats.efRate!==null&&conquasStats.ftRate===null?"This shows IF + EF re-normalised over 0.6 (FT pending).":"This shows IF only (FT + EF pending)."} {conquasStats.band6ForcedReason&&<span style={{color:"#cc0000",fontWeight:700}}>⚠ Band 6 forced by R1 §3.3 page 17 gate: {conquasStats.band6ForcedReason}. </span>}{conquasStats.band1FloorReason&&<span style={{color:"#b46700",fontWeight:700}}>⚠ Band escalated to minimum 3 per R1 §3.3 page 17: {conquasStats.band1FloorReason}. </span>}Project band is the AI app's best projection — official banding requires accredited assessor sign-off, QP declarations (Pull-Off · Heat Soak · WTT/WPT self-tests), and complete sampling per R1. Final accountability rests with the accredited checker, QP, or assessor — not this app.
+            <b>{conquasStats.isFullBand?"Full Project NC rate":"Projection only — not official CONQUAS Band"}.</b> 0% = all pass, 100% = all fail; lower is better. Per CONQUAS (Private Residential) R1 §3.3: Project NC rate = IF × 0.4 + FT × 0.4 + EF × 0.2. {conquasStats.isFullBand?"All three components captured — showing the full formula.":conquasStats.projectedBasis.includes("IF + FT + EF")?"":conquasStats.ftRate!==null&&conquasStats.efRate===null?"This shows IF + FT re-normalised over 0.8 (EF pending).":conquasStats.efRate!==null&&conquasStats.ftRate===null?"This shows IF + EF re-normalised over 0.6 (FT pending).":"This shows IF only (FT + EF pending)."} {conquasStats.band6ForcedReason&&<span style={{color:"#cc0000",fontWeight:700}}>⚠ Band 6 forced by R1 §3.3 page 17 gate: {conquasStats.band6ForcedReason}. </span>}{conquasStats.band1FloorReason&&<span style={{color:"#b46700",fontWeight:700}}>⚠ Band escalated to minimum 3 per R1 §3.3 page 17: {conquasStats.band1FloorReason}. </span>}{(()=>{const awaiting=Object.entries(conquasStats.qpStatuses).filter(([_,v])=>!v).map(([k])=>({pullOff:"Pull-Off",heatSoak:"Heat-Soak",wttSelf:"WTT self-test",wptSelf:"WPT self-test"}[k])).filter(Boolean);return awaiting.length>0?<span style={{color:"#5856d6",fontWeight:700}}>⏳ Awaiting QP submission: {awaiting.join(" · ")}. Band shown is provisional until these are recorded in REPORT → Project Setup. </span>:null;})()}Project band is the AI app's best projection — official banding requires accredited assessor sign-off, QP declarations (Pull-Off · Heat Soak · WTT/WPT self-tests), and complete sampling per R1. Final accountability rests with the accredited checker, QP, or assessor — not this app.
           </div>
         </div>
       )}
