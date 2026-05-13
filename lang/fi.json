@@ -321,6 +321,7 @@
     "pick_element_desc": "Valitse tarkastettava elementti.",
     "batch_process_folder": "ERÄPROSESSI KANSIJO",
     "batch_process_folder_hint": "Valitse useita kuvia kerralla – tekoäly luokittelee jokaisen oikeaan CONQUAS-elementtiin ja automaattisiin nimiin ISO 19650:n mukaan. Tallentaa vastaavaan IF-kansioon ZIP-viennissä.",
+    "batch_add_more": "+ LISÄÄ LISÄÄ KUVIA",
     "walk_subtitle": "Tarkistuspiste {current}/{total}",
     "pass": "SYÖTTÖ",
     "fail": "FAIL",

@@ -321,6 +321,7 @@
     "pick_element_desc": "検査する要素を選択します。",
     "batch_process_folder": "バッチ処理フォルダー",
     "batch_process_folder_hint": "一度に多くの写真を選択します。AI はそれぞれを適切な CONQUAS 要素に分類し、ISO 19650 に従って名前を自動付けします。ZIP エクスポート時に一致する IF フォルダーに保存します。",
+    "batch_add_more": "+ さらに写真を追加",
     "walk_subtitle": "チェックポイント {current}/{total}",
     "pass": "合格",
     "fail": "失敗",

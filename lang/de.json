@@ -321,6 +321,7 @@
     "pick_element_desc": "Wählen Sie aus, welches Element Sie prüfen möchten.",
     "batch_process_folder": "BATCH-PROZESS-ORDNER",
     "batch_process_folder_hint": "Wählen Sie viele Fotos auf einmal aus – die KI kategorisiert jedes in das richtige CONQUAS-Element und benennt es automatisch gemäß ISO 19650. Wird beim ZIP-Export im passenden IF-Ordner gespeichert.",
+    "batch_add_more": "+ WEITERE FOTOS HINZUFÜGEN",
     "walk_subtitle": "Kontrollpunkt {current} von {total}",
     "pass": "PASSIEREN",
     "fail": "SCHEITERN",

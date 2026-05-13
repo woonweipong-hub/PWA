@@ -321,6 +321,7 @@
     "pick_element_desc": "Seleziona quale elemento stai ispezionando.",
     "batch_process_folder": "CARTELLA PROCESSO BATCH",
     "batch_process_folder_hint": "Scegli più foto contemporaneamente: l'intelligenza artificiale le classifica ciascuna nell'elemento CONQUAS corretto e le assegna automaticamente i nomi secondo ISO 19650. Salva nella cartella IF corrispondente durante l'esportazione ZIP.",
+    "batch_add_more": "+ AGGIUNGI ALTRE FOTO",
     "walk_subtitle": "Punto di controllo {attuale} di {totale}",
     "pass": "PASSAGGIO",
     "fail": "FALLIRE",

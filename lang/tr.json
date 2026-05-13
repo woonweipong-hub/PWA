@@ -321,6 +321,7 @@
     "pick_element_desc": "Hangi öğeyi incelemekte olduğunuzu seçin.",
     "batch_process_folder": "TOPLU İŞLEM KLASÖRÜ",
     "batch_process_folder_hint": "Aynı anda çok sayıda fotoğraf seçin — Yapay zeka, her birini doğru CONQUAS öğesine göre sınıflandırır ve ISO 19650'ye göre otomatik adlar verir. ZIP dışa aktarımında eşleşen IF klasörüne kaydeder.",
+    "batch_add_more": "+ DAHA FAZLA FOTOĞRAF EKLE",
     "walk_subtitle": "{total} kontrol noktasının {current}'ı",
     "pass": "GEÇMEK",
     "fail": "HATA",

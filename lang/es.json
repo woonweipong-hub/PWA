@@ -321,6 +321,7 @@
     "pick_element_desc": "Seleccione qué elemento está inspeccionando.",
     "batch_process_folder": "CARPETA DE PROCESO POR LOTES",
     "batch_process_folder_hint": "Elija muchas fotos a la vez: AI clasifica cada una en el elemento CONQUAS correcto y los nombra automáticamente según ISO 19650. Se guarda en la carpeta IF correspondiente en la exportación ZIP.",
+    "batch_add_more": "+ AÑADIR MÁS FOTOS",
     "walk_subtitle": "Punto de control {actual} de {total}",
     "pass": "APROBAR",
     "fail": "FALLAR",

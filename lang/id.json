@@ -321,6 +321,7 @@
     "pick_element_desc": "Pilih elemen mana yang Anda periksa.",
     "batch_process_folder": "FOLDER PROSES BATCH",
     "batch_process_folder_hint": "Pilih banyak foto sekaligus — AI mengkategorikan masing-masing foto ke dalam elemen CONQUAS yang tepat dan nama otomatis per ISO 19650. Menyimpan ke dalam folder IF yang cocok pada ekspor ZIP.",
+    "batch_add_more": "+ TAMBAHKAN FOTO LEBIH BANYAK",
     "walk_subtitle": "Pos pemeriksaan {saat ini} dari {total}",
     "pass": "LULUS",
     "fail": "GAGAL",

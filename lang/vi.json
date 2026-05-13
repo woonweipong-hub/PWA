@@ -321,6 +321,7 @@
     "pick_element_desc": "Chọn phần tử bạn đang kiểm tra.",
     "batch_process_folder": "THƯ MỤC QUY TRÌNH BATCH",
     "batch_process_folder_hint": "Chọn nhiều ảnh cùng lúc — AI phân loại từng ảnh thành phần tử CONQUAS phù hợp và đặt tên tự động theo tiêu chuẩn ISO 19650. Lưu vào thư mục IF phù hợp khi xuất ZIP.",
+    "batch_add_more": "+ THÊM HÌNH ẢNH KHÁC",
     "walk_subtitle": "Điểm kiểm tra {hiện tại} trong tổng số {total}",
     "pass": "VƯỢT QUA",
     "fail": "THẤT ​​BẠI",

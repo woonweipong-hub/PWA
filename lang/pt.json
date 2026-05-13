@@ -321,6 +321,7 @@
     "pick_element_desc": "Selecione qual elemento você está inspecionando.",
     "batch_process_folder": "PASTA DE PROCESSO EM LOTE",
     "batch_process_folder_hint": "Escolha muitas fotos de uma vez - a IA categoriza cada uma no elemento CONQUAS correto e nomeia automaticamente de acordo com ISO 19650. Salva na pasta IF correspondente na exportação ZIP.",
+    "batch_add_more": "+ ADICIONE MAIS FOTOS",
     "walk_subtitle": "Ponto de verificação {atual} de {total}",
     "pass": "PASSAR",
     "fail": "FALHAR",

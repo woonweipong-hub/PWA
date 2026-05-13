@@ -321,6 +321,7 @@
     "pick_element_desc": "選擇您要檢查的元素。",
     "batch_process_folder": "批次資料夾",
     "batch_process_folder_hint": "一次挑選多張照片 — AI 將每張照片分類到正確的 CONQUAS 元素中，並根據 ISO 19650 自動命名。在 ZIP 匯出時儲存到符合的 IF 資料夾中。",
+    "batch_add_more": "+ 增加更多照片",
     "walk_subtitle": "檢查點 {current}（共 {total}）",
     "pass": "經過",
     "fail": "失敗",

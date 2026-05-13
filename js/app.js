@@ -10393,12 +10393,15 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   const[addPhotoSaving,setAddPhotoSaving]=useState(false);
   const addPhotoRef=useRef();
   const saveAndDoneRef=useRef(false);
-  // Folder picker — webkitdirectory lets the user drop an entire
-  // directory on laptop (Chrome/Edge/Firefox) or pick a folder on
-  // Android. On iOS it falls back to standard multi-pick. We filter
-  // the returned FileList to images in handlePhoto since directories
-  // can contain arbitrary file types.
+  // Bulk-photo picker — plain `multiple` (no webkitdirectory) so the
+  // user can pick specific photos from the OS gallery on every platform
+  // and re-tap to append more to the same batch.
   const folderRef=useRef();
+  // Append-only picker for the in-flight "+ ADD MORE PHOTOS" button on
+  // the batch progress card. Routes through handleAppendPhoto so new
+  // files are pushed onto the existing batchQueue without resetting
+  // batchTotal / batchThumbs / the in-flight current photo.
+  const appendRef=useRef();
   // CONQUAS-batch source-type marker. Persists across the entire batch
   // (multiple saves) so every entry in the batch is stamped
   // source_type="conquas_wizard". Cleared when the batch completes
@@ -10712,6 +10715,47 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // rest stay as File objects in batchQueue and are read lazily when
   // popped. This is the key to supporting hundreds of selected photos
   // without spiking memory with N simultaneous data-URL allocations.
+  // Append-to-running-batch — used by the in-flight "+ ADD MORE PHOTOS"
+  // button on the batch progress card. Unlike commitBatch, this does NOT
+  // reset form.photos, batchTotal, batchThumbs, or batchCurrentName — it
+  // just pushes the new files onto batchQueue, bumps the total, and
+  // appends queued thumbnails. The advance effect will pop them in order
+  // after the current photo + already-queued ones finish.
+  const appendBatch=(files)=>{
+    if(!files||!files.length)return;
+    setBatchQueue(prev=>[...prev,...files]);
+    setBatchTotal(prev=>prev+files.length);
+    setBatchThumbs(prev=>{
+      const baseOffset=prev.length;
+      return[...prev,...files.map((f,i)=>({
+        id:`bt-${Date.now()}-${baseOffset+i}`,
+        name:f.name||`photo-${baseOffset+i+1}`,
+        blobUrl:URL.createObjectURL(f),
+        status:"queued",
+      }))];
+    });
+  };
+  // Mid-batch picker handler. Same HEIC/format filter as handlePhoto so
+  // an Android user picking from a mixed gallery doesn't lose iPhone
+  // photos to a silent backend reject.
+  const handleAppendPhoto=(e)=>{
+    const all=Array.from(e.target.files||[]);
+    const isSupported=f=>/^image\/(jpeg|png|webp)$/i.test(f.type||"")||/\.(jpe?g|png|webp)$/i.test(f.name||"");
+    const isHeic=f=>/^image\/hei[cf]$/i.test(f.type||"")||/\.(heic|heif)$/i.test(f.name||"");
+    const files=all.filter(isSupported);
+    const heicCount=all.filter(isHeic).length;
+    if(appendRef.current)appendRef.current.value="";
+    if(!files.length){
+      if(heicCount>0)alert(`${heicCount} HEIC/HEIF file${heicCount>1?"s":""} skipped — backend doesn't support iPhone HEIC. Export as JPEG first.`);
+      else if(all.length>0)alert("No supported image files in the selection. Supported: JPG, PNG, WebP.");
+      return;
+    }
+    if(heicCount>0){
+      alert(`${heicCount} HEIC/HEIF skipped. Added ${files.length} photo${files.length>1?"s":""} to the running batch.`);
+    }
+    appendBatch(files);
+  };
+
   const commitBatch=async(files)=>{
     if(!files||!files.length)return;
     try{
@@ -11950,8 +11994,14 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
               setBatchPaused(true);
             }
           }} style={{flexShrink:0,background:batchPaused?"#ff9500":"rgba(88,86,214,0.12)",border:`1px solid ${batchPaused?"#ff9500":"rgba(88,86,214,0.3)"}`,borderRadius:8,padding:"5px 10px",color:batchPaused?"#fff":"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10.5,letterSpacing:"0.05em",cursor:"pointer"}}>{batchPaused?"▶ RESUME":"⏸ PAUSE"}</button>
+          {/* + ADD MORE PHOTOS — opens the multi-file picker and appends
+              the selection onto the running batchQueue. Lets users add
+              photos they missed in the first selection without having to
+              wait for the batch to finish. */}
+          <button onClick={()=>appendRef.current&&appendRef.current.click()} style={{flexShrink:0,background:"rgba(48,209,88,0.12)",border:"1px solid rgba(48,209,88,0.35)",borderRadius:8,padding:"5px 10px",color:"#1a7a35",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10.5,letterSpacing:"0.05em",cursor:"pointer"}}>{t("conquas.batch_add_more")}</button>
         </div>
       )}
+      <input type="file" accept="image/*" multiple ref={appendRef} onChange={handleAppendPhoto} style={{display:"none"}}/>
 
       {/* Batch thumbnail strip — visible during a batch run so the user can
           see ALL photos in the queue (not just the in-flight one). Each
@@ -12060,11 +12110,13 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       <div style={{marginBottom:16}}>
         <label style={lbl()}>{t("log.photos_count")} <span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t(form.workCategory==="CONQUAS Officer"?"log.step_3_capture_officer":"log.step_2_capture")}</span>{form.photos.length>0?` (${form.photos.length})`:""}</label>
         <input type="file" accept="image/*" capture="environment" multiple ref={fileRef} onChange={handlePhoto} style={{display:"none"}}/>
-        {/* Folder / multi-file picker for bulk import — webkitdirectory lets
-            the user pick an entire folder on laptop + Android; iOS falls
-            back to multi-file select. Each image becomes its own record
-            via the zero-tap batch flow (handlePhoto → batchQueue). */}
-        <input type="file" accept="image/*" multiple ref={folderRef} onChange={handlePhoto} style={{display:"none"}} webkitdirectory="" directory=""/>
+        {/* Multi-file picker for bulk import — was webkitdirectory-only
+            (folder-pick on Android + desktop, multi-file on iOS) which
+            forced a whole folder selection and replaced the batch on
+            re-tap. Plain `multiple` lets the user pick specific photos
+            on every platform AND re-tap to append more to the same
+            batch (handlePhoto → batchQueue is additive). */}
+        <input type="file" accept="image/*" multiple ref={folderRef} onChange={handlePhoto} style={{display:"none"}}/>
         {form.photos.length===0?(
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {(form.workCategory==="CONQUAS"||form.workCategory==="CONQUAS Officer")&&onStartConquas?(
@@ -12094,7 +12146,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
               // alongside tagged CONQUAS Check ones in the same walk.
               <>
               <button onClick={()=>folderRef.current.click()} style={{width:"100%",padding:"10px 14px",background:"rgba(88,86,214,0.06)",border:"1.5px dashed rgba(88,86,214,0.4)",borderRadius:12,color:"#5856d6",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.03em"}}>
-                <span style={{fontSize:16}}>📁</span> PICK FOLDER OR MULTIPLE PHOTOS · AI PRE-FILLS EACH
+                <span style={{fontSize:16}}>📁</span> PICK MULTIPLE PHOTOS · AI PRE-FILLS EACH
               </button>
               {/* Use Webcam — primary value on laptop where the file-input
                   capture hint is ignored. getUserMedia gives a live preview
@@ -12236,8 +12288,13 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         const isOfficer=form.workCategory==="CONQUAS Officer";
         const isConquasMode=form.workCategory==="CONQUAS"||isOfficer;
         const stepKey=isOfficer?"log.step_6_severity_officer":(isConquasMode?"log.step_5_severity_conquas":"log.step_5_severity");
+        // CONQUAS scoring is strict pass/fail per checkpoint — "Observation"
+        // isn't a valid tier (1X/2X/3X → Minor/Major/Critical only). Drop
+        // it from the picker so an Officer can't accidentally save an
+        // un-tiered defect that the BY NC WEIGHTAGE breakdown can't bucket.
+        const sevOptions=isConquasMode?SEVERITY.filter(s=>s!=="Observation"):SEVERITY;
         return(
-          <ComboField label={<>{isConquasMode?t("fields.severity_conquas"):t("fields.severity")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t(stepKey)}</span><ProvChip prov={form.fieldProvenance?.severity}/></>} value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder={isConquasMode?t("fields.severity_conquas_placeholder"):t("fields.severity_placeholder")} displayFn={sevDisplayFn}/>
+          <ComboField label={<>{isConquasMode?t("fields.severity_conquas"):t("fields.severity")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t(stepKey)}</span><ProvChip prov={form.fieldProvenance?.severity}/></>} value={form.severity} onChange={v=>set("severity",v)} options={sevOptions} placeholder={isConquasMode?t("fields.severity_conquas_placeholder"):t("fields.severity_placeholder")} displayFn={sevDisplayFn}/>
         );
       })()}
 

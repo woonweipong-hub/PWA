@@ -321,6 +321,7 @@
     "pick_element_desc": "Sélectionnez l'élément que vous inspectez.",
     "batch_process_folder": "DOSSIER DE TRAITEMENT PAR LOTS",
     "batch_process_folder_hint": "Choisissez plusieurs photos à la fois : l'IA les classe dans le bon élément CONQUAS et les nomme automatiquement selon la norme ISO 19650. Enregistre dans le dossier IF correspondant lors de l'exportation ZIP.",
+    "batch_add_more": "+ AJOUTER PLUS DE PHOTOS",
     "walk_subtitle": "Point de contrôle {actuel} de {total}",
     "pass": "PASSER",
     "fail": "ÉCHOUER",

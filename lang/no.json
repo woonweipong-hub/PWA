@@ -321,6 +321,7 @@
     "pick_element_desc": "Velg hvilket element du inspiserer.",
     "batch_process_folder": "BATCH PROSESS MAPPE",
     "batch_process_folder_hint": "Velg mange bilder samtidig - AI kategoriserer hvert i det riktige CONQUAS-elementet og autonavn i henhold til ISO 19650. Lagres i den matchende IF-mappen ved ZIP-eksport.",
+    "batch_add_more": "+ LEGG TIL FLERE BILDER",
     "walk_subtitle": "Sjekkpunkt {current} av {total}",
     "pass": "PASS",
     "fail": "FAIL",
