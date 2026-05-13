@@ -11999,7 +11999,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
               hierarchy on every new defect entry; persists in localStorage
               so the walk survives reload / browser background. */}
           <div style={{marginTop:10,paddingTop:10,borderTop:"1px dashed rgba(88,86,214,0.25)"}}>
-            <div style={{fontSize:9,fontWeight:800,color:"#5856d6",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>{t("log.location_context")}</div>
+            <div style={{fontSize:9,fontWeight:800,color:"#5856d6",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>{t("log.location_context")}<span style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif",textTransform:"none"}}>{t("log.step_2_set_location_officer")}</span></div>
             {locationCtx?(
               <>
                 <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
@@ -12047,7 +12047,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
 
       {/* ── 1. TAKE PHOTO — big prominent capture ── */}
       <div style={{marginBottom:16}}>
-        <label style={lbl()}>{t("log.photos_count")} <span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_2_capture")}</span>{form.photos.length>0?` (${form.photos.length})`:""}</label>
+        <label style={lbl()}>{t("log.photos_count")} <span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t(form.workCategory==="CONQUAS Officer"?"log.step_3_capture_officer":"log.step_2_capture")}</span>{form.photos.length>0?` (${form.photos.length})`:""}</label>
         <input type="file" accept="image/*" capture="environment" multiple ref={fileRef} onChange={handlePhoto} style={{display:"none"}}/>
         {/* Folder / multi-file picker for bulk import — webkitdirectory lets
             the user pick an entire folder on laptop + Android; iOS falls
@@ -12211,26 +12211,28 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
               locked project-level context above; per-entry title is auto-
               derived from component/issue or description at save time). ── */}
       {form.workCategory!=="CONQUAS Officer"&&(
-        <VoiceField label={<>{t("fields.title")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_3_title")}</span><ProvChip prov={form.fieldProvenance?.title}/></>} value={form.title} onChange={v=>set("title",v)} placeholder={t("fields.title_placeholder")}/>
+        <VoiceField label={<>{t("fields.title")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t(form.workCategory==="CONQUAS Officer"?"log.step_4_title_officer":"log.step_3_title")}</span><ProvChip prov={form.fieldProvenance?.title}/></>} value={form.title} onChange={v=>set("title",v)} placeholder={t("fields.title_placeholder")}/>
       )}
 
       {/* ── 4. WHAT HAPPENED ── */}
-      <VoiceField label={<>{t("fields.what_happened")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_4_describe")}</span><ProvChip prov={form.fieldProvenance?.description}/></>} value={form.description} onChange={v=>set("description",v)} placeholder={t("fields.description_placeholder")} multiline/>
+      <VoiceField label={<>{t("fields.what_happened")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t(form.workCategory==="CONQUAS Officer"?"log.step_5_describe_officer":"log.step_4_describe")}</span><ProvChip prov={form.fieldProvenance?.description}/></>} value={form.description} onChange={v=>set("description",v)} placeholder={t("fields.description_placeholder")} multiline/>
 
       {/* ── 5. SEVERITY — shown for every mode, but CONQUAS / CONQUAS Officer
               get a "DEFECTS SEVERITY" label (BCA scoring auto-classifies via
               1X/2X/3X tier multipliers per checkpoint, so the user-facing
               field is really about defect severity, not safety risk). ── */}
       {(()=>{
-        const isConquasMode=form.workCategory==="CONQUAS"||form.workCategory==="CONQUAS Officer";
+        const isOfficer=form.workCategory==="CONQUAS Officer";
+        const isConquasMode=form.workCategory==="CONQUAS"||isOfficer;
+        const stepKey=isOfficer?"log.step_6_severity_officer":(isConquasMode?"log.step_5_severity_conquas":"log.step_5_severity");
         return(
-          <ComboField label={<>{isConquasMode?t("fields.severity_conquas"):t("fields.severity")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{isConquasMode?t("log.step_5_severity_conquas"):t("log.step_5_severity")}</span><ProvChip prov={form.fieldProvenance?.severity}/></>} value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder={isConquasMode?t("fields.severity_conquas_placeholder"):t("fields.severity_placeholder")} displayFn={sevDisplayFn}/>
+          <ComboField label={<>{isConquasMode?t("fields.severity_conquas"):t("fields.severity")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t(stepKey)}</span><ProvChip prov={form.fieldProvenance?.severity}/></>} value={form.severity} onChange={v=>set("severity",v)} options={SEVERITY} placeholder={isConquasMode?t("fields.severity_conquas_placeholder"):t("fields.severity_placeholder")} displayFn={sevDisplayFn}/>
         );
       })()}
 
       {/* ── MORE DETAILS accordion ── */}
       <button onClick={()=>setShowMoreDetails(!showMoreDetails)} style={{width:"100%",background:"rgba(0,0,0,0.04)",border:"1px solid rgba(0,0,0,0.08)",borderRadius:12,padding:"14px 16px",marginBottom:showMoreDetails?16:0,display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}}>
-        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"rgba(0,0,0,0.55)",letterSpacing:"0.06em"}}>{t("log.more_details")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_6_details")}</span></span>
+        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"rgba(0,0,0,0.55)",letterSpacing:"0.06em"}}>{t("log.more_details")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t(form.workCategory==="CONQUAS Officer"?"log.step_7_details_officer":"log.step_6_details")}</span></span>
         <span style={{fontSize:12,color:"rgba(0,0,0,0.35)",transition:"transform 0.2s",transform:showMoreDetails?"rotate(180deg)":"rotate(0deg)"}}>▼</span>
       </button>
 
