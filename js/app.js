@@ -10526,13 +10526,24 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
 
   // Auto-open the CONQUAS wizard the moment workCategory becomes CONQUAS
   // or CONQUAS Officer — selecting either category already signals intent
-  // to run the structured walk, so a separate "START CONQUAS CHECK"
-  // gateway tap is redundant. Ref-gated so the wizard only fires once
-  // per selection: if the user dismisses it, switching workCategory
-  // away and back re-fires the next selection.
+  // to run the structured walk. CRITICAL: the first-mount run is
+  // deliberately skipped so that hydrating workCategory from localStorage
+  // on page load does NOT pop the wizard (2026-05-13 incident — opening
+  // siteshrimp.org auto-fired the wizard because the saved category was
+  // CONQUAS Officer). Auto-open is a response to a USER selection, not a
+  // state restore. Subsequent toggles within the session fire normally.
   const _autoConquasFiredRef=useRef(false);
+  const _didMountConquasAutoRef=useRef(false);
   useEffect(()=>{
     const isConquas=form.workCategory==="CONQUAS"||form.workCategory==="CONQUAS Officer";
+    if(!_didMountConquasAutoRef.current){
+      _didMountConquasAutoRef.current=true;
+      // Pre-arm the fired ref if we mount into a CONQUAS category so a
+      // later non-category re-render (form reset, etc.) doesn't trip an
+      // auto-fire. User must explicitly toggle category to retrigger.
+      if(isConquas)_autoConquasFiredRef.current=true;
+      return;
+    }
     if(!isConquas){_autoConquasFiredRef.current=false;return;}
     if(_autoConquasFiredRef.current)return;
     if(typeof onStartConquas!=="function")return;
@@ -11959,10 +11970,16 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
           when that scope is picked. Keeps the LOG form focused — no
           stray launchers when the category doesn't match.
 
-          NOTE: CONQUAS / CONQUAS Officer no longer have a launcher
-          button — auto-open (see effect above) fires the wizard the
-          moment the category is picked. To re-open after dismissal,
-          toggle workCategory away and back. */}
+          CONQUAS / CONQUAS Officer: auto-open (see effect above) fires
+          the wizard the moment the user picks the category. The link
+          below is the small manual re-entry path used after dismissal
+          or on a fresh page load (where auto-open is suppressed). It's
+          intentionally low-visual-weight — not a required gateway. */}
+      {(form.workCategory==="CONQUAS"||form.workCategory==="CONQUAS Officer")&&onStartConquas&&(
+        <button onClick={onStartConquas} style={{background:"none",border:"none",padding:"6px 0",marginBottom:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,letterSpacing:"0.06em",cursor:"pointer",textDecoration:"underline",textUnderlineOffset:3,alignSelf:"flex-start"}}>
+          📋 {t("conquas.start_button")}
+        </button>
+      )}
       {form.workCategory==="TOP Inspection"&&onStartTopWizard&&(
         <button onClick={onStartTopWizard} style={{width:"100%",padding:"12px 14px",marginBottom:16,background:"rgba(255,107,0,0.08)",border:"1.5px solid rgba(255,107,0,0.35)",borderRadius:12,color:"#ff6b00",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,letterSpacing:"0.06em",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
           <span style={{fontSize:16}}>🏛</span>
