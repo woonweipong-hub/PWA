@@ -11049,6 +11049,17 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         writeAi("severity","Critical");
         result.severity="Critical";
       }
+      // CONQUAS modes: when AI returns a conquas_tier (1X/2X/3X), override
+      // severity from the deterministic BCA tier → severity table (same
+      // mapping the wizard's saveAll uses — see tierSev around line 9165).
+      // For CONQUAS the tier-derived severity is contractually correct;
+      // the raw AI severity guess is overridden. Non-CONQUAS modes keep
+      // the prior behavior (raw severity / safety_risk only).
+      if((u.workCategory==="CONQUAS"||u.workCategory==="CONQUAS Officer")&&result.conquas_tier){
+        const tierToSev={"1X":"Minor","2X":"Major","3X":"Critical"};
+        const mapped=tierToSev[result.conquas_tier];
+        if(mapped)writeAi("severity",mapped);
+      }
       // Component — prefer result.component over result.trade and match
       // against DEFAULT_COMPONENTS so the dropdown stays clean.
       let resolvedComponent=null;
