@@ -10609,34 +10609,12 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // next capture re-fires geolocation instead of being silently skipped.
   useEffect(()=>{if(!form.photos.length&&!form.title&&!form.description)_gpsTriedRef.current=false;},[form.photos.length,form.title,form.description]);
 
-  // Auto-open the CONQUAS wizard the moment workCategory becomes CONQUAS.
-  // CONQUAS Officer is deliberately EXCLUDED: Officer mode has a Project
-  // (LOCKED) + LOCATION (this walk) preamble that must be set first so
-  // each saved entry inherits Block/Level/Unit; auto-popping the wizard
-  // covers that preamble and forces officers to dismiss-then-set-then-
-  // reopen (2026-05-13 user report). Officer mode uses the prominent
-  // START CONQUAS CHECK button in the PHOTOS slot as the deliberate tap.
-  //
-  // The first-mount run is also skipped for CONQUAS so that hydrating
-  // workCategory from localStorage on page load does NOT pop the wizard
-  // (2026-05-13 page-load incident). Auto-open is a response to a USER
-  // selection, not a state restore.
-  const _autoConquasFiredRef=useRef(false);
-  const _didMountConquasAutoRef=useRef(false);
-  useEffect(()=>{
-    const isAutoConquas=form.workCategory==="CONQUAS";
-    if(!_didMountConquasAutoRef.current){
-      _didMountConquasAutoRef.current=true;
-      if(isAutoConquas)_autoConquasFiredRef.current=true;
-      return;
-    }
-    if(!isAutoConquas){_autoConquasFiredRef.current=false;return;}
-    if(_autoConquasFiredRef.current)return;
-    if(typeof onStartConquas!=="function")return;
-    _autoConquasFiredRef.current=true;
-    onStartConquas();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[form.workCategory]);
+  // CONQUAS wizard is opt-in via the START CONQUAS CHECK button in the
+  // PHOTOS slot — picking the CONQUAS work category just sets the
+  // workCategory tag and lands the user on the normal LOG ENTRY form
+  // (2026-05-13 user clarification: form first, wizard on deliberate tap).
+  // Officer mode behaves the same way: pick category, set the
+  // Project+LOCATION preamble, then tap START CONQUAS CHECK.
 
   // CONQUAS Officer auto-fill: when an active location context exists and
   // the location hierarchy is still empty (fresh form / post-save reset),
@@ -11996,21 +11974,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       })()}
 
       {/* ── 0. WORK CATEGORY — Step 1; sets AI variant context; pick before capturing ── */}
-      <ComboField label={<>{t("fields.work_category")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_1_scope")}</span></>} value={form.workCategory} onChange={v=>{
-        setForm(f=>({...f,workCategory:v,component:"",issue:""}));
-        local.set(WORK_CATEGORY_KEY,v);
-        // ComboField onChange fires on every user tap, including re-tap
-        // of the already-selected chip. Picking CONQUAS again (or first-
-        // tap when workCategory hydrated as CONQUAS from a prior session)
-        // must pop the wizard — the [form.workCategory] useEffect below
-        // only fires on actual value changes and misses that case.
-        // Officer stays excluded: it has a Project + LOCATION preamble
-        // that must be set first; users tap the prominent button there.
-        if(v==="CONQUAS"&&typeof onStartConquas==="function"){
-          _autoConquasFiredRef.current=true; // prevent useEffect double-fire on state change
-          onStartConquas();
-        }
-      }} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")} displayFn={workcatDisplayFn}/>
+      <ComboField label={<>{t("fields.work_category")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_1_scope")}</span></>} value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")} displayFn={workcatDisplayFn}/>
 
       {/* CONQUAS Officer locked project context. Project ID + Project Name
           are project-level fields edited in REPORT → Project Setup; here
