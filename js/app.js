@@ -8725,6 +8725,123 @@ async function analyzeCONQUASPhoto(photoDataUrl,elementName,checkpoints){
   }
 }
 
+// ───────────────────────────────────────────────────────────────────────
+// BackgroundConquasAI — module-scope multi-photo AI run that survives
+// CONQUAS wizard unmount. Previously the wizard owned `runAiAnalysisMulti`
+// + its in-flight state via useState; closing the wizard or switching tabs
+// after the wizard collapsed orphaned every setter and the run silently
+// stalled. By hoisting both the worker pool and the result snapshot here,
+// the run keeps going regardless of which screen the user is on, and an
+// App-level "REVIEW" pill picks them back up at the aiReview step when
+// it's done.
+//
+// status: 'idle' | 'running' | 'ready' | 'error'
+//   idle    → no run pending or last result already consumed
+//   running → workers in flight; `done`/`total` updating
+//   ready   → merged verdicts available; waiting for user review (HITL —
+//             CONQUAS is contractual, no auto-save)
+//   error   → every photo failed; surface errorMsg
+// ───────────────────────────────────────────────────────────────────────
+const BackgroundConquasAI={
+  state:{status:"idle"},
+  listeners:new Set(),
+  subscribe(fn){this.listeners.add(fn);return()=>this.listeners.delete(fn);},
+  _emit(){
+    // Snapshot listeners so a reset() inside one listener doesn't mutate
+    // the iteration. We're already swallowing per-listener errors below.
+    const snap=Array.from(this.listeners);
+    snap.forEach(fn=>{try{fn(this.state);}catch(err){console.warn("BackgroundConquasAI listener threw",err);}});
+  },
+  reset(){this.state={status:"idle"};this._emit();},
+  // Kick off a multi-photo run. Resolves immediately as far as callers are
+  // concerned — subscribe() for progress + ready notification.
+  //   photos: array of base64 data URLs
+  //   params: {componentName, pickedId, checkpoints}
+  async start({photos,params}){
+    if(!photos||!photos.length)return;
+    if(this.state.status==="running")return;
+    const total=photos.length;
+    this.state={
+      status:"running",
+      photos:photos.slice(),
+      params:params||{},
+      done:0,total,
+      verdicts:{},reasons:{},sources:{},
+      primaryPhoto:photos[0],
+      additionalPhotos:photos.slice(1),
+      errorMsg:"",
+    };
+    this._emit();
+    const provider=(local.get(AI_PROVIDER_KEY)||"gemini").toLowerCase();
+    const MAX_CONCURRENCY=provider==="ollama"?1:3;
+    const MAX_RETRIES=2;
+    const isRetriable=res=>{
+      if(!res||!res.error)return false;
+      if(res.error==="no_ai"||res.error==="no_photo")return false;
+      if(res.error==="parse")return true;
+      if(res.error==="network"){
+        return /HTTP\s?429|HTTP\s?5\d\d|UNAVAILABLE|abort|timeout|rate.?limit|high demand|Failed to fetch/i.test(String(res.detail||""));
+      }
+      return false;
+    };
+    const checkpoints=(params&&params.checkpoints)||[];
+    const componentName=(params&&params.componentName)||"";
+    const results=new Array(total);
+    let nextIdx=0;
+    const worker=async()=>{
+      while(true){
+        const i=nextIdx++;
+        if(i>=total)break;
+        let res=await analyzeCONQUASPhoto(photos[i],componentName,checkpoints);
+        let attempt=0;
+        while(isRetriable(res)&&attempt<MAX_RETRIES){
+          attempt++;
+          await new Promise(r=>setTimeout(r,500*Math.pow(3,attempt-1)));
+          res=await analyzeCONQUASPhoto(photos[i],componentName,checkpoints);
+        }
+        results[i]={photoIdx:i,res};
+        if(this.state.status==="running"){
+          this.state={...this.state,done:this.state.done+1};
+          this._emit();
+        }
+      }
+    };
+    const workers=[];
+    for(let w=0;w<Math.min(MAX_CONCURRENCY,total);w++)workers.push(worker());
+    await Promise.all(workers);
+    if(this.state.status!=="running")return; // user reset mid-flight; drop result
+    const allErrored=results.every(({res})=>res&&res.error);
+    if(allErrored){
+      const first=results.find(({res})=>res&&res.error);
+      this.state={...this.state,status:"error",errorMsg:first?.res?.detail||first?.res?.error||"AI analysis failed for every photo."};
+      this._emit();
+      return;
+    }
+    const score=v=>v==="f"?3:v==="p"?2:v==="u"?1:0;
+    const verdicts={};const reasons={};const sources={};
+    checkpoints.forEach(cp=>{
+      const cpId=cp.itemId;
+      let bestVerdict="u",bestReason="",bestPhotoIdx=0,bestScore=0;
+      for(const{photoIdx,res} of results){
+        if(!res||res.error||!res.verdicts)continue;
+        const v=String(res.verdicts[cpId]||"").toLowerCase();
+        const reason=String((res.reasons||{})[cpId]||"").trim();
+        const s=score(v);
+        if(s>bestScore||(s===bestScore&&reason&&!bestReason)){
+          bestVerdict=v||"u";bestReason=reason;bestPhotoIdx=photoIdx;bestScore=s;
+        }
+      }
+      if(bestVerdict)verdicts[cpId]=bestVerdict;
+      if(bestReason)reasons[cpId]=bestReason;
+      sources[cpId]=bestPhotoIdx;
+    });
+    const firstOk=results.find(({res})=>res&&!res.error&&res.rawPhoto);
+    const primaryPhoto=(firstOk&&firstOk.res.rawPhoto&&firstOk.photoIdx===0)?firstOk.res.rawPhoto:this.state.primaryPhoto;
+    this.state={...this.state,status:"ready",verdicts,reasons,sources,primaryPhoto};
+    this._emit();
+  },
+};
+
 // ── Custom Quality Check Wizard ────────────────────────────────
 // Lightweight pass/fail walkthrough for non-CONQUAS projects. Runs off
 // project.quality_checklist (free-text, one checkpoint per line; lines
@@ -8972,6 +9089,48 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
     return()=>document.removeEventListener("visibilitychange",onVis);
   },[aiBusy]);
 
+  // BackgroundConquasAI subscription — the AI run itself lives at module
+  // scope so it survives wizard close + tab switches. This effect mirrors
+  // the store state into local useState (so the existing renderers don't
+  // need to change) and drives step transitions for two cases:
+  //   1. Fresh in-wizard run: subscription sees running → ready and moves
+  //      the wizard from aiAnalyzing to aiReview without the user having
+  //      to stay on screen.
+  //   2. Re-entry via the App-level READY pill: wizard mounts, the
+  //      subscription's initial apply() reads the store's existing state
+  //      and jumps straight to aiReview with the merged verdicts loaded.
+  useEffect(()=>{
+    const apply=(s)=>{
+      if(!s)return;
+      if(s.status==="running"){
+        setAiBusy(true);
+        setAiErrorMsg("");
+        setAiAnalysisProgress({done:s.done||0,total:s.total||0});
+        if(s.primaryPhoto)setAiPhoto(s.primaryPhoto);
+        if(Array.isArray(s.additionalPhotos))setAiAdditionalPhotos(s.additionalPhotos);
+        if(s.params&&s.params.pickedId)setPickedId(prev=>prev||s.params.pickedId);
+        setStep(prev=>(prev==="aiAnalyzing"||prev==="aiReview"||prev==="aiError")?prev:"aiAnalyzing");
+      }else if(s.status==="ready"){
+        setAiBusy(false);
+        setAiAnalysisProgress({done:s.total||0,total:s.total||0});
+        if(s.primaryPhoto)setAiPhoto(s.primaryPhoto);
+        if(Array.isArray(s.additionalPhotos))setAiAdditionalPhotos(s.additionalPhotos);
+        setAiVerdicts(s.verdicts||{});
+        setAiReasons(s.reasons||{});
+        setAiPhotoSources(s.sources||{});
+        if(s.params&&s.params.pickedId)setPickedId(prev=>prev||s.params.pickedId);
+        setStep(prev=>prev==="summary"?prev:"aiReview");
+      }else if(s.status==="error"){
+        setAiBusy(false);
+        setAiErrorMsg(s.errorMsg||"AI analysis failed.");
+        setStep(prev=>(prev==="aiError"||prev==="summary")?prev:"aiError");
+      }
+    };
+    apply(BackgroundConquasAI.state);
+    return BackgroundConquasAI.subscribe(apply);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
+
   // Fetch ontology once on open. Edition defaults to DEFAULT_ONTOLOGY_EDITION
   // when the project hasn't been explicitly pinned to a specific edition,
   // so every project supports the wizard the moment user picks CONQUAS
@@ -9013,6 +9172,10 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
   // not folded into the rate.
 
   const pickElement=(itemId)=>{
+    // Picking a new element abandons any AI run still in flight from the
+    // previous element. Reset the module-scope store so the App-level
+    // READY pill clears and a fresh start({}) call below can take over.
+    BackgroundConquasAI.reset();
     setPickedId(itemId);setIdx(0);setResults([]);
     setFailPhoto(null);setFailNote("");
     setAiPhoto(null);setAiVerdicts({});setAiReasons({});setAiOverrides({});setAiErrorMsg("");
@@ -9046,106 +9209,24 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
     });
     if(aiFileRef.current)aiFileRef.current.value="";
   };
-  const runAiAnalysisMulti=async(photos)=>{
-    setAiBusy(true);setAiErrorMsg("");
-    setAiAnalysisProgress({done:0,total:photos.length});
-    // Bounded concurrency + per-photo retry. Was Promise.all of N photos
-    // which (a) bursts past cloud-provider RPM / concurrent limits, and
-    // (b) queues at Ollama's HTTP layer where default num_parallel=1 means
-    // requests 2..N time out before processing starts. 1 of 12 succeeding
-    // = textbook either-case symptom. Provider-aware concurrency: Ollama
-    // (local, serial) -> 1; cloud (Gemini/OpenAI/Groq/etc.) -> 3. Retry
-    // covers both "transient cloud 429/5xx" AND "parse" (which is what
-    // Ollama timeout-to-null surfaces as via analyzePhoto -> {error:"parse"}).
-    const provider=(local.get(AI_PROVIDER_KEY)||"gemini").toLowerCase();
-    const MAX_CONCURRENCY=provider==="ollama"?1:3;
-    const MAX_RETRIES=2;
-    const isRetriable=res=>{
-      if(!res||!res.error)return false;
-      // no_ai / no_photo are hard failures — retrying won't help.
-      if(res.error==="no_ai"||res.error==="no_photo")return false;
-      // parse covers Ollama timeout-to-null AND genuine malformed JSON;
-      // either way retrying is cheap and often clears.
-      if(res.error==="parse")return true;
-      // network errors: only retry the transient family.
-      if(res.error==="network"){
-        return /HTTP\s?429|HTTP\s?5\d\d|UNAVAILABLE|abort|timeout|rate.?limit|high demand|Failed to fetch/i.test(String(res.detail||""));
-      }
-      return false;
-    };
-    const results=new Array(photos.length);
-    let nextIdx=0,done=0;
-    const worker=async()=>{
-      // Each worker pulls the next unprocessed index, runs the AI call with
-      // retry, then loops until the queue is drained.
-      while(true){
-        const i=nextIdx++;
-        if(i>=photos.length)break;
-        let res=await analyzeCONQUASPhoto(photos[i],pickedComponent?pickedComponent.name:"",activeCheckpoints);
-        let attempt=0;
-        while(isRetriable(res)&&attempt<MAX_RETRIES){
-          attempt++;
-          // Exponential backoff (500ms, 1500ms) gives the provider time to
-          // recover from a rate-burst or model load before we re-try.
-          await new Promise(r=>setTimeout(r,500*Math.pow(3,attempt-1)));
-          res=await analyzeCONQUASPhoto(photos[i],pickedComponent?pickedComponent.name:"",activeCheckpoints);
-        }
-        results[i]={photoIdx:i,res};
-        done++;
-        setAiAnalysisProgress({done,total:photos.length});
-      }
-    };
-    const workers=[];
-    for(let w=0;w<Math.min(MAX_CONCURRENCY,photos.length);w++)workers.push(worker());
-    await Promise.all(workers);
-    setAiBusy(false);
-    // Surface partial-failure count so the user knows not every photo
-    // contributed. Was silent: merge would just pick best from survivors and
-    // the user couldn't tell N of M photos errored.
-    const failCount=results.filter(r=>r&&r.res&&r.res.error).length;
-    if(failCount>0&&failCount<photos.length){
-      console.warn(`[CONQUAS AI] ${failCount} of ${photos.length} photos failed; merged verdicts reflect only the ${photos.length-failCount} that succeeded.`);
-    }
-    // If every photo errored, surface the first error and bail.
-    const allErrored=results.every(({res})=>res&&res.error);
-    if(allErrored){
-      const first=results.find(({res})=>res&&res.error);
-      setAiErrorMsg(first?.res?.detail||first?.res?.error||"AI analysis failed for every photo.");
-      setStep("aiError");
-      return;
-    }
-    // Merge verdicts: fail > pass > uncertain. When multiple photos agree,
-    // remember the photo with a non-empty reason so the user sees the
-    // most-actionable explanation. photoSources[cpId] = the photoIdx whose
-    // verdict won, used at save time to attach the right evidence photo.
-    const score=v=>v==="f"?3:v==="p"?2:v==="u"?1:0;
-    const merged={};const reasons={};const sources={};
-    activeCheckpoints.forEach(cp=>{
-      const cpId=cp.itemId;
-      let bestVerdict="u";let bestReason="";let bestPhotoIdx=0;let bestScore=0;
-      for(const{photoIdx,res} of results){
-        if(!res||res.error||!res.verdicts)continue;
-        const v=String(res.verdicts[cpId]||"").toLowerCase();
-        const reason=String((res.reasons||{})[cpId]||"").trim();
-        const s=score(v);
-        // Stricter wins; tie + new has reason wins; tie + neither has reason → first wins
-        if(s>bestScore||(s===bestScore&&reason&&!bestReason)){
-          bestVerdict=v||"u";bestReason=reason;bestPhotoIdx=photoIdx;bestScore=s;
-        }
-      }
-      if(bestVerdict)merged[cpId]=bestVerdict;
-      if(bestReason)reasons[cpId]=bestReason;
-      sources[cpId]=bestPhotoIdx;
-    });
-    // Compressed primary photo from the first successful result (mirror the
-    // legacy single-photo behaviour where rawPhoto was the canonical thumb).
-    const firstOk=results.find(({res})=>res&&!res.error&&res.rawPhoto);
-    if(firstOk&&firstOk.res.rawPhoto&&firstOk.photoIdx===0)setAiPhoto(firstOk.res.rawPhoto);
-    setAiVerdicts(merged);
-    setAiReasons(reasons);
-    setAiPhotoSources(sources);
+  const runAiAnalysisMulti=(photos)=>{
+    // The worker pool, retry loop, and verdict merge all live at module
+    // scope in BackgroundConquasAI so the run survives wizard unmount.
+    // The wizard's job here is just to snapshot the params (which element
+    // + which checkpoint list the user picked) and kick off; the
+    // subscription effect below mirrors store → local state and drives
+    // the step transitions (running → aiAnalyzing, ready → aiReview,
+    // error → aiError). User-only state (aiOverrides) is reset locally
+    // so a fresh run starts clean.
     setAiOverrides({});
-    setStep("aiReview");
+    BackgroundConquasAI.start({
+      photos,
+      params:{
+        pickedId,
+        componentName:pickedComponent?pickedComponent.name:"",
+        checkpoints:activeCheckpoints,
+      },
+    });
   };
   // Backward-compat single-photo entry point (kept for callers that
   // explicitly pass one base64 string, e.g. retry flows).
@@ -9199,6 +9280,7 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
     setStep("summary");
   };
   const switchToManual=()=>{
+    BackgroundConquasAI.reset();
     setAiPhoto(null);setAiVerdicts({});setAiReasons({});setAiOverrides({});setAiErrorMsg("");
     setIdx(0);setResults([]);setFailPhoto(null);setFailNote("");
     setStep("walk");
@@ -9459,6 +9541,9 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
       const tail=observationsFailed>0?`\n\n⚠ ${observationsFailed} observation(s) failed to upload (likely offline/network). Defects above were saved; rerun the wizard when online to capture the dropped observations.`:"";
       alert((parts.length?"Saved "+parts.join(" + ")+".":"Saved.")+tail);
     }catch(_){}
+    // Save succeeded → result is consumed. Clear the module store so the
+    // App-level READY pill disappears and the next CONQUAS run starts clean.
+    BackgroundConquasAI.reset();
     onClose();
   };
 
@@ -9802,7 +9887,7 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
           <div style={{fontSize:15,color:"rgba(0,0,0,0.8)",fontWeight:700,marginBottom:8,fontFamily:"'Barlow Condensed',sans-serif"}}>{t("conquas.ai_failed")}</div>
           <div style={{fontSize:12,color:"rgba(0,0,0,0.5)",lineHeight:1.4,marginBottom:24,maxWidth:320,marginLeft:"auto",marginRight:"auto"}}>{aiErrorMsg||t("conquas.ai_failed_generic")}</div>
           <div style={{display:"flex",flexDirection:"column",gap:10,maxWidth:280,margin:"0 auto"}}>
-            <button onClick={()=>{setAiErrorMsg("");setStep("aiCapture");setTimeout(()=>aiFileRef.current&&aiFileRef.current.click(),50);}} style={{height:48,background:"#ff6b00",border:"none",borderRadius:12,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>{t("conquas.retake")}</button>
+            <button onClick={()=>{BackgroundConquasAI.reset();setAiErrorMsg("");setStep("aiCapture");setTimeout(()=>aiFileRef.current&&aiFileRef.current.click(),50);}} style={{height:48,background:"#ff6b00",border:"none",borderRadius:12,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>{t("conquas.retake")}</button>
             <button onClick={switchToManual} style={{height:48,background:"#fff",border:"1.5px solid rgba(0,0,0,0.12)",borderRadius:12,color:"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>▶ {t("conquas.switch_manual")}</button>
           </div>
         </div>
@@ -9820,7 +9905,7 @@ function ConquasCheckWizard({currentProject,company,member,onSave,onClose,onStar
     return(
       <div style={overlay}>
         <div style={topBar}>
-          <button onClick={()=>setStep("modeChoice")} style={topBarBtn}>{t("conquas.back")}</button>
+          <button onClick={()=>{BackgroundConquasAI.reset();setStep("modeChoice");}} style={topBarBtn}>{t("conquas.back")}</button>
           <div style={{color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,letterSpacing:"0.08em",flex:1}}>{t("conquas.ai_review_title")}</div>
           <button onClick={onClose} style={topBarBtn}>{t("conquas.close")}</button>
         </div>
@@ -11911,7 +11996,21 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       })()}
 
       {/* ── 0. WORK CATEGORY — Step 1; sets AI variant context; pick before capturing ── */}
-      <ComboField label={<>{t("fields.work_category")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_1_scope")}</span></>} value={form.workCategory} onChange={v=>{setForm(f=>({...f,workCategory:v,component:"",issue:""}));local.set(WORK_CATEGORY_KEY,v);}} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")} displayFn={workcatDisplayFn}/>
+      <ComboField label={<>{t("fields.work_category")}<span style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif"}}>{t("log.step_1_scope")}</span></>} value={form.workCategory} onChange={v=>{
+        setForm(f=>({...f,workCategory:v,component:"",issue:""}));
+        local.set(WORK_CATEGORY_KEY,v);
+        // ComboField onChange fires on every user tap, including re-tap
+        // of the already-selected chip. Picking CONQUAS again (or first-
+        // tap when workCategory hydrated as CONQUAS from a prior session)
+        // must pop the wizard — the [form.workCategory] useEffect below
+        // only fires on actual value changes and misses that case.
+        // Officer stays excluded: it has a Project + LOCATION preamble
+        // that must be set first; users tap the prominent button there.
+        if(v==="CONQUAS"&&typeof onStartConquas==="function"){
+          _autoConquasFiredRef.current=true; // prevent useEffect double-fire on state change
+          onStartConquas();
+        }
+      }} options={Object.keys(WORK_CATEGORIES)} placeholder={t("fields.work_category_placeholder")} displayFn={workcatDisplayFn}/>
 
       {/* CONQUAS Officer locked project context. Project ID + Project Name
           are project-level fields edited in REPORT → Project Setup; here
@@ -25789,6 +25888,14 @@ function App(){
   const[showConquas,setShowConquas]=useState(false);
   const[showTopWizard,setShowTopWizard]=useState(false);
   const[showQualityCheck,setShowQualityCheck]=useState(false);
+  // Mirror BackgroundConquasAI state at App scope so the running/ready/error
+  // pill can render above the nav from any tab — independent of which
+  // component currently owns the screen. The store keeps processing even
+  // when the wizard is closed; the pill lets the user pick the result back
+  // up (tap → reopen wizard, the wizard's own subscription restores the
+  // aiReview step with merged verdicts intact).
+  const[bgConquas,setBgConquas]=useState(BackgroundConquasAI.state);
+  useEffect(()=>BackgroundConquasAI.subscribe(setBgConquas),[]);
   // CONQUAS-batch handshake — true for one render cycle after the user taps
   // [BATCH PROCESS FOLDER] in the wizard. LogDefect's effect picks it up,
   // pre-tags entryType, programmatically clicks the folder picker, then
@@ -26983,7 +27090,12 @@ function App(){
 
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:tab==="report"?"calc(160px + env(safe-area-inset-bottom,0px))":"calc(100px + env(safe-area-inset-bottom,0px))"}}>
-        {tab==="log"&&canLog&&<LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")} onStartConquas={()=>setShowConquas(true)} onStartQualityCheck={()=>setShowQualityCheck(true)} onStartTopWizard={()=>setShowTopWizard(true)} onOpenProjects={()=>setShowProjects(true)} pendingBatchTrigger={pendingConquasBatch} onBatchHandled={()=>setPendingConquasBatch(false)}/>}
+        {/* LogDefect stays mounted across tab switches so an in-flight zero-tap
+            AI batch keeps processing + auto-saving when the user moves to
+            REVIEW / REPORT / DRAWINGS. Unmounting would orphan the worker
+            pool's setState callbacks → silent queue stall (user-reported on
+            CONQUAS Officer and other work categories, 2026-05-13). */}
+        {canLog&&<div style={{display:tab==="log"?"block":"none"}}><LogDefect member={member} company={company} currentProject={currentProject} members={members} onSave={addDefect} existingDefects={defects} onViewEntry={d=>{setViewing(d);setTab("defects");}} onTagDrawing={()=>setTab("drawings")} onStartConquas={()=>setShowConquas(true)} onStartQualityCheck={()=>setShowQualityCheck(true)} onStartTopWizard={()=>setShowTopWizard(true)} onOpenProjects={()=>setShowProjects(true)} pendingBatchTrigger={pendingConquasBatch} onBatchHandled={()=>setPendingConquasBatch(false)}/></div>}
         {tab==="log"&&!canLog&&<div style={{padding:40,textAlign:"center",color:"rgba(0,0,0,0.4)",fontSize:14}}>{t("log.viewer_disabled")}</div>}
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} onPatchDefectLocal={updated=>setDefects(prev=>prev.map(d=>d.id===updated.id?updated:d))} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onViewEntry={setViewing}/>}
         {tab==="defects"&&<DefectsList defects={defects} archivedDefects={archivedDefects} onView={setViewing} onUpdate={updateDefect} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onRestore={restoreDefects} onHardDelete={hardDeleteDefects} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")} onOpenInReview={(payload)=>setReviewModal(payload)} queueCount={queueCount} syncing2={syncing2} onSyncQueue={syncQueue}/>}
@@ -27021,6 +27133,21 @@ function App(){
       {reviewModal?.type==="drawing"&&<DrawingViewer drawing={reviewModal.drawing} onClose={()=>setReviewModal(null)} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} onViewEntry={(d)=>{setReviewModal(null);setViewing(d);setTab("defects");}}/>}
       {reviewModal?.type==="comparison"&&<DrawingsPanel onClose={()=>setReviewModal(null)} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} initialCompare={reviewModal.comparison}/>}
       {showAiSearch&&<AiSearch defects={defects} onClose={()=>setShowAiSearch(false)} onApplyFilters={f=>{setNlFilters(f);setTab("defects");}}/>}
+      {/* CONQUAS background-AI pill — visible from any tab whenever a
+          multi-photo AI run is in flight or its results are waiting for
+          review. Tap re-opens the wizard; the wizard's BackgroundConquasAI
+          subscription restores the aiReview step automatically. Hidden
+          while the wizard is open (the wizard renders its own minimized
+          badge there). */}
+      {!showConquas&&(bgConquas.status==="running"||bgConquas.status==="ready"||bgConquas.status==="error")&&(
+        <button onClick={()=>setShowConquas(true)} aria-label="Resume CONQUAS AI" style={{position:"fixed",bottom:"calc(82px + env(safe-area-inset-bottom,0px))",right:12,zIndex:401,background:"#1a1a1a",color:"#fff",borderRadius:24,padding:"10px 14px",display:"flex",alignItems:"center",gap:8,boxShadow:"0 6px 20px rgba(0,0,0,0.35)",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,letterSpacing:"0.06em",border:`1.5px solid ${bgConquas.status==="ready"?"rgba(48,209,88,0.6)":bgConquas.status==="error"?"rgba(255,59,48,0.6)":"rgba(88,86,214,0.55)"}`,minHeight:44}}>
+          <span style={{fontSize:14}}>📋</span>
+          <span>CONQUAS{bgConquas.status==="running"&&bgConquas.total?` · ${bgConquas.done||0}/${bgConquas.total}`:bgConquas.status==="ready"?" · READY":bgConquas.status==="error"?" · ERROR":""}</span>
+          {bgConquas.status==="running"&&<Spin size={11}/>}
+          {bgConquas.status==="ready"&&<span style={{width:8,height:8,borderRadius:"50%",background:"#30d158",boxShadow:"0 0 0 2px rgba(48,209,88,0.25)"}}/>}
+          <span style={{fontSize:13,opacity:0.7,marginLeft:2}}>▴</span>
+        </button>
+      )}
       {showConquas&&<ConquasCheckWizard currentProject={currentProject} company={company} member={member} onSave={addDefect} onClose={()=>setShowConquas(false)} onStartBatch={()=>{setShowConquas(false);setTab("log");setPendingConquasBatch(true);}}/>}
       {showTopWizard&&<TopCheckWizard currentProject={currentProject} company={company} member={member} onSave={addDefect} onClose={()=>setShowTopWizard(false)}/>}
       {showQualityCheck&&<QualityCheckWizard currentProject={currentProject} member={member} onSave={addDefect} onClose={()=>setShowQualityCheck(false)}/>}
