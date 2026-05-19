@@ -13138,7 +13138,7 @@ function DefectsMapView({defects,allDefects,onView,onUpdate,selectMode,selectedI
       {/* Master map — collapses when a pin's embedded detail is open, then
           re-expands via the ◀ BACK TO MAP button inside DefectDetail. */}
       <div style={{position:"relative",background:"#fff",borderRadius:12,overflow:"hidden",border:"1px solid rgba(0,0,0,0.08)",display:showDetail?"none":"block"}}>
-        <div ref={mapRef} style={{width:"100%",height:"min(55dvh,480px)",minHeight:260,background:"#e5e3dc"}}/>
+        <div ref={mapRef} style={{width:"100%",height:"min(calc(100dvh - 460px - env(safe-area-inset-bottom,0px)),420px)",minHeight:240,background:"#e5e3dc"}}/>
         <div style={{position:"absolute",top:10,left:10,background:"rgba(26,26,26,0.85)",color:"#fff",padding:"6px 12px",borderRadius:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,pointerEvents:"none"}}>{pinned.length} pinned{selectMode?" · tap to select":" · tap a pin"}{pinned.length>filteredIds.size?` · ${pinned.length-(pinned.filter(p=>p.inFilter).length)} out of filter`:""}</div>
         {status==="error"&&<div style={{padding:20,color:"#ff3b30",textAlign:"center"}}>Could not load the map. Check your connection and provider in Settings → Maps.</div>}
       </div>
