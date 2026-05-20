@@ -287,6 +287,7 @@
     "floor_plan_scan_no_rooms": "AI kunne ikke læse rumetiketter. Prøv en klarere plantegning eller vælg et standardrum nedenfor.",
     "floor_plan_rooms_label": "FRA DENNE ENHEDS STANDPLAN — tryk for at udfylde Placering",
     "standard_spaces_label": "STANDARD BOLIGERUM — tryk for at udfylde Placering",
+    "standard_spaces_placeholder": "— Vælg en standardplads —",
     "field_block": "BLOK",
     "field_block_placeholder": "f.eks. Blok 5, Tårn A",
     "field_level": "NIVEAU",

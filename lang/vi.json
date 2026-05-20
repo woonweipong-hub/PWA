@@ -287,6 +287,7 @@
     "floor_plan_scan_no_rooms": "AI không thể đọc nhãn phòng. Hãy thử sơ đồ mặt bằng rõ ràng hơn hoặc chọn một không gian tiêu chuẩn bên dưới.",
     "floor_plan_rooms_label": "TỪ MẶT BẰNG SÀN CỦA CĂN HỘ NÀY — nhấn để điền vào Vị trí",
     "standard_spaces_label": "KHÔNG GIAN DÂN CƯ TIÊU CHUẨN - nhấn để lấp đầy Vị trí",
+    "standard_spaces_placeholder": "— Chọn một không gian tiêu chuẩn —",
     "field_block": "KHỐI",
     "field_block_placeholder": "ví dụ. Khối 5, Tháp A",
     "field_level": "MỨC ĐỘ",

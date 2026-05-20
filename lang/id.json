@@ -287,6 +287,7 @@
     "floor_plan_scan_no_rooms": "AI tidak bisa membaca label ruangan. Cobalah denah lantai yang lebih jelas atau pilih ruang standar di bawah.",
     "floor_plan_rooms_label": "DARI RENCANA LANTAI UNIT INI — ketuk untuk mengisi Lokasi",
     "standard_spaces_label": "RUANG PERUMAHAN STANDAR — ketuk untuk mengisi Lokasi",
+    "standard_spaces_placeholder": "— Pilih ruang standar —",
     "field_block": "MEMBLOKIR",
     "field_block_placeholder": "misalnya Blok 5, Menara A",
     "field_level": "TINGKAT",

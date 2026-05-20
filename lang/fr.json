@@ -287,6 +287,7 @@
     "floor_plan_scan_no_rooms": "L'IA ne pouvait pas lire les étiquettes des chambres. Essayez un plan d'étage plus clair ou choisissez un espace standard ci-dessous.",
     "floor_plan_rooms_label": "À PARTIR DU PLAN D'ÉTAGE DE CETTE UNITÉ — appuyez pour remplir l'emplacement",
     "standard_spaces_label": "ESPACES RÉSIDENTIELS STANDARD — appuyez pour remplir l'emplacement",
+    "standard_spaces_placeholder": "— Sélectionnez un espace standard —",
     "field_block": "BLOC",
     "field_block_placeholder": "par ex. Bloc 5, Tour A",
     "field_level": "NIVEAU",

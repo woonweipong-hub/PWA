@@ -287,6 +287,7 @@
     "floor_plan_scan_no_rooms": "L'intelligenza artificiale non è riuscita a leggere le etichette delle stanze. Prova una planimetria più chiara o scegli uno spazio standard di seguito.",
     "floor_plan_rooms_label": "DALLA PIANTA DI QUESTA UNITÀ: tocca per inserire la posizione",
     "standard_spaces_label": "SPAZI RESIDENZIALI STANDARD: toccare per inserire la Posizione",
+    "standard_spaces_placeholder": "— Seleziona uno spazio standard —",
     "field_block": "BLOCCARE",
     "field_block_placeholder": "per esempio. Blocco 5, Torre A",
     "field_level": "LIVELLO",

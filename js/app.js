@@ -10457,17 +10457,30 @@ function SetLocationSheet({initialCtx,projectId,onClose,onSave}){
             </div>
           </div>
         )}
-        {/* Preset standard residential spaces — always visible. Orange to
-            mirror the Save action's primary brand colour. Useful when the
+        {/* Preset standard residential spaces — native <select> so the OS
+            picker handles the long list (one-handed, gloves, sunlight).
+            Selecting an option fills ROOM / LOCATION; the user can still
+            override or voice-edit in the field below. Useful when the
             officer has no brochure to scan, or for ancillary spaces that
             wouldn't appear on a unit floor plan (PES, Roof Terrace). */}
         <div style={{marginBottom:10}}>
           <div style={chipLabelStyle}>{t("log.standard_spaces_label")}</div>
-          <div style={chipRowStyle}>
+          <select
+            value={STANDARD_RESIDENTIAL_SPACES.includes(ctx.locationName)?ctx.locationName:""}
+            onChange={e=>{const v=e.target.value;if(v)setCtx(c=>({...c,locationName:v}));}}
+            style={{
+              width:"100%",minHeight:44,padding:"10px 12px",
+              borderRadius:12,border:"1px solid rgba(0,0,0,0.15)",
+              background:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",
+              fontWeight:700,color:ctx.locationName?"#1a1a1a":"rgba(0,0,0,0.45)",
+              letterSpacing:"0.02em",appearance:"menulist",
+            }}
+          >
+            <option value="">{t("log.standard_spaces_placeholder")||"— Select a standard space —"}</option>
             {STANDARD_RESIDENTIAL_SPACES.map((sp,i)=>(
-              <button key={`std${i}`} onClick={()=>setCtx(c=>({...c,locationName:sp}))} style={chipStyle(ctx.locationName===sp,"preset")}>{sp}</button>
+              <option key={`std${i}`} value={sp}>{sp}</option>
             ))}
-          </div>
+          </select>
         </div>
         <VoiceField label={t("log.field_location_name")} value={ctx.locationName} onChange={v=>setCtx(c=>({...c,locationName:v}))} placeholder={t("log.field_location_name_placeholder")}/>
         <div style={{display:"flex",gap:8,marginTop:14}}>

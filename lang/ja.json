@@ -287,6 +287,7 @@
     "floor_plan_scan_no_rooms": "AIは部屋のラベルを読み取ることができませんでした。 より明確な間取り図を試すか、以下の標準的なスペースを選択してください。",
     "floor_plan_rooms_label": "このユニットのフロアプランから — タップして場所を記入してください",
     "standard_spaces_label": "標準住宅スペース — タップして場所を入力してください",
+    "standard_spaces_placeholder": "— 標準スペースを選択してください —",
     "field_block": "ブロック",
     "field_block_placeholder": "例えば ブロック5、タワーA",
     "field_level": "レベル",

@@ -287,6 +287,7 @@
     "floor_plan_scan_no_rooms": "AI कमरे के लेबल नहीं पढ़ सका। एक स्पष्ट फ़्लोर प्लान आज़माएँ या नीचे एक मानक स्थान चुनें।",
     "floor_plan_rooms_label": "इस इकाई के फ्लोर प्लान से - स्थान भरने के लिए टैप करें",
     "standard_spaces_label": "मानक आवासीय स्थान - स्थान भरने के लिए टैप करें",
+    "standard_spaces_placeholder": "— एक मानक स्थान चुनें —",
     "field_block": "अवरोध पैदा करना",
     "field_block_placeholder": "जैसे ब्लॉक 5, टावर ए",
     "field_level": "स्तर",

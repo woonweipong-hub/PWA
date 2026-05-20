@@ -287,6 +287,7 @@
     "floor_plan_scan_no_rooms": "AI couldn't read room labels. 尝试更清晰的平面图或选择下面的标准空间。",
     "floor_plan_rooms_label": "从该单元的平面图 — 点击以填写位置",
     "standard_spaces_label": "标准住宅空间 — 点击填写位置",
+    "standard_spaces_placeholder": "— 选择标准空间 —",
     "field_block": "堵塞",
     "field_block_placeholder": "例如 A座5座",
     "field_level": "等级",

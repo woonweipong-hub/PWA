@@ -287,6 +287,7 @@
     "floor_plan_scan_no_rooms": "Die KI konnte die Zimmerbeschriftung nicht lesen. Versuchen Sie es mit einem klareren Grundriss oder wählen Sie unten einen Standardraum aus.",
     "floor_plan_rooms_label": "AUS DEM GRUNDRISS DIESER EINHEIT – tippen Sie, um den Standort einzugeben",
     "standard_spaces_label": "STANDARD-WOHNRÄUME – tippen Sie, um den Standort auszufüllen",
+    "standard_spaces_placeholder": "— Wählen Sie einen Standardbereich aus —",
     "field_block": "BLOCK",
     "field_block_placeholder": "z.B. Block 5, Turm A",
     "field_level": "EBENE",

@@ -287,6 +287,7 @@
     "floor_plan_scan_no_rooms": "AI kunne ikke lese rometiketter. Prøv en klarere planløsning eller velg en standard plass nedenfor.",
     "floor_plan_rooms_label": "FRA DENNE ENHETENS PLAN — trykk for å fylle ut plassering",
     "standard_spaces_label": "STANDARD BOLIGROM — trykk for å fylle ut plassering",
+    "standard_spaces_placeholder": "— Velg en standardplass —",
     "field_block": "BLOKKERE",
     "field_block_placeholder": "f.eks. Blokk 5, Tower A",
     "field_level": "NIVÅ",

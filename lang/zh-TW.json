@@ -287,6 +287,7 @@
     "floor_plan_scan_no_rooms": "AI 無法讀取房間標籤。 嘗試更清晰的平面圖或選擇下面的標準空間。",
     "floor_plan_rooms_label": "從該單元的平面圖 — 點選以填入位置",
     "standard_spaces_label": "標準住宅空間 — 點選填寫位置",
+    "standard_spaces_placeholder": "— 選擇標準空間 —",
     "field_block": "堵塞",
     "field_block_placeholder": "例如A座5座",
     "field_level": "等級",

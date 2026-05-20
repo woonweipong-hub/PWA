@@ -287,6 +287,7 @@
     "floor_plan_scan_no_rooms": "A IA não conseguia ler os rótulos dos quartos. Experimente uma planta baixa mais clara ou escolha um espaço padrão abaixo.",
     "floor_plan_rooms_label": "DA PLANTA BAIXA DESTA UNIDADE - toque para preencher Localização",
     "standard_spaces_label": "ESPAÇOS RESIDENCIAIS PADRÃO - toque para preencher Localização",
+    "standard_spaces_placeholder": "— Selecione um espaço padrão —",
     "field_block": "BLOQUEAR",
     "field_block_placeholder": "por exemplo Bloco 5, Torre A",
     "field_level": "NÍVEL",

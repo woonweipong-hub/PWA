@@ -287,6 +287,7 @@
     "floor_plan_scan_no_rooms": "AI သည် အခန်းတံဆိပ်များကို မဖတ်နိုင်ပါ။ ပိုမိုရှင်းလင်းသော အထပ်အစီအစဥ်ကို စမ်းသုံးကြည့်ပါ သို့မဟုတ် အောက်ခြေစံနေရာကို ရွေးပါ။",
     "floor_plan_rooms_label": "ဤယူနစ်၏ကြမ်းပြင်အစီအစဉ်မှ — တည်နေရာဖြည့်စွက်ရန် ကိုနှိပ်ပါ။",
     "standard_spaces_label": "စံပြလူနေနေရာများ — တည်နေရာဖြည့်စွက်ရန် ကိုနှိပ်ပါ။",
+    "standard_spaces_placeholder": "— စံနေရာကို ရွေးပါ —",
     "field_block": "BLOCK",
     "field_block_placeholder": "ဥပမာ Block 5၊ Tower A၊",
     "field_level": "အဆင့်",

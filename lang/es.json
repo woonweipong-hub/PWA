@@ -287,6 +287,7 @@
     "floor_plan_scan_no_rooms": "La IA no podía leer las etiquetas de las habitaciones. Pruebe con un plano de planta más claro o elija un espacio estándar a continuación.",
     "floor_plan_rooms_label": "DESDE EL PLANO DE PLANTA DE ESTA UNIDAD: toque para completar la Ubicación",
     "standard_spaces_label": "ESPACIOS RESIDENCIALES ESTÁNDAR: toque para completar Ubicación",
+    "standard_spaces_placeholder": "— Seleccione un espacio estándar —",
     "field_block": "BLOQUEAR",
     "field_block_placeholder": "p.ej. Bloque 5, Torre A",
     "field_level": "NIVEL",

@@ -287,6 +287,7 @@
     "floor_plan_scan_no_rooms": "AI가 객실 라벨을 읽을 수 없습니다. 보다 명확한 평면도를 시도하거나 아래의 표준 공간을 선택하십시오.",
     "floor_plan_rooms_label": "이 숙소의 평면도에서 — 탭하여 위치를 입력하세요.",
     "standard_spaces_label": "표준 주거 공간 — 탭하여 채우기 위치",
+    "standard_spaces_placeholder": "— 표준 공간을 선택 —",
     "field_block": "차단하다",
     "field_block_placeholder": "예를 들어 블록 5, 타워 A",
     "field_level": "수준",
