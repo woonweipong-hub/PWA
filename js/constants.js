@@ -430,6 +430,48 @@ const WORK_CATEGORY_KEY = "sdt-work-category-v1";
 // when the screen times out or the browser is backgrounded.
 const LOCATION_CONTEXT_KEY = "sdt-location-context-v1";
 
+// CONQUAS Officer Step 2 — quick-pick preset of standard residential spaces
+// surfaced as tap-to-fill chips in SetLocationSheet. Covers HDB + private-
+// residential vocabulary, verbatim where the names are contractually loaded
+// (Household Shelter, PES, Service Yard, Walk-in Wardrobe). Ordering reflects
+// inspection walk order on a typical unit (entry → living → kitchen → bedroom
+// wing → bathrooms → ancillary → outdoor / exterior).
+const STANDARD_RESIDENTIAL_SPACES = [
+  "Living/Dining",
+  "Kitchen",
+  "Master Bedroom",
+  "Bedroom 2",
+  "Bedroom 3",
+  "Bedroom 4",
+  "Master Bath",
+  "Common Bath",
+  "Powder Room",
+  "Household Shelter",
+  "Service Yard",
+  "Balcony",
+  "Walk-in Wardrobe",
+  "Study",
+  "Maid's Room",
+  "Store",
+  "Private Lift Lobby",
+  "PES",
+  "Roof Terrace"
+];
+
+// Per-unit floor-plan room cache. Keyed by projectId + block + unit so the
+// rooms extracted from a brochure scan are remembered when the assessor
+// revisits the same unit later in the walk (or on a return visit). Stored
+// in localStorage so it survives reloads; not synced server-side because the
+// list is regenerable from the source image at any time.
+const UNIT_ROOMS_KEY_PREFIX = "ss-unit-rooms-v1__";
+function getUnitRoomsKey(projectId, block, unit) {
+  if (!projectId) return null;
+  const b = (block || "").trim();
+  const u = (unit || "").trim();
+  if (!b || !u) return null;
+  return UNIT_ROOMS_KEY_PREFIX + projectId + "__" + b + "__" + u;
+}
+
 // ── BCA TOP Inspection checklist ─────────────────────────────────
 // Verbatim BCA Temporary Occupation Permit NC categories + checklist
 // items, transcribed from the user's `top_checklist_package.md` JSONL

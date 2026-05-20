@@ -10273,13 +10273,33 @@ Return:
 
 Respond in valid JSON only:
 {"block": "...", "level": "...", "rooms": [{"name":"...","x_pct":0,"y_pct":0}], "grid_refs": ["..."], "notes": "..."}`;
-function SetLocationSheet({initialCtx,onClose,onSave}){
+function SetLocationSheet({initialCtx,projectId,onClose,onSave}){
   const[ctx,setCtx]=useState(initialCtx||{block:"",unit:"",level:"",locationName:""});
   const[scanning,setScanning]=useState(false);
   const[scanError,setScanError]=useState("");
   const[scanInfo,setScanInfo]=useState("");
+  // Floor-plan scan state (separate from signboard so both can run / show
+  // banners independently). scannedRooms holds the extracted room names as a
+  // tap-to-fill chip strip; hydrated from localStorage when block+unit are
+  // both set so a returning officer sees the previously-extracted list
+  // without re-scanning.
+  const[fpScanning,setFpScanning]=useState(false);
+  const[fpError,setFpError]=useState("");
+  const[fpInfo,setFpInfo]=useState("");
+  const[scannedRooms,setScannedRooms]=useState([]);
   const scanRef=useRef();
+  const fpRef=useRef();
   const aiReady=isAiConfigured();
+  // Restore the cached room list when (projectId, block, unit) identifies a
+  // previously-scanned unit. Skipping when any of the three is missing keeps
+  // an empty / partial form from clobbering an existing cache entry.
+  useEffect(()=>{
+    const key=getUnitRoomsKey(projectId,ctx.block,ctx.unit);
+    if(!key){setScannedRooms([]);return;}
+    const saved=local.get(key);
+    if(Array.isArray(saved)&&saved.length)setScannedRooms(saved);
+    else setScannedRooms([]);
+  },[projectId,ctx.block,ctx.unit]);
   const handleScan=e=>{
     const file=e.target.files?.[0];
     if(scanRef.current)scanRef.current.value="";
@@ -10323,7 +10343,78 @@ function SetLocationSheet({initialCtx,onClose,onSave}){
     };
     reader.readAsDataURL(file);
   };
+  // Floor-plan scan — reuses the existing BROCHURE_PROMPT (already proven on
+  // the drawings upload path). Accepts a single image from camera or gallery.
+  // Backfills block / level when the form is still empty; never overwrites
+  // user-typed values. Rooms become tap-to-fill chips.
+  const handleScanFloorPlan=e=>{
+    const file=e.target.files?.[0];
+    if(fpRef.current)fpRef.current.value="";
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=async()=>{
+      setFpScanning(true);setFpError("");setFpInfo("");
+      try{
+        const result=await analyzePhoto(reader.result,BROCHURE_PROMPT);
+        if(result&&typeof result==="object"){
+          const rooms=Array.isArray(result.rooms)?result.rooms.map(r=>r&&r.name?String(r.name).trim():"").filter(Boolean):[];
+          setCtx(prev=>({
+            ...prev,
+            block:prev.block||result.block||"",
+            level:prev.level||result.level||"",
+            source:prev.source||"floor_plan",
+          }));
+          if(rooms.length){
+            setScannedRooms(rooms);
+            setFpInfo(t("log.floor_plan_scan_ok").replace("{n}",rooms.length));
+          }else{
+            setFpError(t("log.floor_plan_scan_no_rooms"));
+          }
+        }else{
+          setFpError(t("log.floor_plan_scan_no_rooms"));
+        }
+      }catch(err){
+        setFpError(err?.message||String(err));
+      }
+      setFpScanning(false);
+    };
+    reader.readAsDataURL(file);
+  };
   const canSave=!!(ctx.block||ctx.unit||ctx.level||ctx.locationName);
+  // Chip cell style helper — variant "scanned" (purple) vs "preset" (orange)
+  // mirrors the existing colour vocabulary in this sheet (signboard scan is
+  // already purple/#5856d6; Save action is orange/#ff6b00).
+  const chipStyle=(selected,variant)=>({
+    flexShrink:0,
+    padding:"6px 12px",
+    borderRadius:14,
+    border:selected?`1.5px solid ${variant==="scanned"?"#5856d6":"#ff6b00"}`:"1px solid rgba(0,0,0,0.15)",
+    background:selected?(variant==="scanned"?"rgba(88,86,214,0.12)":"rgba(255,107,0,0.1)"):"#fff",
+    color:selected?(variant==="scanned"?"#5856d6":"#ff6b00"):"#1a1a1a",
+    fontSize:11,fontWeight:700,
+    fontFamily:"'Barlow Condensed',sans-serif",
+    cursor:"pointer",whiteSpace:"nowrap",
+    letterSpacing:"0.02em",
+  });
+  const chipLabelStyle={
+    fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.45)",
+    marginBottom:6,letterSpacing:"0.08em",
+    fontFamily:"'Barlow Condensed',sans-serif",
+  };
+  const chipRowStyle={
+    display:"flex",gap:6,overflowX:"auto",
+    paddingBottom:4,WebkitOverflowScrolling:"touch",
+  };
+  // Persist the unit's room list on Save so the same chip strip comes back
+  // next time the officer opens Set Location for this Block+Unit.
+  const handleSave=()=>{
+    try{
+      const key=getUnitRoomsKey(projectId,ctx.block,ctx.unit);
+      if(key&&scannedRooms.length)local.set(key,scannedRooms);
+    }catch(err){console.warn("unit rooms persist failed",err);}
+    onSave({...ctx,capturedAt:new Date().toISOString(),source:ctx.source||"manual"});
+    onClose();
+  };
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:600,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
       <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",background:"#f0ede8",borderTopLeftRadius:18,borderTopRightRadius:18,padding:"16px 16px max(16px, env(safe-area-inset-bottom))"}}>
@@ -10332,18 +10423,56 @@ function SetLocationSheet({initialCtx,onClose,onSave}){
           <button onClick={onClose} style={{background:"transparent",border:"none",fontSize:22,color:"rgba(0,0,0,0.5)",cursor:"pointer",padding:"0 4px"}}>×</button>
         </div>
         <input type="file" accept="image/*" capture="environment" ref={scanRef} onChange={handleScan} style={{display:"none"}}/>
-        <button onClick={()=>scanRef.current?.click()} disabled={scanning||!aiReady} style={{width:"100%",padding:"14px 16px",marginBottom:scanError||scanInfo?6:14,background:scanning?"rgba(88,86,214,0.05)":"rgba(88,86,214,0.08)",border:"1.5px dashed rgba(88,86,214,0.4)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:aiReady&&!scanning?"pointer":"not-allowed",letterSpacing:"0.06em",display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:aiReady?1:0.6}}>
-          {scanning?<><Spin size={14}/><span>{t("log.signboard_scanning")}</span></>:<><span style={{fontSize:16}}>📷</span><span>{aiReady?t("log.signboard_scan_button"):t("log.signboard_scan_disabled")}</span></>}
-        </button>
+        <input type="file" accept="image/*" capture="environment" ref={fpRef} onChange={handleScanFloorPlan} style={{display:"none"}}/>
+        {/* Two scan paths side-by-side. Signboard = unit / floor markers
+            (returns block/unit/level/room name). Floor plan = brochure /
+            layout image (returns block/level + a list of rooms surfaced
+            as chips below). Both are AI-optional; without AI the user
+            uses the preset chips + manual fields. */}
+        <div style={{display:"flex",gap:8,marginBottom:(scanError||scanInfo||fpError||fpInfo)?6:14}}>
+          <button onClick={()=>scanRef.current?.click()} disabled={scanning||fpScanning||!aiReady} style={{flex:1,padding:"14px 12px",background:scanning?"rgba(88,86,214,0.05)":"rgba(88,86,214,0.08)",border:"1.5px dashed rgba(88,86,214,0.4)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:aiReady&&!scanning&&!fpScanning?"pointer":"not-allowed",letterSpacing:"0.04em",display:"flex",alignItems:"center",justifyContent:"center",gap:6,opacity:aiReady?1:0.6,lineHeight:1.2,textAlign:"center"}}>
+            {scanning?<><Spin size={14}/><span>{t("log.signboard_scanning")}</span></>:<><span style={{fontSize:15}}>📷</span><span>{aiReady?t("log.signboard_scan_button"):t("log.signboard_scan_disabled")}</span></>}
+          </button>
+          <button onClick={()=>fpRef.current?.click()} disabled={scanning||fpScanning||!aiReady} style={{flex:1,padding:"14px 12px",background:fpScanning?"rgba(88,86,214,0.05)":"rgba(88,86,214,0.08)",border:"1.5px dashed rgba(88,86,214,0.4)",borderRadius:12,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:aiReady&&!scanning&&!fpScanning?"pointer":"not-allowed",letterSpacing:"0.04em",display:"flex",alignItems:"center",justifyContent:"center",gap:6,opacity:aiReady?1:0.6,lineHeight:1.2,textAlign:"center"}}>
+            {fpScanning?<><Spin size={14}/><span>{t("log.floor_plan_scanning")}</span></>:<><span style={{fontSize:15}}>📐</span><span>{aiReady?t("log.floor_plan_scan_button"):t("log.floor_plan_scan_disabled")}</span></>}
+          </button>
+        </div>
         {scanError&&<div style={{marginBottom:10,padding:"8px 10px",background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.25)",borderRadius:8,fontSize:11,color:"#cc0000"}}>{scanError}</div>}
         {scanInfo&&!scanError&&<div style={{marginBottom:10,padding:"8px 10px",background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.25)",borderRadius:8,fontSize:11,color:"#1a7a35"}}>{scanInfo}</div>}
+        {fpError&&<div style={{marginBottom:10,padding:"8px 10px",background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.25)",borderRadius:8,fontSize:11,color:"#cc0000"}}>{fpError}</div>}
+        {fpInfo&&!fpError&&<div style={{marginBottom:10,padding:"8px 10px",background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.25)",borderRadius:8,fontSize:11,color:"#1a7a35"}}>{fpInfo}</div>}
         <VoiceField label={t("log.field_block")} value={ctx.block} onChange={v=>setCtx(c=>({...c,block:v}))} placeholder={t("log.field_block_placeholder")}/>
         <VoiceField label={t("log.field_level")} value={ctx.level} onChange={v=>setCtx(c=>({...c,level:v}))} placeholder={t("log.field_level_placeholder")}/>
         <VoiceField label={t("log.field_unit")} value={ctx.unit} onChange={v=>setCtx(c=>({...c,unit:v}))} placeholder={t("log.field_unit_placeholder")}/>
+        {/* Scanned-rooms chips — shown when the current Block+Unit has a
+            cached or freshly-scanned room list. Purple to mirror the AI
+            colour vocabulary used by the scan buttons. */}
+        {scannedRooms.length>0&&(
+          <div style={{marginBottom:10}}>
+            <div style={chipLabelStyle}>{t("log.floor_plan_rooms_label")}</div>
+            <div style={chipRowStyle}>
+              {scannedRooms.map((room,i)=>(
+                <button key={`fp${i}`} onClick={()=>setCtx(c=>({...c,locationName:room}))} style={chipStyle(ctx.locationName===room,"scanned")}>{room}</button>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* Preset standard residential spaces — always visible. Orange to
+            mirror the Save action's primary brand colour. Useful when the
+            officer has no brochure to scan, or for ancillary spaces that
+            wouldn't appear on a unit floor plan (PES, Roof Terrace). */}
+        <div style={{marginBottom:10}}>
+          <div style={chipLabelStyle}>{t("log.standard_spaces_label")}</div>
+          <div style={chipRowStyle}>
+            {STANDARD_RESIDENTIAL_SPACES.map((sp,i)=>(
+              <button key={`std${i}`} onClick={()=>setCtx(c=>({...c,locationName:sp}))} style={chipStyle(ctx.locationName===sp,"preset")}>{sp}</button>
+            ))}
+          </div>
+        </div>
         <VoiceField label={t("log.field_location_name")} value={ctx.locationName} onChange={v=>setCtx(c=>({...c,locationName:v}))} placeholder={t("log.field_location_name_placeholder")}/>
         <div style={{display:"flex",gap:8,marginTop:14}}>
           <button onClick={onClose} style={{flex:1,minHeight:46,background:"rgba(0,0,0,0.05)",border:"1px solid rgba(0,0,0,0.12)",borderRadius:12,color:"#3a3a3a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,letterSpacing:"0.04em",cursor:"pointer"}}>{t("log.cancel")}</button>
-          <button onClick={()=>{onSave({...ctx,capturedAt:new Date().toISOString(),source:ctx.source||"manual"});onClose();}} disabled={!canSave} style={{flex:2,minHeight:46,background:canSave?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:14,color:canSave?"#fff":"rgba(0,0,0,0.3)",fontSize:15,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",cursor:canSave?"pointer":"not-allowed"}}>{t("log.save_location")}</button>
+          <button onClick={handleSave} disabled={!canSave} style={{flex:2,minHeight:46,background:canSave?"#ff6b00":"rgba(0,0,0,0.1)",border:"none",borderRadius:14,color:canSave?"#fff":"rgba(0,0,0,0.3)",fontSize:15,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.06em",cursor:canSave?"pointer":"not-allowed"}}>{t("log.save_location")}</button>
         </div>
       </div>
     </div>
@@ -12589,6 +12718,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       {showSetLocation&&(
         <SetLocationSheet
           initialCtx={locationCtx}
+          projectId={currentProject?.id||""}
           onClose={()=>setShowSetLocation(false)}
           onSave={ctx=>persistLocationCtx(ctx)}/>
       )}
@@ -16252,6 +16382,14 @@ function ProjectSetupPanel({currentProject,member,company,onProjectUpdate}){
 }
 
 function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled,syncing,member,queueCount,onSyncQueue,syncing2,onProjectUpdate}){
+  // CONQUAS Officer mode signal — drives the simplified "Visual IF" view
+  // of the CONQUAS card (no Functional-Test or External-Finishes section,
+  // since an officer can only verify what's visible in the photos; FT/WTT/
+  // WPT/WFT and EF roof/wall/works require on-site instrumented checks
+  // outside the officer's scope). User-state signal: whichever work
+  // category the user last selected in LOG. Contractor / CONQUAS-non-
+  // officer modes still see the full R1 §3.3 weighted report.
+  const isOfficerMode=local.get(WORK_CATEGORY_KEY)==="CONQUAS Officer";
   // Merged-from-Dashboard status block (lives at the top of Report now).
   const open=defects.filter(d=>d.status==="Open").length;
   const inprog=defects.filter(d=>d.status==="In Progress").length;
@@ -16379,6 +16517,10 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   // Phase 3.6 — CONQUAS Functional Tests editor. Project-level fields
   // (ft_*_applicable / ft_*_fails / ft_*_status); saved via DB.projects.update.
   const[ftEditOpen,setFtEditOpen]=useState(false);
+  // CONQUAS Officer mode: collapse the NC-count-by-occurrence-rate ranking to
+  // the top 5 by default (worst offenders surface first), but allow expanding
+  // to the full list of applicable elements.
+  const[topRateExpanded,setTopRateExpanded]=useState(false);
   // Phase 3.8B — CONQUAS audit trail. Loads all conquas_observations for the
   // current project (pass + fail + uncertain, each with photo evidence) and
   // groups them by observation_batch_id for display. Gracefully empty on
@@ -17482,7 +17624,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,border:"1px solid rgba(88,86,214,0.2)"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,gap:8}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#1a1a1a",letterSpacing:"0.03em"}}>
-              ⚖️ QUALITY CHECK
+              ⚖️ {isOfficerMode?"VISUAL IF":"QUALITY CHECK"}
             </div>
             <div style={{fontSize:10,fontWeight:700,color:"#5856d6",background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:6,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>
               PROJECTED BAND {conquasStats.projectedBand}
@@ -17501,12 +17643,14 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
             </div>
             <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",marginTop:6,lineHeight:1.4}}>
               <b>IF:</b> {conquasStats.rate.toFixed(1)}% ({conquasStats.failCount} non-conformance{conquasStats.failCount!==1?"s":""} of {conquasStats.applicableCount} applicable check{conquasStats.applicableCount!==1?"s":""}; {conquasStats.defectCount} defect record{conquasStats.defectCount!==1?"s":""} across {conquasStats.batchCount} assessment{conquasStats.batchCount!==1?"s":""})
-              {conquasStats.ftRate!==null&&<> · <b>FT:</b> {conquasStats.ftRate.toFixed(1)}% ({conquasStats.ftFails}/{conquasStats.ftApplicable})</>}
-              {conquasStats.efRate!==null&&<> · <b>EF:</b> {conquasStats.efRate.toFixed(1)}% ({conquasStats.efFails}/{conquasStats.efApplicable})</>}
+              {!isOfficerMode&&conquasStats.ftRate!==null&&<> · <b>FT:</b> {conquasStats.ftRate.toFixed(1)}% ({conquasStats.ftFails}/{conquasStats.ftApplicable})</>}
+              {!isOfficerMode&&conquasStats.efRate!==null&&<> · <b>EF:</b> {conquasStats.efRate.toFixed(1)}% ({conquasStats.efFails}/{conquasStats.efApplicable})</>}
             </div>
           </div>
           {/* Functional Tests — R1 §3.3 counted-NC tests (WTT/WPT/WFT) +
-              QP-declared status flags (Pull-Off / Heat soak / self-tests). */}
+              QP-declared status flags (Pull-Off / Heat soak / self-tests).
+              Hidden in CONQUAS Officer mode — officer scope is visual-only. */}
+          {!isOfficerMode&&(
           <div style={{marginBottom:12,background:"rgba(52,170,220,0.05)",border:"1px solid rgba(52,170,220,0.2)",borderRadius:10,padding:"10px 12px"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6,gap:8}}>
               <div style={{fontSize:10,fontWeight:800,color:"#1d6b8f",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif"}}>FT (FUNCTIONAL TESTS) · EF (EXTERNAL FINISHES)</div>
@@ -17615,9 +17759,10 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
               </div>
             )}
           </div>
+          )}
           {/* By element */}
           <div style={{marginBottom:10}}>
-            <div style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.45)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>BY ELEMENT (IF)</div>
+            <div style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.45)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>{isOfficerMode?"NC COUNT BY ELEMENT":"BY ELEMENT (IF)"}</div>
             {conquasStats.componentRows.map((r,i)=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"5px 0",borderBottom:i<conquasStats.componentRows.length-1?"1px solid rgba(0,0,0,0.05)":"none"}}>
                 <span style={{fontSize:12,color:"#1a1a1a",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis"}}>{r.name}</span>
@@ -17632,7 +17777,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
           </div>
           {/* By NC weightage */}
           <div style={{marginBottom:10}}>
-            <div style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.45)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>BY NC WEIGHTAGE</div>
+            <div style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.45)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>{isOfficerMode?"NC COUNT BY MULTIPLIER":"BY NC WEIGHTAGE"}</div>
             <div style={{display:"flex",gap:8}}>
               <div style={{flex:1,padding:"8px 10px",background:"rgba(48,209,88,0.08)",border:"1px solid rgba(48,209,88,0.2)",borderRadius:8,textAlign:"center"}}>
                 <div style={{fontSize:9,fontWeight:700,color:"#1d8f3e",letterSpacing:"0.05em",fontFamily:"'Barlow Condensed',sans-serif"}}>1X FINISHINGS</div>
@@ -17648,10 +17793,52 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
               </div>
             </div>
           </div>
-          {/* Disclaimer — reflects which components are captured vs missing */}
-          <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",lineHeight:1.5,background:conquasStats.isFullBand?"rgba(48,209,88,0.06)":"rgba(255,149,0,0.06)",border:conquasStats.isFullBand?"1px solid rgba(48,209,88,0.18)":"1px solid rgba(255,149,0,0.18)",borderRadius:8,padding:"8px 10px"}}>
-            <b>{conquasStats.isFullBand?"Full Project NC rate":"Projection only — not official CONQUAS Band"}.</b> 0% = all pass, 100% = all fail; lower is better. Per CONQUAS (Private Residential) R1 §3.3: Project NC rate = IF × 0.4 + FT × 0.4 + EF × 0.2. {conquasStats.isFullBand?"All three components captured — showing the full formula.":conquasStats.projectedBasis.includes("IF + FT + EF")?"":conquasStats.ftRate!==null&&conquasStats.efRate===null?"This shows IF + FT re-normalised over 0.8 (EF pending).":conquasStats.efRate!==null&&conquasStats.ftRate===null?"This shows IF + EF re-normalised over 0.6 (FT pending).":"This shows IF only (FT + EF pending)."} {conquasStats.band6ForcedReason&&<span style={{color:"#cc0000",fontWeight:700}}>⚠ Band 6 forced by R1 §3.3 page 17 gate: {conquasStats.band6ForcedReason}. </span>}{conquasStats.band1FloorReason&&<span style={{color:"#b46700",fontWeight:700}}>⚠ Band escalated to minimum 3 per R1 §3.3 page 17: {conquasStats.band1FloorReason}. </span>}{(()=>{const awaiting=Object.entries(conquasStats.qpStatuses).filter(([_,v])=>!v).map(([k])=>({pullOff:"Pull-Off",heatSoak:"Heat-Soak",wttSelf:"WTT self-test",wptSelf:"WPT self-test"}[k])).filter(Boolean);return awaiting.length>0?<span style={{color:"#5856d6",fontWeight:700}}>⏳ Awaiting QP submission: {awaiting.join(" · ")}. Band shown is provisional until these are recorded in REPORT → Project Setup. </span>:null;})()}Project band is the AI app's best projection — official banding requires accredited assessor sign-off, QP declarations (Pull-Off · Heat Soak · WTT/WPT self-tests), and complete sampling per R1. Final accountability rests with the accredited checker, QP, or assessor — not this app.
-          </div>
+          {/* NC COUNT BY OCCURRENCE RATE — officer-mode focus. Ranks the IF
+              elements with the highest NC occurrence rate (failCount /
+              applicable) descending. Defaults to Top 5 so the worst
+              offenders surface first; tap to expand to every applicable
+              element for the full ranking. */}
+          {isOfficerMode&&(()=>{
+            const sortedRows=conquasStats.componentRows
+              .filter(r=>r.applicable>0)
+              .slice()
+              .sort((a,b)=>b.rate-a.rate);
+            const visibleRows=topRateExpanded?sortedRows:sortedRows.slice(0,5);
+            const hasMore=sortedRows.length>5;
+            return(
+              <div style={{marginBottom:10}}>
+                <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:8,marginBottom:6}}>
+                  <div style={{fontSize:10,fontWeight:800,color:"rgba(0,0,0,0.45)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif"}}>NC COUNT BY OCCURRENCE RATE</div>
+                  {hasMore&&(
+                    <button onClick={()=>setTopRateExpanded(v=>!v)} style={{background:"transparent",border:"none",padding:0,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:10,cursor:"pointer",letterSpacing:"0.04em"}}>
+                      {topRateExpanded?`SHOW TOP 5 ▲`:`SHOW ALL ${sortedRows.length} ▼`}
+                    </button>
+                  )}
+                </div>
+                {visibleRows.length===0?(
+                  <div style={{fontSize:11,color:"rgba(0,0,0,0.4)",padding:"4px 0",lineHeight:1.4}}>No applicable checks recorded yet. Log CONQUAS Officer entries to populate this ranking.</div>
+                ):visibleRows.map((r,i)=>(
+                  <div key={"toprate-"+i} style={{display:"flex",alignItems:"center",gap:10,padding:"5px 0",borderBottom:i<visibleRows.length-1?"1px solid rgba(0,0,0,0.05)":"none"}}>
+                    <span style={{fontSize:11,fontWeight:800,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif",minWidth:22}}>#{i+1}</span>
+                    <span style={{fontSize:12,color:"#1a1a1a",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis"}}>{r.name}</span>
+                    <span style={{fontSize:10,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,minWidth:74,textAlign:"right"}}>{r.failCount}/{r.applicable} NC</span>
+                    <span style={{fontSize:12,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",minWidth:48,textAlign:"right",color:r.rate>=25?"#ff3b30":r.rate>=15?"#ff9500":r.rate>=10?"#5856d6":"#30d158"}}>{r.rate.toFixed(1)}%</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+          {/* Disclaimer — visual-only summary for officer mode; full R1 §3.3
+              weighted text for contractor / non-officer CONQUAS modes. */}
+          {isOfficerMode?(
+            <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",lineHeight:1.5,background:"rgba(88,86,214,0.06)",border:"1px solid rgba(88,86,214,0.18)",borderRadius:8,padding:"8px 10px"}}>
+              <b>Visual IF projection only.</b> Counts and rates reflect Internal Finishes (IF) non-conformances visible in photos — across 7 elements (Floor / Wall / Ceiling / Door / Window / Component / M&amp;E Fittings), 3 NC tiers (1X Finishings · 2X Functionality · 3X Liveability), and ranked by occurrence rate (Top 5). Functional Tests (WTT / WPT / WFT) and External Finishes (Roof / External Wall / External Works) require instrumented or QP-declared checks outside visual scope and are not included here. {conquasStats.band6ForcedReason&&<span style={{color:"#cc0000",fontWeight:700}}>⚠ Band 6 forced by R1 §3.3 page 17 gate: {conquasStats.band6ForcedReason}. </span>}{conquasStats.band1FloorReason&&<span style={{color:"#b46700",fontWeight:700}}>⚠ Band escalated to minimum 3 per R1 §3.3 page 17: {conquasStats.band1FloorReason}. </span>}Final CONQUAS banding requires accredited assessor sign-off, QP declarations, and complete sampling per R1 §3.3 — not this view.
+            </div>
+          ):(
+            <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",lineHeight:1.5,background:conquasStats.isFullBand?"rgba(48,209,88,0.06)":"rgba(255,149,0,0.06)",border:conquasStats.isFullBand?"1px solid rgba(48,209,88,0.18)":"1px solid rgba(255,149,0,0.18)",borderRadius:8,padding:"8px 10px"}}>
+              <b>{conquasStats.isFullBand?"Full Project NC rate":"Projection only — not official CONQUAS Band"}.</b> 0% = all pass, 100% = all fail; lower is better. Per CONQUAS (Private Residential) R1 §3.3: Project NC rate = IF × 0.4 + FT × 0.4 + EF × 0.2. {conquasStats.isFullBand?"All three components captured — showing the full formula.":conquasStats.projectedBasis.includes("IF + FT + EF")?"":conquasStats.ftRate!==null&&conquasStats.efRate===null?"This shows IF + FT re-normalised over 0.8 (EF pending).":conquasStats.efRate!==null&&conquasStats.ftRate===null?"This shows IF + EF re-normalised over 0.6 (FT pending).":"This shows IF only (FT + EF pending)."} {conquasStats.band6ForcedReason&&<span style={{color:"#cc0000",fontWeight:700}}>⚠ Band 6 forced by R1 §3.3 page 17 gate: {conquasStats.band6ForcedReason}. </span>}{conquasStats.band1FloorReason&&<span style={{color:"#b46700",fontWeight:700}}>⚠ Band escalated to minimum 3 per R1 §3.3 page 17: {conquasStats.band1FloorReason}. </span>}{(()=>{const awaiting=Object.entries(conquasStats.qpStatuses).filter(([_,v])=>!v).map(([k])=>({pullOff:"Pull-Off",heatSoak:"Heat-Soak",wttSelf:"WTT self-test",wptSelf:"WPT self-test"}[k])).filter(Boolean);return awaiting.length>0?<span style={{color:"#5856d6",fontWeight:700}}>⏳ Awaiting QP submission: {awaiting.join(" · ")}. Band shown is provisional until these are recorded in REPORT → Project Setup. </span>:null;})()}Project band is the AI app's best projection — official banding requires accredited assessor sign-off, QP declarations (Pull-Off · Heat Soak · WTT/WPT self-tests), and complete sampling per R1. Final accountability rests with the accredited checker, QP, or assessor — not this app.
+            </div>
+          )}
         </div>
       )}
       {incDefects&&<>
