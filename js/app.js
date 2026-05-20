@@ -16558,7 +16558,10 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
       if(!cancelled)setConquasObsLoading(false);
     })();
     return()=>{cancelled=true;};
-  },[currentProject?.id]);
+    // defects.length is included so the audit trail + Visual IF stats refresh
+    // as soon as a new CONQUAS wizard run lands new defects/observations —
+    // without this, Report had to be unmounted/remounted to pick them up.
+  },[currentProject?.id,defects.length]);
   // HITL inline edit on the CONQUAS audit trail. Tap an observation's verdict
   // glyph to cycle pass → fail → uncertain → pass. Optimistic local update so
   // the calculator (which aggregates from observations) recomputes live; on PB
@@ -17852,6 +17855,12 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
         const totalPass=conquasObs.filter(o=>o.verdict==="pass").length;
         const totalFail=conquasObs.filter(o=>o.verdict==="fail").length;
         const totalUncertain=conquasObs.filter(o=>o.verdict==="uncertain").length;
+        // Tier volume — how many checks were walked at each NC weighting.
+        // Helps the officer see coverage at a glance (e.g. 8× 1X + 6× 2X +
+        // 4× 3X) without expanding the trail.
+        const total1X=conquasObs.filter(o=>o.nc_tier==="1X").length;
+        const total2X=conquasObs.filter(o=>o.nc_tier==="2X").length;
+        const total3X=conquasObs.filter(o=>o.nc_tier==="3X").length;
         const chip=(label,count,color)=>(
           <span style={{fontSize:10,fontWeight:700,color,background:color+"14",border:"1px solid "+color+"33",borderRadius:6,padding:"3px 7px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>{count} {label}</span>
         );
@@ -17866,6 +17875,9 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
               {totalPass>0&&chip("PASS",totalPass,"#34a853")}
               {totalFail>0&&chip("FAIL",totalFail,"#ff3b30")}
               {totalUncertain>0&&chip("UNCERTAIN",totalUncertain,"#ff9500")}
+              {total1X>0&&chip("1X",total1X,"#1d8f3e")}
+              {total2X>0&&chip("2X",total2X,"#b46700")}
+              {total3X>0&&chip("3X",total3X,"#cc0000")}
             </div>
             <span style={{fontSize:11,color:"#5856d6",fontWeight:700}}>{conquasObsOpen?"▲":"▼"}</span>
           </button>
