@@ -723,6 +723,86 @@ onRecordAfterCreateSuccess((e) => {
   }
 }, "defects");
 
+// ====== AI ANALYZE PROXY (Phase 1 — SiteShrimp default AI) ======
+// Lets the client call AI without configuring their own provider key.
+// The server holds the model URL (typically the self-hosted Ollama
+// instance at ai.siteshrimp.org serving Moondream 2) and enforces a
+// per-user daily cap so one user can't drain the shared free tier.
+//
+// Endpoint is auth-required: anonymous callers are rejected so the cap
+// applies per identified user. The Ollama URL is read from the
+// OLLAMA_URL env var on the GCP PocketBase host — never embedded in
+// the client bundle. If OLLAMA_URL is unset, the endpoint returns 503
+// and the client falls back to telling the user to set up their own
+// provider (pre-Phase-1 behaviour).
+//
+// In-memory daily counter — resets on PocketBase restart. Acceptable
+// for Phase 1; if this becomes load-bearing we move counters into a
+// PocketBase collection.
+
+var _aiDailyUsage = {};
+function aiDailyCap(userId, cap) {
+  var today = new Date().toISOString().slice(0, 10);
+  var key = userId + "_" + today;
+  if (!_aiDailyUsage[key]) _aiDailyUsage[key] = 0;
+  if (_aiDailyUsage[key] >= cap) return false;
+  _aiDailyUsage[key]++;
+  return true;
+}
+
+routerAdd("POST", "/api/ai/analyze", (e) => {
+  // Auth gate: cap is per-user, so anonymous = reject.
+  var auth = e.auth;
+  if (!auth) return e.json(401, { error: "Authentication required" });
+
+  // Per-user daily cap. Default 100; configurable via env.
+  var dailyCap = parseInt($os.getenv("AI_DEFAULT_DAILY_CAP") || "100");
+  if (!aiDailyCap(auth.id, dailyCap)) {
+    return e.json(429, {
+      error: "Daily AI quota reached. Add your own AI provider key in Settings for higher limits.",
+      cap: dailyCap
+    });
+  }
+
+  // Parse body
+  var data;
+  try { data = JSON.parse($toString(e.request.body)); }
+  catch (parseErr) { return e.json(400, { error: "Invalid JSON body" }); }
+
+  // Accept either bare base64 or a data URL; strip the data: prefix if present
+  var b64Photo = (data.photo || "").replace(/^data:image\/[a-z]+;base64,/, "");
+  if (!b64Photo) return e.json(400, { error: "photo (base64) required" });
+
+  var prompt = data.prompt || AI_SERVER_PROMPT;
+  var workCategory = data.workCategory || "";
+
+  // Locate the configured default provider. Phase 1 targets Ollama on
+  // the Oracle VM. Future phases can extend this dispatch to other
+  // providers without changing the client contract.
+  var ollamaUrl = $os.getenv("OLLAMA_URL");
+  var ollamaModel = $os.getenv("OLLAMA_MODEL") || "moondream";
+  if (!ollamaUrl) {
+    return e.json(503, {
+      error: "SiteShrimp default AI is not configured on this server. Open Settings to set up your own provider."
+    });
+  }
+
+  // Forward to Ollama via the existing helper at line ~540.
+  try {
+    var responseText = analyzeWithOllamaServer(b64Photo, ollamaUrl, ollamaModel, prompt);
+    if (!responseText) {
+      return e.json(502, { error: "AI provider returned no response" });
+    }
+    return e.json(200, {
+      response: responseText,
+      model: ollamaModel,
+      provider: "siteshrimp_default"
+    });
+  } catch (err) {
+    return e.json(500, { error: "AI analysis failed: " + err });
+  }
+});
+
 // ====== SEND EMAIL REPORT (via PocketBase SMTP) ======
 // Requires SMTP configured in PocketBase Admin → Settings → Mail settings
 // Accepts: { recipients: ["a@b.com"], subject: "...", html: "..." }

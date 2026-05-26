@@ -2591,6 +2591,82 @@ async function analyzeWithOpenAI(cfg,base64Image,prompt,opts){
   }
 }
 
+// SiteShrimp default-AI client. Calls the server proxy at /api/ai/analyze
+// which forwards to the self-hosted Moondream 2 on the Oracle VM. The
+// client never sees the model URL or any credentials — those live in
+// PocketBase env vars on the GCP host. Returns the parsed JSON object
+// the same shape every other provider returns, so downstream consumers
+// (applyAiResult, AUTO-TAG, AI Pin) need no provider-specific code.
+//
+// Uses a 60 s timeout because CPU Moondream inference can take up to
+// ~10 s on Ampere Free, plus retrieval round-trips once Phase 2/3 RAG
+// lands. db.js's normal 12 s timeout is too short for this path, so
+// we do the fetch directly with our own controller.
+async function analyzeWithSiteShrimpDefault(base64Image,prompt,opts){
+  const _opts=opts||{};
+  const baseUrl=(typeof DB!=="undefined"&&DB&&DB.baseUrl)||"";
+  // Pull the PB auth token from the same localStorage key db.js writes to.
+  // No exposed getter in db.js today; reading the JSON blob keeps this
+  // self-contained without expanding db.js's surface for one consumer.
+  let token="";
+  try{
+    const raw=localStorage.getItem("pb_auth");
+    if(raw){const obj=JSON.parse(raw);token=obj&&obj.token||"";}
+  }catch(_){}
+  if(!token){
+    window.__lastAiError="Sign in to use the SiteShrimp default AI.";
+    return null;
+  }
+  // Strip the data: prefix if present — server accepts either, but it
+  // makes the wire smaller and slightly faster to encode.
+  const bare=String(base64Image||"").replace(/^data:image\/[a-z]+;base64,/,"");
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),60000);
+  try{
+    const resp=await fetch(baseUrl+"/api/ai/analyze",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization":"Bearer "+token
+      },
+      body:JSON.stringify({
+        photo:bare,
+        prompt:prompt||undefined,
+        workCategory:_opts.workCategory||undefined
+      }),
+      signal:controller.signal
+    });
+    clearTimeout(timeout);
+    if(resp.status===429){
+      // Per-user daily cap — actionable error the user sees in the AI status pill.
+      const body=await resp.json().catch(()=>({}));
+      window.__lastAiError=body.error||"Daily AI quota reached. Add your own AI provider key in Settings for higher limits.";
+      return null;
+    }
+    if(resp.status===503){
+      // Server isn't wired yet — silent fallback. The UI's AI pill will
+      // tell the user to set up their own provider via the standard path.
+      window.__lastAiError="SiteShrimp default AI is unavailable on this server.";
+      return null;
+    }
+    if(!resp.ok){
+      window.__lastAiError="SiteShrimp AI returned HTTP "+resp.status;
+      return null;
+    }
+    const data=await resp.json();
+    if(!data||!data.response)return null;
+    return _parseAiJson(data.response,"siteshrimp_default");
+  }catch(err){
+    clearTimeout(timeout);
+    if(err.name==="AbortError"){
+      window.__lastAiError="SiteShrimp AI timed out. Try again or add your own AI key in Settings.";
+    }else{
+      window.__lastAiError=String(err&&err.message||err);
+    }
+    return null;
+  }
+}
+
 // Unified dispatcher — picks the right provider based on user settings.
 // Optional `prompt` overrides the default getAIPrompt() for context-aware calls.
 async function analyzePhoto(base64Image,prompt,opts){
@@ -2604,7 +2680,13 @@ async function analyzePhoto(base64Image,prompt,opts){
   // built from buildClientAiSchema(workCategory). Providers that don't
   // (Ollama generic) silently ignore the schema arg.
   const _opts=opts||{};
-  const provider=local.get(AI_PROVIDER_KEY)||"gemini";
+  // Default to "siteshrimp" for users who never set up their own provider —
+  // this is the no-setup fallback wired to the server proxy. Users with
+  // explicit AI_PROVIDER_KEY set keep their existing provider untouched.
+  const provider=local.get(AI_PROVIDER_KEY)||"siteshrimp";
+  if(provider==="siteshrimp"){
+    return analyzeWithSiteShrimpDefault(base64Image,prompt,_opts);
+  }
   if(provider==="ollama"){
     const cfg=local.get(OLLAMA_KEY)||{};
     return analyzeWithOllama(cfg,base64Image,prompt);
@@ -2625,7 +2707,7 @@ async function analyzePhoto(base64Image,prompt,opts){
       model:cfg.model||"meta-llama/llama-4-scout-17b-16e-instruct"
     },base64Image,prompt,_opts);
   }
-  // Default: Gemini
+  // Default: Gemini (when explicitly set as the provider)
   const key=local.get(GEMINI_KEY);
   if(!key)return null;
   return analyzeWithGemini(key,base64Image,prompt,_opts);
@@ -2942,7 +3024,12 @@ function isAiPaused(){return local.get(AI_ENABLED_KEY)===false;}
 // the Settings checklist still shows ✓ when the user has paused (they've
 // completed setup; pause ≠ un-setup).
 function hasAiCredentials(){
-  const provider=local.get(AI_PROVIDER_KEY)||"gemini";
+  const provider=local.get(AI_PROVIDER_KEY)||"siteshrimp";
+  // SiteShrimp default — credentials live server-side, the user has
+  // nothing to configure. As long as they're signed in (the server's
+  // /api/ai/analyze auth gate will catch non-auth at call time), the
+  // app should consider AI "configured" so the AI features are visible.
+  if(provider==="siteshrimp")return true;
   if(provider==="gemini")return !!local.get(GEMINI_KEY);
   if(provider==="ollama"){const c=local.get(OLLAMA_KEY);return !!(c&&c.url);}
   if(provider==="openai"){const c=local.get(OPENAI_KEY);return !!(c&&c.apiKey);}
@@ -7444,13 +7531,17 @@ function TelegramSettings({onClose,companyId}){
 // new installs land on the Groq tile by default since it's the lowest-
 // friction path to working AI on a phone.
 const AI_PROVIDERS=[
+  {id:"siteshrimp",label:"SiteShrimp default",icon:"🦐",desc:"No setup — uses the SiteShrimp-hosted vision model. Free, signed-in, daily cap per user.",color:"#5856d6"},
   {id:"groq",label:"Groq",icon:"⚡",desc:"Free cloud AI — Llama-4 Vision · ~165 photos/day · no card",color:"#f55036"},
   {id:"gemini",label:"Google Gemini",icon:"✦",desc:"Free cloud AI — 1,500 analyses/day",color:"#4285f4"},
   {id:"ollama",label:"Ollama (Local)",icon:"🦙",desc:"Run AI locally — Llava, Qwen, Llama Vision",color:"#30d158"},
   {id:"openai",label:"OpenAI / GPT",icon:"◈",desc:"GPT-4o, GPT-4o-mini, or compatible API",color:"#10a37f"},
 ];
 function GeminiSettings({onClose,companyId}){
-  const[provider,setProvider]=useState(()=>local.get(AI_PROVIDER_KEY)||"gemini");
+  // Default to "siteshrimp" for fresh installs so the user gets working AI
+  // without configuring anything. Users with an explicit AI_PROVIDER_KEY
+  // saved (Gemini key, Ollama URL, etc.) keep their current selection.
+  const[provider,setProvider]=useState(()=>local.get(AI_PROVIDER_KEY)||"siteshrimp");
   // Master on/off — token-spend kill switch. Default true so existing
   // setups keep working; explicit false pauses every AI call.
   const[aiOn,setAiOn]=useState(()=>local.get(AI_ENABLED_KEY)!==false);
@@ -7665,6 +7756,30 @@ function GeminiSettings({onClose,companyId}){
             </button>
           ))}
         </div>
+
+        {/* SiteShrimp default — zero-setup fallback. No credentials, no
+            external account. AI calls are proxied through the PocketBase
+            backend to a self-hosted Moondream 2 on the Oracle VM. The
+            user only needs to be signed in. Per-user daily cap applies
+            (configurable via AI_DEFAULT_DAILY_CAP env var on the GCP
+            host). Users who want flagship quality can switch to Gemini /
+            OpenAI / Groq from the tile list above and bring their own key. */}
+        {provider==="siteshrimp"&&(
+          <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:20}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,color:"#1a1a1a",marginBottom:12}}>SITESHRIMP DEFAULT AI</div>
+            <div style={{background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.22)",borderRadius:8,padding:"12px 14px",marginBottom:14,fontSize:12,color:"#1a1a1a",lineHeight:1.55}}>
+              <div style={{fontWeight:800,marginBottom:6,color:"#3a39a6"}}>🦐 No setup. Just sign in and LOG.</div>
+              SiteShrimp hosts a vision model (Moondream 2) on its own server. AI photo analysis works out of the box — no API key, no third-party account, no credit card. You're signed in, so you're ready.
+            </div>
+            <div style={{background:"rgba(48,209,88,0.06)",border:"1px solid rgba(48,209,88,0.18)",borderRadius:8,padding:"10px 12px",marginBottom:14,fontSize:11,color:"#1a7a35",fontWeight:500,lineHeight:1.5}}>
+              <b>Free</b> · daily cap per user · all photos analysed on SiteShrimp infrastructure
+            </div>
+            <div style={{background:"rgba(255,149,0,0.06)",border:"1px solid rgba(255,149,0,0.22)",borderRadius:8,padding:"10px 12px",marginBottom:6,fontSize:11,color:"rgba(0,0,0,0.7)",lineHeight:1.5}}>
+              <div style={{fontWeight:700,color:"#b35900",marginBottom:4}}>Quality is fallback-tier</div>
+              Moondream 2 is a small, fast model. Defect classification and room-matching work well; CONQUAS tier rulings (1X / 2X / 3X) still need your confirmation. For QP sign-off or contract-grade analysis, switch to Gemini or OpenAI above and add your own key.
+            </div>
+          </div>
+        )}
 
         {/* Groq config — first because the tile is first. Free tier, no
             card, OpenAI-compatible at the API level (we hit Groq's
