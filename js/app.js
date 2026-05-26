@@ -2680,10 +2680,12 @@ async function analyzePhoto(base64Image,prompt,opts){
   // built from buildClientAiSchema(workCategory). Providers that don't
   // (Ollama generic) silently ignore the schema arg.
   const _opts=opts||{};
-  // Default to "siteshrimp" for users who never set up their own provider —
-  // this is the no-setup fallback wired to the server proxy. Users with
-  // explicit AI_PROVIDER_KEY set keep their existing provider untouched.
-  const provider=local.get(AI_PROVIDER_KEY)||"siteshrimp";
+  // Default stays "gemini" for now — the "siteshrimp" provider is opt-in
+  // from Settings until the Oracle VM is stood up and OLLAMA_URL is set
+  // on the GCP host. Once that's verified end-to-end, flip this default to
+  // "siteshrimp" in a single-line follow-up commit so fresh installs get
+  // the no-setup path. Doing it pre-Oracle would regress new-install AI.
+  const provider=local.get(AI_PROVIDER_KEY)||"gemini";
   if(provider==="siteshrimp"){
     return analyzeWithSiteShrimpDefault(base64Image,prompt,_opts);
   }
@@ -3024,7 +3026,10 @@ function isAiPaused(){return local.get(AI_ENABLED_KEY)===false;}
 // the Settings checklist still shows ✓ when the user has paused (they've
 // completed setup; pause ≠ un-setup).
 function hasAiCredentials(){
-  const provider=local.get(AI_PROVIDER_KEY)||"siteshrimp";
+  // Default stays "gemini" until the SiteShrimp default endpoint is
+  // verified end-to-end on production (Oracle VM live + OLLAMA_URL set).
+  // See matching note in analyzePhoto dispatcher above.
+  const provider=local.get(AI_PROVIDER_KEY)||"gemini";
   // SiteShrimp default — credentials live server-side, the user has
   // nothing to configure. As long as they're signed in (the server's
   // /api/ai/analyze auth gate will catch non-auth at call time), the
@@ -7538,10 +7543,10 @@ const AI_PROVIDERS=[
   {id:"openai",label:"OpenAI / GPT",icon:"◈",desc:"GPT-4o, GPT-4o-mini, or compatible API",color:"#10a37f"},
 ];
 function GeminiSettings({onClose,companyId}){
-  // Default to "siteshrimp" for fresh installs so the user gets working AI
-  // without configuring anything. Users with an explicit AI_PROVIDER_KEY
-  // saved (Gemini key, Ollama URL, etc.) keep their current selection.
-  const[provider,setProvider]=useState(()=>local.get(AI_PROVIDER_KEY)||"siteshrimp");
+  // Default stays "gemini" pending Oracle VM go-live. The siteshrimp tile
+  // is visible in the provider list (opt-in) but not pre-selected. Flip
+  // this default once the server-side proxy is verified working.
+  const[provider,setProvider]=useState(()=>local.get(AI_PROVIDER_KEY)||"gemini");
   // Master on/off — token-spend kill switch. Default true so existing
   // setups keep working; explicit false pauses every AI call.
   const[aiOn,setAiOn]=useState(()=>local.get(AI_ENABLED_KEY)!==false);

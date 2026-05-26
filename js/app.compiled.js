@@ -496,10 +496,12 @@ if(!isAiEnabled())return null;// opts.workCategory drives the strict JSON Schema
 // OpenRouter) and Gemini's responseSchema get the variant-extended schema
 // built from buildClientAiSchema(workCategory). Providers that don't
 // (Ollama generic) silently ignore the schema arg.
-const _opts=opts||{};// Default to "siteshrimp" for users who never set up their own provider —
-// this is the no-setup fallback wired to the server proxy. Users with
-// explicit AI_PROVIDER_KEY set keep their existing provider untouched.
-const provider=local.get(AI_PROVIDER_KEY)||"siteshrimp";if(provider==="siteshrimp"){return analyzeWithSiteShrimpDefault(base64Image,prompt,_opts);}if(provider==="ollama"){const cfg=local.get(OLLAMA_KEY)||{};return analyzeWithOllama(cfg,base64Image,prompt);}if(provider==="openai"){const cfg=local.get(OPENAI_KEY)||{};return analyzeWithOpenAI(cfg,base64Image,prompt,_opts);}if(provider==="groq"){// Groq exposes an OpenAI-compatible chat-completions endpoint, so we
+const _opts=opts||{};// Default stays "gemini" for now — the "siteshrimp" provider is opt-in
+// from Settings until the Oracle VM is stood up and OLLAMA_URL is set
+// on the GCP host. Once that's verified end-to-end, flip this default to
+// "siteshrimp" in a single-line follow-up commit so fresh installs get
+// the no-setup path. Doing it pre-Oracle would regress new-install AI.
+const provider=local.get(AI_PROVIDER_KEY)||"gemini";if(provider==="siteshrimp"){return analyzeWithSiteShrimpDefault(base64Image,prompt,_opts);}if(provider==="ollama"){const cfg=local.get(OLLAMA_KEY)||{};return analyzeWithOllama(cfg,base64Image,prompt);}if(provider==="openai"){const cfg=local.get(OPENAI_KEY)||{};return analyzeWithOpenAI(cfg,base64Image,prompt,_opts);}if(provider==="groq"){// Groq exposes an OpenAI-compatible chat-completions endpoint, so we
 // reuse analyzeWithOpenAI with a fixed base URL and the Llama-4 Vision
 // default. Saved cfg only carries apiKey + optional model override.
 const cfg=local.get(GROQ_KEY)||{};if(!cfg.apiKey)return null;return analyzeWithOpenAI({url:"https://api.groq.com/openai",apiKey:cfg.apiKey,model:cfg.model||"meta-llama/llama-4-scout-17b-16e-instruct"},base64Image,prompt,_opts);}// Default: Gemini (when explicitly set as the provider)
@@ -570,7 +572,10 @@ function isAiEnabled(){return local.get(AI_ENABLED_KEY)!==false;}function isAiPa
 // of whether the master switch is on. Kept separate from isAiConfigured so
 // the Settings checklist still shows ✓ when the user has paused (they've
 // completed setup; pause ≠ un-setup).
-function hasAiCredentials(){const provider=local.get(AI_PROVIDER_KEY)||"siteshrimp";// SiteShrimp default — credentials live server-side, the user has
+function hasAiCredentials(){// Default stays "gemini" until the SiteShrimp default endpoint is
+// verified end-to-end on production (Oracle VM live + OLLAMA_URL set).
+// See matching note in analyzePhoto dispatcher above.
+const provider=local.get(AI_PROVIDER_KEY)||"gemini";// SiteShrimp default — credentials live server-side, the user has
 // nothing to configure. As long as they're signed in (the server's
 // /api/ai/analyze auth gate will catch non-auth at call time), the
 // app should consider AI "configured" so the AI features are visible.
@@ -1534,10 +1539,10 @@ function TelegramSettings({onClose,companyId}){const[token,setToken]=useState(()
 // analysis. Existing users default to "gemini" via AI_PROVIDER_KEY — only
 // new installs land on the Groq tile by default since it's the lowest-
 // friction path to working AI on a phone.
-const AI_PROVIDERS=[{id:"siteshrimp",label:"SiteShrimp default",icon:"🦐",desc:"No setup — uses the SiteShrimp-hosted vision model. Free, signed-in, daily cap per user.",color:"#5856d6"},{id:"groq",label:"Groq",icon:"⚡",desc:"Free cloud AI — Llama-4 Vision · ~165 photos/day · no card",color:"#f55036"},{id:"gemini",label:"Google Gemini",icon:"✦",desc:"Free cloud AI — 1,500 analyses/day",color:"#4285f4"},{id:"ollama",label:"Ollama (Local)",icon:"🦙",desc:"Run AI locally — Llava, Qwen, Llama Vision",color:"#30d158"},{id:"openai",label:"OpenAI / GPT",icon:"◈",desc:"GPT-4o, GPT-4o-mini, or compatible API",color:"#10a37f"}];function GeminiSettings({onClose,companyId}){// Default to "siteshrimp" for fresh installs so the user gets working AI
-// without configuring anything. Users with an explicit AI_PROVIDER_KEY
-// saved (Gemini key, Ollama URL, etc.) keep their current selection.
-const[provider,setProvider]=useState(()=>local.get(AI_PROVIDER_KEY)||"siteshrimp");// Master on/off — token-spend kill switch. Default true so existing
+const AI_PROVIDERS=[{id:"siteshrimp",label:"SiteShrimp default",icon:"🦐",desc:"No setup — uses the SiteShrimp-hosted vision model. Free, signed-in, daily cap per user.",color:"#5856d6"},{id:"groq",label:"Groq",icon:"⚡",desc:"Free cloud AI — Llama-4 Vision · ~165 photos/day · no card",color:"#f55036"},{id:"gemini",label:"Google Gemini",icon:"✦",desc:"Free cloud AI — 1,500 analyses/day",color:"#4285f4"},{id:"ollama",label:"Ollama (Local)",icon:"🦙",desc:"Run AI locally — Llava, Qwen, Llama Vision",color:"#30d158"},{id:"openai",label:"OpenAI / GPT",icon:"◈",desc:"GPT-4o, GPT-4o-mini, or compatible API",color:"#10a37f"}];function GeminiSettings({onClose,companyId}){// Default stays "gemini" pending Oracle VM go-live. The siteshrimp tile
+// is visible in the provider list (opt-in) but not pre-selected. Flip
+// this default once the server-side proxy is verified working.
+const[provider,setProvider]=useState(()=>local.get(AI_PROVIDER_KEY)||"gemini");// Master on/off — token-spend kill switch. Default true so existing
 // setups keep working; explicit false pauses every AI call.
 const[aiOn,setAiOn]=useState(()=>local.get(AI_ENABLED_KEY)!==false);// Gemini state
 const[gemKey,setGemKey]=useState(()=>local.get(GEMINI_KEY)||"");// Ollama state
