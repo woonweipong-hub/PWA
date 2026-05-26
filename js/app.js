@@ -5284,7 +5284,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
   if(opts&&opts.conquasStats){
     const cs=opts.conquasStats;
     doc.addPage();y=18;
-    heading("QUALITY CHECK — CONQUAS (PROJECTED)",purple);
+    heading("IF VISUAL CHECKS — CONQUAS (PROJECTED)",purple);
     doc.setFontSize(9);doc.setFont(undefined,"normal");doc.setTextColor(0);
     doc.text(`Projected NC rate: ${cs.projectedRate.toFixed(1)}%  (${cs.projectedBasis})`,margin,y);y+=5;
     doc.text(`Projected Band: ${cs.projectedBand}  (CONQUAS Private Residential R1 §3.3)`,margin,y);y+=5;
@@ -10268,11 +10268,231 @@ Return:
 - block: building / block / tower this plan belongs to ("Block 5", "Tower A", or "")
 - level: floor / level ("Level 3", "3rd Floor", "L3", or "")
 - rooms: array of rooms / labelled spaces. Each: { "name": "...", "x_pct": 0-100, "y_pct": 0-100 } where x_pct/y_pct are the approximate centre of the room as a percentage of the image width/height (0,0 = top-left). Leave the array empty if you can't read room labels reliably.
+- labels: array of printed callouts beyond room names — unit numbers ("#03-12"), grid references ("A/1", "B-2"), location codes ("MBR-1", "Lobby A"). Each: { "text": "...", "x_pct": 0-100, "y_pct": 0-100 }. Leave empty if none visible. Used downstream to match a defect photo's signage to a precise spot on the plan.
 - grid_refs: array of visible grid markings (e.g. ["A","B","C","1","2","3"]). Leave empty if not visible.
 - notes: short free-text note about anything else relevant (1-2 sentences max).
 
 Respond in valid JSON only:
-{"block": "...", "level": "...", "rooms": [{"name":"...","x_pct":0,"y_pct":0}], "grid_refs": ["..."], "notes": "..."}`;
+{"block": "...", "level": "...", "rooms": [{"name":"...","x_pct":0,"y_pct":0}], "labels":[{"text":"...","x_pct":0,"y_pct":0}], "grid_refs": ["..."], "notes": "..."}`;
+
+// AUTO-TAG (batch) helpers + modal.
+// Given a drawing whose brochureMeta.rooms[] is populated and a project's
+// defects list, walk every entry that has a photo but no pin on THIS
+// drawing, ask the AI to match each photo to a room on the plan, then:
+//   confidence ≥ 0.6 → commit pin immediately
+//   confidence  < 0.6 → queue for human review (Accept / Reject / Open)
+// Single-photo equivalent: handleAiPinFromPhoto in DrawingViewer.
+// Visibility gates (drawing.kind==="brochure" && rooms.length>0) match the
+// existing AI Pin button so the experience is consistent. Sequential
+// processing (not Promise.all) — the AI worker pool is shared with the
+// LOG-time prefill flow, so parallel batches would starve the user's
+// in-progress capture.
+async function _fetchPhotoAsDataUrl(photo){
+  if(!photo)return null;
+  if(typeof photo==="string"&&photo.startsWith("data:"))return photo;
+  const url=Array.isArray(photo)?photo[0]:photo;
+  if(!url)return null;
+  if(typeof url==="string"&&url.startsWith("data:"))return url;
+  const resp=await fetch(url);
+  if(!resp.ok)throw new Error("photo fetch failed ("+resp.status+")");
+  const blob=await resp.blob();
+  return await new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result);
+    r.onerror=()=>rej(new Error("photo read failed"));
+    r.readAsDataURL(blob);
+  });
+}
+function _buildAutoTagPrompt(rooms){
+  const roomsJson=JSON.stringify(rooms.map(r=>({name:r.name,x_pct:r.x_pct,y_pct:r.y_pct})));
+  return `You are looking at a construction defect photo. The defect lives on a floor plan whose rooms have already been mapped. Pick the room from the layout below that best matches the defect photo, based on visual cues (fixtures, finishes, signage, lighting type, room shape, visible unit/level signage, etc.).
+
+Rooms (JSON, each with the centre as a percentage of the floor-plan image):
+${roomsJson}
+
+Respond in valid JSON only with these exact keys:
+{"room_name": "...", "x_pct": 0-100, "y_pct": 0-100, "confidence": 0.0-1.0, "reasoning": "1-2 sentences"}
+
+If you cannot confidently match the defect to any room, pick the closest one and return a low confidence (<0.3). If the photo is unreadable, return {"room_name":"","x_pct":50,"y_pct":50,"confidence":0,"reasoning":"unreadable"}.`;
+}
+function AutoTagBatchModal({drawing,defects,pins,onClose,onPinsCreated}){
+  // Phase machine: confirm → running → review (if any low-conf) → done.
+  // Errors surface inline per-entry; one bad photo doesn't abort the batch.
+  const[phase,setPhase]=useState("confirm");
+  const[progress,setProgress]=useState({done:0,total:0,auto:0,lowConf:0,errors:0});
+  const[reviewQueue,setReviewQueue]=useState([]); // [{entry,suggestion}]
+  const[committedCount,setCommittedCount]=useState(0);
+  const[fatal,setFatal]=useState("");
+  const cancelRef=useRef(false);
+  const meta=drawing?.brochureMeta;
+  const rooms=Array.isArray(meta?.rooms)?meta.rooms:[];
+  // Unpinned-on-this-drawing set, excluding photoless / already-pinned entries.
+  const unpinned=useMemo(()=>{
+    if(!rooms.length||!drawing?.id)return [];
+    const pinnedIds=new Set((pins||[]).filter(p=>p.drawingId===drawing.id).map(p=>p.entryId));
+    return (defects||[]).filter(d=>!pinnedIds.has(d.id)&&d.photo&&!d.archivedAt);
+  },[drawing,defects,pins,rooms.length]);
+  const run=async()=>{
+    if(!rooms.length){setFatal("This drawing has no extracted rooms. Re-upload the floor plan to scan room layout.");return;}
+    if(!unpinned.length){setFatal("No unpinned entries to tag on this drawing.");return;}
+    cancelRef.current=false;
+    setPhase("running");
+    setProgress({done:0,total:unpinned.length,auto:0,lowConf:0,errors:0});
+    setReviewQueue([]);
+    const prompt=_buildAutoTagPrompt(rooms);
+    const review=[];
+    let auto=0,lowConf=0,errors=0,committed=0;
+    for(let i=0;i<unpinned.length;i++){
+      if(cancelRef.current)break;
+      const entry=unpinned[i];
+      try{
+        const dataUrl=await _fetchPhotoAsDataUrl(entry.photo);
+        if(!dataUrl){errors++;setProgress({done:i+1,total:unpinned.length,auto,lowConf,errors});continue;}
+        const result=await analyzePhoto(dataUrl,prompt);
+        if(result&&typeof result==="object"){
+          const x=Math.max(0,Math.min(100,Number(result.x_pct)||50));
+          const y=Math.max(0,Math.min(100,Number(result.y_pct)||50));
+          const conf=Math.max(0,Math.min(1,Number(result.confidence)||0));
+          const roomName=String(result.room_name||"").trim();
+          const suggestion={x,y,confidence:conf,roomName,reasoning:String(result.reasoning||"").trim()};
+          if(conf>=0.6&&roomName){
+            try{
+              await DB.pins.create({drawingId:drawing.id,entryId:entry.id,pageNum:1,x,y,label:""});
+              committed++;auto++;
+            }catch(_){errors++;}
+          }else{
+            review.push({entry,suggestion});
+            lowConf++;
+          }
+        }else{
+          errors++;
+        }
+      }catch(_){
+        errors++;
+      }
+      setProgress({done:i+1,total:unpinned.length,auto,lowConf,errors});
+    }
+    setReviewQueue(review);
+    setCommittedCount(committed);
+    if(onPinsCreated&&committed>0)onPinsCreated();
+    setPhase(review.length>0?"review":"done");
+  };
+  const cancel=()=>{cancelRef.current=true;};
+  const acceptReview=async(idx)=>{
+    const item=reviewQueue[idx];
+    if(!item)return;
+    try{
+      await DB.pins.create({drawingId:drawing.id,entryId:item.entry.id,pageNum:1,x:item.suggestion.x,y:item.suggestion.y,label:""});
+      setCommittedCount(c=>c+1);
+      setReviewQueue(prev=>prev.filter((_,i)=>i!==idx));
+      if(onPinsCreated)onPinsCreated();
+    }catch(e){alert("Could not place pin: "+(e.message||e));}
+  };
+  const rejectReview=(idx)=>{setReviewQueue(prev=>prev.filter((_,i)=>i!==idx));};
+  const acceptAll=async()=>{
+    for(let i=0;i<reviewQueue.length;i++){
+      const item=reviewQueue[i];
+      try{await DB.pins.create({drawingId:drawing.id,entryId:item.entry.id,pageNum:1,x:item.suggestion.x,y:item.suggestion.y,label:""});setCommittedCount(c=>c+1);}catch{}
+    }
+    setReviewQueue([]);
+    if(onPinsCreated)onPinsCreated();
+  };
+  const rejectAll=()=>{setReviewQueue([]);};
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:1500,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={phase==="running"?null:onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:14,maxWidth:480,width:"100%",maxHeight:"90vh",overflow:"hidden",display:"flex",flexDirection:"column",boxShadow:"0 12px 40px rgba(0,0,0,0.4)"}}>
+        <div style={{padding:"14px 18px",borderBottom:"1px solid rgba(0,0,0,0.08)",display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:20}}>🤖</span>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#1a1a1a",letterSpacing:"0.02em"}}>AUTO-TAG FROM FLOOR PLAN</div>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.55)",marginTop:1}}>{drawing?.name||drawing?.file||"Drawing"}</div>
+          </div>
+          {phase!=="running"&&<button onClick={onClose} style={{background:"none",border:"none",fontSize:22,color:"rgba(0,0,0,0.45)",cursor:"pointer",padding:4,lineHeight:1}}>×</button>}
+        </div>
+        <div style={{flex:1,overflow:"auto",padding:"16px 18px"}}>
+          {fatal&&<div style={{background:"rgba(255,59,48,0.12)",color:"#b91c1c",padding:"10px 12px",borderRadius:8,fontSize:13,marginBottom:12}}>⚠ {fatal}</div>}
+          {phase==="confirm"&&(
+            <div>
+              <div style={{fontSize:13,color:"#1a1a1a",lineHeight:1.5,marginBottom:14}}>
+                AI will match each unpinned entry's photo to a room on this floor plan and place a pin at the matched location.
+              </div>
+              <div style={{background:"rgba(88,86,214,0.08)",padding:"10px 12px",borderRadius:8,fontSize:12,color:"#1a1a1a",lineHeight:1.5,marginBottom:14}}>
+                <div><b>{unpinned.length}</b> unpinned entr{unpinned.length===1?"y":"ies"} with a photo</div>
+                <div><b>{rooms.length}</b> rooms detected on plan</div>
+                <div style={{marginTop:6,color:"rgba(0,0,0,0.6)"}}>Uses {unpinned.length} AI call{unpinned.length===1?"":"s"} from your daily quota. High-confidence matches (≥60%) are pinned automatically; low-confidence matches go to a review step.</div>
+              </div>
+              <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                <button onClick={onClose} style={{padding:"9px 16px",background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",color:"#1a1a1a"}}>CANCEL</button>
+                <button onClick={run} disabled={!unpinned.length||!rooms.length} style={{padding:"9px 16px",background:!unpinned.length||!rooms.length?"rgba(88,86,214,0.4)":"#5856d6",color:"#fff",border:"none",borderRadius:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:!unpinned.length||!rooms.length?"not-allowed":"pointer"}}>START AUTO-TAG</button>
+              </div>
+            </div>
+          )}
+          {phase==="running"&&(
+            <div>
+              <div style={{fontSize:13,color:"#1a1a1a",marginBottom:10}}>Tagging <b>{progress.done}</b> of <b>{progress.total}</b>…</div>
+              <div style={{height:8,background:"rgba(0,0,0,0.08)",borderRadius:4,overflow:"hidden",marginBottom:14}}>
+                <div style={{height:"100%",width:`${progress.total?Math.round(progress.done/progress.total*100):0}%`,background:"#5856d6",transition:"width 0.2s"}}/>
+              </div>
+              <div style={{display:"flex",gap:14,flexWrap:"wrap",fontSize:12,marginBottom:14}}>
+                <span style={{color:"#34c759"}}>✓ {progress.auto} pinned</span>
+                <span style={{color:"#ff9500"}}>⊕ {progress.lowConf} need review</span>
+                {progress.errors>0&&<span style={{color:"#ff3b30"}}>⚠ {progress.errors} skipped</span>}
+              </div>
+              <div style={{display:"flex",justifyContent:"flex-end"}}>
+                <button onClick={cancel} style={{padding:"9px 16px",background:"rgba(255,59,48,0.12)",color:"#b91c1c",border:"none",borderRadius:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>CANCEL</button>
+              </div>
+            </div>
+          )}
+          {phase==="review"&&(
+            <div>
+              <div style={{fontSize:12,color:"rgba(0,0,0,0.7)",marginBottom:10,lineHeight:1.5}}>
+                <b>{committedCount}</b> entr{committedCount===1?"y":"ies"} pinned automatically. <b>{reviewQueue.length}</b> low-confidence match{reviewQueue.length===1?"":"es"} need your decision.
+              </div>
+              <div style={{display:"flex",gap:8,marginBottom:12}}>
+                <button onClick={acceptAll} style={{flex:1,padding:"8px 12px",background:"rgba(52,199,89,0.12)",color:"#1f7a3a",border:"none",borderRadius:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>ACCEPT ALL</button>
+                <button onClick={rejectAll} style={{flex:1,padding:"8px 12px",background:"rgba(255,59,48,0.10)",color:"#b91c1c",border:"none",borderRadius:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>REJECT ALL</button>
+              </div>
+              <div>
+                {reviewQueue.map((item,idx)=>{
+                  const photoThumb=Array.isArray(item.entry.photo)?item.entry.photo[0]:item.entry.photo;
+                  return (
+                    <div key={item.entry.id} style={{display:"flex",gap:10,padding:10,background:"rgba(0,0,0,0.03)",borderRadius:8,marginBottom:8,alignItems:"center"}}>
+                      {photoThumb&&<img src={photoThumb} alt="" style={{width:54,height:54,objectFit:"cover",borderRadius:6,flexShrink:0}}/>}
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:700,fontSize:13,color:"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.entry.title||"Untitled"}</div>
+                        <div style={{fontSize:11,color:"rgba(0,0,0,0.6)",marginTop:2}}>→ {item.suggestion.roomName||"(no room)"} · {Math.round(item.suggestion.confidence*100)}% confident</div>
+                        {item.suggestion.reasoning&&<div style={{fontSize:10,color:"rgba(0,0,0,0.45)",marginTop:2,lineHeight:1.4}}>{item.suggestion.reasoning}</div>}
+                      </div>
+                      <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0}}>
+                        <button onClick={()=>acceptReview(idx)} style={{padding:"6px 10px",background:"#34c759",color:"#fff",border:"none",borderRadius:6,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>✓</button>
+                        <button onClick={()=>rejectReview(idx)} style={{padding:"6px 10px",background:"rgba(0,0,0,0.08)",color:"#1a1a1a",border:"none",borderRadius:6,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>✗</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {reviewQueue.length===0&&(
+                <div style={{display:"flex",justifyContent:"flex-end",marginTop:8}}>
+                  <button onClick={onClose} style={{padding:"9px 16px",background:"#5856d6",color:"#fff",border:"none",borderRadius:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>DONE</button>
+                </div>
+              )}
+            </div>
+          )}
+          {phase==="done"&&(
+            <div>
+              <div style={{textAlign:"center",fontSize:38,marginBottom:10}}>✓</div>
+              <div style={{textAlign:"center",fontSize:14,color:"#1a1a1a",marginBottom:6}}><b>{committedCount}</b> entr{committedCount===1?"y":"ies"} pinned to this floor plan.</div>
+              {progress.errors>0&&<div style={{textAlign:"center",fontSize:11,color:"rgba(255,59,48,0.85)",marginBottom:14}}>{progress.errors} entr{progress.errors===1?"y was":"ies were"} skipped (photo unreachable or AI error).</div>}
+              <div style={{display:"flex",justifyContent:"center",marginTop:10}}>
+                <button onClick={onClose} style={{padding:"9px 18px",background:"#5856d6",color:"#fff",border:"none",borderRadius:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>CLOSE</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 function SetLocationSheet({initialCtx,projectId,onClose,onSave}){
   const[ctx,setCtx]=useState(initialCtx||{block:"",unit:"",level:"",locationName:""});
   const[scanning,setScanning]=useState(false);
@@ -13599,6 +13819,12 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
   // with the MapThumb shown for GPS-pinned entries).
   const[rvDrawings,setRvDrawings]=useState([]);
   const[rvPins,setRvPins]=useState([]);
+  // Auto-tag modal state — set to a drawing record when the user taps the
+  // AUTO-TAG chip on a drawings card; cleared on close. pinRefreshKey bumps
+  // after a batch commit so the chip's "X to tag" count drops to reflect the
+  // newly-pinned entries without leaving the REVIEW > DRAWINGS view.
+  const[autoTagDrawing,setAutoTagDrawing]=useState(null);
+  const[pinRefreshKey,setPinRefreshKey]=useState(0);
   useEffect(()=>{
     if(!company?.companyId||!currentProject?.id){setRvDrawings([]);return;}
     DB.drawings.list(`companyId="${company.companyId}" && projectId="${currentProject.id}"`)
@@ -13608,7 +13834,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
     if(!rvDrawings.length){setRvPins([]);return;}
     Promise.all(rvDrawings.map(d=>DB.pins.list(`drawingId="${d.id}"`).catch(()=>[])))
       .then(results=>setRvPins(results.flat())).catch(()=>setRvPins([]));
-  },[rvDrawings]);
+  },[rvDrawings,pinRefreshKey]);
   const drawingByEntryId=useMemo(()=>{
     const byId={};
     const drawingMap={};rvDrawings.forEach(d=>{drawingMap[d.id]=d;});
@@ -14028,6 +14254,14 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
             const markupCount=getDrawingMarkup(d.id).length;
             const hasAny=pinCount+noteCount+markupCount>0;
             const checked=selectedIds.has(d.id);
+            // Auto-tag eligibility: drawing has an AI-extracted room layout and
+            // there are still photo-bearing entries that haven't been pinned
+            // here yet. Chip is suppressed during select mode so the card's
+            // multi-select hit area isn't fragmented.
+            const hasRooms=Array.isArray(d.brochureMeta?.rooms)&&d.brochureMeta.rooms.length>0;
+            const pinnedIdsThisDrawing=new Set(drawingPins.map(p=>p.entryId));
+            const autoTagCandidates=hasRooms?(defects||[]).filter(x=>!pinnedIdsThisDrawing.has(x.id)&&x.photo&&!x.archivedAt).length:0;
+            const canAutoTag=hasRooms&&autoTagCandidates>0&&!selectMode;
             return(
               <div key={d.id} className="anim" style={{animationDelay:`${i*0.04}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:`4px solid ${hasAny?"#ff6b00":"rgba(0,0,0,0.15)"}`,display:"flex",gap:12,alignItems:"flex-start",outline:selectMode&&checked?"2px solid #ff6b00":"none"}} onClick={()=>{
                 if(selectMode){toggleId(d.id);return;}
@@ -14042,10 +14276,13 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
                 )}
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,color:"#1a1a1a",marginBottom:6}}><Highlight text={d.name||d.file||"Untitled"} query={q}/></div>
-                  <div style={{display:"flex",gap:8,flexWrap:"wrap",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,alignItems:"center"}}>
                     <span style={{color:pinCount?"#ff3b30":"rgba(0,0,0,0.3)"}}>📍 {pinCount} pin{pinCount===1?"":"s"}</span>
                     <span style={{color:markupCount?"#007aff":"rgba(0,0,0,0.3)"}}>✏️ {markupCount} markup</span>
                     <span style={{color:noteCount?"#34c759":"rgba(0,0,0,0.3)"}}>📝 {noteCount} note{noteCount===1?"":"s"}</span>
+                    {canAutoTag&&(
+                      <button onClick={(e)=>{e.stopPropagation();setAutoTagDrawing(d);}} title="Auto-tag unpinned entries on this floor plan using AI" style={{background:"rgba(88,86,214,0.12)",color:"#3a39a6",border:"1px solid rgba(88,86,214,0.35)",borderRadius:12,padding:"3px 9px",fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",letterSpacing:"0.04em"}}>🤖 AUTO-TAG {autoTagCandidates}</button>
+                    )}
                   </div>
                 </div>
                 <DrawingCardThumb drawing={d} pins={thumbPins}/>
@@ -16389,6 +16626,15 @@ function ProjectSetupPanel({currentProject,member,company,onProjectUpdate}){
             )}
           </div>
         </div>
+      )}
+      {autoTagDrawing&&(
+        <AutoTagBatchModal
+          drawing={autoTagDrawing}
+          defects={defects}
+          pins={rvPins.filter(p=>p.drawingId===autoTagDrawing.id)}
+          onClose={()=>setAutoTagDrawing(null)}
+          onPinsCreated={()=>setPinRefreshKey(k=>k+1)}
+        />
       )}
     </div>
   );
@@ -20444,6 +20690,11 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[drawings,setDrawings]=useState([]);const[loading,setLoading]=useState(true);
   const[archivedDrawings,setArchivedDrawings]=useState([]);
   const[showArchived,setShowArchived]=useState(false);
+  // Auto-tag modal — set to a drawing record when the user taps the chip on a
+  // card; cleared on close. Mounts AutoTagBatchModal at the panel's top level
+  // so it overlays the entire TAG view. Pin updates flow back automatically
+  // via the per-drawing DB.pins.subscribe at line ~20851.
+  const[autoTagDrawing,setAutoTagDrawing]=useState(null);
   const[viewing,setViewing]=useState(null);
   const[uploading,setUploading]=useState(false);
   const[allPins,setAllPins]=useState([]);
@@ -23209,16 +23460,31 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                   </div>
                   {!selectMode&&member?.role==="Admin"&&<button onClick={e=>{e.stopPropagation();deleteDrawing(d.id);}} style={{background:"rgba(255,59,48,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:"#ff3b30",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",flexShrink:0,marginLeft:8}}>{t("actions.delete")}</button>}
                 </div>
-                {(drawingPins.length>0||drawingNotes.length>0||drawingMarkup.length>0)&&(
-                  <div style={{display:"flex",alignItems:"center",gap:6,marginTop:8,flexWrap:"wrap"}}>
-                    {drawingPins.length>0&&<span style={{fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif"}}>📌 {drawingPins.length} PIN{drawingPins.length>1?"S":""}</span>}
-                    {drawingNotes.length>0&&<span style={{fontSize:11,fontWeight:700,color:"#5856d6",background:"rgba(88,86,214,0.12)",border:"1px solid rgba(88,86,214,0.25)",borderRadius:10,padding:"2px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>📝 {drawingNotes.length} NOTE{drawingNotes.length>1?"S":""}</span>}
-                    {drawingMarkup.length>0&&<span style={{fontSize:11,fontWeight:700,color:"#ff6b00",background:"rgba(255,107,0,0.12)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:10,padding:"2px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>✏ {drawingMarkup.length} MARKUP{drawingMarkup.length>1?"S":""}</span>}
-                    {Object.entries(sevCounts).map(([sev,count])=>(
-                      <span key={sev} style={{fontSize:10,fontWeight:700,color:SEV_COLOR[sev]||"#8e8e93",background:(SEV_COLOR[sev]||"#8e8e93")+"18",border:`1px solid ${(SEV_COLOR[sev]||"#8e8e93")}30`,borderRadius:10,padding:"2px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>{count} {sev}</span>
-                    ))}
-                  </div>
-                )}
+                {(()=>{
+                  // Auto-tag eligibility: drawing has a scanned room layout
+                  // AND there are still photo-bearing entries that haven't
+                  // been pinned here yet. Suppressed in select mode so the
+                  // card's multi-select hit area isn't fragmented.
+                  const hasRooms=Array.isArray(d.brochureMeta?.rooms)&&d.brochureMeta.rooms.length>0;
+                  const pinnedIdsThisDrawing=new Set(drawingPins.map(p=>p.entryId));
+                  const autoTagCandidates=hasRooms?(defects||[]).filter(x=>!pinnedIdsThisDrawing.has(x.id)&&x.photo&&!x.archivedAt).length:0;
+                  const canAutoTag=hasRooms&&autoTagCandidates>0&&!selectMode;
+                  const showRow=drawingPins.length>0||drawingNotes.length>0||drawingMarkup.length>0||canAutoTag;
+                  if(!showRow)return null;
+                  return (
+                    <div style={{display:"flex",alignItems:"center",gap:6,marginTop:8,flexWrap:"wrap"}}>
+                      {drawingPins.length>0&&<span style={{fontSize:11,fontWeight:700,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif"}}>📌 {drawingPins.length} PIN{drawingPins.length>1?"S":""}</span>}
+                      {drawingNotes.length>0&&<span style={{fontSize:11,fontWeight:700,color:"#5856d6",background:"rgba(88,86,214,0.12)",border:"1px solid rgba(88,86,214,0.25)",borderRadius:10,padding:"2px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>📝 {drawingNotes.length} NOTE{drawingNotes.length>1?"S":""}</span>}
+                      {drawingMarkup.length>0&&<span style={{fontSize:11,fontWeight:700,color:"#ff6b00",background:"rgba(255,107,0,0.12)",border:"1px solid rgba(255,107,0,0.25)",borderRadius:10,padding:"2px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>✏ {drawingMarkup.length} MARKUP{drawingMarkup.length>1?"S":""}</span>}
+                      {Object.entries(sevCounts).map(([sev,count])=>(
+                        <span key={sev} style={{fontSize:10,fontWeight:700,color:SEV_COLOR[sev]||"#8e8e93",background:(SEV_COLOR[sev]||"#8e8e93")+"18",border:`1px solid ${(SEV_COLOR[sev]||"#8e8e93")}30`,borderRadius:10,padding:"2px 8px",fontFamily:"'Barlow Condensed',sans-serif"}}>{count} {sev}</span>
+                      ))}
+                      {canAutoTag&&(
+                        <button onClick={(e)=>{e.stopPropagation();setAutoTagDrawing(d);}} title={`Auto-place pins on this floor plan for ${autoTagCandidates} unpinned entr${autoTagCandidates===1?"y":"ies"} using AI`} style={{background:"rgba(88,86,214,0.14)",color:"#3a39a6",border:"1px solid rgba(88,86,214,0.4)",borderRadius:10,padding:"2px 9px",fontSize:10,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",cursor:"pointer",letterSpacing:"0.04em"}}>🤖 AUTO-TAG {autoTagCandidates}</button>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           );
@@ -23999,6 +24265,15 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           </div>
         </div>
       )}
+      {autoTagDrawing&&(
+        <AutoTagBatchModal
+          drawing={autoTagDrawing}
+          defects={defects}
+          pins={allPins.filter(p=>p.drawingId===autoTagDrawing.id)}
+          onClose={()=>setAutoTagDrawing(null)}
+          onPinsCreated={null}
+        />
+      )}
     </div>
   );
 }
@@ -24043,6 +24318,12 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   const aiPinRef=useRef();
   const[aiPinning,setAiPinning]=useState(false);
   const[aiPinError,setAiPinError]=useState("");
+  // Auto-tag (batch): one-tap action that walks every unpinned entry and asks
+  // AI to place each on this floor plan. Self-contained modal handles confirm,
+  // progress, low-conf review, and commit. pinsRefreshKey forces a re-mount of
+  // the modal's "unpinned" memo after commits so the same drawing can be
+  // batch-tagged across multiple rounds without closing the viewer.
+  const[showAutoTag,setShowAutoTag]=useState(false);
   const[pickerSearch,setPickerSearch]=useState("");
   const[qTitle,setQTitle]=useState("");const[qSev,setQSev]=useState("Major");const[qSaving,setQSaving]=useState(false);
   const qPhotoRef=useRef();const[qPhoto,setQPhoto]=useState(null);
@@ -25263,7 +25544,22 @@ If you cannot confidently match the defect to any room, pick the closest one and
             {aiPinning?<><Spin size={12}/>{t("drawings.ai_pin_busy")}</>:<>📷 {t("drawings.ai_pin_button")}</>}
           </button>
         )}
+        {/* Auto-tag (batch). Same visibility gate as AI Pin — drawings with an
+            AI-extracted room layout. Disabled when there are no eligible
+            unpinned entries with photos. The count in the label is informational
+            so the user knows the scope before tapping. */}
+        {canPin&&!markupMode&&!viewMode&&Array.isArray(drawing.brochureMeta?.rooms)&&drawing.brochureMeta.rooms.length>0&&(()=>{
+          const pinnedIds=new Set((pins||[]).filter(p=>p.drawingId===drawing.id).map(p=>p.entryId));
+          const candidateCount=(defects||[]).filter(d=>!pinnedIds.has(d.id)&&d.photo&&!d.archivedAt).length;
+          const disabled=candidateCount===0;
+          return (
+            <button onClick={()=>setShowAutoTag(true)} disabled={disabled} title={disabled?"All entries already pinned on this drawing":"Auto-tag unpinned entries using AI"} style={{background:disabled?"rgba(88,86,214,0.15)":"rgba(88,86,214,0.3)",border:"1px solid rgba(88,86,214,0.55)",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.5:1,display:"flex",alignItems:"center",gap:6}}>
+              🤖 AUTO-TAG{candidateCount>0?` (${candidateCount})`:""}
+            </button>
+          );
+        })()}
         <input ref={aiPinRef} type="file" accept="image/*" capture="environment" onChange={handleAiPinFromPhoto} style={{display:"none"}}/>
+        {showAutoTag&&<AutoTagBatchModal drawing={drawing} defects={defects} pins={pins} onClose={()=>setShowAutoTag(false)} onPinsCreated={null}/>}
         {canPin&&!placing&&!viewMode&&(
           <button onClick={()=>{setMarkupMode(!markupMode);setViewMode(false);}} style={{background:markupMode?"#5856d6":"rgba(255,255,255,0.1)",border:"none",borderRadius:20,padding:"7px 14px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>
             {markupMode?"DONE":"✏ MARKUP"}
@@ -26310,7 +26606,21 @@ function App(){
       // Split active vs archived — anything with a non-empty archivedAt is
       // soft-deleted and hidden from the main views.
       const isArchived=d=>!!(d.archivedAt&&String(d.archivedAt).length>0);
-      setDefects(withPhotos.filter(d=>!isArchived(d)));
+      const fresh=withPhotos.filter(d=>!isArchived(d));
+      // SSE race fix: PB's SSE listener (db.js subscribe) re-runs list() on
+      // every collection change. When the event fires for a just-created
+      // record, list() can return before PB has indexed it — wholesale
+      // replacing here would drop the optimistic entry pushed by addDefect
+      // and the user would need a tab refresh for the entry (and the NC
+      // counter that derives from it) to reappear. Preserve any entries
+      // marked _optimisticAt within the last 10s that aren't in the fresh
+      // payload yet; the next SSE/list cycle reconciles them naturally.
+      const freshIds=new Set(fresh.map(d=>d.id));
+      const _now=Date.now();
+      setDefects(prev=>{
+        const stragglers=(prev||[]).filter(d=>d._optimisticAt&&(_now-d._optimisticAt)<10000&&!freshIds.has(d.id));
+        return stragglers.length?[...fresh,...stragglers]:fresh;
+      });
       setArchivedDefects(withPhotos.filter(isArchived));
       setSyncing(false);
     });
@@ -26767,9 +27077,13 @@ function App(){
 
       // Optimistically add to local list so the map LIST and REVIEW update
       // immediately, without waiting for the PocketBase subscription round-trip.
+      // `_optimisticAt` is a client-only marker used by the SSE subscribe
+      // callback below to keep this entry alive if the very next list-refresh
+      // returns before PB has indexed the new record (race that previously
+      // made REVIEW/NC require a tab refresh).
       if(saved&&saved.id){
         const _n=v=>{if(v===null||v===undefined||v==='')return null;const n=typeof v==='number'?v:parseFloat(v);return Number.isFinite(n)?n:null;};
-        const normalised={...saved,lat:_n(saved.lat),lng:_n(saved.lng),mapZoom:_n(saved.mapZoom)};
+        const normalised={...saved,lat:_n(saved.lat),lng:_n(saved.lng),mapZoom:_n(saved.mapZoom),_optimisticAt:Date.now()};
         setDefects(prev=>prev.some(d=>d.id===saved.id)?prev:[...prev,normalised]);
       }
       // Webhook fan-out (fire-and-forget) \u2014 gap #8 v2
