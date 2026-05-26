@@ -10293,8 +10293,25 @@ async function _fetchPhotoAsDataUrl(photo){
   const url=Array.isArray(photo)?photo[0]:photo;
   if(!url)return null;
   if(typeof url==="string"&&url.startsWith("data:"))return url;
-  const resp=await fetch(url);
-  if(!resp.ok)throw new Error("photo fetch failed ("+resp.status+")");
+  // On-site failure modes for photo fetch:
+  //  401 → user's PB token expired / private GDrive without grant
+  //  403 → permission denied (R2 ACL, GDrive ACL)
+  //  0   → CORS preflight blocked (most likely on GDrive-served photos)
+  //  TypeError "Failed to fetch" → offline / DNS / TLS
+  // We translate these into readable suffixes so the batch's first-error
+  // surface tells the user which class of fix to try, instead of a bare
+  // "N skipped".
+  let resp;
+  try{resp=await fetch(url);}
+  catch(netErr){
+    throw new Error("photo fetch failed (network / CORS — check connectivity and that the photo host allows this origin)");
+  }
+  if(!resp.ok){
+    const hint=resp.status===401?" — sign in again":
+      resp.status===403?" — access denied (check storage permissions)":
+      resp.status===404?" — photo missing on server":"";
+    throw new Error("photo fetch failed ("+resp.status+hint+")");
+  }
   const blob=await resp.blob();
   return await new Promise((res,rej)=>{
     const r=new FileReader();
@@ -10332,22 +10349,31 @@ function AutoTagBatchModal({drawing,defects,pins,onClose,onPinsCreated}){
     const pinnedIds=new Set((pins||[]).filter(p=>p.drawingId===drawing.id).map(p=>p.entryId));
     return (defects||[]).filter(d=>!pinnedIds.has(d.id)&&d.photo&&!d.archivedAt);
   },[drawing,defects,pins,rooms.length]);
+  const[firstError,setFirstError]=useState("");
   const run=async()=>{
+    // Hard preconditions — fail loudly before burning quota / time.
+    if(typeof isAiConfigured==="function"&&!isAiConfigured()){
+      setFatal("AI is not configured. Open Settings → AI to set up Gemini, OpenAI, Groq, or Ollama, then try again.");
+      return;
+    }
     if(!rooms.length){setFatal("This drawing has no extracted rooms. Re-upload the floor plan to scan room layout.");return;}
     if(!unpinned.length){setFatal("No unpinned entries to tag on this drawing.");return;}
     cancelRef.current=false;
     setPhase("running");
     setProgress({done:0,total:unpinned.length,auto:0,lowConf:0,errors:0});
     setReviewQueue([]);
+    setFirstError("");
     const prompt=_buildAutoTagPrompt(rooms);
     const review=[];
     let auto=0,lowConf=0,errors=0,committed=0;
+    let firstErrMsg="";
+    const captureErr=(e)=>{if(!firstErrMsg){firstErrMsg=String(e&&e.message?e.message:e||"unknown");setFirstError(firstErrMsg);}};
     for(let i=0;i<unpinned.length;i++){
       if(cancelRef.current)break;
       const entry=unpinned[i];
       try{
         const dataUrl=await _fetchPhotoAsDataUrl(entry.photo);
-        if(!dataUrl){errors++;setProgress({done:i+1,total:unpinned.length,auto,lowConf,errors});continue;}
+        if(!dataUrl){errors++;captureErr("entry photo missing");setProgress({done:i+1,total:unpinned.length,auto,lowConf,errors});continue;}
         const result=await analyzePhoto(dataUrl,prompt);
         if(result&&typeof result==="object"){
           const x=Math.max(0,Math.min(100,Number(result.x_pct)||50));
@@ -10359,16 +10385,16 @@ function AutoTagBatchModal({drawing,defects,pins,onClose,onPinsCreated}){
             try{
               await DB.pins.create({drawingId:drawing.id,entryId:entry.id,pageNum:1,x,y,label:""});
               committed++;auto++;
-            }catch(_){errors++;}
+            }catch(e){errors++;captureErr(e);}
           }else{
             review.push({entry,suggestion});
             lowConf++;
           }
         }else{
-          errors++;
+          errors++;captureErr("AI returned no result (check provider quota / network)");
         }
-      }catch(_){
-        errors++;
+      }catch(e){
+        errors++;captureErr(e);
       }
       setProgress({done:i+1,total:unpinned.length,auto,lowConf,errors});
     }
@@ -10438,6 +10464,11 @@ function AutoTagBatchModal({drawing,defects,pins,onClose,onPinsCreated}){
                 <span style={{color:"#ff9500"}}>⊕ {progress.lowConf} need review</span>
                 {progress.errors>0&&<span style={{color:"#ff3b30"}}>⚠ {progress.errors} skipped</span>}
               </div>
+              {firstError&&progress.errors>0&&(
+                <div style={{background:"rgba(255,59,48,0.08)",border:"1px solid rgba(255,59,48,0.25)",color:"#b91c1c",padding:"8px 10px",borderRadius:8,fontSize:11,lineHeight:1.5,marginBottom:14}}>
+                  <b>First error:</b> {firstError}
+                </div>
+              )}
               <div style={{display:"flex",justifyContent:"flex-end"}}>
                 <button onClick={cancel} style={{padding:"9px 16px",background:"rgba(255,59,48,0.12)",color:"#b91c1c",border:"none",borderRadius:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>CANCEL</button>
               </div>
@@ -10482,7 +10513,12 @@ function AutoTagBatchModal({drawing,defects,pins,onClose,onPinsCreated}){
             <div>
               <div style={{textAlign:"center",fontSize:38,marginBottom:10}}>✓</div>
               <div style={{textAlign:"center",fontSize:14,color:"#1a1a1a",marginBottom:6}}><b>{committedCount}</b> entr{committedCount===1?"y":"ies"} pinned to this floor plan.</div>
-              {progress.errors>0&&<div style={{textAlign:"center",fontSize:11,color:"rgba(255,59,48,0.85)",marginBottom:14}}>{progress.errors} entr{progress.errors===1?"y was":"ies were"} skipped (photo unreachable or AI error).</div>}
+              {progress.errors>0&&(
+                <div style={{textAlign:"center",fontSize:11,color:"rgba(255,59,48,0.85)",marginBottom:14}}>
+                  {progress.errors} entr{progress.errors===1?"y was":"ies were"} skipped.
+                  {firstError&&<div style={{marginTop:4,fontSize:10,color:"rgba(0,0,0,0.55)"}}>First error: {firstError}</div>}
+                </div>
+              )}
               <div style={{display:"flex",justifyContent:"center",marginTop:10}}>
                 <button onClick={onClose} style={{padding:"9px 18px",background:"#5856d6",color:"#fff",border:"none",borderRadius:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>CLOSE</button>
               </div>
@@ -14261,7 +14297,7 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
             const hasRooms=Array.isArray(d.brochureMeta?.rooms)&&d.brochureMeta.rooms.length>0;
             const pinnedIdsThisDrawing=new Set(drawingPins.map(p=>p.entryId));
             const autoTagCandidates=hasRooms?(defects||[]).filter(x=>!pinnedIdsThisDrawing.has(x.id)&&x.photo&&!x.archivedAt).length:0;
-            const canAutoTag=hasRooms&&autoTagCandidates>0&&!selectMode;
+            const canAutoTag=hasRooms&&autoTagCandidates>0&&!selectMode&&(typeof isAiConfigured!=="function"||isAiConfigured());
             return(
               <div key={d.id} className="anim" style={{animationDelay:`${i*0.04}s`,background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:10,cursor:"pointer",borderLeft:`4px solid ${hasAny?"#ff6b00":"rgba(0,0,0,0.15)"}`,display:"flex",gap:12,alignItems:"flex-start",outline:selectMode&&checked?"2px solid #ff6b00":"none"}} onClick={()=>{
                 if(selectMode){toggleId(d.id);return;}
@@ -23468,7 +23504,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                   const hasRooms=Array.isArray(d.brochureMeta?.rooms)&&d.brochureMeta.rooms.length>0;
                   const pinnedIdsThisDrawing=new Set(drawingPins.map(p=>p.entryId));
                   const autoTagCandidates=hasRooms?(defects||[]).filter(x=>!pinnedIdsThisDrawing.has(x.id)&&x.photo&&!x.archivedAt).length:0;
-                  const canAutoTag=hasRooms&&autoTagCandidates>0&&!selectMode;
+                  const canAutoTag=hasRooms&&autoTagCandidates>0&&!selectMode&&(typeof isAiConfigured!=="function"||isAiConfigured());
                   const showRow=drawingPins.length>0||drawingNotes.length>0||drawingMarkup.length>0||canAutoTag;
                   if(!showRow)return null;
                   return (
@@ -25548,7 +25584,7 @@ If you cannot confidently match the defect to any room, pick the closest one and
             AI-extracted room layout. Disabled when there are no eligible
             unpinned entries with photos. The count in the label is informational
             so the user knows the scope before tapping. */}
-        {canPin&&!markupMode&&!viewMode&&Array.isArray(drawing.brochureMeta?.rooms)&&drawing.brochureMeta.rooms.length>0&&(()=>{
+        {canPin&&!markupMode&&!viewMode&&isAiConfigured()&&Array.isArray(drawing.brochureMeta?.rooms)&&drawing.brochureMeta.rooms.length>0&&(()=>{
           const pinnedIds=new Set((pins||[]).filter(p=>p.drawingId===drawing.id).map(p=>p.entryId));
           const candidateCount=(defects||[]).filter(d=>!pinnedIds.has(d.id)&&d.photo&&!d.archivedAt).length;
           const disabled=candidateCount===0;
