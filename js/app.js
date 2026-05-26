@@ -2644,9 +2644,12 @@ async function analyzeWithSiteShrimpDefault(base64Image,prompt,opts){
       return null;
     }
     if(resp.status===503){
-      // Server isn't wired yet — silent fallback. The UI's AI pill will
-      // tell the user to set up their own provider via the standard path.
-      window.__lastAiError="SiteShrimp default AI is unavailable on this server.";
+      // Server-side default not yet wired (OLLAMA_URL not set on the GCP
+      // host, or Oracle VM down). Surface an actionable message that
+      // points the user straight at a working fallback they can set up
+      // themselves in seconds. The standard error UI in the LOG / AUTO-TAG
+      // flow renders this via window.__lastAiError.
+      window.__lastAiError="SiteShrimp AI isn't ready yet. Open Settings → AI to pick a free provider (Gemini gives 1,500 photos/day, no card).";
       return null;
     }
     if(!resp.ok){
@@ -2680,12 +2683,13 @@ async function analyzePhoto(base64Image,prompt,opts){
   // built from buildClientAiSchema(workCategory). Providers that don't
   // (Ollama generic) silently ignore the schema arg.
   const _opts=opts||{};
-  // Default stays "gemini" for now — the "siteshrimp" provider is opt-in
-  // from Settings until the Oracle VM is stood up and OLLAMA_URL is set
-  // on the GCP host. Once that's verified end-to-end, flip this default to
-  // "siteshrimp" in a single-line follow-up commit so fresh installs get
-  // the no-setup path. Doing it pre-Oracle would regress new-install AI.
-  const provider=local.get(AI_PROVIDER_KEY)||"gemini";
+  // Default to the SiteShrimp-hosted free AI so any user who hasn't set
+  // up their own provider gets working AI automatically. When the server
+  // side isn't wired yet (OLLAMA_URL unset on the GCP host), the proxy
+  // returns 503 and the dispatcher surfaces an actionable hint pointing
+  // the user to Settings to pick a free provider — see the 503 branch in
+  // analyzeWithSiteShrimpDefault.
+  const provider=local.get(AI_PROVIDER_KEY)||"siteshrimp";
   if(provider==="siteshrimp"){
     return analyzeWithSiteShrimpDefault(base64Image,prompt,_opts);
   }
@@ -3026,10 +3030,10 @@ function isAiPaused(){return local.get(AI_ENABLED_KEY)===false;}
 // the Settings checklist still shows ✓ when the user has paused (they've
 // completed setup; pause ≠ un-setup).
 function hasAiCredentials(){
-  // Default stays "gemini" until the SiteShrimp default endpoint is
-  // verified end-to-end on production (Oracle VM live + OLLAMA_URL set).
-  // See matching note in analyzePhoto dispatcher above.
-  const provider=local.get(AI_PROVIDER_KEY)||"gemini";
+  // Defaults to "siteshrimp" so fresh installs are treated as "AI-ready"
+  // without any setup. Server-side credentials live in PocketBase env
+  // vars; the client has nothing to validate at this layer.
+  const provider=local.get(AI_PROVIDER_KEY)||"siteshrimp";
   // SiteShrimp default — credentials live server-side, the user has
   // nothing to configure. As long as they're signed in (the server's
   // /api/ai/analyze auth gate will catch non-auth at call time), the
@@ -7543,10 +7547,10 @@ const AI_PROVIDERS=[
   {id:"openai",label:"OpenAI / GPT",icon:"◈",desc:"GPT-4o, GPT-4o-mini, or compatible API",color:"#10a37f"},
 ];
 function GeminiSettings({onClose,companyId}){
-  // Default stays "gemini" pending Oracle VM go-live. The siteshrimp tile
-  // is visible in the provider list (opt-in) but not pre-selected. Flip
-  // this default once the server-side proxy is verified working.
-  const[provider,setProvider]=useState(()=>local.get(AI_PROVIDER_KEY)||"gemini");
+  // Default to "siteshrimp" so the Settings panel matches what the
+  // dispatcher actually uses for fresh installs. Users with an explicit
+  // provider saved (Gemini / OpenAI / Groq / Ollama) keep their selection.
+  const[provider,setProvider]=useState(()=>local.get(AI_PROVIDER_KEY)||"siteshrimp");
   // Master on/off — token-spend kill switch. Default true so existing
   // setups keep working; explicit false pauses every AI call.
   const[aiOn,setAiOn]=useState(()=>local.get(AI_ENABLED_KEY)!==false);
