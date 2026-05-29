@@ -10399,6 +10399,36 @@ Return:
 Respond in valid JSON only:
 {"block": "...", "level": "...", "rooms": [{"name":"...","x_pct":0,"y_pct":0}], "labels":[{"text":"...","x_pct":0,"y_pct":0}], "grid_refs": ["..."], "notes": "..."}`;
 
+// Brochure first-page rasteriser. Real site floor plans arrive as PDF;
+// the BROCHURE_PROMPT path needs a raster data URL, so render page 1 to
+// a canvas. Scale 2.0 matches the brochure-export path so room labels
+// stay legible to the vision model. JPEG at 0.85 keeps the data URL
+// under typical provider payload caps. Returns null on failure so the
+// caller can decide whether to surface or swallow the error.
+async function _brochurePdfToDataUrl(file){
+  if(!window.pdfjsLib)return null;
+  const pdfjsLib=window.pdfjsLib;
+  if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  const buf=await file.arrayBuffer();
+  let doc=null;
+  try{
+    doc=await pdfjsLib.getDocument({data:buf}).promise;
+    if(!doc.numPages)return null;
+    const page=await doc.getPage(1);
+    const viewport=page.getViewport({scale:2.0});
+    const canvas=document.createElement("canvas");
+    canvas.width=viewport.width;canvas.height=viewport.height;
+    const ctx=canvas.getContext("2d");
+    ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
+    await page.render({canvasContext:ctx,viewport}).promise;
+    return canvas.toDataURL("image/jpeg",0.85);
+  }finally{
+    try{if(doc)await doc.destroy();}catch{}
+  }
+}
+
 // AUTO-TAG (batch) helpers + modal.
 // Given a drawing whose brochureMeta.rooms[] is populated and a project's
 // defects list, walk every entry that has a photo but no pin on THIS
@@ -21094,15 +21124,23 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     setUploading(false);
     // Fire-and-forget AI extraction so the spinner doesn't block the
     // drawing list re-render. Per-record spinner state via brochureBusyId.
-    if(rec&&isAiConfigured()&&/^image\//i.test(file.type||"")){
+    // PDF brochures are rasterised (page 1) before being handed to the
+    // vision model — real site floor plans are overwhelmingly PDF, and
+    // gating on image/* alone meant rooms[] was silently never extracted.
+    const isImage=/^image\//i.test(file.type||"");
+    const isPdf=/pdf/i.test(file.type||"")||/\.pdf$/i.test(file.name||"");
+    if(rec&&isAiConfigured()&&(isImage||isPdf)){
       setBrochureBusyId(rec.id);
       try{
-        const dataUrl=await new Promise((res,rej)=>{
-          const r=new FileReader();
-          r.onload=()=>res(r.result);
-          r.onerror=()=>rej(new Error("read failed"));
-          r.readAsDataURL(file);
-        });
+        const dataUrl=isPdf
+          ? await _brochurePdfToDataUrl(file)
+          : await new Promise((res,rej)=>{
+              const r=new FileReader();
+              r.onload=()=>res(r.result);
+              r.onerror=()=>rej(new Error("read failed"));
+              r.readAsDataURL(file);
+            });
+        if(!dataUrl)throw new Error("could not rasterise brochure");
         const result=await analyzePhoto(dataUrl,BROCHURE_PROMPT);
         if(result&&typeof result==="object"){
           const meta={
