@@ -1764,7 +1764,18 @@ const stampOn=isPhotoStampEnabled();const stampWhen=new Date();const stampProj=c
 const batchId=typeof crypto!=="undefined"&&crypto.randomUUID?crypto.randomUUID():"batch_"+Date.now().toString(36)+Math.random().toString(36).slice(2,10);const batchTotalChecks=activeCheckpoints.length;let defectsSaved=0,observationsSaved=0,observationsFailed=0;const failResults=results.filter(r=>r.status==="fail");const failCount=failResults.length;// Pass 1 — observations table keeps full per-checkpoint granularity
 // (pass/fail/uncertain) so the weighted NC-rate math (R1 §3.3) and the
 // audit trail stay intact. Defects are merged in pass 2.
-for(const r of results){const cp=checkpoints.find(x=>x.itemId===r.checkpointId);if(!cp)continue;let compressed=r.photo||null;if(compressed){try{const c=await compressPhoto(r.photo);if(c)compressed=await _burnIfEnabled(c);}catch(_){}}let extraCompressed=[];if(Array.isArray(r.extraPhotos)&&r.extraPhotos.length){extraCompressed=await Promise.all(r.extraPhotos.map(async p=>{try{const c=await compressPhoto(p);return c?await _burnIfEnabled(c):p;}catch{return p;}}));}try{if(DB.conquasObservations&&typeof DB.conquasObservations.create==="function"){await DB.conquasObservations.create({companyId:company?.companyId||"",projectId:currentProject?.id||"default",observation_batch_id:batchId,component_id:pickedId||"",component_name:pickedComponent?pickedComponent.name:"",checkpoint_id:cp.itemId,checkpoint_description:cp.description||"",nc_tier:cp.tier||"",verdict:r.status||"",note:r.note||"",photo:compressed||"",extra_photos:extraCompressed,defect_id:"",logged_by:member?.name||"",logged_by_role:member?.role||"",source:r.source||"manual"});observationsSaved++;}}catch(err){observationsFailed++;console.error("[CONQUAS] observation save failed for checkpoint "+cp.itemId,err);}}// Pass 2 — defect rows are merged per-photo so a single AI-mode shot
+for(const r of results){const cp=checkpoints.find(x=>x.itemId===r.checkpointId);if(!cp)continue;try{if(DB.conquasObservations&&typeof DB.conquasObservations.create==="function"){// Photo is intentionally NOT written here. `photo`/`extra_photos`
+// are plain TEXT/JSON and this is a JSON POST, so a base64 data URL
+// made the request large enough that PocketBase rejected it — and
+// since only fail results carry a photo, EVERY fail observation was
+// silently dropped (caught below as observationsFailed) while the
+// pass observations and the merged defect survived. That left the
+// R1 §3.3 NC-rate numerator reading 0 on projects that had real
+// non-conformances. The evidence photo lives on the merged defect
+// (pass 2); the observation only needs verdict + tier + checkpoint
+// for the rate and the audit trail. Proper per-observation photo
+// storage = a file field + multipart upload — tracked separately.
+await DB.conquasObservations.create({companyId:company?.companyId||"",projectId:currentProject?.id||"default",observation_batch_id:batchId,component_id:pickedId||"",component_name:pickedComponent?pickedComponent.name:"",checkpoint_id:cp.itemId,checkpoint_description:cp.description||"",nc_tier:cp.tier||"",verdict:r.status||"",note:r.note||"",photo:"",extra_photos:[],defect_id:"",logged_by:member?.name||"",logged_by_role:member?.role||"",source:r.source||"manual"});observationsSaved++;}}catch(err){observationsFailed++;console.error("[CONQUAS] observation save failed for checkpoint "+cp.itemId,err);}}// Pass 2 — defect rows are merged per-photo so a single AI-mode shot
 // that fails N checkpoints produces ONE defect, not N. AI mode shares
 // one photo across all checkpoint verdicts; manual walk takes a fresh
 // photo per fail, so each manual fail still becomes its own defect
@@ -2976,10 +2987,18 @@ const[conquasObs,setConquasObs]=useState([]);const[conquasObsOpen,setConquasObsO
 // are respected (we only auto-open once per project switch).
 const conquasObsAutoOpenedRef=useRef(false);useEffect(()=>{if(conquasObs.length>0&&!conquasObsAutoOpenedRef.current){setConquasObsOpen(true);conquasObsAutoOpenedRef.current=true;}},[conquasObs.length]);// Reset auto-open guard when project changes so the next project also
 // auto-opens once.
-useEffect(()=>{conquasObsAutoOpenedRef.current=false;},[currentProject?.id]);useEffect(()=>{let cancelled=false;(async()=>{if(!currentProject?.id||!DB.conquasObservations||typeof DB.conquasObservations.list!=="function"){setConquasObs([]);return;}setConquasObsLoading(true);try{const rows=await DB.conquasObservations.list(`projectId = "${currentProject.id}"`,"-createdAt");if(!cancelled)setConquasObs(Array.isArray(rows)?rows:[]);}catch(e){if(!cancelled)setConquasObs([]);}if(!cancelled)setConquasObsLoading(false);})();return()=>{cancelled=true;};// defects.length is included so the audit trail + Visual IF stats refresh
-// as soon as a new CONQUAS wizard run lands new defects/observations —
-// without this, Report had to be unmounted/remounted to pick them up.
-},[currentProject?.id,defects.length]);// HITL inline edit on the CONQUAS audit trail. Tap an observation's verdict
+useEffect(()=>{conquasObsAutoOpenedRef.current=false;},[currentProject?.id]);// Live CONQUAS observations for the current project via a realtime SSE
+// subscription (mirrors the defects listener at the App level). The Visual
+// IF / Quality Check projection is built primarily from observations, so a
+// subscription makes it update the instant they change — covering the cases
+// the old defects.length-keyed refetch silently missed: an all-pass walk
+// (creates observations but no defects, so defects.length never moved), a
+// verdict edit on another device, and AI background re-verdicts. No
+// client-side optimistic observation rows are pushed into conquasObs, so the
+// defects listener's straggler-merge guard isn't needed here.
+useEffect(()=>{if(!currentProject?.id||!DB.conquasObservations||typeof DB.conquasObservations.subscribe!=="function"){setConquasObs([]);setConquasObsLoading(false);return;}setConquasObsLoading(true);const unsub=DB.conquasObservations.subscribe(`projectId = "${currentProject.id}"`,rows=>{const arr=Array.isArray(rows)?rows.slice():[];// Preserve the prior -createdAt ordering the audit trail expects; the
+// shared subscribe() helper re-lists without a sort param.
+arr.sort((a,b)=>String(b.createdAt||b.created||"").localeCompare(String(a.createdAt||a.created||"")));setConquasObs(arr);setConquasObsLoading(false);});return unsub;},[currentProject?.id]);// HITL inline edit on the CONQUAS audit trail. Tap an observation's verdict
 // glyph to cycle pass → fail → uncertain → pass. Optimistic local update so
 // the calculator (which aggregates from observations) recomputes live; on PB
 // save failure we revert + surface the error. AI's first-pass verdicts stay
@@ -3067,16 +3086,31 @@ for(const d of conquasDefects){if(!d.observation_batch_id)continue;if(!batches.h
 if(batches.size===0)return null;const applicableCount=Array.from(batches.values()).reduce((s,b)=>s+b.applicable,0);const totalChecks=Array.from(batches.values()).reduce((s,b)=>s+b.totalChecks,0);// Numerator: # fails. Prefer the conquas_observations table (per-checkpoint
 // accuracy) when observations exist for any of the in-scope batches; fall
 // back to per-defect counting only on legacy data without observations.
-const filteredBatchIds=new Set(Array.from(batches.keys()));const obsInScope=Array.isArray(conquasObs)?conquasObs.filter(o=>filteredBatchIds.has(o.observation_batch_id)):[];const failObsInScope=obsInScope.filter(o=>o.verdict==="fail"&&o.nc_tier);const useObs=obsInScope.length>0;const failCount=useObs?failObsInScope.length:conquasDefects.length;const defectCount=conquasDefects.length;const rate=applicableCount>0?failCount/applicableCount*100:0;// R1 §3.3 banding thresholds (verbatim from "Criteria to Determine Project
+const filteredBatchIds=new Set(Array.from(batches.keys()));const obsInScope=Array.isArray(conquasObs)?conquasObs.filter(o=>filteredBatchIds.has(o.observation_batch_id)):[];const failObsInScope=obsInScope.filter(o=>o.verdict==="fail"&&o.nc_tier);// Orphan-defect fallback. A batch whose fail observations were lost on
+// write (the photo-in-JSON observation-create rejection — fails carry a
+// photo, passes don't, so only the fails were dropped) shows 0 fail-obs
+// even though its merged defect, saved via a separate file-upload path,
+// survived with its nc_tier. Counting fail-obs alone then under-reports
+// real NCs as 0. So the numerator = fail observations PLUS any CONQUAS
+// defect whose batch has NO persisted fail-obs. Batches that DID persist a
+// fail-obs ignore their defects (the merged record would double-count the
+// same fail). Legacy data with no observations at all naturally counts
+// every defect (none land in batchesWithFailObs). The denominator
+// (applicableCount) is left on the observed checks — a smaller denominator
+// errs toward a worse band, which is the safe direction for a defect
+// register.
+const batchesWithFailObs=new Set(failObsInScope.map(o=>o.observation_batch_id));const orphanDefects=conquasDefects.filter(d=>!batchesWithFailObs.has(d.observation_batch_id));const failCount=failObsInScope.length+orphanDefects.length;const defectCount=conquasDefects.length;const rate=applicableCount>0?failCount/applicableCount*100:0;// R1 §3.3 banding thresholds (verbatim from "Criteria to Determine Project
 // Band" table). Lower NC rate → better band. Band 1 also requires full
 // functional-test compliance (no NC) — reflected in the QP-status chips
 // surfaced separately in the card.
 let band=6;if(rate<6)band=1;else if(rate<10)band=2;else if(rate<15)band=3;else if(rate<20)band=4;else if(rate<25)band=5;// Per element — accumulate fails by component (direct count, not weighted).
-const byComponent=new Map();if(useObs){for(const o of failObsInScope){const key=o.component_name||"(unspecified)";if(!byComponent.has(key))byComponent.set(key,{name:key,failCount:0,applicable:0,totalChecks:0,componentId:o.component_id||""});byComponent.get(key).failCount+=1;}}else{for(const d of conquasDefects){const key=d.component||"(unspecified)";if(!byComponent.has(key))byComponent.set(key,{name:key,failCount:0,applicable:0,totalChecks:0,componentId:d.component_id||""});byComponent.get(key).failCount+=1;}}// Component-level denominator from batches
+// Fail observations plus orphan defects, mirroring the reconciled failCount
+// above so the element breakdown matches the headline NC count.
+const byComponent=new Map();const _ensureComp=(key,id)=>{if(!byComponent.has(key))byComponent.set(key,{name:key,failCount:0,applicable:0,totalChecks:0,componentId:id||""});return byComponent.get(key);};for(const o of failObsInScope)_ensureComp(o.component_name||"(unspecified)",o.component_id).failCount+=1;for(const d of orphanDefects)_ensureComp(d.component||"(unspecified)",d.component_id).failCount+=1;// Component-level denominator from batches
 for(const b of batches.values()){const key=b.component;if(!byComponent.has(key))byComponent.set(key,{name:key,failCount:0,applicable:0,totalChecks:0,componentId:b.componentId||""});const row=byComponent.get(key);row.applicable+=b.applicable;row.totalChecks+=b.totalChecks;}// Per-component rate (direct count per R1 §3.3)
 const componentRows=Array.from(byComponent.values()).map(r=>({...r,rate:r.applicable>0?r.failCount/r.applicable*100:0})).sort((a,b)=>b.rate-a.rate);// By tier — failure breakdown for §3.4 rectification decisions and §3.6
 // moderation diagnostics. Does NOT factor into the rate formula above.
-const byTier={"1X":0,"2X":0,"3X":0};if(useObs){for(const o of failObsInScope)if(byTier[o.nc_tier]!==undefined)byTier[o.nc_tier]+=1;}else{for(const d of conquasDefects)if(byTier[d.nc_tier]!==undefined)byTier[d.nc_tier]+=1;}// ── Functional Tests NC rate (R1 §3.3) ──
+const byTier={"1X":0,"2X":0,"3X":0};for(const o of failObsInScope)if(byTier[o.nc_tier]!==undefined)byTier[o.nc_tier]+=1;for(const d of orphanDefects)if(byTier[d.nc_tier]!==undefined)byTier[d.nc_tier]+=1;// ── Functional Tests NC rate (R1 §3.3) ──
 // Direct count, NOT tier-weighted. FT NC rate = (Σ fails) / (Σ applicable)
 // × 100% across WTT, WPT, WFT (WFT added in R1).
 const p=currentProject||{};const wttA=Number(p.ft_wtt_applicable)||0,wttF=Number(p.ft_wtt_fails)||0;const wptA=Number(p.ft_wpt_applicable)||0,wptF=Number(p.ft_wpt_fails)||0;const wftA=Number(p.ft_wft_applicable)||0,wftF=Number(p.ft_wft_fails)||0;const ftApplicable=wttA+wptA+wftA;const ftFails=wttF+wptF+wftF;const ftRate=ftApplicable>0?ftFails/ftApplicable*100:null;// ── External Finishes NC rate (R1 §3.3 c) — direct count, not tier-weighted ──
