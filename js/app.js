@@ -21602,7 +21602,7 @@ Requirements:
       if(!cfg.apiKey)throw new Error("OpenAI key missing — configure AI in Settings → AI Setup.");
       const openaiUrl=(cfg.url||"https://api.openai.com").replace(/\/+$/,"");
       const model=cfg.model||"gpt-4o-mini";
-      const compareMime=_mimeFromDataUrl(base64Image);
+      const compareMime=_mimeFromDataUrl(dataUrl);
       const res=await fetchWithTimeout(openaiUrl+"/v1/chat/completions",{
         method:"POST",
         headers:{"Content-Type":"application/json","Authorization":"Bearer "+cfg.apiKey},
@@ -21618,7 +21618,7 @@ Requirements:
     }else{
       // Gemini (default)
       if(!key)throw new Error("Gemini key missing — configure AI in Settings → AI Setup.");
-      const compareGeminiMime=_mimeFromDataUrl(base64Image);
+      const compareGeminiMime=_mimeFromDataUrl(dataUrl);
       const res=await geminiGenerate(key,{
         contents:[{parts:[
           {inline_data:{mime_type:compareGeminiMime,data:b64}},
@@ -23703,7 +23703,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                   <div style={{position:"relative",background:"#f8f8f6",overflow:"hidden",minHeight:60}}>
                     {isImage
                       ? <img src={fileUrl} alt={d.name} style={{width:"100%",maxHeight:"28vh",objectFit:"contain",display:"block",background:"#f8f8f6",filter:"grayscale(0.4)"}}/>
-                      : <DrawingThumb url={fileUrl}/>}
+                      : <CompactPdfThumb url={fileUrl}/>}
                     <div style={{position:"absolute",top:8,left:8,background:"rgba(0,0,0,0.55)",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,padding:"3px 8px",borderRadius:6,letterSpacing:0.5}}>ARCHIVED · {daysLeft}D LEFT</div>
                   </div>
                   <div style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:8}}>
