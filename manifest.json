@@ -110,7 +110,7 @@
     }
   ],
   "scope_extensions": [
-    { "origin": "https://api.siteshrimp.org" }
+    { "type": "origin", "origin": "https://api.siteshrimp.org" }
   ],
   "file_handlers": [
     {
