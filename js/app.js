@@ -27880,6 +27880,7 @@ function App(){
 
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:tab==="report"?"calc(160px + env(safe-area-inset-bottom,0px))":"calc(100px + env(safe-area-inset-bottom,0px))"}}>
+        <ErrorBoundary key={tab}>
         {/* LogDefect stays mounted across tab switches so an in-flight zero-tap
             AI batch keeps processing + auto-saving when the user moves to
             REVIEW / REPORT / DRAWINGS. Unmounting would orphan the worker
@@ -27890,6 +27891,7 @@ function App(){
         {tab==="drawings"&&<DrawingsPanel embedded onClose={()=>setTab("report")} company={company} currentProject={currentProject} member={member} defects={defects} onSaveEntry={addDefect} onPatchDefectLocal={updated=>setDefects(prev=>prev.map(d=>d.id===updated.id?updated:d))} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onViewEntry={setViewing}/>}
         {tab==="defects"&&<DefectsList defects={defects} archivedDefects={archivedDefects} onView={setViewing} onUpdate={updateDefect} nlFilters={nlFilters} onClearNl={()=>setNlFilters(null)} onAiSearch={()=>setShowAiSearch(true)} aiEnabled={aiEnabled} member={member} members={members} onBulkUpdate={bulkUpdate} onBulkDelete={bulkDelete} onRestore={restoreDefects} onHardDelete={hardDeleteDefects} company={company} currentProject={currentProject} onJumpToTag={()=>setTab("drawings")} onOpenInReview={(payload)=>setReviewModal(payload)} queueCount={queueCount} syncing2={syncing2} onSyncQueue={syncQueue}/>}
         {tab==="report"&&<Report defects={defects} onEmailSetup={()=>setShowEmail(true)} currentProject={currentProject} company={company} tgEnabled={tgEnabled} aiEnabled={aiEnabled} syncing={syncing} member={member} queueCount={queueCount} onSyncQueue={syncQueue} syncing2={syncing2} onProjectUpdate={selectProject}/>}
+        </ErrorBoundary>
       </div>
 
       {/* Bottom anchor — AI Query bar (REPORT tab only) sits above the tab Nav so the
