@@ -16982,6 +16982,11 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   const[conquasObs,setConquasObs]=useState([]);
   const[conquasObsOpen,setConquasObsOpen]=useState(false);
   const[conquasObsLoading,setConquasObsLoading]=useState(false);
+  // Audit-trail consolidation: which element sections are collapsed (default:
+  // all expanded) and which repeated-checkpoint rows are expanded to show
+  // their individual occurrences (default: all collapsed).
+  const[obsCollapsedEls,setObsCollapsedEls]=useState(()=>new Set());
+  const[obsExpandedCps,setObsExpandedCps]=useState(()=>new Set());
   // Auto-expand the audit trail the first time observations show up for the
   // current project. Avoids the user having to discover the toggle to see
   // their pass / fail / uncertain breakdown. Subsequent toggles by the user
@@ -18316,12 +18321,27 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
         const totalPass=conquasObs.filter(o=>o.verdict==="pass").length;
         const totalFail=conquasObs.filter(o=>o.verdict==="fail").length;
         const totalUncertain=conquasObs.filter(o=>o.verdict==="uncertain").length;
-        // Tier volume — how many checks were walked at each NC weighting.
-        // Helps the officer see coverage at a glance (e.g. 8× 1X + 6× 2X +
-        // 4× 3X) without expanding the trail.
-        const total1X=conquasObs.filter(o=>o.nc_tier==="1X").length;
-        const total2X=conquasObs.filter(o=>o.nc_tier==="2X").length;
-        const total3X=conquasObs.filter(o=>o.nc_tier==="3X").length;
+        // NC by tier — fails / applicable + rate per NC weighting, from the
+        // observations in THIS trail. Distinct from the pass/fail chips: it
+        // answers "of the Liveability (3X) checks walked, how many were
+        // non-conformances?". R1 "applicable" = pass + fail (uncertain ↔ blank
+        // excluded); coverage (total walked, incl. uncertain) is kept as faint
+        // subtext. This is a coverage diagnostic, not an official per-tier R1
+        // rate (tiers are severity weightings, not separate sampling pools).
+        // It reflects recorded observations only — a legacy batch whose fail
+        // observations were dropped on write reads 0 here even though the
+        // Visual IF card reconciles it via the surviving defect record.
+        const TIER_META=[
+          {k:"3X",label:"3X Liveability",color:"#cc0000"},
+          {k:"2X",label:"2X Functionality",color:"#b46700"},
+          {k:"1X",label:"1X Finishings",color:"#1d8f3e"}
+        ];
+        const tierStats=TIER_META.map(t=>{
+          const walked=conquasObs.filter(o=>o.nc_tier===t.k).length;
+          const applicable=conquasObs.filter(o=>o.nc_tier===t.k&&(o.verdict==="pass"||o.verdict==="fail")).length;
+          const fails=conquasObs.filter(o=>o.nc_tier===t.k&&o.verdict==="fail").length;
+          return{...t,walked,applicable,fails,rate:applicable>0?(fails/applicable*100):null};
+        }).filter(t=>t.walked>0);
         const chip=(label,count,color)=>(
           <span style={{fontSize:10,fontWeight:700,color,background:color+"14",border:"1px solid "+color+"33",borderRadius:6,padding:"3px 7px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>{count} {label}</span>
         );
@@ -18336,65 +18356,137 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
               {totalPass>0&&chip("PASS",totalPass,"#34a853")}
               {totalFail>0&&chip("FAIL",totalFail,"#ff3b30")}
               {totalUncertain>0&&chip("UNCERTAIN",totalUncertain,"#ff9500")}
-              {total1X>0&&chip("1X",total1X,"#1d8f3e")}
-              {total2X>0&&chip("2X",total2X,"#b46700")}
-              {total3X>0&&chip("3X",total3X,"#cc0000")}
             </div>
             <span style={{fontSize:11,color:"#5856d6",fontWeight:700}}>{conquasObsOpen?"▲":"▼"}</span>
           </button>
+          {tierStats.length>0&&(
+            <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid rgba(0,0,0,0.06)",display:"flex",flexDirection:"column",gap:5}}>
+              <div style={{fontSize:9,fontWeight:800,color:"rgba(0,0,0,0.45)",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif"}}>NC BY TIER · FAILS / APPLICABLE</div>
+              {tierStats.map(t=>(
+                <div key={t.k} style={{display:"flex",alignItems:"center",gap:8,fontSize:11}}>
+                  <span style={{flex:1,minWidth:0,color:"#1a1a1a",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:"0.02em"}}>{t.label}</span>
+                  <span style={{color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontSize:9}}>{t.walked} walked</span>
+                  <span style={{color:"rgba(0,0,0,0.55)",fontFamily:"'Barlow Condensed',sans-serif",minWidth:48,textAlign:"right"}}>{t.fails} / {t.applicable}</span>
+                  <span style={{minWidth:48,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:t.rate===null?"rgba(0,0,0,0.3)":t.rate>0?t.color:"#30d158"}}>{t.rate===null?"—":t.rate.toFixed(1)+"%"}</span>
+                </div>
+              ))}
+            </div>
+          )}
           {conquasObsOpen&&(()=>{
-            // Group by batch, newest first. Within each batch, order by
-            // checkpoint tier (3X → 2X → 1X) so the worst items surface.
-            const byBatch=new Map();
-            for(const o of conquasObs){
-              const k=o.observation_batch_id||"orphan";
-              if(!byBatch.has(k))byBatch.set(k,{rows:[],created:o.createdAt||"",component:o.component_name||""});
-              const g=byBatch.get(k);
-              g.rows.push(o);
-              if(o.createdAt&&o.createdAt>g.created)g.created=o.createdAt;
-              if(!g.component&&o.component_name)g.component=o.component_name;
-            }
+            // Group by ELEMENT (component), then consolidate repeated
+            // CHECKPOINTS within it. One "Ceiling" section replaces N batch
+            // cards; an identical checkpoint walked across several runs becomes
+            // a single row with an ×N occurrence count + verdict breakdown,
+            // expandable to its individual observations (each keeps its inline
+            // verdict toggle, so audit fidelity + HITL editing survive). Empty
+            // observation thumbnails are dropped — obs photos aren't stored
+            // (evidence lives on the merged defect) — reclaiming row height.
             const tierRank={"3X":0,"2X":1,"1X":2,"":3};
-            const batchEntries=Array.from(byBatch.entries()).sort((a,b)=>(b[1].created||"").localeCompare(a[1].created||""));
+            const ts=o=>o.createdAt||o.created||"";
+            const byElement=new Map();
+            for(const o of conquasObs){
+              const el=o.component_name||"(unspecified)";
+              if(!byElement.has(el))byElement.set(el,{name:el,rows:[],byCp:new Map()});
+              const g=byElement.get(el);
+              g.rows.push(o);
+              const cpKey=o.checkpoint_id||o.checkpoint_description||"(unspecified)";
+              if(!g.byCp.has(cpKey))g.byCp.set(cpKey,{key:cpKey,desc:o.checkpoint_description||o.checkpoint_id||"(unspecified)",tier:o.nc_tier||"",occ:[]});
+              const cp=g.byCp.get(cpKey);
+              cp.occ.push(o);
+              if(!cp.tier&&o.nc_tier)cp.tier=o.nc_tier;
+            }
+            // Element order: most non-conformances first, then most checks.
+            const elementEntries=Array.from(byElement.values()).map(g=>{
+              const fails=g.rows.filter(r=>r.verdict==="fail").length;
+              // Consolidated checkpoint rows: NC first, then worst tier, then
+              // most-repeated.
+              const cps=Array.from(g.byCp.values()).map(c=>({
+                ...c,
+                fail:c.occ.filter(o=>o.verdict==="fail").length,
+                pass:c.occ.filter(o=>o.verdict==="pass").length,
+                uncertain:c.occ.filter(o=>o.verdict==="uncertain").length
+              })).sort((a,b)=>(b.fail-a.fail)||((tierRank[a.tier]||9)-(tierRank[b.tier]||9))||(b.occ.length-a.occ.length));
+              return{name:g.name,total:g.rows.length,fails,cps};
+            }).sort((a,b)=>(b.fails-a.fails)||(b.total-a.total));
+            const toggleSet=(setter,key)=>setter(prev=>{const n=new Set(prev);n.has(key)?n.delete(key):n.add(key);return n;});
+            const breakdown=cp=>[cp.fail?cp.fail+"✗":"",cp.pass?cp.pass+"✓":"",cp.uncertain?cp.uncertain+"?":""].filter(Boolean).join(" ");
             return(
               <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:10}}>
-                {batchEntries.slice(0,10).map(([bid,g])=>{
-                  const rows=g.rows.slice().sort((a,b)=>(tierRank[a.nc_tier]||9)-(tierRank[b.nc_tier]||9));
-                  const passCount=rows.filter(r=>r.verdict==="pass").length;
-                  const failCount=rows.filter(r=>r.verdict==="fail").length;
-                  const uncertainCount=rows.filter(r=>r.verdict==="uncertain").length;
+                {elementEntries.map(el=>{
+                  const elCollapsed=obsCollapsedEls.has(el.name);
                   return(
-                    <div key={bid} style={{background:"rgba(88,86,214,0.04)",border:"1px solid rgba(88,86,214,0.15)",borderRadius:10,padding:"10px 12px"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap"}}>
-                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,color:"#1a1a1a",letterSpacing:"0.04em"}}>{g.component||"(unspecified)"}</div>
-                        <div style={{flex:1,fontSize:10,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif"}}>{g.created?new Date(g.created).toLocaleString():""}</div>
-                        <div style={{display:"flex",gap:4}}>
-                          {passCount>0&&<span style={{background:"rgba(48,209,88,0.12)",color:"#1d8f3e",borderRadius:4,padding:"2px 6px",fontSize:10,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>✓ {passCount}</span>}
-                          {failCount>0&&<span style={{background:"rgba(255,59,48,0.12)",color:"#cc0000",borderRadius:4,padding:"2px 6px",fontSize:10,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>✗ {failCount}</span>}
-                          {uncertainCount>0&&<span style={{background:"rgba(255,149,0,0.12)",color:"#b46700",borderRadius:4,padding:"2px 6px",fontSize:10,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>? {uncertainCount}</span>}
-                        </div>
-                      </div>
-                      <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                        {rows.map((o,i)=>{
-                          const vcol=o.verdict==="pass"?"#30d158":o.verdict==="fail"?"#ff3b30":"#ff9500";
-                          const vglyph=o.verdict==="pass"?"✓":o.verdict==="fail"?"✗":"?";
-                          return(
-                            <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:i<rows.length-1?"1px solid rgba(0,0,0,0.05)":"none"}}>
-                              {o.photo?<img src={o.photo} alt="" style={{width:32,height:32,objectFit:"cover",borderRadius:4,flexShrink:0}}/>:<div style={{width:32,height:32,borderRadius:4,background:"rgba(0,0,0,0.05)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"rgba(0,0,0,0.3)"}}>—</div>}
-                              <div style={{flex:1,minWidth:0}}>
-                                <div style={{fontSize:11,color:"#1a1a1a",lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis"}}>{o.checkpoint_description||o.checkpoint_id}</div>
-                                {o.note&&<div style={{fontSize:10,color:"rgba(0,0,0,0.5)",fontStyle:"italic",marginTop:1}}>{o.note}</div>}
+                    <div key={el.name} style={{background:"rgba(88,86,214,0.04)",border:"1px solid rgba(88,86,214,0.15)",borderRadius:10,padding:"8px 12px"}}>
+                      <button onClick={()=>toggleSet(setObsCollapsedEls,el.name)} style={{width:"100%",background:"transparent",border:"none",padding:"2px 0",cursor:"pointer",display:"flex",alignItems:"center",gap:8,textAlign:"left"}}>
+                        <span style={{fontSize:10,color:"#5856d6",width:10,flexShrink:0}}>{elCollapsed?"▸":"▾"}</span>
+                        <span style={{flex:1,minWidth:0,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#1a1a1a",letterSpacing:"0.04em"}}>{el.name}</span>
+                        <span style={{fontSize:10,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif"}}>{el.total} check{el.total!==1?"s":""}</span>
+                        {el.fails>0
+                          ? <span style={{background:"rgba(255,59,48,0.12)",color:"#cc0000",borderRadius:4,padding:"2px 6px",fontSize:10,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>{el.fails} NC</span>
+                          : <span style={{background:"rgba(48,209,88,0.12)",color:"#1d8f3e",borderRadius:4,padding:"2px 6px",fontSize:10,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>0 NC</span>}
+                      </button>
+                      {!elCollapsed&&(
+                        <div style={{marginTop:6,display:"flex",flexDirection:"column"}}>
+                          {el.cps.map(cp=>{
+                            const repeated=cp.occ.length>1;
+                            // Single occurrence → a plain editable row (no
+                            // expand). Repeated → a collapsed summary row that
+                            // expands to its occurrences.
+                            if(!repeated){
+                              const o=cp.occ[0];
+                              const vcol=o.verdict==="pass"?"#30d158":o.verdict==="fail"?"#ff3b30":"#ff9500";
+                              const vglyph=o.verdict==="pass"?"✓":o.verdict==="fail"?"✗":"?";
+                              return(
+                                <div key={el.name+"|"+cp.key} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:"1px solid rgba(0,0,0,0.05)"}}>
+                                  {o.photo&&<img src={o.photo} alt="" style={{width:28,height:28,objectFit:"cover",borderRadius:4,flexShrink:0}}/>}
+                                  <div style={{flex:1,minWidth:0}}>
+                                    <div style={{fontSize:11,color:"#1a1a1a",lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis"}}>{cp.desc}</div>
+                                    {o.note&&<div style={{fontSize:10,color:"rgba(0,0,0,0.5)",fontStyle:"italic",marginTop:1}}>{o.note}</div>}
+                                  </div>
+                                  {cp.tier&&<span style={{fontSize:9,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{cp.tier}</span>}
+                                  <button onClick={()=>cycleObsVerdict(o)} aria-label={`Verdict ${o.verdict||"pending"} — tap to cycle pass / fail / uncertain`} title="Tap to change verdict (pass → fail → uncertain)" style={{width:28,height:28,borderRadius:"50%",background:vcol,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,flexShrink:0,border:"none",cursor:"pointer",padding:0}}>{vglyph}</button>
+                                </div>
+                              );
+                            }
+                            const cpId=el.name+"|"+cp.key;
+                            const expanded=obsExpandedCps.has(cpId);
+                            const sumCol=cp.fail>0?"#ff3b30":cp.uncertain>0?"#ff9500":"#30d158";
+                            const sumGlyph=cp.fail>0?"✗":cp.uncertain>0?"?":"✓";
+                            return(
+                              <div key={cpId} style={{borderBottom:"1px solid rgba(0,0,0,0.05)"}}>
+                                <button onClick={()=>toggleSet(setObsExpandedCps,cpId)} style={{width:"100%",background:"transparent",border:"none",padding:"5px 0",cursor:"pointer",display:"flex",alignItems:"center",gap:8,textAlign:"left"}}>
+                                  <span style={{width:18,height:18,borderRadius:"50%",background:sumCol,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,flexShrink:0}}>{sumGlyph}</span>
+                                  <span style={{flex:1,minWidth:0,fontSize:11,color:"#1a1a1a",lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cp.desc}</span>
+                                  {cp.tier&&<span style={{fontSize:9,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{cp.tier}</span>}
+                                  <span style={{fontSize:10,fontWeight:800,color:"#5856d6",fontFamily:"'Barlow Condensed',sans-serif"}}>×{cp.occ.length}</span>
+                                  <span style={{fontSize:9,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,minWidth:38,textAlign:"right"}}>{breakdown(cp)}</span>
+                                  <span style={{fontSize:10,color:"#5856d6",width:10,flexShrink:0}}>{expanded?"▲":"▼"}</span>
+                                </button>
+                                {expanded&&(
+                                  <div style={{display:"flex",flexDirection:"column",gap:3,paddingLeft:26,paddingBottom:6}}>
+                                    {cp.occ.slice().sort((a,b)=>ts(b).localeCompare(ts(a))).map((o,i)=>{
+                                      const vcol=o.verdict==="pass"?"#30d158":o.verdict==="fail"?"#ff3b30":"#ff9500";
+                                      const vglyph=o.verdict==="pass"?"✓":o.verdict==="fail"?"✗":"?";
+                                      return(
+                                        <div key={o.id||i} style={{display:"flex",alignItems:"center",gap:8,padding:"2px 0"}}>
+                                          {o.photo&&<img src={o.photo} alt="" style={{width:26,height:26,objectFit:"cover",borderRadius:4,flexShrink:0}}/>}
+                                          <div style={{flex:1,minWidth:0}}>
+                                            <div style={{fontSize:10,color:"rgba(0,0,0,0.5)",fontFamily:"'Barlow Condensed',sans-serif"}}>{ts(o)?new Date(ts(o)).toLocaleString():`Occurrence ${i+1}`}</div>
+                                            {o.note&&<div style={{fontSize:10,color:"rgba(0,0,0,0.55)",fontStyle:"italic"}}>{o.note}</div>}
+                                          </div>
+                                          <button onClick={()=>cycleObsVerdict(o)} aria-label={`Verdict ${o.verdict||"pending"} — tap to cycle pass / fail / uncertain`} title="Tap to change verdict (pass → fail → uncertain)" style={{width:26,height:26,borderRadius:"50%",background:vcol,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,flexShrink:0,border:"none",cursor:"pointer",padding:0}}>{vglyph}</button>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
                               </div>
-                              <span style={{fontSize:9,color:"rgba(0,0,0,0.4)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,marginLeft:4}}>{o.nc_tier||""}</span>
-                              <button onClick={()=>cycleObsVerdict(o)} aria-label={`Verdict ${o.verdict||"pending"} — tap to cycle pass / fail / uncertain`} title="Tap to change verdict (pass → fail → uncertain)" style={{width:32,height:32,borderRadius:"50%",background:vcol,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,flexShrink:0,border:"none",cursor:"pointer",padding:0,transition:"transform 0.1s ease"}} onMouseDown={e=>e.currentTarget.style.transform="scale(0.92)"} onMouseUp={e=>e.currentTarget.style.transform="scale(1)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"} onTouchStart={e=>e.currentTarget.style.transform="scale(0.92)"} onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}>{vglyph}</button>
-                            </div>
-                          );
-                        })}
-                      </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
-                {batchEntries.length>10&&<div style={{fontSize:10,color:"rgba(0,0,0,0.4)",textAlign:"center"}}>Showing the 10 most recent batches of {batchEntries.length}.</div>}
               </div>
             );
           })()}
