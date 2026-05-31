@@ -15108,6 +15108,15 @@ function DefectsList({defects,archivedDefects=[],onView,onUpdate,nlFilters,onCle
           </div>
         );
       })()}
+      {autoTagDrawing&&(
+        <AutoTagBatchModal
+          drawing={autoTagDrawing}
+          defects={defects}
+          pins={rvPins.filter(p=>p.drawingId===autoTagDrawing.id)}
+          onClose={()=>setAutoTagDrawing(null)}
+          onPinsCreated={()=>setPinRefreshKey(k=>k+1)}
+        />
+      )}
     </div>
   );
 }
@@ -16816,15 +16825,6 @@ function ProjectSetupPanel({currentProject,member,company,onProjectUpdate}){
             )}
           </div>
         </div>
-      )}
-      {autoTagDrawing&&(
-        <AutoTagBatchModal
-          drawing={autoTagDrawing}
-          defects={defects}
-          pins={rvPins.filter(p=>p.drawingId===autoTagDrawing.id)}
-          onClose={()=>setAutoTagDrawing(null)}
-          onPinsCreated={()=>setPinRefreshKey(k=>k+1)}
-        />
       )}
     </div>
   );
