@@ -26577,6 +26577,26 @@ const DdIcon=({name,size=16})=>{
 };
 
 
+// Error boundary — contains a render throw to the tab content area instead of
+// blanking the whole React tree. Keyed by `tab` at the use site so switching
+// tabs clears a caught error. Added after blank-screen incidents this cycle
+// (autoTagDrawing, DrawingThumb, base64Image) where one stray undefined
+// reference white-screened the entire app.
+class ErrorBoundary extends React.Component{
+  constructor(props){super(props);this.state={err:null};}
+  static getDerivedStateFromError(err){return{err};}
+  componentDidCatch(err,info){try{console.error("[ErrorBoundary]",err,info&&info.componentStack);}catch(_){}}
+  render(){
+    if(!this.state.err)return this.props.children;
+    return React.createElement("div",{style:{padding:"24px 18px",fontFamily:"'Barlow',sans-serif",color:"#1a1a1a"}},
+      React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:18,marginBottom:8}},"⚠ This view hit an error"),
+      React.createElement("div",{style:{fontSize:13,color:"rgba(0,0,0,0.6)",lineHeight:1.5,marginBottom:16}},"The rest of the app still works — switch tabs below, or reload. Your data is safe."),
+      React.createElement("div",{style:{fontSize:11,color:"rgba(0,0,0,0.4)",fontFamily:"monospace",wordBreak:"break-word",marginBottom:16}},String(this.state.err&&this.state.err.message||this.state.err)),
+      React.createElement("button",{onClick:()=>{try{location.reload();}catch(_){}},style:{background:"#ff6b00",border:"none",borderRadius:10,padding:"11px 18px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer",letterSpacing:"0.04em"}},"RELOAD APP")
+    );
+  }
+}
+
 function App(){
   const[lang,setLangState]=useState(_currentCode);
   // Re-render on language change
