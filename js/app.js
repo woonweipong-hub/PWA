@@ -10379,9 +10379,9 @@ function TopCheckWizard({currentProject,company,member,onSave,onClose}){
 // auto-fill effect in LogDefect.
 const SIGNBOARD_PROMPT=`Examine this photo and decide whether it shows a location signboard, unit-number plate, floor marker, or similar way-finding indicator inside a building/construction project.
 
-If YES, extract whatever is visible. Each field is optional — leave it as an empty string if not present:
-- block: the building / block / tower identifier (e.g. "Block 5", "Tower A", "Building C2")
-- unit: the unit / apartment number (e.g. "#03-12", "Unit 312", "Apt 7A")
+If YES, extract ONLY text that is actually printed — copy it exactly, never guess, and never copy the example formats below as if they were the real value. Each field is optional — leave it as an empty string if not clearly legible:
+- block: the building / block / tower identifier as printed (e.g. "Block 5", "Tower A", "Building C2")
+- unit: the unit / apartment number as printed (e.g. "Unit 312", "#11-18", "Apt 7A")
 - level: the floor / level (e.g. "Level 3", "3rd Floor", "L3", "Basement 1")
 - location_name: a specific room or area name (e.g. "Lobby A", "Master Bedroom", "Common Corridor", "Roof Garden")
 
@@ -10396,14 +10396,14 @@ If the photo is clearly NOT a signboard (a defect photo, a person, a tool, etc.)
 // features (drawing-context display, future pin-suggestion) can read
 // the spatial layout without re-asking the model. Positions are given as
 // percentages of the image so they survive viewer-scale changes.
-const BROCHURE_PROMPT=`Examine this floor plan / brochure / unit-layout image. Extract whatever spatial information is clearly visible. Every field is optional — leave it empty / omit if not present.
+const BROCHURE_PROMPT=`Examine this floor plan / brochure / unit-layout image. Extract ONLY text that is actually printed on the image — read it, do not infer or assume. Copy each value EXACTLY as printed. If a field is not clearly legible, return an empty string. Never guess, and never copy the example formats shown below as if they were the real value.
 
 Return:
-- block: building / block / tower this plan belongs to ("Block 5", "Tower A", or ""). If the plan names more than one block (e.g. a type shared across two towers), return the first.
-- level: floor / level ("Level 3", "3rd Floor", "L3", or "")
-- unit: the unit / apartment number if shown ("#03-12", "Unit 312"). If the plan shows a RANGE or stack (e.g. "#02-04 to #40-04"), return the FIRST unit in that range ("#02-04"). Empty string if no unit number is printed.
+- block: the building / block / tower this plan belongs to, copied as printed (often a header like "BLK 12" or "Block 5", or "Tower A"). If more than one block is named, return the first. Empty string if no block is printed.
+- level: floor / level as printed ("Level 3", "3rd Floor", "L3"), or "".
+- unit: the unit / apartment / stack number as printed. Plans commonly print a RANGE or stack such as "BLK 12 : #11-18 to #20-18" — in that case return the FIRST unit of the range, copied exactly. Empty string if no unit number is printed. Do not invent one.
 - rooms: array of rooms / labelled spaces. Each: { "name": "...", "x_pct": 0-100, "y_pct": 0-100 } where x_pct/y_pct are the approximate centre of the room as a percentage of the image width/height (0,0 = top-left). Leave the array empty if you can't read room labels reliably.
-- labels: array of printed callouts beyond room names — unit numbers ("#03-12"), grid references ("A/1", "B-2"), location codes ("MBR-1", "Lobby A"). Each: { "text": "...", "x_pct": 0-100, "y_pct": 0-100 }. Leave empty if none visible. Used downstream to match a defect photo's signage to a precise spot on the plan.
+- labels: array of printed callouts beyond room names — unit / stack numbers, grid references ("A/1", "B-2"), location codes ("MBR-1", "Lobby A"). Each: { "text": "...", "x_pct": 0-100, "y_pct": 0-100 }. Capture any block / unit header text here too, copied exactly. Leave empty if none visible. Used downstream to match a defect photo's signage to a precise spot on the plan.
 - grid_refs: array of visible grid markings (e.g. ["A","B","C","1","2","3"]). Leave empty if not visible.
 - notes: short free-text note about anything else relevant (1-2 sentences max).
 
@@ -10417,14 +10417,30 @@ Respond in valid JSON only:
 // is present so the caller can leave the field blank rather than guess.
 function _brochureUnit(result){
   if(!result||typeof result!=="object")return"";
-  const direct=result.unit?String(result.unit).trim():"";
-  if(direct)return direct;
-  const labels=Array.isArray(result.labels)?result.labels:[];
   const re=/#\s*\d{1,3}\s*-\s*\d{1,4}[A-Za-z]?|\b(?:unit|apt|apartment)\s+#?\w+/i;
-  for(const l of labels){
-    const m=(l&&l.text?String(l.text):"").match(re);
-    if(m)return m[0].replace(/\s+/g,"");
-  }
+  // Prefer the first unit-shaped token in the actually-printed callouts /
+  // notes (real OCR text, e.g. the "BLK 12 : #11-18 to #20-18" header) over
+  // the model's `unit` field — weak models sometimes fill `unit` by echoing
+  // the prompt example. Fall back to the unit field, then "".
+  const hay=[];
+  if(Array.isArray(result.labels))for(const l of result.labels)if(l&&l.text)hay.push(String(l.text));
+  if(result.notes)hay.push(String(result.notes));
+  for(const t of hay){const m=t.match(re);if(m)return m[0].replace(/\s+/g,"");}
+  return result.unit?String(result.unit).trim():"";
+}
+// Pull the block / tower out of a BROCHURE_PROMPT result. Prefers the
+// explicit `block` field, then scans labels + notes for a "BLK 12" /
+// "Block 5" / "Tower A" token — the model frequently OCRs the block header
+// into a label even when it leaves the block field blank. Returns "".
+function _brochureBlock(result){
+  if(!result||typeof result!=="object")return"";
+  const direct=result.block?String(result.block).trim():"";
+  if(direct)return direct;
+  const hay=[];
+  if(Array.isArray(result.labels))for(const l of result.labels)if(l&&l.text)hay.push(String(l.text));
+  if(result.notes)hay.push(String(result.notes));
+  const re=/\b(?:blk|block|tower|bldg|building)\s*[:#]?\s*([A-Za-z]?\d{1,3}[A-Za-z]?)\b/i;
+  for(const t of hay){const m=t.match(re);if(m)return m[0].replace(/\s*[:#]\s*/," ").replace(/\s+/g," ").trim();}
   return"";
 }
 
@@ -21488,7 +21504,7 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
       const result=await analyzePhoto(dataUrl,BROCHURE_PROMPT);
       if(result&&typeof result==="object"){
         const meta={
-          block:result.block||"",
+          block:_brochureBlock(result),
           level:result.level||"",
           unit:_brochureUnit(result),
           rooms:Array.isArray(result.rooms)?result.rooms:[],
