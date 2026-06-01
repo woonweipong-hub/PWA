@@ -285,6 +285,7 @@
     "floor_plan_scanning": "LEYENDO EL PLANO DE PLANTA...",
     "floor_plan_scan_ok": "Tienes {n} habitaciones: toca una para completar la Ubicación.",
     "floor_plan_scan_no_rooms": "La IA no podía leer las etiquetas de las habitaciones. Pruebe con un plano de planta más claro o elija un espacio estándar a continuación.",
+    "floor_plan_scan_loc_only": "Complete los campos de ubicación anteriores: revise y edite. No se encontraron etiquetas de habitaciones; Elija un espacio estándar a continuación.",
     "floor_plan_rooms_label": "DESDE EL PLANO DE PLANTA DE ESTA UNIDAD: toque para completar la Ubicación",
     "standard_spaces_label": "ESPACIOS RESIDENCIALES ESTÁNDAR: toque para completar Ubicación",
     "standard_spaces_placeholder": "— Seleccione un espacio estándar —",

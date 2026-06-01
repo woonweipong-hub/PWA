@@ -285,6 +285,7 @@
     "floor_plan_scanning": "LESER GULVPLAN...",
     "floor_plan_scan_ok": "Har {n} rom – trykk på ett for å fylle plassering.",
     "floor_plan_scan_no_rooms": "AI kunne ikke lese rometiketter. Prøv en klarere planløsning eller velg en standard plass nedenfor.",
+    "floor_plan_scan_loc_only": "Fyllte ut plasseringsfeltene ovenfor – se gjennom og rediger. Ingen rometiketter funnet; velg en standardplass nedenfor.",
     "floor_plan_rooms_label": "FRA DENNE ENHETENS PLAN — trykk for å fylle ut plassering",
     "standard_spaces_label": "STANDARD BOLIGROM — trykk for å fylle ut plassering",
     "standard_spaces_placeholder": "— Velg en standardplass —",

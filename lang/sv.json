@@ -285,6 +285,7 @@
     "floor_plan_scanning": "LÄSER PLATNINGSPLAN...",
     "floor_plan_scan_ok": "Har {n} rum — tryck på ett för att fylla i Plats.",
     "floor_plan_scan_no_rooms": "AI kunde inte läsa rumsetiketter. Prova en tydligare planlösning eller välj ett standardutrymme nedan.",
+    "floor_plan_scan_loc_only": "Fyllde i platsfälten ovan – granska och redigera. Inga rumsetiketter hittades; välj ett standardutrymme nedan.",
     "floor_plan_rooms_label": "FRÅN DENNA ENHETS PLAN — tryck för att fylla i Plats",
     "standard_spaces_label": "STANDARD BOSTADSUTRYMMEN – tryck för att fylla i Plats",
     "standard_spaces_placeholder": "— Välj ett standardutrymme —",

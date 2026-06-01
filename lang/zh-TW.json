@@ -285,6 +285,7 @@
     "floor_plan_scanning": "閱讀平面圖…",
     "floor_plan_scan_ok": "有 {n} 個房間 - 點按其中一個房間即可填寫位置。",
     "floor_plan_scan_no_rooms": "AI 無法讀取房間標籤。 嘗試更清晰的平面圖或選擇下面的標準空間。",
+    "floor_plan_scan_loc_only": "填寫上面的位置欄位 - 查看和編輯。 未找到房間標籤；選擇下面的標準空間。",
     "floor_plan_rooms_label": "從該單元的平面圖 — 點選以填入位置",
     "standard_spaces_label": "標準住宅空間 — 點選填寫位置",
     "standard_spaces_placeholder": "— 選擇標準空間 —",

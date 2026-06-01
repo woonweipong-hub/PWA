@@ -285,6 +285,7 @@
     "floor_plan_scanning": "ĐỌC MẶT BẰNG TẦNG…",
     "floor_plan_scan_ok": "Có {n} phòng — hãy nhấn vào một phòng để điền vào Vị trí.",
     "floor_plan_scan_no_rooms": "AI không thể đọc nhãn phòng. Hãy thử sơ đồ mặt bằng rõ ràng hơn hoặc chọn một không gian tiêu chuẩn bên dưới.",
+    "floor_plan_scan_loc_only": "Điền vào các trường vị trí ở trên - xem lại và chỉnh sửa. Không tìm thấy nhãn phòng; chọn một không gian tiêu chuẩn dưới đây.",
     "floor_plan_rooms_label": "TỪ MẶT BẰNG SÀN CỦA CĂN HỘ NÀY — nhấn để điền vào Vị trí",
     "standard_spaces_label": "KHÔNG GIAN DÂN CƯ TIÊU CHUẨN - nhấn để lấp đầy Vị trí",
     "standard_spaces_placeholder": "— Chọn một không gian tiêu chuẩn —",

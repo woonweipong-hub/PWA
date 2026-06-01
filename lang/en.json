@@ -285,6 +285,7 @@
     "floor_plan_scanning": "READING FLOOR PLAN…",
     "floor_plan_scan_ok": "Got {n} rooms — tap one to fill Location.",
     "floor_plan_scan_no_rooms": "AI couldn't read room labels. Try a clearer floor plan or pick a standard space below.",
+    "floor_plan_scan_loc_only": "Filled the location fields above — review and edit. No room labels found; pick a standard space below.",
     "floor_plan_rooms_label": "FROM THIS UNIT'S FLOOR PLAN — tap to fill Location",
     "standard_spaces_label": "STANDARD RESIDENTIAL SPACES — select to fill Location",
     "standard_spaces_placeholder": "— Select a standard space —",

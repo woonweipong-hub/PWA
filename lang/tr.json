@@ -285,6 +285,7 @@
     "floor_plan_scanning": "KAT PLANI OKUYUN…",
     "floor_plan_scan_ok": "{n} odanız var; Konum'u doldurmak için birine dokunun.",
     "floor_plan_scan_no_rooms": "Yapay zeka oda etiketlerini okuyamadı. Daha net bir kat planı deneyin veya aşağıdan standart bir alan seçin.",
+    "floor_plan_scan_loc_only": "Yukarıdaki konum alanlarını doldurun; inceleyin ve düzenleyin. Oda etiketi bulunamadı; aşağıda standart bir alan seçin.",
     "floor_plan_rooms_label": "BU BİRİMİN KAT PLANINDAN — doldurmak için dokunun",
     "standard_spaces_label": "STANDART KONUT ALANLARI — doldurmak için dokunun",
     "standard_spaces_placeholder": "— Standart bir alan seçin —",

@@ -285,6 +285,7 @@
     "floor_plan_scanning": "MEMBACA PELAN LANTAI…",
     "floor_plan_scan_ok": "Mendapat {n} bilik — ketik satu untuk mengisi Lokasi.",
     "floor_plan_scan_no_rooms": "AI tidak dapat membaca label bilik. Cuba pelan lantai yang lebih jelas atau pilih ruang standard di bawah.",
+    "floor_plan_scan_loc_only": "Mengisi medan lokasi di atas — semak dan edit. Tiada label bilik ditemui; pilih ruang standard di bawah.",
     "floor_plan_rooms_label": "DARI PELAN LANTAI UNIT INI — ketik untuk mengisi Lokasi",
     "standard_spaces_label": "RUANG KEDIAMAN STANDARD — ketik untuk mengisi Lokasi",
     "standard_spaces_placeholder": "— Pilih ruang standard —",

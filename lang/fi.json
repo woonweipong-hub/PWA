@@ -285,6 +285,7 @@
     "floor_plan_scanning": "LUKEMINEN POHJAOHJELMA…",
     "floor_plan_scan_ok": "Saatavilla on {n} huonetta – napauta yhtä täyttääksesi Sijainti.",
     "floor_plan_scan_no_rooms": "Tekoäly ei voinut lukea huoneiden tarroja. Kokeile selkeämpää pohjaratkaisua tai valitse vakiotila alta.",
+    "floor_plan_scan_loc_only": "Täytä yllä olevat sijaintikentät – tarkista ja muokkaa. Huoneen tunnisteita ei löytynyt; valitse alta vakiotila.",
     "floor_plan_rooms_label": "TÄMÄN YKSIKÖN POHJATAULUKKOSTA — napauta täyttääksesi Sijainti",
     "standard_spaces_label": "VAKIOASUNTITILAT — napauta täyttääksesi Sijainti",
     "standard_spaces_placeholder": "— Valitse vakiotila —",

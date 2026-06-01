@@ -285,6 +285,7 @@
     "floor_plan_scanning": "LÆSER GUMMEPLAN...",
     "floor_plan_scan_ok": "Har {n} rum — tryk på et for at udfylde Placering.",
     "floor_plan_scan_no_rooms": "AI kunne ikke læse rumetiketter. Prøv en klarere plantegning eller vælg et standardrum nedenfor.",
+    "floor_plan_scan_loc_only": "Udfyldte placeringsfelterne ovenfor - gennemse og rediger. Ingen værelsesetiketter fundet; vælg en standardplads nedenfor.",
     "floor_plan_rooms_label": "FRA DENNE ENHEDS STANDPLAN — tryk for at udfylde Placering",
     "standard_spaces_label": "STANDARD BOLIGERUM — tryk for at udfylde Placering",
     "standard_spaces_placeholder": "— Vælg en standardplads —",

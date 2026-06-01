@@ -285,6 +285,7 @@
     "floor_plan_scanning": "Grundriss lesen…",
     "floor_plan_scan_ok": "Habe {n} Räume – tippe auf einen, um den Standort einzugeben.",
     "floor_plan_scan_no_rooms": "Die KI konnte die Zimmerbeschriftung nicht lesen. Versuchen Sie es mit einem klareren Grundriss oder wählen Sie unten einen Standardraum aus.",
+    "floor_plan_scan_loc_only": "Füllen Sie die Standortfelder oben aus – überprüfen und bearbeiten. Keine Raumbeschriftungen gefunden; Wählen Sie unten einen Standardbereich aus.",
     "floor_plan_rooms_label": "AUS DEM GRUNDRISS DIESER EINHEIT – tippen Sie, um den Standort einzugeben",
     "standard_spaces_label": "STANDARD-WOHNRÄUME – tippen Sie, um den Standort auszufüllen",
     "standard_spaces_placeholder": "— Wählen Sie einen Standardbereich aus —",

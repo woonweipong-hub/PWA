@@ -10394,15 +10394,34 @@ If the photo is clearly NOT a signboard (a defect photo, a person, a tool, etc.)
 const BROCHURE_PROMPT=`Examine this floor plan / brochure / unit-layout image. Extract whatever spatial information is clearly visible. Every field is optional — leave it empty / omit if not present.
 
 Return:
-- block: building / block / tower this plan belongs to ("Block 5", "Tower A", or "")
+- block: building / block / tower this plan belongs to ("Block 5", "Tower A", or ""). If the plan names more than one block (e.g. a type shared across two towers), return the first.
 - level: floor / level ("Level 3", "3rd Floor", "L3", or "")
+- unit: the unit / apartment number if shown ("#03-12", "Unit 312"). If the plan shows a RANGE or stack (e.g. "#02-04 to #40-04"), return the FIRST unit in that range ("#02-04"). Empty string if no unit number is printed.
 - rooms: array of rooms / labelled spaces. Each: { "name": "...", "x_pct": 0-100, "y_pct": 0-100 } where x_pct/y_pct are the approximate centre of the room as a percentage of the image width/height (0,0 = top-left). Leave the array empty if you can't read room labels reliably.
 - labels: array of printed callouts beyond room names — unit numbers ("#03-12"), grid references ("A/1", "B-2"), location codes ("MBR-1", "Lobby A"). Each: { "text": "...", "x_pct": 0-100, "y_pct": 0-100 }. Leave empty if none visible. Used downstream to match a defect photo's signage to a precise spot on the plan.
 - grid_refs: array of visible grid markings (e.g. ["A","B","C","1","2","3"]). Leave empty if not visible.
 - notes: short free-text note about anything else relevant (1-2 sentences max).
 
 Respond in valid JSON only:
-{"block": "...", "level": "...", "rooms": [{"name":"...","x_pct":0,"y_pct":0}], "labels":[{"text":"...","x_pct":0,"y_pct":0}], "grid_refs": ["..."], "notes": "..."}`;
+{"block": "...", "level": "...", "unit": "...", "rooms": [{"name":"...","x_pct":0,"y_pct":0}], "labels":[{"text":"...","x_pct":0,"y_pct":0}], "grid_refs": ["..."], "notes": "..."}`;
+
+// Pull a single unit number out of a BROCHURE_PROMPT result. Prefers the
+// explicit `unit` field (which already collapses a printed range to its
+// first unit), then falls back to scanning the `labels` callouts for the
+// first unit-shaped token (#02-04, Unit 312, Apt 7A). Returns "" when none
+// is present so the caller can leave the field blank rather than guess.
+function _brochureUnit(result){
+  if(!result||typeof result!=="object")return"";
+  const direct=result.unit?String(result.unit).trim():"";
+  if(direct)return direct;
+  const labels=Array.isArray(result.labels)?result.labels:[];
+  const re=/#\s*\d{1,3}\s*-\s*\d{1,4}[A-Za-z]?|\b(?:unit|apt|apartment)\s+#?\w+/i;
+  for(const l of labels){
+    const m=(l&&l.text?String(l.text):"").match(re);
+    if(m)return m[0].replace(/\s+/g,"");
+  }
+  return"";
+}
 
 // Brochure first-page rasteriser. Real site floor plans arrive as PDF;
 // the BROCHURE_PROMPT path needs a raster data URL, so render page 1 to
@@ -10725,28 +10744,30 @@ function SetLocationSheet({initialCtx,projectId,onClose,onSave}){
       try{
         const result=await analyzePhoto(reader.result,SIGNBOARD_PROMPT);
         if(result&&typeof result==="object"){
-          if(result.is_signboard===false){
+          const got={
+            block:result.block||"",
+            unit:result.unit||"",
+            level:result.level||"",
+            locationName:result.location_name||"",
+          };
+          const any=got.block||got.unit||got.level||got.locationName;
+          // Use whatever was read even when the model didn't classify the
+          // photo as a "signboard" — a brochure/floor-plan plate still yields
+          // usable block/unit/level. Only fall back to the not-detected vs
+          // no-data messages when nothing came back at all.
+          if(any){
+            setCtx(prev=>({
+              block:got.block||prev.block,
+              unit:got.unit||prev.unit,
+              level:got.level||prev.level,
+              locationName:got.locationName||prev.locationName,
+              source:"signboard",
+            }));
+            setScanInfo(t("log.signboard_scan_ok"));
+          }else if(result.is_signboard===false){
             setScanError(t("log.signboard_not_detected"));
           }else{
-            const got={
-              block:result.block||"",
-              unit:result.unit||"",
-              level:result.level||"",
-              locationName:result.location_name||"",
-            };
-            const any=got.block||got.unit||got.level||got.locationName;
-            if(!any){
-              setScanError(t("log.signboard_scan_no_data"));
-            }else{
-              setCtx(prev=>({
-                block:got.block||prev.block,
-                unit:got.unit||prev.unit,
-                level:got.level||prev.level,
-                locationName:got.locationName||prev.locationName,
-                source:"signboard",
-              }));
-              setScanInfo(t("log.signboard_scan_ok"));
-            }
+            setScanError(t("log.signboard_scan_no_data"));
           }
         }else{
           setScanError(t("log.signboard_scan_no_data"));
@@ -10773,15 +10794,26 @@ function SetLocationSheet({initialCtx,projectId,onClose,onSave}){
         const result=await analyzePhoto(reader.result,BROCHURE_PROMPT);
         if(result&&typeof result==="object"){
           const rooms=Array.isArray(result.rooms)?result.rooms.map(r=>r&&r.name?String(r.name).trim():"").filter(Boolean):[];
+          const unitGuess=_brochureUnit(result);
+          // Backfill every location field the scan recovered — never overwrite
+          // a value the user already typed.
           setCtx(prev=>({
             ...prev,
             block:prev.block||result.block||"",
             level:prev.level||result.level||"",
+            unit:prev.unit||unitGuess||"",
             source:prev.source||"floor_plan",
           }));
+          // Surface whatever was read. Rooms → tap-to-fill chips. If no rooms
+          // but a location field came back, that's still a useful partial read,
+          // so show the green "review" banner instead of a red failure — a
+          // brochure showing only block/unit/level is a success, not a fault.
+          const gotLoc=!!(result.block||result.level||unitGuess);
           if(rooms.length){
             setScannedRooms(rooms);
             setFpInfo(t("log.floor_plan_scan_ok").replace("{n}",rooms.length));
+          }else if(gotLoc){
+            setFpInfo(t("log.floor_plan_scan_loc_only"));
           }else{
             setFpError(t("log.floor_plan_scan_no_rooms"));
           }

@@ -285,6 +285,7 @@
     "floor_plan_scanning": "RENCANA LANTAI MEMBACA…",
     "floor_plan_scan_ok": "Punya {n} kamar — ketuk salah satu untuk mengisi Lokasi.",
     "floor_plan_scan_no_rooms": "AI tidak bisa membaca label ruangan. Cobalah denah lantai yang lebih jelas atau pilih ruang standar di bawah.",
+    "floor_plan_scan_loc_only": "Mengisi kolom lokasi di atas — tinjau dan edit. Tidak ditemukan label ruangan; pilih ruang standar di bawah.",
     "floor_plan_rooms_label": "DARI RENCANA LANTAI UNIT INI — ketuk untuk mengisi Lokasi",
     "standard_spaces_label": "RUANG PERUMAHAN STANDAR — ketuk untuk mengisi Lokasi",
     "standard_spaces_placeholder": "— Pilih ruang standar —",
