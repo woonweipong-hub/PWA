@@ -25201,6 +25201,27 @@ If you cannot confidently match the defect to any room, pick the closest one and
       alert("Could not remove pin: "+(e.message||e));
     }
   };
+  // Bulk pin selection in the consolidated list — lets users tick the
+  // unwanted pins (e.g. older / mislocated ones) and remove them together,
+  // keeping the good ones, instead of one-by-one or delete-everything.
+  const[pinBulkMode,setPinBulkMode]=useState(false);
+  const[pinBulkSel,setPinBulkSel]=useState(()=>new Set());
+  const togglePinBulk=id=>setPinBulkSel(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
+  const exitPinBulk=()=>{setPinBulkMode(false);setPinBulkSel(new Set());};
+  const deleteSelectedPins=async()=>{
+    const ids=[...pinBulkSel];
+    if(!ids.length)return;
+    if(!confirm(`Remove ${ids.length} selected pin${ids.length===1?"":"s"} from this plan? This can't be undone.`))return;
+    const removed=pins.filter(p=>ids.includes(p.id));
+    setPins(prev=>prev.filter(p=>!ids.includes(p.id)));
+    exitPinBulk();
+    const failed=[];
+    for(const id of ids){try{await DB.pins.delete(id);}catch{failed.push(id);}}
+    if(failed.length){
+      setPins(prev=>[...prev,...removed.filter(p=>failed.includes(p.id))]);
+      alert(`Could not remove ${failed.length} pin${failed.length===1?"":"s"} (kept on plan).`);
+    }
+  };
 
   // Move pin — persist new x/y percentages
   const movePin=async(id,x,y)=>{
@@ -26435,13 +26456,19 @@ If you cannot confidently match the defect to any room, pick the closest one and
         <div style={{position:"absolute",left:0,right:0,bottom:0,zIndex:40,background:"linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.88))",borderTop:"1px solid rgba(255,255,255,0.12)",maxHeight:"42vh",display:"flex",flexDirection:"column"}}>
           <div style={{padding:"9px 12px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,0.08)",gap:6}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,color:"#fff",flex:1}}>CONSOLIDATED LIST · {combinedItems.length}</div>
+            {canPin&&combinedItems.some(it=>it.kind==="pin")&&<button onClick={()=>{pinBulkMode?exitPinBulk():setPinBulkMode(true);}} style={{background:pinBulkMode?"rgba(255,107,0,0.25)":"rgba(255,255,255,0.1)",border:`1px solid ${pinBulkMode?"rgba(255,107,0,0.5)":"rgba(255,255,255,0.2)"}`,borderRadius:6,padding:"4px 8px",color:pinBulkMode?"#ffb48a":"#fff",fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{pinBulkMode?"DONE":"SELECT PINS"}</button>}
             <button onClick={exportDrawingCsv} disabled={!combinedItems.length} style={{background:"rgba(52,170,220,0.2)",border:"1px solid rgba(52,170,220,0.4)",borderRadius:6,padding:"4px 8px",color:"#7fd7ff",fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>CSV</button>
             <button onClick={exportDrawingPdf} disabled={!combinedItems.length} style={{background:"rgba(255,107,0,0.2)",border:"1px solid rgba(255,107,0,0.4)",borderRadius:6,padding:"4px 8px",color:"#ffb48a",fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>PDF</button>
           </div>
           <div style={{overflowY:"auto",padding:10}}>
             {combinedItems.length===0&&<div style={{padding:12,textAlign:"center",color:"rgba(255,255,255,0.45)",fontSize:12}}>No pins or notes on this view.</div>}
-            {combinedItems.map(item=>(
-              <div key={item.kind+"_"+item.id} style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"8px 10px",marginBottom:7,display:"flex",alignItems:"center",gap:8}}>
+            {combinedItems.map(item=>{
+              const isPin=item.kind==="pin";
+              const bulk=pinBulkMode&&isPin&&canPin;
+              const checked=bulk&&pinBulkSel.has(item.id);
+              return(
+              <div key={item.kind+"_"+item.id} onClick={bulk?()=>togglePinBulk(item.id):undefined} style={{background:checked?"rgba(255,107,0,0.12)":"rgba(255,255,255,0.06)",border:`1px solid ${checked?"rgba(255,107,0,0.45)":"rgba(255,255,255,0.1)"}`,borderRadius:10,padding:"8px 10px",marginBottom:7,display:"flex",alignItems:"center",gap:8,cursor:bulk?"pointer":"default"}}>
+                {bulk&&<input type="checkbox" checked={checked} readOnly style={{width:15,height:15,accentColor:"#ff6b00",flexShrink:0,pointerEvents:"none"}}/>}
                 <span style={{fontSize:12}}>{item.kind==="note"?"📝":item.kind==="markup"?"✏":"📌"}</span>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:12,color:"#fff",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.title}</div>
@@ -26449,11 +26476,22 @@ If you cannot confidently match the defect to any room, pick the closest one and
                     {item.kind==="note"?`By ${item.detail||"Unknown"} · (${Math.round(item.x)}%, ${Math.round(item.y)}%)`:item.kind==="markup"?`${item.status} · ${item.detail}`:`${item.severity} · ${item.status}${item.detail?` · ${item.detail}`:""}`}
                   </div>
                 </div>
-                {item.kind==="pin"&&canPin&&<button onClick={()=>deletePin(item.id)} style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:7,padding:"4px 8px",color:"#ff8f8f",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>REMOVE</button>}
-                {item.kind==="note"&&canPin&&<button onClick={()=>deleteNote(item.id)} style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:7,padding:"4px 8px",color:"#ff8f8f",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.delete")}</button>}
+                {isPin&&canPin&&!pinBulkMode&&<button onClick={()=>deletePin(item.id)} style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:7,padding:"4px 8px",color:"#ff8f8f",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>REMOVE</button>}
+                {item.kind==="note"&&canPin&&!pinBulkMode&&<button onClick={()=>deleteNote(item.id)} style={{background:"rgba(255,59,48,0.15)",border:"1px solid rgba(255,59,48,0.3)",borderRadius:7,padding:"4px 8px",color:"#ff8f8f",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{t("actions.delete")}</button>}
               </div>
-            ))}
+            );})}
           </div>
+          {pinBulkMode&&(()=>{
+            const pinIds=combinedItems.filter(it=>it.kind==="pin").map(it=>it.id);
+            const allSel=pinIds.length>0&&pinIds.every(id=>pinBulkSel.has(id));
+            return(
+              <div style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",borderTop:"1px solid rgba(255,255,255,0.12)",background:"rgba(0,0,0,0.4)"}}>
+                <button onClick={()=>setPinBulkSel(allSel?new Set():new Set(pinIds))} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",borderRadius:6,padding:"6px 10px",color:"#fff",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif"}}>{allSel?"NONE":"ALL"}</button>
+                <div style={{flex:1,fontSize:11,color:"rgba(255,255,255,0.7)",fontFamily:"'Barlow Condensed',sans-serif"}}>{pinBulkSel.size} selected</div>
+                <button onClick={deleteSelectedPins} disabled={!pinBulkSel.size} style={{background:pinBulkSel.size?"rgba(255,59,48,0.2)":"rgba(255,255,255,0.06)",border:`1px solid ${pinBulkSel.size?"rgba(255,59,48,0.45)":"rgba(255,255,255,0.15)"}`,borderRadius:6,padding:"6px 12px",color:pinBulkSel.size?"#ff8f8f":"rgba(255,255,255,0.35)",fontSize:11,fontWeight:800,cursor:pinBulkSel.size?"pointer":"not-allowed",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.03em"}}>🗑 REMOVE {pinBulkSel.size||""}</button>
+              </div>
+            );
+          })()}
         </div>
       )}
 
