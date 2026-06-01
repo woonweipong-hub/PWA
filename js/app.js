@@ -10510,6 +10510,56 @@ Respond in valid JSON only with these exact keys:
 
 If you cannot confidently match the defect to any room, pick the closest one and return a low confidence (<0.3). If the photo is unreadable, return {"room_name":"","x_pct":50,"y_pct":50,"confidence":0,"reasoning":"unreadable"}.`;
 }
+// Construction room-name synonym groups, English-anchored. Used by the
+// deterministic AUTO-TAG pass to fold the common ways the same space is
+// written on a brochure ("MBR" / "MASTER BEDROOM") so a defect's typed
+// room matches the plan without an AI call. Non-Latin / unlisted names
+// simply miss and fall through to the photo-matching model.
+const _ROOM_SYNONYMS=[
+  ["master bedroom","mbr","m bedroom","master bed","master rm"],
+  ["bedroom","bed","br","bdrm","bedroom 2","bedroom 3","junior master"],
+  ["master bath","mba","master bathroom","master toilet","bath 1","bathroom 1"],
+  ["bathroom","bath","toilet","wc","washroom","common bath"],
+  ["living","living room","lounge","living dining"],
+  ["dining","dining room"],
+  ["kitchen","kit","dry kitchen","wet kitchen"],
+  ["balcony","bal","patio","private enclosed space","pes"],
+  ["study","study room","den"],
+  ["yard","service yard","utility","household shelter","hs","store","db st","db"],
+  ["ac ledge","aircon ledge","a c ledge","ac ledge non strata"],
+];
+function _normRoom(s){return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
+// Pull the room/location label out of a defect's flattened location fields.
+// SetLocationSheet stores it as locationSubzone = "<unit> — <room>", so take
+// the part after the " — " separator; fall back to the whole subzone.
+function _defectRoomName(entry){
+  if(!entry)return"";
+  const sub=String(entry.locationSubzone||"").trim();
+  if(!sub)return"";
+  const parts=sub.split(" — ");
+  return (parts.length>1?parts.slice(1).join(" — "):parts[0]).trim();
+}
+// Deterministic room → coordinate match against a brochure's extracted
+// rooms. Pure; no AI. Returns {x_pct,y_pct,name} (image-percent, same space
+// as pins) or null when nothing matches confidently. Tries exact normalised
+// match, then a synonym group, then full containment — abstaining (null)
+// rather than guessing so the caller can fall back to the photo-AI pass.
+function findRoomInBrochure(meta,roomName){
+  const rooms=Array.isArray(meta&&meta.rooms)?meta.rooms:[];
+  const want=_normRoom(roomName);
+  if(!want||!rooms.length)return null;
+  const norm=rooms.map(r=>({r,n:_normRoom(r&&r.name)})).filter(o=>o.n);
+  let hit=norm.find(o=>o.n===want);
+  if(!hit){
+    const grp=_ROOM_SYNONYMS.find(g=>g.includes(want));
+    if(grp){const set=new Set(grp);hit=norm.find(o=>set.has(o.n));}
+  }
+  if(!hit)hit=norm.find(o=>o.n.includes(want)||want.includes(o.n));
+  if(!hit||!hit.r)return null;
+  const x=Number(hit.r.x_pct),y=Number(hit.r.y_pct);
+  if(!isFinite(x)||!isFinite(y))return null;
+  return {x_pct:Math.max(0,Math.min(100,x)),y_pct:Math.max(0,Math.min(100,y)),name:hit.r.name||roomName};
+}
 function AutoTagBatchModal({drawing,defects,pins,onClose,onPinsCreated}){
   // Phase machine: confirm → running → review (if any low-conf) → done.
   // Errors surface inline per-entry; one bad photo doesn't abort the batch.
@@ -10550,6 +10600,18 @@ function AutoTagBatchModal({drawing,defects,pins,onClose,onPinsCreated}){
       if(cancelRef.current)break;
       const entry=unpinned[i];
       try{
+        // Deterministic first: if the entry's typed room matches a room on
+        // this plan, pin it with zero AI calls. Only entries that don't
+        // match by location fall through to the photo-matching model below.
+        const detRoom=findRoomInBrochure(meta,_defectRoomName(entry));
+        if(detRoom){
+          try{
+            await DB.pins.create({drawingId:drawing.id,entryId:entry.id,pageNum:1,x:detRoom.x_pct,y:detRoom.y_pct,label:""});
+            committed++;auto++;
+          }catch(e){errors++;captureErr(e);}
+          setProgress({done:i+1,total:unpinned.length,auto,lowConf,errors});
+          continue;
+        }
         const dataUrl=await _fetchPhotoAsDataUrl(entry.photo);
         if(!dataUrl){errors++;captureErr("entry photo missing");setProgress({done:i+1,total:unpinned.length,auto,lowConf,errors});continue;}
         const result=await analyzePhoto(dataUrl,prompt);
@@ -10618,12 +10680,12 @@ function AutoTagBatchModal({drawing,defects,pins,onClose,onPinsCreated}){
           {phase==="confirm"&&(
             <div>
               <div style={{fontSize:13,color:"#1a1a1a",lineHeight:1.5,marginBottom:14}}>
-                AI will match each unpinned entry's photo to a room on this floor plan and place a pin at the matched location.
+                Entries whose typed location matches a room on this plan are pinned instantly (no AI). The rest are matched from their photo by AI and pinned at the matched room.
               </div>
               <div style={{background:"rgba(88,86,214,0.08)",padding:"10px 12px",borderRadius:8,fontSize:12,color:"#1a1a1a",lineHeight:1.5,marginBottom:14}}>
                 <div><b>{unpinned.length}</b> unpinned entr{unpinned.length===1?"y":"ies"} with a photo</div>
                 <div><b>{rooms.length}</b> rooms detected on plan</div>
-                <div style={{marginTop:6,color:"rgba(0,0,0,0.6)"}}>Uses {unpinned.length} AI call{unpinned.length===1?"":"s"} from your daily quota. High-confidence matches (≥60%) are pinned automatically; low-confidence matches go to a review step.</div>
+                <div style={{marginTop:6,color:"rgba(0,0,0,0.6)"}}>Uses up to {unpinned.length} AI call{unpinned.length===1?"":"s"} from your daily quota (location matches use none). High-confidence matches (≥60%) are pinned automatically; low-confidence matches go to a review step.</div>
               </div>
               <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
                 <button onClick={onClose} style={{padding:"9px 16px",background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",color:"#1a1a1a"}}>CANCEL</button>
@@ -21282,7 +21344,9 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
           const meta={
             block:result.block||"",
             level:result.level||"",
+            unit:_brochureUnit(result),
             rooms:Array.isArray(result.rooms)?result.rooms:[],
+            labels:Array.isArray(result.labels)?result.labels:[],
             grid_refs:Array.isArray(result.grid_refs)?result.grid_refs:[],
             notes:result.notes||"",
             extracted_at:new Date().toISOString()
