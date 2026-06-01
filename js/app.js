@@ -10609,6 +10609,29 @@ function findRoomInBrochure(meta,roomName){
   if(!isFinite(x)||!isFinite(y))return null;
   return {x_pct:Math.max(0,Math.min(100,x)),y_pct:Math.max(0,Math.min(100,y)),name:hit.r.name||roomName};
 }
+// Spread the k-th pin (0-based) for a room around its centre so multiple
+// defects in one room don't stack on a single point. Pin 0 sits dead-centre;
+// the rest fan out on a golden-angle spiral (even, non-clumping). Coords are
+// image-percent, clamped just inside the plan so a pin never hits the border.
+function scatterAroundCenter(cx,cy,k){
+  cx=Number(cx);cy=Number(cy);
+  if(!isFinite(cx)||!isFinite(cy))return{x:50,y:50};
+  const clamp=v=>Math.max(1,Math.min(99,v));
+  if(!k)return{x:clamp(cx),y:clamp(cy)};
+  const r=Math.min(9,2.2*Math.sqrt(k));     // percent radius, grows slowly, capped
+  const ang=k*2.399963;                      // golden angle ≈137.5°
+  return{x:clamp(cx+r*Math.cos(ang)),y:clamp(cy+r*Math.sin(ang))};
+}
+// Next non-overlapping position near a room centre, given positions already
+// placed on this drawing. Counts pins already clustered at the centre and
+// offsets the new one past them — so re-runs and existing pins are respected.
+function nextRoomPinPos(placed,cx,cy){
+  const k=(placed||[]).filter(p=>{
+    const dx=Number(p.x)-cx,dy=Number(p.y)-cy;
+    return isFinite(dx)&&isFinite(dy)&&(dx*dx+dy*dy)<=100; // within ~10%
+  }).length;
+  return scatterAroundCenter(cx,cy,k);
+}
 function AutoTagBatchModal({drawing,defects,pins,onClose,onPinsCreated}){
   // Phase machine: confirm → running → review (if any low-conf) → done.
   // Errors surface inline per-entry; one bad photo doesn't abort the batch.
@@ -10626,6 +10649,18 @@ function AutoTagBatchModal({drawing,defects,pins,onClose,onPinsCreated}){
     const pinnedIds=new Set((pins||[]).filter(p=>p.drawingId===drawing.id).map(p=>p.entryId));
     return (defects||[]).filter(d=>!pinnedIds.has(d.id)&&d.photo&&!d.archivedAt);
   },[drawing,defects,pins,rooms.length]);
+  // Per-entry selection (default: all unpinned). Lets the user tag only a
+  // chosen subset instead of every unpinned entry. Re-defaults to "all"
+  // whenever the unpinned set changes, until the user touches a checkbox.
+  const[selectedIds,setSelectedIds]=useState(()=>new Set());
+  const[selTouched,setSelTouched]=useState(false);
+  useEffect(()=>{
+    if(!selTouched)setSelectedIds(new Set(unpinned.map(d=>d.id)));
+  },[unpinned,selTouched]);
+  const toggleSel=id=>{setSelTouched(true);setSelectedIds(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});};
+  const allSelected=unpinned.length>0&&unpinned.every(d=>selectedIds.has(d.id));
+  const toggleSelectAll=()=>{setSelTouched(true);setSelectedIds(allSelected?new Set():new Set(unpinned.map(d=>d.id)));};
+  const selectedCount=unpinned.filter(d=>selectedIds.has(d.id)).length;
   const[firstError,setFirstError]=useState("");
   const run=async()=>{
     // Hard preconditions — fail loudly before burning quota / time.
@@ -10635,9 +10670,11 @@ function AutoTagBatchModal({drawing,defects,pins,onClose,onPinsCreated}){
     }
     if(!rooms.length){setFatal("This drawing has no extracted rooms. Re-upload the floor plan to scan room layout.");return;}
     if(!unpinned.length){setFatal("No unpinned entries to tag on this drawing.");return;}
+    const targets=unpinned.filter(d=>selectedIds.has(d.id));
+    if(!targets.length){setFatal("Select at least one entry to tag.");return;}
     cancelRef.current=false;
     setPhase("running");
-    setProgress({done:0,total:unpinned.length,auto:0,lowConf:0,errors:0});
+    setProgress({done:0,total:targets.length,auto:0,lowConf:0,errors:0});
     setReviewQueue([]);
     setFirstError("");
     const prompt=_buildAutoTagPrompt(rooms);
@@ -10645,35 +10682,45 @@ function AutoTagBatchModal({drawing,defects,pins,onClose,onPinsCreated}){
     let auto=0,lowConf=0,errors=0,committed=0;
     let firstErrMsg="";
     const captureErr=(e)=>{if(!firstErrMsg){firstErrMsg=String(e&&e.message?e.message:e||"unknown");setFirstError(firstErrMsg);}};
-    for(let i=0;i<unpinned.length;i++){
+    // Seed the spread tracker with pins already on this drawing so new pins
+    // fan out around (not on top of) existing ones.
+    const placed=(pins||[]).filter(p=>p.drawingId===drawing.id).map(p=>({x:Number(p.x),y:Number(p.y)}));
+    for(let i=0;i<targets.length;i++){
       if(cancelRef.current)break;
-      const entry=unpinned[i];
+      const entry=targets[i];
       try{
         // Deterministic first: if the entry's typed room matches a room on
-        // this plan, pin it with zero AI calls. Only entries that don't
-        // match by location fall through to the photo-matching model below.
+        // this plan, pin it at the room centre (scattered) with zero AI
+        // calls. Only entries that don't match by location fall through to
+        // the photo-matching model below.
         const detRoom=findRoomInBrochure(meta,_defectRoomName(entry));
         if(detRoom){
+          const pos=nextRoomPinPos(placed,detRoom.x_pct,detRoom.y_pct);
           try{
-            await DB.pins.create({drawingId:drawing.id,entryId:entry.id,pageNum:1,x:detRoom.x_pct,y:detRoom.y_pct,label:""});
-            committed++;auto++;
+            await DB.pins.create({drawingId:drawing.id,entryId:entry.id,pageNum:1,x:pos.x,y:pos.y,label:""});
+            placed.push(pos);committed++;auto++;
           }catch(e){errors++;captureErr(e);}
-          setProgress({done:i+1,total:unpinned.length,auto,lowConf,errors});
+          setProgress({done:i+1,total:targets.length,auto,lowConf,errors});
           continue;
         }
         const dataUrl=await _fetchPhotoAsDataUrl(entry.photo);
-        if(!dataUrl){errors++;captureErr("entry photo missing");setProgress({done:i+1,total:unpinned.length,auto,lowConf,errors});continue;}
+        if(!dataUrl){errors++;captureErr("entry photo missing");setProgress({done:i+1,total:targets.length,auto,lowConf,errors});continue;}
         const result=await analyzePhoto(dataUrl,prompt);
         if(result&&typeof result==="object"){
-          const x=Math.max(0,Math.min(100,Number(result.x_pct)||50));
-          const y=Math.max(0,Math.min(100,Number(result.y_pct)||50));
           const conf=Math.max(0,Math.min(1,Number(result.confidence)||0));
           const roomName=String(result.room_name||"").trim();
-          const suggestion={x,y,confidence:conf,roomName,reasoning:String(result.reasoning||"").trim()};
+          // Snap to the named room's centre when we can resolve it (keeps the
+          // pin on the room instead of the model's raw, often off-plan x/y);
+          // fall back to the raw coords only when the room name is unknown.
+          const rc=roomName?findRoomInBrochure(meta,roomName):null;
+          const cx=rc?rc.x_pct:Math.max(0,Math.min(100,Number(result.x_pct)||50));
+          const cy=rc?rc.y_pct:Math.max(0,Math.min(100,Number(result.y_pct)||50));
+          const pos=nextRoomPinPos(placed,cx,cy);
+          const suggestion={x:pos.x,y:pos.y,confidence:conf,roomName,reasoning:String(result.reasoning||"").trim()};
           if(conf>=0.6&&roomName){
             try{
-              await DB.pins.create({drawingId:drawing.id,entryId:entry.id,pageNum:1,x,y,label:""});
-              committed++;auto++;
+              await DB.pins.create({drawingId:drawing.id,entryId:entry.id,pageNum:1,x:pos.x,y:pos.y,label:""});
+              placed.push(pos);committed++;auto++;
             }catch(e){errors++;captureErr(e);}
           }else{
             review.push({entry,suggestion});
@@ -10685,7 +10732,7 @@ function AutoTagBatchModal({drawing,defects,pins,onClose,onPinsCreated}){
       }catch(e){
         errors++;captureErr(e);
       }
-      setProgress({done:i+1,total:unpinned.length,auto,lowConf,errors});
+      setProgress({done:i+1,total:targets.length,auto,lowConf,errors});
     }
     setReviewQueue(review);
     setCommittedCount(committed);
@@ -10728,17 +10775,42 @@ function AutoTagBatchModal({drawing,defects,pins,onClose,onPinsCreated}){
           {fatal&&<div style={{background:"rgba(255,59,48,0.12)",color:"#b91c1c",padding:"10px 12px",borderRadius:8,fontSize:13,marginBottom:12}}>⚠ {fatal}</div>}
           {phase==="confirm"&&(
             <div>
-              <div style={{fontSize:13,color:"#1a1a1a",lineHeight:1.5,marginBottom:14}}>
-                Entries whose typed location matches a room on this plan are pinned instantly (no AI). The rest are matched from their photo by AI and pinned at the matched room.
+              <div style={{fontSize:13,color:"#1a1a1a",lineHeight:1.5,marginBottom:12}}>
+                Pick the entries to tag. <b style={{color:"#1f7a3a"}}>LOCATION</b> matches pin instantly from the typed room (no AI); the rest use <b style={{color:"#5856d6"}}>AI</b> on the photo. Pins land at the room centre and fan out so they don't overlap.
               </div>
+              {unpinned.length>0&&(
+                <div style={{marginBottom:12}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                    <div style={{fontSize:11,fontWeight:800,color:"rgba(0,0,0,0.5)",letterSpacing:"0.04em",fontFamily:"'Barlow Condensed',sans-serif"}}>{selectedCount} OF {unpinned.length} SELECTED</div>
+                    <button onClick={toggleSelectAll} style={{background:"none",border:"none",color:"#5856d6",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.03em"}}>{allSelected?"CLEAR ALL":"SELECT ALL"}</button>
+                  </div>
+                  <div style={{maxHeight:240,overflow:"auto",border:"1px solid rgba(0,0,0,0.1)",borderRadius:8}}>
+                    {unpinned.map(d=>{
+                      const sel=selectedIds.has(d.id);
+                      const thumb=Array.isArray(d.photo)?d.photo[0]:d.photo;
+                      const willLoc=!!findRoomInBrochure(meta,_defectRoomName(d));
+                      return (
+                        <div key={d.id} onClick={()=>toggleSel(d.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderBottom:"1px solid rgba(0,0,0,0.05)",cursor:"pointer",background:sel?"rgba(88,86,214,0.06)":"#fff"}}>
+                          <input type="checkbox" checked={sel} readOnly style={{width:16,height:16,accentColor:"#5856d6",flexShrink:0,pointerEvents:"none"}}/>
+                          {thumb&&<img src={thumb} alt="" style={{width:40,height:40,objectFit:"cover",borderRadius:6,flexShrink:0}}/>}
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontWeight:700,fontSize:12.5,color:"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title||"Untitled"}</div>
+                            <div style={{fontSize:10.5,color:"rgba(0,0,0,0.55)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.location||d.locationSubzone||"—"}</div>
+                          </div>
+                          <span style={{flexShrink:0,fontSize:9,fontWeight:800,letterSpacing:"0.04em",color:willLoc?"#1f7a3a":"#5856d6",background:willLoc?"rgba(52,199,89,0.12)":"rgba(88,86,214,0.1)",padding:"2px 6px",borderRadius:6}}>{willLoc?"LOCATION":"AI"}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <div style={{background:"rgba(88,86,214,0.08)",padding:"10px 12px",borderRadius:8,fontSize:12,color:"#1a1a1a",lineHeight:1.5,marginBottom:14}}>
-                <div><b>{unpinned.length}</b> unpinned entr{unpinned.length===1?"y":"ies"} with a photo</div>
                 <div><b>{rooms.length}</b> rooms detected on plan</div>
-                <div style={{marginTop:6,color:"rgba(0,0,0,0.6)"}}>Uses up to {unpinned.length} AI call{unpinned.length===1?"":"s"} from your daily quota (location matches use none). High-confidence matches (≥60%) are pinned automatically; low-confidence matches go to a review step.</div>
+                <div style={{marginTop:6,color:"rgba(0,0,0,0.6)"}}>Uses up to {selectedCount} AI call{selectedCount===1?"":"s"} from your daily quota (LOCATION matches use none). High-confidence AI matches (≥60%) pin automatically; low-confidence go to a review step.</div>
               </div>
               <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
                 <button onClick={onClose} style={{padding:"9px 16px",background:"rgba(0,0,0,0.06)",border:"none",borderRadius:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer",color:"#1a1a1a"}}>CANCEL</button>
-                <button onClick={run} disabled={!unpinned.length||!rooms.length} style={{padding:"9px 16px",background:!unpinned.length||!rooms.length?"rgba(88,86,214,0.4)":"#5856d6",color:"#fff",border:"none",borderRadius:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:!unpinned.length||!rooms.length?"not-allowed":"pointer"}}>START AUTO-TAG</button>
+                <button onClick={run} disabled={!selectedCount||!rooms.length} style={{padding:"9px 16px",background:!selectedCount||!rooms.length?"rgba(88,86,214,0.4)":"#5856d6",color:"#fff",border:"none",borderRadius:8,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:!selectedCount||!rooms.length?"not-allowed":"pointer"}}>TAG {selectedCount} ENTR{selectedCount===1?"Y":"IES"}</button>
               </div>
             </div>
           )}
@@ -21338,13 +21410,20 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     let cancelled=false;
     (async()=>{
       let made=0;
+      // Per-drawing spread tracker so defects sharing a room fan out around
+      // the centre instead of stacking on one point. Seeded lazily from the
+      // pins already on each drawing.
+      const placedByDrawing={};
       for(const j of jobs){
         if(cancelled)break;
         try{
           // Final guard against duplicates across the mount/subscription race.
           const existing=await DB.pins.list(`drawingId="${j.drawingId}" && entryId="${j.entryId}"`).catch(()=>[]);
           if(existing&&existing.length)continue;
-          await DB.pins.create({drawingId:j.drawingId,entryId:j.entryId,pageNum:1,x:j.x,y:j.y,label:""});
+          if(!placedByDrawing[j.drawingId])placedByDrawing[j.drawingId]=(allPins||[]).filter(p=>p.drawingId===j.drawingId).map(p=>({x:Number(p.x),y:Number(p.y)}));
+          const pos=nextRoomPinPos(placedByDrawing[j.drawingId],j.x,j.y);
+          await DB.pins.create({drawingId:j.drawingId,entryId:j.entryId,pageNum:1,x:pos.x,y:pos.y,label:""});
+          placedByDrawing[j.drawingId].push(pos);
           made++;
         }catch(e){console.warn("[AutoPin] create failed:",e?.message||e);tried.delete(`${j.drawingId}:${j.entryId}`);}
       }
