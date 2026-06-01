@@ -10436,6 +10436,37 @@ function _spatialSuffix(meta){
   return [blk,unit].filter(Boolean).join(" ");
 }
 
+// ── Automatic auto-tag: strict location gate ──────────────────────
+// These back the zero-AI auto-pin reconcile. Automatic mode is stricter
+// than the manual AUTO-TAG button: a defect only lands on a plan when it
+// provably shares that plan's block AND unit-stack, so a pin never jumps
+// to the wrong unit unattended. Missing info → abstain (the manual button
+// still handles loosely-located entries).
+function _locDigits(s){const m=String(s||"").match(/\d+/);return m?m[0]:"";}
+// Stack suffix of a unit: the column the unit sits in. "#02-05" → "05",
+// "#33-05" → "05" (same stack → same brochure). Falls back to the unit's
+// own digits when there's no level-stack hyphen ("Unit 312" → "312").
+function _unitStackSuffix(u){
+  const s=String(u||"");
+  if(s.includes("-")){const parts=s.split("-");return _locDigits(parts[parts.length-1]);}
+  return _locDigits(s);
+}
+// Defect unit is the head of locationSubzone ("<unit> — <room>").
+function _defectUnitFromSubzone(entry){
+  const sub=String(entry&&entry.locationSubzone||"").trim();
+  if(!sub)return"";
+  const parts=sub.split(" — ");
+  return parts.length>1?parts[0].trim():"";
+}
+function _locMatchesBrochureStrict(meta,entry){
+  if(!meta||!entry)return false;
+  const mb=_locDigits(meta.block),db=_locDigits(entry.locationZone);
+  if(!mb||!db||mb!==db)return false;
+  const mu=_unitStackSuffix(meta.unit),du=_unitStackSuffix(_defectUnitFromSubzone(entry));
+  if(!mu||!du||mu!==du)return false;
+  return true;
+}
+
 // Brochure first-page rasteriser. Real site floor plans arrive as PDF;
 // the BROCHURE_PROMPT path needs a raster data URL, so render page 1 to
 // a canvas. Scale 2.0 matches the brochure-export path so room labels
@@ -21099,6 +21130,10 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[viewing,setViewing]=useState(null);
   const[uploading,setUploading]=useState(false);
   const[allPins,setAllPins]=useState([]);
+  // Automatic auto-tag toast + per-session attempted-pair guard (so the
+  // reconcile effect settles after one pass and re-runs stay no-ops).
+  const[autoPinInfo,setAutoPinInfo]=useState("");
+  const autoPinnedRef=useRef(null);
   // Batch select for the drawings list — mirrors Review's pattern so Admins
   // can clean up multiple drawings in one pass (and rename them in bulk).
   const[selectMode,setSelectMode]=useState(false);
@@ -21262,6 +21297,62 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     }));
     return()=>unsubs.forEach(u=>u());
   },[drawings]);
+
+  // ── Automatic auto-tag (zero AI) ──────────────────────────────────
+  // Keep pins reconciled with locations: whenever a brochure plan is
+  // analysed (upload) or a located defect appears (save / sync / backfill
+  // on open), pin every defect that provably belongs on a plan. Strict
+  // block+unit gate (see _locMatchesBrochureStrict) means automatic mode
+  // never guesses across units; the manual AUTO-TAG button still covers
+  // loosely-located entries. Idempotent three ways: skip pairs already in
+  // allPins, skip pairs already tried this session, and a final
+  // server-side existence check before create (guards the brief window
+  // after mount before the pin subscription has populated allPins).
+  useEffect(()=>{
+    if(loading)return;
+    if(!autoPinnedRef.current)autoPinnedRef.current=new Set();
+    const tried=autoPinnedRef.current;
+    const brochures=drawings.filter(d=>d&&d.brochureMeta&&Array.isArray(d.brochureMeta.rooms)&&d.brochureMeta.rooms.length);
+    if(!brochures.length)return;
+    const live=(defects||[]).filter(d=>d&&!d.archivedAt);
+    if(!live.length)return;
+    const pinned=new Set((allPins||[]).map(p=>`${p.drawingId}:${p.entryId}`));
+    const jobs=[];
+    for(const dr of brochures){
+      for(const d of live){
+        const key=`${dr.id}:${d.id}`;
+        if(pinned.has(key)||tried.has(key))continue;
+        if(!_locMatchesBrochureStrict(dr.brochureMeta,d))continue;
+        const room=findRoomInBrochure(dr.brochureMeta,_defectRoomName(d));
+        if(!room)continue;
+        tried.add(key);
+        jobs.push({drawingId:dr.id,entryId:d.id,x:room.x_pct,y:room.y_pct});
+      }
+    }
+    if(!jobs.length)return;
+    let cancelled=false;
+    (async()=>{
+      let made=0;
+      for(const j of jobs){
+        if(cancelled)break;
+        try{
+          // Final guard against duplicates across the mount/subscription race.
+          const existing=await DB.pins.list(`drawingId="${j.drawingId}" && entryId="${j.entryId}"`).catch(()=>[]);
+          if(existing&&existing.length)continue;
+          await DB.pins.create({drawingId:j.drawingId,entryId:j.entryId,pageNum:1,x:j.x,y:j.y,label:""});
+          made++;
+        }catch(e){console.warn("[AutoPin] create failed:",e?.message||e);tried.delete(`${j.drawingId}:${j.entryId}`);}
+      }
+      if(!cancelled&&made)setAutoPinInfo(`Auto-pinned ${made} defect${made===1?"":"s"} to ${made===1?"its plan":"their plans"}.`);
+    })();
+    return()=>{cancelled=true;};
+  },[drawings,defects,allPins,loading]);
+  // Auto-dismiss the auto-pin toast.
+  useEffect(()=>{
+    if(!autoPinInfo)return;
+    const tm=setTimeout(()=>setAutoPinInfo(""),4500);
+    return()=>clearTimeout(tm);
+  },[autoPinInfo]);
 
   // Auto-sweep archived drawings older than 7 days. Admin-only so a
   // non-admin device doesn't spam failing DELETE requests. Fires when
@@ -24697,6 +24788,11 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
           onClose={()=>setAutoTagDrawing(null)}
           onPinsCreated={null}
         />
+      )}
+      {autoPinInfo&&(
+        <div onClick={()=>setAutoPinInfo("")} style={{position:"fixed",left:"50%",bottom:"calc(20px + env(safe-area-inset-bottom))",transform:"translateX(-50%)",zIndex:1600,background:"#1f7a3a",color:"#fff",padding:"10px 16px",borderRadius:10,fontSize:12.5,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.02em",boxShadow:"0 6px 20px rgba(0,0,0,0.3)",maxWidth:"92vw",cursor:"pointer",display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:14}}>📌</span><span>{autoPinInfo}</span>
+        </div>
       )}
     </div>
   );
