@@ -10423,6 +10423,19 @@ function _brochureUnit(result){
   return"";
 }
 
+// Build a short spatial suffix ("Blk10 #02-05") from extracted brochure
+// metadata, for non-destructively appending to an uploaded plan's name.
+// Block keeps its number ("Block 10"/"BLK 10" → "Blk10"); falls back to the
+// raw block text when no number is present. Returns "" when nothing usable.
+function _spatialSuffix(meta){
+  if(!meta||typeof meta!=="object")return"";
+  let blk="";
+  const b=String(meta.block||"").trim();
+  if(b){const m=b.match(/\d+[A-Za-z]?/);blk=m?("Blk"+m[0]):b;}
+  const unit=String(meta.unit||"").trim();
+  return [blk,unit].filter(Boolean).join(" ");
+}
+
 // Brochure first-page rasteriser. Real site floor plans arrive as PDF;
 // the BROCHURE_PROMPT path needs a raster data URL, so render page 1 to
 // a canvas. Scale 2.0 matches the brochure-export path so room labels
@@ -21275,12 +21288,62 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
     })();
   },[archivedDrawings,member?.role]);
 
+  // Shared spatial-analysis pass for any uploaded plan. Rasterises (PDF) or
+  // reads (image) the file, runs BROCHURE_PROMPT, persists brochureMeta,
+  // promotes the record to kind="brochure" once a real room layout is
+  // detected (so it gets the brochure card + AUTO-TAG), and appends the
+  // extracted block/unit to the name (non-destructive). Fire-and-forget:
+  // AI failure is non-fatal — the drawing still uploaded. wasBrochure skips
+  // the kind promotion for the explicit Brochure button (already brochure).
+  const extractBrochureMeta=async(rec,file,opts={})=>{
+    const isImage=/^image\//i.test(file.type||"");
+    const isPdf=/pdf/i.test(file.type||"")||/\.pdf$/i.test(file.name||"");
+    if(!rec||!isAiConfigured()||!(isImage||isPdf))return;
+    setBrochureBusyId(rec.id);
+    try{
+      const dataUrl=isPdf
+        ? await _brochurePdfToDataUrl(file)
+        : await new Promise((res,rej)=>{
+            const r=new FileReader();
+            r.onload=()=>res(r.result);
+            r.onerror=()=>rej(new Error("read failed"));
+            r.readAsDataURL(file);
+          });
+      if(!dataUrl)throw new Error("could not rasterise drawing");
+      const result=await analyzePhoto(dataUrl,BROCHURE_PROMPT);
+      if(result&&typeof result==="object"){
+        const meta={
+          block:result.block||"",
+          level:result.level||"",
+          unit:_brochureUnit(result),
+          rooms:Array.isArray(result.rooms)?result.rooms:[],
+          labels:Array.isArray(result.labels)?result.labels:[],
+          grid_refs:Array.isArray(result.grid_refs)?result.grid_refs:[],
+          notes:result.notes||"",
+          extracted_at:new Date().toISOString()
+        };
+        const patch={brochureMeta:meta};
+        if(meta.rooms.length&&!opts.wasBrochure)patch.kind="brochure";
+        const suffix=_spatialSuffix(meta);
+        if(suffix&&!String(rec.name||"").includes(suffix))patch.name=`${rec.name} — ${suffix}`;
+        try{
+          await DB.drawings.update(rec.id,patch);
+          setDrawings(prev=>prev.map(d=>d.id===rec.id?{...d,...patch}:d));
+        }catch(updErr){console.warn("[Brochure] meta save failed:",updErr?.message||updErr);}
+      }
+    }catch(extractErr){
+      console.warn("[Brochure] AI extract failed:",extractErr?.message||extractErr);
+    }
+    setBrochureBusyId(null);
+  };
   const uploadDrawing=async e=>{
     const file=e.target.files?.[0];
+    if(fileRef.current)fileRef.current.value="";
     if(!file)return;
     setUploading(true);
+    let rec=null;
     try{
-      const rec=await DB.drawings.createWithFile({
+      rec=await DB.drawings.createWithFile({
         companyId:company.companyId,
         projectId:currentProject.id,
         name:file.name.replace(/\.[^.]+$/,""),
@@ -21288,9 +21351,10 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
         uploadedAt:new Date().toISOString()
       },"file",file,file.name);
       setDrawings(prev=>[rec,...prev]);
-    }catch(err){alert("Upload failed: "+err.message);}
+    }catch(err){alert("Upload failed: "+err.message);setUploading(false);return;}
     setUploading(false);
-    if(fileRef.current)fileRef.current.value="";
+    // Stage 2 — every image/PDF upload auto-runs spatial analysis.
+    await extractBrochureMeta(rec,file);
   };
 
   // Brochure upload (CONQUAS Officer Phase 3). Same upload path as a
@@ -21320,47 +21384,9 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
       return;
     }
     setUploading(false);
-    // Fire-and-forget AI extraction so the spinner doesn't block the
-    // drawing list re-render. Per-record spinner state via brochureBusyId.
-    // PDF brochures are rasterised (page 1) before being handed to the
-    // vision model — real site floor plans are overwhelmingly PDF, and
-    // gating on image/* alone meant rooms[] was silently never extracted.
-    const isImage=/^image\//i.test(file.type||"");
-    const isPdf=/pdf/i.test(file.type||"")||/\.pdf$/i.test(file.name||"");
-    if(rec&&isAiConfigured()&&(isImage||isPdf)){
-      setBrochureBusyId(rec.id);
-      try{
-        const dataUrl=isPdf
-          ? await _brochurePdfToDataUrl(file)
-          : await new Promise((res,rej)=>{
-              const r=new FileReader();
-              r.onload=()=>res(r.result);
-              r.onerror=()=>rej(new Error("read failed"));
-              r.readAsDataURL(file);
-            });
-        if(!dataUrl)throw new Error("could not rasterise brochure");
-        const result=await analyzePhoto(dataUrl,BROCHURE_PROMPT);
-        if(result&&typeof result==="object"){
-          const meta={
-            block:result.block||"",
-            level:result.level||"",
-            unit:_brochureUnit(result),
-            rooms:Array.isArray(result.rooms)?result.rooms:[],
-            labels:Array.isArray(result.labels)?result.labels:[],
-            grid_refs:Array.isArray(result.grid_refs)?result.grid_refs:[],
-            notes:result.notes||"",
-            extracted_at:new Date().toISOString()
-          };
-          try{
-            await DB.drawings.update(rec.id,{brochureMeta:meta});
-            setDrawings(prev=>prev.map(d=>d.id===rec.id?{...d,brochureMeta:meta}:d));
-          }catch(updErr){console.warn("[Brochure] meta save failed:",updErr?.message||updErr);}
-        }
-      }catch(extractErr){
-        console.warn("[Brochure] AI extract failed:",extractErr?.message||extractErr);
-      }
-      setBrochureBusyId(null);
-    }
+    // Same shared spatial-analysis pass as a normal upload; wasBrochure
+    // keeps the explicit kind="brochure" even if no rooms are detected.
+    await extractBrochureMeta(rec,file,{wasBrochure:true});
   };
 
   // Raster-to-vector: trace one JPG/PNG sketch into a single-page vector PDF.
