@@ -52,7 +52,12 @@ if(clean.length<4)return"";return clean.slice(0,16);}function isoNameForDefect(d
 // upload time when `defect.id` doesn't exist yet (PocketBase generates
 // it server-side) — callers pass media_hash.slice(0,8) so the upload
 // filename, cached iso_filename, and ZIP-export filename all match.
-const numSegment=num!=null&&num!==""?String(num).slice(0,10):(defect.id||defect.defect_id||"").slice(0,8);let name=buildIso19650Filename({project:project||{code:defect.projectCode,name:defect.projectName},company,block:defect.block||"",level:defect.locationLevel||"",type:type||"PH",role:roleFromTrade(defect.trade),number:numSegment,status:defect.status,date:defect.createdAt||defect.timestamp_utc||new Date(),stage:defect.work_stage});// Revision sits at the end of the export-metadata segment (still hyphenated)
+const numSegment=num!=null&&num!==""?String(num).slice(0,10):(defect.id||defect.defect_id||"").slice(0,8);let name=buildIso19650Filename({project:project||{code:defect.projectCode,name:defect.projectName},company,// Block (ISO Volume segment) lives in locationZone on saved defects —
+// the SetLocation flatten writes block → locationZone. Fall back to it
+// so the spatial segment isn't empty ("ZZ") for the common case where
+// only the location hierarchy is set. Benefits capture-time naming,
+// export, and the REVIEW re-stamp identically.
+block:defect.block||defect.locationZone||"",level:defect.locationLevel||"",type:type||"PH",role:roleFromTrade(defect.trade),number:numSegment,status:defect.status,date:defect.createdAt||defect.timestamp_utc||new Date(),stage:defect.work_stage});// Revision sits at the end of the export-metadata segment (still hyphenated)
 // so the photo-evidence underscore tail remains the unambiguous split point.
 if(revision!=null&&revision!==""){const rev=String(revision).replace(/[^0-9]/g,"");if(rev)name+=`-R${rev.padStart(2,"0")}`;}// Photo evidence tail. Underscore is the agreed separator between the
 // ISO-aligned prefix and the SiteShrimp evidence payload. Element &

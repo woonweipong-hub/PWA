@@ -150,7 +150,12 @@ function isoNameForDefect(defect,company,project,opts={}){
   let name=buildIso19650Filename({
     project:project||{code:defect.projectCode,name:defect.projectName},
     company,
-    block:defect.block||"",
+    // Block (ISO Volume segment) lives in locationZone on saved defects —
+    // the SetLocation flatten writes block → locationZone. Fall back to it
+    // so the spatial segment isn't empty ("ZZ") for the common case where
+    // only the location hierarchy is set. Benefits capture-time naming,
+    // export, and the REVIEW re-stamp identically.
+    block:defect.block||defect.locationZone||"",
     level:defect.locationLevel||"",
     type:type||"PH",
     role:roleFromTrade(defect.trade),
