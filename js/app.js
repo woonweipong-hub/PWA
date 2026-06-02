@@ -2662,8 +2662,18 @@ async function analyzeWithSiteShrimpDefault(base64Image,prompt,opts){
       return null;
     }
     const data=await resp.json();
-    if(!data||!data.response)return null;
-    return _parseAiJson(data.response,"siteshrimp_default");
+    if(!data||!data.response){
+      _setAiError("SiteShrimp AI returned an empty response. Try again, or add your own AI key in Settings.");
+      return null;
+    }
+    const parsed=_parseAiJson(data.response,"siteshrimp_default");
+    // Every other provider sets _setAiError on a parse miss; the default path
+    // historically didn't, so callers that key off window.__lastAiError (e.g.
+    // the SET LOCATION scans) fell back to a generic message. Moondream often
+    // emits prose / malformed JSON for structured prompts, so this is a common
+    // path — give it an actionable reason.
+    if(!parsed)_setAiError("SiteShrimp AI returned an unreadable response. Try again, or switch to your own AI provider in Settings (Gemini gives 1,500 photos/day, no card).");
+    return parsed;
   }catch(err){
     clearTimeout(timeout);
     if(err.name==="AbortError"){
@@ -10940,6 +10950,7 @@ function SetLocationSheet({initialCtx,projectId,onClose,onSave}){
     const reader=new FileReader();
     reader.onload=async()=>{
       setScanning(true);setScanError("");setScanInfo("");
+      try{window.__lastAiError=null;}catch(_){}
       try{
         const result=await analyzePhoto(reader.result,SIGNBOARD_PROMPT);
         if(result&&typeof result==="object"){
@@ -10969,10 +10980,15 @@ function SetLocationSheet({initialCtx,projectId,onClose,onSave}){
             setScanError(t("log.signboard_scan_no_data"));
           }
         }else{
-          setScanError(t("log.signboard_scan_no_data"));
+          // result===null means analyzePhoto hit a real failure (AI not ready /
+          // quota / auth / timeout / network / unparseable output) and stashed
+          // the reason in window.__lastAiError. Surface that instead of the
+          // misleading "couldn't read — try a clearer photo" message, which
+          // only makes sense when the AI actually ran and found nothing.
+          setScanError(friendlyAiError((typeof window!=="undefined"&&window.__lastAiError)||""));
         }
       }catch(err){
-        setScanError(err?.message||String(err));
+        setScanError(friendlyAiError(err?.message||String(err)));
       }
       setScanning(false);
     };
@@ -10989,6 +11005,7 @@ function SetLocationSheet({initialCtx,projectId,onClose,onSave}){
     const reader=new FileReader();
     reader.onload=async()=>{
       setFpScanning(true);setFpError("");setFpInfo("");
+      try{window.__lastAiError=null;}catch(_){}
       try{
         const result=await analyzePhoto(reader.result,BROCHURE_PROMPT);
         if(result&&typeof result==="object"){
@@ -11017,10 +11034,13 @@ function SetLocationSheet({initialCtx,projectId,onClose,onSave}){
             setFpError(t("log.floor_plan_scan_no_rooms"));
           }
         }else{
-          setFpError(t("log.floor_plan_scan_no_rooms"));
+          // result===null → real AI failure (not an empty read). Surface the
+          // stashed reason rather than the misleading "couldn't read room
+          // labels — try a clearer floor plan" message. See handleScan above.
+          setFpError(friendlyAiError((typeof window!=="undefined"&&window.__lastAiError)||""));
         }
       }catch(err){
-        setFpError(err?.message||String(err));
+        setFpError(friendlyAiError(err?.message||String(err)));
       }
       setFpScanning(false);
     };
