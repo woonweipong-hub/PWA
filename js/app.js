@@ -18324,7 +18324,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
         <div style={{background:"#fff",borderRadius:14,padding:16,marginBottom:14,border:"1px solid rgba(88,86,214,0.2)"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,gap:8}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#1a1a1a",letterSpacing:"0.03em"}}>
-              ⚖️ {isOfficerMode?"IF VISUAL CHECK":"QUALITY CHECK"}
+              ⚖️ IF VISUAL CHECK
             </div>
             <div style={{fontSize:10,fontWeight:700,color:"#5856d6",background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:6,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>
               PROJECTED BAND {conquasStats.projectedBand}
