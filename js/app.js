@@ -2648,17 +2648,18 @@ async function analyzeWithSiteShrimpDefault(base64Image,prompt,opts){
       window.__lastAiError=body.error||"Daily AI quota reached. Add your own AI provider key in Settings for higher limits.";
       return null;
     }
-    if(resp.status===503){
-      // Server-side default not yet wired (OLLAMA_URL not set on the GCP
-      // host, or Oracle VM down). Surface an actionable message that
-      // points the user straight at a working fallback they can set up
-      // themselves in seconds. The standard error UI in the LOG / AUTO-TAG
-      // flow renders this via window.__lastAiError.
-      window.__lastAiError="SiteShrimp AI isn't ready yet. Open Settings → AI to pick a free provider (Gemini gives 1,500 photos/day, no card).";
+    if(resp.status===503||resp.status===404){
+      // Built-in AI unavailable. 503 = OLLAMA_URL not set on the host (or
+      // Oracle VM down); 404 = the /api/ai/analyze proxy route isn't deployed
+      // on this server (older pb_hooks build). Either way RETRY can't help —
+      // point the user straight at a working free provider they can set up in
+      // seconds. Rendered via window.__lastAiError in the LOG / AUTO-TAG /
+      // SET LOCATION error UI.
+      window.__lastAiError="SiteShrimp's built-in AI isn't available on this server yet. Open Settings → AI to add a free provider (Gemini gives 1,500 photos/day, no card).";
       return null;
     }
     if(!resp.ok){
-      window.__lastAiError="SiteShrimp AI returned HTTP "+resp.status;
+      window.__lastAiError="SiteShrimp AI error (HTTP "+resp.status+"). Open Settings → AI to use your own provider, or try again later.";
       return null;
     }
     const data=await resp.json();
@@ -2741,6 +2742,13 @@ async function analyzePhoto(base64Image,prompt,opts){
 function friendlyAiError(raw){
   const s=String(raw||"");
   if(!s)return"AI couldn't analyze — tap RETRY or fill in manually.";
+  // Messages our own default-AI client composes are already concise and
+  // actionable (they name the fix: open Settings, add a provider, sign in).
+  // Pass them through verbatim instead of collapsing them to the generic
+  // "tap RETRY" headline below — for a 404 / not-configured backend, RETRY
+  // is useless and the real instruction is "add your own provider".
+  if(/open settings|add a free provider|pick a free provider|isn't available|isn't ready|sign in to use|use your own provider|add your own ai key/i.test(s))
+    return s;
   // Timeout / AbortError — most common during transient AI provider hangs.
   // Surfaces as the "we're working on it" maintenance-style message so the
   // user doesn't blame their own setup.
@@ -5398,7 +5406,6 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
     heading("IF VISUAL CHECKS — CONQUAS (PROJECTED)",purple);
     doc.setFontSize(9);doc.setFont(undefined,"normal");doc.setTextColor(0);
     doc.text(`Projected NC rate: ${cs.projectedRate.toFixed(1)}%  (${cs.projectedBasis})`,margin,y);y+=5;
-    doc.text(`Projected Band: ${cs.projectedBand}  (CONQUAS Private Residential R1 §3.3)`,margin,y);y+=5;
     doc.text(`Internal Finishes (IF): ${cs.rate.toFixed(1)}% — ${cs.failCount} non-conformance(s) of ${cs.applicableCount} applicable check(s); ${cs.defectCount||cs.failCount} defect record(s) across ${cs.batchCount} assessment(s); ${cs.totalChecks} checkpoint(s) walked. (Direct count per CONQUAS Private Residential R1 §3.3)`,margin,y);y+=5;
     if(cs.ftRate!==null){
       doc.text(`Functional Tests (FT): ${cs.ftRate.toFixed(1)}% — ${cs.ftFails} fail(s) of ${cs.ftApplicable} applicable across WTT/WPT/WFT.`,margin,y);y+=5;
@@ -18346,9 +18353,6 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#1a1a1a",letterSpacing:"0.03em"}}>
               ⚖️ IF VISUAL CHECK
             </div>
-            <div style={{fontSize:10,fontWeight:700,color:"#5856d6",background:"rgba(88,86,214,0.08)",border:"1px solid rgba(88,86,214,0.2)",borderRadius:6,padding:"3px 8px",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"0.04em"}}>
-              PROJECTED BAND {conquasStats.projectedBand}
-            </div>
           </div>
           {/* Projected Project NC rate + bar */}
           <div style={{marginBottom:12}}>
@@ -28835,7 +28839,6 @@ function App(){
                     ["CONQUAS Quality Check",[
                       "CONQUAS (Private Residential) R1 alignment — effective 1 April 2026, reflects the 20 April 2026 revision adding Water Flow Test (WFT)",
                       "Weighted Project NC rate per R1 §3.3: IF × 0.4 + FT × 0.4 + EF × 0.2 — live in REPORT",
-                      "Projected Band 1-6 mapped from weighted NC rate (<6% / <10% / <15% / <20% / <25% / ≥25%)",
                       "Internal Finishes (IF) — tier-weighted 1X Finishings / 2X Functionality / 3X Liveability across Floor, Wall, Ceiling, Door, Window, Component, M&E Fittings",
                       "AI-assisted checkpoint wizard — take a photo, AI classifies every checkpoint for the chosen element as pass / fail / uncertain, user reviews, all fails saved as linked defects in one batch",
                       "ASK AI on manual walk — per-checkpoint AI helper alongside PASS / FAIL; auto-fills verdict, fail photo, and reason from one shot",
