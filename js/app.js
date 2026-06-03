@@ -10402,6 +10402,8 @@ If YES, extract ONLY text that is actually printed — copy it exactly, never gu
 - level: the floor / level (e.g. "Level 3", "3rd Floor", "L3", "Basement 1")
 - location_name: a specific room or area name (e.g. "Lobby A", "Master Bedroom", "Common Corridor", "Roof Garden")
 
+If the sign prints a combined address on one line (e.g. "Block 2, Level 13, Unit 10-04"), split it across the block / level / unit fields — do NOT put the whole string into location_name. Leave location_name empty unless a distinct room or area name is also printed.
+
 Respond in valid JSON only with these exact keys:
 {"is_signboard": true|false, "block": "...", "unit": "...", "level": "...", "location_name": "...", "confidence": 0.0}
 
@@ -10459,6 +10461,28 @@ function _brochureBlock(result){
   const re=/\b(?:blk|block|tower|bldg|building)\s*[:#]?\s*([A-Za-z]?\d{1,3}[A-Za-z]?)\b/i;
   for(const t of hay){const m=t.match(re);if(m)return m[0].replace(/\s*[:#]\s*/," ").replace(/\s+/g," ").trim();}
   return"";
+}
+
+// Split a combined address string back into its block / level / unit parts.
+// A unit plate or signboard often prints the whole address on one line
+// ("Block 2, Level 13, Unit 10-04"). Weak vision models then echo that entire
+// string into a single field (e.g. location_name) and leave the structured
+// block/level/unit blank — so the form shows empty Block/Level/Unit and a junk
+// Room value. This pulls the recognisable tokens out and returns them plus
+// `rest` (the input with the matched tokens removed), so the caller can keep
+// any genuine room/area name that's left and drop a pure-address remainder.
+function _parseLocationText(text){
+  const out={block:"",level:"",unit:"",rest:""};
+  if(!text||typeof text!=="string")return out;
+  let s=" "+text+" ";
+  const take=(re)=>{const m=s.match(re);if(m){s=s.replace(m[0]," ");return m[0].trim();}return"";};
+  // Order matters: take the unit first — its "10-04" digits could otherwise be
+  // misread as a level number — then block, then level.
+  out.unit=take(/#\s*\d{1,3}\s*-\s*\d{1,4}[A-Za-z]?|\b(?:unit|apt|apartment)\s+#?[\w-]+/i);
+  out.block=take(/\b(?:blk|block|tower|bldg|building)\s*[:#]?\s*[A-Za-z]?\d{1,3}[A-Za-z]?\b/i);
+  out.level=take(/\b(?:level|floor|storey|story|lvl)\s*[:#]?\s*\d{1,3}\b|\b\d{1,3}(?:st|nd|rd|th)\s+floor\b|\bbasement\s*\d?\b/i);
+  out.rest=s.replace(/[\s,;|/]+/g," ").replace(/^[\s,;|/-]+|[\s,;|/-]+$/g,"").trim();
+  return out;
 }
 
 // Build a short spatial suffix ("Blk10 #02-05") from extracted brochure
@@ -10967,6 +10991,23 @@ function SetLocationSheet({initialCtx,projectId,onClose,onSave}){
             level:result.level||"",
             locationName:result.location_name||"",
           };
+          // Weak models sometimes ignore the per-field split and dump the
+          // whole printed address ("Block 2, Level 13, Unit 10-04") into
+          // location_name. When a structured field is still empty but the
+          // location_name carries block/level/unit tokens, split them back
+          // out so the form fills Block/Level/Unit instead of leaving them
+          // blank with an address-shaped Room value. Never overwrite a part
+          // the model already filled; keep location_name only if a genuine
+          // room/area name survives after the tokens are removed.
+          if(got.locationName&&!(got.block&&got.unit&&got.level)){
+            const p=_parseLocationText(got.locationName);
+            if(p.block||p.level||p.unit){
+              if(!got.block&&p.block)got.block=p.block;
+              if(!got.level&&p.level)got.level=p.level;
+              if(!got.unit&&p.unit)got.unit=p.unit;
+              got.locationName=p.rest;
+            }
+          }
           const any=got.block||got.unit||got.level||got.locationName;
           // Use whatever was read even when the model didn't classify the
           // photo as a "signboard" — a brochure/floor-plan plate still yields
