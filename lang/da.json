@@ -315,6 +315,7 @@
     "log_another": "+ LOG EN ANDEN HER",
     "listening": "LYTTER...",
     "tap_to_speak": "TRYK FOR AT TALE",
+    "speak_ai_hint": "Fortæl din observation, og snap derefter - AI udfylder posten (titel, sværhedsgrad, komponent) fra dit billede og din note.",
     "tag_on_map": "TAG PÅ KORT",
     "map_location": "KORT PLACERING",
     "map_location_set": "Kortplacering indstillet",

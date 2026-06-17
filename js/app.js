@@ -11549,17 +11549,23 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // Build a context-enriched AI prompt from the previous entry's metadata.
   // The extra clause tells AI the floor/zone/trade so its suggestions are more
   // targeted when logging several defects on the same run.
-  const buildContextPrompt=(ctx)=>{
+  const buildContextPrompt=(ctx,narration)=>{
     const base=getAIPrompt(ctx?.workCategory||"");
-    if(!ctx)return base;
     const parts=[];
-    if(ctx.locationLevel)parts.push(`floor/level: ${ctx.locationLevel}`);
-    if(ctx.locationZone)parts.push(`zone: ${ctx.locationZone}`);
-    if(ctx.location)parts.push(`location: ${ctx.location}`);
-    if(ctx.workCategory)parts.push(`work category: ${ctx.workCategory}`);
-    if(ctx.component)parts.push(`component: ${ctx.component}`);
-    if(!parts.length)return base;
-    return base+` Site context from previous entry — ${parts.join(', ')}. Use this to sharpen severity and trade guesses; same floor/zone commonly shares defect types.`;
+    if(ctx){
+      if(ctx.locationLevel)parts.push(`floor/level: ${ctx.locationLevel}`);
+      if(ctx.locationZone)parts.push(`zone: ${ctx.locationZone}`);
+      if(ctx.location)parts.push(`location: ${ctx.location}`);
+      if(ctx.workCategory)parts.push(`work category: ${ctx.workCategory}`);
+      if(ctx.component)parts.push(`component: ${ctx.component}`);
+    }
+    let out=base;
+    if(parts.length)out+=` Site context from previous entry — ${parts.join(', ')}. Use this to sharpen severity and trade guesses; same floor/zone commonly shares defect types.`;
+    // Voice-narrated capture: the inspector's spoken note for THIS photo is the
+    // primary description. AI uses photo + note together to fill the fields.
+    const note=(narration||"").trim();
+    if(note)out+=` The inspector spoke this observation while capturing THIS photo: "${note}". Treat it as the primary description of the defect — use it together with the image to set the title, severity, component, issue, and trade. If the spoken note conflicts with the image, prefer the spoken note for intent.`;
+    return out;
   };
   const[speakTranscript,setSpeakTranscript]=useState("");
   const[showTypeManager,setShowTypeManager]=useState(false);
@@ -12445,10 +12451,16 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
     setAnalyzeError(null); // fresh attempt — clear any previous inline error
     try{
       const photo=form.photos[0];
+      // Voice-narrated capture: fold the spoken note into the AI cache key so a
+      // narrated run isn't served the photo-only cached result, and pass it as
+      // context below. hash (photo identity) still drives the race guard.
+      const note=(speakTranscript||"").trim();
       // 1) Cache hit — skip the API entirely (no token burn, instant apply).
       const hash=await photoHash(photo);
       analysisHashRef.current=hash;
-      const cached=readAiCache(hash);
+      const noteKey=note?("|n"+Array.from(note).reduce((a,c)=>((a*31+c.charCodeAt(0))>>>0),7).toString(36)):"";
+      const cacheKey=hash+noteKey;
+      const cached=readAiCache(cacheKey);
       if(cached){
         setAiResult(cached);
         applyAiResult(cached);
@@ -12492,7 +12504,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
       // is the failure mode that surfaced on 2026-04-26.
       const ANALYZE_HARD_CEILING_MS=90000;
       const result=await Promise.race([
-        analyzePhoto(compressed||photo,buildContextPrompt(last),{workCategory:last?.workCategory||form?.workCategory||""}),
+        analyzePhoto(compressed||photo,buildContextPrompt(last,note),{workCategory:last?.workCategory||form?.workCategory||""}),
         new Promise((_,rej)=>setTimeout(()=>rej(new Error("AI analyze timed out after 90s — service may be unavailable. Please try again or fill manually.")),ANALYZE_HARD_CEILING_MS))
       ]);
       // Race guard — discard a stale result if the user swapped photos
@@ -12508,7 +12520,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
         // per-day cost. Counting it here would let an Ollama-only user
         // hit AI_DAILY_LIMIT and get throttled needlessly.
         if(_provider!=="ollama")bumpAiUsage(getLastAiTokens());
-        writeAiCache(hash,result);
+        writeAiCache(cacheKey,result);
         setAiResult(result);
         applyAiResult(result);
       }else{
@@ -12540,6 +12552,20 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
     }
     setAnalyzing(false);
   };
+
+  // Voice-narrated capture: when the inspector finishes dictating (mic toggles
+  // off) and a photo + AI are present, re-run analysis so the spoken note
+  // restructures the entry (title/severity/component from photo + voice). The
+  // ref tracks the listening edge so we only fire on the true→false transition.
+  const speakWasListeningRef=useRef(false);
+  useEffect(()=>{
+    const was=speakWasListeningRef.current;
+    speakWasListeningRef.current=speakVoice.listening;
+    if(was&&!speakVoice.listening&&aiReady&&form.photos.length&&(speakTranscript||"").trim()&&!analyzing){
+      analyze();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[speakVoice.listening]);
 
   // Duplicate detection — word overlap similarity
   const findDuplicate=(title,location)=>{
@@ -13273,6 +13299,9 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
             <span style={{fontSize:22}}>{speakVoice.listening?"🔴":"🎙"}</span>
             <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:16,color:speakVoice.listening?"#ff3b30":"#ff6b00",letterSpacing:"0.06em"}}>{speakVoice.listening?t("log.listening"):t("log.tap_to_speak")}</span>
           </button>
+          {aiReady&&!speakVoice.listening&&(
+            <div style={{marginTop:6,fontSize:10,color:"rgba(0,0,0,0.45)",fontFamily:"'Barlow',sans-serif",lineHeight:1.4}}>✨ {t("log.speak_ai_hint")}</div>
+          )}
           {speakTranscript&&(
             <div style={{marginTop:6,background:"rgba(255,107,0,0.05)",border:"1px solid rgba(255,107,0,0.15)",borderRadius:8,padding:"8px 10px",fontSize:12,color:"rgba(0,0,0,0.55)",fontStyle:"italic"}}>"{speakTranscript}"</div>
           )}

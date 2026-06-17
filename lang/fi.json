@@ -315,6 +315,7 @@
     "log_another": "+ KIRJAA TOINEN TÄSTÄ",
     "listening": "KUUNTELU...",
     "tap_to_speak": "NAPAUTA PUHUAksesi",
+    "speak_ai_hint": "Puhu havaintosi ja napsauta – AI täyttää merkinnän (otsikko, vakavuus, komponentti) valokuvasta ja muistiinpanosta.",
     "tag_on_map": "TAGI KARTALLE",
     "map_location": "KARTTA SIJAINTI",
     "map_location_set": "Kartan sijainti asetettu",

@@ -315,6 +315,7 @@
     "log_another": "+ LOGGA EN ANNAN HÄR",
     "listening": "LYSSNANDE...",
     "tap_to_speak": "TRYCK FÖR ATT TALA",
+    "speak_ai_hint": "Säg din observation och knäpp sedan — AI fyller posten (titel, svårighetsgrad, komponent) från ditt foto och anteckning.",
     "tag_on_map": "TAGGA PÅ KARTAN",
     "map_location": "KARTA PLATS",
     "map_location_set": "Kartplats inställd",

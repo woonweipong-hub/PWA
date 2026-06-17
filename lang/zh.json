@@ -315,6 +315,7 @@
     "log_another": "+ 在此记录另一个",
     "listening": "正在听...",
     "tap_to_speak": "点击说话",
+    "speak_ai_hint": "说出您的观察结果，然后拍照 - 人工智能会根据您的照片和注释填充条目（标题、严重性、组成部分）。",
     "tag_on_map": "在地图上标记",
     "map_location": "地图位置",
     "map_location_set": "地图位置设置",

@@ -315,6 +315,7 @@
     "log_another": "+ REGISTRA OTRO AQUÍ",
     "listening": "ESCUCHANDO...",
     "tap_to_speak": "TOCA PARA HABLAR",
+    "speak_ai_hint": "Di tu observación, luego toma: la IA completa la entrada (título, gravedad, componente) de tu foto y nota.",
     "tag_on_map": "ETIQUETAR EN EL MAPA",
     "map_location": "UBICACIÓN EN EL MAPA",
     "map_location_set": "Conjunto de ubicación del mapa",

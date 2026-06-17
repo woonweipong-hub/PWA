@@ -315,6 +315,7 @@
     "log_another": "+ ここで別のログを記録",
     "listening": "リスニング...",
     "tap_to_speak": "タップして話す",
+    "speak_ai_hint": "観察を話し、スナップします。AI が写真とメモからエントリ (タイトル、重大度、コンポーネント) を入力します。",
     "tag_on_map": "地図にタグを付ける",
     "map_location": "地図の位置",
     "map_location_set": "地図の位置セット",

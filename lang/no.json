@@ -315,6 +315,7 @@
     "log_another": "+ LOGG EN ANNEN HER",
     "listening": "HØRER...",
     "tap_to_speak": "TRYKK FOR Å TALE",
+    "speak_ai_hint": "Fortell observasjonen din, og knips deretter - AI fyller oppføringen (tittel, alvorlighetsgrad, komponent) fra bildet og notatet ditt.",
     "tag_on_map": "TAG PÅ KART",
     "map_location": "KARTPLASSERING",
     "map_location_set": "Kartplassering satt",

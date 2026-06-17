@@ -315,6 +315,7 @@
     "log_another": "+ LOG LAINNYA DI SINI",
     "listening": "MENDENGARKAN...",
     "tap_to_speak": "KETUK UNTUK BERBICARA",
+    "speak_ai_hint": "Ucapkan pengamatan Anda, lalu jepret — AI mengisi entri (judul, tingkat keparahan, komponen) dari foto dan catatan Anda.",
     "tag_on_map": "TAG DI PETA",
     "map_location": "LOKASI PETA",
     "map_location_set": "Kumpulan lokasi peta",
@@ -430,7 +431,7 @@
   },
   "detail": {
     "update_status": "PERBARUI STATUS",
-    "review_decision": "REVIEW DECISION",
+    "review_decision": "KEPUTUSAN PENINJAUAN",
     "review_decision_hint": "Entri ini ditandai Selesai. Terima untuk memverifikasinya, atau tolak untuk mengirimkannya kembali dengan alasan.",
     "accept": "MENERIMA",
     "reject": "MENOLAK",

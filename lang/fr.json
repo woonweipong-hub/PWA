@@ -315,6 +315,7 @@
     "log_another": "+ CONNECTEZ-EN UN AUTRE ICI",
     "listening": "ÉCOUTE...",
     "tap_to_speak": "APPUYEZ POUR PARLER",
+    "speak_ai_hint": "Exprimez votre observation, puis prenez une photo – l'IA remplit l'entrée (titre, gravité, composant) à partir de votre photo et de votre note.",
     "tag_on_map": "ÉTIQUETTE SUR LA CARTE",
     "map_location": "EMPLACEMENT SUR LA CARTE",
     "map_location_set": "Ensemble d'emplacement sur la carte",

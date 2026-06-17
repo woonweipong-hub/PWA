@@ -315,6 +315,7 @@
     "log_another": "+ LOG ANOTHER HERE",
     "listening": "LISTENING...",
     "tap_to_speak": "TAP TO SPEAK",
+    "speak_ai_hint": "Speak your observation, then snap — AI fills the entry (title, severity, component) from your photo and note.",
     "tag_on_map": "TAG ON MAP",
     "map_location": "MAP LOCATION",
     "map_location_set": "Map location set",
