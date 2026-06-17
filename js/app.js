@@ -11650,7 +11650,8 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
   // This way the existing locationDisplay join at submit
   // ("Level 3 > Block 5 > #03-12 — Lobby A") works without schema changes.
   useEffect(()=>{
-    if(form.workCategory!=="CONQUAS Officer")return;
+    // Sticky location applies to every work category, not just CONQUAS
+    // Officer: set it once per room/zone and each new entry inherits it.
     if(!locationCtx)return;
     if(form.locationLevel||form.locationZone||form.locationSubzone)return;
     const subzone=[locationCtx.unit,locationCtx.locationName].filter(Boolean).join(" — ");
@@ -13093,12 +13094,16 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
             </div>
           </div>
           <div style={{fontSize:10,color:"rgba(0,0,0,0.45)",marginTop:6,fontStyle:"italic"}}>{t("log.project_context_edit_hint")}</div>
+        </div>
+      )}
 
-          {/* Active session location context. Auto-fills the location
-              hierarchy on every new defect entry; persists in localStorage
-              so the walk survives reload / browser background. */}
-          <div style={{marginTop:10,paddingTop:10,borderTop:"1px dashed rgba(88,86,214,0.25)"}}>
-            <div style={{fontSize:9,fontWeight:800,color:"#5856d6",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>{t("log.location_context")}<span style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif",textTransform:"none"}}>{t("log.step_2_set_location_officer")}</span></div>
+      {/* Active session location context — sticky across ALL work
+          categories (not just CONQUAS Officer): set it once per room/zone
+          and every new entry inherits the hierarchy until it's changed or
+          cleared. Persists in localStorage so a walk survives reload /
+          browser background. */}
+      <div style={{marginBottom:14,padding:"10px 12px",background:"rgba(88,86,214,0.05)",border:"1px solid rgba(88,86,214,0.18)",borderRadius:12}}>
+            <div style={{fontSize:9,fontWeight:800,color:"#5856d6",letterSpacing:"0.08em",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>{t("log.location_context")}{form.workCategory==="CONQUAS Officer"&&<span style={{fontSize:9,fontWeight:700,color:"rgba(0,0,0,0.4)",letterSpacing:"0.02em",marginLeft:6,fontFamily:"'Barlow',sans-serif",textTransform:"none"}}>{t("log.step_2_set_location_officer")}</span>}</div>
             {locationCtx?(
               <>
                 <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
@@ -13118,9 +13123,7 @@ function LogDefect({member,company,currentProject,members,onSave,existingDefects
               </button>
             )}
             <div style={{fontSize:10,color:"rgba(0,0,0,0.45)",marginTop:6,fontStyle:"italic"}}>{t("log.location_context_hint")}</div>
-          </div>
-        </div>
-      )}
+      </div>
       {(()=>{const v=_getAiVariant(form.workCategory);if(!v||!v.addendum)return null;return(
         <div style={{marginTop:-10,marginBottom:12,padding:"8px 12px",borderRadius:8,background:"rgba(88,86,214,0.06)",borderLeft:"3px solid #5856d6",fontSize:11,color:"rgba(0,0,0,0.65)",fontFamily:"'Barlow Condensed',sans-serif",lineHeight:1.4}}>
           <div style={{fontWeight:800,color:"#5856d6",letterSpacing:"0.06em",fontSize:9,marginBottom:3}}>{t("log.variant_hint_label")}</div>
