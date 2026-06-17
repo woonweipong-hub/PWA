@@ -1388,6 +1388,58 @@ function MarkupToolButton({id,title,active,accent="#5856d6",onClick}){
 // Older callers that destructure the dataUrl as the first argument
 // (LOG legacy path) are still supported via a back-compat shim — see
 // the call site in onSave below.
+// ── Shared markup core ───────────────────────────────────────────────
+// The dimension annotation is created, edited, and rendered in three separate
+// editors — PhotoMarkup (canvas), DrawingViewer (SVG), and the Compare markup
+// in DrawingsPanel (SVG). These helpers keep the *dimension geometry*, *SVG
+// shape*, and *endpoint hit-testing* in ONE place so future changes to how a
+// dimension looks or how its ends are grabbed happen once instead of three
+// times. The rendering backends themselves (canvas vs SVG) and each editor's
+// selection model necessarily stay per-editor.
+
+// Which endpoint of a two-point stroke is within `r` of point p? Unit-agnostic:
+// canvas editors pass pixels, SVG editors pass percentage units. Returns
+// "start" | "end" | null.
+function markupDimEndpointHit(s,p,r){
+  if(!s||!s.start||!s.end)return null;
+  if(Math.abs(p.x-s.start.x)<r&&Math.abs(p.y-s.start.y)<r)return"start";
+  if(Math.abs(p.x-s.end.x)<r&&Math.abs(p.y-s.end.y)<r)return"end";
+  return null;
+}
+
+// SVG body of a dimension (extension line + end ticks + rotated centre label),
+// shared by the two SVG editors. Selection styling differs per editor, so the
+// stroke colour and tick width are passed in; endpoint handles are layered on
+// separately by each editor. Returns a fragment (caller wraps in its own <g>).
+function renderMarkupDimensionSvgBody(s,{color,tickWidth="0.3",dash}={}){
+  const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y,len=Math.sqrt(dx*dx+dy*dy);
+  if(len<0.5)return null;
+  const nx=-dy/len*1.2,ny=dx/len*1.2; // perpendicular tick direction
+  const mx=(s.start.x+s.end.x)/2,my=(s.start.y+s.end.y)/2;
+  const angle=Math.atan2(dy,dx)*180/Math.PI;
+  const col=color||s.color;
+  const label=s.label||"";
+  return <>
+    <line x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={col} strokeWidth="0.2" strokeDasharray={dash}/>
+    <line x1={s.start.x+nx} y1={s.start.y+ny} x2={s.start.x-nx} y2={s.start.y-ny} stroke={col} strokeWidth={tickWidth}/>
+    <line x1={s.end.x+nx} y1={s.end.y+ny} x2={s.end.x-nx} y2={s.end.y-ny} stroke={col} strokeWidth={tickWidth}/>
+    {label&&<text x={mx} y={my} fill={col} fontSize="2.2" fontFamily="'Barlow Condensed',sans-serif" fontWeight="700" textAnchor="middle" dominantBaseline="central" transform={`rotate(${angle>90||angle<-90?angle+180:angle},${mx},${my})`} dy="-1">{label}</text>}
+  </>;
+}
+
+// Two SVG endpoint-drag handles for a selected dimension. Pass onEndpointDown
+// (idx,which,e) for editors that wire the drag via per-element handlers
+// (Compare). DrawingViewer detects the grab by proximity instead, so it omits
+// the handler and these render as purely visual affordances (pointerEvents off).
+function renderMarkupDimHandlesSvg(s,i,onEndpointDown){
+  if(!s||!s.start||!s.end)return null;
+  const mk=(which,pt)=><circle cx={pt.x} cy={pt.y} r="1.6" fill="#5856d6" stroke="#fff" strokeWidth="0.4"
+    style={{cursor:"crosshair",pointerEvents:onEndpointDown?"visiblePainted":"none"}}
+    onMouseDown={onEndpointDown?e=>onEndpointDown(i,which,e):undefined}
+    onTouchStart={onEndpointDown?e=>onEndpointDown(i,which,e):undefined}/>;
+  return <>{mk("start",s.start)}{mk("end",s.end)}</>;
+}
+
 function PhotoMarkup({src,onSave,onCancel,initialStrokes}){
   const canvasRef=useRef();const overlayRef=useRef();
   const[tool,setTool]=useState("arrow"); // arrow, circle, rect, line, dimension, freehand, text, cloud, callout, highlight, polyline, stamp
@@ -1406,6 +1458,10 @@ function PhotoMarkup({src,onSave,onCancel,initialStrokes}){
   const imgRef=useRef(new Image());
   const sizeRef=useRef({w:0,h:0});
   const dragRef=useRef(null); // {idx, startPos, origStroke}
+  const endDragRef=useRef(null); // {idx, which:'start'|'end'} — resize a dimension by dragging an endpoint
+  // Selection index lives here (above the render effect) so the effect can list
+  // it as a dependency to draw endpoint handles for a selected dimension.
+  const[selectedIdx,setSelectedIdx]=useState(null);
   const STAMP_PRESETS=["APPROVED","REJECTED","REVIEWED","HOLD","FOR CONSTRUCTION","PRELIMINARY","DRAFT","SUPERSEDED","NOT FOR CONSTRUCTION"];
   const addStroke=(s)=>{setStrokes(prev=>[...prev,s]);setRedoStack([]);};
   const undo=()=>{setStrokes(s=>{if(!s.length)return s;setRedoStack(r=>[...r,s[s.length-1]]);return s.slice(0,-1);});};
@@ -1469,7 +1525,17 @@ function PhotoMarkup({src,onSave,onCancel,initialStrokes}){
     }else if(polylinePoints.length===1){
       ctx.fillStyle=color;ctx.beginPath();ctx.arc(polylinePoints[0].x,polylinePoints[0].y,4,0,Math.PI*2);ctx.fill();
     }
-  },[imgLoaded,strokes,current,polylinePoints,polylineClosed]);
+    // Endpoint handles for a selected dimension so its length can be dragged.
+    // Display-only — save() redraws strokes on a fresh canvas without handles.
+    if(selectedIdx!=null){
+      const sel=strokes[selectedIdx];
+      if(sel&&sel.type==="dimension"&&sel.start&&sel.end){
+        ctx.save();ctx.fillStyle="#ff6b00";ctx.strokeStyle="#fff";ctx.lineWidth=2;
+        [sel.start,sel.end].forEach(pt=>{ctx.beginPath();ctx.arc(pt.x,pt.y,7,0,Math.PI*2);ctx.fill();ctx.stroke();});
+        ctx.restore();
+      }
+    }
+  },[imgLoaded,strokes,current,polylinePoints,polylineClosed,selectedIdx]);
 
   const drawStroke=(ctx,s,scale=1)=>{
     const lw=3*scale;
@@ -1621,6 +1687,10 @@ function PhotoMarkup({src,onSave,onCancel,initialStrokes}){
 
   const[editingTextIdx,setEditingTextIdx]=useState(null);
   const[editingCalloutIdx,setEditingCalloutIdx]=useState(null);
+  // Dimension label editing (mirrors the callout edit flow). dimTextInput holds
+  // the stroke awaiting a label — a new one on create, the existing one on edit.
+  const[editingDimIdx,setEditingDimIdx]=useState(null);
+  const[dimTextInput,setDimTextInput]=useState(null);
 
   // Hit-test only callout strokes — tap on the leader-line bounding box
   // or the text box opens edit. Mirrors the hit-test logic in
@@ -1683,6 +1753,15 @@ function PhotoMarkup({src,onSave,onCancel,initialStrokes}){
     e.preventDefault();
     const p=getPos(e);
     if(tool==="select"){
+      // Dimension endpoint grab → resize instead of moving the whole stroke.
+      // Checked before the generic hit-test so an end-press resizes.
+      if(selectedIdx!=null){
+        const sel=strokes[selectedIdx];
+        if(sel&&sel.type==="dimension"){
+          const which=markupDimEndpointHit(sel,p,16); // px grab radius — thumb-friendly
+          if(which){endDragRef.current={idx:selectedIdx,which};return;}
+        }
+      }
       const hit=hitTestStroke(p);
       setSelectedIdx(hit>=0?hit:null);
       if(hit>=0)dragRef.current={idx:hit,startPos:p,origStroke:JSON.parse(JSON.stringify(strokes[hit]))};
@@ -1717,6 +1796,13 @@ function PhotoMarkup({src,onSave,onCancel,initialStrokes}){
     else setCurrent({type:tool,color,lineStyle,start:p,end:p});
   };
   const onMove=e=>{
+    if(endDragRef.current){
+      e.preventDefault();
+      const p=getPos(e);
+      const{idx,which}=endDragRef.current;
+      setStrokes(s=>s.map((st,i)=>i===idx?{...st,[which]:{x:p.x,y:p.y}}:st));
+      return;
+    }
     if(dragRef.current){
       e.preventDefault();
       const p=getPos(e);
@@ -1738,11 +1824,13 @@ function PhotoMarkup({src,onSave,onCancel,initialStrokes}){
     else setCurrent(c=>({...c,end:p}));
   };
   const onUp=()=>{
+    if(endDragRef.current){endDragRef.current=null;return;}
     dragRef.current=null;
     if(current){
       if(current.type==="dimension"){
-        const label=prompt(t("markup.enter_dimension"))||"";
-        addStroke({...current,label:label.trim()});setCurrent(null);
+        // Open the label modal (was a blocking prompt()); also reachable later
+        // via the EDIT button so the number can be changed after creation.
+        setDimTextInput(current);setCurrent(null);
         return;
       }
       if(current.type==="callout"){
@@ -1846,7 +1934,6 @@ function PhotoMarkup({src,onSave,onCancel,initialStrokes}){
   };
 
   const[textSize,setTextSize]=useState(16);
-  const[selectedIdx,setSelectedIdx]=useState(null);
   const deleteSelected=()=>{if(selectedIdx!=null){setStrokes(s=>s.filter((_,i)=>i!==selectedIdx));setSelectedIdx(null);}};
 
   const TOOLS=[
@@ -1930,10 +2017,12 @@ function PhotoMarkup({src,onSave,onCancel,initialStrokes}){
           const s=strokes[selectedIdx];
           const isText=s&&s.type==="text";
           const isCallout=s&&s.type==="callout";
-          const editable=isText||isCallout;
+          const isDim=s&&s.type==="dimension";
+          const editable=isText||isCallout||isDim;
           const openEdit=()=>{
             if(isText){setEditingTextIdx(selectedIdx);setTextInput(s.pos);}
             else if(isCallout){setEditingCalloutIdx(selectedIdx);setCalloutTextInput(s);}
+            else if(isDim){setEditingDimIdx(selectedIdx);setDimTextInput(s);}
           };
           return(
             <>
@@ -2018,6 +2107,49 @@ function PhotoMarkup({src,onSave,onCancel,initialStrokes}){
                   :<>
                     <button onClick={()=>submitCallout("")} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.skip")}</button>
                     <button onClick={e=>{const inp=e.target.closest("div").parentElement.querySelector("input");submitCallout(inp.value);}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.add")}</button>
+                  </>
+                }
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Dimension label modal — create + edit, mirrors the callout modal. */}
+      {dimTextInput&&(()=>{
+        const isEditing=editingDimIdx!==null;
+        const submitDim=(rawText)=>{
+          const label=(rawText||"").trim();
+          if(isEditing){
+            setStrokes(s=>s.map((st,i)=>i===editingDimIdx?{...st,label}:st));
+          }else{
+            addStroke({...dimTextInput,label});
+          }
+          setEditingDimIdx(null);setDimTextInput(null);
+        };
+        const closeWithoutSaving=()=>{setEditingDimIdx(null);setDimTextInput(null);};
+        const deleteDim=()=>{
+          if(!isEditing)return;
+          setStrokes(s=>s.filter((_,i)=>i!==editingDimIdx));
+          setEditingDimIdx(null);setDimTextInput(null);
+        };
+        return(
+          <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.85)",zIndex:310,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+            <div style={{background:"#1a1a1a",borderRadius:16,padding:20,width:"100%",maxWidth:360}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",marginBottom:6}}>{isEditing?"EDIT DIMENSION":"DIMENSION LABEL"}</div>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:12}}>Enter the measurement (e.g. 3.5m, 1200mm, 4'-6"). Leave blank for no label.</div>
+              <input autoFocus type="text" placeholder="e.g. 3500mm" defaultValue={isEditing?(dimTextInput.label||""):""} onKeyDown={e=>{if(e.key==="Enter")submitDim(e.target.value);}}
+                style={{width:"100%",padding:12,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
+              <div style={{display:"flex",gap:8,marginTop:12}}>
+                {isEditing
+                  ?<>
+                    <button onClick={closeWithoutSaving} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.cancel")}</button>
+                    <button onClick={deleteDim} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff3b30",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.delete")}</button>
+                    <button onClick={e=>{const inp=e.target.closest("div").parentElement.querySelector("input");submitDim(inp.value);}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.update")}</button>
+                  </>
+                  :<>
+                    <button onClick={()=>submitDim("")} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.5)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.skip")}</button>
+                    <button onClick={e=>{const inp=e.target.closest("div").parentElement.querySelector("input");submitDim(inp.value);}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#ff6b00",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.add")}</button>
                   </>
                 }
               </div>
@@ -3443,10 +3575,18 @@ function typeBg(t){
   return `rgba(${r},${g},${b},0.12)`;
 }
 
-function exportCSV(defects,projectName){
+function exportCSV(defects,projectName,opts={}){
   const esc=v=>`"${String(v||"").replace(/"/g,'""')}"`;
-  const headers=["ID","Entry Type","Title","Component","Issue","Location","Severity","Status","Assignee","Sub-contractor / Vendor","Sub-contractor Contact","Trade","Logged By","Role","Date","Due Date","Duration","Cost Impact","Cost Responsible","Cost Amount","Description","Comments","Source Filename","CONQUAS Element","ISO 19650 Filename"];
-  const rows=defects.map(d=>[
+  // CONQUAS Element is CONQUAS-only; gate it on the report's work category so
+  // generic reports stay clean. ISO 19650 filename survives whenever any entry
+  // actually carries one (it's a general CDE field, not strictly CONQUAS).
+  const incConquasEl=!!opts.isConquas;
+  const incIso=!!opts.isConquas||defects.some(d=>d.iso_filename);
+  const headers=["ID","Entry Type","Title","Component","Issue","Location","Severity","Status","Assignee","Sub-contractor / Vendor","Sub-contractor Contact","Trade","Logged By","Role","Date","Due Date","Duration","Cost Impact","Cost Responsible","Cost Amount","Description","Comments","Source Filename"];
+  if(incConquasEl)headers.push("CONQUAS Element");
+  if(incIso)headers.push("ISO 19650 Filename");
+  const rows=defects.map(d=>{
+    const row=[
     d.defect_id||d.id||"",
     d.entryType||"Defect",
     esc(d.title),
@@ -3469,10 +3609,12 @@ function exportCSV(defects,projectName){
     d.costAmount||"",
     esc(d.description),
     esc((d.comments||[]).filter(c=>c.text).map(c=>`${c.by}: ${c.text}`).join(" | ")),
-    esc(d.original_filename),
-    esc(typeof conquasElementOf==="function"?conquasElementOf(d.component)||"":""),
-    esc(d.iso_filename)
-  ].join(","));
+    esc(d.original_filename)
+    ];
+    if(incConquasEl)row.push(esc(typeof conquasElementOf==="function"?conquasElementOf(d.component)||"":""));
+    if(incIso)row.push(esc(d.iso_filename));
+    return row.join(",");
+  });
   const bom="\uFEFF";
   const csv=bom+[headers.join(","),...rows].join("\n");
   const a=document.createElement("a");
@@ -4218,7 +4360,7 @@ async function exportConquasZip(defects,projectName,onProgress,opts={}){
 }
 
 // Full report export — defects + drawing annotations + saved comparisons in one CSV
-async function exportReportAll(defects,drawings,savedComparisons,projectName,langCode,profileId){
+async function exportReportAll(defects,drawings,savedComparisons,projectName,langCode,profileId,opts={}){
   // Resolve dropdown option values in the chosen export language. Falls back
   // to English (which is the storage value) when langCode is missing/unknown.
   const tx=v=>(langCode&&typeof tOptIn==="function"?tOptIn(langCode,v):v)||"";
@@ -4238,6 +4380,10 @@ async function exportReportAll(defects,drawings,savedComparisons,projectName,lan
   const pinsByEntry={};allPins.forEach(p=>{(pinsByEntry[p.entryId]=pinsByEntry[p.entryId]||[]).push(p);});
   const mapPinsByEntry={};allMapPins.forEach(mp=>{(mapPinsByEntry[mp.entryId]=mapPinsByEntry[mp.entryId]||[]).push(mp);});
   const drawingById={};(drawings||[]).forEach(d=>{drawingById[d.id]=d;});
+  // CONQUAS Element is CONQUAS-only; gate on work category. ISO 19650 filename
+  // is kept whenever any entry carries one (general CDE field).
+  const incConquasEl=!!opts.isConquas;
+  const incIso=!!opts.isConquas||(defects||[]).some(d=>d.iso_filename);
   const lines=[];
   // Section 1: Defect entries
   lines.push("# DEFECT ENTRIES");
@@ -4249,8 +4395,10 @@ async function exportReportAll(defects,drawings,savedComparisons,projectName,lan
     h("createdAt","Date"),h("dueDate","Due Date"),h("duration","Duration"),
     h("costImpact","Cost Impact"),h("costResponsible","Cost Responsible"),
     h("costAmount","Cost Amount"),h("description","Description"),
-    h("comments","Comments"),"Occurrences","Pin Locations","Source Filename","CONQUAS Element","ISO 19650 Filename"
+    h("comments","Comments"),"Occurrences","Pin Locations","Source Filename"
   ];
+  if(incConquasEl)defectHeaders.push("CONQUAS Element");
+  if(incIso)defectHeaders.push("ISO 19650 Filename");
   lines.push(defectHeaders.join(","));
   (defects||[]).forEach(d=>{
     const pins=pinsByEntry[d.id]||[];
@@ -4264,7 +4412,7 @@ async function exportReportAll(defects,drawings,savedComparisons,projectName,lan
     if(hasPrimary)locParts.push(`GPS ${primaryCoords.lat.toFixed(5)},${primaryCoords.lng.toFixed(5)}`);
     mps.forEach(mp=>locParts.push(`GPS ${Number(mp.lat).toFixed(5)},${Number(mp.lng).toFixed(5)}`));
     pins.forEach(p=>{const dr=drawingById[p.drawingId];locParts.push(`DWG ${(dr?.name||"?")}${p.pageNum>1?" p."+p.pageNum:""}`);});
-    lines.push([
+    const drow=[
       d.defect_id||d.id||"",
       d.entryType||"Defect",
       esc(d.title),esc(tx(d.component)),esc(tx(d.issue)),esc(d.location),
@@ -4278,10 +4426,11 @@ async function exportReportAll(defects,drawings,savedComparisons,projectName,lan
       esc((d.comments||[]).filter(c=>c.text).map(c=>`${c.by}: ${c.text}`).join(" | ")),
       occurrences,
       esc(locParts.join(" | ")),
-      esc(d.original_filename),
-      esc(typeof conquasElementOf==="function"?conquasElementOf(d.component)||"":""),
-      esc(d.iso_filename)
-    ].join(","));
+      esc(d.original_filename)
+    ];
+    if(incConquasEl)drow.push(esc(typeof conquasElementOf==="function"?conquasElementOf(d.component)||"":""));
+    if(incIso)drow.push(esc(d.iso_filename));
+    lines.push(drow.join(","));
   });
   // Section 2: Drawing annotations (notes + markup counts)
   lines.push("");
@@ -4941,7 +5090,7 @@ async function exportReportPdf(defects,drawings,savedComparisons,projectName,com
       // with the source phone-camera filename + the ISO 19650 storage
       // name. Hidden if neither field is set so legacy pre-feature
       // entries don't render an empty row.
-      const _conquasEl=typeof conquasElementOf==="function"?conquasElementOf(d.component)||"":"";
+      const _conquasEl=opts.isConquas&&typeof conquasElementOf==="function"?conquasElementOf(d.component)||"":"";
       if(_conquasEl||d.original_filename||d.iso_filename){
         if(_conquasEl){
           field("CONQUAS Element",_conquasEl,col1,y,fw);
@@ -5721,8 +5870,10 @@ async function gsheetAuth(clientId){
   });
 }
 
-async function exportToGoogleSheets(defects,projectName,companyName,langCode){
+async function exportToGoogleSheets(defects,projectName,companyName,langCode,opts={}){
   const tx=v=>(langCode&&typeof tOptIn==="function"?tOptIn(langCode,v):v)||"";
+  const incConquasEl=!!opts.isConquas;
+  const incIso=!!opts.isConquas||defects.some(d=>d.iso_filename);
   const cfg=getGSheetConfig();
   if(!cfg?.clientId)throw new Error("Google Sheets not configured. Set up Client ID in Settings.");
   // Auth
@@ -5734,8 +5885,11 @@ async function exportToGoogleSheets(defects,projectName,companyName,langCode){
   // when imported into Sheets / Excel (en-GB DD/MM/YYYY would be parsed
   // as text or wrong locale on most installations).
   const fmtDate=d=>d?isoDate(d):"";
-  const headerRow=["ID","Type","Title","Location","Severity","Status","Assignee","Trade","Logged By","Date","Due Date","Duration","Cost Impact","Cost Amount","Cost Responsible","Description","Comments","Source Filename","CONQUAS Element","ISO 19650 Filename"];
-  const dataRows=defects.map(d=>[
+  const headerRow=["ID","Type","Title","Location","Severity","Status","Assignee","Trade","Logged By","Date","Due Date","Duration","Cost Impact","Cost Amount","Cost Responsible","Description","Comments","Source Filename"];
+  if(incConquasEl)headerRow.push("CONQUAS Element");
+  if(incIso)headerRow.push("ISO 19650 Filename");
+  const dataRows=defects.map(d=>{
+    const row=[
     d.defect_id||d.id||"",
     d.entryType||"Defect",
     d.title||"",
@@ -5753,10 +5907,12 @@ async function exportToGoogleSheets(defects,projectName,companyName,langCode){
     tx(d.costResponsible)||"",
     d.description||"",
     (d.comments||[]).filter(c=>c.text).map(c=>`${c.author||c.by||""}: ${c.text||""}`).join(" | "),
-    d.original_filename||"",
-    typeof conquasElementOf==="function"?conquasElementOf(d.component)||"":"",
-    d.iso_filename||""
-  ]);
+    d.original_filename||""
+    ];
+    if(incConquasEl)row.push(typeof conquasElementOf==="function"?conquasElementOf(d.component)||"":"");
+    if(incIso)row.push(d.iso_filename||"");
+    return row;
+  });
 
   // Summary rows
   const total=defects.length;
@@ -15783,6 +15939,10 @@ function findPhotoOriginalForIndex(photoOriginal,photoIdx){
 
 function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[],allDefects=[],embedded=false}){
   const[status,setStatus]=useState(defect.status);
+  // Accept/Reject review loop on a "Done" issue. Reject sends it back to
+  // In Progress with a required reason (logged as a status event + comment).
+  const[rejecting,setRejecting]=useState(false);
+  const[rejectReason,setRejectReason]=useState("");
   const[comment,setComment]=useState("");const[saving,setSaving]=useState(false);const[deleting,setDeleting]=useState(false);
   const[commentPhoto,setCommentPhoto]=useState(null);const[verifyPhoto,setVerifyPhoto]=useState(null);
   const commentPhotoRef=useRef();const verifyPhotoRef=useRef();
@@ -15983,6 +16143,32 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
         sendTelegram(tgCfg.token,tgCfg.chatId,`${e} <b>Status Updated</b>\n<b>${sanitize(defect.title)}</b>\nStatus: <b>${s}</b>\nBy: ${sanitize(member?.name)}`).catch(()=>{});
       }
     }catch(e){setStatus(defect.status);alert("Failed to update status: "+e.message);}
+  };
+
+  // Reject a "Done" issue: bounce it back to In Progress with a required
+  // reason. Logs both the status event (so the timeline shows Done→In Progress)
+  // and a reason comment so the assignee knows what to fix, plus webhook/Telegram.
+  const rejectIssue=async(reason)=>{
+    if(!canUpdate)return;
+    const r=(reason||"").trim();
+    if(!r)return;
+    const oldStatus=latestRef.current.status||defect.status||"";
+    const newStatus="In Progress";
+    setStatus(newStatus);
+    try{
+      const events=diffDefectEvents({status:oldStatus},{status:newStatus},member?.name||"",member?.role||"");
+      const reasonComment={text:`❌ Rejected: ${r}`,by:member?.name||"",role:member?.role||"",at:Date.now()};
+      const newComments=[...(latestRef.current.comments||[]),...events,reasonComment];
+      const updateData={status:newStatus,comments:newComments};
+      await DB.defects.update(defect.id,updateData);
+      latestRef.current={...latestRef.current,...updateData};
+      onUpdate({...latestRef.current});
+      fireWebhook("updated",latestRef.current,null);
+      if(tgCfg?.token&&tgCfg?.chatId){
+        sendTelegram(tgCfg.token,tgCfg.chatId,`❌ <b>Rejected — sent back</b>\n<b>${sanitize(defect.title)}</b>\nReason: ${sanitize(r)}\nBy: ${sanitize(member?.name)}`).catch(()=>{});
+      }
+      setRejecting(false);setRejectReason("");
+    }catch(e){setStatus(defect.status);alert("Failed to reject: "+e.message);}
   };
 
   const addComment=async()=>{
@@ -16380,6 +16566,32 @@ function DefectDetail({defect,onClose,onUpdate,onDelete,member,company,members=[
               :null;
         })()}
 
+        {/* Accept / Reject — the review decision point for a Done issue.
+            Accept routes through the existing Verified flow (optional photo);
+            Reject bounces it back to In Progress with a required reason. */}
+        {canUpdate&&status==="Done"&&(
+          <div style={{background:"rgba(255,107,0,0.06)",border:"1.5px solid rgba(255,107,0,0.25)",borderRadius:14,padding:14,marginBottom:14}}>
+            <div style={lbl("#ff6b00")}>{t("detail.review_decision")}</div>
+            <div style={{fontSize:11,color:"rgba(0,0,0,0.5)",margin:"4px 0 10px",lineHeight:1.4}}>{t("detail.review_decision_hint")}</div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>updateStatus("Verified")} style={{flex:1,background:"#30d158",border:"none",borderRadius:10,padding:"12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer"}}>✓ {t("detail.accept")}</button>
+              <button onClick={()=>{setRejectReason("");setRejecting(true);}} style={{flex:1,background:"#ff3b30",border:"none",borderRadius:10,padding:"12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:"pointer"}}>✕ {t("detail.reject")}</button>
+            </div>
+          </div>
+        )}
+        {rejecting&&(
+          <div style={{position:"fixed",inset:0,zIndex:320,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+            <div style={{width:"100%",maxWidth:380,background:"#fff",borderRadius:16,padding:18}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:16,color:"#1a1a1a",marginBottom:6}}>{t("detail.reject_title")}</div>
+              <div style={{fontSize:12,color:"rgba(0,0,0,0.55)",marginBottom:12,lineHeight:1.4}}>{t("detail.reject_hint")}</div>
+              <textarea autoFocus value={rejectReason} onChange={e=>setRejectReason(e.target.value)} placeholder={t("detail.reject_placeholder")} rows={3} style={{width:"100%",padding:12,borderRadius:10,border:"1px solid rgba(0,0,0,0.15)",fontSize:14,fontFamily:"inherit",boxSizing:"border-box",resize:"vertical"}}/>
+              <div style={{display:"flex",gap:8,marginTop:12}}>
+                <button onClick={()=>{setRejecting(false);setRejectReason("");}} style={{flex:1,background:"rgba(0,0,0,0.06)",border:"none",borderRadius:10,padding:"12px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>{t("actions.cancel")}</button>
+                <button disabled={!rejectReason.trim()} onClick={()=>rejectIssue(rejectReason)} style={{flex:1,background:rejectReason.trim()?"#ff3b30":"rgba(255,59,48,0.4)",border:"none",borderRadius:10,padding:"12px",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:13,cursor:rejectReason.trim()?"pointer":"not-allowed"}}>{t("detail.reject_confirm")}</button>
+              </div>
+            </div>
+          </div>
+        )}
         {canUpdate&&(
           <div style={{marginBottom:14}}>
             <div style={lbl()}>{t("detail.update_status")}</div>
@@ -17142,7 +17354,18 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   // outside the officer's scope). User-state signal: whichever work
   // category the user last selected in LOG. Contractor / CONQUAS-non-
   // officer modes still see the full R1 §3.3 weighted report.
-  const isOfficerMode=local.get(WORK_CATEGORY_KEY)==="CONQUAS Officer";
+  // Work-category gate for the whole REPORT. CONQUAS-specific content — the
+  // IF VISUAL CHECK NC-rate card, the IF VISUAL CHECKS audit trail, the CONQUAS
+  // Element export column, the CONQUAS ZIP export, and the Project Setup panel —
+  // belongs ONLY to the CONQUAS Officer work category. Every other category,
+  // including plain "CONQUAS" contractor, gets the clean generic report.
+  // Read from the PROJECT's own work category — NOT the last LOG pick, which
+  // bled CONQUAS sections into unrelated projects. For legacy projects with no
+  // saved category, infer from whether the entries are CONQUAS Officer.
+  const _projWC=currentProject?.workCategory||"";
+  const isOfficerReport=_projWC?(_projWC==="CONQUAS Officer"):defects.some(d=>d.workCategory==="CONQUAS Officer");
+  const isConquasReport=isOfficerReport; // CONQUAS report content = Officer-only
+  const isOfficerMode=isOfficerReport;
   // Merged-from-Dashboard status block (lives at the top of Report now).
   const open=defects.filter(d=>d.status==="Open").length;
   const inprog=defects.filter(d=>d.status==="In Progress").length;
@@ -17702,6 +17925,9 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
   // direct-count rule per R1 §3.3 b/c. When both IF and FT exist the card
   // shows a re-normalised projected rate; full Project Band needs all three.
   const conquasStats=(()=>{
+    // Non-CONQUAS work categories get a generic report — no NC-rate card here,
+    // and null flows through to exportReportPdf so the PDF stays generic too.
+    if(!isConquasReport)return null;
     const conquasDefects=filtered.filter(d=>d.entryType==="CONQUAS Check"&&d.nc_tier);
     // Build batch denominators from conquas_observations FIRST so an all-pass
     // walk still produces a card (rate = 0%, Band 1). Defects are only saved
@@ -18196,12 +18422,12 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
                 </label>
                 )}
               </div>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang,getActiveProfileId(currentProject,company?.companyId));}catch(e){alert("Export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true,langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId),companyLogo:(local.get(COMPANY_LOGO_KEY)||{})[company?.companyId]||"",inspectorSignature:_resolveMySignature()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false,langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId),companyLogo:(local.get(COMPANY_LOGO_KEY)||{})[company?.companyId]||"",inspectorSignature:_resolveMySignature()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang,getActiveProfileId(currentProject,company?.companyId));await new Promise(r=>setTimeout(r,600));await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang,conquasStats,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId),companyLogo:(local.get(COMPANY_LOGO_KEY)||{})[company?.companyId]||"",inspectorSignature:_resolveMySignature()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
-              <button onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);const result=await exportToGoogleSheets(defs,currentProject?.name,company?.companyName,exportLang);window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
-              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Bundling CONQUAS photos…"});try{const result=await exportConquasZip(filtered,currentProject?.name,(msg)=>setPdfExport({active:true,label:msg}),{company,project:currentProject});const parts=Object.entries(result.counters).filter(([,n])=>n>0).map(([el,n])=>`${el}: ${n}`).join(" · ");alert(`✓ CONQUAS ZIP downloaded\n\n${result.processed} photo${result.processed===1?"":"s"} bundled across ${Object.keys(result.counters).length} element${Object.keys(result.counters).length===1?"":"s"}.${result.skipped?`\n${result.skipped} skipped (see console).`:""}\n\n${parts}`);}catch(e){alert("CONQUAS ZIP export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#5856d6",opacity:pdfExport.active?0.5:1}}>🏛 CONQUAS ZIP <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· 7 element folders, renamed</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang,getActiveProfileId(currentProject,company?.companyId),{isConquas:isConquasReport});}catch(e){alert("Export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📄 {t("report.export_csv")}</button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:true,langCode:exportLang,conquasStats,isConquas:isConquasReport,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId),companyLogo:(local.get(COMPANY_LOGO_KEY)||{})[company?.companyId]||"",inspectorSignature:_resolveMySignature()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📕 {t("report.export_pdf")} <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· on-site (fast)</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing lossless report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),fastMode:false,langCode:exportLang,conquasStats,isConquas:isConquasReport,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId),companyLogo:(local.get(COMPANY_LOGO_KEY)||{})[company?.companyId]||"",inspectorSignature:_resolveMySignature()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#1a1a1a",opacity:pdfExport.active?0.5:1}}>📗 {t("report.export_pdf")} <span style={{fontSize:10,color:"#ff6b00"}}>· office (lossless vector)</span></button>
+              <button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Preparing report…"});try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);await exportReportAll(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,exportLang,getActiveProfileId(currentProject,company?.companyId),{isConquas:isConquasReport});await new Promise(r=>setTimeout(r,600));await exportReportPdf(defs,incDrawings?reportDrawings:[],incComparisons?savedComparisons:[],currentProject?.name,company?.companyName,incDrawings?reportPins:[],contractSummary,defects,(msg)=>setPdfExport({active:true,label:msg}),{incMap,gmapsKey:local.get(GMAPS_KEY)||"",mapProvider:getMapProvider(),langCode:exportLang,conquasStats,isConquas:isConquasReport,projectCode:currentProject?.code||slugCode(currentProject?.name,6),companyCode:company?.code||slugCode(company?.companyName,4),profileId:getActiveProfileId(currentProject,company?.companyId),companyLogo:(local.get(COMPANY_LOGO_KEY)||{})[company?.companyId]||"",inspectorSignature:_resolveMySignature()});}catch(e){console.error("PDF export error:",e);alert("PDF export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#ff6b00",opacity:pdfExport.active?0.5:1}}>📊 {t("report.export_all")}</button>
+              <button onClick={async()=>{setShowExportMenu(false);try{const defs=await prepareDefectsForExport(incDefects?filtered:[]);const result=await exportToGoogleSheets(defs,currentProject?.name,company?.companyName,exportLang,{isConquas:isConquasReport});window.open(result.url,"_blank");alert("✓ Exported to Google Sheets!\n\nSpreadsheet opened in new tab.\nFuture exports will add new tabs to the same spreadsheet.");}catch(e){if(e.message.includes("not configured"))alert("Set up Google Sheets in Settings → Storage first.\n\nYou need a Google Cloud Client ID.");else alert("Google Sheets export failed: "+e.message);}}} style={{width:"100%",padding:"12px 16px",border:"none",borderBottom:"1px solid rgba(0,0,0,0.06)",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer",color:"#34a853"}}>📊 Google Sheets</button>
+              {isConquasReport&&<button disabled={pdfExport.active} onClick={async()=>{setShowExportMenu(false);setPdfExport({active:true,label:"Bundling CONQUAS photos…"});try{const result=await exportConquasZip(filtered,currentProject?.name,(msg)=>setPdfExport({active:true,label:msg}),{company,project:currentProject});const parts=Object.entries(result.counters).filter(([,n])=>n>0).map(([el,n])=>`${el}: ${n}`).join(" · ");alert(`✓ CONQUAS ZIP downloaded\n\n${result.processed} photo${result.processed===1?"":"s"} bundled across ${Object.keys(result.counters).length} element${Object.keys(result.counters).length===1?"":"s"}.${result.skipped?`\n${result.skipped} skipped (see console).`:""}\n\n${parts}`);}catch(e){alert("CONQUAS ZIP export failed: "+(e?.message||e));}finally{setPdfExport({active:false,label:""});}}} style={{width:"100%",padding:"12px 16px",border:"none",background:"#fff",textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:pdfExport.active?"not-allowed":"pointer",color:"#5856d6",opacity:pdfExport.active?0.5:1}}>🏛 CONQUAS ZIP <span style={{fontSize:10,color:"rgba(0,0,0,0.45)"}}>· 7 element folders, renamed</span></button>}
               {/* Client viewer (lite portal v1) — share the project's
                   defect list as a single self-contained HTML file.
                   Reuses the 5W1H interactive viewer infra. Photos are
@@ -18379,7 +18605,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
       {/* Project setup — Custom Checklist + Custom Template controls.
           Lives here (not in ProjectManagement) so users find them where they
           actually affect output. Manager+ only; hidden for Inspectors/Viewers. */}
-      <ProjectSetupPanel currentProject={currentProject} member={member} company={company} onProjectUpdate={onProjectUpdate}/>
+      {isOfficerReport&&<ProjectSetupPanel currentProject={currentProject} member={member} company={company} onProjectUpdate={onProjectUpdate}/>}
 
       {/* QUALITY CHECK card — CONQUAS NC-rate calculator (R1 §3.3). This is a
           stat dashboard, not export content, so it renders whenever CONQUAS
@@ -18617,7 +18843,7 @@ function Report({defects,onEmailSetup,currentProject,company,tgEnabled,aiEnabled
       {/* Phase 3.8B — full CONQUAS audit trail. Shows every checkpoint the
           inspector walked (pass + fail + uncertain) with photo evidence,
           grouped by observation_batch_id so each wizard run is a clear unit. */}
-      {conquasObs.length>0&&(()=>{
+      {isConquasReport&&conquasObs.length>0&&(()=>{
         // Header summary: total + pass / fail / uncertain breakdown so the
         // user sees the audit picture at a glance without expanding.
         const totalChecks=conquasObs.length;
@@ -21370,6 +21596,8 @@ function DrawingsPanel({onClose,company,currentProject,member,defects,onSaveEntr
   const[compareTextPoint,setCompareTextPoint]=useState(null);
   const[compareTextValue,setCompareTextValue]=useState("");
   const[comparePendingDim,setComparePendingDim]=useState(null);
+  const compareEndDragRef=useRef(null); // {idx,which:'start'|'end'} — resize a dimension by dragging an endpoint
+  const[compareDimEditIdx,setCompareDimEditIdx]=useState(null); // editing an existing dimension's label
   const[compareDimLabel,setCompareDimLabel]=useState("");
   const[savedComparisons,setSavedComparisons]=useState(()=>getSavedComparisons(currentProject?.id||""));
   const[viewingSaved,setViewingSaved]=useState(null);
@@ -22943,6 +23171,24 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
     setCompareSelectedIdx(idx);
     compareDragRef.current={idx,startX:p.x,startY:p.y,orig:compareMarkupStrokes[idx]};
   };
+  const onCompareEndpointDown=(idx,which,e)=>{
+    if(compareMarkupTool!=="select")return;
+    e.preventDefault();e.stopPropagation();
+    setCompareSelectedIdx(idx);
+    compareEndDragRef.current={idx,which};
+  };
+  const commitCompareDim=()=>{
+    const label=compareDimLabel.trim();
+    if(compareDimEditIdx!=null){
+      setCompareMarkupStrokes(strokes=>strokes.map((s,i)=>i===compareDimEditIdx?{...s,label}:s));
+      setCompareDimEditIdx(null);
+    }else if(comparePendingDim){
+      addCompareStroke({...comparePendingDim,label});
+      setComparePendingDim(null);
+    }
+    setCompareDimLabel("");
+  };
+  const cancelCompareDim=()=>{setComparePendingDim(null);setCompareDimEditIdx(null);setCompareDimLabel("");};
 
   const onCompareMarkupMove=e=>{
     // Rubber-band rect while placing a new photo
@@ -22953,6 +23199,14 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       const x=Math.min(sx,p.x),y=Math.min(sy,p.y);
       const w=Math.abs(p.x-sx),h=Math.abs(p.y-sy);
       setComparePhotoPlaceRect({...comparePhotoPlaceRect,x,y,w,h});
+      return;
+    }
+    // Dragging a dimension endpoint → update just that point (changes length).
+    if(compareEndDragRef.current){
+      const p=getCompareMarkupPos(e);if(!p)return;
+      e.preventDefault();
+      const{idx,which}=compareEndDragRef.current;
+      setCompareMarkupStrokes(strokes=>strokes.map((s,i)=>i===idx?{...s,[which]:{x:p.x,y:p.y}}:s));
       return;
     }
     // Dragging a selected stroke (move or resize)
@@ -23007,6 +23261,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
 
   const onCompareMarkupUp=()=>{
     comparePinchDist.current=null;comparePanStart.current=null;
+    if(compareEndDragRef.current){compareEndDragRef.current=null;return;}
     // Finalize pending photo placement
     if(comparePendingPhoto&&comparePhotoPlaceRect){
       let{x,y,w,h}=comparePhotoPlaceRect;
@@ -23153,17 +23408,11 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
       return <line key={i} x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={selStroke} strokeWidth={selWidth} strokeDasharray={dash} {...hit}/>;
     }
     if(s.type==="dimension"&&s.start&&s.end){
-      const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y,len=Math.sqrt(dx*dx+dy*dy);
-      if(len<0.5)return null;
-      const nx=-dy/len*1.2,ny=dx/len*1.2;
-      const mx=(s.start.x+s.end.x)/2,my=(s.start.y+s.end.y)/2;
-      const angle=Math.atan2(dy,dx)*180/Math.PI;
-      const label=s.label||"";
+      const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y;
+      if(Math.sqrt(dx*dx+dy*dy)<0.5)return null;
       return <g key={i} {...hit}>
-        <line x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={selStroke} strokeWidth="0.2" strokeDasharray={dash}/>
-        <line x1={s.start.x+nx} y1={s.start.y+ny} x2={s.start.x-nx} y2={s.start.y-ny} stroke={selStroke} strokeWidth={selWidth}/>
-        <line x1={s.end.x+nx} y1={s.end.y+ny} x2={s.end.x-nx} y2={s.end.y-ny} stroke={selStroke} strokeWidth={selWidth}/>
-        {label&&<text x={mx} y={my} fill={selStroke} fontSize="2.2" fontFamily="'Barlow Condensed',sans-serif" fontWeight="700" textAnchor="middle" dominantBaseline="central" transform={`rotate(${angle>90||angle<-90?angle+180:angle},${mx},${my})`} dy="-1">{label}</text>}
+        {renderMarkupDimensionSvgBody(s,{color:selStroke,tickWidth:selWidth,dash})}
+        {isSel&&renderMarkupDimHandlesSvg(s,i,onCompareEndpointDown)}
       </g>;
     }
     if(s.type==="text"&&s.pos&&s.text){
@@ -24764,6 +25013,7 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                       <button onClick={finishCmpPolyline} style={{height:26,padding:"0 8px",borderRadius:6,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:10,cursor:"pointer"}}>DONE ({cmpPolylinePoints.length})</button>
                     </>
                   )}
+                  {compareSelectedIdx!=null&&compareMarkupStrokes[compareSelectedIdx]?.type==="dimension"&&<button onClick={()=>{const s=compareMarkupStrokes[compareSelectedIdx];setCompareDimLabel(s?.label||"");setCompareDimEditIdx(compareSelectedIdx);}} title="Edit dimension number — or drag its end dots to change length" style={{background:"rgba(88,86,214,0.22)",border:"1px solid rgba(88,86,214,0.4)",borderRadius:8,padding:"6px 10px",color:"#c9c7ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>✎ EDIT</button>}
                   {compareSelectedIdx!=null&&<button onClick={deleteCompareSelected} title="Delete selected" style={{background:"rgba(255,59,48,0.2)",border:"1px solid rgba(255,59,48,0.35)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>DEL</button>}
                   <button onClick={undoCompareMarkup} disabled={!compareMarkupStrokes.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:compareMarkupStrokes.length?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{t("actions.undo")}</button>
                   <button onClick={redoCompareMarkup} disabled={!compareRedoStack.length} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"6px 10px",color:compareRedoStack.length?"#fff":"rgba(255,255,255,0.35)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:11,cursor:"pointer"}}>{t("actions.redo")}</button>
@@ -24851,15 +25101,15 @@ ${batch.map((item,i)=>`${i+1}. [${item.key}] "${item.text}"`).join("\n")}`;
                 </div>
               )}
 
-              {comparePendingDim&&(
+              {(comparePendingDim||compareDimEditIdx!=null)&&(
                 <div style={{position:"fixed",inset:0,zIndex:280,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
                   <div style={{width:"100%",maxWidth:340,background:"#1a1a1a",borderRadius:14,padding:16,border:"1px solid rgba(255,255,255,0.15)"}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",marginBottom:6}}>DIMENSION LABEL</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:14,color:"#fff",marginBottom:6}}>{compareDimEditIdx!=null?"EDIT DIMENSION":"DIMENSION LABEL"}</div>
                     <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:12}}>Enter the measurement (e.g. 3.5m, 1200mm). Leave blank for no label.</div>
-                    <input autoFocus value={compareDimLabel} onChange={e=>setCompareDimLabel(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){addCompareStroke({...comparePendingDim,label:compareDimLabel.trim()});setComparePendingDim(null);setCompareDimLabel("");}}} placeholder="e.g. 3500mm" style={{width:"100%",padding:11,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
+                    <input autoFocus value={compareDimLabel} onChange={e=>setCompareDimLabel(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")commitCompareDim();}} placeholder="e.g. 3500mm" style={{width:"100%",padding:11,borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
                     <div style={{display:"flex",gap:8,marginTop:12}}>
-                      <button onClick={()=>{setComparePendingDim(null);setCompareDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")}</button>
-                      <button onClick={()=>{addCompareStroke({...comparePendingDim,label:compareDimLabel.trim()});setComparePendingDim(null);setCompareDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD</button>
+                      <button onClick={cancelCompareDim} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")}</button>
+                      <button onClick={commitCompareDim} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{compareDimEditIdx!=null?"SAVE":"ADD"}</button>
                     </div>
                   </div>
                 </div>
@@ -25103,6 +25353,22 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   };
   const[pendingDimStroke,setPendingDimStroke]=useState(null);
   const[dimLabel,setDimLabel]=useState("");
+  // Editing an existing dimension's number after creation (null = create mode).
+  const[dimEditIdx,setDimEditIdx]=useState(null);
+  // Drag a selected dimension's endpoint to change its length / position.
+  const endpointDragRef=useRef(null); // {idx,which:'start'|'end'}
+  const commitDimLabel=()=>{
+    const label=dimLabel.trim();
+    if(dimEditIdx!=null){
+      setMarkupStrokes(strokes=>strokes.map((s,i)=>i===dimEditIdx?{...s,label}:s));
+      setDimEditIdx(null);
+    }else if(pendingDimStroke){
+      addMarkupStroke({...pendingDimStroke,label});
+      setPendingDimStroke(null);
+    }
+    setDimLabel("");
+  };
+  const cancelDimLabel=()=>{setPendingDimStroke(null);setDimEditIdx(null);setDimLabel("");};
   const[showCombinedList,setShowCombinedList]=useState(false);
   const markupSvgRef=useRef();
   const imgRef=useRef();const containerRef=useRef();const canvasRef=useRef();const pdfDocRef=useRef(null);
@@ -25123,12 +25389,24 @@ function DrawingViewer({drawing,onClose,company,currentProject,member,defects,on
   useEffect(()=>{
     saveDrawingNotes(drawing.id,notes);
   },[drawing.id,notes]);
-  // Persist markup strokes (auto-save) + track saved state for UI indicator
+  // Persist markup strokes (auto-save) + track saved state for UI indicator.
+  // Debounced: setMarkupStrokes fires on every pointer-move tick during a
+  // drag, and a naive write here re-serialised the entire DRAWING_MARKUP_KEY
+  // map (every drawing, plus any embedded photo overlays) to localStorage on
+  // each tick — enough to freeze the main thread on a phone after a few edits.
+  // Coalesce the burst into one write ~350 ms after the last change, and flush
+  // on unmount so a quick close still persists the final state.
   const[markupSaveTick,setMarkupSaveTick]=useState(0);
+  const markupStrokesRef=useRef(markupStrokes);
+  useEffect(()=>{markupStrokesRef.current=markupStrokes;},[markupStrokes]);
   useEffect(()=>{
-    saveDrawingMarkup(drawing.id,markupStrokes);
-    setMarkupSaveTick(t=>t+1);
+    const tmr=setTimeout(()=>{
+      saveDrawingMarkup(drawing.id,markupStrokes);
+      setMarkupSaveTick(t=>t+1);
+    },350);
+    return()=>clearTimeout(tmr);
   },[drawing.id,markupStrokes]);
+  useEffect(()=>()=>{saveDrawingMarkup(drawing.id,markupStrokesRef.current);},[drawing.id]);
 
   // Load PDF document
   useEffect(()=>{
@@ -25523,6 +25801,16 @@ If you cannot confidently match the defect to any room, pick the closest one and
         photoDragRef.current={mode:"resize",startPos:p,orig:{pos:{...s.pos},w:s.w,h:s.h}};
         return;
       }
+      // Dimension endpoint grab → drag to change its length / position. Checked
+      // before the generic hit-test so grabbing an end resizes rather than
+      // translating the whole dimension.
+      if(markupSelectedIdx!=null){
+        const sel=markupStrokes[markupSelectedIdx];
+        if(sel&&sel.type==="dimension"){
+          const which=markupDimEndpointHit(sel,p,4.5);
+          if(which){endpointDragRef.current={idx:markupSelectedIdx,which};return;}
+        }
+      }
       // Try photo first (supports drag/move)
       const photoIdx=hitPhotoAt(p);
       if(photoIdx>=0){
@@ -25666,6 +25954,13 @@ If you cannot confidently match the defect to any room, pick the closest one and
       return;
     }
     const p=getMarkupPos(e);if(!p)return;
+    // Dragging a dimension endpoint → update just that point (changes length).
+    if(endpointDragRef.current){
+      e.preventDefault();e.stopPropagation();
+      const{idx,which}=endpointDragRef.current;
+      setMarkupStrokes(strokes=>strokes.map((s,i)=>i===idx?{...s,[which]:{x:p.x,y:p.y}}:s));
+      return;
+    }
     // Rubber-band rect while placing a new photo
     if(pendingPhoto&&photoPlaceRect){
       e.preventDefault();e.stopPropagation();
@@ -25749,6 +26044,7 @@ If you cannot confidently match the defect to any room, pick the closest one and
     return false;
   };
   const onMarkupUp=()=>{
+    if(endpointDragRef.current){endpointDragRef.current=null;return;}
     // Finalise a marquee selection before anything else
     if(marqueeRef.current){
       const{additive,preSelected}=marqueeRef.current;
@@ -25826,6 +26122,16 @@ If you cannot confidently match the defect to any room, pick the closest one and
   const undoMarkup=()=>{setMarkupStrokes(s=>{if(!s.length)return s;setMarkupRedoStack(r=>[...r,s[s.length-1]]);return s.slice(0,-1);});};
   const redoMarkup=()=>{setMarkupRedoStack(r=>{if(!r.length)return r;const item=r[r.length-1];setMarkupStrokes(s=>[...s,item]);return r.slice(0,-1);});};
   const clearMarkup=()=>{if(markupStrokes.length&&confirm(t("markup.clear_markup")))setMarkupStrokes([]);};
+  // Endpoint handles for the selected dimension so its length / position can be
+  // dragged after creation. Rendered on top of the markup SVG (same % space).
+  const renderDimHandles=()=>{
+    if(!markupMode||markupTool!=="select"||markupSelectedIdx==null)return null;
+    const s=markupStrokes[markupSelectedIdx];
+    if(!s||s.type!=="dimension"||!s.start||!s.end)return null;
+    // Visual-only (no onEndpointDown) — the grab is detected by proximity in
+    // onMarkupDown via markupDimEndpointHit.
+    return <g>{renderMarkupDimHandlesSvg(s,markupSelectedIdx,null)}</g>;
+  };
 
   // Photo overlay — pick/capture an image, compress, then enter "drag to place" mode
   const markupPhotoRef=useRef();
@@ -25958,20 +26264,7 @@ If you cannot confidently match the defect to any room, pick the closest one and
       if(len<0.3)return null;
       return <line key={i} x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={s.color} strokeWidth="0.3" strokeDasharray={dash}/>;
     }else if(s.type==="dimension"&&s.start&&s.end){
-      const dx=s.end.x-s.start.x,dy=s.end.y-s.start.y,len=Math.sqrt(dx*dx+dy*dy);
-      if(len<0.5)return null;
-      // Perpendicular tick direction
-      const nx=-dy/len*1.2,ny=dx/len*1.2;
-      const mx=(s.start.x+s.end.x)/2,my=(s.start.y+s.end.y)/2;
-      const angle=Math.atan2(dy,dx)*180/Math.PI;
-      const label=s.label||"";
-      return <g key={i}>
-        <line x1={s.start.x} y1={s.start.y} x2={s.end.x} y2={s.end.y} stroke={s.color} strokeWidth="0.2" strokeDasharray={dash}/>
-        {/* End ticks */}
-        <line x1={s.start.x+nx} y1={s.start.y+ny} x2={s.start.x-nx} y2={s.start.y-ny} stroke={s.color} strokeWidth="0.3"/>
-        <line x1={s.end.x+nx} y1={s.end.y+ny} x2={s.end.x-nx} y2={s.end.y-ny} stroke={s.color} strokeWidth="0.3"/>
-        {label&&<text x={mx} y={my} fill={s.color} fontSize="2.2" fontFamily="'Barlow Condensed',sans-serif" fontWeight="700" textAnchor="middle" dominantBaseline="central" transform={`rotate(${angle>90||angle<-90?angle+180:angle},${mx},${my})`} dy="-1">{label}</text>}
-      </g>;
+      return <g key={i}>{renderMarkupDimensionSvgBody(s,{dash})}</g>;
     }else if(s.type==="text"&&s.pos&&s.text){
       const fs=s.fontSize?Math.max(0.8,s.fontSize*0.75):1.8;
       const isSel=isMarkupSelected(i);
@@ -26412,6 +26705,9 @@ If you cannot confidently match the defect to any room, pick the closest one and
           {markupTool==="select"&&(
             <button onClick={()=>setMarkupAdditiveSelect(v=>!v)} title={markupAdditiveSelect?"Additive mode ON — next tap adds to selection (tap to turn off)":"Tap to turn on additive mode — each tap will add to selection (mobile multi-select)"} style={{background:markupAdditiveSelect?"rgba(88,86,214,0.35)":"rgba(255,255,255,0.08)",border:markupAdditiveSelect?"1px solid #5856d6":"1px solid rgba(255,255,255,0.15)",borderRadius:8,padding:"6px 10px",color:markupAdditiveSelect?"#c9c7ff":"rgba(255,255,255,0.7)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>{markupAdditiveSelect?"➕ MULTI ON":"➕ MULTI"}</button>
           )}
+          {markupSelectedIdx!=null&&markupTool==="select"&&markupStrokes[markupSelectedIdx]?.type==="dimension"&&(
+            <button onClick={()=>{const s=markupStrokes[markupSelectedIdx];setDimLabel(s?.label||"");setDimEditIdx(markupSelectedIdx);}} title="Edit dimension number — or drag its end dots to change length" style={{background:"rgba(88,86,214,0.22)",border:"1px solid rgba(88,86,214,0.4)",borderRadius:8,padding:"6px 10px",color:"#c9c7ff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>✎ EDIT</button>
+          )}
           {(markupSelectedIdx!=null||markupExtraSelectedIdxs.size>0)&&markupTool==="select"&&(()=>{
             const n=(markupSelectedIdx!=null?1:0)+markupExtraSelectedIdxs.size;
             return <button onClick={deleteSelectedMarkup} title={n>1?"Delete "+n+" selected items (DEL)":"Delete selected (DEL)"} style={{background:"rgba(255,59,48,0.25)",border:"1px solid rgba(255,59,48,0.45)",borderRadius:8,padding:"6px 10px",color:"#ff8f8f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:11,cursor:"pointer"}}>🗑 {t("actions.delete")}{n>1?" ("+n+")":""}</button>;
@@ -26463,7 +26759,7 @@ If you cannot confidently match the defect to any room, pick the closest one and
             <svg ref={markupSvgRef} viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:markupMode?"auto":"none",touchAction:"none"}}
               onMouseDown={onMarkupDown} onMouseMove={onMarkupMove} onMouseUp={onMarkupUp} onMouseLeave={onMarkupUp}
               onTouchStart={onMarkupDown} onTouchMove={onMarkupMove} onTouchEnd={onMarkupUp}>
-              {renderMarkupSvg(markupStrokes)}
+              {renderMarkupSvg(markupStrokes)}{renderDimHandles()}
               {markupCurrent&&renderMarkupSvg([markupCurrent])}
               {dvPolylinePoints.length>1&&<polyline points={dvPolylinePoints.map(p=>`${p.x},${p.y}`).join(" ")} stroke={markupColor} strokeWidth="0.3" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="0.8 0.4"/>}
               {dvPolylinePoints.length===1&&<circle cx={dvPolylinePoints[0].x} cy={dvPolylinePoints[0].y} r="0.5" fill={markupColor}/>}
@@ -26491,7 +26787,7 @@ If you cannot confidently match the defect to any room, pick the closest one and
               <svg ref={markupSvgRef} viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:markupMode?"auto":"none",touchAction:"none"}}
                 onMouseDown={onMarkupDown} onMouseMove={onMarkupMove} onMouseUp={onMarkupUp} onMouseLeave={onMarkupUp}
                 onTouchStart={onMarkupDown} onTouchMove={onMarkupMove} onTouchEnd={onMarkupUp}>
-                {renderMarkupSvg(markupStrokes)}
+                {renderMarkupSvg(markupStrokes)}{renderDimHandles()}
                 {markupCurrent&&renderMarkupSvg([markupCurrent])}
                 {dvPolylinePoints.length>1&&<polyline points={dvPolylinePoints.map(p=>`${p.x},${p.y}`).join(" ")} stroke={markupColor} strokeWidth="0.3" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="0.8 0.4"/>}
                 {dvPolylinePoints.length===1&&<circle cx={dvPolylinePoints[0].x} cy={dvPolylinePoints[0].y} r="0.5" fill={markupColor}/>}
@@ -26625,16 +26921,17 @@ If you cannot confidently match the defect to any room, pick the closest one and
         </div>
       )}
 
-      {/* Dimension label input */}
-      {pendingDimStroke&&(
+      {/* Dimension label input — shared by create (pendingDimStroke) and
+          edit (dimEditIdx) flows. */}
+      {(pendingDimStroke||dimEditIdx!=null)&&(
         <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.84)",zIndex:320,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
           <div style={{width:"100%",maxWidth:340,background:"#1a1a1a",borderRadius:16,padding:18,border:"1px solid rgba(255,255,255,0.12)"}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff",marginBottom:6}}>DIMENSION LABEL</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:15,color:"#fff",marginBottom:6}}>{dimEditIdx!=null?"EDIT DIMENSION":"DIMENSION LABEL"}</div>
             <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginBottom:12}}>Enter the measurement (e.g. 3.5m, 1200mm, 4'-6"). Leave blank for no label.</div>
-            <input autoFocus value={dimLabel} onChange={e=>setDimLabel(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){addMarkupStroke({...pendingDimStroke,label:dimLabel.trim()});setPendingDimStroke(null);setDimLabel("");}}} placeholder="e.g. 3500mm" style={{width:"100%",padding:"12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
+            <input autoFocus value={dimLabel} onChange={e=>setDimLabel(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")commitDimLabel();}} placeholder="e.g. 3500mm" style={{width:"100%",padding:"12px",borderRadius:10,border:"1px solid rgba(255,255,255,0.2)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:14,fontFamily:"'Barlow Condensed',sans-serif",boxSizing:"border-box"}}/>
             <div style={{display:"flex",gap:8,marginTop:12}}>
-              <button onClick={()=>{setPendingDimStroke(null);setDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")}</button>
-              <button onClick={()=>{addMarkupStroke({...pendingDimStroke,label:dimLabel.trim()});setPendingDimStroke(null);setDimLabel("");}} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>ADD</button>
+              <button onClick={cancelDimLabel} style={{flex:1,padding:10,borderRadius:10,border:"1px solid rgba(255,255,255,0.15)",background:"none",color:"rgba(255,255,255,0.55)",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:12,cursor:"pointer"}}>{t("actions.cancel")}</button>
+              <button onClick={commitDimLabel} style={{flex:1,padding:10,borderRadius:10,border:"none",background:"#5856d6",color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:12,cursor:"pointer"}}>{dimEditIdx!=null?"SAVE":"ADD"}</button>
             </div>
           </div>
         </div>
