@@ -3106,10 +3106,13 @@ console.warn("[ExportProfile] DB write failed, using localStorage fallback:",e?.
 // Element export column, the CONQUAS ZIP export, and the Project Setup panel —
 // belongs ONLY to the CONQUAS Officer work category. Every other category,
 // including plain "CONQUAS" contractor, gets the clean generic report.
-// Read from the PROJECT's own work category — NOT the last LOG pick, which
-// bled CONQUAS sections into unrelated projects. For legacy projects with no
-// saved category, infer from whether the entries are CONQUAS Officer.
-const _projWC=currentProject?.workCategory||"";const isOfficerReport=_projWC?_projWC==="CONQUAS Officer":defects.some(d=>d.workCategory==="CONQUAS Officer");const isConquasReport=isOfficerReport;// CONQUAS report content = Officer-only
+// Gate on the WORK CATEGORY the user currently has selected (LOG Step 1,
+// persisted in WORK_CATEGORY_KEY) — per the user's explicit, repeated
+// instruction the active selection drives REPORT, NOT the project's entries
+// or any stored project field. Switching the selector to anything other than
+// "CONQUAS Officer" makes REPORT generic immediately, even if the project
+// still holds old CONQUAS observations.
+const _selectedWC=local.get(WORK_CATEGORY_KEY)||"";const isOfficerReport=_selectedWC==="CONQUAS Officer";const isConquasReport=isOfficerReport;// CONQUAS report content = Officer-only
 const isOfficerMode=isOfficerReport;// Merged-from-Dashboard status block (lives at the top of Report now).
 const open=defects.filter(d=>d.status==="Open").length;const inprog=defects.filter(d=>d.status==="In Progress").length;const doneCount=defects.filter(d=>d.status==="Done").length;const verified=defects.filter(d=>d.status==="Verified").length;const closedCount=defects.filter(d=>d.status==="Closed").length;const critical=defects.filter(d=>d.severity==="Critical"&&!["Verified","Closed"].includes(d.status)).length;// Overdue tally — past dueDate, not Verified/Closed. Lex-compare on the
 // YYYY-MM-DD prefix matches REVIEW's _isOverdue helper so the two
